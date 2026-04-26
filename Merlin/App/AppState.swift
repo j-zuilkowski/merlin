@@ -22,6 +22,12 @@ struct ToolLogLine: Identifiable {
     var timestamp: Date
 }
 
+enum ToolActivityState: String, Sendable {
+    case idle
+    case streaming
+    case toolExecuting
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var engine: AgenticEngine!
@@ -38,6 +44,7 @@ final class AppState: ObservableObject {
 
     @Published var activeProviderID: String = "deepseek-v4-pro"
     @Published var thinkingModeActive: Bool = false
+    @Published var toolActivityState: ToolActivityState = .idle
 
     init() {
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser

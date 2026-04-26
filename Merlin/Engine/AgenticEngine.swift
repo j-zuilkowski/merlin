@@ -2,6 +2,7 @@ import Foundation
 
 enum AgentEvent {
     case text(String)
+    case thinking(String)
     case toolCallStarted(ToolCall)
     case toolCallResult(ToolResult)
     case systemNote(String)
@@ -65,6 +66,9 @@ final class AgenticEngine {
             var sawToolCall = false
 
             for try await chunk in stream {
+                if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
+                    continuation.yield(.thinking(thinkingContent))
+                }
                 if let content = chunk.delta?.content, !content.isEmpty {
                     continuation.yield(.text(content))
                 }
