@@ -1,0 +1,99 @@
+name: Merlin
+options:
+  bundleIdPrefix: com.merlin
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.4"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  Merlin:
+    type: application
+    platform: macOS
+    sources: [Merlin/]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.app
+        BUNDLE_IDENTIFIER: com.merlin.app
+        PRODUCT_NAME: Merlin
+        INFOPLIST_FILE: Merlin/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Merlin/Merlin.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+
+  TestTargetApp:
+    type: application
+    platform: macOS
+    sources: [TestTargetApp/]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.TestTargetApp
+        BUNDLE_IDENTIFIER: com.merlin.TestTargetApp
+        PRODUCT_NAME: TestTargetApp
+        INFOPLIST_FILE: TestTargetApp/Info.plist
+
+  MerlinTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [MerlinTests/, TestHelpers/]
+    dependencies:
+      - target: Merlin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.MerlinTests
+        BUNDLE_IDENTIFIER: com.merlin.MerlinTests
+        GENERATE_INFOPLIST_FILE: YES
+
+  MerlinLiveTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [MerlinLiveTests/, TestHelpers/]
+    dependencies:
+      - target: Merlin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.MerlinLiveTests
+        BUNDLE_IDENTIFIER: com.merlin.MerlinLiveTests
+        GENERATE_INFOPLIST_FILE: YES
+
+  MerlinE2ETests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [MerlinE2ETests/, TestHelpers/]
+    dependencies:
+      - target: Merlin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.MerlinE2ETests
+        BUNDLE_IDENTIFIER: com.merlin.MerlinE2ETests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  MerlinTests:
+    build:
+      targets:
+        Merlin: all
+        MerlinTests: [test]
+    test:
+      targets: [MerlinTests]
+
+  MerlinTests-Live:
+    build:
+      targets:
+        Merlin: all
+        MerlinLiveTests: [test]
+        MerlinE2ETests: [test]
+        TestTargetApp: all
+    test:
+      targets: [MerlinLiveTests, MerlinE2ETests]
+      environmentVariables:
+        RUN_LIVE_TESTS:
+          value: "1"
+          isEnabled: true
