@@ -38,4 +38,17 @@ final class VisualLayoutTests: XCTestCase {
     func testToolLogPanelVisible() {
         XCTAssertTrue(app.scrollViews["tool-log"].exists)
     }
+
+    func testAuthPopupLayout() {
+        let popupApp = XCUIApplication()
+        popupApp.launchArguments += ["--show-auth-popup-for-testing"]
+        popupApp.launch()
+
+        let popup = popupApp.sheets.firstMatch
+        if popup.exists {
+            let windowFrame = popupApp.windows.firstMatch.frame
+            XCTAssertGreaterThanOrEqual(popup.frame.minX, windowFrame.minX)
+            XCTAssertLessThanOrEqual(popup.frame.maxX, windowFrame.maxX)
+        }
+    }
 }

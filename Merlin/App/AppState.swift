@@ -28,6 +28,8 @@ enum ToolActivityState: String, Sendable {
     case toolExecuting
 }
 
+private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var engine: AgenticEngine!
@@ -111,6 +113,18 @@ final class AppState: ObservableObject {
 
         if apiKey == nil {
             showFirstLaunchSetup = true
+        }
+
+        if ProcessInfo.processInfo.arguments.contains(showAuthPopupForTestingFlag) {
+            pendingAuthRequest = AuthRequest(
+                tool: "read_file",
+                argument: "/Users/jon/Projects/App/Example.swift",
+                reasoningStep: "Inspect the requested file before making a change.",
+                suggestedPattern: "~/Projects/App/**",
+                resolve: { _ in }
+            )
+            showAuthPopup = true
+            showFirstLaunchSetup = false
         }
     }
 
