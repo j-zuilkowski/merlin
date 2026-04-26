@@ -1,6 +1,12 @@
 # Phase 02a — Shared Types: Tests First
 
-Context: HANDOFF.md. No implementation yet — write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+
+---
 
 ## Write to: MerlinTests/Unit/SharedTypesTests.swift
 
@@ -60,6 +66,25 @@ final class SharedTypesTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] File compiles (types missing — expected)
-- [ ] `swift test --filter SharedTypesTests` reports build errors referencing missing types (not logic errors)
+---
+
+## Verify
+
+Run after writing the file. Expect build errors for missing types — that is correct for a test-first phase.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: build errors referencing `Message`, `ToolCall`, etc. — not logic errors. `BUILD FAILED` is correct here.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Unit/SharedTypesTests.swift
+git commit -m "Phase 02a — SharedTypesTests (failing, types not yet defined)"
+```

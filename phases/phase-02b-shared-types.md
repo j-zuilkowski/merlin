@@ -1,6 +1,12 @@
 # Phase 02b — Shared Types: Implementation
 
-Context: HANDOFF.md. Make phase-02a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+
+---
 
 ## Write to: Merlin/Providers/LLMProvider.swift
 
@@ -187,6 +193,23 @@ protocol LLMProvider: AnyObject, Sendable {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter SharedTypesTests` — all 5 tests pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/SharedTypesTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'SharedTypesTests' passed` with 5 tests.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Providers/LLMProvider.swift
+git commit -m "Phase 02b — Shared types + LLMProvider protocol (all Sendable)"
+```

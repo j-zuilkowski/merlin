@@ -1,6 +1,13 @@
 # Phase 07b — FileSystemTools + ShellTool Implementation
 
-Context: HANDOFF.md. Make phase-07a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
+
+---
 
 ## Write to: Merlin/Tools/FileSystemTools.swift
 
@@ -29,6 +36,8 @@ enum FileSystemTools {
 }
 ```
 
+---
+
 ## Write to: Merlin/Tools/ShellTool.swift
 
 ```swift
@@ -48,7 +57,7 @@ struct ShellOutputLine: Sendable {
 
 enum ShellTool {
     // Streaming variant — yields lines as the process produces them.
-    // Used by ToolRouter to populate AppState.toolLogLines in real time.
+    // Used by AppState to populate toolLogLines in real time.
     static func stream(command: String, cwd: String?,
                        timeoutSeconds: Int = 120) -> AsyncThrowingStream<ShellOutputLine, Error>
 
@@ -84,6 +93,29 @@ Cancel the process on timeout: wrap in `Task` with `.timeLimit` or use
 `run` collects all lines from `stream`, joins stdout and stderr separately, and
 returns `ShellResult` with the resolved `exitCode`.
 
-## Acceptance
-- [ ] `swift test --filter FileSystemToolTests` — all 5 pass
-- [ ] `swift test --filter ShellToolTests` — all 4 pass
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/FileSystemToolTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Then:
+
+```bash
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/ShellToolTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'FileSystemToolTests' passed` (5 tests), `Test Suite 'ShellToolTests' passed` (4 tests).
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Tools/FileSystemTools.swift Merlin/Tools/ShellTool.swift
+git commit -m "Phase 07b — FileSystemTools + ShellTool (9 tests passing)"
+```

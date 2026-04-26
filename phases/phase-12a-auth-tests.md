@@ -1,6 +1,12 @@
 # Phase 12a — PatternMatcher + AuthMemory Tests
 
-Context: HANDOFF.md. Write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+
+---
 
 ## Write to: MerlinTests/Unit/PatternMatcherTests.swift
 
@@ -42,6 +48,9 @@ final class PatternMatcherTests: XCTestCase {
 ## Write to: MerlinTests/Unit/AuthMemoryTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class AuthMemoryTests: XCTestCase {
     var tmp: URL!
     var memory: AuthMemory!
@@ -71,5 +80,25 @@ final class AuthMemoryTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] Files compile (types missing — expected)
+---
+
+## Verify
+
+Run after writing both files. Expect build errors for missing `PatternMatcher` and `AuthMemory`.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing `PatternMatcher` and `AuthMemory`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Unit/PatternMatcherTests.swift MerlinTests/Unit/AuthMemoryTests.swift
+git commit -m "Phase 12a — PatternMatcherTests + AuthMemoryTests (failing)"
+```

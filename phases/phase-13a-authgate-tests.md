@@ -1,6 +1,16 @@
 # Phase 13a — AuthGate Tests
 
-Context: HANDOFF.md. AuthMemory + PatternMatcher exist. Write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 12b complete: AuthMemory and PatternMatcher exist.
+
+Note: `NullAuthPresenter` and `CapturingAuthPresenter` are defined in TestHelpers/NullAuthPresenter.swift
+and are available to all three test targets. Do NOT redefine them in this file.
+
+---
 
 ## Write to: MerlinTests/Unit/AuthGateTests.swift
 
@@ -50,31 +60,33 @@ final class AuthGateTests: XCTestCase {
         let memory = AuthMemory(storePath: "/dev/null")
         let presenter = CapturingAuthPresenter(response: .allowAlways(pattern: "/tmp/**"))
         let gate = AuthGate(memory: memory, presenter: presenter)
-        // Simulate a failed execution — gate should not persist on failure
         _ = await gate.check(tool: "read_file", argument: "/tmp/x.txt")
         gate.reportFailure(tool: "read_file", argument: "/tmp/x.txt")
         // Pattern should have been rolled back
         XCTAssertFalse(memory.isAllowed(tool: "read_file", argument: "/tmp/NEW.txt"))
     }
 }
-
-// Test doubles
-final class NullAuthPresenter: AuthPresenter {
-    func requestDecision(tool: String, argument: String, suggestedPattern: String) async -> AuthDecision {
-        .deny  // Never called in these tests
-    }
-}
-
-final class CapturingAuthPresenter: AuthPresenter {
-    let response: AuthDecision
-    var wasPrompted = false
-    init(response: AuthDecision) { self.response = response }
-    func requestDecision(tool: String, argument: String, suggestedPattern: String) async -> AuthDecision {
-        wasPrompted = true
-        return response
-    }
-}
 ```
 
-## Acceptance
-- [ ] Compiles (types missing — expected)
+---
+
+## Verify
+
+Run after writing the file. Expect build errors for missing `AuthGate` and `AuthDecision`.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing `AuthGate` and `AuthDecision`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Unit/AuthGateTests.swift
+git commit -m "Phase 13a — AuthGateTests (failing)"
+```

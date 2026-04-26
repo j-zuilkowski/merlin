@@ -1,6 +1,13 @@
 # Phase 12b — PatternMatcher + AuthMemory Implementation
 
-Context: HANDOFF.md. Make phase-12a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
+
+---
 
 ## Write to: Merlin/Auth/PatternMatcher.swift
 
@@ -19,6 +26,8 @@ Rules:
 - `**` matches any sequence of characters including `/`
 - `*` matches any sequence of characters NOT including `/`
 - Match is case-sensitive
+
+---
 
 ## Write to: Merlin/Auth/AuthMemory.swift
 
@@ -54,6 +63,32 @@ final class AuthMemory {
 
 Storage path in production: `~/Library/Application Support/Merlin/auth.json`
 
-## Acceptance
-- [ ] `swift test --filter PatternMatcherTests` — all 5 pass
-- [ ] `swift test --filter AuthMemoryTests` — all 3 pass
+Pattern matching for tool: a tool pattern of `"*"` matches any tool name.
+Call `PatternMatcher.matches(value: argument, pattern: p.pattern)` for the argument match.
+
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/PatternMatcherTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Then:
+
+```bash
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/AuthMemoryTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `PatternMatcherTests` passes (5 tests), `AuthMemoryTests` passes (3 tests).
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Auth/PatternMatcher.swift Merlin/Auth/AuthMemory.swift
+git commit -m "Phase 12b — PatternMatcher + AuthMemory (8 tests passing)"
+```

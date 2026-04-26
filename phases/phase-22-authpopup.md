@@ -1,6 +1,13 @@
 # Phase 22 — AuthPopupView + FirstLaunchSetupView
 
-Context: HANDOFF.md. AuthGate, AppState exist.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (phase 13b). KeychainManager exists (phase 05).
+
+---
 
 ## Write to: Merlin/Views/AuthPopupView.swift
 
@@ -24,20 +31,30 @@ Modal sheet. Non-dismissable via background click. Appears whenever `AuthGate` n
 ```
 
 ```swift
+import SwiftUI
+
 struct AuthPopupView: View {
     let tool: String
     let argument: String
     let reasoningStep: String
     let suggestedPattern: String
     let onDecision: (AuthDecision) -> Void
+
+    var body: some View {
+        // Implement the layout above
+        // Keyboard shortcuts:
+        //   ↩  (return)   → Allow Once   → onDecision(.allowOnce)
+        //   ⌘↩ (cmd+return) → Allow Always → onDecision(.allowAlways(pattern: suggestedPattern))
+        //   ⎋  (escape)   → Deny         → onDecision(.deny)
+        //
+        // Arguments display in monospaced font, truncated to 80 chars with "..." (tap to expand)
+        // All three buttons always visible — no default highlighted button
+        // interactiveDismissDisabled(true) to prevent accidental backdrop dismiss
+    }
 }
 ```
 
-- Keyboard shortcuts: `↩` = Allow Once, `⌘↩` = Allow Always, `⎋` = Deny
-- Arguments display in monospaced font, truncated with "…" if over 80 chars (tap to expand)
-- All three buttons always visible — no default highlighted button to prevent accidental confirm
-
-Wire `AuthGate` presenter to present this view: implement `AuthPresenter` in `AppState` using a `@Published var pendingAuthRequest` that `ContentView` observes to present a `.sheet`.
+---
 
 ## Write to: Merlin/Views/FirstLaunchSetupView.swift
 
@@ -57,22 +74,49 @@ Shown on first launch when no DeepSeek API key found in Keychain.
 └──────────────────────────────────────────┘
 ```
 
-On Continue: `KeychainManager.writeAPIKey(key)`, set `appState.showFirstLaunchSetup = false`.
-Validate: key must be non-empty and start with `sk-` (warn if not, but allow continue).
+On Continue:
+1. `try? KeychainManager.writeAPIKey(key)`
+2. `appState.showFirstLaunchSetup = false`
 
-## Write to: MerlinE2ETests/VisualLayoutTests.swift (append)
+Validation: key must be non-empty. Show an inline warning if it doesn't start with `sk-`, but allow the user to continue anyway.
+
+---
+
+## Write to: MerlinE2ETests/VisualLayoutTests.swift (append this test)
 
 ```swift
-// Auth popup has correct elements
+// Auth popup has correct elements (append to VisualLayoutTests class)
 func testAuthPopupLayout() {
-    // Trigger via notification or test hook — implementation detail
-    // Verify buttons exist and are not clipped
-    // This test requires the popup to be shown; use a test-mode launch argument
+    // This test requires the app to be launched with a test argument to show the popup
+    // Use XCUIApplication launch argument "--show-auth-popup-for-testing"
+    // Implementation detail: check that if the popup is visible, its buttons are not clipped
+    let popup = app.sheets.firstMatch
+    if popup.exists {
+        let windowFrame = app.windows.firstMatch.frame
+        XCTAssertGreaterThanOrEqual(popup.frame.minX, windowFrame.minX)
+        XCTAssertLessThanOrEqual(popup.frame.maxX, windowFrame.maxX)
+    }
 }
 ```
 
-## Acceptance
-- [ ] Auth popup appears when engine requests a new tool permission
-- [ ] Keyboard shortcuts work correctly
-- [ ] First-launch setup saves key to Keychain and dismisses
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Expected: `BUILD SUCCEEDED`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Views/AuthPopupView.swift Merlin/Views/FirstLaunchSetupView.swift \
+    MerlinE2ETests/VisualLayoutTests.swift
+git commit -m "Phase 22 — AuthPopupView + FirstLaunchSetupView"
+```

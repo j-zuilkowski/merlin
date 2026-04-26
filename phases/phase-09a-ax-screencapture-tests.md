@@ -1,6 +1,12 @@
 # Phase 09a — AX Inspector + Screen Capture Tests
 
-Context: HANDOFF.md. Write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+
+---
 
 ## Write to: MerlinTests/Integration/AXInspectorTests.swift
 
@@ -37,6 +43,9 @@ final class AXInspectorTests: XCTestCase {
 ## Write to: MerlinTests/Integration/ScreenCaptureTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class ScreenCaptureTests: XCTestCase {
 
     func testCaptureMainDisplay() async throws {
@@ -63,5 +72,25 @@ final class ScreenCaptureTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] Files compile (types missing — expected)
+---
+
+## Verify
+
+Run after writing both files. Expect build errors for missing `AXInspectorTool`, `ScreenCaptureTool`, `ScreenCaptureError`.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing the missing types.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Integration/AXInspectorTests.swift MerlinTests/Integration/ScreenCaptureTests.swift
+git commit -m "Phase 09a — AXInspectorTests + ScreenCaptureTests (failing)"
+```

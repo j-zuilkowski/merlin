@@ -1,6 +1,13 @@
 # Phase 17b — AgenticEngine Implementation
 
-Context: HANDOFF.md. All engine components exist. Make phase-17a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 17a complete: AgenticEngineTests.swift written. All engine components exist.
+
+---
 
 ## Write to: Merlin/Engine/AgenticEngine.swift
 
@@ -23,6 +30,9 @@ final class AgenticEngine {
     private let proProvider: any LLMProvider
     private let flashProvider: any LLMProvider
     private let visionProvider: LMStudioProvider
+
+    // Weak reference — injected by AppState after construction
+    weak var sessionStore: SessionStore?
 
     init(proProvider: any LLMProvider,
          flashProvider: any LLMProvider,
@@ -49,33 +59,36 @@ Loop structure:
 1. Append user message to contextManager
 2. Select provider
 3. Stream completion → yield .text events
-4. Accumulate tool_calls from stream (reassemble from deltas by index, same
-   pattern as phase-24 live test: [Int: (id,name,args)] dictionary)
-5. If tool_calls present:
-   a. Yield .toolCallStarted for each
-   b. router.dispatch(calls) → results
-   c. Yield .toolCallResult for each
-   d. let prevCompactionCount = contextManager.compactionCount
-   e. Append results to contextManager
-   f. If contextManager.compactionCount != prevCompactionCount →
+4. Accumulate tool_calls from stream deltas using [Int: (id,name,args)] dictionary:
+   var assembled: [Int: (id: String, name: String, args: String)] = [:]
+   for each ToolCallDelta in chunk.delta?.toolCalls:
+       var entry = assembled[delta.index] ?? (id: delta.id ?? "", name: "", args: "")
+       if let n = delta.function?.name, !n.isEmpty { entry.name = n }
+       if let id = delta.id, !id.isEmpty { entry.id = id }
+       entry.args += delta.function?.arguments ?? ""
+       assembled[delta.index] = entry
+5. If assembled is non-empty (tool_calls present):
+   a. Convert assembled dict to [ToolCall] sorted by index
+   b. Yield .toolCallStarted for each
+   c. router.dispatch(calls) → results
+   d. Yield .toolCallResult for each
+   e. let prevCompactionCount = contextManager.compactionCount
+   f. Append results to contextManager as tool messages
+   g. If contextManager.compactionCount != prevCompactionCount →
          yield .systemNote("[context compacted — old tool results summarised]")
-   g. Go to step 2
-6. Done — save session (see Session save wiring below)
+   h. Go to step 2
+6. Done — save session
 ```
 
 ## @MainActor + AsyncStream concurrency
 
 `AgenticEngine` is `@MainActor`. `send` returns an `AsyncStream<AgentEvent>` — the stream
-continuation is created on the main actor and stored as `nonisolated(unsafe)` so it can
-be called from the internal `Task`. The internal Task is launched with `Task { @MainActor in ... }`
-so it remains on the main actor while still being asynchronous:
+continuation is created on the main actor and the internal Task stays on the main actor:
 
 ```swift
 func send(userMessage: String) -> AsyncStream<AgentEvent> {
     AsyncStream { continuation in
         Task { @MainActor in
-            // all await calls here run on main actor via cooperative scheduling
-            // provider.complete() suspends and resumes on main actor — safe
             do {
                 try await self.runLoop(userMessage: userMessage, continuation: continuation)
                 continuation.finish()
@@ -99,8 +112,29 @@ if let session = sessionStore?.activeSession {
     try? sessionStore?.save(updated)
 }
 ```
-`AgenticEngine` holds a weak reference to `SessionStore` (injected in `AppState.init`).
 
-## Acceptance
-- [ ] `swift test --filter AgenticEngineTests` — all 4 pass
-- [ ] `swift build` — zero errors, zero warnings with SWIFT_STRICT_CONCURRENCY=complete
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/AgenticEngineTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'AgenticEngineTests' passed` with 4 tests.
+
+Also verify zero warnings with strict concurrency:
+```bash
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|warning:|error:'
+```
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Engine/AgenticEngine.swift
+git commit -m "Phase 17b — AgenticEngine implementation (4 tests passing)"
+```

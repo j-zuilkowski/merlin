@@ -1,6 +1,13 @@
 # Phase 11 — AppControlTools + ToolDiscovery
 
-Context: HANDOFF.md. ShellTool exists.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 07b complete: ShellTool exists.
+
+---
 
 ## Write to: Merlin/Tools/AppControlTools.swift
 
@@ -40,7 +47,12 @@ NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
     .first?.terminate()
 ```
 
+Note: `openApplication(at:configuration:)` is async — `launch` must be `async throws` or use a
+detached task. Align the signature with how it is called from ToolRegistration.
+
 Use `NSRunningApplication.runningApplications(withBundleIdentifier:)` for enumerate and quit.
+
+---
 
 ## Write to: Merlin/Tools/ToolDiscovery.swift
 
@@ -60,9 +72,14 @@ enum ToolDiscovery {
 }
 ```
 
+---
+
 ## Write to: MerlinTests/Unit/AppControlTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class AppControlTests: XCTestCase {
 
     func testListRunningContainsFinder() {
@@ -79,6 +96,9 @@ final class AppControlTests: XCTestCase {
 ## Write to: MerlinTests/Unit/ToolDiscoveryTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class ToolDiscoveryTests: XCTestCase {
 
     func testScanFindsCommonTools() async {
@@ -96,7 +116,30 @@ final class ToolDiscoveryTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter AppControlTests` — pass
-- [ ] `swift test --filter ToolDiscoveryTests` — pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/AppControlTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Then:
+
+```bash
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/ToolDiscoveryTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: both test suites pass.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Tools/AppControlTools.swift Merlin/Tools/ToolDiscovery.swift \
+    MerlinTests/Unit/AppControlTests.swift MerlinTests/Unit/ToolDiscoveryTests.swift
+git commit -m "Phase 11 — AppControlTools + ToolDiscovery + tests"
+```

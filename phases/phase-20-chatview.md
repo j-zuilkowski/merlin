@@ -1,6 +1,13 @@
 # Phase 20 — ContentView + ChatView + ProviderHUD
 
-Context: HANDOFF.md. AppState exists.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
+
+---
 
 ## Write to: Merlin/Views/ContentView.swift
 
@@ -38,6 +45,8 @@ struct ContentView: View {
 }
 ```
 
+---
+
 ## Write to: Merlin/Views/ChatView.swift
 
 Primary conversation view. Layout: message timeline (ScrollView) + input bar at bottom.
@@ -68,6 +77,9 @@ Requirements:
 - Send triggers `appState.engine.send(userMessage:)` and iterates events
 - While streaming: disable send button, show spinner in send button position
 - No message is lost — all `AgentEvent` cases are handled
+- Add `accessibilityIdentifier("chat-input")` to the TextField
+
+---
 
 ## Write to: Merlin/Views/ProviderHUD.swift
 
@@ -80,8 +92,28 @@ Small toolbar item showing current provider and thinking state.
 - Tapping opens a popover with provider switcher (pro / flash / LM Studio)
 - Shows a dot indicator: green = idle, blue = streaming, orange = tool executing
 
-## Acceptance
-- [ ] App launches and ChatView is visible
-- [ ] Sending a message calls `engine.send` (verify with a mock provider or live)
-- [ ] Tool call cards expand/collapse without layout jump
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Expected: `BUILD SUCCEEDED`.
+
+Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not fully implemented yet. They must at least compile as stubs (their stub files were created in phase 01). Ensure the stubs have the correct signatures:
+- `AuthPopupView(tool:argument:reasoningStep:suggestedPattern:onDecision:)`
+- `ToolLogView()` — reads from `appState.toolLogLines`
+- `ScreenPreviewView()` — reads from `appState.lastScreenshot`
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Views/ContentView.swift Merlin/Views/ChatView.swift Merlin/Views/ProviderHUD.swift
+git commit -m "Phase 20 — ContentView + ChatView + ProviderHUD"
+```

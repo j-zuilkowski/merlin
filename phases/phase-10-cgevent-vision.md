@@ -1,6 +1,13 @@
 # Phase 10 — CGEventTool + VisionQueryTool
 
-Context: HANDOFF.md. LMStudioProvider exists from phase-04.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 04 complete: LMStudioProvider exists. Phase 09b complete: ScreenCaptureTool exists.
+
+---
 
 ## Write to: Merlin/Tools/CGEventTool.swift
 
@@ -19,7 +26,7 @@ enum CGEventTool {
 ```
 
 Use `CGEvent(mouseEventSource:mouseType:mouseCursorPosition:mouseButton:)` and `CGEvent.post(tap:)`. For `typeText`, use `CGEvent(keyboardEventSource:virtualKey:keyDown:)` with Unicode. For `pressKey`, parse modifier+key string into `CGKeyCode` + `CGEventFlags`.
-Use this key code table (add more as needed):
+Use this key code table:
 
 ```swift
 private static let keyCodes: [String: CGKeyCode] = [
@@ -45,7 +52,9 @@ private static let modifierFlags: [String: CGEventFlags] = [
 ```
 
 Parse "cmd+s" by splitting on `+`, separating modifier tokens from the key token,
-combining flags, then looking up the key code.
+combining flags, then looking up the key code. Throw if key combo is empty or key not found.
+
+---
 
 ## Write to: Merlin/Tools/VisionQueryTool.swift
 
@@ -78,9 +87,14 @@ enum VisionQueryTool {
 
 Collects full streamed response, returns joined string.
 
+---
+
 ## Write to: MerlinTests/Unit/CGEventToolTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class CGEventToolTests: XCTestCase {
     func testKeyComboParser() throws {
         // Test parser doesn't throw on valid combos
@@ -99,6 +113,23 @@ final class CGEventToolTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter CGEventToolTests` — both pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/CGEventToolTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'CGEventToolTests' passed` with 2 tests.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Tools/CGEventTool.swift Merlin/Tools/VisionQueryTool.swift MerlinTests/Unit/CGEventToolTests.swift
+git commit -m "Phase 10 — CGEventTool + VisionQueryTool + tests"
+```

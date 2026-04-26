@@ -1,6 +1,13 @@
 # Phase 03b — DeepSeekProvider + SSEParser
 
-Context: HANDOFF.md. Make phase-03a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 03a complete: ProviderTests.swift written. LLMProvider protocol in Merlin/Providers/LLMProvider.swift.
+
+---
 
 ## Write to: Merlin/Providers/DeepSeekProvider.swift
 
@@ -48,6 +55,23 @@ enum SSEParser {
 ## SSE streaming implementation
 Use `URLSession.shared.bytes(for:)` async sequence. Yield one `CompletionChunk` per parsed SSE event into an `AsyncThrowingStream`. Close stream on `[DONE]` or network error.
 
-## Acceptance
-- [ ] `swift test --filter ProviderTests` — all 5 pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/ProviderTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'ProviderTests' passed` with 5 tests (6 assertions including the two-assertion last test).
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Providers/DeepSeekProvider.swift Merlin/Providers/SSEParser.swift
+git commit -m "Phase 03b — DeepSeekProvider + SSEParser"
+```

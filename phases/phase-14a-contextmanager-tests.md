@@ -1,6 +1,13 @@
 # Phase 14a — ContextManager Tests
 
-Context: HANDOFF.md. Message type exists. Write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 02b complete: Message type exists in Merlin/Providers/LLMProvider.swift.
+
+---
 
 ## Write to: MerlinTests/Unit/ContextManagerTests.swift
 
@@ -62,5 +69,25 @@ final class ContextManagerTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] Compiles (types missing — expected)
+---
+
+## Verify
+
+Run after writing the file. Expect build errors for missing `ContextManager`.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing `ContextManager`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Unit/ContextManagerTests.swift
+git commit -m "Phase 14a — ContextManagerTests (failing)"
+```

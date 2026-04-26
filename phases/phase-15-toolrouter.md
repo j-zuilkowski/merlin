@@ -1,6 +1,13 @@
 # Phase 15 — ToolRouter
 
-Context: HANDOFF.md. All tool implementations exist. AuthGate exists.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+All tool implementations exist (phases 07–11). AuthGate exists (phase 13b).
+
+---
 
 ## Write to: Merlin/Engine/ToolRouter.swift
 
@@ -30,7 +37,7 @@ func primaryArgument(from json: String) -> String {
     guard let data = json.data(using: .utf8),
           let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else { return json }
-    // Priority: path > command > bundle_id > first string value
+    // Priority: path > command > bundle_id > src > udid > first string value
     for key in ["path", "command", "bundle_id", "src", "udid"] {
         if let v = obj[key] as? String { return v }
     }
@@ -43,9 +50,14 @@ Pass `(tool: call.function.name, argument: primaryArgument(from: call.function.a
 4. If handler throws → call `authGate.reportFailure`, retry once after 1s, then return error result
 5. Return `ToolResult(toolCallId: call.id, content: output, isError: false)`
 
+---
+
 ## Write to: MerlinTests/Unit/ToolRouterTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class ToolRouterTests: XCTestCase {
 
     func testDispatchesInParallel() async {
@@ -80,6 +92,23 @@ final class ToolRouterTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter ToolRouterTests` — both pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/ToolRouterTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'ToolRouterTests' passed` with 2 tests.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Engine/ToolRouter.swift MerlinTests/Unit/ToolRouterTests.swift
+git commit -m "Phase 15 — ToolRouter + tests (2 tests passing)"
+```

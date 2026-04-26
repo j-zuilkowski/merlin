@@ -1,6 +1,13 @@
 # Phase 08b — XcodeTools Implementation
 
-Context: HANDOFF.md. ShellTool exists. Make phase-08a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 08a complete: XcodeToolTests.swift written. ShellTool exists.
+
+---
 
 ## Write to: Merlin/Tools/XcodeTools.swift
 
@@ -57,6 +64,23 @@ enum XcodeTools {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter XcodeToolTests` — all 4 pass (fixture test may skip)
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/XcodeToolTests 2>&1 | grep -E 'passed|failed|skipped|error:|BUILD'
+```
+
+Expected: all 4 tests pass (the xcresult fixture test may skip — that is acceptable).
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Tools/XcodeTools.swift
+git commit -m "Phase 08b — XcodeTools implementation"
+```

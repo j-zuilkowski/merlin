@@ -1,6 +1,13 @@
 # Phase 18 — Session + SessionStore
 
-Context: HANDOFF.md. Message type exists.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 02b complete: Message type exists.
+
+---
 
 ## Write to: Merlin/Sessions/Session.swift
 
@@ -20,6 +27,8 @@ struct Session: Codable, Identifiable {
     static func generateTitle(from messages: [Message]) -> String
 }
 ```
+
+---
 
 ## Write to: Merlin/Sessions/SessionStore.swift
 
@@ -47,9 +56,14 @@ final class SessionStore: ObservableObject {
 }
 ```
 
+---
+
 ## Write to: MerlinTests/Unit/SessionSerializationTests.swift
 
 ```swift
+import XCTest
+@testable import Merlin
+
 final class SessionSerializationTests: XCTestCase {
     var tmp: URL!
 
@@ -79,8 +93,7 @@ final class SessionSerializationTests: XCTestCase {
     }
 
     func testStoreSavesAndLoads() async throws {
-        // Override store directory to tmp
-        let store = SessionStore(storeDirectory: tmp)
+        let store = await SessionStore(storeDirectory: tmp)
         var s = store.create()
         s.messages.append(Message(role: .user, content: .text("hello"), timestamp: Date()))
         try store.save(s)
@@ -90,6 +103,24 @@ final class SessionSerializationTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter SessionSerializationTests` — all 4 pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/SessionSerializationTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'SessionSerializationTests' passed` with 4 tests.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Sessions/Session.swift Merlin/Sessions/SessionStore.swift \
+    MerlinTests/Unit/SessionSerializationTests.swift
+git commit -m "Phase 18 — Session + SessionStore + tests (4 tests passing)"
+```

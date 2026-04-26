@@ -1,6 +1,13 @@
 # Phase 04 — LMStudioProvider
 
-Context: HANDOFF.md. DeepSeekProvider and SSEParser exist from phase-03b.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 03b complete: DeepSeekProvider and SSEParser exist.
+
+---
 
 ## Write to: Merlin/Providers/LMStudioProvider.swift
 
@@ -13,7 +20,7 @@ LMStudioProvider is identical in structure to DeepSeekProvider with these differ
 
 ```swift
 // @unchecked Sendable: only let-stored constants after init.
-final class LMStudioProvider: LLMProvider, @unchecked Sendable {
+final class LMStudioProvider: LMStudioProvider, @unchecked Sendable {
     let model: String
     init(model: String = "Qwen2.5-VL-72B-Instruct-Q4_K_M")
     func buildRequestBody(_ request: CompletionRequest) throws -> Data
@@ -45,6 +52,29 @@ func testVisionQueryRoundTrip() async throws {
 }
 ```
 
-## Acceptance
-- [ ] `swift build` — zero errors
-- [ ] `swift test --filter LMStudioProviderLiveTests` — skips cleanly without `RUN_LIVE_TESTS`
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Expected: `BUILD SUCCEEDED`. Then verify the live test skips without the env var:
+
+```bash
+xcodebuild -scheme MerlinTests-Live test-without-building -destination 'platform=macOS' -only-testing:MerlinLiveTests/LMStudioProviderLiveTests 2>&1 | grep -E 'skipped|passed|failed'
+```
+
+Expected: test skips cleanly.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Providers/LMStudioProvider.swift MerlinLiveTests/LMStudioProviderLiveTests.swift
+git commit -m "Phase 04 — LMStudioProvider + live test skeleton"
+```

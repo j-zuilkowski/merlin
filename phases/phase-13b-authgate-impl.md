@@ -1,6 +1,13 @@
 # Phase 13b — AuthGate Implementation
 
-Context: HANDOFF.md. AuthMemory, PatternMatcher exist. Make phase-13a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
+
+---
 
 ## Write to: Merlin/Auth/AuthGate.swift
 
@@ -70,6 +77,28 @@ static func inferPattern(_ argument: String) -> String {
 }
 ```
 
-## Acceptance
-- [ ] `swift test --filter AuthGateTests` — all 4 pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/AuthGateTests 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: `Test Suite 'AuthGateTests' passed` with 4 tests (including the `testFailedCallNeverWritesPattern` rollback test).
+
+Also confirm full build is clean:
+```bash
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Auth/AuthGate.swift
+git commit -m "Phase 13b — AuthGate implementation (4 tests passing)"
+```

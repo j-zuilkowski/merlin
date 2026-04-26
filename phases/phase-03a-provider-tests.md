@@ -1,6 +1,13 @@
 # Phase 03a — Provider Tests (no network)
 
-Context: HANDOFF.md. Types from phase-02b exist. Write failing tests only.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
+
+---
 
 ## Write to: MerlinTests/Unit/ProviderTests.swift
 
@@ -65,6 +72,25 @@ final class ProviderTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] Compiles (types missing — expected)
-- [ ] Tests are logically complete and will pass once implementation exists
+---
+
+## Verify
+
+Run after writing the file. Expect build errors for missing types (`DeepSeekProvider`, `LMStudioProvider`, `SSEParser`) — correct for test-first.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing `DeepSeekProvider`, `LMStudioProvider`, `SSEParser`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Unit/ProviderTests.swift
+git commit -m "Phase 03a — ProviderTests (failing, providers not yet defined)"
+```

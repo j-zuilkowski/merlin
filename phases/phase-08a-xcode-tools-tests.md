@@ -1,6 +1,13 @@
 # Phase 08a — Xcode Tools Tests
 
-Context: HANDOFF.md. ShellTool exists from phase-07b. Write failing tests.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
+
+---
 
 ## Write to: MerlinTests/Integration/XcodeToolTests.swift
 
@@ -39,5 +46,25 @@ final class XcodeToolTests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] Compiles (types missing — expected)
+---
+
+## Verify
+
+Run after writing the file. Expect build errors for missing `XcodeTools` type.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'error:|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+
+Expected: `BUILD FAILED` with errors referencing `XcodeTools`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add MerlinTests/Integration/XcodeToolTests.swift
+git commit -m "Phase 08a — XcodeToolTests (failing)"
+```

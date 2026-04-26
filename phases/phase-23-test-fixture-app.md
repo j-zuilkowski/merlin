@@ -1,6 +1,13 @@
 # Phase 23 — TestTargetApp (GUI Automation Fixture)
 
-Context: HANDOFF.md. AXInspectorTool, CGEventTool, ScreenCaptureTool exist.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 09b complete: AXInspectorTool exists. Phase 10 complete: CGEventTool exists. Phase 09b: ScreenCaptureTool exists.
+
+---
 
 ## Write to: TestTargetApp/TestTargetAppMain.swift
 
@@ -19,26 +26,80 @@ struct TestTargetApp: App {
 }
 ```
 
+---
+
 ## Write to: TestTargetApp/ContentView.swift
 
-Fixed, versioned UI. Never change element labels or positions without bumping a `fixtureVersion` constant — E2E tests depend on stability.
+Fixed, versioned UI. Never change element labels or positions without bumping the `fixtureVersion` constant — E2E tests depend on stability.
 
 ```swift
+import SwiftUI
+
 // fixtureVersion = "1.0"
-// Contains exactly:
+// Contains exactly 8 interactive elements:
 //   - Button labelled "Primary Action"       (accessibilityIdentifier: "btn-primary")
 //   - Button labelled "Secondary Action"     (accessibilityIdentifier: "btn-secondary")
 //   - TextField with placeholder "Enter text" (accessibilityIdentifier: "input-field")
 //   - Text label showing last button pressed  (accessibilityIdentifier: "status-label")
 //   - List of 5 static items: "Item 1" … "Item 5" (accessibilityIdentifier: "item-list")
 //   - Toggle labelled "Enable Feature"        (accessibilityIdentifier: "feature-toggle")
-//   - Sheet trigger button "Open Sheet"       (accessibilityIdentifier: "btn-sheet")
-//   - Sheet contains a "Close" button         (accessibilityIdentifier: "btn-sheet-close")
+//   - Button "Open Sheet"                     (accessibilityIdentifier: "btn-sheet")
+//   - Sheet "Close" button                    (accessibilityIdentifier: "btn-sheet-close")
 //
 // Tapping "Primary Action" sets status-label to "primary tapped"
 // Tapping "Secondary Action" sets status-label to "secondary tapped"
 // Typing in input-field and pressing Return sets status-label to input value
+
+struct ContentView: View {
+    @State private var statusText = "ready"
+    @State private var inputText = ""
+    @State private var featureEnabled = false
+    @State private var showSheet = false
+
+    let fixtureVersion = "1.0"
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(statusText)
+                .accessibilityIdentifier("status-label")
+
+            HStack {
+                Button("Primary Action") { statusText = "primary tapped" }
+                    .accessibilityIdentifier("btn-primary")
+                Button("Secondary Action") { statusText = "secondary tapped" }
+                    .accessibilityIdentifier("btn-secondary")
+            }
+
+            TextField("Enter text", text: $inputText)
+                .accessibilityIdentifier("input-field")
+                .onSubmit { statusText = inputText }
+
+            Toggle("Enable Feature", isOn: $featureEnabled)
+                .accessibilityIdentifier("feature-toggle")
+
+            List(1...5, id: \.self) { i in
+                Text("Item \(i)")
+            }
+            .accessibilityIdentifier("item-list")
+            .frame(height: 150)
+
+            Button("Open Sheet") { showSheet = true }
+                .accessibilityIdentifier("btn-sheet")
+        }
+        .padding()
+        .sheet(isPresented: $showSheet) {
+            VStack {
+                Text("Sheet Content")
+                Button("Close") { showSheet = false }
+                    .accessibilityIdentifier("btn-sheet-close")
+            }
+            .padding()
+        }
+    }
+}
 ```
+
+---
 
 ## Write to: MerlinE2ETests/GUIAutomationE2ETests.swift
 
@@ -97,8 +158,31 @@ final class GUIAutomationE2ETests: XCTestCase {
 }
 ```
 
-## Acceptance
-- [ ] TestTargetApp builds and launches showing all 8 elements
-- [ ] `swift test --filter GUIAutomationE2ETests` — skips cleanly without `RUN_LIVE_TESTS`
-- [ ] With `RUN_LIVE_TESTS=1` and Accessibility granted: AX tests pass
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+Build all targets:
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests-Live build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Verify E2E tests skip without the env var:
+```bash
+xcodebuild -scheme MerlinTests-Live test-without-building -destination 'platform=macOS' \
+    -only-testing:MerlinE2ETests/GUIAutomationE2ETests 2>&1 | grep -E 'skipped|passed|failed'
+```
+
+Expected: `BUILD SUCCEEDED`. All 3 GUIAutomation tests skip cleanly without `RUN_LIVE_TESTS`.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add TestTargetApp/TestTargetAppMain.swift TestTargetApp/ContentView.swift \
+    MerlinE2ETests/GUIAutomationE2ETests.swift
+git commit -m "Phase 23 — TestTargetApp fixture + GUIAutomationE2ETests"
+```

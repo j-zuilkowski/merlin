@@ -1,10 +1,17 @@
 # Phase 21 — ToolLogView + ScreenPreviewView
 
-Context: HANDOFF.md. AppState exists. ChatView exists.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
+
+---
 
 ## Layout Integration
 
-Embed alongside ChatView in a split layout:
+These views sit in the right panel of ContentView:
 
 ```
 ┌────────────────────────┬─────────────────────┐
@@ -18,35 +25,36 @@ Embed alongside ChatView in a split layout:
 └────────────────────────┴─────────────────────┘
 ```
 
-Use `HSplitView` + `VSplitView` or `NavigationSplitView` for the right panel.
+---
 
 ## Write to: Merlin/Views/ToolLogView.swift
 
-```
 Requirements:
-- ScrollView of ToolLogLines from appState.toolLogLines
+- ScrollView of ToolLogLines from `appState.toolLogLines`
 - Auto-scrolls to bottom on new line
 - Color coding:
     stdout  → primary label color
     stderr  → orange
     system  → secondary label color (dimmed)
 - Monospaced font, small size (11pt)
-- "Clear" button top-right
-- Lines are selectable/copyable
+- "Clear" button top-right clears `appState.toolLogLines`
+- Lines are selectable/copyable (use `.textSelection(.enabled)`)
 - Shows "[idle]" placeholder when empty
-```
+- Add `accessibilityIdentifier("tool-log")` to the ScrollView
+
+---
 
 ## Write to: Merlin/Views/ScreenPreviewView.swift
 
-```
 Requirements:
-- Displays appState.lastScreenshot as Image
+- Displays `appState.lastScreenshot.data` as `Image`
 - Shows capture timestamp and source app bundle ID below image
-- "No capture yet" placeholder when nil
-- Image fits within panel bounds (aspectFit)
-- Collapsible: clicking panel header toggles show/hide with animation
-- Does NOT auto-refresh — only updates when appState.lastScreenshot changes
-```
+- "No capture yet" placeholder when `lastScreenshot` is nil
+- Image fits within panel bounds (`.scaledToFit()`)
+- Collapsible: clicking panel header toggles show/hide with `withAnimation`
+- Does NOT auto-refresh — only updates when `appState.lastScreenshot` changes
+
+---
 
 ## Write to: MerlinE2ETests/VisualLayoutTests.swift
 
@@ -103,10 +111,31 @@ final class VisualLayoutTests: XCTestCase {
 }
 ```
 
-Add `accessibilityIdentifier` to key views: `"chat-input"` on TextField, `"tool-log"` on ToolLogView's ScrollView.
+---
 
-## Acceptance
-- [ ] App launches showing 3-panel layout
-- [ ] `swift test --filter VisualLayoutTests/testNoWidgetsClipped` — passes
-- [ ] `swift test --filter VisualLayoutTests/testAccessibilityAudit` — passes
-- [ ] `swift build` — zero errors
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Then run the visual layout tests (requires built + running app):
+```bash
+xcodebuild -scheme MerlinTests-Live test-without-building -destination 'platform=macOS' \
+    -only-testing:MerlinE2ETests/VisualLayoutTests/testNoWidgetsClipped \
+    -only-testing:MerlinE2ETests/VisualLayoutTests/testAccessibilityAudit 2>&1 | grep -E 'passed|failed|error:|BUILD'
+```
+
+Expected: both visual layout tests pass.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Views/ToolLogView.swift Merlin/Views/ScreenPreviewView.swift \
+    MerlinE2ETests/VisualLayoutTests.swift
+git commit -m "Phase 21 — ToolLogView + ScreenPreviewView + visual layout tests"
+```

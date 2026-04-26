@@ -1,6 +1,13 @@
 # Phase 09b — AXInspectorTool + ScreenCaptureTool
 
-Context: HANDOFF.md. Make phase-09a tests pass.
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
+
+---
 
 ## Write to: Merlin/Tools/AXInspectorTool.swift
 
@@ -36,7 +43,9 @@ enum AXInspectorTool {
 }
 ```
 
-Use `AXUIElementCreateApplication(pid)` with the PID from `NSRunningApplication`. Walk the AX tree recursively via `kAXChildrenAttribute`. Cap recursion depth at 8 to avoid runaway traversal.
+Use `AXUIElementCreateApplication(pid)` with the PID from `NSRunningApplication`. Walk the AX tree recursively via `kAXChildrenAttribute`. Cap recursion depth at 8 to avoid runaway traversal. Return an empty `AXTree` (elementCount: 0, isRich: false) if the app is not running or AX permission is denied.
+
+---
 
 ## Write to: Merlin/Tools/ScreenCaptureTool.swift
 
@@ -78,7 +87,29 @@ This produces images sized to the logical screen dimensions (~1440×900 on a sta
 5K display), not the 2x retina physical dimensions. Encode the result via
 `NSBitmapImageRep` as JPEG.
 
-## Acceptance
-- [ ] `swift test --filter AXInspectorTests` — all 3 pass (Finder probe will pass if Accessibility granted)
-- [ ] `swift test --filter ScreenCaptureTests` — pass or skip gracefully
-- [ ] `swift build` — zero errors
+---
+
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/AXInspectorTests 2>&1 | grep -E 'passed|failed|skipped|error:|BUILD'
+```
+
+Then:
+
+```bash
+xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macOS' -only-testing:MerlinTests/ScreenCaptureTests 2>&1 | grep -E 'passed|failed|skipped|error:|BUILD'
+```
+
+Expected: AXInspectorTests pass if Accessibility is granted (Finder probe). ScreenCaptureTests pass or skip gracefully without Screen Recording permission.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Tools/AXInspectorTool.swift Merlin/Tools/ScreenCaptureTool.swift
+git commit -m "Phase 09b — AXInspectorTool + ScreenCaptureTool"
+```

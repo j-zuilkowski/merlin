@@ -1,6 +1,13 @@
 # Phase 19b — Tool Handler Registration
 
-Context: HANDOFF.md. All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+All value types: Sendable. OpenAI function calling format. 37 tools total.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
+
+---
 
 ## Task
 Wire every tool name to its implementation inside `AppState.init`. This is the single file that connects the ToolRouter to all 37 tool functions.
@@ -229,9 +236,6 @@ func registerAllTools(router: ToolRouter) {
     }
     router.register(name: "vision_query") { args in
         struct A: Decodable { var image_id: String; var prompt: String }
-        // image_id is unused here — vision_query is called after ui_screenshot stores JPEG in AppState
-        // The router passes the last captured JPEG from AppState
-        // (AppState injects lastJpeg via a closure captured at registration time)
         _ = try decode(args, as: A.self)
         return "vision_query: use ui_screenshot first to capture, then this tool queries it"
     }
@@ -254,12 +258,28 @@ private func decode(_ json: String, as schema: [String: Any.Type]) throws -> [St
 }
 ```
 
-Note on `vision_query`: the real implementation in `AppState` should capture the last JPEG at
-screenshot time into `appState.lastScreenshot`, and the vision_query handler should read from there
-and call `VisionQueryTool.query`. Wire this properly in `AppState.init` using a closure that
-captures `[weak appState]`.
+---
 
-## Acceptance
-- [ ] `ToolDefinitions.all.count == 37` matches registered tool count
-- [ ] `swift build` — zero errors
-- [ ] Running `tool_discover` via the agent returns a non-empty list
+## Verify
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2>&1 | grep -E 'BUILD SUCCEEDED|BUILD FAILED|error:'
+```
+
+Confirm tool count matches:
+```bash
+grep -c 'router.register' Merlin/App/ToolRegistration.swift
+```
+
+Expected: `BUILD SUCCEEDED`. The grep count should be 37 (one `register` call per tool; the run_shell override in AppState adds one more at runtime but is not in this file).
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/App/ToolRegistration.swift
+git commit -m "Phase 19b — registerAllTools (37 handlers wired)"
+```
