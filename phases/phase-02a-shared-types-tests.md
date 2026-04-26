@@ -1,0 +1,65 @@
+# Phase 02a — Shared Types: Tests First
+
+Context: HANDOFF.md. No implementation yet — write failing tests only.
+
+## Write to: MerlinTests/Unit/SharedTypesTests.swift
+
+Tests must compile but fail (types don't exist yet).
+
+```swift
+import XCTest
+@testable import Merlin
+
+final class SharedTypesTests: XCTestCase {
+
+    // Message round-trips through JSON
+    func testMessageCodable() throws {
+        let msg = Message(role: .user, content: .text("hello"), timestamp: Date())
+        let data = try JSONEncoder().encode(msg)
+        let decoded = try JSONDecoder().decode(Message.self, from: data)
+        XCTAssertEqual(decoded.role, .user)
+        if case .text(let s) = decoded.content { XCTAssertEqual(s, "hello") }
+        else { XCTFail("wrong content type") }
+    }
+
+    // ToolCall round-trips
+    func testToolCallCodable() throws {
+        let tc = ToolCall(id: "abc", type: "function",
+                          function: FunctionCall(name: "read_file", arguments: #"{"path":"/tmp/f"}"#))
+        let data = try JSONEncoder().encode(tc)
+        let decoded = try JSONDecoder().decode(ToolCall.self, from: data)
+        XCTAssertEqual(decoded.id, "abc")
+        XCTAssertEqual(decoded.function.name, "read_file")
+    }
+
+    // Tool result marks errors
+    func testToolResultError() {
+        let r = ToolResult(toolCallId: "x", content: "boom", isError: true)
+        XCTAssertTrue(r.isError)
+    }
+
+    // ThinkingConfig encodes correct keys
+    func testThinkingConfigEnabled() throws {
+        let cfg = ThinkingConfig(type: "enabled", reasoningEffort: "high")
+        let data = try JSONEncoder().encode(cfg)
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        XCTAssertEqual(json["type"] as? String, "enabled")
+        XCTAssertEqual(json["reasoning_effort"] as? String, "high")
+    }
+
+    // MessageContent with image part survives encode/decode
+    func testImageContentCodable() throws {
+        let part = ContentPart.imageURL("data:image/jpeg;base64,abc123")
+        let msg = Message(role: .user, content: .parts([part, .text("what is this?")]), timestamp: Date())
+        let data = try JSONEncoder().encode(msg)
+        let decoded = try JSONDecoder().decode(Message.self, from: data)
+        if case .parts(let parts) = decoded.content {
+            XCTAssertEqual(parts.count, 2)
+        } else { XCTFail() }
+    }
+}
+```
+
+## Acceptance
+- [ ] File compiles (types missing — expected)
+- [ ] `swift test --filter SharedTypesTests` reports build errors referencing missing types (not logic errors)
