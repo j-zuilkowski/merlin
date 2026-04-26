@@ -459,7 +459,11 @@ private struct ChatEntryRow: View {
     }
 
     private func renderMarkdown(_ text: String) -> AttributedString {
-        (try? AttributedString(markdown: text)) ?? AttributedString(text)
+        // Two spaces before \n = hard line break in CommonMark
+        let fixed = text.replacingOccurrences(of: "\n", with: "  \n")
+        return (try? AttributedString(markdown: fixed,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+            ?? AttributedString(text)
     }
 }
 

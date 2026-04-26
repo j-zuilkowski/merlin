@@ -52,7 +52,16 @@ enum ToolDiscovery {
         return candidates
     }
 
+    // Tools that open GUI windows or drop into interactive REPLs when invoked — never probe these.
+    private static let skipHelpProbe: Set<String> = [
+        "wish", "wish8.5", "wish8.6", "tclsh", "tclsh8.5", "tclsh8.6",
+        "python", "python3", "python2", "ruby", "perl", "lua", "irb",
+        "osascript", "java", "scala", "R", "octave", "matlab",
+    ]
+
     private static func helpSummary(for path: String) async -> String? {
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        guard !skipHelpProbe.contains(name) else { return nil }
         let quoted = shellQuote(path)
         let command = "\(quoted) --help"
         guard let result = try? await ShellTool.run(command: command, cwd: nil, timeoutSeconds: 2) else {
