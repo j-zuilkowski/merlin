@@ -1,3 +1,4 @@
+import Accessibility
 import Foundation
 import XCTest
 @testable import Merlin
@@ -5,6 +6,10 @@ import XCTest
 final class AXInspectorTests: XCTestCase {
 
     func testProbeRunningApp() async throws {
+        guard AXIsProcessTrusted() else {
+            throw XCTSkip("Accessibility permission not granted")
+        }
+
         let tree = await AXInspectorTool.probe(bundleID: "com.apple.finder")
         XCTAssertGreaterThan(tree.elementCount, 10)
         XCTAssertTrue(tree.isRich)
@@ -17,6 +22,10 @@ final class AXInspectorTests: XCTestCase {
     }
 
     func testTreeSerializesToJSON() async throws {
+        guard AXIsProcessTrusted() else {
+            throw XCTSkip("Accessibility permission not granted")
+        }
+
         let tree = await AXInspectorTool.probe(bundleID: "com.apple.finder")
         let json = tree.toJSON()
         XCTAssertFalse(json.isEmpty)
