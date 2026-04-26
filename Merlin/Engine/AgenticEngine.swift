@@ -12,6 +12,7 @@ enum AgentEvent {
 final class AgenticEngine {
     let contextManager: ContextManager
     private let toolRouter: ToolRouter
+    private let thinkingDetector = ThinkingModeDetector.self
     private let proProvider: any LLMProvider
     private let flashProvider: any LLMProvider
     private let visionProvider: LMStudioProvider
@@ -50,15 +51,6 @@ final class AgenticEngine {
 
     private func runLoop(userMessage: String, continuation: AsyncStream<AgentEvent>.Continuation) async throws {
         contextManager.append(Message(role: .user, content: .text(userMessage), timestamp: Date()))
-
-        if contextManager.messages.contains(where: {
-            if $0.role == .system, case .text(let text) = $0.content {
-                return text.contains("compacted")
-            }
-            return false
-        }) {
-            continuation.yield(.systemNote("[context compacted]"))
-        }
 
         while true {
             let provider = selectProvider(for: userMessage)
@@ -110,6 +102,7 @@ final class AgenticEngine {
             }
 
             let results = await toolRouter.dispatch(calls)
+            let prevCompactionCount = contextManager.compactionCount
             for result in results {
                 continuation.yield(.toolCallResult(result))
                 contextManager.append(Message(
@@ -118,6 +111,9 @@ final class AgenticEngine {
                     toolCallId: result.toolCallId,
                     timestamp: Date()
                 ))
+            }
+            if contextManager.compactionCount != prevCompactionCount {
+                continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
             }
         }
 
@@ -134,7 +130,7 @@ final class AgenticEngine {
         if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {
             return visionProvider
         }
-        if ThinkingModeDetector.shouldEnableThinking(for: message) {
+        if thinkingDetector.shouldEnableThinking(for: message) {
             return proProvider
         }
         if ["read", "write", "run", "list", "build", "open", "create", "delete", "move", "show"].contains(where: { lower.contains($0) }) {

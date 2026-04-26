@@ -48,12 +48,26 @@ final class AgenticEngineTests: XCTestCase {
     }
 
     func testContextCompactionNoteAppears() async throws {
-        let engine = makeEngine(provider: MockProvider(chunks: [
-            .init(delta: .init(content: "ok"), finishReason: "stop")
-        ]))
-        engine.contextManager.forceCompaction()
+        let provider = MockProvider(responses: [
+            MockLLMResponse.toolCall(id: "tc1", name: "inflate_tool", args: #"{"value":"go"}"#),
+            MockLLMResponse.text("done"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.registerTool("inflate_tool") { _ in
+            String(repeating: "z", count: 3_000_000)
+        }
+
+        for _ in 0..<97 {
+            engine.contextManager.append(Message(
+                role: .tool,
+                content: .text(String(repeating: "y", count: 28_000)),
+                toolCallId: "seed",
+                timestamp: Date()
+            ))
+        }
+
         var events: [AgentEvent] = []
-        for await e in engine.send(userMessage: "hi") {
+        for await e in engine.send(userMessage: "trigger compaction") {
             events.append(e)
         }
         XCTAssertTrue(events.contains {
