@@ -63,6 +63,7 @@ final class AppState: ObservableObject {
     let xcalibreClient: XcalibreClient
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
+    private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
     init(projectPath: String = "") {
@@ -167,6 +168,9 @@ final class AppState: ObservableObject {
             self.activeProviderID = id
             self.syncEngineProviders()
         }
+        KeepAwakeManager.shared.apply(AppSettings.shared.keepAwake)
+        keepAwakeCancellable = AppSettings.shared.$keepAwake
+            .sink { KeepAwakeManager.shared.apply($0) }
 
         toolRouter.register(name: "rag_search") { [weak self] args in
             guard let client = self?.engine?.xcalibreClient else {
