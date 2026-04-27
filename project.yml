@@ -26,6 +26,7 @@ targets:
         PRODUCT_NAME: Merlin
         INFOPLIST_FILE: Merlin/Info.plist
         CODE_SIGN_ENTITLEMENTS: Merlin/Merlin.entitlements
+        CODE_SIGNING_ALLOWED: NO
         ENABLE_HARDENED_RUNTIME: YES
 
   TestTargetApp:

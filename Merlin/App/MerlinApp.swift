@@ -26,9 +26,8 @@ struct MerlinApp: App {
         .commands { MerlinCommands() }
 
         Settings {
-            // Placeholder - wired properly in phase 30b
-            Text("Settings")
-                .padding()
+            ProviderSettingsView()
+                .environmentObject(ProviderRegistry())
         }
     }
 }

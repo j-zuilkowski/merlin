@@ -33,6 +33,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 
 @MainActor
 final class AppState: ObservableObject {
+    let projectPath: String
     let registry = ProviderRegistry()
     @Published var engine: AgenticEngine!
     @Published var sessionStore: SessionStore!
@@ -59,7 +60,8 @@ final class AppState: ObservableObject {
     let xcalibreClient: XcalibreClient
     private var registryCancellable: AnyCancellable?
 
-    init() {
+    init(projectPath: String = "") {
+        self.projectPath = projectPath
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
             .path
