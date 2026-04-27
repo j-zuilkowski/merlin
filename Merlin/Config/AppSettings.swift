@@ -15,6 +15,8 @@ final class AppSettings: ObservableObject {
     @Published var appearance: AppearanceSettings = AppearanceSettings()
     @Published var providers: [ProviderConfig] = ProviderRegistry.defaultProviders
     @Published var reasoningEnabledOverrides: [String: Bool] = [:]
+    @Published var maxSubagentThreads: Int = 4
+    @Published var maxSubagentDepth: Int = 2
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
@@ -31,6 +33,8 @@ final class AppSettings: ObservableObject {
         var appearance: AppearanceSettings?
         var providers: [ProviderConfig]?
         var reasoningEnabledOverrides: [String: Bool]?
+        var maxSubagentThreads: Int?
+        var maxSubagentDepth: Int?
 
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
@@ -42,6 +46,8 @@ final class AppSettings: ObservableObject {
             case appearance
             case providers
             case reasoningEnabledOverrides = "model_capabilities"
+            case maxSubagentThreads = "max_subagent_threads"
+            case maxSubagentDepth = "max_subagent_depth"
         }
     }
 
@@ -81,6 +87,12 @@ final class AppSettings: ObservableObject {
         if let value = config.reasoningEnabledOverrides {
             reasoningEnabledOverrides = value
         }
+        if let value = config.maxSubagentThreads {
+            maxSubagentThreads = value
+        }
+        if let value = config.maxSubagentDepth {
+            maxSubagentDepth = value
+        }
     }
 
     func save(to url: URL) async throws {
@@ -89,6 +101,8 @@ final class AppSettings: ObservableObject {
         lines.append("max_tokens = \(maxTokens)")
         lines.append("provider_name = \(quoted(providerName))")
         lines.append("model_id = \(quoted(modelID))")
+        lines.append("max_subagent_threads = \(maxSubagentThreads)")
+        lines.append("max_subagent_depth = \(maxSubagentDepth)")
         if standingInstructions.isEmpty == false {
             lines.append("standing_instructions = \(quoted(standingInstructions))")
         }

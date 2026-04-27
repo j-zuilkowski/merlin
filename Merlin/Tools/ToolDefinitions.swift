@@ -15,6 +15,7 @@ enum ToolDefinitions {
         uiType, uiKey, uiScroll,
         uiScreenshot, visionQuery,
         ragSearch, ragListBooks,
+        .spawnAgent,
     ]
 
     // File System

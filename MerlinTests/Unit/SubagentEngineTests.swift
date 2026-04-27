@@ -1,6 +1,7 @@
 import XCTest
 @testable import Merlin
 
+@MainActor
 final class SubagentEngineTests: XCTestCase {
 
     // MARK: - SubagentEvent stream

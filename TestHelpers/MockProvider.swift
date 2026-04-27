@@ -6,17 +6,29 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     var id: String { id_ }
     var baseURL: URL { URL(string: "http://localhost")! }
     var wasUsed = false
+    var stubbedResponse: String?
+    var stubbedChunks: [String] = []
     private let chunks: [CompletionChunk]
     private var responses: [MockLLMResponse]
     private var responseIndex = 0
 
+    init() { self.chunks = []; self.responses = [] }
     init(chunks: [CompletionChunk]) { self.chunks = chunks; self.responses = [] }
     init(responses: [MockLLMResponse]) { self.chunks = []; self.responses = responses }
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         wasUsed = true
         let toSend: [CompletionChunk]
-        if !responses.isEmpty {
+        if let stubbedResponse {
+            toSend = [
+                CompletionChunk(delta: .init(content: stubbedResponse), finishReason: nil),
+                CompletionChunk(delta: nil, finishReason: "stop"),
+            ]
+        } else if stubbedChunks.isEmpty == false {
+            toSend = stubbedChunks.map { CompletionChunk(delta: .init(content: $0), finishReason: nil) } + [
+                CompletionChunk(delta: nil, finishReason: "stop"),
+            ]
+        } else if !responses.isEmpty {
             let resp = responses[min(responseIndex, responses.count - 1)]
             responseIndex += 1
             toSend = resp.chunks
