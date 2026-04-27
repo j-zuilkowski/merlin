@@ -661,7 +661,7 @@ private struct ChatEntryRow: View {
 
     private var userBubble: some View {
         HStack {
-            Spacer(minLength: 80)
+            Spacer(minLength: 40)
             bubble(
                 background: Color.accentColor.opacity(0.18),
                 border: Color.accentColor.opacity(0.35),
@@ -670,8 +670,9 @@ private struct ChatEntryRow: View {
             ) {
                 markdownText(item.text)
             }
-            .frame(maxWidth: 680, alignment: .trailing)
+            .frame(maxWidth: 600, alignment: .trailing)
         }
+        .padding(.trailing, 4)
     }
 
     private var assistantBubble: some View {

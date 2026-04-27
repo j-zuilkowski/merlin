@@ -1,22 +1,31 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct FilePane: View {
     @Binding var fileURL: URL?
     @State private var content: String = ""
+    @State private var image: NSImage? = nil
+
+    private static let imageUTTypes: [UTType] = [
+        .jpeg, .png, .gif, .heic, .tiff, .bmp, .webP, .svg
+    ]
+
+    private var isImageFile: Bool {
+        guard let url = fileURL,
+              let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
+        else { return false }
+        return Self.imageUTTypes.contains { type.conforms(to: $0) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-
             Divider()
-
             if fileURL != nil {
-                ScrollView([.horizontal, .vertical]) {
-                    Text(content)
-                        .font(.system(.body, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
+                if isImageFile {
+                    imageView
+                } else {
+                    textView
                 }
             } else {
                 placeholder
@@ -24,24 +33,48 @@ struct FilePane: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .task(id: fileURL) {
-            guard let fileURL else {
-                content = ""
-                return
-            }
-
+            image = nil
+            content = ""
+            guard let fileURL else { return }
             await load(url: fileURL)
         }
     }
 
+    private var imageView: some View {
+        ScrollView([.horizontal, .vertical]) {
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .padding(12)
+            } else {
+                ProgressView()
+                    .padding(40)
+            }
+        }
+    }
+
+    private var textView: some View {
+        ScrollView([.horizontal, .vertical]) {
+            Text(content)
+                .font(.system(.body, design: .monospaced))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+        }
+    }
+
     private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "doc.text")
+        HStack(spacing: 6) {
+            Image(systemName: isImageFile ? "photo" : "doc.text")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(fileURL?.lastPathComponent ?? "File Viewer")
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
+                .truncationMode(.middle)
 
             Spacer(minLength: 0)
 
@@ -49,7 +82,7 @@ struct FilePane: View {
                 openFilePicker()
             } label: {
                 Image(systemName: "folder")
-                    .font(.caption2.weight(.semibold))
+                    .font(.caption.weight(.semibold))
             }
             .buttonStyle(.borderless)
             .help("Open file…")
@@ -57,9 +90,12 @@ struct FilePane: View {
             if fileURL != nil {
                 Button {
                     fileURL = nil
+                    content = ""
+                    image = nil
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.caption2.weight(.semibold))
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.borderless)
                 .help("Close file")
@@ -100,15 +136,17 @@ struct FilePane: View {
 
     @MainActor
     private func load(url: URL) async {
-        do {
-            let data = try Data(contentsOf: url)
-            if let text = String(data: data, encoding: .utf8) {
-                content = text
-            } else {
-                content = "(binary file)"
+        if isImageFile {
+            image = NSImage(contentsOf: url)
+        } else {
+            do {
+                let data = try Data(contentsOf: url)
+                content = String(data: data, encoding: .utf8)
+                    ?? String(data: data, encoding: .isoLatin1)
+                    ?? "(binary file — \(data.count) bytes)"
+            } catch {
+                content = "Failed to load: \(error.localizedDescription)"
             }
-        } catch {
-            content = "Failed to load file:\n\(error.localizedDescription)"
         }
     }
 }

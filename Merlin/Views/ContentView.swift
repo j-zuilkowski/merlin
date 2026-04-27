@@ -6,6 +6,7 @@ struct ContentView: View {
 
     @State private var showToolPane = false
     @State private var engineRunning = false
+    @State private var activeProviderID = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -49,8 +50,18 @@ struct ContentView: View {
         .focusedObject(appState)
         .focusedObject(registry)
         .focusedValue(\.isEngineRunning, $engineRunning)
+        .focusedValue(\.activeProviderID, Binding(
+            get: { activeProviderID },
+            set: { activeProviderID = $0; registry.activeProviderID = $0 }
+        ))
         .onChange(of: appState.toolActivityState) { _, state in
             engineRunning = state != .idle
+        }
+        .onChange(of: registry.activeProviderID) { _, id in
+            activeProviderID = id
+        }
+        .onAppear {
+            activeProviderID = registry.activeProviderID
         }
     }
 }
