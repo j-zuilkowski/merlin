@@ -154,15 +154,53 @@ struct ProvidersSettingsView: View {
     }
 }
 
-// MARK: - Agents (stub — replaced in phase 65)
+// MARK: - Agents
 
 struct AgentSettingsView: View {
     @ObservedObject var settings: AppSettings
+    @EnvironmentObject private var registry: ProviderRegistry
 
     var body: some View {
-        Text("Agent Settings")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Form {
+            Section("Active Model") {
+                Picker("Provider", selection: $settings.providerName) {
+                    ForEach(registry.providers.filter(\.isEnabled)) { config in
+                        Text(config.displayName).tag(config.id)
+                    }
+                }
+                Picker("Model", selection: $settings.modelID) {
+                    let models = ProviderRegistry.knownModels[settings.providerName] ?? []
+                    ForEach(models, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
+                    if !settings.modelID.isEmpty {
+                        Text(settings.modelID).tag(settings.modelID)
+                    }
+                }
+                TextField("Custom model ID", text: $settings.modelID)
+                    .font(.system(.body, design: .monospaced))
+            }
+
+            Section("Reasoning") {
+                Toggle(
+                    "Enable extended thinking for \(settings.modelID.isEmpty ? "active model" : settings.modelID)",
+                    isOn: Binding(
+                        get: { settings.reasoningEnabledOverrides[settings.modelID] ?? false },
+                        set: { settings.reasoningEnabledOverrides[settings.modelID] = $0 }
+                    )
+                )
+            }
+
+            Section("Standing Instructions") {
+                TextEditor(text: $settings.standingInstructions)
+                    .frame(minHeight: 120)
+                    .font(.system(.body, design: .monospaced))
+                Text("Injected at the top of every system prompt.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
     }
 }
 
