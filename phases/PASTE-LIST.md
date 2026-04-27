@@ -241,7 +241,151 @@ cat phases/phase-28b-menu.md
 #         AppStateSessionTests → 4 pass
 # Commit: Phase 28b
 
-# ── DONE ──────────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 2
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 29 — ProjectRef + ProjectPickerView + WindowGroup ──────────────────
+cat phases/phase-29-project-picker.md
+# Verify: BUILD SUCCEEDED; project picker shown at launch; workspace window opens per project
+# Commit: Phase 29
+
+# ── PHASE 30a — SessionManager Tests ─────────────────────────────────────────
+cat phases/phase-30a-session-manager-tests.md
+# Verify: BUILD FAILED with errors for SessionManager, LiveSession (expected)
+# Commit: Phase 30a
+
+# ── PHASE 30b — SessionManager Implementation ─────────────────────────────────
+cat phases/phase-30b-session-manager.md
+# Verify: BUILD SUCCEEDED; SessionManagerTests → 8 pass
+# Commit: Phase 30b
+
+# ── PHASE 31a — Permission Mode Tests ────────────────────────────────────────
+cat phases/phase-31a-permission-mode-tests.md
+# Verify: BUILD FAILED with errors for PermissionMode (expected)
+# Commit: Phase 31a
+
+# ── PHASE 31b — Permission Mode Implementation ───────────────────────────────
+cat phases/phase-31b-permission-mode.md
+# Verify: BUILD SUCCEEDED; PermissionModeTests → 6 pass
+# Commit: Phase 31b
+
+# ── PHASE 32a — StagingBuffer Tests ──────────────────────────────────────────
+cat phases/phase-32a-staging-buffer-tests.md
+# Verify: BUILD FAILED with errors for StagingBuffer, StagedChange, ChangeKind (expected)
+# Commit: Phase 32a
+
+# ── PHASE 32b — StagingBuffer Implementation ─────────────────────────────────
+cat phases/phase-32b-staging-buffer.md
+# Verify: BUILD SUCCEEDED; StagingBufferTests → 10 pass
+# Commit: Phase 32b
+
+# ── PHASE 33a — DiffEngine Tests ─────────────────────────────────────────────
+cat phases/phase-33a-diff-engine-tests.md
+# Verify: BUILD FAILED with errors for DiffEngine, DiffHunk, DiffLine (expected)
+# Commit: Phase 33a
+
+# ── PHASE 33b — DiffEngine + DiffPane ────────────────────────────────────────
+cat phases/phase-33b-diff-pane.md
+# Verify: BUILD SUCCEEDED; DiffEngineTests → 9 pass
+# Commit: Phase 33b
+
+# ── PHASE 34 — ChatView v2 (stop button + scroll lock) ───────────────────────
+cat phases/phase-34-chatview-v2.md
+# Verify: BUILD SUCCEEDED; stop button appears while streaming; scroll lock banner works
+# Commit: Phase 34
+
+# ── PHASE 35a — Inline Diff Comment Tests ────────────────────────────────────
+cat phases/phase-35a-diff-comment-tests.md
+# Verify: BUILD FAILED with errors for DiffComment, StagingBuffer.addComment (expected)
+# Commit: Phase 35a
+
+# ── PHASE 35b — Inline Diff Commenting ───────────────────────────────────────
+cat phases/phase-35b-diff-comment.md
+# Verify: BUILD SUCCEEDED; DiffCommentTests → 6 pass
+# Commit: Phase 35b
+
+# ── PHASE 36a — CLAUDEMDLoader Tests ─────────────────────────────────────────
+cat phases/phase-36a-claude-md-tests.md
+# Verify: BUILD FAILED with errors for CLAUDEMDLoader (expected)
+# Commit: Phase 36a
+
+# ── PHASE 36b — CLAUDEMDLoader Implementation ────────────────────────────────
+cat phases/phase-36b-claude-md.md
+# Verify: BUILD SUCCEEDED; CLAUDEMDLoaderTests → 8 pass
+# Commit: Phase 36b
+
+# ── PHASE 37a — Context Injection Tests ──────────────────────────────────────
+cat phases/phase-37a-context-injection-tests.md
+# Verify: BUILD FAILED with errors for ContextInjector, AttachmentError (expected)
+# Commit: Phase 37a
+
+# ── PHASE 37b — Context Injection Implementation ─────────────────────────────
+cat phases/phase-37b-context-injection.md
+# Verify: BUILD SUCCEEDED; ContextInjectionTests → 8 pass
+# Commit: Phase 37b
+
+# ── PHASE 38a — SkillsRegistry Tests ─────────────────────────────────────────
+cat phases/phase-38a-skills-registry-tests.md
+# Verify: BUILD FAILED with errors for SkillsRegistry, Skill, SkillFrontmatter (expected)
+# Commit: Phase 38a
+
+# ── PHASE 38b — SkillsRegistry Implementation ────────────────────────────────
+cat phases/phase-38b-skills-registry.md
+# Verify: BUILD SUCCEEDED; SkillsRegistryTests → 10 pass
+# Commit: Phase 38b
+
+# ── PHASE 39a — Skill Invocation Tests ───────────────────────────────────────
+cat phases/phase-39a-skill-invocation-tests.md
+# Verify: BUILD FAILED with errors for AgenticEngine.invokeSkill (expected)
+# Commit: Phase 39a
+
+# ── PHASE 39b — Skill Invocation + Built-in Skills ───────────────────────────
+cat phases/phase-39b-skill-invocation.md
+# Verify: BUILD SUCCEEDED; SkillInvocationTests → 4 pass
+# Commit: Phase 39b
+
+# ── PHASE 40a — MCPBridge Tests ──────────────────────────────────────────────
+cat phases/phase-40a-mcp-bridge-tests.md
+# Verify: BUILD FAILED with errors for MCPConfig, MCPServerConfig, MCPBridge (expected)
+# Commit: Phase 40a
+
+# ── PHASE 40b — MCPBridge Implementation ─────────────────────────────────────
+cat phases/phase-40b-mcp-bridge.md
+# Verify: BUILD SUCCEEDED; MCPBridgeTests → 9 pass
+# Commit: Phase 40b
+
+# ── PHASE 41a — SchedulerEngine Tests ────────────────────────────────────────
+cat phases/phase-41a-scheduler-tests.md
+# Verify: BUILD FAILED with errors for SchedulerEngine, ScheduledTask, ScheduleCadence (expected)
+# Commit: Phase 41a
+
+# ── PHASE 41b — SchedulerEngine Implementation ───────────────────────────────
+cat phases/phase-41b-scheduler.md
+# Verify: BUILD SUCCEEDED; SchedulerEngineTests → 6 pass
+# Commit: Phase 41b
+
+# ── PHASE 42a — PRMonitor Tests ──────────────────────────────────────────────
+cat phases/phase-42a-pr-monitor-tests.md
+# Verify: BUILD FAILED with errors for PRMonitor, PRStatus, ChecksState (expected)
+# Commit: Phase 42a
+
+# ── PHASE 42b — PRMonitor Implementation ─────────────────────────────────────
+cat phases/phase-42b-pr-monitor.md
+# Verify: BUILD SUCCEEDED; PRMonitorTests → 9 pass
+# Commit: Phase 42b
+
+# ── PHASE 43a — Connectors Tests ─────────────────────────────────────────────
+cat phases/phase-43a-connectors-tests.md
+# Verify: BUILD FAILED with errors for ConnectorCredentials, GitHubConnector (expected)
+# Commit: Phase 43a
+
+# ── PHASE 43b — Connectors Implementation ────────────────────────────────────
+cat phases/phase-43b-connectors.md
+# Verify: BUILD SUCCEEDED; ConnectorCredentialsTests → 4 pass; ConnectorProtocolTests → 5 pass
+# Commit: Phase 43b
+
+# ── DONE (v2) ─────────────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
 #        xcodebuild -scheme Merlin → zero errors, zero warnings
 ```

@@ -5,7 +5,7 @@
 Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (Ollama, LM Studio, Jan.ai, LocalAI, Mistral.rs, vLLM) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
 **[v1]** Single serial session, direct file writes, fixed layout.
-**[v2]** Parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
+**[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
 **[v3]** Linux and Windows support. macOS remains the primary platform. Core agentic engine extracted as a cross-platform Swift package; macOS-specific tools (screen capture, AX inspector, CGEvent, app control) remain macOS-only. Non-macOS entry point: CLI/TUI. Decisions TBD.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory (macOS primary); Linux x86-64/ARM [v3]; Windows x86-64 [v3]
@@ -199,11 +199,32 @@ The pro/flash split is retired. One active provider per session. A skill's `mode
 
 ## Session Manager [v2]
 
+### Multi-Window Model
+
+Each app window is scoped to exactly one project root. Windows are independent — they do not share session state, `SessionManager` instances, or layout. Opening a second project opens a second window.
+
+```
+File > Open Project…  (or drag a folder onto the Dock icon)
+→  openWindow(value: ProjectRef(path: "/Users/jon/Projects/foo"))
+→  new NSWindow with its own SessionManager + WorkspaceView
+```
+
+The entry point uses `WindowGroup(for: ProjectRef.self)` so macOS handles window restoration automatically. `ProjectRef` is a `Codable`, `Hashable` struct wrapping a resolved absolute path.
+
+```swift
+struct ProjectRef: Codable, Hashable, Transferable {
+    var path: String          // absolute, resolved
+    var displayName: String   // last path component
+}
+```
+
+On launch with no existing windows, a `ProjectPickerView` is shown (recent projects list + Open button). Once a project is chosen, the workspace window opens and the picker closes.
+
 ### Parallel Sessions
 
-Each session is an independent unit of work with its own:
+Within a window, each session is an independent unit of work with its own:
 - `AgenticEngine` instance (own context, own provider selection)
-- Git worktree at `~/.merlin/worktrees/<session-id>/`
+- Git worktree at `~/.merlin/worktrees/<session-id>/` (within the window's project repo)
 - `StagingBuffer` holding pending writes awaiting Accept/Reject
 - Permission mode (Ask / Auto-accept / Plan)
 - CLAUDE.md loaded from the worktree root at session creation
@@ -213,24 +234,29 @@ Sessions are listed in a sidebar. Switching sessions is instant — all session 
 ```swift
 @MainActor
 final class SessionManager: ObservableObject {
+    let projectRef: ProjectRef
     @Published var sessions: [Session] = []
     @Published var activeSessionID: UUID?
 
-    func newSession(projectPath: String, model: ModelID, mode: PermissionMode) async -> Session
+    func newSession(model: ModelID, mode: PermissionMode) async -> Session
     func closeSession(_ id: UUID) async
     func switchSession(to id: UUID)
 }
 ```
 
+`SessionManager` is owned by the window's root view and injected via `@StateObject`. It is not global.
+
 ### Git Worktree Isolation [v2]
 
 ```
-1. git worktree add ~/.merlin/worktrees/<session-id> HEAD
+1. git worktree add ~/.merlin/worktrees/<session-id> HEAD  (in projectRef.path repo)
 2. All reads/writes in this session operate on the worktree path
 3. User accepts diff → git commit in worktree
 4. User merges → git merge worktree branch into project working tree
 5. Session closed → git worktree remove <session-id>
 ```
+
+For project roots that are not git repos, worktree isolation is skipped and the session operates directly on the project path (no diff/staging layer available; Auto-accept mode is forced).
 
 ---
 
@@ -662,7 +688,7 @@ Sessions saved to `~/Library/Application Support/Merlin/sessions/` as JSON. Writ
 
 **[v1] ChatView** — primary conversation thread. Markdown rendered with CommonMark two-space hard line break. Tool calls shown as collapsible cards. Thinking content in dimmed expandable block.
 
-**[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, permission mode badge, model picker dropdown.
+**[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, permission mode badge, model picker dropdown, scroll-lock: manual upward scroll pauses auto-scroll-to-bottom while streaming continues off-screen; auto-scroll resumes when user scrolls back within 40pt of the bottom.
 
 **[v1] ToolLogView** — live stdout/stderr stream from running tools. Colour-coded by source.
 
@@ -673,6 +699,8 @@ Sessions saved to `~/Library/Application Support/Merlin/sessions/` as JSON. Writ
 **[v1] ProviderHUD** — toolbar indicator showing active provider and thinking/tool state.
 
 **[v1] FirstLaunchSetupView** — Keychain setup on first run. Calls `appState.reloadProviders(apiKey:)` after saving.
+
+**[v2] ProjectPickerView** — shown at launch when no windows are open. Recent projects list (resolved paths, last-opened timestamp), Open button (triggers folder panel), clear-recents option. Selecting a project calls `openWindow(value: projectRef)` and dismisses the picker.
 
 **[v2] SessionSidebar** — lists open sessions with title, model badge, activity indicator, permission mode badge. New session button.
 
@@ -888,7 +916,8 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 
 | Decision | v1 | v2 |
 |---|---|---|
-| Session model | Single serial thread | Parallel sessions in Git worktrees |
+| Window model | Single window | One window per project (`WindowGroup(for: ProjectRef.self)`); project picker on launch |
+| Session model | Single serial thread | Parallel sessions in Git worktrees, scoped to window's project |
 | File write policy | Direct to disk | Staged via StagingBuffer, Accept/Reject in DiffPane |
 | Permission model | AuthGate only | AuthGate + Ask / Auto-accept / Plan modes |
 | CLAUDE.md | Not supported | Auto-loaded at session init |
@@ -899,6 +928,7 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 | External connectors | None | GitHub, Slack, Linear (opt-in) |
 | Workspace layout | Fixed | Draggable/collapsible panes, persisted |
 | Interrupt | None | Stop button cancels active Task + stream |
+| Chat scroll | Always follows bottom | Auto-scroll pauses on manual upward scroll; resumes within 40pt of bottom |
 | Context injection | Manual | @filename autocomplete + file/image/PDF attachment |
 | Model selection | Fixed per provider | Per-session model picker |
 | In-app preview | None | WKWebView + dev server process + preview tools |
