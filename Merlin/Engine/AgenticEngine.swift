@@ -16,11 +16,11 @@ private final class CancellationState: @unchecked Sendable {
 @MainActor
 final class AgenticEngine {
     let contextManager: ContextManager
-    private let toolRouter: ToolRouter
     private let thinkingDetector = ThinkingModeDetector.self
     var proProvider: any LLMProvider
     var flashProvider: any LLMProvider
     private let visionProvider: any LLMProvider
+    let toolRouter: ToolRouter
     var xcalibreClient: XcalibreClient?
     var registry: ProviderRegistry?
     var permissionMode: PermissionMode = .ask
@@ -155,7 +155,8 @@ final class AgenticEngine {
                 continuation.yield(.toolCallStarted(call))
             }
 
-            let results = await toolRouter.dispatch(calls, permissionMode: permissionMode)
+            toolRouter.permissionMode = permissionMode
+            let results = await toolRouter.dispatch(calls)
             let prevCompactionCount = contextManager.compactionCount
             for result in results {
                 continuation.yield(.toolCallResult(result))

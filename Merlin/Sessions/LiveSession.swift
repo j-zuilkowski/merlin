@@ -6,9 +6,11 @@ final class LiveSession: ObservableObject, Identifiable {
     let id: UUID
     @Published var title: String
     let appState: AppState
+    let stagingBuffer = StagingBuffer()
     var permissionMode: PermissionMode = .ask {
         didSet {
             appState.engine.permissionMode = permissionMode
+            appState.engine.toolRouter.permissionMode = permissionMode
         }
     }
     let createdAt: Date
@@ -18,5 +20,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.title = "New Session"
         self.createdAt = Date()
         self.appState = AppState(projectPath: projectRef.path)
+        appState.engine.toolRouter.stagingBuffer = stagingBuffer
+        appState.engine.toolRouter.permissionMode = permissionMode
     }
 }

@@ -1,23 +1,5 @@
 import Foundation
 
-actor StagingBuffer {
-    private var items: [StagingEntry] = []
-
-    func entries() -> [StagingEntry] {
-        items
-    }
-
-    func record(_ entry: StagingEntry) {
-        items.append(entry)
-    }
-}
-
-struct StagingEntry: Identifiable, Sendable, Equatable {
-    var id = UUID()
-    var path: String
-    var operation: String
-}
-
 actor SubagentEngine {
     private let definition: AgentDefinition
     private let prompt: String
