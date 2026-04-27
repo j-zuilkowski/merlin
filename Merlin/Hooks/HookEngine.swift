@@ -102,7 +102,7 @@ actor HookEngine {
     func runStop() async -> Bool {
         let relevant = hooks.filter { $0.event == "Stop" && $0.enabled }
         guard relevant.isEmpty == false else {
-            return true
+            return false
         }
 
         for hook in relevant {
@@ -113,12 +113,12 @@ actor HookEngine {
                   let proceed = response["proceed"] as? Bool else {
                 continue
             }
-            if proceed == false {
-                return false
+            if proceed == true {
+                return true
             }
         }
 
-        return true
+        return false
     }
 
     private func runScript(_ command: String, stdin: String) async -> (stdout: String, exitCode: Int) {
