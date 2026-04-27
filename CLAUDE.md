@@ -195,9 +195,35 @@ open ~/Documents/localProject/merlin/build/Debug/Merlin.app
 
 ## Key Constraints
 
-- `ToolDefinitions.all` has exactly **37** entries — do not add or remove without updating this count
+- **Tool registry is dynamic.** `ToolDefinitions` holds static schemas for built-in tools. `ToolRegistry.shared` is the runtime source — all features query it, not `ToolDefinitions.all` directly. Built-ins register via `ToolRegistry.shared.registerBuiltins()` at launch. MCP tools, web search, and future conditional tools register/unregister at runtime. There is no enforced count — tests assert named tools are present, not a total count.
 - `ContextManager` exposes `forceCompaction()` for test use
 - `ShellTool` has a `stream()` variant returning `AsyncThrowingStream<ShellOutputLine, Error>`
 - `Notification.Name.merlinNewSession` raw value: `"com.merlin.newSession"`
 - Auth memory path in tests: use `/tmp/auth-<test-name>.json` — never a shared path
-- `@FocusedSceneObject` in `MerlinCommands` (not `@FocusedObject`) — views expose via `.focusedSceneObject()`
+- `@FocusedObject` in `MerlinCommands` — views expose via `.focusedObject()`
+
+---
+
+## AppSettings (v3+)
+
+`AppSettings` is a `@MainActor ObservableObject` singleton and the **single source of truth** for all persisted configuration. Features never read `UserDefaults`, `Keychain`, or `config.toml` directly — they read `AppSettings` properties.
+
+Backing stores:
+- `~/.merlin/config.toml` — feature flags, hook definitions, memories config, toolbar actions, reasoning overrides
+- Keychain — API keys, connector tokens, search API key
+- `UserDefaults` — UI-only state (theme, fonts, window layout)
+
+`AppState` reads from `AppSettings` at init and observes it for changes. `AppState` never writes to a backing store directly. Agent-proposed changes go through `AppSettings.propose(_ change: SettingsProposal) async -> Bool`, which surfaces an approval sheet; approved proposals write through to the backing store.
+
+---
+
+## ~/.merlin/ Directory Layout
+
+```
+~/.merlin/
+  config.toml          — persisted settings (FSEvents-watched; external edits apply live)
+  memories/            — accepted AI-generated memory files
+    pending/           — generated memories awaiting user review
+  skills/              — personal SKILL.md files
+  agents/              — custom subagent TOML definitions (v4)
+```

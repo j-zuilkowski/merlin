@@ -388,4 +388,97 @@ cat phases/phase-43b-connectors.md
 # ── DONE (v2) ─────────────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
 #        xcodebuild -scheme Merlin → zero errors, zero warnings
+
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 3
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 44a — TOMLDecoder Tests ────────────────────────────────────────────
+cat phases/phase-44a-toml-decoder-tests.md
+# Verify: BUILD FAILED with errors for TOMLDecoder, TOMLValue, TOMLLexer (expected)
+# Commit: Phase 44a
+
+# ── PHASE 44b — TOMLDecoder Implementation ───────────────────────────────────
+cat phases/phase-44b-toml-decoder.md
+# Verify: BUILD SUCCEEDED; TOMLDecoderTests → ~25 pass
+# Commit: Phase 44b
+
+# ── PHASE 45a — ToolRegistry Tests ───────────────────────────────────────────
+cat phases/phase-45a-tool-registry-tests.md
+# Verify: BUILD FAILED with errors for ToolRegistry (expected)
+# Commit: Phase 45a
+
+# ── PHASE 45b — ToolRegistry Implementation ──────────────────────────────────
+cat phases/phase-45b-tool-registry.md
+# Verify: BUILD SUCCEEDED; ToolRegistryTests → pass; migrated off ToolDefinitions.all count
+# Commit: Phase 45b
+
+# ── PHASE 46a — AppSettings Tests ────────────────────────────────────────────
+cat phases/phase-46a-appsettings-tests.md
+# Verify: BUILD FAILED with errors for AppSettings, SettingsProposal (expected)
+# Commit: Phase 46a
+
+# ── PHASE 46b — AppSettings + config.toml + Settings Window + Appearance ─────
+cat phases/phase-46b-appsettings.md
+# Verify: BUILD SUCCEEDED; AppSettingsTests → pass; Settings window opens via Cmd+,
+# Commit: Phase 46b
+
+# ── PHASE 47a — Memories Tests ───────────────────────────────────────────────
+cat phases/phase-47a-memories-tests.md
+# Verify: BUILD FAILED with errors for MemoryEngine, MemoryStore (expected)
+# Commit: Phase 47a
+
+# ── PHASE 47b — AI-Generated Memories ────────────────────────────────────────
+cat phases/phase-47b-memories.md
+# Verify: BUILD SUCCEEDED; MemoryEngineTests → pass
+# Commit: Phase 47b
+
+# ── PHASE 48a — Hooks Tests ──────────────────────────────────────────────────
+cat phases/phase-48a-hooks-tests.md
+# Verify: BUILD FAILED with errors for HookEngine, HookDefinition, HookDecision (expected)
+# Commit: Phase 48a
+
+# ── PHASE 48b — Hooks Implementation ─────────────────────────────────────────
+cat phases/phase-48b-hooks.md
+# Verify: BUILD SUCCEEDED; HookEngineTests → pass
+# Commit: Phase 48b
+
+# ── PHASE 49a — Thread Automations Tests ─────────────────────────────────────
+cat phases/phase-49a-thread-automations-tests.md
+# Verify: BUILD FAILED with errors for ThreadAutomation, SchedulerEngine.resume (expected)
+# Commit: Phase 49a
+
+# ── PHASE 49b — Thread Automations ───────────────────────────────────────────
+cat phases/phase-49b-thread-automations.md
+# Verify: BUILD SUCCEEDED; ThreadAutomationTests → pass
+# Commit: Phase 49b
+
+# ── PHASE 50a — Web Search Tests ─────────────────────────────────────────────
+cat phases/phase-50a-web-search-tests.md
+# Verify: BUILD FAILED with errors for WebSearchTool, BraveSearchClient (expected)
+# Commit: Phase 50a
+
+# ── PHASE 50b — Web Search Tool ──────────────────────────────────────────────
+cat phases/phase-50b-web-search.md
+# Verify: BUILD SUCCEEDED; WebSearchTests → pass
+# Commit: Phase 50b
+
+# ── PHASE 51 — Reasoning Effort + Personalization + Context Usage Indicator ──
+cat phases/phase-51-agent-settings.md
+# Verify: BUILD SUCCEEDED; reasoning effort picker renders; standing instructions inject
+# Commit: Phase 51
+
+# ── PHASE 52 — Toolbar Actions + Notifications ───────────────────────────────
+cat phases/phase-52-toolbar-notifications.md
+# Verify: BUILD SUCCEEDED; toolbar actions render; notifications fire on completion
+# Commit: Phase 52
+
+# ── PHASE 53 — Floating Pop-out Window + Voice Dictation ─────────────────────
+cat phases/phase-53-popout-voice.md
+# Verify: BUILD SUCCEEDED; thread detaches to floating window; Ctrl+M opens voice input
+# Commit: Phase 53
+
+# ── DONE (v3) ─────────────────────────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass
+#        xcodebuild -scheme Merlin → zero errors, zero warnings
 ```

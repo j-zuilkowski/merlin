@@ -511,6 +511,105 @@ On fire: opens a background session, runs the prompt to completion, posts a macO
 
 ---
 
+## AI-Generated Memories [v3]
+
+Opt-in (disabled by default). `AppSettings.memoriesEnabled` is the gate. When enabled, a 5-minute idle timer fires after a session goes inactive. A `MemoryEngine` — a lightweight `AgenticEngine` instance using the fastest model in the session's current provider — receives the session transcript and generates a memory file.
+
+### Pipeline
+
+```
+session idle (5 min)
+    → MemoryEngine.generate(transcript:)
+        → writes .md file to ~/.merlin/memories/pending/<uuid>.md
+        → posts UNUserNotification: "Memory ready for review"
+user opens Settings > Memories > pending queue
+    → reviews / edits / accepts or rejects
+        → accepted: moved to ~/.merlin/memories/<uuid>.md
+        → rejected: deleted
+next session init (CLAUDEMDLoader)
+    → reads ~/.merlin/memories/*.md
+    → injects as second system prompt block after CLAUDE.md content
+```
+
+### Exclusion rules (enforced in MemoryEngine system prompt)
+
+- No verbatim file contents
+- No strings matching secret patterns (tokens, API keys, passwords, private keys)
+- No raw tool result payloads
+- Extract only: preferences, workflow conventions, project patterns, known pitfalls
+
+### MemoryEngine
+
+Isolated `AgenticEngine` instance; no tool access; single turn; result written to `pending/`. Generation happens off the main actor in a detached `Task`. If generation fails, the pending file is not created and the failure is logged silently — no user-facing error.
+
+---
+
+## Hooks [v3]
+
+`HookEngine` intercepts the agentic lifecycle at defined event points. Hooks are shell scripts defined inline in `~/.merlin/config.toml`. Project-level hooks in `.merlin/config.toml` require the trusted-project flag (same as MCP servers).
+
+### Hook events
+
+| Event | When | Can block |
+|---|---|---|
+| `PreToolUse` | Before tool call reaches AuthGate | Yes — returning `deny` prevents the call |
+| `PostToolUse` | After tool completes | No — can inject a `systemMessage` into context |
+| `UserPromptSubmit` | Before user message is sent to provider | No — can augment prompt via `systemMessage` |
+| `Stop` | After a turn completes | No — can trigger continuation |
+
+### Ordering
+
+`PreToolUse` hooks run before `AuthGate`. Automated policy fires first; human approval is only requested for calls that pass hook policy. A crashing or timing-out `PreToolUse` hook is treated as `deny` (fail-closed).
+
+### I/O protocol
+
+Hook scripts receive a JSON object on stdin:
+
+```json
+{ "session_id": "…", "event": "PreToolUse", "tool_name": "write_file",
+  "tool_input": { "path": "…", "content": "…" } }
+```
+
+They return JSON on stdout:
+
+```json
+{ "decision": "allow" }
+{ "decision": "deny", "reason": "write to /etc is forbidden" }
+{ "systemMessage": "Note: file has been linted." }
+```
+
+Exit code `0` with empty stdout = allow/passthrough. Exit code `2` with stderr = deny with message.
+
+### Config.toml representation
+
+```toml
+[[hooks.PreToolUse]]
+matcher = "write_file"
+command = "/Users/jon/.merlin/hooks/block-etc-writes.sh"
+
+[[hooks.PostToolUse]]
+matcher = "run_shell"
+command = "/Users/jon/.merlin/hooks/log-commands.sh"
+```
+
+### HookEngine
+
+```swift
+actor HookEngine {
+    func runPreToolUse(toolName: String, input: [String: Any]) async -> HookDecision
+    func runPostToolUse(toolName: String, result: String) async -> String?  // optional systemMessage
+    func runUserPromptSubmit(prompt: String) async -> String?
+    func runStop() async -> Bool  // true = continue
+}
+
+enum HookDecision: Sendable {
+    case allow
+    case deny(reason: String)
+}
+```
+
+---
+
 ## PR Monitor [v2]
 
 `PRMonitor` polls GitHub PRs associated with the active project (60s active, 5min background). On `checksFailed`: posts a notification; opening it launches a new session pre-loaded with the PR diff and CI output. On `checksPassed`: merges if auto-merge was enabled for that PR. Requires a GitHub token in Connectors config.
@@ -534,6 +633,23 @@ Connectors are opt-in. MCP server equivalents (e.g. `@modelcontextprotocol/serve
 ## Tool Registry [v1]
 
 All tools are defined as OpenAI function call schemas and registered at app launch.
+
+### ToolRegistry [v3]
+
+`ToolRegistry` is a Swift `actor` and the runtime source of available tools. `ToolDefinitions` retains static schema definitions for built-in tools; `ToolRegistry.shared.registerBuiltins()` copies them into the registry at app launch. Dynamic tools (MCP, web search, future conditional tools) register and unregister at runtime without restarting the app.
+
+```swift
+actor ToolRegistry {
+    static let shared = ToolRegistry()
+    func register(_ tool: ToolDefinition)
+    func unregister(named: String)
+    func all() -> [ToolDefinition]
+    func contains(named: String) -> Bool
+    func registerBuiltins()
+}
+```
+
+`ToolRouter` queries `ToolRegistry.shared.all()` for dispatch. There is no enforced count on built-in tools. Tests assert named tools are present via `contains(named:)`, not a total count.
 
 ### File System Tools [v1]
 
