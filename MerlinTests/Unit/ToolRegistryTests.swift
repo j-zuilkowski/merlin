@@ -110,10 +110,11 @@ final class ToolRegistryTests: XCTestCase {
     // MARK: - Concurrent safety
 
     func test_concurrentRegister_noDataRace() async {
+        let registry = registry!
         await withTaskGroup(of: Void.self) { group in
             for index in 0..<50 {
                 group.addTask {
-                    await self.registry.register(ToolDefinition.stub(name: "tool_\(index)"))
+                    await registry.register(ToolDefinition.stub(name: "tool_\(index)"))
                 }
             }
         }
