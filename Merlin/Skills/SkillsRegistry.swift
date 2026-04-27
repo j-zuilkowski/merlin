@@ -30,6 +30,14 @@ final class SkillsRegistry: ObservableObject {
         skills.first { $0.name == name }
     }
 
+    func enabledSkills(from skills: [Skill], disabledNames: [String]) -> [Skill] {
+        skills.filter { !disabledNames.contains($0.name) }
+    }
+
+    var enabledSkills: [Skill] {
+        enabledSkills(from: skills, disabledNames: AppSettings.shared.disabledSkillNames)
+    }
+
     func reload() {
         var loaded: [Skill] = []
 

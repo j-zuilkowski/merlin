@@ -112,7 +112,11 @@ final class ContextManager: ObservableObject {
             messages = rebuilt
         }
 
-        if let skillBlock = buildSkillReinjectionBlock(), !skillBlock.isEmpty {
+        let skillBlock = buildSkillReinjectionBlock(
+            skills: recentlyInvokedSkills,
+            disabledNames: AppSettings.shared.disabledSkillNames
+        )
+        if !skillBlock.isEmpty {
             messages.append(Message(
                 role: .system,
                 content: .text(skillBlock),
@@ -124,13 +128,16 @@ final class ContextManager: ObservableObject {
         compactionCount += 1
     }
 
-    private func buildSkillReinjectionBlock() -> String? {
-        guard !recentlyInvokedSkills.isEmpty else { return nil }
+    func buildSkillReinjectionBlock(skills: [Skill], disabledNames: [String] = []) -> String {
+        let visibleSkills = disabledNames.isEmpty
+            ? skills
+            : skills.filter { !disabledNames.contains($0.name) }
+        guard visibleSkills.isEmpty == false else { return "" }
 
         var parts: [String] = []
         var tokensSoFar = 0
 
-        for skill in recentlyInvokedSkills {
+        for skill in visibleSkills {
             let section = "## \(skill.name)\n\(skill.body)"
             let tokens = tokenEstimate(forText: section)
             guard tokens <= skillBudgetPerSkill else { continue }
@@ -139,7 +146,7 @@ final class ContextManager: ObservableObject {
             tokensSoFar += tokens
         }
 
-        guard !parts.isEmpty else { return nil }
+        guard !parts.isEmpty else { return "" }
         return "[Skills]\n" + parts.joined(separator: "\n\n") + "\n[/Skills]"
     }
 
