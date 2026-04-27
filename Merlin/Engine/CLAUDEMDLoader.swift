@@ -27,6 +27,31 @@ enum CLAUDEMDLoader {
         return "[Project instructions]\n\(content)\n[/Project instructions]"
     }
 
+    static func memoriesBlock(acceptedDir: String) -> String {
+        let dir = URL(fileURLWithPath: acceptedDir)
+        guard let items = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil
+        ) else { return "" }
+
+        let parts = items
+            .filter { $0.pathExtension.lowercased() == "md" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            .compactMap { url -> String? in
+                guard let text = try? String(contentsOf: url, encoding: .utf8),
+                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                else { return nil }
+                return text
+            }
+
+        guard !parts.isEmpty else { return "" }
+        return "[Memories]\n" + parts.joined(separator: "\n") + "\n[/Memories]"
+    }
+
+    static func defaultMemoriesBlock() -> String {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        return memoriesBlock(acceptedDir: "\(home)/.merlin/memories")
+    }
+
     private static func candidateRoots(startingAt projectPath: String) -> [String] {
         var roots: [String] = []
         var current = URL(fileURLWithPath: projectPath).standardizedFileURL

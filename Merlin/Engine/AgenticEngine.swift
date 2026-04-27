@@ -26,6 +26,7 @@ final class AgenticEngine {
     var skillsRegistry: SkillsRegistry?
     var permissionMode: PermissionMode = .ask
     var claudeMDContent: String = ""
+    var memoriesContent: String = ""
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
@@ -317,23 +318,30 @@ final class AgenticEngine {
     }
 
     private func messagesForProvider() -> [Message] {
-        var messages = contextManager.messagesForProvider()
+        return messagesWithSystem(contextManager.messagesForProvider())
+    }
+
+    func messagesWithSystem(_ messages: [Message]) -> [Message] {
         let systemPrompt = buildSystemPrompt()
         guard !systemPrompt.isEmpty else { return messages }
 
         let systemMessage = Message(role: .system, content: .text(systemPrompt), timestamp: Date())
         if messages.first?.role == .system {
-            messages[0] = systemMessage
+            var updated = messages
+            updated[0] = systemMessage
+            return updated
         } else {
-            messages.insert(systemMessage, at: 0)
+            return [systemMessage] + messages
         }
-        return messages
     }
 
     private func buildSystemPrompt() -> String {
         var parts: [String] = []
         if !claudeMDContent.isEmpty {
             parts.append(claudeMDContent)
+        }
+        if !memoriesContent.isEmpty {
+            parts.append(memoriesContent)
         }
         if permissionMode == .plan {
             parts.append(PermissionMode.planSystemPrompt)
