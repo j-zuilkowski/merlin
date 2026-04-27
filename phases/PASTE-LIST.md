@@ -481,4 +481,62 @@ cat phases/phase-53-popout-voice.md
 # ── DONE (v3) ─────────────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
 #        xcodebuild -scheme Merlin → zero errors, zero warnings
+
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 4
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 54a — AgentDefinition + AgentRegistry Tests ─────────────────────────
+cat phases/phase-54a-agent-definition-tests.md
+# Verify: BUILD FAILED (AgentDefinition, AgentRole, AgentRegistry not defined)
+# Commit: Phase 54a — AgentRegistryTests (failing)
+
+# ── PHASE 54b — AgentDefinition + AgentRegistry Implementation ────────────────
+cat phases/phase-54b-agent-definition.md
+# Verify: BUILD SUCCEEDED; all AgentRegistryTests pass
+# Commit: Phase 54b — AgentDefinition + AgentRegistry
+
+# ── PHASE 55a — SubagentEngine V4a Tests ──────────────────────────────────────
+cat phases/phase-55a-subagent-engine-tests.md
+# Verify: BUILD FAILED (SubagentEngine, SubagentEvent not defined)
+# Commit: Phase 55a — SubagentEngineTests (failing)
+
+# ── PHASE 55b — SubagentEngine V4a Implementation ─────────────────────────────
+cat phases/phase-55b-subagent-engine.md
+# Verify: BUILD SUCCEEDED; all SubagentEngineTests pass
+# Commit: Phase 55b — SubagentEngine V4a
+
+# ── PHASE 56 — SubagentStream UI ──────────────────────────────────────────────
+cat phases/phase-56-subagent-stream-ui.md
+# Verify: BUILD SUCCEEDED; all SubagentBlockViewModelTests pass
+# Commit: Phase 56 — SubagentStreamUI
+
+# ── PHASE 57a — WorktreeManager Tests ─────────────────────────────────────────
+cat phases/phase-57a-worktree-manager-tests.md
+# Verify: BUILD FAILED (WorktreeManager, WorktreeError not defined)
+# Commit: Phase 57a — WorktreeManagerTests (failing)
+
+# ── PHASE 57b — WorktreeManager Implementation ────────────────────────────────
+cat phases/phase-57b-worktree-manager.md
+# Verify: BUILD SUCCEEDED; all WorktreeManagerTests pass
+# Commit: Phase 57b — WorktreeManager
+
+# ── PHASE 58a — WorkerSubagentEngine Tests ────────────────────────────────────
+cat phases/phase-58a-subagent-worker-tests.md
+# Verify: BUILD FAILED (WorkerSubagentEngine not defined)
+# Commit: Phase 58a — WorkerSubagentEngineTests (failing)
+
+# ── PHASE 58b — WorkerSubagentEngine Implementation ───────────────────────────
+cat phases/phase-58b-subagent-worker.md
+# Verify: BUILD SUCCEEDED; all WorkerSubagentEngineTests pass
+# Commit: Phase 58b — WorkerSubagentEngine V4b
+
+# ── PHASE 59 — SubagentSidebar UI ─────────────────────────────────────────────
+cat phases/phase-59-subagent-sidebar-ui.md
+# Verify: BUILD SUCCEEDED; all SubagentSidebarViewModelTests pass
+# Commit: Phase 59 — SubagentSidebar UI
+
+# ── DONE (v4) ─────────────────────────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass
+#        xcodebuild -scheme Merlin → zero errors, zero warnings
 ```

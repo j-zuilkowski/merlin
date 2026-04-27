@@ -1122,3 +1122,176 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 | Memories | Opt-in; idle trigger (5 min); pending review queue in ~/.merlin/memories/pending/; fastest model in session's provider |
 | Web search | Brave Search API; absent when no key configured |
 | Reasoning effort | Per-model capability flag; LM Studio uses name-pattern matching + user override in config.toml |
+
+---
+
+## Subagents [v4]
+
+### Overview
+
+V4 adds parallel subagent execution. The parent `AgenticEngine` can spawn child agents via a
+`spawn_agent` tool call. Children run concurrently in a `TaskGroup`, stream events back into
+the parent's message stream in real time, and are displayed as inline collapsible blocks in the
+chat UI. V4a children are read-only explorers. V4b children are write-capable workers, each
+isolated in their own git worktree.
+
+### AgentDefinition
+
+Defined in TOML. Loaded from `~/.merlin/agents/*.toml` by `AgentRegistry` at launch. Three
+built-in definitions are always present (cannot be overridden by user files):
+
+| Name | Role | Tool set | Description |
+|---|---|---|---|
+| `default` | default | full (inherits parent) | General purpose; same tools as parent |
+| `worker` | worker | full + write | Write-capable; gets its own git worktree in V4b |
+| `explorer` | explorer | read-only | Fast research agent; no writes, no shell mutations |
+
+TOML schema for custom agents (`~/.merlin/agents/my-agent.toml`):
+```toml
+name = "my-agent"
+description = "Short description shown in spawn_agent tool picker"
+instructions = "You are a specialist in..."
+model = "claude-haiku-4-5-20251001"   # optional; inherits parent model if absent
+role = "explorer"                       # explorer | worker | default
+allowed_tools = ["read_file", "grep"]  # optional; overrides role defaults
+```
+
+### AgentRegistry
+
+```swift
+actor AgentRegistry {
+    static let shared = AgentRegistry()
+    func load(from dir: URL) async throws   // loads ~/.merlin/agents/*.toml
+    func all() -> [AgentDefinition]
+    func definition(named: String) -> AgentDefinition?
+    func registerBuiltins()
+}
+```
+
+### spawn_agent tool
+
+Registered in `ToolRegistry` alongside built-in tools. The LLM calls it to spawn a subagent:
+
+```json
+{
+  "name": "spawn_agent",
+  "description": "Spawn a subagent to run a task in parallel. The agent streams its activity back here.",
+  "parameters": {
+    "agent": "explorer",
+    "prompt": "Search the codebase for all uses of URLSession and summarize the patterns."
+  }
+}
+```
+
+`AgenticEngine` handles this tool call by creating a `SubagentEngine`, subscribing to its event
+stream, and forwarding `SubagentEvent` values into the parent's `MessageStream`.
+
+### SubagentEvent
+
+```swift
+enum SubagentEvent: Sendable {
+    case toolCallStarted(toolName: String, input: [String: Any])
+    case toolCallCompleted(toolName: String, result: String)
+    case messageChunk(String)
+    case completed(summary: String)
+    case failed(Error)
+}
+```
+
+### SubagentEngine
+
+```swift
+actor SubagentEngine {
+    init(
+        definition: AgentDefinition,
+        prompt: String,
+        parent: AgenticEngine,
+        depth: Int
+    )
+    var events: AsyncStream<SubagentEvent> { get }
+    func start() async
+    func cancel()
+}
+```
+
+Each `SubagentEngine`:
+- Has its own isolated `ContextManager`
+- Inherits the parent's `HookEngine` (hooks apply to all subagent tool calls)
+- Uses a tool set gated by the agent's role (explorer = read-only, worker = full)
+- Respects `AppSettings.maxSubagentDepth` — refuses to spawn further children beyond the limit
+- Runs within the parent's `TaskGroup` slot — `AppSettings.maxSubagentThreads` controls concurrency
+
+### Explorer tool set (V4a read-only)
+
+| Category | Allowed tools |
+|---|---|
+| File system | `read_file`, `list_directory`, `search_files` |
+| Search | `grep`, `find_files` |
+| Shell | `bash` — read-only commands only (no writes, no sudo, no pipes to mutating commands) |
+| Web | `web_search` (if API key configured) |
+| Knowledge | `rag_search` |
+
+Write tools (`write_file`, `create_file`, `delete_file`, `move_file`, `apply_diff`) and all
+Xcode/CGEvent/AX tools are absent from the explorer tool set.
+
+### V4a UI — Inline collapsible blocks
+
+Each active subagent renders as a collapsible block in the parent's `ChatView`:
+
+```
+▼ [explorer] Searching codebase for URLSession patterns…
+  ● grep — searching 47 files
+  ● read_file — Sources/Network/APIClient.swift
+  ✓ Found 12 uses across 4 files. Summary: all calls go through APIClient…
+```
+
+Blocks collapse to a single summary line when the subagent completes.
+
+### WorktreeManager (V4b)
+
+```swift
+actor WorktreeManager {
+    func create(sessionID: UUID, in repo: URL) async throws -> URL
+    func remove(sessionID: UUID) async throws
+    func lock(sessionID: UUID) async throws
+    func unlock(sessionID: UUID)
+    func isLocked(sessionID: UUID) -> Bool
+}
+```
+
+Each V4b worker subagent gets an isolated worktree at `~/.merlin/worktrees/<sessionID>/`.
+The lock prevents two workers from writing to the same path concurrently. `StagingBuffer` per
+subagent tracks proposed changes for user review before merge.
+
+### V4b UI — Sidebar child entries
+
+Write-capable subagents are promoted from inline blocks to child entries in `SessionSidebar`,
+indented under the parent:
+
+```
+● Session: refactor auth module
+  ↳ [worker] Updating AuthGate…
+  ↳ [worker] Writing tests…
+```
+
+Each child entry opens its own diff view showing the `StagingBuffer` for that worktree.
+
+### AppSettings additions (v4)
+
+```toml
+max_subagent_threads = 4   # max concurrent subagent TaskGroup slots
+max_subagent_depth = 2     # max spawn_agent nesting depth
+```
+
+---
+
+| Decision | v4 |
+|---|---|
+| Dispatch | `spawn_agent` tool call — model-driven, same pattern as all other tools |
+| Result communication | Streaming `AsyncStream<SubagentEvent>` — no structured return intermediary |
+| Explorer tool set | read_file, list_directory, search_files, grep, bash (read-only), web_search, rag_search |
+| Hook inheritance | Children inherit parent HookEngine — hooks apply to all subagent tool calls |
+| Thread/depth limits | `max_subagent_threads` and `max_subagent_depth` in AppSettings / config.toml |
+| V4a UI | Inline collapsible blocks in parent chat stream |
+| V4b UI | Promote write-capable workers to SessionSidebar child entries with per-worktree diff view |
+| Streaming shell pane | Deferred to v5 |
