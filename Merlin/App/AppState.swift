@@ -65,7 +65,7 @@ final class AppState: ObservableObject {
             .path
 
         authMemory = AuthMemory(storePath: authStorePath)
-        xcalibreClient = XcalibreClient()
+        xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)

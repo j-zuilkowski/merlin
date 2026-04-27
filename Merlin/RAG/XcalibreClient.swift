@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 // MARK: - Models
 
@@ -62,65 +61,21 @@ private struct BooksListResponse: Decodable {
 // MARK: - XcalibreClient
 
 actor XcalibreClient {
-    static let keychainService = "com.merlin.xcalibre"
-    static let keychainAccount = "api-token"
 
     private let baseURL: String
+    private let token: String
     private let fetcher: any HTTPFetching
     private(set) var isAvailable: Bool = false
 
     init(
         baseURL: String = ProcessInfo.processInfo.environment["XCALIBRE_BASE_URL"]
             ?? "http://localhost:8083",
+        token: String = "",
         fetcher: any HTTPFetching = URLSession.shared
     ) {
         self.baseURL = baseURL
+        self.token = token
         self.fetcher = fetcher
-    }
-
-    // MARK: - Keychain
-
-    static func readAPIToken() -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data,
-              let token = String(data: data, encoding: .utf8) else { return nil }
-        return token
-    }
-
-    static func writeAPIToken(_ token: String) throws {
-        let data = Data(token.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: keychainService,
-            kSecAttrAccount as String: keychainAccount
-        ]
-        let attributes: [String: Any] = [
-            kSecValueData as String: data
-        ]
-
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var addQuery = query
-            addQuery[kSecValueData as String] = data
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
-            }
-            return
-        }
-
-        guard status == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
-        }
     }
 
     // MARK: - Availability probe
@@ -146,7 +101,7 @@ actor XcalibreClient {
         rerank: Bool = false
     ) async -> [RAGChunk] {
         guard isAvailable else { return [] }
-        guard let token = XcalibreClient.readAPIToken(), !token.isEmpty else { return [] }
+        guard !token.isEmpty else { return [] }
 
         var components = URLComponents(string: "\(baseURL)/api/v1/search/chunks")!
         var items: [URLQueryItem] = [
@@ -179,7 +134,7 @@ actor XcalibreClient {
 
     func listBooks(limit: Int = 200) async -> [RAGBook] {
         guard isAvailable else { return [] }
-        guard let token = XcalibreClient.readAPIToken(), !token.isEmpty else { return [] }
+        guard !token.isEmpty else { return [] }
 
         var components = URLComponents(string: "\(baseURL)/api/v1/books")!
         components.queryItems = [

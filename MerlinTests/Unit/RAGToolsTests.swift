@@ -119,9 +119,8 @@ final class RAGToolsHandlerTests: XCTestCase {
         if let b = booksResponse {
             mock.responses["/api/v1/books"] = (Data(b.utf8), 200)
         }
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         return client
     }
 
@@ -161,9 +160,8 @@ final class RAGToolsHandlerTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/search/chunks"] = (Data(chunkJSON.utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
 
         _ = await RAGTools.search(args: #"{"query":"test","limit":999}"#, client: client)
 

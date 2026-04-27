@@ -112,9 +112,8 @@ final class XcalibreClientTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/search/chunks"] = (Data(sampleChunkJSON.utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         let chunks = await client.searchChunks(query: "closures")
         XCTAssertEqual(chunks.count, 1)
         XCTAssertEqual(chunks[0].bookTitle, "Swift Programming")
@@ -134,9 +133,8 @@ final class XcalibreClientTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/search/chunks"] = (Data(), 503)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         let chunks = await client.searchChunks(query: "anything")
         XCTAssertTrue(chunks.isEmpty)
         let available = await client.isAvailable
@@ -147,9 +145,8 @@ final class XcalibreClientTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/search/chunks"] = (Data("not json".utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         let chunks = await client.searchChunks(query: "anything")
         XCTAssertTrue(chunks.isEmpty)
     }
@@ -160,9 +157,8 @@ final class XcalibreClientTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/books"] = (Data(sampleBooksJSON.utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         let books = await client.listBooks()
         XCTAssertEqual(books.count, 1)
         XCTAssertEqual(books[0].title, "Swift Programming Language")
@@ -176,12 +172,4 @@ final class XcalibreClientTests: XCTestCase {
         XCTAssertTrue(books.isEmpty)
     }
 
-    // MARK: Keychain
-
-    func testWriteAndReadAPIToken() throws {
-        let token = "xcalibre-test-\(UUID().uuidString)"
-        try XcalibreClient.writeAPIToken(token)
-        let read = XcalibreClient.readAPIToken()
-        XCTAssertEqual(read, token)
-    }
 }

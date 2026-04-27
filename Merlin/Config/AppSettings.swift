@@ -17,6 +17,7 @@ final class AppSettings: ObservableObject {
     @Published var reasoningEnabledOverrides: [String: Bool] = [:]
     @Published var maxSubagentThreads: Int = 4
     @Published var maxSubagentDepth: Int = 2
+    @Published var xcalibreToken: String = ""
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
@@ -35,6 +36,7 @@ final class AppSettings: ObservableObject {
         var reasoningEnabledOverrides: [String: Bool]?
         var maxSubagentThreads: Int?
         var maxSubagentDepth: Int?
+        var xcalibreToken: String?
 
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
@@ -48,6 +50,7 @@ final class AppSettings: ObservableObject {
             case reasoningEnabledOverrides = "model_capabilities"
             case maxSubagentThreads = "max_subagent_threads"
             case maxSubagentDepth = "max_subagent_depth"
+            case xcalibreToken = "xcalibre_token"
         }
     }
 
@@ -93,6 +96,9 @@ final class AppSettings: ObservableObject {
         if let value = config.maxSubagentDepth {
             maxSubagentDepth = value
         }
+        if let value = config.xcalibreToken {
+            xcalibreToken = value
+        }
     }
 
     func save(to url: URL) async throws {
@@ -103,6 +109,9 @@ final class AppSettings: ObservableObject {
         lines.append("model_id = \(quoted(modelID))")
         lines.append("max_subagent_threads = \(maxSubagentThreads)")
         lines.append("max_subagent_depth = \(maxSubagentDepth)")
+        if !xcalibreToken.isEmpty {
+            lines.append("xcalibre_token = \(quoted(xcalibreToken))")
+        }
         if standingInstructions.isEmpty == false {
             lines.append("standing_instructions = \(quoted(standingInstructions))")
         }

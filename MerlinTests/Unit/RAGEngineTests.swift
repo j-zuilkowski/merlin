@@ -67,9 +67,8 @@ final class RAGEngineTests: XCTestCase {
         let mock = MockHTTPFetcher()
         mock.responses["/health"] = (Data(), 200)
         mock.responses["/api/v1/search/chunks"] = (Data(chunkJSON.utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
         return client
     }
 
@@ -103,9 +102,8 @@ final class RAGEngineTests: XCTestCase {
         {"query":"test","chunks":[],"total_searched":0,"retrieval_ms":1}
         """
         mock.responses["/api/v1/search/chunks"] = (Data(emptyChunksJSON.utf8), 200)
-        let client = XcalibreClient(baseURL: "http://localhost:8083", fetcher: mock)
+        let client = XcalibreClient(baseURL: "http://localhost:8083", token: "test-token", fetcher: mock)
         await client.probe()
-        try XcalibreClient.writeAPIToken("test-token")
 
         let (engine, _, ctx) = makeEngine(xcalibreClient: client)
         for await _ in engine.send(userMessage: "plain question") {}
