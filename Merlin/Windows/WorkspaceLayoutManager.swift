@@ -31,7 +31,7 @@ struct WorkspaceLayoutManager: Sendable {
             showPreviewPane: false,
             showSideChat: false,
             sidebarWidth: 200,
-            chatWidth: 360
+            chatWidth: 300
         )
     }
 

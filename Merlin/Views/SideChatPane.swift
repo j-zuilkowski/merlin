@@ -21,6 +21,7 @@ struct SideChatPane: View {
             if isVisible {
                 ChatView()
                     .environmentObject(appState)
+                    .environmentObject(skillsRegistry)
                     .environmentObject(appState.registry)
                     .environmentObject(sessionManager)
             } else {

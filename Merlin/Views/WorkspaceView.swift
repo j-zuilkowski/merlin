@@ -26,6 +26,8 @@ struct WorkspaceView: View {
         Group {
             if let session = sessionManager.activeSession {
                 mainLayout(session: session)
+                    .focusedObject(session.appState)
+                    .focusedObject(session.appState.registry)
             } else {
                 noSessionView
             }
@@ -104,7 +106,7 @@ struct WorkspaceView: View {
                 if layout.showSideChat {
                     Divider()
                     SideChatPane(isVisible: $layout.showSideChat)
-                        .frame(width: layout.chatWidth)
+                        .frame(minWidth: 260, idealWidth: layout.chatWidth, maxWidth: 400)
                 }
             }
 
