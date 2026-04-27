@@ -32,6 +32,7 @@ Date: 2026-04-26
 | **Draggable pane layout** | Chat, diff, terminal, file, preview all rearrangeable | Medium |
 | **Side chat** | Ask a question without derailing the main session thread | Low |
 | **Interrupt / stop button** | Halt Claude mid-run and steer without starting over | Low |
+| **Scroll lock** | Manual upward scroll pauses auto-scroll; streaming continues off-screen; resumes on reaching bottom | Low |
 
 ### Context & input
 | Gap | Claude Code capability | Effort |

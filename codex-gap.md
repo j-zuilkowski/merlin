@@ -23,6 +23,7 @@ Date: 2026-04-26
 | **Parallel threads** | Multiple agent tasks running side-by-side with quick switching | High |
 | **Git worktree UI** | Isolated per-thread worktrees, not just shell `git` commands | Medium |
 | **Diff / review pane** | Visual diff, file staging, commit + push from UI | High |
+| **Scroll lock** | Manual scroll pauses auto-scroll to bottom while streaming; resumes at bottom | Low |
 | **PR workflow** | Address PR feedback inside a thread | Medium |
 | **Recurring task scheduling** | Wake-up a thread on a schedule | Medium |
 | **Skills / plugin system** | Reusable skills shared across app, CLI, IDE | High |
