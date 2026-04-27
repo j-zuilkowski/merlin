@@ -145,7 +145,7 @@ private struct GeneralSettingsView: View {
                 }
             }
         }
-        .padding()
+        .formStyle(.grouped)
     }
 }
 
@@ -183,7 +183,7 @@ private struct AppearanceSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding()
+        .formStyle(.grouped)
     }
 }
 
@@ -241,7 +241,7 @@ struct AgentSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding()
+        .formStyle(.grouped)
     }
 }
 
@@ -314,7 +314,7 @@ struct MemoriesSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding()
+            .formStyle(.grouped)
             .frame(minHeight: 140)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -512,7 +512,7 @@ struct SearchSettingsView: View {
             }
             .buttonStyle(.borderedProminent)
         }
-        .padding()
+        .formStyle(.grouped)
         .onAppear {
             apiKey = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
         }
@@ -657,7 +657,7 @@ private struct ConnectorsSettingsView: View {
                     .font(.caption)
             }
         }
-        .padding()
+        .formStyle(.grouped)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
@@ -738,7 +738,7 @@ private struct AdvancedSettingsView: View {
                 }
             }
         }
-        .padding()
+        .formStyle(.grouped)
     }
 
     private func resetToDefaults() {
