@@ -76,6 +76,12 @@ final class AppState: ObservableObject {
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
         Self.installBuiltinSkills()
         Task { await ToolRegistry.shared.registerBuiltins() }
+        Task {
+            await AgentRegistry.shared.registerBuiltins()
+            let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+            let agentsDir = URL(fileURLWithPath: "\(home)/.merlin/agents")
+            try? await AgentRegistry.shared.loadDirectory(agentsDir)
+        }
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)
