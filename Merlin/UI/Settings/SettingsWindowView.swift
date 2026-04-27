@@ -697,25 +697,72 @@ private struct ConnectorsSettingsView: View {
 
 private struct AdvancedSettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var showResetConfirmation = false
 
     var body: some View {
         Form {
-            Section("Context") {
-                Stepper(value: $settings.maxTokens, in: 1_024...256_000, step: 1_024) {
-                    Text("Context window: \(settings.maxTokens)")
+            Section("Files") {
+                Button("Show Config File in Finder") {
+                    let home = FileManager.default.homeDirectoryForCurrentUser
+                    let config = home.appendingPathComponent(".merlin/config.toml")
+                    if !FileManager.default.fileExists(atPath: config.path) {
+                        try? "".write(to: config, atomically: true, encoding: .utf8)
+                    }
+                    NSWorkspace.shared.activateFileViewerSelecting([config])
                 }
-                Toggle("Auto compact at 80 % context", isOn: $settings.autoCompact)
+
+                Button("Show Memories Folder in Finder") {
+                    let home = FileManager.default.homeDirectoryForCurrentUser
+                    let memories = home.appendingPathComponent(".merlin/memories")
+                    try? FileManager.default.createDirectory(at: memories, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(memories)
+                }
             }
 
-            Section("Subagents") {
-                Stepper(value: $settings.maxSubagentThreads, in: 1...16, step: 1) {
-                    Text("Max parallel threads: \(settings.maxSubagentThreads)")
+            Section("Reset") {
+                Button("Reset All Settings to Defaults") {
+                    showResetConfirmation = true
                 }
-                Stepper(value: $settings.maxSubagentDepth, in: 1...8, step: 1) {
-                    Text("Max spawn depth: \(settings.maxSubagentDepth)")
+                .foregroundStyle(.red)
+                .confirmationDialog(
+                    "Reset all settings?",
+                    isPresented: $showResetConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Reset", role: .destructive) {
+                        resetToDefaults()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will reset all Merlin settings to their defaults. API keys and connector tokens are not affected.")
                 }
             }
         }
         .padding()
+    }
+
+    private func resetToDefaults() {
+        settings.autoCompact = false
+        settings.maxTokens = 8_192
+        settings.keepAwake = false
+        settings.providerName = "anthropic"
+        settings.modelID = ""
+        settings.defaultPermissionMode = .ask
+        settings.notificationsEnabled = true
+        settings.messageDensity = .comfortable
+        settings.standingInstructions = ""
+        settings.hooks = []
+        settings.appearance = AppearanceSettings()
+        settings.reasoningEnabledOverrides = [:]
+        settings.maxSubagentThreads = 4
+        settings.maxSubagentDepth = 2
+        settings.memoriesEnabled = false
+        settings.memoryIdleTimeout = 300
+        settings.disabledSkillNames = []
+        Task {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let url = home.appendingPathComponent(".merlin/config.toml")
+            try? await settings.save(to: url)
+        }
     }
 }
