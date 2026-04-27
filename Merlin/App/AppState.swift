@@ -47,6 +47,7 @@ final class AppState: ObservableObject {
 
     @Published var lastScreenshot: (data: Data, timestamp: Date, sourceBundleID: String)? = nil
     @Published var contextUsage: ContextUsageTracker = ContextUsageTracker(contextWindowSize: 200_000)
+    @Published var toolbarActionsList: [ToolbarAction] = []
 
     @Published var activeProviderID: String = "deepseek" {
         didSet {
@@ -59,6 +60,7 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
+    let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
 
     init(projectPath: String = "") {
@@ -132,6 +134,12 @@ final class AppState: ObservableObject {
         engine.registry = registry
         engine.sessionStore = sessionStore
         syncEngineProviders()
+        Task {
+            let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+            let path = "\(home)/.merlin/toolbar-actions.json"
+            await toolbarActions.load(from: path)
+            toolbarActionsList = await toolbarActions.all()
+        }
         Task { await xcalibreClient.probe() }
         Task { await registry.probeLocalProviders() }
 

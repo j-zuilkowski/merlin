@@ -32,7 +32,12 @@ struct ChatView: View {
                 }
             }
 
-            Divider()
+            if toolbarActionsList.isEmpty == false {
+                toolbarActionsBar
+                Divider()
+            } else {
+                Divider()
+            }
 
             inputBar
         }
@@ -97,6 +102,32 @@ struct ChatView: View {
 
     private var currentMode: PermissionMode {
         sessionManager.activeSession?.permissionMode ?? .ask
+    }
+
+    private var toolbarActionsList: [ToolbarAction] {
+        appState.toolbarActionsList
+    }
+
+    private var toolbarActionsBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(toolbarActionsList, id: \.id) { action in
+                    Button(action.label) {
+                        Task {
+                            guard let result = try? await action.run() else { return }
+                            for await _ in appState.engine.send(
+                                userMessage: "[Toolbar] \(action.label): \(result)"
+                            ) {}
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+        }
+        .frame(height: toolbarActionsList.isEmpty ? 0 : 36)
     }
 
     private var inputBar: some View {

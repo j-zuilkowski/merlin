@@ -27,4 +27,23 @@ actor ToolbarActionStore {
         }
         actions[action.id] = action
     }
+
+    func load(from path: String) async {
+        guard let data = FileManager.default.contents(atPath: path),
+              let loaded = try? JSONDecoder().decode([ToolbarAction].self, from: data) else {
+            return
+        }
+
+        actions.removeAll()
+        order.removeAll()
+        for action in loaded {
+            add(action)
+        }
+    }
+
+    func save(to path: String) async {
+        let all = all()
+        guard let data = try? JSONEncoder().encode(all) else { return }
+        try? data.write(to: URL(fileURLWithPath: path))
+    }
 }
