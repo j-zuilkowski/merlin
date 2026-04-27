@@ -8,6 +8,19 @@ enum MessageDensity: String, CaseIterable, Codable, Sendable {
     case spacious
 }
 
+extension MessageDensity {
+    var verticalPadding: CGFloat {
+        switch self {
+        case .compact:
+            return 4
+        case .comfortable:
+            return 8
+        case .spacious:
+            return 12
+        }
+    }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()

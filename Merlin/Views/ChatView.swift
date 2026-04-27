@@ -630,8 +630,15 @@ private struct ChatEntryRow: View {
     let item: ChatEntry
     let onToggleThinking: (() -> Void)?
     let onToggleTool: (() -> Void)?
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
+        content
+            .padding(.vertical, settings.messageDensity.verticalPadding)
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch item.role {
         case .user:
             userBubble
