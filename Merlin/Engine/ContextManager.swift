@@ -5,9 +5,12 @@ final class ContextManager: ObservableObject {
     @Published private(set) var messages: [Message] = []
     private(set) var estimatedTokens: Int = 0
     private(set) var compactionCount: Int = 0
+    private(set) var recentlyInvokedSkills: [Skill] = []
 
     private let compactionThreshold = 800_000
     private let compactionKeepRecentTurns = 20
+    private let skillBudgetTokens = 25_000
+    private let skillBudgetPerSkill = 5_000
 
     func append(_ message: Message) {
         messages.append(message)
@@ -28,6 +31,14 @@ final class ContextManager: ObservableObject {
 
     func forceCompaction() {
         compact(force: true)
+    }
+
+    func recordSkillInvocation(_ skill: Skill) {
+        recentlyInvokedSkills.removeAll { $0.name == skill.name }
+        recentlyInvokedSkills.insert(skill, at: 0)
+        if recentlyInvokedSkills.count > compactionKeepRecentTurns {
+            recentlyInvokedSkills = Array(recentlyInvokedSkills.prefix(compactionKeepRecentTurns))
+        }
     }
 
     private func recomputeEstimatedTokens() -> Int {
@@ -101,7 +112,38 @@ final class ContextManager: ObservableObject {
             messages = rebuilt
         }
 
+        if let skillBlock = buildSkillReinjectionBlock(), !skillBlock.isEmpty {
+            messages.append(Message(
+                role: .system,
+                content: .text(skillBlock),
+                timestamp: Date()
+            ))
+        }
+
         estimatedTokens = recomputeEstimatedTokens()
         compactionCount += 1
+    }
+
+    private func buildSkillReinjectionBlock() -> String? {
+        guard !recentlyInvokedSkills.isEmpty else { return nil }
+
+        var parts: [String] = []
+        var tokensSoFar = 0
+
+        for skill in recentlyInvokedSkills {
+            let section = "## \(skill.name)\n\(skill.body)"
+            let tokens = tokenEstimate(forText: section)
+            guard tokens <= skillBudgetPerSkill else { continue }
+            guard tokensSoFar + tokens <= skillBudgetTokens else { break }
+            parts.append(section)
+            tokensSoFar += tokens
+        }
+
+        guard !parts.isEmpty else { return nil }
+        return "[Skills]\n" + parts.joined(separator: "\n\n") + "\n[/Skills]"
+    }
+
+    private func tokenEstimate(forText text: String) -> Int {
+        Int(Double(text.utf8.count) / 3.5)
     }
 }
