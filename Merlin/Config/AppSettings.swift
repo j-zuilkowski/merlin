@@ -17,6 +17,7 @@ final class AppSettings: ObservableObject {
     @Published var reasoningEnabledOverrides: [String: Bool] = [:]
     @Published var maxSubagentThreads: Int = 4
     @Published var maxSubagentDepth: Int = 2
+    @Published var disabledSkillNames: [String] = []
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
     @Published var xcalibreToken: String = ""
@@ -38,6 +39,7 @@ final class AppSettings: ObservableObject {
         var reasoningEnabledOverrides: [String: Bool]?
         var maxSubagentThreads: Int?
         var maxSubagentDepth: Int?
+        var disabledSkillNames: [String]?
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
         var xcalibreToken: String?
@@ -54,6 +56,7 @@ final class AppSettings: ObservableObject {
             case reasoningEnabledOverrides = "model_capabilities"
             case maxSubagentThreads = "max_subagent_threads"
             case maxSubagentDepth = "max_subagent_depth"
+            case disabledSkillNames = "disabled_skill_names"
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
             case xcalibreToken = "xcalibre_token"
@@ -102,6 +105,9 @@ final class AppSettings: ObservableObject {
         if let value = config.maxSubagentDepth {
             maxSubagentDepth = value
         }
+        if let value = config.disabledSkillNames {
+            disabledSkillNames = value
+        }
         if let value = config.memoriesEnabled {
             memoriesEnabled = value
         }
@@ -123,6 +129,10 @@ final class AppSettings: ObservableObject {
         lines.append("max_subagent_depth = \(maxSubagentDepth)")
         if !xcalibreToken.isEmpty {
             lines.append("xcalibre_token = \(quoted(xcalibreToken))")
+        }
+        if disabledSkillNames.isEmpty == false {
+            let quoted = disabledSkillNames.map { "\"\($0)\"" }.joined(separator: ", ")
+            lines.append("disabled_skill_names = [\(quoted)]")
         }
         if memoriesEnabled {
             lines.append("memories_enabled = true")

@@ -386,13 +386,50 @@ struct MCPSettingsView: View {
     }
 }
 
-// MARK: - Skills (stub — replaced in phase 68)
+// MARK: - Skills
 
 struct SkillsSettingsView: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @StateObject private var skillsRegistry = SkillsRegistry(projectPath: "")
+
     var body: some View {
-        Text("Skills")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VStack(alignment: .leading, spacing: 0) {
+            if skillsRegistry.skills.isEmpty {
+                Text("No skills installed.\nAdd SKILL.md files to ~/.merlin/skills/ or .merlin/skills/ in your project.")
+                    .foregroundStyle(.secondary)
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(skillsRegistry.skills) { skill in
+                    Toggle(isOn: Binding(
+                        get: { !settings.disabledSkillNames.contains(skill.name) },
+                        set: { enabled in
+                            if enabled {
+                                settings.disabledSkillNames.removeAll { $0 == skill.name }
+                            } else if !settings.disabledSkillNames.contains(skill.name) {
+                                settings.disabledSkillNames.append(skill.name)
+                            }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(skill.name).bold()
+                            if !skill.frontmatter.description.isEmpty {
+                                Text(skill.frontmatter.description)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(skill.isProjectScoped ? "Project" : "Personal")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+            Text("Disabled skills are hidden from the agent's tool list.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding()
+        }
     }
 }
 
