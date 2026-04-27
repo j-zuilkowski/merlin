@@ -169,6 +169,30 @@ Current phases live in `phases/`. Before starting a new feature, check the highe
 
 ---
 
+## Running the App
+
+Builds go to the project-local `build/` folder (not DerivedData). Always launch from:
+
+```bash
+open ~/Documents/localProject/merlin/build/Debug/Merlin.app
+```
+
+Kill and relaunch after each build:
+```bash
+pkill -x Merlin 2>/dev/null; sleep 1
+open ~/Documents/localProject/merlin/build/Debug/Merlin.app
+```
+
+---
+
+## Xcode 26 / SwiftUI 6 Notes
+
+- `@FocusedSceneObject` is **not available** — use `@FocusedObject` in `Commands` structs
+- Match with `.focusedObject()` in views (not `.focusedSceneObject()`)
+- `CommandMenu` works; `CommandGroup` works
+
+---
+
 ## Key Constraints
 
 - `ToolDefinitions.all` has exactly **37** entries — do not add or remove without updating this count

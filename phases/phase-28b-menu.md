@@ -22,8 +22,9 @@ Implementation notes:
 - AppState needs `func newSession()` and `func stopEngine()`.
 - newSession() must signal ChatView to clear its displayed items. ChatView owns a local
   @StateObject ChatViewModel — use NotificationCenter (name: "com.merlin.newSession").
-- Commands access AppState and ProviderRegistry via @FocusedSceneObject. Wire them in
-  ContentView with .focusedSceneObject().
+- Commands access AppState and ProviderRegistry via @FocusedObject. Wire them in
+  ContentView with .focusedObject(). Note: @FocusedSceneObject is not available in
+  Xcode 26 / SwiftUI 6. Use @FocusedObject + .focusedObject() instead.
 
 ---
 
@@ -127,8 +128,8 @@ Add `.onReceive` to `ChatView.body`, at the end of the outermost `VStack` modifi
 import SwiftUI
 
 struct MerlinCommands: Commands {
-    @FocusedSceneObject var appState: AppState?
-    @FocusedSceneObject var registry: ProviderRegistry?
+    @FocusedObject var appState: AppState?
+    @FocusedObject var registry: ProviderRegistry?
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -184,8 +185,8 @@ Add `@EnvironmentObject var registry: ProviderRegistry` property.
 Add at the end of the outermost view modifier chain (after `.sheet`):
 
 ```swift
-.focusedSceneObject(appState)
-.focusedSceneObject(registry)
+.focusedObject(appState)
+.focusedObject(registry)
 ```
 
 Add `MerlinCommands.swift` to the Xcode project (App group).

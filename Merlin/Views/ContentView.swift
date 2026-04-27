@@ -29,7 +29,7 @@ struct ContentView: View {
                 )
             }
         }
-        .focusedSceneObject(appState)
-        .focusedSceneObject(registry)
+        .focusedObject(appState)
+        .focusedObject(registry)
     }
 }
