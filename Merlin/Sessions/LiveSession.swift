@@ -12,7 +12,7 @@ final class LiveSession: ObservableObject, Identifiable {
     private let memoryEngine = MemoryEngine()
     private let automationStore = ThreadAutomationStore()
     private let automationEngine = ThreadAutomationEngine()
-    var permissionMode: PermissionMode = .ask {
+    var permissionMode: PermissionMode = AppSettings.shared.defaultPermissionMode {
         didSet {
             appState.engine.permissionMode = permissionMode
             appState.engine.toolRouter.permissionMode = permissionMode
@@ -29,6 +29,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.appState.engine.skillsRegistry = self.skillsRegistry
         self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
         self.appState.engine.memoriesContent = CLAUDEMDLoader.defaultMemoriesBlock()
+        appState.engine.permissionMode = permissionMode
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode
         appState.engine.onUsageUpdate = { [weak appState] tokens in
