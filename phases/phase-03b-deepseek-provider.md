@@ -2,7 +2,7 @@
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 03a complete: ProviderTests.swift written. LLMProvider protocol in Merlin/Providers/LLMProvider.swift.

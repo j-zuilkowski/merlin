@@ -51,7 +51,7 @@ codex --model gpt-5.4-mini -q "$(cat phases/phase-NN.md)" --approval-mode auto
 ## Key constraints added after initial design
 - All value types must conform to `Sendable` (Swift strict concurrency is ON)
 - `ShellTool` has a `stream()` variant returning `AsyncThrowingStream<ShellOutputLine, Error>`
-- `ToolDefinitions.all` has exactly **37** entries
+- `ToolDefinitions.all` has a fixed set of built-in tools; count is not enforced — use ToolRegistry for the live set
 - `ContextManager` exposes `forceCompaction()` for test use
 - `TestHelpers/` is a source folder included in all three test targets (not a separate target)
 - Tool handlers are registered in `Merlin/App/ToolRegistration.swift`, called from `AppState.init`

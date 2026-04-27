@@ -2,7 +2,7 @@
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
@@ -10,7 +10,7 @@ All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). A
 ---
 
 ## Task
-Wire every tool name to its implementation inside `AppState.init`. This is the single file that connects the ToolRouter to all 37 tool functions.
+Wire every tool name to its implementation inside `AppState.init`. This is the single file that connects the ToolRouter to all built-in tool functions.
 
 ## Write to: Merlin/App/ToolRegistration.swift
 
@@ -18,7 +18,7 @@ Wire every tool name to its implementation inside `AppState.init`. This is the s
 import Foundation
 
 // Called from AppState.init after ToolRouter is constructed.
-// Registers all 37 tool handlers.
+// Registers all built-in tool handlers.
 @MainActor
 func registerAllTools(router: ToolRouter) {
 
@@ -272,7 +272,7 @@ Confirm tool count matches:
 grep -c 'router.register' Merlin/App/ToolRegistration.swift
 ```
 
-Expected: `BUILD SUCCEEDED`. The grep count should be 37 (one `register` call per tool; the run_shell override in AppState adds one more at runtime but is not in this file).
+Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.count (one `register` call per tool; the run_shell override in AppState adds one more at runtime but is not in this file).
 
 ---
 
@@ -281,5 +281,5 @@ Expected: `BUILD SUCCEEDED`. The grep count should be 37 (one `register` call pe
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/ToolRegistration.swift
-git commit -m "Phase 19b — registerAllTools (37 handlers wired)"
+git commit -m "Phase 19b — registerAllTools"
 ```

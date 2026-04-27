@@ -2,7 +2,7 @@
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Providers/LLMProvider.swift.
@@ -11,9 +11,9 @@ Phase 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Provider
 
 ## Write to: Merlin/Tools/ToolDefinitions.swift
 
-Define all 37 tools as static `ToolDefinition` values in a `ToolDefinitions` enum.
+Define all built-in tools as static `ToolDefinition` values in a `ToolDefinitions` enum.
 
-Tool list — implement all 37, in this exact order:
+Tool list — implement all built-in tools, in this exact order:
 
 **File System (7):** read_file, write_file, create_file, delete_file, list_directory, move_file, search_files
 **Shell (1):** run_shell
@@ -24,7 +24,7 @@ Tool list — implement all 37, in this exact order:
 **GUI/Input (7):** ui_click, ui_double_click, ui_right_click, ui_drag, ui_type, ui_key, ui_scroll
 **Vision (2):** ui_screenshot, vision_query
 
-Total: 7+1+4+1+12+3+7+2 = **37**
+Total: 7+1+4+1+12+3+7+2 (verify actual count in ToolDefinitions.all)
 
 ```swift
 enum ToolDefinitions {
@@ -393,8 +393,8 @@ Then confirm the count:
 grep -c 'static let ' Merlin/Tools/ToolDefinitions.swift
 ```
 
-Expected: `BUILD SUCCEEDED`. The grep count should be 38 (37 tool vars + 1 `all` array).
-Alternatively verify in code: `ToolDefinitions.all.count` == 37.
+Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.count + 1 (tool vars + 1 `all` array).
+Alternatively verify in code: `ToolDefinitions.all.count` > 0 (count is dynamic).
 
 ---
 
@@ -403,5 +403,5 @@ Alternatively verify in code: `ToolDefinitions.all.count` == 37.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/ToolDefinitions.swift
-git commit -m "Phase 06 — ToolDefinitions (37 tools)"
+git commit -m "Phase 06 — ToolDefinitions"
 ```

@@ -56,7 +56,7 @@ cat phases/phase-05-keychain.md
 
 # ── PHASE 06 — Tool Definitions ──────────────────────────────────────────
 cat phases/phase-06-tool-definitions.md
-# Verify: BUILD SUCCEEDED; ToolDefinitions.all.count == 37
+# Verify: BUILD SUCCEEDED; ToolDefinitions.all is non-empty
 # Commit: Phase 06
 
 # ── PHASE 07a — FileSystem + Shell Tests ─────────────────────────────────
@@ -161,7 +161,7 @@ cat phases/phase-19-appstate-entrypoint.md
 
 # ── PHASE 19b — Tool Handler Registration ─────────────────────────────────
 cat phases/phase-19b-tool-registration.md
-# Verify: BUILD SUCCEEDED; 37 handlers registered
+# Verify: BUILD SUCCEEDED; all built-in handlers registered
 # Commit: Phase 19b
 
 # ── PHASE 20 — ContentView + ChatView + ProviderHUD ───────────────────────

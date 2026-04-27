@@ -2,7 +2,7 @@
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Full design in: architecture.md, llm.md
@@ -376,7 +376,7 @@ Expected: `BUILD SUCCEEDED`. Warnings are acceptable, errors are not.
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -466,7 +466,7 @@ git commit -m "Phase 02a — SharedTypesTests (failing, types not yet defined)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -681,7 +681,7 @@ git commit -m "Phase 02b — Shared types + LLMProvider protocol (all Sendable)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
@@ -777,7 +777,7 @@ git commit -m "Phase 03a — ProviderTests (failing, providers not yet defined)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 03a complete: ProviderTests.swift written. LLMProvider protocol in Merlin/Providers/LLMProvider.swift.
@@ -854,7 +854,7 @@ git commit -m "Phase 03b — DeepSeekProvider + SSEParser"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 03b complete: DeepSeekProvider and SSEParser exist.
@@ -934,7 +934,7 @@ git commit -m "Phase 04 — LMStudioProvider + live test skeleton"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -1022,7 +1022,7 @@ git commit -m "Phase 05 — KeychainManager + tests"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Providers/LLMProvider.swift.
@@ -1031,9 +1031,9 @@ Phase 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Provider
 
 ## Write to: Merlin/Tools/ToolDefinitions.swift
 
-Define all 37 tools as static `ToolDefinition` values in a `ToolDefinitions` enum.
+Define all built-in tools as static `ToolDefinition` values in a `ToolDefinitions` enum.
 
-Tool list — implement all 37, in this exact order:
+Tool list — implement all built-in tools, in this exact order:
 
 **File System (7):** read_file, write_file, create_file, delete_file, list_directory, move_file, search_files
 **Shell (1):** run_shell
@@ -1044,7 +1044,7 @@ Tool list — implement all 37, in this exact order:
 **GUI/Input (7):** ui_click, ui_double_click, ui_right_click, ui_drag, ui_type, ui_key, ui_scroll
 **Vision (2):** ui_screenshot, vision_query
 
-Total: 7+1+4+1+12+3+7+2 = **37**
+Total: 7+1+4+1+12+3+7+2 (verify actual count in ToolDefinitions.all)
 
 ```swift
 enum ToolDefinitions {
@@ -1413,8 +1413,8 @@ Then confirm the count:
 grep -c 'static let ' Merlin/Tools/ToolDefinitions.swift
 ```
 
-Expected: `BUILD SUCCEEDED`. The grep count should be 38 (37 tool vars + 1 `all` array).
-Alternatively verify in code: `ToolDefinitions.all.count` == 37.
+Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.count + 1 (tool vars + 1 `all` array).
+Alternatively verify in code: `ToolDefinitions.all.count` > 0 (count is dynamic).
 
 ---
 
@@ -1423,13 +1423,13 @@ Alternatively verify in code: `ToolDefinitions.all.count` == 37.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/ToolDefinitions.swift
-git commit -m "Phase 06 — ToolDefinitions (37 tools)"
+git commit -m "Phase 06 — ToolDefinitions"
 ```
 # Phase 07a — FileSystem + Shell Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -1552,7 +1552,7 @@ git commit -m "Phase 07a — FileSystemToolTests + ShellToolTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
@@ -1673,7 +1673,7 @@ git commit -m "Phase 07b — FileSystemTools + ShellTool (9 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
@@ -1743,7 +1743,7 @@ git commit -m "Phase 08a — XcodeToolTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 08a complete: XcodeToolTests.swift written. ShellTool exists.
@@ -1829,7 +1829,7 @@ git commit -m "Phase 08b — XcodeTools implementation"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -1925,7 +1925,7 @@ git commit -m "Phase 09a — AXInspectorTests + ScreenCaptureTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
@@ -2040,7 +2040,7 @@ git commit -m "Phase 09b — AXInspectorTool + ScreenCaptureTool"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 04 complete: LMStudioProvider exists. Phase 09b complete: ScreenCaptureTool exists.
@@ -2175,7 +2175,7 @@ git commit -m "Phase 10 — CGEventTool + VisionQueryTool + tests"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 07b complete: ShellTool exists.
@@ -2320,7 +2320,7 @@ git commit -m "Phase 11 — AppControlTools + ToolDiscovery + tests"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
@@ -2424,7 +2424,7 @@ git commit -m "Phase 12a — PatternMatcherTests + AuthMemoryTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
@@ -2518,7 +2518,7 @@ git commit -m "Phase 12b — PatternMatcher + AuthMemory (8 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 12b complete: AuthMemory and PatternMatcher exist.
@@ -2610,7 +2610,7 @@ git commit -m "Phase 13a — AuthGateTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
@@ -2714,7 +2714,7 @@ git commit -m "Phase 13b — AuthGate implementation (4 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: Message type exists in Merlin/Providers/LLMProvider.swift.
@@ -2807,7 +2807,7 @@ git commit -m "Phase 14a — ContextManagerTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 14a complete: ContextManagerTests.swift written.
@@ -2877,7 +2877,7 @@ git commit -m "Phase 14b — ContextManager with compaction (5 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All tool implementations exist (phases 07–11). AuthGate exists (phase 13b).
@@ -2991,7 +2991,7 @@ git commit -m "Phase 15 — ToolRouter + tests (2 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: ThinkingConfig type exists in Merlin/Providers/LLMProvider.swift.
@@ -3084,7 +3084,7 @@ git commit -m "Phase 16 — ThinkingModeDetector + tests (6 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All engine components exist: ContextManager (14b), ToolRouter (15), ThinkingModeDetector (16), providers (03b, 04).
@@ -3188,7 +3188,7 @@ git commit -m "Phase 17a — AgenticEngineTests (failing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 17a complete: AgenticEngineTests.swift written. All engine components exist.
@@ -3328,7 +3328,7 @@ git commit -m "Phase 17b — AgenticEngine implementation (4 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 02b complete: Message type exists.
@@ -3454,7 +3454,7 @@ git commit -m "Phase 18 — Session + SessionStore + tests (4 tests passing)"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All engine + session components exist (phases 13b–18). ToolRegistration will be written in phase 19b.
@@ -3632,7 +3632,7 @@ git commit -m "Phase 19 — AppState wiring + MerlinApp entry point"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
@@ -3640,7 +3640,7 @@ All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). A
 ---
 
 ## Task
-Wire every tool name to its implementation inside `AppState.init`. This is the single file that connects the ToolRouter to all 37 tool functions.
+Wire every tool name to its implementation inside `AppState.init`. This is the single file that connects the ToolRouter to all built-in tool functions.
 
 ## Write to: Merlin/App/ToolRegistration.swift
 
@@ -3648,7 +3648,7 @@ Wire every tool name to its implementation inside `AppState.init`. This is the s
 import Foundation
 
 // Called from AppState.init after ToolRouter is constructed.
-// Registers all 37 tool handlers.
+// Registers all built-in tool handlers.
 @MainActor
 func registerAllTools(router: ToolRouter) {
 
@@ -3902,7 +3902,7 @@ Confirm tool count matches:
 grep -c 'router.register' Merlin/App/ToolRegistration.swift
 ```
 
-Expected: `BUILD SUCCEEDED`. The grep count should be 37 (one `register` call per tool; the run_shell override in AppState adds one more at runtime but is not in this file).
+Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.count (one `register` call per tool; the run_shell override in AppState adds one more at runtime but is not in this file).
 
 ---
 
@@ -3911,13 +3911,13 @@ Expected: `BUILD SUCCEEDED`. The grep count should be 37 (one `register` call pe
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/ToolRegistration.swift
-git commit -m "Phase 19b — registerAllTools (37 handlers wired)"
+git commit -m "Phase 19b — registerAllTools"
 ```
 # Phase 20 — ContentView + ChatView + ProviderHUD
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
@@ -4036,7 +4036,7 @@ git commit -m "Phase 20 — ContentView + ChatView + ProviderHUD"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
@@ -4177,7 +4177,7 @@ git commit -m "Phase 21 — ToolLogView + ScreenPreviewView + visual layout test
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (phase 13b). KeychainManager exists (phase 05).
@@ -4299,7 +4299,7 @@ git commit -m "Phase 22 — AuthPopupView + FirstLaunchSetupView"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 09b complete: AXInspectorTool exists. Phase 10 complete: CGEventTool exists. Phase 09b: ScreenCaptureTool exists.
@@ -4487,7 +4487,7 @@ git commit -m "Phase 23 — TestTargetApp fixture + GUIAutomationE2ETests"
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
-All value types: Sendable. OpenAI function calling format. 37 tools total.
+All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All components complete. This is the final integration phase.
