@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject var registry: ProviderRegistry
 
     @State private var showToolPane = false
+    @State private var engineRunning = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -47,5 +48,9 @@ struct ContentView: View {
         }
         .focusedObject(appState)
         .focusedObject(registry)
+        .focusedValue(\.isEngineRunning, $engineRunning)
+        .onChange(of: appState.toolActivityState) { _, state in
+            engineRunning = state != .idle
+        }
     }
 }

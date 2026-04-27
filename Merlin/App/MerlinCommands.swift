@@ -4,6 +4,7 @@ struct MerlinCommands: Commands {
     @FocusedObject var appState: AppState?
     @FocusedObject var registry: ProviderRegistry?
     @FocusedObject var sessionManager: SessionManager?
+    @FocusedBinding(\.isEngineRunning) var isEngineRunning: Bool?
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -18,7 +19,7 @@ struct MerlinCommands: Commands {
                 appState?.stopEngine()
             }
             .keyboardShortcut(".", modifiers: .command)
-            .disabled(!canStop)
+            .disabled(isEngineRunning != true)
         }
 
         CommandMenu("Window") {
@@ -59,8 +60,4 @@ struct MerlinCommands: Commands {
         }
     }
 
-    private var canStop: Bool {
-        guard let state = appState?.toolActivityState else { return false }
-        return state == .streaming || state == .toolExecuting
-    }
 }
