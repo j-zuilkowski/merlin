@@ -9,11 +9,11 @@ final class ToolRouter {
         self.authGate = authGate
     }
 
-    func dispatch(_ calls: [ToolCall]) async -> [ToolResult] {
+    func dispatch(_ calls: [ToolCall], permissionMode: PermissionMode = .ask) async -> [ToolResult] {
         await withTaskGroup(of: (Int, ToolResult).self) { group in
             for (index, call) in calls.enumerated() {
                 group.addTask {
-                    let result = await self.dispatchSingle(call)
+                    let result = await self.dispatchSingle(call, permissionMode: permissionMode)
                     return (index, result)
                 }
             }
@@ -31,11 +31,13 @@ final class ToolRouter {
         handlers[name] = handler
     }
 
-    private func dispatchSingle(_ call: ToolCall) async -> ToolResult {
+    private func dispatchSingle(_ call: ToolCall, permissionMode: PermissionMode) async -> ToolResult {
         let argument = primaryArgument(from: call.function.arguments)
-        let decision = await authGate.check(tool: call.function.name, argument: argument)
-        guard decision == .allow else {
-            return ToolResult(toolCallId: call.id, content: "Denied by user", isError: true)
+        if !(permissionMode == .autoAccept && isFileWriteTool(call.function.name)) {
+            let decision = await authGate.check(tool: call.function.name, argument: argument)
+            guard decision == .allow else {
+                return ToolResult(toolCallId: call.id, content: "Denied by user", isError: true)
+            }
         }
 
         guard let handler = handlers[call.function.name] else {
@@ -68,5 +70,9 @@ final class ToolRouter {
             }
         }
         return obj.values.compactMap { $0 as? String }.first ?? json
+    }
+
+    private func isFileWriteTool(_ name: String) -> Bool {
+        ["write_file", "create_file", "delete_file", "move_file"].contains(name)
     }
 }

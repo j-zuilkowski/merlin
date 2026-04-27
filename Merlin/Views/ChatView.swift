@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject private var sessionManager: SessionManager
     @StateObject private var model = ChatViewModel()
 
     var body: some View {
@@ -60,12 +61,32 @@ struct ChatView: View {
 
     private var header: some View {
         HStack {
+            Button {
+                if let session = sessionManager.activeSession {
+                    session.permissionMode = session.permissionMode.next
+                }
+            } label: {
+                Text(currentMode.label)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(currentMode.color.opacity(0.12))
+                    .foregroundStyle(currentMode.color)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+            }
+            .keyboardShortcut("m", modifiers: [.command, .shift])
+            .help("Cycle permission mode (⌘⇧M)")
+
             ProviderHUD()
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.55))
+    }
+
+    private var currentMode: PermissionMode {
+        sessionManager.activeSession?.permissionMode ?? .ask
     }
 
     private var inputBar: some View {

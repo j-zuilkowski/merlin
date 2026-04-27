@@ -36,13 +36,13 @@ final class PermissionModeTests: XCTestCase {
 
     @MainActor
     func testPlanModeInjectsPlanPromptIntoSystemMessage() async {
-        let capturing = CapturingProvider()
+        let capturing = PermissionModeCapturingProvider()
         let engine = makeEngine(provider: capturing)
         engine.permissionMode = .plan
 
         for await _ in engine.send(userMessage: "list files") {}
 
-        let systemMsg = capturing.lastRequest?.messages.first(where: { $0.role == "system" })
+        let systemMsg = capturing.lastRequest?.messages.first(where: { $0.role == .system })
         XCTAssertNotNil(systemMsg, "Expected a system message")
         XCTAssertTrue(
             (systemMsg?.contentText ?? "").contains(PermissionMode.planSystemPrompt.prefix(20)),
@@ -52,7 +52,7 @@ final class PermissionModeTests: XCTestCase {
 
     @MainActor
     func testAutoAcceptModeDoesNotShowAuthPopupForFileWrite() async throws {
-        let capturing = CapturingProvider()
+        let capturing = PermissionModeCapturingProvider()
         let presenter = CapturingAuthPresenter(response: .deny)
         let engine = makeEngineWithFileWriteResponse(provider: capturing, presenter: presenter)
         engine.permissionMode = .autoAccept
@@ -65,7 +65,7 @@ final class PermissionModeTests: XCTestCase {
 
     @MainActor
     func testAskModeShowsAuthPopupForFileWrite() async throws {
-        let capturing = CapturingProvider()
+        let capturing = PermissionModeCapturingProvider()
         let presenter = CapturingAuthPresenter(response: .allowOnce)
         let engine = makeEngineWithFileWriteResponse(provider: capturing, presenter: presenter)
         engine.permissionMode = .ask
@@ -94,7 +94,7 @@ final class PermissionModeTests: XCTestCase {
 
     @MainActor
     private func makeEngineWithFileWriteResponse(
-        provider: CapturingProvider,
+        provider: PermissionModeCapturingProvider,
         presenter: CapturingAuthPresenter
     ) -> AgenticEngine {
         // Prime provider to emit a write_file tool call
@@ -118,7 +118,7 @@ final class PermissionModeTests: XCTestCase {
 }
 
 // CapturingProvider that lets tests inject chunks after construction
-final class CapturingProvider: LLMProvider, @unchecked Sendable {
+final class PermissionModeCapturingProvider: LLMProvider, @unchecked Sendable {
     var id: String { "capturing" }
     var baseURL: URL { URL(string: "http://localhost")! }
     var lastRequest: CompletionRequest?

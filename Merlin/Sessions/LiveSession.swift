@@ -6,7 +6,11 @@ final class LiveSession: ObservableObject, Identifiable {
     let id: UUID
     @Published var title: String
     let appState: AppState
-    var permissionMode: PermissionMode = .ask
+    var permissionMode: PermissionMode = .ask {
+        didSet {
+            appState.engine.permissionMode = permissionMode
+        }
+    }
     let createdAt: Date
 
     init(projectRef: ProjectRef) {

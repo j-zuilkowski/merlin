@@ -18,6 +18,7 @@ targets:
   Merlin:
     type: application
     platform: macOS
+    # Recursive source tree includes Engine/PermissionMode.swift.
     sources: [Merlin/]
     settings:
       base:

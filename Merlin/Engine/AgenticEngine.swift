@@ -23,6 +23,7 @@ final class AgenticEngine {
     private let visionProvider: any LLMProvider
     var xcalibreClient: XcalibreClient?
     var registry: ProviderRegistry?
+    var permissionMode: PermissionMode = .ask
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
@@ -106,7 +107,7 @@ final class AgenticEngine {
             let requestModel = modelID(for: provider)
             let request = CompletionRequest(
                 model: requestModel,
-                messages: contextManager.messagesForProvider(),
+                messages: messagesForProvider(),
                 thinking: shouldUseThinking(for: userMessage) ? ThinkingModeDetector.config(for: userMessage) : nil
             )
 
@@ -154,7 +155,7 @@ final class AgenticEngine {
                 continuation.yield(.toolCallStarted(call))
             }
 
-            let results = await toolRouter.dispatch(calls)
+            let results = await toolRouter.dispatch(calls, permissionMode: permissionMode)
             let prevCompactionCount = contextManager.compactionCount
             for result in results {
                 continuation.yield(.toolCallResult(result))
@@ -218,5 +219,28 @@ final class AgenticEngine {
             return config.model.isEmpty ? provider.id : config.model
         }
         return provider.id
+    }
+
+    private func messagesForProvider() -> [Message] {
+        var messages = contextManager.messagesForProvider()
+        let systemPrompt = buildSystemPrompt()
+        guard !systemPrompt.isEmpty else { return messages }
+
+        let systemMessage = Message(role: .system, content: .text(systemPrompt), timestamp: Date())
+        if messages.first?.role == .system {
+            messages[0] = systemMessage
+        } else {
+            messages.insert(systemMessage, at: 0)
+        }
+        return messages
+    }
+
+    private func buildSystemPrompt() -> String {
+        var parts: [String] = []
+        if permissionMode == .plan {
+            parts.append(PermissionMode.planSystemPrompt)
+        }
+        parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
+        return parts.joined(separator: "\n\n")
     }
 }

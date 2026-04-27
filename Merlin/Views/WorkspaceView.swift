@@ -19,6 +19,7 @@ struct WorkspaceView: View {
                         .frame(minWidth: 180, idealWidth: 200, maxWidth: 240)
 
                     ContentView()
+                        .environmentObject(sessionManager)
                         .environmentObject(session.appState)
                         .environmentObject(session.appState.registry)
                 }
