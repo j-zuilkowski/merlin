@@ -14,6 +14,7 @@ struct StagedChange: Identifiable, Sendable {
     var before: String?
     var after: String?
     var destinationPath: String?
+    var comments: [DiffComment] = []
 }
 
 struct StagingEntry: Identifiable, Sendable, Equatable {
@@ -37,6 +38,29 @@ actor StagingBuffer {
     func stage(_ change: StagedChange) {
         pendingChanges.append(change)
         history.append(StagingEntry(path: change.path, operation: change.kind.rawValue))
+    }
+
+    func addComment(_ comment: DiffComment, toChange id: UUID) {
+        guard let index = pendingChanges.firstIndex(where: { $0.id == id }) else { return }
+        pendingChanges[index].comments.append(comment)
+    }
+
+    func commentsAsAgentMessage(_ changeIDs: [UUID]) -> String {
+        var parts: [String] = [
+            "I've reviewed the staged changes and left inline comments. Please revise accordingly:\n"
+        ]
+
+        for id in changeIDs {
+            guard let change = pendingChanges.first(where: { $0.id == id }),
+                  !change.comments.isEmpty else { continue }
+            let filename = (change.path as NSString).lastPathComponent
+            parts.append("**\(filename)** (`\(change.path)`):")
+            for comment in change.comments.sorted(by: { $0.lineIndex < $1.lineIndex }) {
+                parts.append("  - Line \(comment.lineIndex): \(comment.body)")
+            }
+        }
+
+        return parts.joined(separator: "\n")
     }
 
     func accept(_ id: UUID) async throws {

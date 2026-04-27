@@ -26,6 +26,7 @@ struct WorkspaceView: View {
 
                     DiffPane(
                         buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
+                        engine: session.appState.engine,
                         onCommit: { /* commit flow in phase 36 */ }
                     )
                     .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)

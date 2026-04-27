@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DiffPane: View {
     @ObservedObject var buffer: StagingBufferWrapper
+    let engine: AgenticEngine
     let onCommit: () -> Void
 
     var body: some View {
@@ -43,14 +44,15 @@ struct DiffPane: View {
                         ForEach(buffer.pendingChanges) { change in
                             StagedChangeView(
                                 change: change,
+                                buffer: buffer,
                                 onAccept: {
-                                    Task {
+                                    Task { @MainActor in
                                         try? await buffer.buffer.accept(change.id)
                                         await buffer.refresh()
                                     }
                                 },
                                 onReject: {
-                                    Task {
+                                    Task { @MainActor in
                                         await buffer.buffer.reject(change.id)
                                         await buffer.refresh()
                                     }
@@ -65,7 +67,7 @@ struct DiffPane: View {
 
                 HStack(spacing: 6) {
                     Button {
-                        Task {
+                        Task { @MainActor in
                             await buffer.buffer.rejectAll()
                             await buffer.refresh()
                         }
@@ -74,8 +76,20 @@ struct DiffPane: View {
                     }
                     .help("Reject All")
 
+                    if buffer.pendingChanges.contains(where: { !$0.comments.isEmpty }) {
+                        Button {
+                            let ids = buffer.pendingChanges.map(\.id)
+                            Task { @MainActor in
+                                for await _ in engine.submitDiffComments(changeIDs: ids) {}
+                            }
+                        } label: {
+                            Label("Submit Comments", systemImage: "bubble.left")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
                     Button {
-                        Task {
+                        Task { @MainActor in
                             try? await buffer.buffer.acceptAll()
                             await buffer.refresh()
                             onCommit()
@@ -104,10 +118,13 @@ struct DiffPane: View {
 
 private struct StagedChangeView: View {
     let change: StagedChange
+    let buffer: StagingBufferWrapper
     let onAccept: () -> Void
     let onReject: () -> Void
 
     @State private var isExpanded = true
+    @State private var pendingComment: String = ""
+    @State private var commentingLineIndex: Int? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -140,13 +157,45 @@ private struct StagedChangeView: View {
             if isExpanded {
                 let hunks = DiffEngine.diff(before: change.before ?? "", after: change.after ?? "")
                 VStack(spacing: 0) {
-                    ForEach(hunks) { hunk in
-                        ForEach(Array(hunk.lines.enumerated()), id: \.offset) { _, line in
-                            DiffLineView(line: line)
+                    ForEach(Array(hunks.enumerated()), id: \.offset) { _, hunk in
+                        ForEach(Array(hunk.lines.enumerated()), id: \.offset) { lineIndex, line in
+                            DiffLineView(lineIndex: lineIndex, line: line) {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    commentingLineIndex = lineIndex
+                                }
+                            }
                         }
                     }
                 }
                 .font(.system(size: 11, design: .monospaced))
+            }
+
+            if let lineIdx = commentingLineIndex {
+                HStack {
+                    TextField("Comment on line \(lineIdx + 1)…", text: $pendingComment)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                    Button("Submit") {
+                        guard !pendingComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                        let comment = DiffComment(lineIndex: lineIdx, body: pendingComment)
+                        Task { @MainActor in
+                            await buffer.buffer.addComment(comment, toChange: change.id)
+                            await buffer.refresh()
+                        }
+                        pendingComment = ""
+                        commentingLineIndex = nil
+                    }
+                    .font(.caption.weight(.medium))
+                    Button("Cancel") {
+                        commentingLineIndex = nil
+                        pendingComment = ""
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.quinary)
             }
 
             HStack(spacing: 4) {
@@ -178,7 +227,9 @@ private struct StagedChangeView: View {
 }
 
 private struct DiffLineView: View {
+    let lineIndex: Int
     let line: DiffLine
+    let onTap: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
@@ -192,6 +243,9 @@ private struct DiffLineView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 1)
         .background(background)
+        .accessibilityIdentifier("diff-line-\(lineIndex)")
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
     }
 
     private var prefix: String {

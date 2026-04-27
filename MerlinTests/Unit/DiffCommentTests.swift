@@ -93,8 +93,8 @@ final class DiffCommentTests: XCTestCase {
 
         for await _ in engine.submitDiffComments(changeIDs: [change.id]) {}
 
-        let lastReq = provider.lastRequest
-        let userMsg = lastReq?.messages.last(where: { $0.role == "user" })
+        let lastReq = provider.capturedRequests.last
+        let userMsg = lastReq?.messages.last(where: { $0.role == .user })
         XCTAssertNotNil(userMsg, "submitDiffComments must inject a user message")
         let text = userMsg.flatMap {
             if case .text(let s) = $0.content { s } else { nil }

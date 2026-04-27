@@ -18,7 +18,7 @@ targets:
   Merlin:
     type: application
     platform: macOS
-    # Recursive source tree includes Engine/PermissionMode.swift, Engine/StagingBuffer.swift, and Engine/DiffEngine.swift.
+    # Recursive source tree includes Engine/PermissionMode.swift, Engine/StagingBuffer.swift, Engine/DiffEngine.swift, and Engine/DiffComment.swift.
     sources: [Merlin/]
     settings:
       base:
