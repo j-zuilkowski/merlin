@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class FloatingWindowManager: ObservableObject {
     static let shared = FloatingWindowManager()
 
@@ -82,6 +83,7 @@ final class FloatingWindowManager: ObservableObject {
     }
 }
 
+@MainActor
 private final class WindowCloseTracker: NSObject, NSWindowDelegate {
     private let sessionID: UUID
     private weak var manager: FloatingWindowManager?

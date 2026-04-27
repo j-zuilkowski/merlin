@@ -2,6 +2,7 @@ import Speech
 import XCTest
 @testable import Merlin
 
+@MainActor
 final class VoiceDictationTests: XCTestCase {
 
     // MARK: - VoiceDictationEngine state machine

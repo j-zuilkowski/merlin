@@ -76,6 +76,11 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
+  Merlin:
+    build:
+      targets:
+        Merlin: all
+
   MerlinTests:
     build:
       targets:

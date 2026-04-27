@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import Speech
 
+@MainActor
 final class VoiceDictationEngine: ObservableObject {
     enum State: Equatable {
         case idle
