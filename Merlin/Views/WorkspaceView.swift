@@ -22,6 +22,13 @@ struct WorkspaceView: View {
                         .environmentObject(sessionManager)
                         .environmentObject(session.appState)
                         .environmentObject(session.appState.registry)
+                        .frame(minWidth: 500)
+
+                    DiffPane(
+                        buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
+                        onCommit: { /* commit flow in phase 36 */ }
+                    )
+                    .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
                 }
             } else {
                 VStack(spacing: 16) {
