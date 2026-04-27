@@ -52,7 +52,7 @@ final class ProviderRegistry: ObservableObject {
     // MARK: Known model lists (static metadata — not persisted)
 
     static let knownModels: [String: [String]] = [
-        "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+        "deepseek": ["deepseek-v4-flash", "deepseek-v4-pro"],
         "openai": ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini"],
         "anthropic": ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
         "qwen": ["qwen2.5-72b-instruct", "qwen2.5-32b-instruct",
@@ -65,7 +65,7 @@ final class ProviderRegistry: ObservableObject {
         ProviderConfig(id: "deepseek",
                        displayName: "DeepSeek",
                        baseURL: "https://api.deepseek.com/v1",
-                       model: "deepseek-chat",
+                       model: "deepseek-v4-flash",
                        isEnabled: true,
                        isLocal: false,
                        supportsThinking: true,
