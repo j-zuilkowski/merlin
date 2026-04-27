@@ -35,6 +35,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 final class AppState: ObservableObject {
     let projectPath: String
     let registry = ProviderRegistry()
+    let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
     @Published var sessionStore: SessionStore!
     @Published var authMemory: AuthMemory
@@ -62,6 +63,7 @@ final class AppState: ObservableObject {
     let xcalibreClient: XcalibreClient
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
+    private var githubTokenObserver: NSObjectProtocol?
 
     init(projectPath: String = "") {
         self.projectPath = projectPath
@@ -134,6 +136,16 @@ final class AppState: ObservableObject {
         engine.registry = registry
         engine.sessionStore = sessionStore
         syncEngineProviders()
+        if let token = ConnectorCredentials.retrieve(service: "github"), !token.isEmpty {
+            prMonitor.start(projectPath: projectPath, token: token)
+        }
+        githubTokenObserver = NotificationCenter.default.addObserver(
+            forName: .merlinGitHubTokenChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.restartPRMonitor()
+        }
         Task {
             let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
             let path = "\(home)/.merlin/toolbar-actions.json"
@@ -205,6 +217,13 @@ final class AppState: ObservableObject {
         contextUsage.update(usedTokens: tokens)
     }
 
+    func restartPRMonitor() {
+        prMonitor.stop()
+        if let token = ConnectorCredentials.retrieve(service: "github"), !token.isEmpty {
+            prMonitor.start(projectPath: projectPath, token: token)
+        }
+    }
+
     func reloadProviders(apiKey: String) {
         try? registry.setAPIKey(apiKey, for: "deepseek")
         syncEngineProviders()
@@ -250,6 +269,7 @@ final class AppState: ObservableObject {
 
 extension Notification.Name {
     static let merlinNewSession = Notification.Name("com.merlin.newSession")
+    static let merlinGitHubTokenChanged = Notification.Name("com.merlin.githubTokenChanged")
 }
 
 extension AppState: AuthPresenter {

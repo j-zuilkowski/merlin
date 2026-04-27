@@ -631,6 +631,7 @@ private struct ConnectorsSettingsView: View {
 
     private func save() {
         saveToken(githubToken, service: "github")
+        NotificationCenter.default.post(name: .merlinGitHubTokenChanged, object: nil)
         saveToken(slackToken, service: "slack")
         saveToken(linearToken, service: "linear")
         AppSettings.shared.xcalibreToken = xcalibreToken
