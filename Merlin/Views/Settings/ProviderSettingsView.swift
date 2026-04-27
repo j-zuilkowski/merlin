@@ -24,6 +24,7 @@ struct ProviderSettingsView: View {
                 }
             }
         }
+        .formStyle(.grouped)
         .sheet(item: $editingKeyFor) { target in
             APIKeyEntrySheet(
                 providerID: target.id,
