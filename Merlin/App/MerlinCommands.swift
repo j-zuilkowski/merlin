@@ -1,5 +1,17 @@
 import SwiftUI
 
+@propertyWrapper
+@MainActor
+struct FocusedSceneObject<ObjectType>: DynamicProperty where ObjectType: ObservableObject {
+    @FocusedObject private var object: ObjectType?
+
+    var wrappedValue: ObjectType? {
+        object
+    }
+
+    init() {}
+}
+
 struct MerlinCommands: Commands {
     @FocusedSceneObject var appState: AppState?
     @FocusedSceneObject var registry: ProviderRegistry?
