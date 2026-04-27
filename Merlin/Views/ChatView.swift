@@ -183,10 +183,16 @@ struct ChatView: View {
             VoiceDictationButton(draft: $model.draft)
                 .disabled(model.isSending)
 
-            Button(action: sendMessage) {
+            Button {
                 if model.isSending {
-                    ProgressView()
-                        .controlSize(.small)
+                    appState.stopEngine()
+                } else {
+                    sendMessage()
+                }
+            } label: {
+                if model.isSending {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 13, weight: .semibold))
                         .frame(width: 20, height: 20)
                 } else {
                     Image(systemName: "arrow.up")
@@ -195,8 +201,8 @@ struct ChatView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(.accentColor)
-            .disabled(model.isSending || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .tint(model.isSending ? .red : .accentColor)
+            .disabled(!model.isSending && model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(16)
         .background(.thinMaterial)

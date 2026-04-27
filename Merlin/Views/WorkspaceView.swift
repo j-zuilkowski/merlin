@@ -68,6 +68,8 @@ struct WorkspaceView: View {
                     .environmentObject(session.appState)
                     .environmentObject(session.appState.registry)
                     .focusedObject(sessionManager)
+                    .focusedObject(session.appState)
+                    .focusedObject(session.appState.registry)
                     .environment(\.openURL, OpenURLAction { url in
                         guard url.isFileURL else {
                             return .systemAction
