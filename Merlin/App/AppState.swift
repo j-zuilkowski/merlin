@@ -74,6 +74,7 @@ final class AppState: ObservableObject {
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
         Self.installBuiltinSkills()
+        Task { await ToolRegistry.shared.registerBuiltins() }
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)
@@ -154,6 +155,12 @@ final class AppState: ObservableObject {
         }
         Task { await xcalibreClient.probe() }
         Task { await registry.probeLocalProviders() }
+        Task {
+            let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
+            if !key.isEmpty {
+                await ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
+            }
+        }
 
         registryCancellable = registry.$activeProviderID.sink { [weak self] id in
             guard let self, self.activeProviderID != id else { return }
