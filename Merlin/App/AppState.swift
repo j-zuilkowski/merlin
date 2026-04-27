@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import SwiftUI
 
 struct AuthRequest {
@@ -32,6 +33,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 
 @MainActor
 final class AppState: ObservableObject {
+    let registry = ProviderRegistry()
     @Published var engine: AgenticEngine!
     @Published var sessionStore: SessionStore!
     @Published var authMemory: AuthMemory
@@ -44,9 +46,18 @@ final class AppState: ObservableObject {
 
     @Published var lastScreenshot: (data: Data, timestamp: Date, sourceBundleID: String)? = nil
 
-    @Published var activeProviderID: String = "deepseek-v4-pro"
+    @Published var activeProviderID: String = "deepseek" {
+        didSet {
+            guard registry.activeProviderID != activeProviderID else { return }
+            registry.activeProviderID = activeProviderID
+            syncEngineProviders()
+        }
+    }
     @Published var thinkingModeActive: Bool = false
     @Published var toolActivityState: ToolActivityState = .idle
+
+    let xcalibreClient: XcalibreClient
+    private var registryCancellable: AnyCancellable?
 
     init() {
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
@@ -54,6 +65,7 @@ final class AppState: ObservableObject {
             .path
 
         authMemory = AuthMemory(storePath: authStorePath)
+        xcalibreClient = XcalibreClient()
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)
@@ -96,20 +108,47 @@ final class AppState: ObservableObject {
         let ctx = ContextManager()
         sessionStore = SessionStore()
 
-        let apiKey = KeychainManager.readAPIKey()
-        let key = apiKey ?? ""
-        let pro = DeepSeekProvider(apiKey: key, model: "deepseek-v4-pro")
-        let flash = DeepSeekProvider(apiKey: key, model: "deepseek-v4-flash")
-        let vision = LMStudioProvider()
+        let apiKey = registry.readAPIKey(for: "deepseek")
+        if let apiKey {
+            try? registry.setAPIKey(apiKey, for: "deepseek")
+        }
+        let pro = registry.primaryProvider ?? DeepSeekProvider(apiKey: apiKey ?? "", model: "deepseek-v4-pro")
+        let flash = registry.primaryProvider ?? DeepSeekProvider(apiKey: apiKey ?? "", model: "deepseek-v4-flash")
+        let vision = registry.visionProvider ?? LMStudioProvider()
 
         engine = AgenticEngine(
             proProvider: pro,
             flashProvider: flash,
             visionProvider: vision,
             toolRouter: toolRouter,
-            contextManager: ctx
+            contextManager: ctx,
+            xcalibreClient: xcalibreClient
         )
+        engine.registry = registry
         engine.sessionStore = sessionStore
+        syncEngineProviders()
+        Task { await xcalibreClient.probe() }
+        Task { await registry.probeLocalProviders() }
+
+        registryCancellable = registry.$activeProviderID.sink { [weak self] id in
+            guard let self, self.activeProviderID != id else { return }
+            self.activeProviderID = id
+            self.syncEngineProviders()
+        }
+
+        toolRouter.register(name: "rag_search") { [weak self] args in
+            guard let client = self?.engine?.xcalibreClient else {
+                return "RAG service not configured."
+            }
+            return await RAGTools.search(args: args, client: client)
+        }
+
+        toolRouter.register(name: "rag_list_books") { [weak self] _ in
+            guard let client = self?.engine?.xcalibreClient else {
+                return "RAG service not configured."
+            }
+            return await RAGTools.listBooks(client: client)
+        }
 
         if apiKey == nil {
             showFirstLaunchSetup = true
@@ -133,6 +172,44 @@ final class AppState: ObservableObject {
         pendingAuthRequest = nil
         showAuthPopup = false
     }
+
+    func newSession() {
+        engine.cancel()
+        engine.contextManager.clear()
+        toolLogLines.removeAll()
+        toolActivityState = .idle
+        thinkingModeActive = false
+        NotificationCenter.default.post(name: .merlinNewSession, object: nil)
+    }
+
+    func stopEngine() {
+        engine.cancel()
+        toolActivityState = .idle
+        thinkingModeActive = false
+    }
+
+    func reloadProviders(apiKey: String) {
+        try? registry.setAPIKey(apiKey, for: "deepseek")
+        syncEngineProviders()
+    }
+
+    private func syncEngineProviders() {
+        let apiKey = registry.readAPIKey(for: "deepseek") ?? ""
+        let fallbackPro = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-pro")
+        let fallbackFlash = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-flash")
+        if let primary = registry.primaryProvider {
+            engine.proProvider = primary
+            engine.flashProvider = primary
+        } else {
+            engine.proProvider = fallbackPro
+            engine.flashProvider = fallbackFlash
+        }
+        activeProviderID = registry.activeProviderID
+    }
+}
+
+extension Notification.Name {
+    static let merlinNewSession = Notification.Name("com.merlin.newSession")
 }
 
 extension AppState: AuthPresenter {

@@ -1,0 +1,135 @@
+import SwiftUI
+
+struct ProviderSettingsView: View {
+    @EnvironmentObject var registry: ProviderRegistry
+    @State private var editingKeyFor: EditingKeyTarget? = nil
+    @State private var keyDraft: String = ""
+
+    var body: some View {
+        Form {
+            Section("Providers") {
+                ForEach(registry.providers) { config in
+                    ProviderRow(
+                        config: config,
+                        availableModels: ProviderRegistry.knownModels[config.id] ?? [],
+                        isActive: registry.activeProviderID == config.id,
+                        onActivate: { registry.activeProviderID = config.id },
+                        onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
+                        onEditKey: {
+                            editingKeyFor = EditingKeyTarget(id: config.id)
+                            keyDraft = ""
+                        },
+                        onModelChange: { registry.updateModel($0, for: config.id) }
+                    )
+                }
+            }
+        }
+        .sheet(item: $editingKeyFor) { target in
+            APIKeyEntrySheet(
+                providerID: target.id,
+                draft: $keyDraft,
+                onCancel: {
+                    keyDraft = ""
+                    editingKeyFor = nil
+                },
+                onSave: {
+                    try? registry.setAPIKey(keyDraft, for: target.id)
+                    keyDraft = ""
+                    editingKeyFor = nil
+                }
+            )
+        }
+    }
+}
+
+private struct ProviderRow: View {
+    let config: ProviderConfig
+    let availableModels: [String]
+    let isActive: Bool
+    let onActivate: () -> Void
+    let onToggle: () -> Void
+    let onEditKey: () -> Void
+    let onModelChange: (String) -> Void
+
+    @State private var modelDraft: String = ""
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(config.displayName)
+                    .fontWeight(isActive ? .semibold : .regular)
+                Text(config.baseURL)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if availableModels.isEmpty {
+                    TextField("model", text: $modelDraft)
+                        .font(.caption)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 200)
+                        .onAppear { modelDraft = config.model }
+                        .onSubmit { onModelChange(modelDraft) }
+                } else {
+                    Picker("", selection: Binding(
+                        get: { config.model },
+                        set: { onModelChange($0) }
+                    )) {
+                        ForEach(availableModels, id: \.self) { Text($0).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 200)
+                }
+            }
+
+            Spacer()
+
+            if !config.isLocal {
+                Button("Key", action: onEditKey)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+            }
+
+            Toggle("", isOn: Binding(get: { config.isEnabled }, set: { _ in onToggle() }))
+                .labelsHidden()
+
+            Button(isActive ? "Active" : "Use") {
+                if config.isEnabled {
+                    onActivate()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(!config.isEnabled || isActive)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct APIKeyEntrySheet: View {
+    let providerID: String
+    @Binding var draft: String
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("API Key - \(providerID)")
+                .font(.headline)
+            SecureField("sk-...", text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 320)
+            HStack {
+                Button("Cancel", action: onCancel)
+                Spacer()
+                Button("Save", action: onSave)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(draft.isEmpty)
+            }
+        }
+        .padding(24)
+        .frame(width: 380)
+    }
+}
+
+private struct EditingKeyTarget: Identifiable {
+    let id: String
+}

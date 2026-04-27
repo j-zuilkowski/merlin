@@ -2,15 +2,21 @@
 
 ## Overview
 
-Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to DeepSeek V4 (remote) and LM Studio (local) as LLM providers, exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface. It is a functional replacement for OpenAI Codex App, operating against DeepSeek V4 rather than GPT/o-series models.
+Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (Ollama, LM Studio, Jan.ai, LocalAI, Mistral.rs, vLLM) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
-**Target hardware:** M4 Mac Studio, 128GB unified memory
+**[v1]** Single serial session, direct file writes, fixed layout.
+**[v2]** Parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
+**[v3]** Linux and Windows support. macOS remains the primary platform. Core agentic engine extracted as a cross-platform Swift package; macOS-specific tools (screen capture, AX inspector, CGEvent, app control) remain macOS-only. Non-macOS entry point: CLI/TUI. Decisions TBD.
+
+**Target hardware:** M4 Mac Studio, 128GB unified memory (macOS primary); Linux x86-64/ARM [v3]; Windows x86-64 [v3]
 **Language:** Swift (SwiftUI + Swift Concurrency)
-**Distribution:** Direct, non-sandboxed `.app` bundle — personal use only
+**Distribution:** Direct, non-sandboxed `.app` bundle — personal use only (macOS); standalone binary [v3]
 
 ---
 
 ## System Architecture
+
+### [v1] Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -28,127 +34,310 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 │     Provider Layer      │            Tool Registry                  │
 │                         │                                           │
 │  ┌─────────────────┐    │  FileSystemTools    XcodeTools            │
-│  │ deepseek-v4-pro │    │  ShellTool          SimulatorTools        │
-│  │ deepseek-v4-    │    │  AppLaunchTool      ToolDiscovery         │
-│  │ flash           │    │  AXInspectorTool    ScreenCaptureTool     │
+│  │ OpenAICompat-   │    │  ShellTool          SimulatorTools        │
+│  │ ibleProvider    │    │  AppLaunchTool      ToolDiscovery         │
+│  │ (10 providers)  │    │  AXInspectorTool    ScreenCaptureTool     │
 │  └─────────────────┘    │  CGEventTool        VisionQueryTool       │
 │  ┌─────────────────┐    │                                           │
-│  │  LM Studio      │    │                                           │
-│  │  (localhost:    │    │                                           │
-│  │   1234)         │    │                                           │
+│  │ Anthropic-      │    │                                           │
+│  │ Provider        │    │                                           │
 │  └─────────────────┘    │                                           │
 └─────────────────────────┴───────────────────────────────────────────┘
 ```
 
+### [v2] Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              SwiftUI Workspace                               │
+│                                                                              │
+│  ┌────────────┐  ┌──────────────┐  ┌──────────┐  ┌─────────┐  ┌─────────┐  │
+│  │  ChatPane  │  │   DiffPane   │  │ FilePane │  │Terminal │  │Preview  │  │
+│  │  + side    │  │  (Accept /   │  │          │  │  Pane   │  │  Pane   │  │
+│  │    chat    │  │   Reject)    │  │          │  │         │  │         │  │
+│  └────────────┘  └──────────────┘  └──────────┘  └─────────┘  └─────────┘  │
+│                        Draggable · Collapsible · Persisted layout            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                           Session Manager [v2]                               │
+│                                                                              │
+│  Session A (worktree/a)   Session B (worktree/b)   Session C (worktree/c)   │
+│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐   │
+│  │  AgenticEngine     │   │  AgenticEngine     │   │  AgenticEngine     │   │
+│  │  ContextManager    │   │  ContextManager    │   │  ContextManager    │   │
+│  │  StagingBuffer     │   │  StagingBuffer     │   │  StagingBuffer     │   │
+│  └────────────────────┘   └────────────────────┘   └────────────────────┘   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                           Shared Infrastructure                              │
+│                                                                              │
+│  AuthGate + AuthMemory [v1]   SkillsRegistry [v2]   MCPBridge [v2]           │
+│  SchedulerEngine [v2]         PRMonitor [v2]         CLAUDEMDLoader [v2]     │
+│  ConnectorsLayer [v2]                                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                           Provider Layer [v1]                                │
+│                                                                              │
+│  OpenAICompatibleProvider (10 providers)   AnthropicProvider                 │
+│  ProviderConfig + ProviderRegistry                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                     Tool Registry [v1] + MCP tools [v2]                      │
+│                                                                              │
+│  FileSystemTools  ShellTool  XcodeTools  AXInspectorTool  ScreenCaptureTool  │
+│  CGEventTool  VisionQueryTool  AppControlTools  ToolDiscovery  [mcp:*]       │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
-## Provider Layer
+## Provider Layer [v1]
 
 ### Design Decision: OpenAI Function Calling Format
 
-All tool definitions use the OpenAI function calling wire format throughout. Both DeepSeek V4 and LM Studio speak this format natively. A single `ToolDefinition` schema works across all providers with no translation layer.
+All tool definitions use the OpenAI function calling wire format throughout. A single `ToolDefinition` schema works across all OpenAI-compatible providers with no translation layer. Anthropic requires in-provider translation (see below).
 
-### Protocol
+### Protocol [v1]
 
 ```swift
-protocol LLMProvider {
+protocol LLMProvider: AnyObject, Sendable {
     var id: String { get }
     var baseURL: URL { get }
-    var apiKey: String? { get }
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error>
 }
 ```
 
-### Providers
+### Provider Implementations
 
-**DeepSeek V4 Pro** (`deepseek-v4-pro`)
-- Endpoint: `https://api.deepseek.com/v1/chat/completions`
-- Context: 1,000,000 tokens / 384K max output
-- Use: Heavy reasoning, architecture decisions, long-context analysis, debugging
-- Thinking mode: auto-enabled (see Thinking Mode section)
-- Auth: API key from macOS Keychain
+**`OpenAICompatibleProvider`** [v1] — single class covering all OpenAI-compatible endpoints. Parameterised by `baseURL`, `apiKey` (nil = no auth header for local providers), and `model`. Handles SSE via `SSEParser`. Used for: DeepSeek, OpenAI, Qwen, OpenRouter, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM, LM Studio.
 
-**DeepSeek V4 Flash** (`deepseek-v4-flash`)
-- Endpoint: `https://api.deepseek.com/v1/chat/completions`
-- Context: 1,000,000 tokens / 384K max output
-- Use: High-frequency tool loops, file read/write, shell execution, mechanical tasks
-- Thinking mode: off by default
-- Auth: API key from macOS Keychain
+**`AnthropicProvider`** [v1] — separate implementation for the Anthropic Messages API. Differences from OpenAI-compatible:
+- Auth: `x-api-key` + `anthropic-version: 2023-06-01` headers
+- Request: `system` is a top-level field; tool definitions use `input_schema` not `parameters`
+- SSE events: `content_block_delta` with `text_delta`, `thinking_delta`, `input_json_delta`
+- Tool calls arrive as `tool_use` content blocks with `input_json_delta` argument fragments
+- Tool results must be grouped into user-role messages as `tool_result` content blocks
+- `AnthropicProvider` translates all of this to/from the shared `CompletionChunk` / `Message` types so `AgenticEngine` is unaware of the format difference
 
-**LM Studio** (local vision model)
-- Endpoint: `http://localhost:1234/v1/chat/completions`
-- Model: `Qwen2.5-VL-72B-Instruct-Q4_K_M`
-- Use: GUI screenshot analysis exclusively — never used for text reasoning tasks
-- Auth: None
+### ProviderConfig [v1]
 
-### Thinking Mode Auto-Detection
+```swift
+enum ProviderKind: String, Codable, Sendable {
+    case openAICompatible
+    case anthropic
+}
 
-Thinking mode is enabled on `deepseek-v4-pro` requests when the user message or accumulated reasoning context contains signal words: `debug`, `why`, `architecture`, `design`, `explain`, `error`, `failing`, `unexpected`, `broken`, `investigate`. Disabled for: `read`, `write`, `run`, `list`, `build`, `open`, `create`, `delete`. A manual toggle in the UI overrides auto-detection.
-
-```json
-// Thinking enabled
-{ "thinking": { "type": "enabled" }, "reasoning_effort": "high" }
-
-// Thinking disabled
-{ "thinking": { "type": "disabled" } }
+struct ProviderConfig: Codable, Sendable, Identifiable {
+    var id: String               // "openai", "anthropic", "ollama", etc.
+    var displayName: String
+    var baseURL: String          // user-configurable; local providers default to localhost
+    var model: String            // model ID sent in requests
+    var isEnabled: Bool
+    var isLocal: Bool            // skip key requirement; probe for availability at launch
+    var supportsThinking: Bool   // guards ThinkingConfig injection
+    var supportsVision: Bool     // used by vision routing in AgenticEngine
+    var kind: ProviderKind
+}
 ```
 
-### Runtime Provider Selection
+### ProviderRegistry [v1]
+
+`ProviderRegistry` is a `@MainActor ObservableObject` that owns all provider configuration. Config persists to `~/Library/Application Support/Merlin/providers.json`. API keys are in Keychain, one item per provider (`com.merlin.provider.<id> / api-key`).
+
+```swift
+@MainActor
+final class ProviderRegistry: ObservableObject {
+    @Published var providers: [ProviderConfig]        // all nine + LM Studio
+    @Published var activeProviderID: String
+    @Published var availabilityByID: [String: Bool]   // live probe results for local providers
+
+    func setAPIKey(_ key: String, for id: String) throws
+    func readAPIKey(for id: String) -> String?
+    func makeLLMProvider(for config: ProviderConfig) -> any LLMProvider
+    func probeLocalProviders() async                  // fires at app launch
+    var primaryProvider: any LLMProvider              // active provider as LLMProvider
+    var visionProvider: any LLMProvider               // first local vision-capable provider
+}
+```
+
+### Default Providers [v1]
+
+| Provider | Kind | Base URL | Local | Thinking | Vision | Enabled by default |
+|---|---|---|---|---|---|---|
+| DeepSeek | OAI-compat | `api.deepseek.com/v1` | No | Yes | No | Yes |
+| OpenAI | OAI-compat | `api.openai.com/v1` | No | No | Yes | No |
+| Anthropic | Anthropic | `api.anthropic.com/v1` | No | Yes | Yes | No |
+| Qwen | OAI-compat | `dashscope.aliyuncs.com/compatible-mode/v1` | No | No | Yes | No |
+| OpenRouter | OAI-compat | `openrouter.ai/api/v1` | No | No | No | No |
+| Ollama | OAI-compat | `localhost:11434/v1` | Yes | No | No | No |
+| LM Studio | OAI-compat | `localhost:1234/v1` | Yes | No | Yes | Yes |
+| Jan.ai | OAI-compat | `localhost:1337/v1` | Yes | No | No | No |
+| LocalAI | OAI-compat | `localhost:8080/v1` | Yes | No | No | No |
+| Mistral.rs | OAI-compat | `localhost:1234/v1` | Yes | No | No | No |
+| vLLM | OAI-compat | `localhost:8000/v1` | Yes | No | No | No |
+
+All base URLs are user-configurable in `ProviderSettingsView`. LM Studio and Mistral.rs share the same default port — enable at most one at a time unless the port is overridden.
+
+### Thinking Mode Auto-Detection [v1]
+
+Thinking mode is enabled when `ThinkingModeDetector` fires AND the active provider's `supportsThinking` is `true`. Signal words: `debug`, `why`, `architecture`, `design`, `explain`, `error`, `failing`, `unexpected`, `broken`, `investigate`. Suppressed for: `read`, `write`, `run`, `list`, `build`, `open`, `create`, `delete`.
+
+`AgenticEngine` receives `primarySupportsThinking: Bool` from `AppState` (sourced from `ProviderRegistry`). Thinking config is only injected into the request when this flag is true.
+
+```json
+{ "thinking": { "type": "enabled" }, "reasoning_effort": "high" }
+```
+
+### Runtime Provider Selection [v1]
 
 ```
 User message arrives
 │
-├── GUI screenshot task?          → LM Studio (Qwen2.5-VL-72B)
-├── Mechanical / tool loop?       → deepseek-v4-flash
-└── Reasoning / analysis / debug? → deepseek-v4-pro
+├── GUI screenshot task?   → registry.visionProvider (first local vision-capable)
+└── All other tasks        → registry.primaryProvider (user-selected active provider)
 ```
 
-The engine selects the provider per-turn. The UI shows a small provider indicator so the user can see which model handled each response.
+The pro/flash split is retired. One active provider per session. A skill's `model` frontmatter field overrides the active provider for that skill's turn. [v2]
 
 ---
 
-## Agentic Engine
+## Session Manager [v2]
+
+### Parallel Sessions
+
+Each session is an independent unit of work with its own:
+- `AgenticEngine` instance (own context, own provider selection)
+- Git worktree at `~/.merlin/worktrees/<session-id>/`
+- `StagingBuffer` holding pending writes awaiting Accept/Reject
+- Permission mode (Ask / Auto-accept / Plan)
+- CLAUDE.md loaded from the worktree root at session creation
+
+Sessions are listed in a sidebar. Switching sessions is instant — all session state is in-memory while open.
+
+```swift
+@MainActor
+final class SessionManager: ObservableObject {
+    @Published var sessions: [Session] = []
+    @Published var activeSessionID: UUID?
+
+    func newSession(projectPath: String, model: ModelID, mode: PermissionMode) async -> Session
+    func closeSession(_ id: UUID) async
+    func switchSession(to id: UUID)
+}
+```
+
+### Git Worktree Isolation [v2]
+
+```
+1. git worktree add ~/.merlin/worktrees/<session-id> HEAD
+2. All reads/writes in this session operate on the worktree path
+3. User accepts diff → git commit in worktree
+4. User merges → git merge worktree branch into project working tree
+5. Session closed → git worktree remove <session-id>
+```
+
+---
+
+## Agentic Engine [v1]
 
 ### Loop Structure
 
 ```
 1.  Receive user message
-2.  Append to context
-3.  Select provider (see Runtime Provider Selection)
-4.  Stream completion — accumulate text and tool_calls
-5.  If no tool_calls in response → stream final text to UI, end turn
-6.  For each tool_call:
+2.  Auto-inject RAG context if xcalibreClient is configured and available (Option C)
+3.  Append to context
+4.  Select provider (see Runtime Provider Selection)
+5.  Build CompletionRequest — inject ThinkingConfig only if primarySupportsThinking = true
+6.  Stream completion — accumulate text and tool_calls
+7.  If no tool_calls in response → stream final text to UI, end turn
+8.  For each tool_call:
     a. Pass through AuthGate (approve / deny / remember)
     b. If denied → append denial result to context, continue loop
     c. If approved → execute tool, stream output to ToolLogView
     d. Append tool result to context
-7.  Go to step 3 (loop continues until a turn produces no tool_calls)
+9.  Go to step 4 (loop continues until a turn produces no tool_calls)
 ```
 
-Parallel tool calls (where declared independent by the model) are dispatched concurrently via Swift structured concurrency (`async let` / `TaskGroup`).
+Parallel tool calls are dispatched concurrently via Swift structured concurrency (`async let` / `TaskGroup`).
 
-### Error Policy
+`AgenticEngine` receives `primarySupportsThinking: Bool` from the active `ProviderConfig` (via `ProviderRegistry`). It is recalculated each loop iteration so switching providers mid-session takes effect immediately.
 
-On tool execution failure:
+```swift
+var xcalibreClient: XcalibreClient?
+var primarySupportsThinking: Bool { registry.activeConfig?.supportsThinking ?? false }
+```
+
+**[v2] Interrupt:** A stop button in the toolbar cancels the active `Task` and `AsyncThrowingStream` at any point. A `[Interrupted]` system note is appended. The session is left in a valid state.
+
+### Error Policy [v1]
+
 1. **First failure** — retry once silently after 1 second
-2. **Second failure** — pause loop, surface to user: show tool name, arguments, error message, and options: Retry / Skip / Abort
+2. **Second failure** — surface to user: tool name, arguments, error message, options: Retry / Skip / Abort
 3. Auth patterns are never written on failed calls
 
-### Context Manager
+### Context Manager [v1]
 
 - Maintains the full message array including tool call results
-- Tracks running token estimate (character count ÷ 3.5 as a fast approximation)
+- Tracks running token estimate (character count ÷ 3.5)
 - At **800,000 tokens**: fires compaction
-  - Summarizes tool call result messages older than 20 turns into a compact digest
+  - Summarises tool call result messages older than 20 turns into a compact digest
   - Preserves all user and assistant messages verbatim
-  - Appends a `[context compacted]` system note to the conversation
-- The 1M context window makes compaction rare in normal sessions — it is a safety net, not a routine operation
+  - Appends a `[context compacted]` system note
+- Invoked skills are re-attached after compaction (5,000 tokens each, 25,000 token combined budget, most-recently-invoked first) [v2]
 
 ---
 
-## Auth Gate & Sandbox
+## Diff / Review Layer [v2]
 
-Every tool call passes through `AuthGate` before execution. This is the sole enforcement point — no tool executes without clearing it.
+### StagingBuffer
+
+In **Ask** and **Plan** modes, `write_file`, `create_file`, `delete_file`, and `move_file` calls are intercepted and queued rather than applied to disk. In **Auto-accept** mode, writes apply immediately.
+
+```swift
+actor StagingBuffer {
+    func stage(_ change: StagedChange)
+    func accept(_ id: UUID) async throws
+    func reject(_ id: UUID)
+    func acceptAll() async throws
+    func rejectAll()
+    var pendingChanges: [StagedChange] { get }
+}
+
+struct StagedChange: Identifiable {
+    var id: UUID
+    var path: String
+    var kind: ChangeKind          // write, create, delete, move
+    var before: String?
+    var after: String?
+    var comments: [DiffComment]
+}
+```
+
+### DiffPane [v2]
+
+Renders each `StagedChange` as a unified diff (line-level, colour-coded). Controls per change: Accept, Reject, Comment. A `+N -N` badge in the toolbar opens the pane. After accepting all changes, the user can commit directly from the pane with an auto-generated title.
+
+### Inline Diff Commenting [v2]
+
+Clicking a diff line attaches a comment. On submit, all comments are sent to the agent as a follow-up message. The agent revises and the diff updates in place.
+
+---
+
+## Permission Modes [v2]
+
+| Mode | File writes | Shell commands | Tool calls |
+|---|---|---|---|
+| **Ask** (default) | Staged, Accept/Reject required | Run, streamed | AuthGate applies |
+| **Auto-accept** | Applied immediately | Run | AuthGate applies |
+| **Plan** | Blocked — no writes | Blocked | Read-only tools only |
+
+Mode is set per-session and shown in the toolbar. Cycle with `⌘⇧M`.
+
+### Plan Mode [v2]
+
+The agent is instructed via system prompt that it may not write, create, delete, or move files, and may not run shell commands. It may read files, inspect the AX tree, and call `list_directory`/`search_files`. The agent produces a structured plan which the user reviews and optionally edits. Clicking **Execute Plan** switches the session to Ask mode and submits the plan.
+
+---
+
+## Auth Gate & Sandbox [v1]
+
+Every tool call passes through `AuthGate` before execution. MCP tools are subject to the same gate. [v2]
 
 ### Decision Flow
 
@@ -164,9 +353,7 @@ AuthGate.check(toolCall)
     └── Deny Always for <pattern>  → block, persist deny rule
 ```
 
-### Pattern Matching
-
-Patterns are stored at a glob level, not per exact call:
+### Pattern Matching [v1]
 
 | Tool | Example Pattern |
 |---|---|
@@ -174,16 +361,16 @@ Patterns are stored at a glob level, not per exact call:
 | `run_shell` | `xcodebuild *` |
 | `app_launch` | `com.apple.Xcode` |
 | `write_file` | `~/Documents/localProject/merlin/**` |
+| `mcp:github:*` | `*/pull_request*` [v2] |
 
-### Auth Memory Storage
+### Auth Memory Storage [v1]
 
-Persisted to `~/Library/Application Support/Merlin/auth.json`. Structure:
+Persisted to `~/Library/Application Support/Merlin/auth.json`.
 
 ```json
 {
   "allowPatterns": [
-    { "tool": "read_file", "pattern": "~/Documents/localProject/**", "addedAt": "..." },
-    { "tool": "run_shell", "pattern": "xcodebuild *", "addedAt": "..." }
+    { "tool": "read_file", "pattern": "~/Documents/localProject/**", "addedAt": "..." }
   ],
   "denyPatterns": [
     { "tool": "run_shell", "pattern": "rm -rf *", "addedAt": "..." }
@@ -191,34 +378,152 @@ Persisted to `~/Library/Application Support/Merlin/auth.json`. Structure:
 }
 ```
 
-### Auth Popup UI
+### Auth Popup UI [v1]
 
-The popup displays:
-- Tool name and icon
-- Full arguments (formatted, not truncated)
-- Which reasoning step triggered the call
-- The glob pattern that would be remembered if "Allow Always" is chosen
-- Keyboard shortcuts: `⌘↩` Allow Once, `⌥⌘↩` Allow Always, `⎋` Deny
+Displays tool name, full arguments, reasoning step, suggested glob pattern, keyboard shortcuts: `⌘↩` Allow Once, `⌥⌘↩` Allow Always, `⎋` Deny.
 
 ---
 
-## Tool Registry
+## CLAUDE.md Loader [v2]
 
-All tools are defined as OpenAI function call schemas and registered at app launch. The agent sees the full list in its system prompt.
+At session creation, `CLAUDEMDLoader` searches for instruction files from the project root upward:
 
-### File System Tools
+```
+<project-root>/CLAUDE.md
+<project-root>/.merlin/CLAUDE.md
+~/CLAUDE.md
+```
+
+All found files are concatenated (global last, project first) and prepended to the session system prompt as a `[Project instructions]` block. No tools are called — pure text injection at session init.
+
+---
+
+## Context Injection [v2]
+
+### @filename
+
+Typing `@` in the prompt input opens an autocomplete file picker. Selecting a file appends its contents inline as `[File: path]`. Large files are truncated at 2,000 lines; a line range can be specified: `@AgenticEngine.swift:50-120`.
+
+### Attachment
+
+The prompt input accepts drag-and-drop and clipboard paste:
+
+| Type | Handling |
+|---|---|
+| Source files (`.swift`, `.md`, `.json`, etc.) | Inlined as `[File: name]` block |
+| Images (`.png`, `.jpg`, `.heic`) | Sent to LM Studio for vision description, result inlined |
+| PDF | Text extracted via PDFKit, inlined as `[PDF: name]` block |
+| Binary | Rejected with error |
+
+---
+
+## Skills / Slash Commands [v2]
+
+See `skill-standard.md` for the full specification. Summary:
+
+- Skills are `SKILL.md` files (YAML frontmatter + markdown) in `~/.merlin/skills/<name>/` (personal) or `.merlin/skills/<name>/` (project)
+- Invoked with `/skill-name` or automatically by the model when the description matches
+- Frontmatter controls: invocation mode, allowed tools, model override, subagent fork, path scoping, argument substitution, shell injection
+- `SkillsRegistry` loads all skills at session start and watches directories for live changes
+
+### Built-in Skills [v2]
+
+| Skill | Description | Invocation |
+|---|---|---|
+| `/review` | Code review of staged changes | User or model |
+| `/plan` | Switch to plan mode and map out a task | User only |
+| `/commit` | Generate commit message from staged diff | User only |
+| `/test` | Write tests for a function or module | User or model |
+| `/explain` | Explain selected code in plain English | User or model |
+| `/debug` | Debug a failing test or error | User or model |
+| `/refactor` | Propose a refactor for a code section | User or model |
+| `/summarise` | Summarise the current session | User only |
+
+---
+
+## MCP Server Support [v2]
+
+`MCPBridge` starts configured servers (stdio transport via `Foundation.Process`) and registers their tools into `ToolRouter` as `mcp:<server>:<tool>`. All MCP tool calls go through `AuthGate`. Server configs live in `~/.merlin/mcp.json` or a plugin's `.mcp.json`.
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}" }
+    }
+  }
+}
+```
+
+stdio transport only in v2. HTTP/SSE deferred to v3.
+
+---
+
+## Scheduler [v2]
+
+`SchedulerEngine` uses `BackgroundTasks` framework to fire recurring sessions. Config at `~/Library/Application Support/Merlin/schedules.json`.
+
+```json
+{
+  "tasks": [
+    {
+      "id": "uuid",
+      "name": "Daily code review",
+      "cadence": "daily",
+      "time": "09:00",
+      "projectPath": "~/Documents/localProject/merlin",
+      "permissionMode": "plan",
+      "prompt": "/review"
+    }
+  ]
+}
+```
+
+On fire: opens a background session, runs the prompt to completion, posts a macOS notification with a summary. Scheduled sessions run in Plan mode by default.
+
+---
+
+## PR Monitor [v2]
+
+`PRMonitor` polls GitHub PRs associated with the active project (60s active, 5min background). On `checksFailed`: posts a notification; opening it launches a new session pre-loaded with the PR diff and CI output. On `checksPassed`: merges if auto-merge was enabled for that PR. Requires a GitHub token in Connectors config.
+
+---
+
+## External Connectors [v2]
+
+Thin read/write wrappers for external services. Credentials in Keychain per service.
+
+| Connector | Read | Write |
+|---|---|---|
+| **GitHub** | PR status, CI checks, issues, file contents | Create PR, comment, merge, push |
+| **Slack** | Channel messages (configured channels) | Post message |
+| **Linear** | Issues, project status, cycle items | Create issue, update status, comment |
+
+Connectors are opt-in. MCP server equivalents (e.g. `@modelcontextprotocol/server-github`) can replace native connectors if preferred.
+
+---
+
+## Tool Registry [v1]
+
+All tools are defined as OpenAI function call schemas and registered at app launch.
+
+**[v3]** Each tool definition carries a `platformSupport` flag (`.all`, `.macOnly`, `.macLinux`). `ToolRouter` filters at registration time — macOS-only tools (screen capture, AX inspector, CGEvent, app control, Xcode) are simply absent on Linux/Windows. The agent adapts automatically via `tool_discover`.
+
+### File System Tools [v1]
 
 | Tool | Description |
 |---|---|
 | `read_file(path)` | Returns file contents with line numbers |
 | `write_file(path, content)` | Writes or overwrites a file |
 | `create_file(path)` | Creates an empty file |
-| `delete_file(path)` | Deletes a file (requires auth) |
+| `delete_file(path)` | Deletes a file |
 | `list_directory(path, recursive?)` | Returns directory tree |
 | `move_file(src, dst)` | Moves or renames |
 | `search_files(pattern, path, content_pattern?)` | Glob + optional grep |
 
-### Shell Tool
+### Shell Tool [v1]
 
 `run_shell(command, cwd?, timeout_seconds?)`
 
@@ -226,9 +531,9 @@ All tools are defined as OpenAI function call schemas and registered at app laun
 - Captures stdout and stderr separately
 - Streams output lines to ToolLogView in real time
 - Default timeout: 120 seconds; Xcode builds: 600 seconds
-- Working directory defaults to the active project path
+- Working directory defaults to the active project path (worktree path in v2)
 
-### App Launch & Control
+### App Launch & Control [v1]
 
 | Tool | Description |
 |---|---|
@@ -237,11 +542,11 @@ All tools are defined as OpenAI function call schemas and registered at app laun
 | `app_quit(bundle_id)` | Graceful quit |
 | `app_focus(bundle_id)` | Bring app to foreground |
 
-### Tool Discovery
+### Tool Discovery [v1]
 
-`tool_discover()` — scans `$PATH` at call time and returns a list of installed CLI tools with their `--help` summaries where available. Any discovered tool can be invoked via `run_shell`. All shell invocations go through AuthGate regardless of discovery status. New tools discovered at runtime require explicit Allow on first execution — they never run silently.
+`tool_discover()` — scans `$PATH` at call time, returns installed CLI tools with `--help` summaries. All discovered tools are invoked via `run_shell` and go through AuthGate. Known GUI-launching binaries are blocklisted from `--help` probing.
 
-### Xcode Tools (Deep Integration)
+### Xcode Tools [v1]
 
 | Tool | Description |
 |---|---|
@@ -251,67 +556,65 @@ All tools are defined as OpenAI function call schemas and registered at app laun
 | `xcode_derived_data_clean()` | Nukes DerivedData |
 | `xcode_open_file(path, line)` | Opens file at line in Xcode via AppleScript |
 | `xcode_xcresult_parse(path)` | Extracts failures, warnings, coverage from `.xcresult` |
-| `xcode_simulator_list()` | Returns available simulators with UDID, runtime, state |
+| `xcode_simulator_list()` | Returns available simulators |
 | `xcode_simulator_boot(udid)` | Boots a simulator |
 | `xcode_simulator_screenshot(udid)` | Captures simulator screen |
 | `xcode_simulator_install(udid, app_path)` | Installs `.app` on simulator |
 | `xcode_spm_resolve()` | Runs `swift package resolve` |
 | `xcode_spm_list()` | Lists resolved SPM dependencies |
 
-Build output is parsed for errors and warnings and structured into a typed result before being appended to context, rather than dumping raw `xcodebuild` log text.
+Build output is parsed for errors and warnings and structured before being appended to context.
+
+### Preview Tools [v2]
+
+Registered only when a preview server is running.
+
+| Tool | Description |
+|---|---|
+| `preview_get_dom()` | Returns DOM of the current preview URL |
+| `preview_screenshot()` | Screenshot of the preview pane |
+| `preview_get_console()` | Browser console log |
 
 ---
 
-## GUI Automation
+## GUI Automation [v1]
 
 Three strategies operate in concert. The agent selects observation strategy per app based on AX availability; CGEvent is always the execution layer.
 
-### Strategy A — Accessibility Tree (AXUIElement)
-
-Used when the target app exposes a usable accessibility hierarchy (native macOS apps, Xcode, Terminal, most AppKit/SwiftUI apps).
+### Strategy A — Accessibility Tree (AXUIElement) [v1]
 
 | Tool | Description |
 |---|---|
 | `ui_inspect(bundle_id)` | Returns full AX element tree as structured JSON |
 | `ui_find_element(bundle_id, role?, label?, value?)` | Locates a specific element |
-| `ui_get_element_value(element_id)` | Reads current value of a field or control |
+| `ui_get_element_value(element_id)` | Reads current value |
 
-Requires **Accessibility permission** granted in System Settings → Privacy & Security → Accessibility.
+Requires Accessibility permission.
 
-### Strategy B — Screenshot + Vision (LM Studio)
-
-Used when AX tree is shallow or absent (Electron apps, Unity, web views, custom-drawn UIs).
+### Strategy B — Screenshot + Vision [v1]
 
 | Tool | Description |
 |---|---|
-| `ui_screenshot(bundle_id?, region?)` | Captures window or screen region via ScreenCaptureKit |
-| `vision_query(image_id, prompt)` | Sends captured frame to Qwen2.5-VL-72B, returns response |
+| `ui_screenshot(bundle_id?, region?)` | Captures window or region via ScreenCaptureKit |
+| `vision_query(image_id, prompt)` | Sends frame to Qwen2.5-VL-72B, returns response |
 
-Screenshot parameters:
-- Capture at **logical resolution** (not 2x retina) — 4x fewer pixels, no meaningful UI detail loss
-- Encode as **JPEG quality 85** before base64
-- Crop to active window bounds when possible
-- Target under 1MB before encoding
+Capture parameters: logical resolution, JPEG quality 85, crop to active window, target under 1MB before encoding. Vision model called at `temperature: 0.1`, 256-token max, structured JSON output: `{"x": int, "y": int, "action": string, "confidence": float}`.
 
-Requires **Screen Recording permission** granted in System Settings → Privacy & Security → Screen Recording.
+Requires Screen Recording permission.
 
-The vision model is called with `temperature: 0.1` and a 256-token max for coordinate/action responses. Prompts request structured JSON output: `{"x": int, "y": int, "action": string, "confidence": float}`.
-
-### Strategy C — Input Simulation (CGEvent)
-
-Execution layer for both A and B. Always used to perform actions, never for observation.
+### Strategy C — Input Simulation (CGEvent) [v1]
 
 | Tool | Description |
 |---|---|
-| `ui_click(x, y, button?)` | Mouse click at screen coordinates |
+| `ui_click(x, y, button?)` | Mouse click |
 | `ui_double_click(x, y)` | Double click |
 | `ui_right_click(x, y)` | Context menu trigger |
 | `ui_drag(from_x, from_y, to_x, to_y)` | Click-drag |
 | `ui_type(text)` | Keyboard input |
 | `ui_key(key_combo)` | Modifier + key (e.g. `cmd+s`) |
-| `ui_scroll(x, y, delta_x, delta_y)` | Scroll at coordinates |
+| `ui_scroll(x, y, delta_x, delta_y)` | Scroll |
 
-### Runtime Strategy Selection
+### Runtime Strategy Selection [v1]
 
 ```swift
 func selectGUIStrategy(for bundleID: String) async -> GUIObservationStrategy {
@@ -320,15 +623,13 @@ func selectGUIStrategy(for bundleID: String) async -> GUIObservationStrategy {
 }
 ```
 
-The probe result is cached per-app for the session duration unless the app is relaunched.
+Probe result cached per-app for the session duration.
 
 ---
 
-## Session Persistence
+## Session Persistence [v1]
 
-Sessions are saved to `~/Library/Application Support/Merlin/sessions/` as JSON files.
-
-### Session File Structure
+Sessions saved to `~/Library/Application Support/Merlin/sessions/` as JSON. Written incrementally after each turn.
 
 ```json
 {
@@ -336,12 +637,12 @@ Sessions are saved to `~/Library/Application Support/Merlin/sessions/` as JSON f
   "title": "auto-generated from first user message",
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601",
-  "providerDefault": "deepseek-v4-pro",
+  "providerID": "deepseek",
   "messages": [
     {
       "role": "user | assistant | tool",
       "content": "...",
-      "toolCalls": [...],
+      "toolCalls": [],
       "toolCallId": "...",
       "thinkingContent": "...",
       "timestamp": "ISO8601"
@@ -351,7 +652,7 @@ Sessions are saved to `~/Library/Application Support/Merlin/sessions/` as JSON f
 }
 ```
 
-Full message history is preserved including tool call results — no summarization at save time. The 1M context window means sessions can be restored and continued without re-summarizing. Sessions are written incrementally after each turn (not only on close) to survive crashes.
+**[v2] additions to session record:** `worktreePath`, `permissionMode`, `modelID`, `scheduledTaskID` (if fired by scheduler), `skillsInvoked`.
 
 ---
 
@@ -359,69 +660,122 @@ Full message history is preserved including tool call results — no summarizati
 
 ### Views
 
-**ChatView** — primary conversation thread. Messages rendered with markdown. Tool calls shown inline as collapsible cards displaying tool name, arguments, and result summary. Thinking content shown in a dimmed expandable block when present.
+**[v1] ChatView** — primary conversation thread. Markdown rendered with CommonMark two-space hard line break. Tool calls shown as collapsible cards. Thinking content in dimmed expandable block.
 
-**ToolLogView** — right panel. Live stdout/stderr stream from running tool calls. Color-coded by source (stdout: default, stderr: orange, system: gray). Cleared between turns or pinned by user choice.
+**[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, permission mode badge, model picker dropdown.
 
-**ScreenPreviewView** — bottom panel (collapsible). Displays the last screenshot captured by `ui_screenshot`. Shows capture timestamp and source app. On-demand only — no live stream.
+**[v1] ToolLogView** — live stdout/stderr stream from running tools. Colour-coded by source.
 
-**AuthPopupView** — modal sheet. Appears over the main window. Non-dismissable via background click. Shows full tool call context, pattern preview, and keyboard shortcuts.
+**[v1] ScreenPreviewView** — last screenshot from `ui_screenshot`. On-demand only.
 
-**ProviderHUD** — small persistent indicator in toolbar showing which provider handled the last response and whether thinking mode was active.
+**[v1] AuthPopupView** — modal, non-dismissable via background click.
 
-### App Entitlements Required
+**[v1] ProviderHUD** — toolbar indicator showing active provider and thinking/tool state.
+
+**[v1] FirstLaunchSetupView** — Keychain setup on first run. Calls `appState.reloadProviders(apiKey:)` after saving.
+
+**[v2] SessionSidebar** — lists open sessions with title, model badge, activity indicator, permission mode badge. New session button.
+
+**[v2] DiffPane** — staged changes as unified diff, Accept/Reject/Comment per change, commit button.
+
+**[v2] FilePane** — read-only syntax-highlighted file viewer. Opens on click of any file path in chat.
+
+**[v2] TerminalPane** — persistent user-controlled terminal (`Ctrl+\``).
+
+**[v2] PreviewPane** — `WKWebView` + dev server log stream.
+
+**[v2] SkillsPicker** — `/` overlay with fuzzy-searchable skill list.
+
+**[v2] SideChat** — slide-over ephemeral chat panel (`⌘⇧/`). No context shared with active session. Not persisted.
+
+**[v2] SchedulerView** — settings panel for managing recurring tasks.
+
+**[v2] ConnectorsView** — GitHub / Slack / Linear credentials and status.
+
+**[v2] MCPServersView** — MCP server configuration and tool listing.
+
+### Workspace Layout [v2]
+
+Default arrangement: SessionSidebar | ChatPane | DiffPane (top) / TerminalPane (bottom) | FilePane. Preview Pane hidden by default. All panes draggable, collapsible, resizable. Layout persisted to `~/Library/Application Support/Merlin/layout.json`.
+
+### App Entitlements [v1]
 
 ```xml
 <key>com.apple.security.app-sandbox</key>
-<false/>  <!-- Non-sandboxed for full file system and process access -->
+<false/>
 
 <key>com.apple.security.network.client</key>
-<true/>   <!-- DeepSeek API calls -->
+<true/>
 ```
 
-System permissions required at first launch (requested on demand, not all at once):
-- **Accessibility** — for AX tree inspection and CGEvent input simulation
-- **Screen Recording** — for ScreenCaptureKit window capture
-
-Both are requested the first time the relevant tool is invoked, with a clear explanation shown to the user before the system dialog appears.
+System permissions (requested on first use): Accessibility, Screen Recording.
 
 ---
 
-## API Key Management
+## API Key Management [v1]
 
-DeepSeek API key stored in macOS Keychain:
+One Keychain item per remote provider. Local providers require no key.
+
+**[v3]** `SecureStorage` protocol abstracts credential storage across platforms: Keychain (macOS), Secret Service via `libsecret` (Linux), Windows Credential Manager (Windows). `ProviderRegistry` and `XcalibreClient` depend on the protocol, not the macOS implementation directly.
 
 ```
-Service:  com.merlin.deepseek
-Account:  api-key
+Service:   com.merlin.provider.<id>
+Account:   api-key
+Accessible: kSecAttrAccessibleAfterFirstUnlock
 ```
 
-Read at app launch via `SecItemCopyMatching`. If absent, a first-launch setup sheet prompts for the key and writes it to Keychain. The key is never written to disk in plaintext, never included in session JSON, and never logged.
+Examples:
+```
+com.merlin.provider.deepseek  / api-key
+com.merlin.provider.openai    / api-key
+com.merlin.provider.anthropic / api-key
+com.merlin.provider.qwen      / api-key
+com.merlin.provider.openrouter/ api-key
+com.merlin.xcalibre           / api-token  (RAG server)
+```
+
+`ProviderRegistry.setAPIKey(_:for:)` writes and `readAPIKey(for:)` reads. Keys never written to disk in plaintext, never included in session JSON, never logged.
+
+`ProviderSettingsView` lets the user enter API keys and toggle providers from the settings sheet. On the first launch for any remote provider, `FirstLaunchSetupView` prompts for the active provider's key and writes it via `ProviderRegistry`.
+
+**[v2]** Connector tokens (GitHub, Slack, Linear) stored as separate Keychain items under `com.merlin.<service>`.
 
 ---
 
-## Swift Project Structure
+## Project Structure
+
+**[v3]** The `Merlin/` directory below is the macOS app target. A `MerlinCore/` Swift package will extract everything above the UI layer (providers, engine, tools, auth, sessions, RAG, skills) so it compiles on Linux and Windows without modification. The SwiftUI app, AppKit integrations, and macOS-only tools remain in `Merlin/`.
 
 ```
 Merlin/
 ├── App/
 │   ├── MerlinApp.swift
-│   └── AppState.swift              — top-level ObservableObject
+│   └── AppState.swift
+├── Sessions/
+│   ├── Session.swift
+│   ├── SessionStore.swift
+│   ├── SessionManager.swift          [v2] — parallel session lifecycle
+│   ├── StagingBuffer.swift           [v2] — pending write queue
+│   └── WorktreeManager.swift         [v2] — git worktree create/remove
 ├── Providers/
-│   ├── LLMProvider.swift           — protocol + shared types
-│   ├── DeepSeekProvider.swift
-│   └── LMStudioProvider.swift
+│   ├── LLMProvider.swift
+│   ├── OpenAICompatibleProvider.swift    — parameterised OAI-compat (replaces DeepSeekProvider + LMStudioProvider)
+│   ├── AnthropicProvider.swift           — Anthropic Messages API + SSE translation
+│   ├── AnthropicSSEParser.swift          — content_block_delta parser
+│   ├── ProviderConfig.swift              — ProviderConfig + ProviderKind + ProviderRegistry
+│   ├── DeepSeekProvider.swift            — kept for live test backward compat
+│   └── LMStudioProvider.swift            — kept for live test backward compat
 ├── Engine/
-│   ├── AgenticEngine.swift         — main loop
-│   ├── ContextManager.swift        — token tracking + compaction
-│   ├── ToolRouter.swift            — dispatch + parallel execution
-│   └── ThinkingModeDetector.swift  — auto signal detection
+│   ├── AgenticEngine.swift
+│   ├── ContextManager.swift
+│   ├── ToolRouter.swift
+│   └── ThinkingModeDetector.swift
 ├── Auth/
 │   ├── AuthGate.swift
-│   ├── AuthMemory.swift            — load/save auth.json
+│   ├── AuthMemory.swift
 │   └── PatternMatcher.swift
 ├── Tools/
-│   ├── ToolDefinitions.swift       — OpenAI function schemas
+│   ├── ToolDefinitions.swift
 │   ├── FileSystemTools.swift
 │   ├── ShellTool.swift
 │   ├── AppControlTools.swift
@@ -430,127 +784,150 @@ Merlin/
 │   ├── AXInspectorTool.swift
 │   ├── ScreenCaptureTool.swift
 │   ├── CGEventTool.swift
-│   └── VisionQueryTool.swift
-├── Sessions/
-│   ├── Session.swift               — Codable session model
-│   └── SessionStore.swift          — load/save/list sessions
+│   ├── VisionQueryTool.swift
+│   └── PreviewTools.swift            [v2]
+├── MCP/
+│   └── MCPBridge.swift               [v2]
+├── Skills/
+│   ├── SkillsRegistry.swift          [v2]
+│   └── BuiltinSkills.swift           [v2]
+├── Connectors/
+│   ├── GitHubConnector.swift         [v2]
+│   ├── SlackConnector.swift          [v2]
+│   └── LinearConnector.swift         [v2]
+├── Scheduler/
+│   └── SchedulerEngine.swift         [v2]
+├── PRMonitor/
+│   └── PRMonitor.swift               [v2]
+├── Context/
+│   └── CLAUDEMDLoader.swift          [v2]
+├── Layout/
+│   └── WorkspaceLayoutManager.swift  [v2]
 ├── Keychain/
 │   └── KeychainManager.swift
+├── RAG/
+│   ├── XcalibreClient.swift          — RAG HTTP client, actor-based
+│   └── RAGTools.swift                — buildEnrichedMessage, formatChunks, formatBooks
 └── Views/
     ├── ChatView.swift
+    ├── SessionSidebar.swift          [v2]
+    ├── DiffPane.swift                [v2]
+    ├── FilePane.swift                [v2]
+    ├── TerminalPane.swift            [v2]
+    ├── PreviewPane.swift             [v2]
     ├── ToolLogView.swift
     ├── ScreenPreviewView.swift
     ├── AuthPopupView.swift
-    └── ProviderHUD.swift
+    ├── ProviderHUD.swift
+    ├── SkillsPicker.swift            [v2]
+    ├── SideChat.swift                [v2]
+    ├── FirstLaunchSetupView.swift
+    └── Settings/
+        ├── ProviderSettingsView.swift — per-provider API key + enable/disable + base URL
+        ├── SchedulerView.swift       [v2]
+        ├── ConnectorsView.swift      [v2]
+        └── MCPServersView.swift      [v2]
 ```
 
 ---
 
 ## Key Dependencies
 
-No third-party Swift packages in the production target. Test targets use XCTest exclusively (Apple framework).
+No third-party Swift packages in the production target.
 
-| Framework | Purpose |
-|---|---|
-| `SwiftUI` | UI |
-| `Foundation` | Networking, Process, JSON |
-| `ScreenCaptureKit` | Window and screen capture (macOS 13+) |
-| `Accessibility` | AXUIElement tree inspection |
-| `CoreGraphics` | CGEvent input simulation |
-| `AppKit` | NSWorkspace app launch/control |
-| `Security` | Keychain read/write |
-| `XCTest` | All test layers (test targets only) |
+| Framework | Purpose | Version |
+|---|---|---|
+| `SwiftUI` | UI | v1 |
+| `Foundation` | Networking, Process, JSON | v1 |
+| `ScreenCaptureKit` | Window and screen capture | v1 |
+| `Accessibility` | AXUIElement tree inspection | v1 |
+| `CoreGraphics` | CGEvent input simulation | v1 |
+| `AppKit` | NSWorkspace app launch/control | v1 |
+| `Security` | Keychain read/write | v1 |
+| `PDFKit` | PDF text extraction for attachments | v2 |
+| `WebKit` | WKWebView for preview pane | v2 |
+| `BackgroundTasks` | Scheduled task wake-ups | v2 |
+| `XCTest` | All test layers (test targets only) | v1 |
 
-HTTP calls to DeepSeek and LM Studio use `URLSession` with async/await and server-sent event (SSE) streaming parsed manually — no Alamofire or similar.
+MCP servers are external processes (stdio). No Swift package dependency introduced.
 
 ---
 
-## Testing Strategy (TDD)
+## Testing Strategy [v1]
 
-All implementation phases are preceded by a test phase. Tests are written first; implementation makes them pass.
+All implementation phases are preceded by a test phase.
 
 ### Test Layers
 
-**Layer 1 — Unit (fast, always run)**
-Pure logic, no I/O, mocked providers and tools. Covers: PatternMatcher, ThinkingModeDetector, ContextManager compaction, token estimation, session JSON serialization/deserialization.
+**Layer 1 — Unit (fast, always run)** [v1]
+Pure logic, no I/O. Covers: PatternMatcher, ThinkingModeDetector, ContextManager, token estimation, session serialisation.
 
-**Layer 2 — Integration (fast, always run)**
-Real file system, real `Foundation.Process`, real AX/ScreenCaptureKit calls, mocked LLM responses. Covers: each tool's execution correctness, xcresult parsing, AX tree probing, screenshot capture pipeline.
+**Layer 2 — Integration (fast, always run)** [v1]
+Real file system, real `Foundation.Process`, mocked LLM responses. Covers: all tools, xcresult parsing, AX probing, screenshot pipeline.
 
-**Layer 3 — Live Provider (slow, manual trigger)**
-Real DeepSeek API + real LM Studio. Verifies wire format, tool call round-trips, streaming, thinking mode activation. Tagged `LiveProvider` — run via separate Xcode test scheme `MerlinTests-Live`, not on every build.
+**[v2] Layer 2 additions:** StagingBuffer accept/reject, WorktreeManager create/remove, CLAUDEMDLoader discovery, SkillsRegistry loading and frontmatter parsing, MCPBridge tool registration.
 
-**Preconditions for Layer 3:**
-- `DEEPSEEK_API_KEY` set in environment
-- LM Studio running on `localhost:1234` with `Qwen2.5-VL-72B-Instruct-Q4_K_M` loaded
+**Layer 3 — Live Provider (slow, manual trigger)** [v1]
+Real DeepSeek API + real LM Studio. Scheme: `MerlinTests-Live`. Requires `DEEPSEEK_API_KEY` env var and LM Studio running.
 
-**Layer 4 — End-to-End Visual (slow, manual trigger)**
-Full agentic loop with real models + SwiftUI UI verification. Drives the `TestTargetApp` fixture via GUI automation. Tagged `EndToEnd`.
+**Layer 4 — End-to-End Visual (slow, manual trigger)** [v1]
+Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 
-### Visual Testing Approach (XCTest only)
-
-No third-party snapshot library. Visual correctness is verified through:
+### Visual Testing [v1]
 
 | Concern | Method | Automated |
 |---|---|---|
-| Widget clipped outside container | `XCUIElement.frame` within parent bounds assertion | Yes |
-| Overlapping / cluttered elements | Frame intersection checks between sibling views | Yes |
-| Accessibility layout violations | `XCUIApplication().performAccessibilityAudit()` | Yes |
-| Rendering artifacts | `XCTAttachment(screenshot:)` captured to test report | Manual review |
-
-### TestTargetApp
-
-A minimal SwiftUI app bundled as a test fixture at `TestTargetApp/`. Contains a fixed, versioned set of UI elements: buttons, text fields, labels, a list, a sheet. Used exclusively by Layer 4 end-to-end tests as the GUI automation target. Deterministic layout — does not depend on Xcode or any external app being stable.
-
-### Project Test Structure
-
-```
-Merlin/
-├── MerlinTests/                    — Layer 1 + 2 (fast, default scheme)
-│   ├── Unit/
-│   │   ├── PatternMatcherTests.swift
-│   │   ├── ThinkingModeDetectorTests.swift
-│   │   ├── ContextManagerTests.swift
-│   │   └── SessionSerializationTests.swift
-│   └── Integration/
-│       ├── FileSystemToolTests.swift
-│       ├── ShellToolTests.swift
-│       ├── XcodeToolTests.swift
-│       ├── AXInspectorTests.swift
-│       └── ScreenCaptureTests.swift
-├── MerlinLiveTests/                — Layer 3 (MerlinTests-Live scheme)
-│   ├── DeepSeekProviderLiveTests.swift
-│   └── LMStudioProviderLiveTests.swift
-├── MerlinE2ETests/                 — Layer 4 (MerlinTests-Live scheme)
-│   ├── AgenticLoopE2ETests.swift
-│   ├── GUIAutomationE2ETests.swift
-│   └── VisualLayoutTests.swift
-└── TestTargetApp/                  — GUI automation fixture app
-    ├── TestTargetAppApp.swift
-    └── ContentView.swift           — fixed versioned UI elements
-```
+| Widget clipped outside container | `XCUIElement.frame` within parent bounds | Yes |
+| Overlapping elements | Frame intersection checks | Yes |
+| Accessibility violations | `XCUIApplication().performAccessibilityAudit()` | Yes |
+| Rendering artifacts | `XCTAttachment(screenshot:)` | Manual review |
 
 ---
 
 ## Decisions Summary
 
-| Decision | Choice |
+| Decision | v1 | v2 |
+|---|---|---|
+| Session model | Single serial thread | Parallel sessions in Git worktrees |
+| File write policy | Direct to disk | Staged via StagingBuffer, Accept/Reject in DiffPane |
+| Permission model | AuthGate only | AuthGate + Ask / Auto-accept / Plan modes |
+| CLAUDE.md | Not supported | Auto-loaded at session init |
+| Skills | None | Slash-command registry, global + per-project, Agent Skills standard |
+| MCP | None | stdio transport, tools auto-registered into ToolRouter |
+| Scheduling | None | SchedulerEngine with BackgroundTasks; Plan mode default |
+| PR monitoring | Shell only | PRMonitor polls GitHub API; auto-merge on green |
+| External connectors | None | GitHub, Slack, Linear (opt-in) |
+| Workspace layout | Fixed | Draggable/collapsible panes, persisted |
+| Interrupt | None | Stop button cancels active Task + stream |
+| Context injection | Manual | @filename autocomplete + file/image/PDF attachment |
+| Model selection | Fixed per provider | Per-session model picker |
+| In-app preview | None | WKWebView + dev server process + preview tools |
+| MCP transport | N/A | stdio only (HTTP/SSE deferred to v3) |
+| Tool call wire format | OpenAI function calling | Unchanged |
+| LLM providers | DeepSeek (remote) + LM Studio (local) | 10 providers via OpenAICompatibleProvider + AnthropicProvider; ProviderRegistry |
+| Provider config | Hardcoded in AppState | ProviderConfig JSON + Keychain per provider; ProviderSettingsView |
+| API key storage | Single Keychain item (`com.merlin.deepseek`) | One item per provider (`com.merlin.provider.<id>`); connector tokens added per-service |
+| Thinking mode | Always injected when detector fires | Gated by `supportsThinking` flag on active ProviderConfig |
+| Vision routing | Fixed to LM Studio | First local provider with `supportsVision = true` |
+| Provider selection | Pro (complex) / Flash (simple) split | Single active provider per session; skill `model` field overrides |
+| RAG | None | xcalibre-server auto-inject (3 chunks) + explicit rag_search/rag_list_books tools |
+| Context compaction | 800K token threshold | Unchanged; skills re-attached after compaction |
+| Auth sandbox | Pattern memory + popup | Unchanged; MCP tools subject to same gate |
+| App sandbox | Non-sandboxed | Unchanged |
+| Third-party dependencies | None | None (MCP servers are external processes) |
+| TDD | Yes | Yes |
+| GUI automation test target | TestTargetApp fixture | Unchanged |
+
+| Decision | v3 |
 |---|---|
-| Tool call wire format | OpenAI function calling |
-| Error / retry policy | Retry once silently, then surface to user |
-| API key storage | macOS Keychain |
-| Vision model backend | GGUF Q4_K_M in LM Studio (MLX if bottleneck observed) |
-| Session persistence | Yes — full JSON in ~/Library/Application Support/Merlin/sessions/ |
-| Thinking mode | Auto-detect via signal words, manual override available |
-| Screen preview refresh | On-demand only (no live stream) |
-| Xcode integration | Deep — xcresult, simulators, DerivedData, SPM |
-| Tool discovery | Dynamic PATH scan, deny-by-default, auth required on first use |
-| Context compaction | Yes — fires at 800K tokens, summarizes old tool results |
-| App sandbox | Non-sandboxed, direct distribution |
-| GUI strategy selection | AX tree if rich (>10 elements with labels), else vision model |
-| Third-party dependencies | None — Apple frameworks only (production + test) |
-| TDD | Yes — test phase precedes every implementation phase |
-| Snapshot testing library | None — XCTest built-ins + manual screenshot review |
-| Live test trigger | Manual — separate Xcode scheme `MerlinTests-Live` |
-| GUI automation test target | Purpose-built `TestTargetApp` fixture (bundled) |
-| Visual quality definition | No clipping, no overlap, accessibility audit passes, screenshots for artifact review |
+| Primary platform | macOS — all features; Linux/Windows are secondary targets |
+| Platform scope | Linux x86-64/ARM first; Windows after Linux is stable |
+| Core extraction | `MerlinCore` Swift package; no UI or macOS-framework imports |
+| Non-macOS entry point | CLI/TUI (decisions TBD) |
+| Tool availability | `platformSupport` flag per tool; macOS-only tools absent on other platforms |
+| GUI automation (Linux) | Best-effort via `run_shell` (xdotool/AT-SPI); no native implementation |
+| GUI automation (Windows) | Best-effort via `run_shell` (PowerShell/UIA); no native implementation |
+| Credential storage | `SecureStorage` protocol; Keychain (macOS), libsecret (Linux), Credential Manager (Windows) |
+| Shell tool (Windows) | Configurable shell path; defaults to PowerShell |
+| Scheduler (non-macOS) | TBD — cron/systemd (Linux), Task Scheduler (Windows), or in-process timer |
+| SwiftUI app | macOS only; unchanged |

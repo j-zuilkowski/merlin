@@ -20,7 +20,7 @@ LMStudioProvider is identical in structure to DeepSeekProvider with these differ
 
 ```swift
 // @unchecked Sendable: only let-stored constants after init.
-final class LMStudioProvider: LMStudioProvider, @unchecked Sendable {
+final class LMStudioProvider: LLMProvider, @unchecked Sendable {
     let model: String
     init(model: String = "Qwen2.5-VL-72B-Instruct-Q4_K_M")
     func buildRequestBody(_ request: CompletionRequest) throws -> Data

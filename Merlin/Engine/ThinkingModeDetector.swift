@@ -12,6 +12,10 @@ enum ThinkingModeDetector {
         return enabledSignals.contains { containsWholeWord($0, in: message) }
     }
 
+    static func shouldUseThinking(for message: String) -> Bool {
+        shouldEnableThinking(for: message)
+    }
+
     static func config(for message: String) -> ThinkingConfig {
         if shouldEnableThinking(for: message) {
             return ThinkingConfig(type: "enabled", reasoningEffort: "high")

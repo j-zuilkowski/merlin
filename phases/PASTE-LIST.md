@@ -192,7 +192,56 @@ cat phases/phase-24-live-e2e.md
 #   GUIAutomationE2ETests → pass (with Accessibility + LM Studio running)
 # Commit: Phase 24
 
-# ── DONE ──────────────────────────────────────────────────────────────────
+# ── PHASE 25a — RAG Integration Tests ────────────────────────────────────────
+cat phases/phase-25a-rag-tests.md
+# Verify: BUILD FAILED with errors for XcalibreClient, RAGChunk, RAGBook, RAGTools,
+#         CapturingProvider (expected)
+# Commit: Phase 25a
+
+# ── PHASE 25b — RAG Integration Implementation ────────────────────────────────
+cat phases/phase-25b-rag-impl.md
+# Verify: TEST BUILD SUCCEEDED; XcalibreClientTests → 10 pass; RAGToolsTests → 11 pass;
+#         RAGEngineTests → 3 pass
+# Commit: Phase 25b
+
+# ── PHASE 26a — Multi-Provider Tests ─────────────────────────────────────────
+cat phases/phase-26a-provider-tests.md
+# Verify: BUILD FAILED with errors for ProviderRegistry, OpenAICompatibleProvider,
+#         AnthropicSSEParser, AnthropicMessageEncoder, AnthropicProvider,
+#         AgenticEngine.shouldUseThinking(for:) (expected)
+# Commit: Phase 26a
+
+# ── PHASE 26b — Multi-Provider Implementation ─────────────────────────────────
+cat phases/phase-26b-provider-impl.md
+# Verify: TEST BUILD SUCCEEDED; ProviderRegistryTests → 14 pass;
+#         OpenAICompatibleProviderTests → 5 pass; AnthropicSSEParserTests → 7 pass;
+#         AnthropicMessageEncoderTests → 5 pass; AnthropicProviderRequestTests → 4 pass;
+#         AgenticEngineProviderTests → 4 pass
+# Commit: Phase 26b
+
+# ── PHASE 27a — Model Picker Tests ───────────────────────────────────────────
+cat phases/phase-27a-model-picker-tests.md
+# Verify: BUILD FAILED with errors for ProviderRegistry.knownModels (expected)
+# Commit: Phase 27a
+
+# ── PHASE 27b — Model Picker Implementation ───────────────────────────────────
+cat phases/phase-27b-model-picker.md
+# Verify: BUILD SUCCEEDED; ProviderModelPickerTests → 8 pass
+# Commit: Phase 27b
+
+# ── PHASE 28a — Menu Tests ────────────────────────────────────────────────────
+cat phases/phase-28a-menu-tests.md
+# Verify: BUILD FAILED with errors for AgenticEngine.cancel(), AppState.newSession(),
+#         AppState.stopEngine(), Notification.Name.merlinNewSession (expected)
+# Commit: Phase 28a
+
+# ── PHASE 28b — Menu Implementation ──────────────────────────────────────────
+cat phases/phase-28b-menu.md
+# Verify: BUILD SUCCEEDED; AgenticEngineCancelTests → 3 pass;
+#         AppStateSessionTests → 4 pass
+# Commit: Phase 28b
+
+# ── DONE ──────────────────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
-#        xcodebuild → zero errors, zero warnings
+#        xcodebuild -scheme Merlin → zero errors, zero warnings
 ```

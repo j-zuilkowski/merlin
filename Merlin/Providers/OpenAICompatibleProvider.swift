@@ -1,0 +1,59 @@
+import Foundation
+
+// Single wrapper covering all OpenAI-compatible endpoints.
+final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
+
+    let id: String
+    let baseURL: URL
+    private let apiKey: String?
+    private let modelID: String
+
+    init(id: String, baseURL: URL, apiKey: String?, modelID: String) {
+        self.id = id
+        self.baseURL = baseURL
+        self.apiKey = apiKey
+        self.modelID = modelID
+    }
+
+    func buildRequest(_ request: CompletionRequest) throws -> URLRequest {
+        let url = baseURL.appendingPathComponent("chat/completions")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let key = apiKey, !key.isEmpty {
+            urlRequest.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        }
+        urlRequest.httpBody = try encodeRequest(request, baseURL: baseURL, model: modelID)
+        return urlRequest
+    }
+
+    func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        let urlRequest = try buildRequest(request)
+        return AsyncThrowingStream { continuation in
+            let task = Task { @Sendable in
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                        throw URLError(.badServerResponse)
+                    }
+
+                    for try await line in bytes.lines {
+                        if let chunk = try SSEParser.parseChunk(line) {
+                            continuation.yield(chunk)
+                            if chunk.finishReason != nil {
+                                break
+                            }
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
+            }
+        }
+    }
+}

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var registry: ProviderRegistry
 
     var body: some View {
         HSplitView {
@@ -28,5 +29,7 @@ struct ContentView: View {
                 )
             }
         }
+        .focusedSceneObject(appState)
+        .focusedSceneObject(registry)
     }
 }

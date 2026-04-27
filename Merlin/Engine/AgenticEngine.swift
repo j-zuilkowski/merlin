@@ -9,56 +9,105 @@ enum AgentEvent {
     case error(Error)
 }
 
+private final class CancellationState: @unchecked Sendable {
+    var finished = false
+}
+
 @MainActor
 final class AgenticEngine {
     let contextManager: ContextManager
     private let toolRouter: ToolRouter
     private let thinkingDetector = ThinkingModeDetector.self
-    private let proProvider: any LLMProvider
-    private let flashProvider: any LLMProvider
-    private let visionProvider: LMStudioProvider
+    var proProvider: any LLMProvider
+    var flashProvider: any LLMProvider
+    private let visionProvider: any LLMProvider
+    var xcalibreClient: XcalibreClient?
+    var registry: ProviderRegistry?
 
     weak var sessionStore: SessionStore?
+    private var currentTask: Task<Void, Never>?
 
     init(proProvider: any LLMProvider,
          flashProvider: any LLMProvider,
-         visionProvider: LMStudioProvider,
+         visionProvider: any LLMProvider,
          toolRouter: ToolRouter,
-         contextManager: ContextManager) {
+         contextManager: ContextManager,
+         xcalibreClient: XcalibreClient? = nil) {
         self.proProvider = proProvider
         self.flashProvider = flashProvider
         self.visionProvider = visionProvider
         self.toolRouter = toolRouter
         self.contextManager = contextManager
+        self.xcalibreClient = xcalibreClient
     }
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
         toolRouter.register(name: name, handler: handler)
     }
 
+    func cancel() {
+        currentTask?.cancel()
+        currentTask = nil
+    }
+
     func send(userMessage: String) -> AsyncStream<AgentEvent> {
         AsyncStream { continuation in
+            var task: Task<Void, Never>!
+            task = Task { @MainActor in
+                let state = CancellationState()
+
+                await withTaskCancellationHandler(operation: {
+                    do {
+                        try await self.runLoop(userMessage: userMessage, continuation: continuation)
+                        self.finishStream(continuation, interrupted: false, state: state)
+                    } catch is CancellationError {
+                        self.finishStream(continuation, interrupted: true, state: state)
+                    } catch {
+                        continuation.yield(.error(error))
+                        self.finishStream(continuation, interrupted: false, state: state)
+                    }
+                }, onCancel: {
+                    Task { @MainActor in
+                        self.finishStream(continuation, interrupted: true, state: state)
+                    }
+                })
+            }
             Task { @MainActor in
-                do {
-                    try await self.runLoop(userMessage: userMessage, continuation: continuation)
-                    continuation.finish()
-                } catch {
-                    continuation.yield(.error(error))
-                    continuation.finish()
-                }
+                self.currentTask = task
             }
         }
     }
 
+    private func finishStream(_ continuation: AsyncStream<AgentEvent>.Continuation,
+                              interrupted: Bool,
+                              state: CancellationState) {
+        guard !state.finished else { return }
+        state.finished = true
+        if interrupted {
+            continuation.yield(.systemNote("[Interrupted]"))
+        }
+        continuation.finish()
+        currentTask = nil
+    }
+
     private func runLoop(userMessage: String, continuation: AsyncStream<AgentEvent>.Continuation) async throws {
-        contextManager.append(Message(role: .user, content: .text(userMessage), timestamp: Date()))
+        var effectiveMessage = userMessage
+        if let client = xcalibreClient {
+            let chunks = await client.searchChunks(query: userMessage, limit: 3, rerank: false)
+            if !chunks.isEmpty {
+                effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: chunks)
+                continuation.yield(.systemNote("Library: \(chunks.count) passage\(chunks.count == 1 ? "" : "s") retrieved"))
+            }
+        }
+        contextManager.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
 
         while true {
             let provider = selectProvider(for: userMessage)
+            let requestModel = modelID(for: provider)
             let request = CompletionRequest(
-                model: provider.id,
+                model: requestModel,
                 messages: contextManager.messagesForProvider(),
-                thinking: provider.id == proProvider.id ? ThinkingModeDetector.config(for: userMessage) : nil
+                thinking: shouldUseThinking(for: userMessage) ? ThinkingModeDetector.config(for: userMessage) : nil
             )
 
             let stream = try await provider.complete(request: request)
@@ -129,17 +178,45 @@ final class AgenticEngine {
         }
     }
 
+    func shouldUseThinking(for message: String) -> Bool {
+        if let registry {
+            guard let activeConfig = registry.activeConfig else { return false }
+            return activeConfig.supportsThinking && thinkingDetector.shouldEnableThinking(for: message)
+        }
+        return thinkingDetector.shouldEnableThinking(for: message)
+    }
+
     private func selectProvider(for message: String) -> any LLMProvider {
+        if let registry {
+            let lower = message.lowercased()
+            if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {
+                return registry.visionProvider ?? visionProvider
+            }
+            if let primary = registry.primaryProvider {
+                return primary
+            }
+        }
+
         let lower = message.lowercased()
         if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {
             return visionProvider
         }
-        if thinkingDetector.shouldEnableThinking(for: message) {
+        if shouldUseThinking(for: message) {
             return proProvider
         }
         if ["read", "write", "run", "list", "build", "open", "create", "delete", "move", "show"].contains(where: { lower.contains($0) }) {
             return flashProvider
         }
         return proProvider
+    }
+
+    private func modelID(for provider: any LLMProvider) -> String {
+        if let registry, let config = registry.providers.first(where: { $0.id == provider.id }) {
+            if config.model.isEmpty, config.id == "lmstudio" {
+                return LMStudioProvider().model
+            }
+            return config.model.isEmpty ? provider.id : config.model
+        }
+        return provider.id
     }
 }

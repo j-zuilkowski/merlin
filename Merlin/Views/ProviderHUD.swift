@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ProviderHUD: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var registry: ProviderRegistry
     @State private var showingPopover = false
 
     var body: some View {
@@ -48,9 +49,9 @@ struct ProviderHUD: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                providerButton(title: "DeepSeek Pro", id: "deepseek-v4-pro")
-                providerButton(title: "DeepSeek Flash", id: "deepseek-v4-flash")
-                providerButton(title: "LM Studio", id: "LM Studio")
+                ForEach(registry.providers.filter { $0.isEnabled || $0.id == registry.activeProviderID }) { config in
+                    providerButton(title: config.displayName, id: config.id)
+                }
             }
 
             Divider()
@@ -86,7 +87,7 @@ struct ProviderHUD: View {
     }
 
     private var labelText: String {
-        appState.activeProviderID
+        registry.activeConfig?.displayName ?? appState.activeProviderID
     }
 
     private var statusColor: Color {

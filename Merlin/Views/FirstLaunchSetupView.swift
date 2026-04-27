@@ -45,6 +45,7 @@ struct FirstLaunchSetupView: View {
                         let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard trimmed.isEmpty == false else { return }
                         try? KeychainManager.writeAPIKey(trimmed)
+                        appState.reloadProviders(apiKey: trimmed)
                         appState.showFirstLaunchSetup = false
                     }
                     .buttonStyle(.borderedProminent)

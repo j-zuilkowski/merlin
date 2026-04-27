@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 struct ChatView: View {
@@ -52,6 +53,9 @@ struct ChatView: View {
                 endPoint: .bottom
             )
         )
+        .onReceive(NotificationCenter.default.publisher(for: .merlinNewSession)) { _ in
+            model.clear()
+        }
     }
 
     private var header: some View {
@@ -130,7 +134,7 @@ final class ChatViewModel: ObservableObject {
         assistantIndex = nil
         toolIndexByCallID.removeAll()
         appState.toolActivityState = .streaming
-        appState.thinkingModeActive = ThinkingModeDetector.shouldEnableThinking(for: message)
+        appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
         appendUser(message)
 
@@ -158,6 +162,15 @@ final class ChatViewModel: ObservableObject {
         isSending = false
         appState.thinkingModeActive = false
         appState.toolActivityState = .idle
+    }
+
+    func clear() {
+        items.removeAll()
+        isSending = false
+        draft = ""
+        assistantIndex = nil
+        toolIndexByCallID.removeAll()
+        bumpRevision()
     }
 
     func toggleThinkingExpansion(at index: Int) {
