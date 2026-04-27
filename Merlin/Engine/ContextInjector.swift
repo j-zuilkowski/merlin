@@ -59,7 +59,7 @@ enum ContextInjector {
         return result
     }
 
-    static func inlineAttachment(url: URL) async throws -> String {
+    static func inlineAttachment(url: URL, visionProvider: (any LLMProvider)? = nil) async throws -> String {
         let ext = url.pathExtension.lowercased()
         let name = url.lastPathComponent
 
@@ -72,7 +72,17 @@ enum ContextInjector {
         }
 
         if imageExtensions.contains(ext) {
-            return "[Image: \(name) — vision analysis pending]\n"
+            guard let provider = visionProvider,
+                  let imageData = try? Data(contentsOf: url),
+                  !imageData.isEmpty else {
+                return "[Image: \(name) — vision analysis pending]\n"
+            }
+            let description = (try? await VisionQueryTool.query(
+                imageData: imageData,
+                prompt: "Describe this image concisely in 1-2 sentences.",
+                provider: provider
+            )) ?? "vision analysis pending"
+            return "[Image: \(name)]\n\(description)\n"
         }
 
         throw AttachmentError.unsupportedType

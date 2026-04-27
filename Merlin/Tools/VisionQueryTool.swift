@@ -9,10 +9,10 @@ struct VisionResponse: Codable, Sendable {
 }
 
 enum VisionQueryTool {
-    static func query(imageData: Data, prompt: String, provider: LMStudioProvider) async throws -> String {
+    static func query(imageData: Data, prompt: String, provider: any LLMProvider) async throws -> String {
         let encodedImage = imageData.base64EncodedString()
         let request = CompletionRequest(
-            model: provider.model,
+            model: provider.id,
             messages: [
                 Message(
                     role: .user,
