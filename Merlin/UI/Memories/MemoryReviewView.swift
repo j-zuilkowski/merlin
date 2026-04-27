@@ -16,19 +16,25 @@ struct MemoryReviewView: View {
     }
 
     var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
             List(pendingURLs, id: \.self, selection: $selectedURL) { url in
                 Text(url.lastPathComponent)
             }
-            .frame(minWidth: 180)
+            .listStyle(.sidebar)
+            .frame(width: 200)
 
-            VStack(alignment: .leading, spacing: 12) {
+            Divider()
+
+            VStack(alignment: .leading, spacing: 0) {
                 ScrollView {
-                    Text(previewContent)
+                    Text(previewContent.isEmpty ? "Select a memory to preview" : previewContent)
                         .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(previewContent.isEmpty ? .secondary : .primary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                 }
+
+                Divider()
 
                 HStack {
                     Spacer()
@@ -36,14 +42,16 @@ struct MemoryReviewView: View {
                         Task { await rejectSelected() }
                     }
                     .buttonStyle(.bordered)
+                    .disabled(selectedURL == nil)
                     Button("Approve") {
                         Task { await approveSelected() }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(selectedURL == nil)
                 }
-                .padding([.horizontal, .bottom])
+                .padding(12)
             }
-            .frame(minWidth: 300)
+            .frame(maxWidth: .infinity)
         }
         .task {
             await refresh()

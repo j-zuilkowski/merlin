@@ -4,19 +4,35 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var registry: ProviderRegistry
 
+    @State private var showToolPane = false
+
     var body: some View {
-        HSplitView {
+        HStack(spacing: 0) {
             ChatView()
-                .frame(minWidth: 500)
+                .frame(minWidth: 360, maxWidth: .infinity)
 
-            VSplitView {
-                ToolLogView()
-                    .frame(minWidth: 280, minHeight: 200)
-
-                ScreenPreviewView()
-                    .frame(minHeight: 200)
+            if showToolPane {
+                Divider()
+                VSplitView {
+                    ToolLogView()
+                        .frame(minWidth: 260, minHeight: 160)
+                    ScreenPreviewView()
+                        .frame(minHeight: 160)
+                }
+                .frame(width: 300)
             }
-            .frame(width: 320)
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showToolPane.toggle()
+                } label: {
+                    Label("Tool Log", systemImage: "wrench.and.screwdriver")
+                }
+                .buttonStyle(.bordered)
+                .tint(showToolPane ? .accentColor : .secondary)
+                .help("Toggle tool log")
+            }
         }
         .sheet(isPresented: $appState.showAuthPopup) {
             if let req = appState.pendingAuthRequest {
