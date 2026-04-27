@@ -3,6 +3,7 @@ import SwiftUI
 struct MerlinCommands: Commands {
     @FocusedObject var appState: AppState?
     @FocusedObject var registry: ProviderRegistry?
+    @FocusedObject var sessionManager: SessionManager?
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -18,6 +19,21 @@ struct MerlinCommands: Commands {
             }
             .keyboardShortcut(".", modifiers: .command)
             .disabled(!canStop)
+        }
+
+        CommandMenu("Window") {
+            Button("Pop Out Session") {
+                guard let activeSession = sessionManager?.activeSession else { return }
+                let session = Session(
+                    id: activeSession.id,
+                    title: activeSession.title,
+                    createdAt: activeSession.createdAt,
+                    messages: activeSession.appState.engine.contextManager.messages
+                )
+                FloatingWindowManager.shared.open(session: session, alwaysOnTop: true)
+            }
+            .keyboardShortcut("p", modifiers: [.command, .shift])
+            .disabled(sessionManager?.activeSession == nil)
         }
 
         CommandMenu("Provider") {
