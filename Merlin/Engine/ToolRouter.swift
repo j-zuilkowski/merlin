@@ -4,6 +4,8 @@ import Foundation
 final class ToolRouter {
     private let authGate: AuthGate
     private var handlers: [String: (String) async throws -> String] = [:]
+    private var mcpHandlers: [String: (String) async throws -> String] = [:]
+    private var mcpDefinitions: [ToolDefinition] = []
     var stagingBuffer: StagingBuffer?
     var permissionMode: PermissionMode = .ask
 
@@ -33,6 +35,19 @@ final class ToolRouter {
         handlers[name] = handler
     }
 
+    func registerMCPTool(_ definition: ToolDefinition,
+                         handler: @escaping ([String: Any]) async -> String) {
+        let name = definition.function.name
+        mcpDefinitions.append(definition)
+        mcpHandlers[name] = { arguments in
+            await handler(Self.dictionary(from: arguments))
+        }
+    }
+
+    func mcpToolDefinitions() -> [ToolDefinition] {
+        mcpDefinitions
+    }
+
     private func dispatchSingle(_ call: ToolCall) async -> ToolResult {
         if shouldStage(call.function.name) {
             return await stageFileWrite(call: call)
@@ -46,7 +61,15 @@ final class ToolRouter {
             }
         }
 
-        guard let handler = handlers[call.function.name] else {
+        let toolName = call.function.name
+        let handler: ((String) async throws -> String)?
+        if let mcpHandler = mcpHandlers[toolName] {
+            handler = mcpHandler
+        } else {
+            handler = handlers[toolName]
+        }
+
+        guard let handler else {
             return ToolResult(toolCallId: call.id, content: "Unknown tool: \(call.function.name)", isError: true)
         }
 
@@ -142,5 +165,14 @@ final class ToolRouter {
         return dictionary.reduce(into: [:]) { result, pair in
             result[pair.key] = String(describing: pair.value)
         }
+    }
+
+    private static func dictionary(from json: String) -> [String: Any] {
+        guard let data = json.data(using: .utf8),
+              let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = jsonObject as? [String: Any] else {
+            return [:]
+        }
+        return dictionary
     }
 }

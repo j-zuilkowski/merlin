@@ -18,9 +18,10 @@ targets:
   Merlin:
     type: application
     platform: macOS
-    sources: [Merlin/]
-    resources:
-      - Merlin/Skills/Builtin/
+    sources:
+      - path: Merlin/
+        excludes:
+          - Skills/Builtin/**
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.merlin.app

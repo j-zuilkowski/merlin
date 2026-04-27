@@ -197,7 +197,8 @@ final class AppState: ObservableObject {
     }
 
     static func installBuiltinSkills() {
-        guard let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("Builtin") else { return }
+        let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("Builtin")
+            ?? builtinSkillsSourceURL()
         let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
         let destination = URL(fileURLWithPath: home).appendingPathComponent(".merlin/skills")
         let fm = FileManager.default
@@ -208,6 +209,14 @@ final class AppState: ObservableObject {
             try? fm.createDirectory(at: destination, withIntermediateDirectories: true)
             try? fm.copyItem(at: skillDir, to: target)
         }
+    }
+
+    private static func builtinSkillsSourceURL() -> URL {
+        let fileURL = URL(fileURLWithPath: #filePath)
+        return fileURL
+            .deletingLastPathComponent() // App
+            .deletingLastPathComponent() // Merlin
+            .appendingPathComponent("Skills/Builtin")
     }
 
     private func syncEngineProviders() {
