@@ -45,6 +45,15 @@ struct FilePane: View {
 
             Spacer(minLength: 0)
 
+            Button {
+                openFilePicker()
+            } label: {
+                Image(systemName: "folder")
+                    .font(.caption2.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .help("Open file…")
+
             if fileURL != nil {
                 Button {
                     fileURL = nil
@@ -62,14 +71,31 @@ struct FilePane: View {
     }
 
     private var placeholder: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Spacer(minLength: 0)
+            Image(systemName: "doc.text")
+                .font(.system(size: 28))
+                .foregroundStyle(.tertiary)
             Text("No file selected")
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            Button("Open File…") {
+                openFilePicker()
+            }
+            .buttonStyle(.bordered)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, minHeight: 160)
+    }
+
+    private func openFilePicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK {
+            fileURL = panel.url
+        }
     }
 
     @MainActor

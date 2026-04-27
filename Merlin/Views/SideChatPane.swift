@@ -19,9 +19,8 @@ struct SideChatPane: View {
             Divider()
 
             if isVisible {
-                ContentView()
+                ChatView()
                     .environmentObject(appState)
-                    .environmentObject(skillsRegistry)
                     .environmentObject(appState.registry)
                     .environmentObject(sessionManager)
             } else {
