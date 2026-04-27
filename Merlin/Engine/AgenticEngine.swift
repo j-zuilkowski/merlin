@@ -30,6 +30,9 @@ final class AgenticEngine {
     var claudeMDContent: String = ""
     var memoriesContent: String = ""
     var onUsageUpdate: ((Int) -> Void)?
+    private var hookEngine: HookEngine {
+        HookEngine(hooks: AppSettings.shared.hooks)
+    }
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
@@ -200,6 +203,9 @@ final class AgenticEngine {
                 continuation.yield(.systemNote("Library: \(chunks.count) passage\(chunks.count == 1 ? "" : "s") retrieved"))
             }
         }
+        if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
+            continuation.yield(.systemNote(augmented))
+        }
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
 
         while true {
@@ -239,6 +245,15 @@ final class AgenticEngine {
             }
 
             guard sawToolCall, !assembled.isEmpty else {
+                let shouldContinue = await hookEngine.runStop()
+                if shouldContinue {
+                    context.append(Message(
+                        role: .user,
+                        content: .text("[Hook: continue]"),
+                        timestamp: Date()
+                    ))
+                    continue
+                }
                 break
             }
 
@@ -266,9 +281,36 @@ final class AgenticEngine {
                 regularCalls.append(call)
             }
 
-            let results = await toolRouter.dispatch(regularCalls)
-            for (_, result) in zip(regularCalls, results) {
+            for call in regularCalls {
+                let input = (try? JSONSerialization.jsonObject(
+                    with: Data(call.function.arguments.utf8)
+                ) as? [String: Any]) ?? [:]
 
+                let hookDecision = await hookEngine.runPreToolUse(
+                    toolName: call.function.name,
+                    input: input
+                )
+                switch hookDecision {
+                case .deny(let reason):
+                    let denied = ToolResult(
+                        toolCallId: call.id,
+                        content: "Blocked by hook: \(reason)",
+                        isError: true
+                    )
+                    continuation.yield(.toolCallResult(denied))
+                    context.append(Message(
+                        role: .tool,
+                        content: .text(denied.content),
+                        toolCallId: denied.toolCallId,
+                        timestamp: Date()
+                    ))
+                    continue
+                case .allow:
+                    break
+                }
+
+                let results = await toolRouter.dispatch([call])
+                guard let result = results.first else { continue }
                 continuation.yield(.toolCallResult(result))
                 context.append(Message(
                     role: .tool,
@@ -276,6 +318,14 @@ final class AgenticEngine {
                     toolCallId: result.toolCallId,
                     timestamp: Date()
                 ))
+
+                if let note = await hookEngine.runPostToolUse(
+                    toolName: call.function.name,
+                    result: result.content
+                ) {
+                    continuation.yield(.systemNote(note))
+                    context.append(Message(role: .system, content: .text(note), timestamp: Date()))
+                }
             }
             if context.compactionCount != prevCompactionCount {
                 continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
