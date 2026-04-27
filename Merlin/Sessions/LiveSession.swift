@@ -9,6 +9,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let skillsRegistry: SkillsRegistry
     private let mcpBridge = MCPBridge()
     private let stagingBufferStorage = StagingBuffer()
+    private let memoryEngine = MemoryEngine()
     var permissionMode: PermissionMode = .ask {
         didSet {
             appState.engine.permissionMode = permissionMode
@@ -32,6 +33,28 @@ final class LiveSession: ObservableObject, Identifiable {
             let config = MCPConfig.merged(projectPath: projectPath)
             try? await mcpBridge.start(config: config,
                                        toolRouter: appState.engine.toolRouter)
+        }
+
+        Task {
+            await self.memoryEngine.setProvider(appState.engine.flashProvider)
+            if AppSettings.shared.memoriesEnabled {
+                let timeout = AppSettings.shared.memoryIdleTimeout
+                let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+                let pendingDir = URL(fileURLWithPath: "\(home)/.merlin/memories/pending")
+                let notificationEngine = NotificationEngine()
+                await self.memoryEngine.setOnIdleFired { [weak appState] in
+                    guard let appState else { return }
+                    Task {
+                        let messages = await appState.engine.contextManager.messages
+                        try? await self.memoryEngine.generateAndNotify(
+                            messages: messages,
+                            pendingDir: pendingDir,
+                            notificationEngine: notificationEngine
+                        )
+                    }
+                }
+                await self.memoryEngine.startIdleTimer(timeout: timeout)
+            }
         }
     }
 
