@@ -370,7 +370,7 @@ struct MemoriesSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .formStyle(.grouped)
-            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxHeight: 180)
 
             Divider()
 
@@ -382,6 +382,7 @@ struct MemoriesSettingsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

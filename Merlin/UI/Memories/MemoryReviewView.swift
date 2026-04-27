@@ -20,8 +20,8 @@ struct MemoryReviewView: View {
             List(pendingURLs, id: \.self, selection: $selectedURL) { url in
                 Text(url.lastPathComponent)
             }
-            .listStyle(.sidebar)
-            .frame(width: 200)
+            .listStyle(.inset)
+            .frame(width: 200, alignment: .leading)
 
             Divider()
 
@@ -51,8 +51,9 @@ struct MemoryReviewView: View {
                 }
                 .padding(12)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
             await refresh()
         }
