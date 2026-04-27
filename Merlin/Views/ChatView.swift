@@ -149,6 +149,9 @@ struct ChatView: View {
                     .padding(10)
                 }
 
+            VoiceDictationButton(draft: $model.draft)
+                .disabled(model.isSending)
+
             Button(action: sendMessage) {
                 if model.isSending {
                     ProgressView()
@@ -538,6 +541,34 @@ final class ChatViewModel: ObservableObject {
 
     private func bumpRevision() {
         revision &+= 1
+    }
+}
+
+private struct VoiceDictationButton: View {
+    @Binding var draft: String
+    @StateObject private var engine = VoiceDictationEngine.shared
+
+    var body: some View {
+        Button {
+            Task {
+                await engine.setOnTranscript { [weak engine] text in
+                    Task { @MainActor in
+                        draft += (draft.isEmpty ? "" : " ") + text
+                        if engine?.state == .recording {
+                            await engine?.stop()
+                        }
+                    }
+                }
+                await engine.toggle()
+            }
+        } label: {
+            Image(systemName: engine.state == .recording ? "mic.fill" : "mic")
+                .font(.system(size: 13, weight: .semibold))
+                .frame(width: 20, height: 20)
+                .foregroundStyle(engine.state == .recording ? .red : .primary)
+        }
+        .buttonStyle(.bordered)
+        .help(engine.state == .recording ? "Stop recording" : "Dictate")
     }
 }
 
