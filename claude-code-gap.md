@@ -25,6 +25,7 @@ Date: 2026-04-26
 | Gap | Claude Code capability | Effort |
 |---|---|---|
 | **Parallel sessions** | Multiple tasks side-by-side, each in its own Git worktree | High |
+| **Session sidebar (worktree list)** | Left panel listing open sessions, each pinned to a Git worktree; click to switch; activity/mode badges per session | Medium |
 | **Diff / review pane** | Visual diff per file with Accept/Reject per change | High |
 | **Inline diff commenting** | Comment on specific lines; Claude reads and revises | Medium |
 | **Integrated file pane** | Click any file path to open it in a dedicated pane | Medium |

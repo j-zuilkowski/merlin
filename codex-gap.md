@@ -22,6 +22,7 @@ Date: 2026-04-26
 |---|---|---|
 | **Parallel threads** | Multiple agent tasks running side-by-side with quick switching | High |
 | **Git worktree UI** | Isolated per-thread worktrees, not just shell `git` commands | Medium |
+| **Session sidebar (worktree list)** | Left panel listing open sessions, each pinned to a Git worktree; click to switch; activity/mode badges per session | Medium |
 | **Diff / review pane** | Visual diff, file staging, commit + push from UI | High |
 | **Scroll lock** | Manual scroll pauses auto-scroll to bottom while streaming; resumes at bottom | Low |
 | **PR workflow** | Address PR feedback inside a thread | Medium |
