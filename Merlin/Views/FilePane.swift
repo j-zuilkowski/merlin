@@ -1,20 +1,18 @@
 import SwiftUI
-import UniformTypeIdentifiers
+
+private let imageExtensions: Set<String> = [
+    "jpg", "jpeg", "png", "gif", "heic", "heif",
+    "tiff", "tif", "bmp", "webp", "svg", "ico"
+]
 
 struct FilePane: View {
     @Binding var fileURL: URL?
     @State private var content: String = ""
     @State private var image: NSImage? = nil
 
-    private static let imageUTTypes: [UTType] = [
-        .jpeg, .png, .gif, .heic, .tiff, .bmp, .webP, .svg
-    ]
-
     private var isImageFile: Bool {
-        guard let url = fileURL,
-              let type = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType
-        else { return false }
-        return Self.imageUTTypes.contains { type.conforms(to: $0) }
+        guard let ext = fileURL?.pathExtension.lowercased() else { return false }
+        return imageExtensions.contains(ext)
     }
 
     var body: some View {
@@ -41,16 +39,17 @@ struct FilePane: View {
     }
 
     private var imageView: some View {
-        ScrollView([.horizontal, .vertical]) {
+        Group {
             if let image {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                    .padding(12)
+                ScrollView {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(8)
+                }
             } else {
                 ProgressView()
-                    .padding(40)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
     }

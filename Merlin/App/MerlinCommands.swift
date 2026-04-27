@@ -5,7 +5,6 @@ struct MerlinCommands: Commands {
     @FocusedObject var registry: ProviderRegistry?
     @FocusedObject var sessionManager: SessionManager?
     @FocusedBinding(\.isEngineRunning) var isEngineRunning: Bool?
-    @FocusedBinding(\.activeProviderID) var activeProviderID: String?
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -42,8 +41,8 @@ struct MerlinCommands: Commands {
             let providers = ProviderRegistry.defaultProviders.filter(\.isEnabled)
             ForEach(providers) { config in
                 Toggle(config.displayName, isOn: Binding(
-                    get: { activeProviderID == config.id },
-                    set: { if $0 { activeProviderID = config.id } }
+                    get: { appState?.activeProviderID == config.id },
+                    set: { if $0 { appState?.activeProviderID = config.id } }
                 ))
             }
         }
