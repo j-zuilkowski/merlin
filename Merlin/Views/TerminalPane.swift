@@ -30,7 +30,10 @@ private struct TerminalViewRepresentable: NSViewRepresentable {
         textView.autoresizingMask = [.width]
         textView.textContainerInset = NSSize(width: 10, height: 10)
         textView.textContainer?.widthTracksTextView = false
-        textView.textContainer?.containerSize = NSSize(width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+        textView.textContainer?.containerSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
         textView.usesFindBar = false
 
         let scrollView = NSScrollView()
@@ -68,7 +71,8 @@ private final class TerminalTextView: NSTextView {
     }
 }
 
-private final class TerminalCoordinator: NSObject {
+@MainActor
+private final class TerminalCoordinator: NSObject, @unchecked Sendable {
     private let session = PTYSession()
     private weak var textView: TerminalTextView?
     private var readTask: Task<Void, Never>?
@@ -82,7 +86,6 @@ private final class TerminalCoordinator: NSObject {
         readTask?.cancel()
         readTask = Task { [weak self] in
             guard let self else { return }
-
             do {
                 let stream = try await session.launch(workingDirectory: workingDirectory)
                 for try await chunk in stream {
@@ -149,7 +152,7 @@ private actor PTYSession {
             throw PTYError.open(errno)
         }
 
-        let pid = fork()
+        let pid = c_fork()
         guard pid >= 0 else {
             close(master)
             close(slaveFD)
@@ -175,7 +178,9 @@ private actor PTYSession {
                     strdup("-l"),
                     nil
                 ]
-                execvp(shellC, argv)
+                argv.withUnsafeBufferPointer { buffer in
+                    _ = execvp(shellC, buffer.baseAddress)
+                }
             }
 
             _exit(127)
@@ -241,6 +246,9 @@ private actor PTYSession {
         isRunning = false
     }
 }
+
+@_silgen_name("fork")
+private func c_fork() -> pid_t
 
 private enum PTYError: LocalizedError {
     case open(Int32)

@@ -1,7 +1,6 @@
 import XCTest
 @testable import Merlin
 
-@MainActor
 final class MemoryInjectionTests: XCTestCase {
 
     private var tempDir: URL!
@@ -61,6 +60,7 @@ final class MemoryInjectionTests: XCTestCase {
 
     // MARK: - AgenticEngine system prompt order
 
+    @MainActor
     func testBuildSystemPromptIncludesMemoriesAfterClaudeMD() {
         let engine = makeEngine()
         engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
@@ -83,6 +83,7 @@ final class MemoryInjectionTests: XCTestCase {
                           "CLAUDE.md content should appear before memories")
     }
 
+    @MainActor
     func testBuildSystemPromptNoMemoriesOmitsBlock() {
         let engine = makeEngine()
         engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"

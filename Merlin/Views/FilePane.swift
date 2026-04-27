@@ -10,7 +10,7 @@ struct FilePane: View {
 
             Divider()
 
-            if let fileURL {
+            if fileURL != nil {
                 ScrollView([.horizontal, .vertical]) {
                     Text(content)
                         .font(.system(.body, design: .monospaced))

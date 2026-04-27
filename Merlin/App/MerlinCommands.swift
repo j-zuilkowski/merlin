@@ -30,6 +30,17 @@ struct MerlinCommands: Commands {
                 }
             }
         }
+
+        CommandMenu("View") {
+            Button("Toggle Terminal") {}
+                .keyboardShortcut("`", modifiers: [.control])
+
+            Button("Toggle Side Chat") {}
+                .keyboardShortcut("/", modifiers: [.command, .shift])
+
+            Button("Review Memories") {}
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+        }
     }
 
     private var canStop: Bool {
