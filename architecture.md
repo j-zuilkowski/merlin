@@ -923,8 +923,9 @@ com.merlin.provider.openai    / api-key
 com.merlin.provider.anthropic / api-key
 com.merlin.provider.qwen      / api-key
 com.merlin.provider.openrouter/ api-key
-com.merlin.xcalibre           / api-token  (RAG server)
 ```
+
+> **Note:** The xcalibre RAG server token (`xcalibre_token`) is **not** stored in Keychain. It lives in `~/.merlin/config.toml` and is read via `AppSettings.xcalibreToken`. Local services with no secret value do not warrant Keychain storage.
 
 `ProviderRegistry.setAPIKey(_:for:)` writes and `readAPIKey(for:)` reads. Keys never written to disk in plaintext, never included in session JSON, never logged.
 
@@ -940,32 +941,100 @@ com.merlin.xcalibre           / api-token  (RAG server)
 Merlin/
 ├── App/
 │   ├── MerlinApp.swift
-│   └── AppState.swift
-├── Sessions/
-│   ├── Session.swift
-│   ├── SessionStore.swift
-│   ├── SessionManager.swift          [v2] — parallel session lifecycle
-│   ├── StagingBuffer.swift           [v2] — pending write queue
-│   └── WorktreeManager.swift         [v2] — git worktree create/remove
-├── Providers/
-│   ├── LLMProvider.swift
-│   ├── OpenAICompatibleProvider.swift    — parameterised OAI-compat (replaces DeepSeekProvider + LMStudioProvider)
-│   ├── AnthropicProvider.swift           — Anthropic Messages API + SSE translation
-│   ├── AnthropicSSEParser.swift          — content_block_delta parser
-│   ├── ProviderConfig.swift              — ProviderConfig + ProviderKind + ProviderRegistry
-│   ├── DeepSeekProvider.swift            — kept for live test backward compat
-│   └── LMStudioProvider.swift            — kept for live test backward compat
-├── Engine/
-│   ├── AgenticEngine.swift
-│   ├── ContextManager.swift
-│   ├── ToolRouter.swift
-│   └── ThinkingModeDetector.swift
+│   ├── AppState.swift
+│   ├── MerlinCommands.swift
+│   ├── ProjectRef.swift              [v2] — Codable/Hashable/Transferable project root
+│   ├── RecentProjectsStore.swift     [v2] — persists recent project paths
+│   └── ToolRegistration.swift
+├── Agents/                           [v4]
+│   ├── AgentDefinition.swift         — TOML-loaded agent definition
+│   ├── AgentRegistry.swift           — loads ~/.merlin/agents/*.toml; built-ins
+│   ├── SpawnAgentTool.swift          — spawn_agent ToolDefinition
+│   ├── SubagentEngine.swift          — V4a explorer subagent (AsyncStream<SubagentEvent>)
+│   ├── SubagentEvent.swift           — event enum for subagent stream
+│   ├── WorkerSubagentEngine.swift    — V4b write-capable worker; worktree isolation
+│   └── WorktreeManager.swift        [v2/v4] — git worktree CRUD + exclusive locking
 ├── Auth/
 │   ├── AuthGate.swift
 │   ├── AuthMemory.swift
 │   └── PatternMatcher.swift
+├── Automations/                      [v3]
+│   ├── ThreadAutomation.swift
+│   ├── ThreadAutomationEngine.swift
+│   └── ThreadAutomationStore.swift
+├── Config/                           [v3]
+│   ├── AppSettings.swift             — @MainActor singleton; config.toml source of truth
+│   ├── AppearanceSettings.swift
+│   ├── HookConfig.swift
+│   ├── SettingsProposal.swift
+│   ├── TOMLDecoder.swift
+│   ├── TOMLParser.swift
+│   └── TOMLValue.swift
+├── Connectors/                       [v2]
+│   ├── Connector.swift               — protocol: init(token:), isConfigured
+│   ├── ConnectorCredentials.swift    — Keychain per service (com.merlin.<service>)
+│   ├── GitHubConnector.swift
+│   ├── LinearConnector.swift
+│   ├── PRMonitor.swift               — 60s/300s GitHub polling; auto-merge
+│   └── SlackConnector.swift
+├── Engine/
+│   ├── AgenticEngine.swift
+│   ├── CLAUDEMDLoader.swift          [v2] — searches 3 paths; injects at session init
+│   ├── ContextInjector.swift         [v2] — @mention + attachment handling
+│   ├── ContextManager.swift
+│   ├── ContextUsageTracker.swift     [v3]
+│   ├── DiffComment.swift             [v2]
+│   ├── DiffEngine.swift              [v2] — Myers diff; DiffHunk/DiffLine
+│   ├── PermissionMode.swift          [v2] — ask / autoAccept / plan
+│   ├── StagingBuffer.swift           [v2] — intercept writes in ask/plan mode
+│   ├── ThinkingModeDetector.swift
+│   └── ToolRouter.swift
+├── Hooks/                            [v3]
+│   ├── HookDecision.swift
+│   └── HookEngine.swift              — PreToolUse/PostToolUse/UserPromptSubmit/Stop; fail-closed
+├── Keychain/
+│   └── KeychainManager.swift
+├── MCP/                              [v2]
+│   ├── MCPBridge.swift               — stdio transport via Foundation.Process
+│   ├── MCPConfig.swift               — loads ~/.merlin/mcp.json
+│   └── MCPToolDefinition.swift
+├── Memories/                         [v3]
+│   ├── MemoryEngine.swift            — idle timer; pending/ queue; sanitization
+│   └── MemoryEntry.swift
+├── Notifications/                    [v3]
+│   └── NotificationEngine.swift
+├── Providers/
+│   ├── LLMProvider.swift
+│   ├── OpenAICompatibleProvider.swift
+│   ├── AnthropicProvider.swift
+│   ├── AnthropicSSEParser.swift
+│   ├── ProviderConfig.swift          — ProviderConfig + ProviderKind + ProviderRegistry
+│   ├── ProviderRegistry+ReasoningEffort.swift [v3]
+│   ├── ReasoningEffort.swift         [v3]
+│   ├── SSEParser.swift
+│   ├── DeepSeekProvider.swift        — kept for live test backward compat
+│   └── LMStudioProvider.swift        — kept for live test backward compat
+├── RAG/
+│   ├── XcalibreClient.swift          — RAG HTTP client, actor-based; token from AppSettings
+│   └── RAGTools.swift
+├── Scheduler/                        [v2]
+│   ├── ScheduledTask.swift
+│   └── SchedulerEngine.swift
+├── Sessions/
+│   ├── Session.swift
+│   ├── SessionStore.swift
+│   ├── SessionManager.swift          [v2] — parallel session lifecycle per window
+│   └── LiveSession.swift             [v2] — one AppState + PermissionMode per session
+├── Skills/                           [v2]
+│   ├── Skill.swift
+│   ├── SkillFrontmatter.swift
+│   └── SkillsRegistry.swift          — personal (~/.merlin/skills/) + project (.merlin/skills/)
+├── Toolbar/                          [v3]
+│   ├── ToolbarAction.swift
+│   └── ToolbarActionStore.swift
 ├── Tools/
 │   ├── ToolDefinitions.swift
+│   ├── ToolRegistry.swift            [v3] — dynamic actor; registerBuiltins()
 │   ├── FileSystemTools.swift
 │   ├── ShellTool.swift
 │   ├── AppControlTools.swift
@@ -975,48 +1044,44 @@ Merlin/
 │   ├── ScreenCaptureTool.swift
 │   ├── CGEventTool.swift
 │   ├── VisionQueryTool.swift
-│   └── PreviewTools.swift            [v2]
-├── MCP/
-│   └── MCPBridge.swift               [v2]
-├── Skills/
-│   ├── SkillsRegistry.swift          [v2]
-│   └── BuiltinSkills.swift           [v2]
-├── Connectors/
-│   ├── GitHubConnector.swift         [v2]
-│   ├── SlackConnector.swift          [v2]
-│   └── LinearConnector.swift         [v2]
-├── Scheduler/
-│   └── SchedulerEngine.swift         [v2]
-├── PRMonitor/
-│   └── PRMonitor.swift               [v2]
-├── Context/
-│   └── CLAUDEMDLoader.swift          [v2]
-├── Layout/
-│   └── WorkspaceLayoutManager.swift  [v2]
-├── Keychain/
-│   └── KeychainManager.swift
-├── RAG/
-│   ├── XcalibreClient.swift          — RAG HTTP client, actor-based
-│   └── RAGTools.swift                — buildEnrichedMessage, formatChunks, formatBooks
-└── Views/
-    ├── ChatView.swift
-    ├── SessionSidebar.swift          [v2]
-    ├── DiffPane.swift                [v2]
-    ├── FilePane.swift                [v2]
-    ├── TerminalPane.swift            [v2]
-    ├── PreviewPane.swift             [v2]
-    ├── ToolLogView.swift
-    ├── ScreenPreviewView.swift
-    ├── AuthPopupView.swift
-    ├── ProviderHUD.swift
-    ├── SkillsPicker.swift            [v2]
-    ├── SideChat.swift                [v2]
-    ├── FirstLaunchSetupView.swift
-    └── Settings/
-        ├── ProviderSettingsView.swift — per-provider API key + enable/disable + base URL
-        ├── SchedulerView.swift       [v2]
-        ├── ConnectorsView.swift      [v2]
-        └── MCPServersView.swift      [v2]
+│   └── WebSearch/                    [v3]
+│       ├── BraveSearchClient.swift
+│       └── WebSearchTool.swift
+├── UI/
+│   ├── Chat/                         [v4]
+│   │   ├── SubagentBlockView.swift
+│   │   └── SubagentBlockViewModel.swift
+│   ├── Memories/                     [v3]
+│   │   └── MemoryReviewView.swift
+│   ├── Settings/                     [v3]
+│   │   └── SettingsWindowView.swift
+│   └── Sidebar/                      [v4]
+│       ├── SubagentSidebarEntry.swift
+│       ├── SubagentSidebarRowView.swift
+│       ├── SubagentSidebarViewModel.swift
+│       └── WorkerDiffView.swift
+├── Views/
+│   ├── AtMentionPicker.swift         [v2]
+│   ├── AuthPopupView.swift
+│   ├── ChatView.swift
+│   ├── ConnectorsView.swift          [v2]
+│   ├── ContentView.swift
+│   ├── DiffPane.swift                [v2]
+│   ├── FirstLaunchSetupView.swift
+│   ├── ProjectPickerView.swift       [v2]
+│   ├── ProviderHUD.swift
+│   ├── SchedulerView.swift           [v2]
+│   ├── ScreenPreviewView.swift
+│   ├── SessionSidebar.swift          [v2]
+│   ├── SkillsPicker.swift            [v2]
+│   ├── ToolLogView.swift
+│   ├── WorkspaceView.swift           [v2] — SessionSidebar + ChatPane layout
+│   └── Settings/
+│       └── ProviderSettingsView.swift
+├── Voice/                            [v3]
+│   └── VoiceDictationEngine.swift    — SFSpeechRecognizer; Ctrl+M toggle
+└── Windows/                          [v3]
+    └── FloatingWindowManager.swift   — pop-out floating chat window
 ```
 
 ---
