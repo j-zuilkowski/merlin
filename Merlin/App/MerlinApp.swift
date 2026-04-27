@@ -32,5 +32,6 @@ struct MerlinApp: App {
             SettingsWindowView()
                 .environmentObject(scheduler)
         }
+        .windowResizability(.contentMinSize)
     }
 }

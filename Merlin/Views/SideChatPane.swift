@@ -4,6 +4,13 @@ struct SideChatPane: View {
     @Binding var isVisible: Bool
     @StateObject private var appState = AppState(projectPath: "")
     @StateObject private var skillsRegistry = SkillsRegistry(projectPath: "")
+    @StateObject private var sessionManager: SessionManager
+
+    init(isVisible: Binding<Bool>) {
+        _isVisible = isVisible
+        let ref = ProjectRef(path: "", displayName: "Side Chat", lastOpenedAt: Date())
+        _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: ref))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,13 +23,17 @@ struct SideChatPane: View {
                     .environmentObject(appState)
                     .environmentObject(skillsRegistry)
                     .environmentObject(appState.registry)
+                    .environmentObject(sessionManager)
             } else {
                 placeholder
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear {
+        .task {
             appState.engine.skillsRegistry = skillsRegistry
+            if sessionManager.liveSessions.isEmpty {
+                await sessionManager.newSession()
+            }
         }
     }
 

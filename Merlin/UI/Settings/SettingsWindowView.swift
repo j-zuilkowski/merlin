@@ -14,10 +14,10 @@ struct SettingsWindowView: View {
             .navigationSplitViewColumnWidth(min: 160, ideal: 180)
         } detail: {
             detailView(for: selectedSection)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .navigationTitle(selectedSection.label)
-                .frame(minWidth: 400, minHeight: 300)
         }
-        .frame(minWidth: 620, minHeight: 400)
+        .frame(minWidth: 640, minHeight: 480)
     }
 
     @ViewBuilder
