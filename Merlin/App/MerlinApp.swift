@@ -4,12 +4,14 @@ import SwiftUI
 struct MerlinApp: App {
     @StateObject private var recents = RecentProjectsStore()
     @StateObject private var scheduler = SchedulerEngine()
+    @StateObject private var settings = AppSettings.shared
 
     var body: some Scene {
         // Launch picker - shown when no workspace windows are open
         WindowGroup("Merlin", id: "picker") {
             ProjectPickerView()
                 .environmentObject(recents)
+                .preferredColorScheme(settings.appearance.theme.colorScheme)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 500, height: 380)

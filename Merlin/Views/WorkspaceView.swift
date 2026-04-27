@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkspaceView: View {
     let projectRef: ProjectRef
     @EnvironmentObject private var recents: RecentProjectsStore
+    @ObservedObject private var settings = AppSettings.shared
     @StateObject private var sessionManager: SessionManager
 
     @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
@@ -43,6 +44,10 @@ struct WorkspaceView: View {
         .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showPreviewPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showSideChat) { _, _ in saveLayoutIfLoaded() }
+        .preferredColorScheme(settings.appearance.theme.colorScheme)
+        .font(settings.appearance.fontName.isEmpty
+            ? .system(size: settings.appearance.fontSize)
+            : .custom(settings.appearance.fontName, size: settings.appearance.fontSize))
         .sheet(isPresented: $showMemoriesWindow) {
             MemoryReviewView()
                 .frame(minWidth: 600, minHeight: 400)
