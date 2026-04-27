@@ -10,6 +10,8 @@ final class LiveSession: ObservableObject, Identifiable {
     private let mcpBridge = MCPBridge()
     private let stagingBufferStorage = StagingBuffer()
     private let memoryEngine = MemoryEngine()
+    private let automationStore = ThreadAutomationStore()
+    private let automationEngine = ThreadAutomationEngine()
     var permissionMode: PermissionMode = .ask {
         didSet {
             appState.engine.permissionMode = permissionMode
@@ -39,6 +41,19 @@ final class LiveSession: ObservableObject, Identifiable {
             let config = MCPConfig.merged(projectPath: projectPath)
             try? await mcpBridge.start(config: config,
                                        toolRouter: appState.engine.toolRouter)
+        }
+
+        Task {
+            let store = automationStore
+            let engine = automationEngine
+            let agenticEngine = appState.engine
+            await engine.setOnFire { @Sendable [weak agenticEngine] _, prompt in
+                Task { @MainActor in
+                    guard let engine = agenticEngine else { return }
+                    for await _ in engine.send(userMessage: prompt) {}
+                }
+            }
+            await engine.start(store: store)
         }
 
         Task {
