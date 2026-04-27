@@ -6,6 +6,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let id: UUID
     @Published var title: String
     let appState: AppState
+    let skillsRegistry: SkillsRegistry
     private let stagingBufferStorage = StagingBuffer()
     var permissionMode: PermissionMode = .ask {
         didSet {
@@ -20,6 +21,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.title = "New Session"
         self.createdAt = Date()
         self.appState = AppState(projectPath: projectRef.path)
+        self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode

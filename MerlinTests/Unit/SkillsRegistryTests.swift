@@ -23,6 +23,7 @@ final class SkillsRegistryTests: XCTestCase {
 
     // MARK: - Loading
 
+    @MainActor
     func testLoadsSkillFromPersonalDirectory() throws {
         try writeSkill(name: "review", body: "Review the code.", in: personalDir)
         let registry = SkillsRegistry(personalDir: personalDir, projectDir: nil)
@@ -30,6 +31,7 @@ final class SkillsRegistryTests: XCTestCase {
         XCTAssertNotNil(registry.skill(named: "review"))
     }
 
+    @MainActor
     func testLoadsSkillFromProjectDirectory() throws {
         try writeSkill(name: "deploy", body: "Deploy the app.", in: projectDir)
         let registry = SkillsRegistry(personalDir: personalDir, projectDir: projectDir)
@@ -37,12 +39,14 @@ final class SkillsRegistryTests: XCTestCase {
         XCTAssertNotNil(registry.skill(named: "deploy"))
     }
 
+    @MainActor
     func testEmptyDirectoryReturnsNoSkills() {
         let registry = SkillsRegistry(personalDir: personalDir, projectDir: nil)
         registry.reload()
         XCTAssertTrue(registry.skills.isEmpty)
     }
 
+    @MainActor
     func testMissingPersonalDirDoesNotCrash() {
         let missing = URL(fileURLWithPath: "/nonexistent/path/skills")
         let registry = SkillsRegistry(personalDir: missing, projectDir: nil)
@@ -52,6 +56,7 @@ final class SkillsRegistryTests: XCTestCase {
 
     // MARK: - Priority
 
+    @MainActor
     func testProjectSkillOverridesPersonalSkillWithSameName() throws {
         try writeSkill(name: "test", body: "personal body", in: personalDir)
         try writeSkill(name: "test", body: "project body", in: projectDir)
@@ -64,6 +69,7 @@ final class SkillsRegistryTests: XCTestCase {
 
     // MARK: - Frontmatter parsing
 
+    @MainActor
     func testFrontmatterDescriptionIsParsed() throws {
         let md = """
         ---
@@ -80,6 +86,7 @@ final class SkillsRegistryTests: XCTestCase {
         XCTAssertEqual(skill?.frontmatter.description, "Review staged changes for quality issues")
     }
 
+    @MainActor
     func testSkillBodyExcludesFrontmatter() throws {
         let md = """
         ---
@@ -99,6 +106,7 @@ final class SkillsRegistryTests: XCTestCase {
 
     // MARK: - render
 
+    @MainActor
     func testRenderSubstitutesArgumentsToken() throws {
         let md = "Refactor this: $ARGUMENTS"
         try writeSkill(name: "refactor", body: md, in: personalDir)
@@ -109,6 +117,7 @@ final class SkillsRegistryTests: XCTestCase {
         XCTAssertEqual(rendered, "Refactor this: MyClass.swift")
     }
 
+    @MainActor
     func testRenderAppendsArgumentsWhenTokenAbsent() throws {
         let md = "Review the staged changes."
         try writeSkill(name: "review", body: md, in: personalDir)
@@ -121,6 +130,7 @@ final class SkillsRegistryTests: XCTestCase {
                       "Arguments must be appended when $ARGUMENTS is absent")
     }
 
+    @MainActor
     func testRenderWithNoArgumentsDoesNotAppendBlank() throws {
         let md = "Do the thing."
         try writeSkill(name: "thing", body: md, in: personalDir)

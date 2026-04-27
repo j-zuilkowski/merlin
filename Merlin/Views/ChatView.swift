@@ -5,10 +5,13 @@ import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject private var skillsRegistry: SkillsRegistry
     @EnvironmentObject private var sessionManager: SessionManager
     @StateObject private var model = ChatViewModel()
     @State private var atSuggestions: [String] = []
     @State private var showAtPicker: Bool = false
+    @State private var skillQuery: String = ""
+    @State private var showSkillsPicker: Bool = false
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
@@ -127,6 +130,7 @@ struct ChatView: View {
                 .onSubmit(sendMessage)
                 .onChange(of: model.draft) { _, draft in
                     updateAtSuggestions(for: draft)
+                    updateSkillSuggestions(for: draft)
                 }
                 .popover(isPresented: $showAtPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
                     AtMentionPicker(suggestions: atSuggestions) { filename in
@@ -135,6 +139,13 @@ struct ChatView: View {
                         }
                         showAtPicker = false
                     }
+                    .padding(10)
+                }
+                .popover(isPresented: $showSkillsPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    SkillsPicker(query: $skillQuery) { skill in
+                        insertSelectedSkill(skill)
+                    }
+                    .environmentObject(skillsRegistry)
                     .padding(10)
                 }
 
@@ -258,6 +269,18 @@ struct ChatView: View {
         showAtPicker = !atSuggestions.isEmpty
     }
 
+    private func updateSkillSuggestions(for draft: String) {
+        guard draft.hasPrefix("/") else {
+            showSkillsPicker = false
+            skillQuery = ""
+            return
+        }
+
+        let remainder = draft.dropFirst()
+        skillQuery = String(remainder.prefix { !$0.isWhitespace })
+        showSkillsPicker = true
+    }
+
     private func findFiles(matching query: String, in projectPath: String) -> [String] {
         guard !projectPath.isEmpty, let enumerator = FileManager.default.enumerator(
             at: URL(fileURLWithPath: projectPath),
@@ -291,6 +314,20 @@ struct ChatView: View {
                 }
             }
         }
+    }
+
+    private func insertSelectedSkill(_ skill: Skill) {
+        let rendered = skillsRegistry.render(skill: skill, arguments: "")
+        if model.draft.hasPrefix("/") {
+            let remainder = model.draft.dropFirst()
+            let suffixIndex = remainder.firstIndex(where: { $0.isWhitespace }) ?? remainder.endIndex
+            let suffix = remainder[suffixIndex...].trimmingCharacters(in: .whitespacesAndNewlines)
+            model.draft = rendered + (suffix.isEmpty ? "" : " \(suffix)")
+        } else {
+            model.draft = rendered
+        }
+        skillQuery = ""
+        showSkillsPicker = false
     }
 
     private func openAttachmentPanel() {
