@@ -13,6 +13,9 @@ actor NotificationEngine {
         guard isNotificationEnvironmentAvailable else {
             return
         }
+        guard await MainActor.run(body: { AppSettings.shared.notificationsEnabled }) else {
+            return
+        }
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
