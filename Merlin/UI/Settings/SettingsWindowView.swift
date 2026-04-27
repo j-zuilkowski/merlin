@@ -235,15 +235,43 @@ struct HooksSettingsView: View {
     }
 }
 
-// MARK: - Memories (stub — replaced in phase 66)
+// MARK: - Memories
 
 struct MemoriesSettingsView: View {
     @ObservedObject var settings: AppSettings
 
+    private let timeoutOptions: [(label: String, seconds: TimeInterval)] = [
+        ("1 minute", 60),
+        ("5 minutes", 300),
+        ("15 minutes", 900),
+        ("30 minutes", 1800),
+        ("1 hour", 3600)
+    ]
+
     var body: some View {
-        Text("Memories")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        VSplitView {
+            Form {
+                Toggle("Enable memory generation", isOn: $settings.memoriesEnabled)
+                Picker("Generate after idle", selection: $settings.memoryIdleTimeout) {
+                    ForEach(timeoutOptions, id: \.seconds) { option in
+                        Text(option.label).tag(option.seconds)
+                    }
+                }
+                .disabled(!settings.memoriesEnabled)
+                Text("After this idle period, Merlin summarises the conversation into memory files for your review.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .frame(minHeight: 140)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Pending Memories")
+                    .font(.headline)
+                    .padding([.top, .horizontal])
+                MemoryReviewView()
+            }
+        }
     }
 }
 
