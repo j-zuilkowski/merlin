@@ -29,6 +29,7 @@ final class AgenticEngine {
     var permissionMode: PermissionMode = .ask
     var claudeMDContent: String = ""
     var memoriesContent: String = ""
+    var onUsageUpdate: ((Int) -> Void)?
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
@@ -287,6 +288,8 @@ final class AgenticEngine {
             updated.updatedAt = Date()
             try? sessionStore?.save(updated)
         }
+
+        onUsageUpdate?(approximateTokens(in: context))
     }
 
     private func handleSpawnAgent(
@@ -400,5 +403,23 @@ final class AgenticEngine {
         }
         parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
         return parts.joined(separator: "\n\n")
+    }
+
+    private func approximateTokens(in context: ContextManager) -> Int {
+        context.messages.reduce(0) { total, message in
+            switch message.content {
+            case .text(let text):
+                return total + text.count / 4
+            case .parts(let parts):
+                return total + parts.reduce(0) { subtotal, part in
+                    switch part {
+                    case .text(let text):
+                        return subtotal + text.count / 4
+                    case .imageURL:
+                        return subtotal
+                    }
+                }
+            }
+        }
     }
 }

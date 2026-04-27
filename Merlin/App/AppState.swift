@@ -46,6 +46,7 @@ final class AppState: ObservableObject {
     @Published var toolLogLines: [ToolLogLine] = []
 
     @Published var lastScreenshot: (data: Data, timestamp: Date, sourceBundleID: String)? = nil
+    @Published var contextUsage: ContextUsageTracker = ContextUsageTracker(contextWindowSize: 200_000)
 
     @Published var activeProviderID: String = "deepseek" {
         didSet {
@@ -127,6 +128,7 @@ final class AppState: ObservableObject {
             contextManager: ctx,
             xcalibreClient: xcalibreClient
         )
+        contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)
         engine.registry = registry
         engine.sessionStore = sessionStore
         syncEngineProviders()
@@ -189,6 +191,10 @@ final class AppState: ObservableObject {
         engine.cancel()
         toolActivityState = .idle
         thinkingModeActive = false
+    }
+
+    func updateContextUsage(_ tokens: Int) {
+        contextUsage.update(usedTokens: tokens)
     }
 
     func reloadProviders(apiKey: String) {

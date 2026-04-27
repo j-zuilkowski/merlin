@@ -29,6 +29,11 @@ final class LiveSession: ObservableObject, Identifiable {
         self.appState.engine.memoriesContent = CLAUDEMDLoader.defaultMemoriesBlock()
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode
+        appState.engine.onUsageUpdate = { [weak appState] tokens in
+            Task { @MainActor in
+                appState?.updateContextUsage(tokens)
+            }
+        }
 
         Task { @MainActor [mcpBridge, projectPath = projectRef.path] in
             let config = MCPConfig.merged(projectPath: projectPath)
