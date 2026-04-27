@@ -27,6 +27,7 @@ final class AgenticEngine {
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
+    @Published var isRunning: Bool = false
 
     init(proProvider: any LLMProvider,
          flashProvider: any LLMProvider,
@@ -49,46 +50,34 @@ final class AgenticEngine {
     func cancel() {
         currentTask?.cancel()
         currentTask = nil
+        isRunning = false
     }
 
     func send(userMessage: String) -> AsyncStream<AgentEvent> {
         AsyncStream { continuation in
-            var task: Task<Void, Never>!
-            task = Task { @MainActor in
-                let state = CancellationState()
+            let task = Task { @MainActor in
+                defer {
+                    self.isRunning = false
+                    self.currentTask = nil
+                }
 
-                await withTaskCancellationHandler(operation: {
-                    do {
-                        try await self.runLoop(userMessage: userMessage, continuation: continuation)
-                        self.finishStream(continuation, interrupted: false, state: state)
-                    } catch is CancellationError {
-                        self.finishStream(continuation, interrupted: true, state: state)
-                    } catch {
-                        continuation.yield(.error(error))
-                        self.finishStream(continuation, interrupted: false, state: state)
-                    }
-                }, onCancel: {
-                    Task { @MainActor in
-                        self.finishStream(continuation, interrupted: true, state: state)
-                    }
-                })
+                do {
+                    try await self.runLoop(userMessage: userMessage, continuation: continuation)
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.yield(.systemNote("[Interrupted]"))
+                    continuation.finish()
+                } catch {
+                    continuation.yield(.error(error))
+                    continuation.finish()
+                }
             }
+
             Task { @MainActor in
+                self.isRunning = true
                 self.currentTask = task
             }
         }
-    }
-
-    private func finishStream(_ continuation: AsyncStream<AgentEvent>.Continuation,
-                              interrupted: Bool,
-                              state: CancellationState) {
-        guard !state.finished else { return }
-        state.finished = true
-        if interrupted {
-            continuation.yield(.systemNote("[Interrupted]"))
-        }
-        continuation.finish()
-        currentTask = nil
     }
 
     private func runLoop(userMessage: String, continuation: AsyncStream<AgentEvent>.Continuation) async throws {

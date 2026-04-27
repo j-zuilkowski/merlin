@@ -6,6 +6,8 @@ struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var sessionManager: SessionManager
     @StateObject private var model = ChatViewModel()
+    @State private var autoScrollEnabled: Bool = true
+    @State private var scrollLockVisible: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,28 +16,11 @@ struct ChatView: View {
             Divider()
 
             ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
-                        ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                            ChatEntryRow(
-                                item: item,
-                                onToggleThinking: item.role == .assistant ? {
-                                    model.toggleThinkingExpansion(at: index)
-                                } : nil,
-                                onToggleTool: item.role == .tool ? {
-                                    model.toggleToolExpansion(at: index)
-                                } : nil
-                            )
-                            .id(item.id)
-                        }
-                    }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .onChange(of: model.revision) { _, _ in
-                    guard let last = model.items.last else { return }
-                    withAnimation(.easeOut(duration: 0.18)) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
+                VStack(spacing: 0) {
+                    scrollContent(proxy: proxy)
+
+                    if scrollLockVisible {
+                        scrollLockBanner(proxy: proxy)
                     }
                 }
             }
@@ -56,11 +41,28 @@ struct ChatView: View {
         )
         .onReceive(NotificationCenter.default.publisher(for: .merlinNewSession)) { _ in
             model.clear()
+            autoScrollEnabled = true
+            scrollLockVisible = false
         }
     }
 
     private var header: some View {
         HStack {
+            if appState.engine.isRunning {
+                Button {
+                    appState.stopEngine()
+                } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.caption)
+                        .padding(5)
+                        .background(.red.opacity(0.12))
+                        .foregroundStyle(.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .help("Stop (⌘.)")
+                .transition(.scale.combined(with: .opacity))
+            }
+
             Button {
                 if let session = sessionManager.activeSession {
                     session.permissionMode = session.permissionMode.next
@@ -83,6 +85,7 @@ struct ChatView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.55))
+        .animation(.easeInOut(duration: 0.15), value: appState.engine.isRunning)
     }
 
     private var currentMode: PermissionMode {
@@ -127,10 +130,103 @@ struct ChatView: View {
         .background(.thinMaterial)
     }
 
+    @ViewBuilder
+    private func scrollContent(proxy: ScrollViewProxy) -> some View {
+        if #available(macOS 15.0, *) {
+            ScrollView {
+                messageList
+            }
+            .onScrollGeometryChange(for: Double.self) { geo in
+                geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
+            } action: { _, distanceFromBottom in
+                let shouldAutoScroll = distanceFromBottom < 40
+                autoScrollEnabled = shouldAutoScroll
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    scrollLockVisible = !shouldAutoScroll
+                }
+            }
+            .onChange(of: model.items.count) { _, _ in
+                guard autoScrollEnabled else {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollLockVisible = true
+                    }
+                    return
+                }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        } else {
+            ScrollView {
+                messageList
+            }
+            .onChange(of: model.items.count) { _, _ in
+                guard autoScrollEnabled else {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollLockVisible = true
+                    }
+                    return
+                }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var messageList: some View {
+        LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                ChatEntryRow(
+                    item: item,
+                    onToggleThinking: item.role == .assistant ? {
+                        model.toggleThinkingExpansion(at: index)
+                    } : nil,
+                    onToggleTool: item.role == .tool ? {
+                        model.toggleToolExpansion(at: index)
+                    } : nil
+                )
+                .id(item.id)
+            }
+
+            Color.clear
+                .frame(height: 1)
+                .id("bottom")
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func sendMessage() {
         Task { @MainActor in
             await model.submit(appState: appState)
         }
+    }
+
+    private func scrollLockBanner(proxy: ScrollViewProxy) -> some View {
+        HStack {
+            Label("Scrolled up — new output continuing below", systemImage: "arrow.up")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Resume ↓") {
+                autoScrollEnabled = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    scrollLockVisible = false
+                }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+            .font(.caption.weight(.medium))
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.bar)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 
