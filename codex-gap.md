@@ -58,7 +58,6 @@ Date: 2026-04-26
 | **File / artifact preview pane** | Rendered previews of generated files | Medium |
 | **Cloud sync** | Threads sync between desktop and IDE extension | High |
 | **Cloud-level integration depth** | GitHub: auto-reviews every new PR, fixes CI failures autonomously; Slack: full agent tasks from @Codex channel mentions; Linear: assign issues directly to Codex, auto-triage rules — Merlin's connectors are REST/GraphQL wrappers only | High |
-| **Windows support** | Cross-platform — Merlin is macOS-only (by design) | N/A |
 
 ---
 

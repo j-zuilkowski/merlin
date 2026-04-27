@@ -6,11 +6,11 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
-**[v3]** Linux and Windows support. macOS remains the primary platform. Core agentic engine extracted as a cross-platform Swift package; macOS-specific tools (screen capture, AX inspector, CGEvent, app control) remain macOS-only. Non-macOS entry point: CLI/TUI. Decisions TBD.
+**[v3]** Agent intelligence + UX completeness: config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
 
-**Target hardware:** M4 Mac Studio, 128GB unified memory (macOS primary); Linux x86-64/ARM [v3]; Windows x86-64 [v3]
+**Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
-**Distribution:** Direct, non-sandboxed `.app` bundle — personal use only (macOS); standalone binary [v3]
+**Distribution:** Direct, non-sandboxed `.app` bundle — personal use only
 
 ---
 
@@ -535,8 +535,6 @@ Connectors are opt-in. MCP server equivalents (e.g. `@modelcontextprotocol/serve
 
 All tools are defined as OpenAI function call schemas and registered at app launch.
 
-**[v3]** Each tool definition carries a `platformSupport` flag (`.all`, `.macOnly`, `.macLinux`). `ToolRouter` filters at registration time — macOS-only tools (screen capture, AX inspector, CGEvent, app control, Xcode) are simply absent on Linux/Windows. The agent adapts automatically via `tool_discover`.
-
 ### File System Tools [v1]
 
 | Tool | Description |
@@ -744,8 +742,6 @@ System permissions (requested on first use): Accessibility, Screen Recording.
 
 One Keychain item per remote provider. Local providers require no key.
 
-**[v3]** `SecureStorage` protocol abstracts credential storage across platforms: Keychain (macOS), Secret Service via `libsecret` (Linux), Windows Credential Manager (Windows). `ProviderRegistry` and `XcalibreClient` depend on the protocol, not the macOS implementation directly.
-
 ```
 Service:   com.merlin.provider.<id>
 Account:   api-key
@@ -771,8 +767,6 @@ com.merlin.xcalibre           / api-token  (RAG server)
 ---
 
 ## Project Structure
-
-**[v3]** The `Merlin/` directory below is the macOS app target. A `MerlinCore/` Swift package will extract everything above the UI layer (providers, engine, tools, auth, sessions, RAG, skills) so it compiles on Linux and Windows without modification. The SwiftUI app, AppKit integrations, and macOS-only tools remain in `Merlin/`.
 
 ```
 Merlin/
@@ -950,14 +944,9 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 
 | Decision | v3 |
 |---|---|
-| Primary platform | macOS — all features; Linux/Windows are secondary targets |
-| Platform scope | Linux x86-64/ARM first; Windows after Linux is stable |
-| Core extraction | `MerlinCore` Swift package; no UI or macOS-framework imports |
-| Non-macOS entry point | CLI/TUI (decisions TBD) |
-| Tool availability | `platformSupport` flag per tool; macOS-only tools absent on other platforms |
-| GUI automation (Linux) | Best-effort via `run_shell` (xdotool/AT-SPI); no native implementation |
-| GUI automation (Windows) | Best-effort via `run_shell` (PowerShell/UIA); no native implementation |
-| Credential storage | `SecureStorage` protocol; Keychain (macOS), libsecret (Linux), Credential Manager (Windows) |
-| Shell tool (Windows) | Configurable shell path; defaults to PowerShell |
-| Scheduler (non-macOS) | TBD — cron/systemd (Linux), Task Scheduler (Windows), or in-process timer |
-| SwiftUI app | macOS only; unchanged |
+| Platform | macOS only |
+| Config system | `~/.merlin/config.toml` |
+| Hooks | Inline in config.toml; PreToolUse runs before AuthGate (fail-closed on crash) |
+| Memories | Opt-in; idle trigger; pending review queue; fastest model in session's provider |
+| Web search | Brave Search API; absent when no key configured |
+| Reasoning effort | Per-model capability flag; LM Studio uses name-pattern matching + user override |
