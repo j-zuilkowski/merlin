@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct MerlinApp: App {
     @StateObject private var recents = RecentProjectsStore()
+    @StateObject private var scheduler = SchedulerEngine()
 
     var body: some Scene {
         // Launch picker - shown when no workspace windows are open
@@ -27,6 +28,7 @@ struct MerlinApp: App {
 
         Settings {
             SettingsWindowView()
+                .environmentObject(scheduler)
         }
     }
 }

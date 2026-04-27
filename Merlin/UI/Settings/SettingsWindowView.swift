@@ -34,6 +34,8 @@ struct SettingsWindowView: View {
             AgentSettingsView(settings: settings)
         case .hooks:
             HooksSettingsView()
+        case .scheduler:
+            SchedulerSettingsView()
         case .memories:
             MemoriesSettingsView(settings: settings)
         case .mcp:
@@ -58,6 +60,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case providers
     case agents
     case hooks
+    case scheduler
     case memories
     case mcp
     case skills
@@ -73,6 +76,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .providers: return "Providers"
         case .agents: return "Agents"
         case .hooks: return "Hooks"
+        case .scheduler: return "Scheduler"
         case .memories: return "Memories"
         case .mcp: return "MCP Servers"
         case .skills: return "Skills"
@@ -90,6 +94,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .providers: return "server.rack"
         case .agents: return "cpu"
         case .hooks: return "terminal"
+        case .scheduler: return "clock"
         case .memories: return "brain"
         case .mcp: return "puzzlepiece"
         case .skills: return "star"
@@ -231,6 +236,17 @@ struct HooksSettingsView: View {
                 .foregroundStyle(.secondary)
                 .padding([.horizontal, .bottom])
         }
+    }
+}
+
+// MARK: - Scheduler
+
+private struct SchedulerSettingsView: View {
+    @EnvironmentObject private var scheduler: SchedulerEngine
+
+    var body: some View {
+        SchedulerView()
+            .environmentObject(scheduler)
     }
 }
 
