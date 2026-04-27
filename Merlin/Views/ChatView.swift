@@ -223,16 +223,22 @@ struct ChatView: View {
     private var messageList: some View {
         LazyVStack(alignment: .leading, spacing: 12) {
             ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                ChatEntryRow(
-                    item: item,
-                    onToggleThinking: item.role == .assistant ? {
-                        model.toggleThinkingExpansion(at: index)
-                    } : nil,
-                    onToggleTool: item.role == .tool ? {
-                        model.toggleToolExpansion(at: index)
-                    } : nil
-                )
-                .id(item.id)
+                if let subagentID = item.subagentID,
+                   let subagentVM = model.subagentVMs[subagentID] {
+                    SubagentBlockView(vm: subagentVM)
+                        .id(item.id)
+                } else {
+                    ChatEntryRow(
+                        item: item,
+                        onToggleThinking: item.role == .assistant ? {
+                            model.toggleThinkingExpansion(at: index)
+                        } : nil,
+                        onToggleTool: item.role == .tool ? {
+                            model.toggleToolExpansion(at: index)
+                        } : nil
+                    )
+                    .id(item.id)
+                }
             }
 
             Color.clear
@@ -379,6 +385,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isSending: Bool = false
     @Published var revision: Int = 0
 
+    var subagentVMs: [UUID: SubagentBlockViewModel] = [:]
     private var assistantIndex: Int?
     private var toolIndexByCallID: [String: Int] = [:]
 
@@ -412,6 +419,8 @@ final class ChatViewModel: ObservableObject {
             case .toolCallResult(let result):
                 appState.toolActivityState = .toolExecuting
                 updateToolResult(result)
+            case .subagentStarted, .subagentUpdate:
+                applyEngineEvent(event)
             case .systemNote(let note):
                 appendSystemNote(note)
             case .error(let error):
@@ -430,6 +439,7 @@ final class ChatViewModel: ObservableObject {
         draft = ""
         assistantIndex = nil
         toolIndexByCallID.removeAll()
+        subagentVMs.removeAll()
         bumpRevision()
     }
 
@@ -443,6 +453,23 @@ final class ChatViewModel: ObservableObject {
         guard items.indices.contains(index) else { return }
         items[index].toolExpanded.toggle()
         bumpRevision()
+    }
+
+    func applyEngineEvent(_ event: AgentEvent) {
+        switch event {
+        case .subagentStarted(let id, let agentName):
+            let vm = SubagentBlockViewModel(agentName: agentName)
+            subagentVMs[id] = vm
+            var entry = ChatEntry(role: .assistant, text: "")
+            entry.subagentID = id
+            items.append(entry)
+            bumpRevision()
+        case .subagentUpdate(let id, let subagentEvent):
+            subagentVMs[id]?.apply(subagentEvent)
+            bumpRevision()
+        default:
+            break
+        }
     }
 
     private func appendUser(_ text: String) {
@@ -534,6 +561,7 @@ struct ChatEntry: Identifiable, Sendable {
     var toolResult: String?
     var toolIsError: Bool = false
     var toolExpanded: Bool = true
+    var subagentID: UUID? = nil
 }
 
 private struct ChatEntryRow: View {

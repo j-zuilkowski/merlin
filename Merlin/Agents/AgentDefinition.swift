@@ -45,6 +45,8 @@ extension AgentDefinition {
         allowedTools: nil
     )
 
+    static let defaultDefinition = builtinDefault
+
     static let builtinWorker = AgentDefinition(
         name: "worker",
         description: "Write-capable agent with its own git worktree.",

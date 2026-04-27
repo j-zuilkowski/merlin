@@ -5,6 +5,8 @@ enum AgentEvent {
     case thinking(String)
     case toolCallStarted(ToolCall)
     case toolCallResult(ToolResult)
+    case subagentStarted(id: UUID, agentName: String)
+    case subagentUpdate(id: UUID, event: SubagentEvent)
     case systemNote(String)
     case error(Error)
 }
@@ -85,7 +87,7 @@ final class AgenticEngine {
                     }
 
                     do {
-                        try await self.runLoop(userMessage: message, continuation: continuation)
+                        try await self.runLoop(userMessage: message, continuation: continuation, depth: 0)
                         self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
                         self.finishStream(continuation, interrupted: true, state: state)
@@ -113,7 +115,7 @@ final class AgenticEngine {
                 let state = CancellationState()
                 await withTaskCancellationHandler(operation: {
                     do {
-                        try await self.runLoop(userMessage: userMessage, continuation: continuation)
+                        try await self.runLoop(userMessage: userMessage, continuation: continuation, depth: 0)
                         self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
                         self.finishStream(continuation, interrupted: true, state: state)
@@ -145,7 +147,8 @@ final class AgenticEngine {
                         try await self.runLoop(
                             userMessage: prompt,
                             continuation: continuation,
-                            contextOverride: forkContext
+                            contextOverride: forkContext,
+                            depth: 0
                         )
                         self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
@@ -184,7 +187,8 @@ final class AgenticEngine {
     private func runLoop(
         userMessage: String,
         continuation: AsyncStream<AgentEvent>.Continuation,
-        contextOverride: ContextManager? = nil
+        contextOverride: ContextManager? = nil,
+        depth: Int
     ) async throws {
         let context = contextOverride ?? contextManager
         var effectiveMessage = userMessage
@@ -251,9 +255,19 @@ final class AgenticEngine {
             }
 
             toolRouter.permissionMode = permissionMode
-            let results = await toolRouter.dispatch(calls)
+            var regularCalls: [ToolCall] = []
             let prevCompactionCount = context.compactionCount
-            for result in results {
+            for call in calls {
+                if call.function.name == "spawn_agent" {
+                    await handleSpawnAgent(call: call, depth: depth, continuation: continuation)
+                    continue
+                }
+                regularCalls.append(call)
+            }
+
+            let results = await toolRouter.dispatch(regularCalls)
+            for (_, result) in zip(regularCalls, results) {
+
                 continuation.yield(.toolCallResult(result))
                 context.append(Message(
                     role: .tool,
@@ -272,6 +286,44 @@ final class AgenticEngine {
             updated.messages = context.messages
             updated.updatedAt = Date()
             try? sessionStore?.save(updated)
+        }
+    }
+
+    private func handleSpawnAgent(
+        call: ToolCall,
+        depth: Int,
+        continuation: AsyncStream<AgentEvent>.Continuation
+    ) async {
+        struct SpawnArgs: Decodable {
+            var agent: String
+            var prompt: String
+        }
+
+        guard let args = try? JSONDecoder().decode(SpawnArgs.self, from: Data(call.function.arguments.utf8)),
+              depth < AppSettings.shared.maxSubagentDepth else {
+            return
+        }
+
+        let requestedDefinition = await AgentRegistry.shared.definition(named: args.agent)
+        let fallbackDefinition = await AgentRegistry.shared.definition(named: "explorer")
+        let definition = requestedDefinition ?? fallbackDefinition ?? AgentDefinition.defaultDefinition
+        let agentID = UUID()
+        continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
+
+        let provider = registry?.primaryProvider ?? proProvider
+        let hookEngine = HookEngine(hooks: AppSettings.shared.hooks)
+        let subagent = SubagentEngine(
+            definition: definition,
+            prompt: args.prompt,
+            provider: provider,
+            hookEngine: hookEngine,
+            depth: depth + 1
+        )
+
+        let stream = subagent.events
+        await subagent.start()
+        for await event in stream {
+            continuation.yield(.subagentUpdate(id: agentID, event: event))
         }
     }
 

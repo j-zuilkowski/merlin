@@ -126,10 +126,19 @@ final class PermissionModeCapturingProvider: LLMProvider, @unchecked Sendable {
         CompletionChunk(delta: .init(content: "ok"), finishReason: nil),
         CompletionChunk(delta: nil, finishReason: "stop"),
     ]
+    private var hasConsumedResponse = false
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         lastRequest = request
-        let chunks = nextChunks
+        let chunks: [CompletionChunk]
+        if hasConsumedResponse {
+            chunks = [
+                CompletionChunk(delta: nil, finishReason: "stop"),
+            ]
+        } else {
+            hasConsumedResponse = true
+            chunks = nextChunks
+        }
         return AsyncThrowingStream { continuation in
             for chunk in chunks { continuation.yield(chunk) }
             continuation.finish()
