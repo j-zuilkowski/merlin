@@ -6,7 +6,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
-**[v3]** Agent intelligence + UX completeness: config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
+**[v3]** Agent intelligence + UX completeness: unified settings window, config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -738,6 +738,58 @@ System permissions (requested on first use): Accessibility, Screen Recording.
 
 ---
 
+## Settings Window [v3]
+
+A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` scene) and Edit > Options (calls `NSApp.sendAction(Selector("showSettingsWindow:"), to: nil, from: nil)`). Two entry points, one singleton window.
+
+### Navigation model
+
+`NavigationSplitView` with a list sidebar on the left and a detail view on the right — macOS System Settings style. Sections grow as v3 features are added; each feature phase contributes its own section.
+
+### AppSettings
+
+`@MainActor ObservableObject` singleton. Single source of truth for all configurable state. All features read from `AppSettings`; none read directly from UserDefaults, Keychain, or config.toml. Writes immediately to the appropriate backing store on change.
+
+| Backing store | What lives there |
+|---|---|
+| `~/.merlin/config.toml` | Memories toggle, idle timeout, hooks, search config, reasoning overrides, toolbar actions, agent standing instructions |
+| Keychain | API keys, connector tokens, search API key |
+| UserDefaults | UI-only state — theme, fonts, font sizes, message density, window layout |
+
+`config.toml` is watched via FSEvents; external edits update `AppSettings` live. `ConnectorsView` (phase 43) is absorbed into the Connectors section and removed as a standalone view.
+
+### Sections
+
+| Section | Contents |
+|---|---|
+| **General** | Startup behavior, default permission mode, notifications, keep-awake toggle |
+| **Appearance** | Theme, UI font + size, code font + size, message density, accent color, live preview pane |
+| **Providers** | API key per provider, endpoint URL for local providers (LM Studio, Ollama), model capability overrides |
+| **Agent** | Default model, reasoning effort default, standing custom instructions |
+| **Memories** | Enable/disable, idle timeout, generation model, pending review queue (list with accept/reject per file) |
+| **Connectors** | GitHub / Slack / Linear tokens and status (replaces ConnectorsView) |
+| **MCP** | MCP server list — add/remove/edit, connection status |
+| **Skills** | Skill directory paths, per-skill enable/disable |
+| **Hooks** | View and edit hook definitions inline, grouped by event type |
+| **Search** | Brave API key, enable/disable |
+| **Permissions** | Auth pattern memory — current allow/deny list, clear all |
+| **Advanced** | "Show config file in Finder", "Show memories folder in Finder", reset to defaults |
+
+### Appearance section
+
+- **Theme** — Picker: System / Light / Dark; applied via SwiftUI `preferredColorScheme`
+- **UI font** — Family picker + size stepper; applied to message text, sidebar, labels
+- **Code font** — Monospace-filtered family picker + size; applied to tool output, code blocks, diff view
+- **Message density** — Segmented: Compact / Comfortable / Spacious; controls vertical padding in ChatView
+- **Accent color** — `ColorPicker`; stored in UserDefaults; overrides SwiftUI accent environment
+- **Live preview pane** — Non-interactive sample ChatView rendered inline, updates in real time as values change
+
+### Build order
+
+Settings window shell (navigation + Appearance + AppSettings stub) is built in the config.toml foundation phase. Each subsequent v3 phase adds its own section to the list.
+
+---
+
 ## API Key Management [v1]
 
 One Keychain item per remote provider. Local providers require no key.
@@ -945,8 +997,12 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 | Decision | v3 |
 |---|---|
 | Platform | macOS only |
-| Config system | `~/.merlin/config.toml` |
+| Config system | `~/.merlin/config.toml` (FSEvents-watched; external edits reflect live) |
+| Settings window | SwiftUI `Settings {}` scene + Edit > Options; `NavigationSplitView` sidebar + detail; `AppSettings` singleton |
+| Settings source of truth | `AppSettings` @MainActor ObservableObject; features never read UserDefaults/Keychain/TOML directly |
+| Appearance | Theme, UI font, code font, message density, accent color; live preview pane in settings |
+| ConnectorsView | Absorbed into Settings > Connectors; standalone view removed |
 | Hooks | Inline in config.toml; PreToolUse runs before AuthGate (fail-closed on crash) |
-| Memories | Opt-in; idle trigger; pending review queue; fastest model in session's provider |
+| Memories | Opt-in; idle trigger (5 min); pending review queue in ~/.merlin/memories/pending/; fastest model in session's provider |
 | Web search | Brave Search API; absent when no key configured |
-| Reasoning effort | Per-model capability flag; LM Studio uses name-pattern matching + user override |
+| Reasoning effort | Per-model capability flag; LM Studio uses name-pattern matching + user override in config.toml |
