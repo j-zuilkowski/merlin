@@ -1,11 +1,15 @@
 import AppKit
 import Combine
+import UniformTypeIdentifiers
 import SwiftUI
 
 struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var sessionManager: SessionManager
     @StateObject private var model = ChatViewModel()
+    @State private var atSuggestions: [String] = []
+    @State private var showAtPicker: Bool = false
+    @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
 
@@ -94,6 +98,17 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 12) {
+            Button {
+                openAttachmentPanel()
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.bordered)
+            .help("Attach files")
+            .disabled(model.isSending)
+
             TextField("Message", text: $model.draft, axis: .vertical)
                 .lineLimit(1...5)
                 .textFieldStyle(.plain)
@@ -110,6 +125,18 @@ struct ChatView: View {
                 .accessibilityIdentifier("chat-input")
                 .disabled(model.isSending)
                 .onSubmit(sendMessage)
+                .onChange(of: model.draft) { _, draft in
+                    updateAtSuggestions(for: draft)
+                }
+                .popover(isPresented: $showAtPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
+                    AtMentionPicker(suggestions: atSuggestions) { filename in
+                        if let atIdx = model.draft.lastIndex(of: "@") {
+                            model.draft = String(model.draft[..<atIdx]) + "@" + filename + " "
+                        }
+                        showAtPicker = false
+                    }
+                    .padding(10)
+                }
 
             Button(action: sendMessage) {
                 if model.isSending {
@@ -128,6 +155,13 @@ struct ChatView: View {
         }
         .padding(16)
         .background(.thinMaterial)
+        .onDrop(of: [.fileURL], isTargeted: $isDragTargeted) { providers in
+            handleDroppedProviders(providers)
+            return true
+        }
+        .onPasteCommand(of: [.fileURL, .image]) { providers in
+            handleDroppedProviders(providers)
+        }
     }
 
     @ViewBuilder
@@ -204,6 +238,77 @@ struct ChatView: View {
         }
     }
 
+    private func updateAtSuggestions(for draft: String) {
+        guard let atIdx = draft.lastIndex(of: "@") else {
+            showAtPicker = false
+            atSuggestions = []
+            return
+        }
+
+        let query = String(draft[draft.index(after: atIdx)...])
+            .components(separatedBy: .whitespaces)
+            .first ?? ""
+        guard !query.isEmpty else {
+            showAtPicker = false
+            atSuggestions = []
+            return
+        }
+
+        atSuggestions = findFiles(matching: query, in: appState.projectPath)
+        showAtPicker = !atSuggestions.isEmpty
+    }
+
+    private func findFiles(matching query: String, in projectPath: String) -> [String] {
+        guard !projectPath.isEmpty, let enumerator = FileManager.default.enumerator(
+            at: URL(fileURLWithPath: projectPath),
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsPackageDescendants]
+        ) else { return [] }
+
+        let lowerQuery = query.lowercased()
+        var results: [String] = []
+        for case let url as URL in enumerator {
+            let relative = url.path.replacingOccurrences(of: projectPath + "/", with: "")
+            let name = url.lastPathComponent.lowercased()
+            if name.contains(lowerQuery) || relative.lowercased().contains(lowerQuery) {
+                results.append(relative)
+                if results.count == 10 { break }
+            }
+        }
+        return results
+    }
+
+    private func handleDroppedProviders(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url else { return }
+                    Task { @MainActor in
+                        if let block = try? await ContextInjector.inlineAttachment(url: url) {
+                            model.draft += "\n\(block)"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func openAttachmentPanel() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK {
+            for url in panel.urls {
+                Task {
+                    if let block = try? await ContextInjector.inlineAttachment(url: url) {
+                        await MainActor.run { model.draft += "\n\(block)" }
+                    }
+                }
+            }
+        }
+    }
+
     private func scrollLockBanner(proxy: ScrollViewProxy) -> some View {
         HStack {
             Label("Scrolled up — new output continuing below", systemImage: "arrow.up")
@@ -253,9 +358,10 @@ final class ChatViewModel: ObservableObject {
         appState.toolActivityState = .streaming
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
-        appendUser(message)
+        let resolved = ContextInjector.resolveAtMentions(in: message, projectPath: appState.projectPath)
+        appendUser(resolved)
 
-        for await event in appState.engine.send(userMessage: message) {
+        for await event in appState.engine.send(userMessage: resolved) {
             switch event {
             case .text(let text):
                 appendAssistantText(text)
