@@ -372,3 +372,44 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```
 
 Expected: `BUILD SUCCEEDED`. Warnings are acceptable, errors are not.
+
+---
+
+## Commit
+
+```bash
+cd ~/Documents/localProject/merlin
+git add project.yml \
+        Merlin/Info.plist \
+        Merlin/Merlin.entitlements \
+        TestTargetApp/Info.plist \
+        TestHelpers/MockProvider.swift \
+        TestHelpers/NullAuthPresenter.swift \
+        TestHelpers/EngineFactory.swift \
+        Merlin/App/MerlinApp.swift \
+        Merlin/App/AppState.swift \
+        Merlin/Providers/LLMProvider.swift \
+        Merlin/Providers/DeepSeekProvider.swift \
+        Merlin/Providers/LMStudioProvider.swift \
+        Merlin/Providers/SSEParser.swift \
+        Merlin/Engine/AgenticEngine.swift \
+        Merlin/Engine/ContextManager.swift \
+        Merlin/Engine/ToolRouter.swift \
+        Merlin/Engine/ThinkingModeDetector.swift \
+        Merlin/Auth/AuthGate.swift \
+        Merlin/Auth/AuthMemory.swift \
+        Merlin/Auth/PatternMatcher.swift \
+        Merlin/Tools/ToolDefinitions.swift \
+        Merlin/Sessions/Session.swift \
+        Merlin/Sessions/SessionStore.swift \
+        Merlin/Keychain/KeychainManager.swift \
+        Merlin/Views/ContentView.swift \
+        Merlin/Views/ChatView.swift \
+        Merlin/Views/ToolLogView.swift \
+        Merlin/Views/ScreenPreviewView.swift \
+        Merlin/Views/AuthPopupView.swift \
+        Merlin/Views/ProviderHUD.swift \
+        Merlin/Views/FirstLaunchSetupView.swift \
+        Merlin/App/ToolRegistration.swift
+git commit -m "Phase 01 — project scaffold (xcodegen + all stub files)"
+```
