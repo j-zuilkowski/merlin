@@ -12,7 +12,7 @@ Date: 2026-04-26
 | Auth sandbox + pattern memory | Per-tool glob ACL with persistent allow/deny — no equivalent in Claude Code |
 | Tool discovery (PATH scan) | Auto-discovers local executables and probes `--help` for summaries |
 | Local vision model | LM Studio + Qwen2.5-VL for on-device screenshot analysis |
-| Bring-your-own model (DeepSeek) | No subscription required — API key only |
+| Bring-your-own model + multi-provider | Anthropic Claude, DeepSeek, LM Studio (local) — API key only, no subscription lock-in; in-app model picker switches provider per session |
 | Accessibility tree inspection | Full AX API integration for reading live UI state |
 | CGEvent mouse/keyboard automation | Synthesize low-level input events |
 | Xcode-specific tools | Build, test, run, parse Xcode diagnostics natively |
@@ -26,6 +26,7 @@ Date: 2026-04-26
 |---|---|---|
 | **Parallel sessions** | Multiple tasks side-by-side, each in its own Git worktree | High |
 | **Session sidebar (worktree list)** | Left panel listing open sessions, each pinned to a Git worktree; click to switch; activity/mode badges per session | Medium |
+| **Project picker / recent projects** | Dedicated launch screen to open or switch between project roots, with recents history | Low |
 | **Diff / review pane** | Visual diff per file with Accept/Reject per change | High |
 | **Inline diff commenting** | Comment on specific lines; Claude reads and revises | Medium |
 | **Integrated file pane** | Click any file path to open it in a dedicated pane | Medium |
@@ -74,11 +75,6 @@ Date: 2026-04-26
 | **Remote sessions (cloud VM)** | Runs on Anthropic infrastructure; continues when app is closed | High |
 | **SSH sessions** | Connect to remote machines; Claude Code auto-installs on first connect | High |
 | **Web / IDE continuation** | Hand off a session to the web app or IDE extension mid-task | High |
-
-### Model selection
-| Gap | Claude Code capability | Effort |
-|---|---|---|
-| **In-app model picker** | Switch between Opus, Sonnet, Haiku per session | Low |
 
 ---
 

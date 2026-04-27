@@ -12,7 +12,7 @@ Date: 2026-04-26
 | Auth sandbox + pattern memory | Per-tool glob ACL with persistent allow/deny — Codex has no equivalent |
 | Tool discovery (PATH scan) | Auto-discovers local executables with `--help` summaries |
 | Local vision model | LM Studio + Qwen2.5-VL for on-device screenshot analysis |
-| Bring-your-own model | DeepSeek V4 via API key; no subscription lock-in |
+| Bring-your-own model + multi-provider | Anthropic Claude, DeepSeek, LM Studio (local) — API key only; in-app model picker switches provider per session |
 
 ---
 
@@ -23,11 +23,18 @@ Date: 2026-04-26
 | **Parallel threads** | Multiple agent tasks running side-by-side with quick switching | High |
 | **Git worktree UI** | Isolated per-thread worktrees, not just shell `git` commands | Medium |
 | **Session sidebar (worktree list)** | Left panel listing open sessions, each pinned to a Git worktree; click to switch; activity/mode badges per session | Medium |
+| **Project picker / recent projects** | Dedicated launch screen to open or switch between project roots, with recents history | Low |
 | **Diff / review pane** | Visual diff, file staging, commit + push from UI | High |
+| **Inline diff commenting** | Comment on specific diff lines; agent reads comments and revises | Medium |
 | **Scroll lock** | Manual scroll pauses auto-scroll to bottom while streaming; resumes at bottom | Low |
+| **Interrupt / stop button** | Halt the agent mid-run and steer without starting over | Low |
+| **Side chat** | Ask a question without derailing the main agent thread | Low |
 | **PR workflow** | Address PR feedback inside a thread | Medium |
+| **@filename / file attachment** | Inject a file by typing @filename; drag-drop files and images into the prompt | Low |
 | **Recurring task scheduling** | Wake-up a thread on a schedule | Medium |
 | **Skills / plugin system** | Reusable skills shared across app, CLI, IDE | High |
+| **Permission modes (ask / auto / plan)** | Ask before writes, auto-accept all edits, or plan-only (no file writes) | Medium |
+| **CLAUDE.md / per-project instructions** | Per-project instruction file auto-injected as system prompt at session start | Low |
 | **MCP server support** | Extend tool set via MCP protocol | Medium |
 | **In-app browser** | Render pages and run local browser automation | High |
 | **Image generation / editing** | Generate or edit images within a thread | Medium |
