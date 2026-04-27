@@ -31,6 +31,7 @@ actor WorktreeManager {
 
     private let base: URL
     private var worktrees: [UUID: URL] = [:]
+    private var repositories: [UUID: URL] = [:]
     private var locks: Set<UUID> = []
 
     init(worktreesBase: URL) {
@@ -54,6 +55,7 @@ actor WorktreeManager {
         }
 
         worktrees[sessionID] = path
+        repositories[sessionID] = repo
         return path
     }
 
@@ -61,9 +63,15 @@ actor WorktreeManager {
         guard let path = worktrees[sessionID] else {
             throw WorktreeError.notFound(sessionID)
         }
+        let repo = repositories[sessionID]
 
         locks.remove(sessionID)
-        let command = "git worktree remove --force \(shellEscape(path.path))"
+        let command: String
+        if let repo {
+            command = "git -C \(shellEscape(repo.path)) worktree remove --force \(shellEscape(path.path))"
+        } else {
+            command = "git worktree remove --force \(shellEscape(path.path))"
+        }
         let result = await shell(command)
         if result.exitCode != 0 {
             throw WorktreeError.gitCommandFailed(result.output)
@@ -71,6 +79,7 @@ actor WorktreeManager {
 
         try? FileManager.default.removeItem(at: path)
         worktrees.removeValue(forKey: sessionID)
+        repositories.removeValue(forKey: sessionID)
     }
 
     func lock(sessionID: UUID) async throws {
