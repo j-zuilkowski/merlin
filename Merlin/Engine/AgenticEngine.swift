@@ -24,6 +24,7 @@ final class AgenticEngine {
     var xcalibreClient: XcalibreClient?
     var registry: ProviderRegistry?
     var permissionMode: PermissionMode = .ask
+    var claudeMDContent: String = ""
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
@@ -281,6 +282,9 @@ final class AgenticEngine {
 
     private func buildSystemPrompt() -> String {
         var parts: [String] = []
+        if !claudeMDContent.isEmpty {
+            parts.append(claudeMDContent)
+        }
         if permissionMode == .plan {
             parts.append(PermissionMode.planSystemPrompt)
         }

@@ -20,6 +20,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.title = "New Session"
         self.createdAt = Date()
         self.appState = AppState(projectPath: projectRef.path)
+        self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode
     }
