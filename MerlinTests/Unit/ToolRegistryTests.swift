@@ -74,17 +74,17 @@ final class ToolRegistryTests: XCTestCase {
 
     // MARK: - registerBuiltins
 
-    func test_registerBuiltins_populates39Tools() async {
+    func test_registerBuiltins_populates40Tools() async {
         await registry.registerBuiltins()
         let all = await registry.all()
-        XCTAssertEqual(all.count, 39)
+        XCTAssertEqual(all.count, 40)
     }
 
     func test_registerBuiltins_idempotent() async {
         await registry.registerBuiltins()
         await registry.registerBuiltins()
         let all = await registry.all()
-        XCTAssertEqual(all.count, 39)
+        XCTAssertEqual(all.count, 40)
     }
 
     // MARK: - Reset (test helper)

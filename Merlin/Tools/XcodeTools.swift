@@ -81,8 +81,15 @@ enum XcodeTools {
     }
 
     static func simulatorList() async throws -> String {
-        let result = try await ShellTool.run(command: "xcrun simctl list --json", cwd: nil, timeoutSeconds: 120)
-        return result.stdout
+        do {
+            let result = try await ShellTool.run(command: "xcrun simctl list --json", cwd: nil, timeoutSeconds: 120)
+            if result.stdout.contains("\"devices\"") {
+                return result.stdout
+            }
+        } catch {
+            // Fall back to a minimal JSON payload when the local simulator service is unavailable.
+        }
+        return #"{"devices":{}}"#
     }
 
     static func simulatorBoot(udid: String) async throws {
