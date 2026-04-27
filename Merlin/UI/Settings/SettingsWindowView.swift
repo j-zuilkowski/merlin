@@ -433,13 +433,58 @@ struct SkillsSettingsView: View {
     }
 }
 
-// MARK: - Web Search (stub — replaced in phase 69)
+// MARK: - Web Search
 
 struct SearchSettingsView: View {
+    @State private var apiKey: String = ""
+    @State private var saveStatus: String = ""
+
     var body: some View {
-        Text("Web Search")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Form {
+            Section("Brave Search API Key") {
+                SecureField("API key", text: $apiKey)
+                    .textContentType(.password)
+                Text("Get a free key at brave.com/search/api — used only for web_search tool calls.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if !saveStatus.isEmpty {
+                Text(saveStatus)
+                    .foregroundStyle(.secondary)
+                    .font(.caption)
+            }
+
+            Button("Save") {
+                save()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .onAppear {
+            apiKey = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
+        }
+    }
+
+    private func save() {
+        let key = apiKey.trimmingCharacters(in: .whitespaces)
+        if key.isEmpty {
+            try? ConnectorCredentials.delete(service: "brave-search")
+            Task {
+                await ToolRegistry.shared.unregister(named: "web_search")
+            }
+            saveStatus = "Key cleared."
+        } else {
+            do {
+                try ConnectorCredentials.store(token: key, service: "brave-search")
+                Task {
+                    await ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
+                }
+                saveStatus = "Saved."
+            } catch {
+                saveStatus = "Error: \(error.localizedDescription)"
+            }
+        }
     }
 }
 
