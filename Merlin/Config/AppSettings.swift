@@ -2,14 +2,24 @@ import Foundation
 import CoreServices
 import SwiftUI
 
+enum MessageDensity: String, CaseIterable, Codable, Sendable {
+    case compact
+    case comfortable
+    case spacious
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     @Published var autoCompact: Bool = false
     @Published var maxTokens: Int = 8_192
+    @Published var keepAwake: Bool = false
     @Published var providerName: String = "anthropic"
     @Published var modelID: String = ""
+    @Published var defaultPermissionMode: PermissionMode = .ask
+    @Published var notificationsEnabled: Bool = true
+    @Published var messageDensity: MessageDensity = .comfortable
     @Published var standingInstructions: String = ""
     @Published var hooks: [HookConfig] = []
     @Published var appearance: AppearanceSettings = AppearanceSettings()
@@ -30,8 +40,12 @@ final class AppSettings: ObservableObject {
     private struct ConfigFile: Codable, Sendable {
         var autoCompact: Bool?
         var maxTokens: Int?
+        var keepAwake: Bool?
         var providerName: String?
         var modelID: String?
+        var defaultPermissionMode: PermissionMode?
+        var notificationsEnabled: Bool?
+        var messageDensity: MessageDensity?
         var standingInstructions: String?
         var hooks: [HookConfig]?
         var appearance: AppearanceSettings?
@@ -47,8 +61,12 @@ final class AppSettings: ObservableObject {
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
             case maxTokens = "max_tokens"
+            case keepAwake = "keep_awake"
             case providerName = "provider_name"
             case modelID = "model_id"
+            case defaultPermissionMode = "default_permission_mode"
+            case notificationsEnabled = "notifications_enabled"
+            case messageDensity = "message_density"
             case standingInstructions = "standing_instructions"
             case hooks
             case appearance
@@ -78,11 +96,23 @@ final class AppSettings: ObservableObject {
         if let value = config.maxTokens {
             maxTokens = value
         }
+        if let value = config.keepAwake {
+            keepAwake = value
+        }
         if let value = config.providerName {
             providerName = value
         }
         if let value = config.modelID {
             modelID = value
+        }
+        if let value = config.defaultPermissionMode {
+            defaultPermissionMode = value
+        }
+        if let value = config.notificationsEnabled {
+            notificationsEnabled = value
+        }
+        if let value = config.messageDensity {
+            messageDensity = value
         }
         if let value = config.standingInstructions {
             standingInstructions = value
@@ -123,8 +153,12 @@ final class AppSettings: ObservableObject {
         var lines: [String] = []
         lines.append("auto_compact = \(autoCompact)")
         lines.append("max_tokens = \(maxTokens)")
+        lines.append("keep_awake = \(keepAwake)")
         lines.append("provider_name = \(quoted(providerName))")
         lines.append("model_id = \(quoted(modelID))")
+        lines.append("default_permission_mode = \(quoted(defaultPermissionMode.rawValue))")
+        lines.append("notifications_enabled = \(notificationsEnabled)")
+        lines.append("message_density = \(quoted(messageDensity.rawValue))")
         lines.append("max_subagent_threads = \(maxSubagentThreads)")
         lines.append("max_subagent_depth = \(maxSubagentDepth)")
         if !xcalibreToken.isEmpty {
