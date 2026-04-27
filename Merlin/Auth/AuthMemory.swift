@@ -28,6 +28,10 @@ final class AuthMemory {
         allowPatterns.removeAll { $0.tool == tool && $0.pattern == pattern }
     }
 
+    func removeDenyPattern(tool: String, pattern: String) {
+        denyPatterns.removeAll { $0.tool == tool && $0.pattern == pattern }
+    }
+
     func isAllowed(tool: String, argument: String) -> Bool {
         allowPatterns.contains { matches($0, tool: tool, argument: argument) }
     }

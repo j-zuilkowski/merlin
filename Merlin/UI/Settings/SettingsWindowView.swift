@@ -488,13 +488,77 @@ struct SearchSettingsView: View {
     }
 }
 
-// MARK: - Permissions (stub — replaced in phase 70)
+// MARK: - Permissions
 
 struct PermissionsSettingsView: View {
+    @State private var memory: AuthMemory = AuthMemory(storePath: Self.defaultStorePath)
+
+    private static var defaultStorePath: String {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        return "\(home)/.merlin/auth.json"
+    }
+
     var body: some View {
-        Text("Permissions")
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        let currentMemory = memory
+
+        VSplitView {
+            patternList(
+                title: "Always Allow",
+                patterns: currentMemory.allowPatterns,
+                onRemove: { pattern in
+                    currentMemory.removeAllowPattern(tool: pattern.tool, pattern: pattern.pattern)
+                    try? currentMemory.save()
+                }
+            )
+
+            patternList(
+                title: "Always Deny",
+                patterns: currentMemory.denyPatterns,
+                onRemove: { pattern in
+                    currentMemory.removeDenyPattern(tool: pattern.tool, pattern: pattern.pattern)
+                    try? currentMemory.save()
+                }
+            )
+        }
+        .onAppear {
+            memory = AuthMemory(storePath: Self.defaultStorePath)
+        }
+    }
+
+    @ViewBuilder
+    private func patternList(
+        title: String,
+        patterns: [AuthPattern],
+        onRemove: @escaping (AuthPattern) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.headline)
+                .padding([.top, .horizontal])
+            if patterns.isEmpty {
+                Text("None")
+                    .foregroundStyle(.secondary)
+                    .padding()
+            } else {
+                List(patterns, id: \.pattern) { pattern in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(pattern.tool).bold()
+                            Text(pattern.pattern)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(role: .destructive) {
+                            onRemove(pattern)
+                        } label: {
+                            Image(systemName: "minus.circle")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+        }
     }
 }
 
