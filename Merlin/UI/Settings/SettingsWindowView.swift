@@ -113,15 +113,36 @@ private struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Toggle("Auto compact", isOn: $settings.autoCompact)
-            Stepper(value: $settings.maxTokens, in: 1_024...256_000, step: 512) {
-                Text("Max tokens: \(settings.maxTokens)")
+            Section("Startup") {
+                Toggle("Keep Mac awake during long sessions", isOn: $settings.keepAwake)
+                Toggle("Show notifications", isOn: $settings.notificationsEnabled)
             }
-            Stepper(value: $settings.maxSubagentThreads, in: 1...16, step: 1) {
-                Text("Max subagent threads: \(settings.maxSubagentThreads)")
+
+            Section("Permissions") {
+                Picker("Default permission mode", selection: $settings.defaultPermissionMode) {
+                    ForEach(PermissionMode.allCases, id: \.self) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                Text("New sessions open in this mode. Can be changed per-session in the chat header.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            Stepper(value: $settings.maxSubagentDepth, in: 1...8, step: 1) {
-                Text("Max subagent depth: \(settings.maxSubagentDepth)")
+
+            Section("Context") {
+                Stepper(value: $settings.maxTokens, in: 1_024...1_000_000, step: 4_096) {
+                    Text("Context window: \(settings.maxTokens.formatted())")
+                }
+                Toggle("Auto compact at 80% context", isOn: $settings.autoCompact)
+            }
+
+            Section("Subagents") {
+                Stepper(value: $settings.maxSubagentThreads, in: 1...16, step: 1) {
+                    Text("Max parallel threads: \(settings.maxSubagentThreads)")
+                }
+                Stepper(value: $settings.maxSubagentDepth, in: 1...8, step: 1) {
+                    Text("Max spawn depth: \(settings.maxSubagentDepth)")
+                }
             }
         }
         .padding()
@@ -135,16 +156,32 @@ private struct AppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Picker("Theme", selection: $settings.appearance.theme) {
-                ForEach(AppTheme.allCases, id: \.self) { theme in
-                    Text(theme.rawValue.capitalized).tag(theme)
+            Section("Theme") {
+                Picker("Theme", selection: $settings.appearance.theme) {
+                    ForEach(AppTheme.allCases, id: \.self) { theme in
+                        Text(theme.rawValue.capitalized).tag(theme)
+                    }
                 }
             }
-            Stepper(value: $settings.appearance.fontSize, in: 9...32, step: 1) {
-                Text("Font size: \(settings.appearance.fontSize, specifier: "%.0f")")
+
+            Section("Typography") {
+                Stepper(value: $settings.appearance.fontSize, in: 9...32, step: 1) {
+                    Text("Font size: \(settings.appearance.fontSize, specifier: "%.0f")")
+                }
+                TextField("Font name", text: $settings.appearance.fontName)
+                TextField("Accent color hex", text: $settings.appearance.accentColorHex)
             }
-            TextField("Font name", text: $settings.appearance.fontName)
-            TextField("Accent color hex", text: $settings.appearance.accentColorHex)
+
+            Section("Message Layout") {
+                Picker("Density", selection: $settings.messageDensity) {
+                    ForEach(MessageDensity.allCases, id: \.self) { density in
+                        Text(density.rawValue.capitalized).tag(density)
+                    }
+                }
+                Text("Controls vertical padding between messages.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
     }
