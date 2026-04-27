@@ -36,8 +36,8 @@ final class SkillInvocationTests: XCTestCase {
 
         for await _ in engine.invokeSkill(skill, arguments: "") {}
 
-        let lastReq = provider.lastRequest
-        let userMsg = lastReq?.messages.last(where: { $0.role == "user" })
+        let lastReq = provider.capturedRequests.last
+        let userMsg = lastReq?.messages.last(where: { $0.role == .user })
         let text = userMsg.flatMap {
             if case .text(let s) = $0.content { s } else { nil }
         } ?? ""
@@ -80,8 +80,8 @@ final class SkillInvocationTests: XCTestCase {
 
         for await _ in engine.invokeSkill(skill, arguments: "AuthGate.swift") {}
 
-        let lastReq = provider.lastRequest
-        let userMsg = lastReq?.messages.last(where: { $0.role == "user" })
+        let lastReq = provider.capturedRequests.last
+        let userMsg = lastReq?.messages.last(where: { $0.role == .user })
         let text = userMsg.flatMap {
             if case .text(let s) = $0.content { s } else { nil }
         } ?? ""

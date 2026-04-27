@@ -23,6 +23,7 @@ final class AgenticEngine {
     let toolRouter: ToolRouter
     var xcalibreClient: XcalibreClient?
     var registry: ProviderRegistry?
+    var skillsRegistry: SkillsRegistry?
     var permissionMode: PermissionMode = .ask
     var claudeMDContent: String = ""
 
@@ -46,6 +47,17 @@ final class AgenticEngine {
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
         toolRouter.register(name: name, handler: handler)
+    }
+
+    func invokeSkill(_ skill: Skill, arguments: String = "") -> AsyncStream<AgentEvent> {
+        let body = skillsRegistry?.render(skill: skill, arguments: arguments)
+            ?? SkillsRegistry.renderStatic(skill: skill, arguments: arguments)
+
+        if skill.frontmatter.context == "fork" {
+            return runFork(prompt: body)
+        }
+
+        return send(userMessage: body)
     }
 
     func cancel() {
@@ -122,6 +134,39 @@ final class AgenticEngine {
         }
     }
 
+    private func runFork(prompt: String) -> AsyncStream<AgentEvent> {
+        AsyncStream { continuation in
+            let forkContext = ContextManager()
+            let task = Task { @MainActor in
+                let state = CancellationState()
+                await withTaskCancellationHandler(operation: {
+                    do {
+                        try await self.runLoop(
+                            userMessage: prompt,
+                            continuation: continuation,
+                            contextOverride: forkContext
+                        )
+                        self.finishStream(continuation, interrupted: false, state: state)
+                    } catch is CancellationError {
+                        self.finishStream(continuation, interrupted: true, state: state)
+                    } catch {
+                        continuation.yield(.error(error))
+                        self.finishStream(continuation, interrupted: false, state: state)
+                    }
+                }, onCancel: {
+                    Task { @MainActor in
+                        self.finishStream(continuation, interrupted: true, state: state)
+                    }
+                })
+            }
+
+            Task { @MainActor in
+                self.isRunning = true
+                self.currentTask = task
+            }
+        }
+    }
+
     private func finishStream(_ continuation: AsyncStream<AgentEvent>.Continuation,
                               interrupted: Bool,
                               state: CancellationState) {
@@ -135,7 +180,12 @@ final class AgenticEngine {
         isRunning = false
     }
 
-    private func runLoop(userMessage: String, continuation: AsyncStream<AgentEvent>.Continuation) async throws {
+    private func runLoop(
+        userMessage: String,
+        continuation: AsyncStream<AgentEvent>.Continuation,
+        contextOverride: ContextManager? = nil
+    ) async throws {
+        let context = contextOverride ?? contextManager
         var effectiveMessage = userMessage
         if let client = xcalibreClient {
             let chunks = await client.searchChunks(query: userMessage, limit: 3, rerank: false)
@@ -144,7 +194,7 @@ final class AgenticEngine {
                 continuation.yield(.systemNote("Library: \(chunks.count) passage\(chunks.count == 1 ? "" : "s") retrieved"))
             }
         }
-        contextManager.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
+        context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
 
         while true {
             let provider = selectProvider(for: userMessage)
@@ -201,24 +251,24 @@ final class AgenticEngine {
 
             toolRouter.permissionMode = permissionMode
             let results = await toolRouter.dispatch(calls)
-            let prevCompactionCount = contextManager.compactionCount
+            let prevCompactionCount = context.compactionCount
             for result in results {
                 continuation.yield(.toolCallResult(result))
-                contextManager.append(Message(
+                context.append(Message(
                     role: .tool,
                     content: .text(result.content),
                     toolCallId: result.toolCallId,
                     timestamp: Date()
                 ))
             }
-            if contextManager.compactionCount != prevCompactionCount {
+            if context.compactionCount != prevCompactionCount {
                 continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
             }
         }
 
-        if let session = sessionStore?.activeSession {
+        if contextOverride == nil, let session = sessionStore?.activeSession {
             var updated = session
-            updated.messages = contextManager.messages
+            updated.messages = context.messages
             updated.updatedAt = Date()
             try? sessionStore?.save(updated)
         }

@@ -22,6 +22,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.createdAt = Date()
         self.appState = AppState(projectPath: projectRef.path)
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
+        self.appState.engine.skillsRegistry = self.skillsRegistry
         self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode

@@ -61,6 +61,10 @@ final class SkillsRegistry: ObservableObject {
     }
 
     func render(skill: Skill, arguments: String = "") -> String {
+        Self.renderStatic(skill: skill, arguments: arguments)
+    }
+
+    static func renderStatic(skill: Skill, arguments: String = "") -> String {
         var body = resolveShellInjection(skill.body)
 
         if body.contains("$ARGUMENTS") {
@@ -72,7 +76,7 @@ final class SkillsRegistry: ObservableObject {
         return body
     }
 
-    private func resolveShellInjection(_ body: String) -> String {
+    private static func resolveShellInjection(_ body: String) -> String {
         var result = body
 
         if let blockRegex = try? NSRegularExpression(pattern: #"```!\n([\s\S]*?)```"#) {
@@ -100,7 +104,7 @@ final class SkillsRegistry: ObservableObject {
         return result
     }
 
-    private func runShell(_ command: String) -> String? {
+    private static func runShell(_ command: String) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = ["-c", command]

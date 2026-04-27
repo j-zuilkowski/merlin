@@ -68,6 +68,7 @@ final class AppState: ObservableObject {
 
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
+        Self.installBuiltinSkills()
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)
@@ -193,6 +194,20 @@ final class AppState: ObservableObject {
     func reloadProviders(apiKey: String) {
         try? registry.setAPIKey(apiKey, for: "deepseek")
         syncEngineProviders()
+    }
+
+    static func installBuiltinSkills() {
+        guard let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("Builtin") else { return }
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        let destination = URL(fileURLWithPath: home).appendingPathComponent(".merlin/skills")
+        let fm = FileManager.default
+        guard let skills = try? fm.contentsOfDirectory(at: resourceURL, includingPropertiesForKeys: nil) else { return }
+        for skillDir in skills {
+            let target = destination.appendingPathComponent(skillDir.lastPathComponent)
+            guard !fm.fileExists(atPath: target.path) else { continue }
+            try? fm.createDirectory(at: destination, withIntermediateDirectories: true)
+            try? fm.copyItem(at: skillDir, to: target)
+        }
     }
 
     private func syncEngineProviders() {
