@@ -1,6 +1,7 @@
 import Foundation
 
 struct WorkspaceLayout: Codable, Sendable {
+    var showDiffPane: Bool
     var showFilePane: Bool
     var showTerminalPane: Bool
     var showPreviewPane: Bool
@@ -9,6 +10,7 @@ struct WorkspaceLayout: Codable, Sendable {
     var chatWidth: Double
 
     enum CodingKeys: String, CodingKey {
+        case showDiffPane = "show_diff_pane"
         case showFilePane = "show_file_pane"
         case showTerminalPane = "show_terminal_pane"
         case showPreviewPane = "show_preview_pane"
@@ -23,12 +25,13 @@ struct WorkspaceLayoutManager: Sendable {
 
     static var defaultLayout: WorkspaceLayout {
         WorkspaceLayout(
-            showFilePane: true,
+            showDiffPane: false,
+            showFilePane: false,
             showTerminalPane: false,
             showPreviewPane: false,
             showSideChat: false,
             sidebarWidth: 200,
-            chatWidth: 520
+            chatWidth: 360
         )
     }
 

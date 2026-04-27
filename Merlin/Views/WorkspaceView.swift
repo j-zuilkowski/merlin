@@ -40,14 +40,12 @@ struct WorkspaceView: View {
         }
         .navigationTitle(projectRef.displayName)
         .toolbar { toolbarContent }
+        .onChange(of: layout.showDiffPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showFilePane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showPreviewPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showSideChat) { _, _ in saveLayoutIfLoaded() }
         .preferredColorScheme(settings.appearance.theme.colorScheme)
-        .font(settings.appearance.fontName.isEmpty
-            ? .system(size: settings.appearance.fontSize)
-            : .custom(settings.appearance.fontName, size: settings.appearance.fontSize))
         .sheet(isPresented: $showMemoriesWindow) {
             MemoryReviewView()
                 .frame(minWidth: 600, minHeight: 400)
@@ -79,14 +77,15 @@ struct WorkspaceView: View {
                     })
                     .frame(minWidth: 400, maxWidth: .infinity)
 
-                Divider()
-
-                DiffPane(
-                    buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
-                    engine: session.appState.engine,
-                    onCommit: {}
-                )
-                .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
+                if layout.showDiffPane {
+                    Divider()
+                    DiffPane(
+                        buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
+                        engine: session.appState.engine,
+                        onCommit: {}
+                    )
+                    .frame(width: 260)
+                }
 
                 if layout.showFilePane {
                     Divider()
@@ -130,6 +129,16 @@ struct WorkspaceView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            Button {
+                layout.showDiffPane.toggle()
+                saveLayoutIfLoaded()
+            } label: {
+                Label("Staged Changes", systemImage: "arrow.triangle.branch")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showDiffPane ? .accentColor : .secondary)
+            .help("Toggle staged changes")
+
             Button {
                 layout.showFilePane.toggle()
                 saveLayoutIfLoaded()

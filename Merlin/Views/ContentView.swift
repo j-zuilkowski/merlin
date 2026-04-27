@@ -9,7 +9,7 @@ struct ContentView: View {
     var body: some View {
         HStack(spacing: 0) {
             ChatView()
-                .frame(minWidth: 360, maxWidth: .infinity)
+                .frame(minWidth: 280, maxWidth: .infinity)
 
             if showToolPane {
                 Divider()
