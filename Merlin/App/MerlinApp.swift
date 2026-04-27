@@ -26,8 +26,7 @@ struct MerlinApp: App {
         .commands { MerlinCommands() }
 
         Settings {
-            ProviderSettingsView()
-                .environmentObject(ProviderRegistry())
+            SettingsWindowView()
         }
     }
 }

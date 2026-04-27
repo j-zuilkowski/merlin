@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SettingsWindowView: View {
     @StateObject private var settings = AppSettings.shared
-    @EnvironmentObject private var registry: ProviderRegistry
+    @StateObject private var registry = ProviderRegistry()
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
@@ -29,9 +29,9 @@ struct SettingsWindowView: View {
             AppearanceSettingsView(settings: settings)
         case .providers:
             ProvidersSettingsView()
+                .environmentObject(registry)
         case .agents:
             AgentSettingsView(settings: settings)
-                .environmentObject(registry)
         case .hooks:
             HooksSettingsView()
         case .memories:
@@ -158,23 +158,22 @@ struct ProvidersSettingsView: View {
 
 struct AgentSettingsView: View {
     @ObservedObject var settings: AppSettings
-    @EnvironmentObject private var registry: ProviderRegistry
 
     var body: some View {
         Form {
             Section("Active Model") {
+                let enabledProviders = settings.providers.filter(\.isEnabled)
                 Picker("Provider", selection: $settings.providerName) {
-                    ForEach(registry.providers.filter(\.isEnabled)) { config in
+                    ForEach(enabledProviders, id: \.id) { config in
                         Text(config.displayName).tag(config.id)
                     }
                 }
-                Picker("Model", selection: $settings.modelID) {
-                    let models = ProviderRegistry.knownModels[settings.providerName] ?? []
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
-                    if !settings.modelID.isEmpty {
-                        Text(settings.modelID).tag(settings.modelID)
+                let models = ProviderRegistry.knownModels[settings.providerName] ?? []
+                if !models.isEmpty {
+                    Picker("Model", selection: $settings.modelID) {
+                        ForEach(models, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
                     }
                 }
                 TextField("Custom model ID", text: $settings.modelID)
