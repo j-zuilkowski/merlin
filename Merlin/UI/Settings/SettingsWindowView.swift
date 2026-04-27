@@ -249,29 +249,84 @@ struct AgentSettingsView: View {
 
 struct HooksSettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var isAdding = false
+    @State private var newEvent = "PreToolUse"
+    @State private var newCommand = ""
+
+    private let eventTypes = ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if settings.hooks.isEmpty {
-                Text("No hooks configured.")
-                    .foregroundStyle(.secondary)
-                    .padding()
-            } else {
-                List(settings.hooks) { hook in
-                    HStack {
+        List {
+            ForEach($settings.hooks) { $hook in
+                HStack(spacing: 12) {
+                    Toggle("", isOn: $hook.enabled)
+                        .labelsHidden()
+                        .toggleStyle(.checkbox)
+                        .onChange(of: hook.enabled) { _, _ in saveHooks() }
+                    VStack(alignment: .leading, spacing: 2) {
                         Text(hook.event)
-                            .bold()
-                            .frame(width: 160, alignment: .leading)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
                         Text(hook.command)
                             .font(.system(.body, design: .monospaced))
                             .foregroundStyle(hook.enabled ? .primary : .secondary)
                     }
+                    Spacer()
+                    Button(role: .destructive) {
+                        settings.hooks.removeAll { $0.event == hook.event && $0.command == hook.command }
+                        saveHooks()
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.borderless)
                 }
             }
-            Text("Hook commands receive JSON on stdin and write JSON to stdout.\nNon-zero exit = deny (PreToolUse).")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding([.horizontal, .bottom])
+
+            if isAdding {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Event", selection: $newEvent) {
+                        ForEach(eventTypes, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    TextField("Script path or shell command", text: $newCommand)
+                        .font(.system(.body, design: .monospaced))
+                    HStack {
+                        Button("Cancel") { isAdding = false; newCommand = "" }
+                        Spacer()
+                        Button("Add") {
+                            settings.hooks.append(HookConfig(event: newEvent, command: newCommand))
+                            saveHooks()
+                            isAdding = false
+                            newCommand = ""
+                        }
+                        .disabled(newCommand.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            VStack(alignment: .leading, spacing: 6) {
+                if !isAdding {
+                    Button("Add Hook…") { isAdding = true }
+                        .padding(.horizontal)
+                }
+                Text("Scripts receive JSON on stdin; return JSON on stdout. Non-zero exit = deny (PreToolUse).")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+            }
+        }
+    }
+
+    private func saveHooks() {
+        Task {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let url = home.appendingPathComponent(".merlin/config.toml")
+            try? await AppSettings.shared.save(to: url)
         }
     }
 }
@@ -301,7 +356,7 @@ struct MemoriesSettingsView: View {
     ]
 
     var body: some View {
-        VSplitView {
+        VStack(spacing: 0) {
             Form {
                 Toggle("Enable memory generation", isOn: $settings.memoriesEnabled)
                 Picker("Generate after idle", selection: $settings.memoryIdleTimeout) {
@@ -315,7 +370,9 @@ struct MemoriesSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             .formStyle(.grouped)
-            .frame(minHeight: 140)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Pending Memories")
@@ -323,6 +380,7 @@ struct MemoriesSettingsView: View {
                     .padding([.top, .horizontal])
                 MemoryReviewView()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
@@ -445,14 +503,15 @@ struct SkillsSettingsView: View {
     @StateObject private var skillsRegistry = SkillsRegistry(projectPath: "")
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        List {
             if skillsRegistry.skills.isEmpty {
-                Text("No skills installed.\nAdd SKILL.md files to ~/.merlin/skills/ or .merlin/skills/ in your project.")
-                    .foregroundStyle(.secondary)
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView {
+                    Label("No Skills Installed", systemImage: "star.slash")
+                } description: {
+                    Text("Add SKILL.md files to ~/.merlin/skills/")
+                }
             } else {
-                List(skillsRegistry.skills) { skill in
+                ForEach(skillsRegistry.skills) { skill in
                     Toggle(isOn: Binding(
                         get: { !settings.disabledSkillNames.contains(skill.name) },
                         set: { enabled in
@@ -477,10 +536,26 @@ struct SkillsSettingsView: View {
                     }
                 }
             }
-            Text("Disabled skills are hidden from the agent's tool list.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding()
+        }
+        .safeAreaInset(edge: .bottom) {
+            HStack {
+                Button("Open Skills Folder") {
+                    let home = FileManager.default.homeDirectoryForCurrentUser
+                    let dir = home.appendingPathComponent(".merlin/skills")
+                    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                    NSWorkspace.shared.open(dir)
+                }
+                .buttonStyle(.borderless)
+                Spacer()
+                Text("Disabled skills are hidden from the agent's tool list.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .task {
+            skillsRegistry.reload()
         }
     }
 }
