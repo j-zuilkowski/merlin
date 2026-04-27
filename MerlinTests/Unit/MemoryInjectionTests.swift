@@ -1,0 +1,101 @@
+import XCTest
+@testable import Merlin
+
+@MainActor
+final class MemoryInjectionTests: XCTestCase {
+
+    private var tempDir: URL!
+
+    override func setUp() {
+        super.setUp()
+        tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("mem-inject-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() {
+        try? FileManager.default.removeItem(at: tempDir)
+        super.tearDown()
+    }
+
+    // MARK: - CLAUDEMDLoader.memoriesBlock
+
+    func testMemoriesBlockWrapsContent() throws {
+        let file1 = tempDir.appendingPathComponent("a.md")
+        try "- User prefers bullet points".write(to: file1, atomically: true, encoding: .utf8)
+
+        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        XCTAssertTrue(block.hasPrefix("[Memories]"), "Block should open with [Memories]")
+        XCTAssertTrue(block.hasSuffix("[/Memories]"), "Block should close with [/Memories]")
+        XCTAssertTrue(block.contains("bullet points"))
+    }
+
+    func testMemoriesBlockCombinesMultipleFiles() throws {
+        try "- Pref A".write(to: tempDir.appendingPathComponent("1.md"), atomically: true, encoding: .utf8)
+        try "- Pref B".write(to: tempDir.appendingPathComponent("2.md"), atomically: true, encoding: .utf8)
+
+        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        XCTAssertTrue(block.contains("Pref A"))
+        XCTAssertTrue(block.contains("Pref B"))
+    }
+
+    func testMemoriesBlockEmptyDirReturnsEmpty() {
+        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        XCTAssertTrue(block.isEmpty, "Empty memories dir should return empty string")
+    }
+
+    func testMemoriesBlockMissingDirReturnsEmpty() {
+        let missing = tempDir.appendingPathComponent("does-not-exist").path
+        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: missing)
+        XCTAssertTrue(block.isEmpty)
+    }
+
+    func testMemoriesBlockIgnoresNonMdFiles() throws {
+        try "- Real memory".write(to: tempDir.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
+        try "ignored".write(to: tempDir.appendingPathComponent("b.txt"), atomically: true, encoding: .utf8)
+
+        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        XCTAssertTrue(block.contains("Real memory"))
+        XCTAssertFalse(block.contains("ignored"))
+    }
+
+    // MARK: - AgenticEngine system prompt order
+
+    func testBuildSystemPromptIncludesMemoriesAfterClaudeMD() {
+        let engine = makeEngine()
+        engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
+        engine.memoriesContent = "[Memories]\n- User likes brevity\n[/Memories]"
+
+        let messages = engine.messagesWithSystem(
+            [Message(role: .user, content: .text("hi"), timestamp: Date())]
+        )
+        let systemText = messages.first.flatMap { msg -> String? in
+            guard msg.role == .system, case .text(let t) = msg.content else { return nil }
+            return t
+        } ?? ""
+
+        XCTAssertTrue(systemText.contains("[Project instructions]"), "CLAUDE.md content should be present")
+        XCTAssertTrue(systemText.contains("[Memories]"), "Memories block should be present")
+
+        let claudeRange = systemText.range(of: "[Project instructions]")!
+        let memoriesRange = systemText.range(of: "[Memories]")!
+        XCTAssertLessThan(claudeRange.lowerBound, memoriesRange.lowerBound,
+                          "CLAUDE.md content should appear before memories")
+    }
+
+    func testBuildSystemPromptNoMemoriesOmitsBlock() {
+        let engine = makeEngine()
+        engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
+        engine.memoriesContent = ""
+
+        let messages = engine.messagesWithSystem(
+            [Message(role: .user, content: .text("hi"), timestamp: Date())]
+        )
+        let systemText = messages.first.flatMap { msg -> String? in
+            guard msg.role == .system, case .text(let t) = msg.content else { return nil }
+            return t
+        } ?? ""
+
+        XCTAssertFalse(systemText.contains("[Memories]"), "Empty memories should not inject a block")
+    }
+}
