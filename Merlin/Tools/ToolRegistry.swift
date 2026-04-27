@@ -41,4 +41,11 @@ actor ToolRegistry {
         tools.removeAll()
         names.removeAll()
     }
+
+    func registerWebSearchIfAvailable(apiKey: String) {
+        guard apiKey.isEmpty == false else {
+            return
+        }
+        register(WebSearchTool.toolDefinition)
+    }
 }
