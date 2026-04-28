@@ -28,7 +28,9 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
 final class ProviderRegistry: ObservableObject {
 
     @Published private(set) var providers: [ProviderConfig]
-    @Published var activeProviderID: String
+    @Published var activeProviderID: String {
+        didSet { if oldValue != activeProviderID { persist() } }
+    }
     @Published var availabilityByID: [String: Bool] = [:]
 
     private let persistURL: URL
