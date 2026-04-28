@@ -70,14 +70,20 @@ struct HelpWebView: NSViewRepresentable {
         return webView
     }
 
+    // Guard against repeated loads: WKWebView crashes when loadHTMLString is
+    // called concurrently (e.g. SwiftUI redraw racing with a user-triggered reload).
     func updateNSView(_ webView: WKWebView, context: Context) {
+        guard context.coordinator.loadedHTML != html else { return }
+        context.coordinator.loadedHTML = html
         webView.loadHTMLString(html, baseURL: nil)
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    // Intercept navigation: anchor links scroll in-page; external links open in browser.
     final class Coordinator: NSObject, WKNavigationDelegate {
+        // Tracks the content currently loaded so updateNSView is idempotent.
+        var loadedHTML: String = ""
+
         func webView(_ webView: WKWebView,
                      decidePolicyFor action: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -86,14 +92,29 @@ struct HelpWebView: NSViewRepresentable {
                 decisionHandler(.allow)
                 return
             }
-            // Allow fragment-only links (TOC anchors) — WKWebView handles them natively
-            if url.scheme == nil || url.absoluteString.hasPrefix("#") {
+            // Fragment links (#anchor) — let WKWebView scroll in-page
+            if url.fragment != nil && (url.host == nil || url.absoluteString.hasPrefix("about:")) {
                 decisionHandler(.allow)
                 return
             }
-            // Open real external links in the default browser
+            // Real external links — open in default browser
             NSWorkspace.shared.open(url)
             decisionHandler(.cancel)
+        }
+
+        // When the user triggers Reload (⌘R or context menu), re-inject the
+        // HTML string so the page doesn't go blank (WKWebView reloads about:blank
+        // for loadHTMLString loads, which discards our content).
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // If the webView navigated away from our content (e.g. reload → about:blank),
+            // reload it from the stored HTML.
+            webView.evaluateJavaScript("document.title") { [weak self] result, _ in
+                guard let self else { return }
+                let title = result as? String ?? ""
+                if title.isEmpty && !self.loadedHTML.isEmpty {
+                    webView.loadHTMLString(self.loadedHTML, baseURL: nil)
+                }
+            }
         }
     }
 }
