@@ -15,7 +15,7 @@ struct ProviderSettingsView: View {
                         isActive: registry.activeProviderID == config.id,
                         hasKey: config.isLocal
                             ? registry.availabilityByID[config.id] == true
-                            : registry.readAPIKey(for: config.id) != nil,
+                            : registry.keyedProviderIDs.contains(config.id),
                         onActivate: { registry.activeProviderID = config.id },
                         onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
                         onEditKey: {

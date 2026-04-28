@@ -32,6 +32,7 @@ final class ProviderRegistry: ObservableObject {
         didSet { if oldValue != activeProviderID { persist() } }
     }
     @Published var availabilityByID: [String: Bool] = [:]
+    @Published private(set) var keyedProviderIDs: Set<String> = []
 
     private let persistURL: URL
 
@@ -49,6 +50,21 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
+        keyedProviderIDs = Self.defaultProviders
+            .filter { !$0.isLocal }
+            .compactMap { p -> String? in
+                let service = "\(Self.keychainService).\(p.id)"
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: service,
+                    kSecAttrAccount as String: "api-key",
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne
+                ]
+                var result: CFTypeRef?
+                return SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess ? p.id : nil
+            }
+            .reduce(into: Set<String>()) { $0.insert($1) }
     }
 
     // MARK: Known model lists (static metadata — not persisted)
@@ -224,6 +240,7 @@ final class ProviderRegistry: ObservableObject {
         if id == "deepseek" {
             try? KeychainManager.writeAPIKey(key)
         }
+        keyedProviderIDs.insert(id)
     }
 
     func readAPIKey(for id: String) -> String? {

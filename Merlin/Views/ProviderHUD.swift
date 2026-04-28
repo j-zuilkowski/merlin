@@ -131,7 +131,7 @@ struct ProviderHUD: View {
         if config.isLocal {
             return registry.availabilityByID[config.id] == true
         }
-        return registry.readAPIKey(for: config.id) != nil
+        return registry.keyedProviderIDs.contains(config.id)
     }
 
     private var statusColor: Color {
