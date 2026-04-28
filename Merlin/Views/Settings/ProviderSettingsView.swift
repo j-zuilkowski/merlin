@@ -13,6 +13,7 @@ struct ProviderSettingsView: View {
                         config: config,
                         availableModels: ProviderRegistry.knownModels[config.id] ?? [],
                         isActive: registry.activeProviderID == config.id,
+                        hasKey: config.isLocal || registry.readAPIKey(for: config.id) != nil,
                         onActivate: { registry.activeProviderID = config.id },
                         onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
                         onEditKey: {
@@ -35,6 +36,7 @@ struct ProviderSettingsView: View {
                 },
                 onSave: {
                     try? registry.setAPIKey(keyDraft, for: target.id)
+                    registry.setEnabled(true, for: target.id)
                     keyDraft = ""
                     editingKeyFor = nil
                 }
@@ -47,6 +49,7 @@ private struct ProviderRow: View {
     let config: ProviderConfig
     let availableModels: [String]
     let isActive: Bool
+    let hasKey: Bool
     let onActivate: () -> Void
     let onToggle: () -> Void
     let onEditKey: () -> Void
@@ -84,13 +87,21 @@ private struct ProviderRow: View {
             Spacer()
 
             if !config.isLocal {
-                Button("Key", action: onEditKey)
-                    .buttonStyle(.borderless)
-                    .font(.caption)
+                Button(action: onEditKey) {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(hasKey ? Color.green : Color(nsColor: .tertiaryLabelColor))
+                            .frame(width: 6, height: 6)
+                        Text("Key")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
             }
 
             Toggle("", isOn: Binding(get: { config.isEnabled }, set: { _ in onToggle() }))
                 .labelsHidden()
+                .disabled(!config.isLocal && !hasKey)
 
             Button(isActive ? "Active" : "Use") {
                 if config.isEnabled {

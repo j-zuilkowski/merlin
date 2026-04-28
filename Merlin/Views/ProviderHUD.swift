@@ -126,25 +126,26 @@ struct ProviderHUD: View {
         registry.activeConfig?.displayName ?? appState.activeProviderID
     }
 
+    private var isConnectable: Bool {
+        guard let config = registry.activeConfig else { return false }
+        return config.isLocal || registry.readAPIKey(for: config.id) != nil
+    }
+
     private var statusColor: Color {
+        guard isConnectable else { return .gray }
         switch appState.toolActivityState {
-        case .idle:
-            return .green
-        case .streaming:
-            return .blue
-        case .toolExecuting:
-            return .orange
+        case .idle:          return .green
+        case .streaming:     return .blue
+        case .toolExecuting: return .orange
         }
     }
 
     private var statusText: String {
+        guard isConnectable else { return "no API key" }
         switch appState.toolActivityState {
-        case .idle:
-            return "idle"
-        case .streaming:
-            return "streaming"
-        case .toolExecuting:
-            return "tool executing"
+        case .idle:          return "idle"
+        case .streaming:     return "streaming"
+        case .toolExecuting: return "tool executing"
         }
     }
 }
