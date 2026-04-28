@@ -1,7 +1,32 @@
 import SwiftUI
+import AppKit
+
+// Closes the project picker when workspace windows are already being restored
+// from the previous session. Without this, state restoration reopens both the
+// picker and every workspace window simultaneously.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Give SwiftUI a moment to finish restoring all windows, then check.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            let hasWorkspace = NSApp.windows.contains { window in
+                window.isVisible
+                    && window.styleMask.contains(.titled)
+                    && window.title != "Merlin"      // picker title
+                    && window.title != "Settings"
+                    && !window.title.isEmpty
+            }
+            if hasWorkspace {
+                NSApp.windows
+                    .filter { $0.title == "Merlin" }
+                    .forEach { $0.orderOut(nil) }
+            }
+        }
+    }
+}
 
 @main
 struct MerlinApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var recents = RecentProjectsStore()
     @StateObject private var scheduler = SchedulerEngine()
     @StateObject private var settings = AppSettings.shared

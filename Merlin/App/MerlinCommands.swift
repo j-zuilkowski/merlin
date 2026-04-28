@@ -93,23 +93,7 @@ struct MerlinCommands: Commands {
     }
 
     private func openHelp(_ document: HelpDocument) {
-        // Open as a plain NSWindow with a SwiftUI host view to avoid the
-        // WindowGroup(for:) presentation binding complexity from Commands.
-        let view = NSHostingView(
-            rootView: NavigationStack {
-                HelpWindowView(document: document)
-            }
-        )
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 680),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = document.title
-        window.contentView = view
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        HelpWindowManager.shared.open(document)
     }
 
 }
