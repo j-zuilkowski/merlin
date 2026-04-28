@@ -1,3 +1,12 @@
+// AppState — top-level @MainActor observable for one project session.
+//
+// Owns: AgenticEngine, ProviderRegistry, AuthMemory, PRMonitor,
+// tool log lines, screen capture state, context usage, and toolbar actions.
+//
+// activeProviderID.didSet keeps ProviderRegistry in sync and rebuilds
+// the engine's provider instances via syncEngineProviders().
+//
+// See: Developer Manual § "Session & State Management → AppState"
 import Foundation
 import Combine
 import SwiftUI

@@ -1,3 +1,12 @@
+// MCPBridge — launches MCP servers and registers their tools with ToolRouter.
+//
+// On start(), each configured server is launched as a child process.
+// The bridge sends JSON-RPC over stdio to call tools/list, collects schemas,
+// and registers each tool via ToolRouter.registerMCPTool() with the name
+// "mcp:<server>:<tool>". On stop(), all child processes are terminated and
+// tools are unregistered.
+//
+// See: Developer Manual § "MCP Integration → MCPBridge"
 import Foundation
 
 actor MCPBridge {

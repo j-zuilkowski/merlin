@@ -1,3 +1,15 @@
+// LiveSession — wires all per-session subsystems around an AppState.
+//
+// Created by SessionManager for each project window session. Responsibilities:
+//   • Initialises AppState with the correct project path and CLAUDE.md content
+//   • Starts MCPBridge (launches MCP servers, registers their tools)
+//   • Starts ThreadAutomationEngine for cron-based automations
+//   • Starts MemoryEngine idle timer (generates summaries on inactivity)
+//
+// permissionMode.didSet propagates the new mode to both AgenticEngine
+// and ToolRouter so they stay in sync.
+//
+// See: Developer Manual § "Session & State Management → LiveSession"
 import Foundation
 import SwiftUI
 

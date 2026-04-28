@@ -1,3 +1,12 @@
+// AgenticEngine — the central agentic loop for Merlin.
+//
+// Owns the LLM providers, ContextManager, and ToolRouter.
+// Every user message enters via send() or invokeSkill(), which
+// drive the recursive runLoop(). The loop streams AgentEvent
+// values: text deltas, thinking blocks, tool call start/result
+// pairs, subagent events, and system notes.
+//
+// See: Developer Manual § "Engine — The Agentic Loop"
 import Foundation
 
 enum AgentEvent {
@@ -188,6 +197,13 @@ final class AgenticEngine {
         isRunning = false
     }
 
+    // MARK: - Core loop
+
+    // runLoop is the recursive heart of the engine.
+    // Each iteration: build request → stream provider → collect tool calls
+    // → run hooks → dispatch tools → append results → repeat.
+    // Exits when the provider produces no tool calls and no Stop hook requests continuation.
+    // contextOverride is used by fork-context skill invocations to avoid polluting main history.
     private func runLoop(
         userMessage: String,
         continuation: AsyncStream<AgentEvent>.Continuation,
@@ -388,6 +404,9 @@ final class AgenticEngine {
         return thinkingDetector.shouldEnableThinking(for: message)
     }
 
+    // Heuristic provider selection: vision keywords → visionProvider,
+    // action keywords → flashProvider, everything else → proProvider.
+    // ProviderRegistry overrides take precedence when the user has selected a provider.
     private func selectProvider(for message: String) -> any LLMProvider {
         if let registry {
             let lower = message.lowercased()

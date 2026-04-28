@@ -1,3 +1,11 @@
+// StagingBuffer — intercepts agent file mutations for human review before they hit disk.
+//
+// ToolRouter writes proposed changes here when stagingBuffer is non-nil and the
+// permission mode is Ask or Plan. The DiffPane view reads pendingChanges (via
+// StagingBufferWrapper) and lets the user accept or reject each one individually
+// or in bulk.
+//
+// See: Developer Manual § "Tool System → Staging Buffer"
 import Foundation
 
 enum ChangeKind: String, Codable, Sendable {

@@ -1,3 +1,12 @@
+// ContextManager — maintains the message history sent to the LLM on each turn.
+//
+// Token budget is tracked via a cheap utf8/3.5 heuristic (no tokeniser needed).
+// When the estimated token count exceeds 800 000, old tool-result messages are
+// collapsed to a one-line summary so the window never overflows.
+// After compaction, recently-invoked skill bodies are re-injected so the model
+// retains their instructions.
+//
+// See: Developer Manual § "Engine — ContextManager"
 import Foundation
 
 @MainActor

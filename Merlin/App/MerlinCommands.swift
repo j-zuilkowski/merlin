@@ -1,3 +1,10 @@
+// MerlinCommands — application-level menu commands.
+//
+// Uses @FocusedObject for reference-type state (AppState, SessionManager)
+// and @FocusedBinding for value-type state (isEngineRunning, activeProviderID).
+// Both are wired in ContentView via .focusedObject() and .focusedValue().
+//
+// See: Developer Manual § "UI Architecture → FocusedValues"
 import SwiftUI
 
 struct MerlinCommands: Commands {
@@ -58,6 +65,37 @@ struct MerlinCommands: Commands {
             Button("Review Memories") {}
                 .keyboardShortcut("m", modifiers: [.command, .shift])
         }
+
+        CommandGroup(replacing: .help) {
+            Button("Merlin User Guide") {
+                openHelp(.userGuide)
+            }
+            .keyboardShortcut("?", modifiers: .command)
+
+            Button("Developer Manual") {
+                openHelp(.developerManual)
+            }
+        }
+    }
+
+    private func openHelp(_ document: HelpDocument) {
+        // Open as a plain NSWindow with a SwiftUI host view to avoid the
+        // WindowGroup(for:) presentation binding complexity from Commands.
+        let view = NSHostingView(
+            rootView: NavigationStack {
+                HelpWindowView(document: document)
+            }
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 680),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = document.title
+        window.contentView = view
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 
 }

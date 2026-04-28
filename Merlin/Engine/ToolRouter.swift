@@ -1,3 +1,14 @@
+// ToolRouter — dispatches tool calls from AgenticEngine to registered handlers.
+//
+// Responsibilities (in order):
+//   1. Decide whether to stage a file-write call instead of executing it (Plan mode)
+//   2. Run AuthGate to check allow/deny patterns and surface the auth popup if needed
+//   3. Route to the correct handler (local registry or MCP)
+//   4. Retry once on failure before returning an error result
+//
+// All calls in a single LLM response are dispatched in parallel via TaskGroup.
+//
+// See: Developer Manual § "Tool System → ToolRouter"
 import Foundation
 
 @MainActor
@@ -105,6 +116,9 @@ final class ToolRouter {
         ["write_file", "create_file", "delete_file", "move_file"].contains(name)
     }
 
+    // Stage instead of execute when: a staging buffer is attached (Plan mode) AND
+    // the tool mutates the file system. The buffer shows the diff in the DiffPane
+    // for user review before any bytes hit disk.
     private func shouldStage(_ toolName: String) -> Bool {
         guard stagingBuffer != nil else { return false }
         guard permissionMode == .ask || permissionMode == .plan else { return false }

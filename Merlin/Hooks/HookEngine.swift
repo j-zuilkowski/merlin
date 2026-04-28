@@ -1,3 +1,14 @@
+// HookEngine — runs user-configured shell scripts at agent lifecycle events.
+//
+// Events: PreToolUse (allow/deny), PostToolUse (rewrite result),
+//         UserPromptSubmit (rewrite prompt), Stop (continue looping).
+//
+// Each hook is launched as a /bin/sh child process. JSON is passed on stdin;
+// the hook's stdout is parsed as JSON. Non-zero exit → failure (deny / no change).
+// The engine is recreated from AppSettings on each turn so changes take effect
+// without restarting.
+//
+// See: Developer Manual § "Hook System"
 import Foundation
 
 actor HookEngine {

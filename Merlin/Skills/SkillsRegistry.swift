@@ -1,3 +1,15 @@
+// SkillsRegistry — file-watched loader for .skill.md prompt templates.
+//
+// Watches two directories with DispatchSource file-system events:
+//   ~/.merlin/skills/       — personal skills (all projects)
+//   <project>/.merlin/skills/ — project-scoped skills
+// Changes take effect within seconds without any restart.
+//
+// render(skill:arguments:) substitutes {{args}} with the user's argument.
+// Skills with context:"fork" run in an isolated history and don't affect
+// the main conversation.
+//
+// See: Developer Manual § "Skill System → SkillsRegistry"
 import Foundation
 import Combine
 import SwiftUI
