@@ -50,6 +50,12 @@ final class ProviderRegistry: ObservableObject {
             activeProviderID = "deepseek"
         }
         keyedProviderIDs = Set(Self.loadKeys().keys)
+        // Auto-enable any non-local provider that already has a key
+        for id in keyedProviderIDs {
+            if let i = providers.firstIndex(where: { $0.id == id && !$0.isLocal && !$0.isEnabled }) {
+                providers[i].isEnabled = true
+            }
+        }
     }
 
     // MARK: Known model lists (static metadata — not persisted)
