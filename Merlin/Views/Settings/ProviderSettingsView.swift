@@ -13,7 +13,9 @@ struct ProviderSettingsView: View {
                         config: config,
                         availableModels: ProviderRegistry.knownModels[config.id] ?? [],
                         isActive: registry.activeProviderID == config.id,
-                        hasKey: config.isLocal || registry.readAPIKey(for: config.id) != nil,
+                        hasKey: config.isLocal
+                            ? registry.availabilityByID[config.id] == true
+                            : registry.readAPIKey(for: config.id) != nil,
                         onActivate: { registry.activeProviderID = config.id },
                         onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
                         onEditKey: {
@@ -101,7 +103,7 @@ private struct ProviderRow: View {
 
             Toggle("", isOn: Binding(get: { config.isEnabled }, set: { _ in onToggle() }))
                 .labelsHidden()
-                .disabled(!config.isLocal && !hasKey)
+                .disabled(!hasKey && !config.isLocal)
 
             Button(isActive ? "Active" : "Use") {
                 if config.isEnabled {

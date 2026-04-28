@@ -128,7 +128,10 @@ struct ProviderHUD: View {
 
     private var isConnectable: Bool {
         guard let config = registry.activeConfig else { return false }
-        return config.isLocal || registry.readAPIKey(for: config.id) != nil
+        if config.isLocal {
+            return registry.availabilityByID[config.id] == true
+        }
+        return registry.readAPIKey(for: config.id) != nil
     }
 
     private var statusColor: Color {
@@ -141,7 +144,10 @@ struct ProviderHUD: View {
     }
 
     private var statusText: String {
-        guard isConnectable else { return "no API key" }
+        guard isConnectable else {
+            guard let config = registry.activeConfig else { return "no provider" }
+            return config.isLocal ? "not running" : "no API key"
+        }
         switch appState.toolActivityState {
         case .idle:          return "idle"
         case .streaming:     return "streaming"
