@@ -234,18 +234,11 @@ struct ChatView: View {
                     }
                 }
             }
-            .onChange(of: model.items.count) { _, _ in
-                guard autoScrollEnabled else {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollLockVisible = true
-                    }
-                    return
-                }
+            .onChange(of: model.revision) { _, _ in
+                guard autoScrollEnabled else { return }
                 isProgrammaticallyScrolling = true
-                withAnimation(.easeOut(duration: 0.18)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                proxy.scrollTo("bottom", anchor: .bottom)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isProgrammaticallyScrolling = false
                 }
             }
@@ -253,16 +246,9 @@ struct ChatView: View {
             ScrollView {
                 messageList
             }
-            .onChange(of: model.items.count) { _, _ in
-                guard autoScrollEnabled else {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollLockVisible = true
-                    }
-                    return
-                }
-                withAnimation(.easeOut(duration: 0.18)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+            .onChange(of: model.revision) { _, _ in
+                guard autoScrollEnabled else { return }
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
         }
     }
