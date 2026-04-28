@@ -33,6 +33,10 @@ final class HelpWindowManager: NSObject, NSWindowDelegate {
         window.title = document.title
         window.contentView = hostView
         window.delegate = self
+        // Prevent the ARC double-release crash: by default NSWindows created
+        // programmatically send an extra release on close; under ARC this is a
+        // double-free when our windows array also releases the strong reference.
+        window.isReleasedWhenClosed = false
         window.center()
         window.makeKeyAndOrderFront(nil)
         windows.append(window)   // ← keeps the window alive

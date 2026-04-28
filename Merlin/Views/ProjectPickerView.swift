@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -93,6 +94,9 @@ struct ProjectPickerView: View {
 
     private func open(_ ref: ProjectRef) {
         recents.touch(ref)
+        // Close the picker before the workspace window opens so it doesn't
+        // linger behind the new window. keyWindow is the picker at this point.
+        NSApp.keyWindow?.close()
         openWindow(value: ref)
     }
 }

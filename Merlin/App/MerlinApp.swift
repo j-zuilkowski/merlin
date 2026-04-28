@@ -6,12 +6,18 @@ import AppKit
 // picker and every workspace window simultaneously.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Give SwiftUI a moment to finish restoring all windows, then check.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        // Wait 1 s for SwiftUI to finish restoring workspace windows and set
+        // their titles (0.25 s was too short; titles arrive asynchronously).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            // Mark the picker non-restorable so macOS won't reopen it next launch.
+            NSApp.windows
+                .filter { $0.title == "Merlin" }
+                .forEach { $0.isRestorable = false }
+
             let hasWorkspace = NSApp.windows.contains { window in
                 window.isVisible
                     && window.styleMask.contains(.titled)
-                    && window.title != "Merlin"      // picker title
+                    && window.title != "Merlin"
                     && window.title != "Settings"
                     && !window.title.isEmpty
             }
