@@ -15,6 +15,7 @@ struct ChatView: View {
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
+    @State private var isProgrammaticallyScrolling: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -224,10 +225,13 @@ struct ChatView: View {
             .onScrollGeometryChange(for: Double.self) { geo in
                 geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
             } action: { _, distanceFromBottom in
+                guard !isProgrammaticallyScrolling else { return }
                 let shouldAutoScroll = distanceFromBottom < 40
-                autoScrollEnabled = shouldAutoScroll
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    scrollLockVisible = !shouldAutoScroll
+                if shouldAutoScroll != autoScrollEnabled {
+                    autoScrollEnabled = shouldAutoScroll
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollLockVisible = !shouldAutoScroll
+                    }
                 }
             }
             .onChange(of: model.items.count) { _, _ in
@@ -237,8 +241,12 @@ struct ChatView: View {
                     }
                     return
                 }
+                isProgrammaticallyScrolling = true
                 withAnimation(.easeOut(duration: 0.18)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    isProgrammaticallyScrolling = false
                 }
             }
         } else {
@@ -400,11 +408,15 @@ struct ChatView: View {
             Spacer()
             Button("Resume ↓") {
                 autoScrollEnabled = true
+                isProgrammaticallyScrolling = true
                 withAnimation(.easeInOut(duration: 0.2)) {
                     scrollLockVisible = false
                 }
                 withAnimation(.easeOut(duration: 0.18)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    isProgrammaticallyScrolling = false
                 }
             }
             .font(.caption.weight(.medium))
