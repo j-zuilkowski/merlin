@@ -47,6 +47,10 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $appState.showFirstLaunchSetup) {
+            FirstLaunchSetupView()
+                .environmentObject(appState)
+        }
         .focusedObject(appState)
         .focusedObject(registry)
         .focusedValue(\.isEngineRunning, $engineRunning)

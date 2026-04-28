@@ -133,17 +133,13 @@ final class AppState: ObservableObject {
         let ctx = ContextManager()
         sessionStore = SessionStore()
 
-        let apiKey = registry.readAPIKey(for: "deepseek")
-        if let apiKey {
-            try? registry.setAPIKey(apiKey, for: "deepseek")
-        }
-        let pro = registry.primaryProvider ?? DeepSeekProvider(apiKey: apiKey ?? "", model: "deepseek-v4-pro")
-        let flash = registry.primaryProvider ?? DeepSeekProvider(apiKey: apiKey ?? "", model: "deepseek-v4-flash")
+        let initialProvider = registry.primaryProvider
+            ?? DeepSeekProvider(apiKey: "", model: "deepseek-v4-pro")
         let vision = registry.visionProvider ?? LMStudioProvider()
 
         engine = AgenticEngine(
-            proProvider: pro,
-            flashProvider: flash,
+            proProvider: initialProvider,
+            flashProvider: initialProvider,
             visionProvider: vision,
             toolRouter: toolRouter,
             contextManager: ctx,
@@ -213,7 +209,7 @@ final class AppState: ObservableObject {
             return await RAGTools.listBooks(client: client)
         }
 
-        if apiKey == nil {
+        if registry.primaryProvider == nil {
             showFirstLaunchSetup = true
         }
 
@@ -262,8 +258,7 @@ final class AppState: ObservableObject {
         }
     }
 
-    func reloadProviders(apiKey: String) {
-        try? registry.setAPIKey(apiKey, for: "deepseek")
+    func reloadProviders() {
         syncEngineProviders()
     }
 
