@@ -72,6 +72,7 @@ final class AppState: ObservableObject {
     let xcalibreClient: XcalibreClient
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
+    private var providersCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
@@ -178,6 +179,9 @@ final class AppState: ObservableObject {
             guard let self, self.activeProviderID != id else { return }
             self.activeProviderID = id
             self.syncEngineProviders()
+        }
+        providersCancellable = registry.$keyedProviderIDs.sink { [weak self] _ in
+            self?.syncEngineProviders()
         }
 
         // Receive provider selections posted by MerlinCommands.

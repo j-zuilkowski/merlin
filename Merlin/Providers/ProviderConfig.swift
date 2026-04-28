@@ -50,21 +50,12 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
-        keyedProviderIDs = Self.defaultProviders
+        keyedProviderIDs = []
+        keyedProviderIDs = providers
             .filter { !$0.isLocal }
-            .compactMap { p -> String? in
-                let service = "\(Self.keychainService).\(p.id)"
-                let query: [String: Any] = [
-                    kSecClass as String: kSecClassGenericPassword,
-                    kSecAttrService as String: service,
-                    kSecAttrAccount as String: "api-key",
-                    kSecReturnData as String: true,
-                    kSecMatchLimit as String: kSecMatchLimitOne
-                ]
-                var result: CFTypeRef?
-                return SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess ? p.id : nil
+            .reduce(into: Set<String>()) { set, p in
+                if self.readAPIKey(for: p.id) != nil { set.insert(p.id) }
             }
-            .reduce(into: Set<String>()) { $0.insert($1) }
     }
 
     // MARK: Known model lists (static metadata — not persisted)
