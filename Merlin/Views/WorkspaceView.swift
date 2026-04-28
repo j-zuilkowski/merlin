@@ -5,6 +5,7 @@ struct WorkspaceView: View {
     @EnvironmentObject private var recents: RecentProjectsStore
     @ObservedObject private var settings = AppSettings.shared
     @StateObject private var sessionManager: SessionManager
+    @Environment(\.openWindow) private var openWindow
 
     @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
     @State private var selectedFileURL: URL? = nil
@@ -47,6 +48,9 @@ struct WorkspaceView: View {
         .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showPreviewPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showSideChat) { _, _ in saveLayoutIfLoaded() }
+        .onReceive(NotificationCenter.default.publisher(for: .merlinOpenPicker)) { _ in
+            openWindow(id: "picker")
+        }
         .preferredColorScheme(settings.appearance.theme.colorScheme)
         .sheet(isPresented: $showMemoriesWindow) {
             MemoryReviewView()

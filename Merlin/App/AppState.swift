@@ -310,6 +310,8 @@ extension Notification.Name {
     static let merlinGitHubTokenChanged = Notification.Name("com.merlin.githubTokenChanged")
     // Posted by MerlinCommands Provider menu — bypasses FocusedBinding unreliability
     static let merlinSelectProvider = Notification.Name("com.merlin.selectProvider")
+    // Posted by File → New Session to open the project picker from Commands context
+    static let merlinOpenPicker = Notification.Name("com.merlin.openPicker")
 }
 
 extension AppState: AuthPresenter {

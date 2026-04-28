@@ -17,7 +17,7 @@ struct MerlinCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Session") {
-                appState?.newSession()
+                NotificationCenter.default.post(name: .merlinOpenPicker, object: nil)
             }
             .keyboardShortcut("n", modifiers: .command)
         }
