@@ -37,7 +37,7 @@ struct ProviderSettingsView: View {
                     editingKeyFor = nil
                 },
                 onSave: {
-                    try? registry.setAPIKey(keyDraft, for: target.id)
+                    registry.setAPIKey(keyDraft, for: target.id)
                     registry.setEnabled(true, for: target.id)
                     keyDraft = ""
                     editingKeyFor = nil

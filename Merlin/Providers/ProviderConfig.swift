@@ -1,5 +1,4 @@
 import Foundation
-import Security
 
 // MARK: - ProviderKind
 
@@ -50,12 +49,7 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
-        keyedProviderIDs = []
-        keyedProviderIDs = providers
-            .filter { !$0.isLocal }
-            .reduce(into: Set<String>()) { set, p in
-                if self.readAPIKey(for: p.id) != nil { set.insert(p.id) }
-            }
+        keyedProviderIDs = Set(Self.loadKeys().keys)
     }
 
     // MARK: Known model lists (static metadata — not persisted)
@@ -222,69 +216,37 @@ final class ProviderRegistry: ObservableObject {
         persist()
     }
 
-    // MARK: Keychain
+    // MARK: Key Storage (~/.merlin/api-keys.json)
 
-    static let keychainService = "com.merlin.provider"
+    private static var keysURL: URL {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        return URL(fileURLWithPath: "\(home)/.merlin/api-keys.json")
+    }
 
-    func setAPIKey(_ key: String, for id: String) throws {
-        try setKeychainValue(key, service: "\(Self.keychainService).\(id)")
-        if id == "deepseek" {
-            try? KeychainManager.writeAPIKey(key)
-        }
+    private static func loadKeys() -> [String: String] {
+        guard let data = try? Data(contentsOf: keysURL),
+              let dict = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return [:] }
+        return dict
+    }
+
+    private static func saveKeys(_ keys: [String: String]) {
+        guard let data = try? JSONEncoder().encode(keys) else { return }
+        let url = keysURL
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                  withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
+    }
+
+    func setAPIKey(_ key: String, for id: String) {
+        var keys = Self.loadKeys()
+        keys[id] = key
+        Self.saveKeys(keys)
         keyedProviderIDs.insert(id)
     }
 
     func readAPIKey(for id: String) -> String? {
-        let service = "\(Self.keychainService).\(id)"
-        if let token = readKeychainValue(service: service) {
-            return token
-        }
-        if id == "deepseek" {
-            return KeychainManager.readAPIKey()
-        }
-        return nil
-    }
-
-    private func setKeychainValue(_ key: String, service: String) throws {
-        let data = Data(key.utf8)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: "api-key"
-        ]
-        let attributes: [String: Any] = [
-            kSecValueData as String: data
-        ]
-
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var addQuery = query
-            addQuery[kSecValueData as String] = data
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
-            }
-            return
-        }
-        guard status == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
-        }
-    }
-
-    private func readKeychainValue(service: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: "api-key",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data,
-              let token = String(data: data, encoding: .utf8) else { return nil }
-        return token
+        Self.loadKeys()[id]
     }
 
     // MARK: Factory
