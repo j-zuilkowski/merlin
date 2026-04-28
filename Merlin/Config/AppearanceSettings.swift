@@ -21,7 +21,7 @@ enum AppTheme: String, CaseIterable, Codable, Sendable {
 struct AppearanceSettings: Codable, Sendable {
     var theme: AppTheme = .system
     var fontSize: Double = 13.0
-    var fontName: String = "SF Mono"
+    var fontName: String = ""
     var accentColorHex: String = ""
     var lineSpacing: Double = 4.0
 

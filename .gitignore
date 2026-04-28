@@ -19,3 +19,7 @@ Merlin.xcodeproj/
 # Credentials — never commit
 *.p12
 *.mobileprovision
+dist/
+
+# Claude Code local settings
+.claude/settings.local.json
