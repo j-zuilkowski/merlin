@@ -13,8 +13,13 @@ struct MerlinCommands: Commands {
     @FocusedObject var sessionManager: SessionManager?
     @FocusedBinding(\.isEngineRunning) var isEngineRunning: Bool?
     @FocusedBinding(\.activeProviderID) var activeProviderID: String?
-
     var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About Merlin") {
+                NSApplication.shared.orderFrontStandardAboutPanel(nil)
+            }
+        }
+
         CommandGroup(replacing: .newItem) {
             Button("New Session") {
                 NotificationCenter.default.post(name: .merlinOpenPicker, object: nil)

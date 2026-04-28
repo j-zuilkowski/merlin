@@ -1,7 +1,7 @@
 #!/bin/bash
 # package-dmg.sh — build Merlin.app and wrap it in a DMG for distribution
 # Usage: bash scripts/package-dmg.sh [version]
-# Example: bash scripts/package-dmg.sh 1.0.0
+# Example: bash scripts/package-dmg.sh 4.0
 
 set -euo pipefail
 
@@ -17,6 +17,7 @@ VERSION="${1:-$(date +%Y%m%d)}"
 DMG_NAME="${APP_NAME}-${VERSION}.dmg"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 STAGING_DIR="$DIST_DIR/.dmg-staging"
+TMP_DMG="$DIST_DIR/.tmp-${APP_NAME}.dmg"
 
 echo "── Merlin DMG Packager ──────────────────────────────────"
 echo "  Version:  $VERSION"
@@ -57,28 +58,32 @@ echo "✓ Version stamped: $VERSION"
 mkdir -p "$DIST_DIR"
 rm -rf "$STAGING_DIR"
 mkdir -p "$STAGING_DIR"
-
 cp -R "$APP_PATH" "$STAGING_DIR/$APP_NAME.app"
 
 # ── 4. Create DMG ────────────────────────────────────────────
 
-if ! command -v create-dmg &>/dev/null; then
-    echo "✗ create-dmg not found. Install with: brew install create-dmg"
-    exit 1
-fi
-
 rm -f "$DMG_PATH"
 
-create-dmg \
-    --volname "$APP_NAME" \
-    --window-pos 200 120 \
-    --window-size 540 380 \
-    --icon-size 128 \
-    --icon "$APP_NAME.app" 140 185 \
-    --hide-extension "$APP_NAME.app" \
-    --app-drop-link 400 185 \
-    "$DMG_PATH" \
-    "$STAGING_DIR"
+if command -v create-dmg &>/dev/null; then
+    ln -s /Applications "$STAGING_DIR/Applications"
+    create-dmg \
+        --volname "$APP_NAME" \
+        --window-pos 200 120 \
+        --window-size 540 380 \
+        --icon-size 128 \
+        --icon "$APP_NAME.app" 140 185 \
+        --hide-extension "$APP_NAME.app" \
+        --app-drop-link 400 185 \
+        "$DMG_PATH" \
+        "$STAGING_DIR"
+else
+    ln -s /Applications "$STAGING_DIR/Applications"
+    hdiutil create -volname "$APP_NAME" \
+        -srcfolder "$STAGING_DIR" \
+        -ov -format UDZO \
+        "$TMP_DMG"
+    mv "$TMP_DMG" "$DMG_PATH"
+fi
 
 rm -rf "$STAGING_DIR"
 
