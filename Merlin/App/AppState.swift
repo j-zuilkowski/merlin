@@ -183,6 +183,18 @@ final class AppState: ObservableObject {
             self.activeProviderID = id
             self.syncEngineProviders()
         }
+
+        // Receive provider selections posted by MerlinCommands.
+        // NotificationCenter is used here because @FocusedBinding writes
+        // inside CommandMenu are unreliable in the current SwiftUI/macOS runtime.
+        NotificationCenter.default.addObserver(
+            forName: .merlinSelectProvider,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let id = note.userInfo?["providerID"] as? String else { return }
+            self?.activeProviderID = id
+        }
         KeepAwakeManager.shared.apply(AppSettings.shared.keepAwake)
         keepAwakeCancellable = AppSettings.shared.$keepAwake
             .sink { KeepAwakeManager.shared.apply($0) }
@@ -296,6 +308,8 @@ final class AppState: ObservableObject {
 extension Notification.Name {
     static let merlinNewSession = Notification.Name("com.merlin.newSession")
     static let merlinGitHubTokenChanged = Notification.Name("com.merlin.githubTokenChanged")
+    // Posted by MerlinCommands Provider menu — bypasses FocusedBinding unreliability
+    static let merlinSelectProvider = Notification.Name("com.merlin.selectProvider")
 }
 
 extension AppState: AuthPresenter {

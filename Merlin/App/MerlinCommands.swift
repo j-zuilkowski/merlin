@@ -46,12 +46,26 @@ struct MerlinCommands: Commands {
         }
 
         CommandMenu("Provider") {
-            let providers = ProviderRegistry.defaultProviders.filter(\.isEnabled)
+            // Read providers and active ID directly from disk so this menu always
+            // reflects the user's actual Settings configuration — not a stale snapshot.
+            // Selection posts a notification; AppState observes it and updates the engine.
+            let providers = ProviderRegistry.persistedEnabledProviders()
+            let currentID = ProviderRegistry.persistedActiveProviderID()
             ForEach(providers) { config in
-                Toggle(config.displayName, isOn: Binding(
-                    get: { (activeProviderID ?? appState?.activeProviderID) == config.id },
-                    set: { if $0 { activeProviderID = config.id } }
-                ))
+                Button {
+                    NotificationCenter.default.post(
+                        name: .merlinSelectProvider,
+                        object: nil,
+                        userInfo: ["providerID": config.id]
+                    )
+                } label: {
+                    HStack {
+                        Text(config.displayName)
+                        if config.id == currentID {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
             }
         }
 

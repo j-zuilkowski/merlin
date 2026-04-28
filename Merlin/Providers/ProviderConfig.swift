@@ -165,6 +165,19 @@ final class ProviderRegistry: ObservableObject {
                        kind: .openAICompatible),
     ]
 
+    // MARK: Static persistence helpers (used by MerlinCommands, which has no EnvironmentObject access)
+
+    // Reads the currently enabled providers and active ID from disk without creating a full instance.
+    // Falls back to defaultProviders if the file doesn't exist yet.
+    static func persistedEnabledProviders() -> [ProviderConfig] {
+        load(from: defaultPersistURL)?.providers.filter(\.isEnabled)
+            ?? defaultProviders.filter(\.isEnabled)
+    }
+
+    static func persistedActiveProviderID() -> String {
+        load(from: defaultPersistURL)?.activeProviderID ?? "deepseek"
+    }
+
     // MARK: Computed
 
     var activeConfig: ProviderConfig? {
