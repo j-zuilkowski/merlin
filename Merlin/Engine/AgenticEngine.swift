@@ -313,6 +313,10 @@ final class AgenticEngine {
         let classification = await classify(message: userMessage, domain: domain)
         let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
 
+        if let buffer = toolRouter.stagingBuffer {
+            await buffer.resetSessionCounts()
+        }
+
         var effectiveMessage = userMessage
         if let client = xcalibreClient {
             let chunks = await client.searchChunks(
@@ -528,11 +532,23 @@ final class AgenticEngine {
 
         let taskType = domain.taskTypes.first
             ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+        let stagingAccepted: Int
+        let stagingRejected: Int
+        let stagingEdited: Int
+        if let buffer = toolRouter.stagingBuffer {
+            stagingAccepted = await buffer.acceptedCount
+            stagingRejected = await buffer.rejectedCount
+            stagingEdited = await buffer.editedOnAcceptCount
+        } else {
+            stagingAccepted = 0
+            stagingRejected = 0
+            stagingEdited = 0
+        }
         let signals = OutcomeSignals(
             stage1Passed: nil,
             stage2Score: nil,
-            diffAccepted: true,
-            diffEditedOnAccept: false,
+            diffAccepted: stagingRejected == 0 || stagingAccepted > 0,
+            diffEditedOnAccept: stagingEdited > 0,
             criticRetryCount: 0,
             userCorrectedNextTurn: false,
             sessionCompleted: true,

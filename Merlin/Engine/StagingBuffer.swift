@@ -34,9 +34,21 @@ struct StagingEntry: Identifiable, Sendable, Equatable {
 actor StagingBuffer {
     private var history: [StagingEntry] = []
     private(set) var pendingChanges: [StagedChange] = []
+    // MARK: - Session outcome counters
+    // Reset at the start of each runLoop turn via resetSessionCounts().
+    // Read by AgenticEngine at session end to populate OutcomeSignals.
+    private(set) var acceptedCount: Int = 0
+    private(set) var rejectedCount: Int = 0
+    private(set) var editedOnAcceptCount: Int = 0
 
     func entries() -> [StagingEntry] {
         history
+    }
+
+    func resetSessionCounts() {
+        acceptedCount = 0
+        rejectedCount = 0
+        editedOnAcceptCount = 0
     }
 
     func record(_ entry: StagingEntry) {
@@ -77,23 +89,29 @@ actor StagingBuffer {
         try applyChange(change)
         pendingChanges.remove(at: index)
         removeHistoryEntry(matching: change)
+        acceptedCount += 1
+        if !change.comments.isEmpty { editedOnAcceptCount += 1 }
     }
 
     func reject(_ id: UUID) {
         guard let index = pendingChanges.firstIndex(where: { $0.id == id }) else { return }
         let change = pendingChanges.remove(at: index)
         removeHistoryEntry(matching: change)
+        rejectedCount += 1
     }
 
     func acceptAll() async throws {
         for change in pendingChanges {
             try applyChange(change)
             removeHistoryEntry(matching: change)
+            acceptedCount += 1
+            if !change.comments.isEmpty { editedOnAcceptCount += 1 }
         }
         pendingChanges.removeAll()
     }
 
     func rejectAll() {
+        rejectedCount += pendingChanges.count
         for change in pendingChanges {
             removeHistoryEntry(matching: change)
         }
