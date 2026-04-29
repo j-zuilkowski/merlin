@@ -264,6 +264,9 @@ final class AppSettings: ObservableObject {
                 lines.append("displayName = \(quoted(provider.displayName))")
                 lines.append("baseURL = \(quoted(provider.baseURL))")
                 lines.append("model = \(quoted(provider.model))")
+                if provider.systemPromptAddendum.isEmpty == false {
+                    lines.append("system_prompt_addendum = \(quoted(provider.systemPromptAddendum))")
+                }
                 lines.append("isEnabled = \(provider.isEnabled)")
                 lines.append("isLocal = \(provider.isLocal)")
                 lines.append("supportsThinking = \(provider.supportsThinking)")

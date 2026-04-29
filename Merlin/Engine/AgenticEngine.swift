@@ -96,6 +96,14 @@ final class AgenticEngine {
         return send(userMessage: body)
     }
 
+    func buildSystemPromptForTesting(slot: AgentSlot = .execute) async -> String {
+        await buildSystemPrompt(for: slot)
+    }
+
+    func currentAddendumHash(for slot: AgentSlot) async -> String {
+        await combinedAddendum(for: slot).addendumHash
+    }
+
     /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
     /// `orchestrate` falls back to `reason` when not explicitly assigned.
     func provider(for slot: AgentSlot) -> (any LLMProvider)? {
@@ -539,6 +547,51 @@ final class AgenticEngine {
             parts.append(PermissionMode.planSystemPrompt)
         }
         parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
+        return parts.joined(separator: "\n\n")
+    }
+
+    private func buildSystemPrompt(for slot: AgentSlot) async -> String {
+        var parts: [String] = []
+        if !claudeMDContent.isEmpty {
+            parts.append(claudeMDContent)
+        }
+        if !memoriesContent.isEmpty {
+            parts.append(memoriesContent)
+        }
+        if permissionMode == .plan {
+            parts.append(PermissionMode.planSystemPrompt)
+        }
+        parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
+
+        let addendum = await combinedAddendum(for: slot)
+        if !addendum.isEmpty {
+            parts.append(addendum)
+        }
+
+        return parts.joined(separator: "\n\n")
+    }
+
+    private func buildAddendum(for slot: AgentSlot) -> String {
+        let effectiveSlot = slot == .orchestrate && slotAssignments[.orchestrate] == nil ? .reason : slot
+        guard let providerID = slotAssignments[effectiveSlot],
+              let config = registry?.providers.first(where: { $0.id == providerID }) else {
+            return ""
+        }
+        return config.systemPromptAddendum
+    }
+
+    private func combinedAddendum(for slot: AgentSlot) async -> String {
+        var parts: [String] = []
+        let providerAddendum = buildAddendum(for: slot)
+        if !providerAddendum.isEmpty {
+            parts.append(providerAddendum)
+        }
+
+        let domain = await DomainRegistry.shared.activeDomain()
+        if let domainAddendum = domain.systemPromptAddendum, !domainAddendum.isEmpty {
+            parts.append(domainAddendum)
+        }
+
         return parts.joined(separator: "\n\n")
     }
 

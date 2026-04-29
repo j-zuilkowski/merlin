@@ -19,6 +19,20 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
     var supportsThinking: Bool
     var supportsVision: Bool
     var kind: ProviderKind
+    var systemPromptAddendum: String = ""
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case displayName
+        case baseURL
+        case model
+        case isEnabled
+        case isLocal
+        case supportsThinking
+        case supportsVision
+        case kind
+        case systemPromptAddendum = "system_prompt_addendum"
+    }
 }
 
 // MARK: - ProviderRegistry
