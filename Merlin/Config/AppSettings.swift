@@ -47,6 +47,8 @@ final class AppSettings: ObservableObject {
     @Published var verifyCommand: String = ""
     @Published var checkCommand: String = ""
     @Published var activeDomainID: String = "software"
+    @Published var maxPlanRetries: Int = 2
+    @Published var maxLoopIterations: Int = 10
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
@@ -76,6 +78,17 @@ final class AppSettings: ObservableObject {
         var verifyCommand: String?
         var checkCommand: String?
         var activeDomainID: String?
+        var planner: PlannerConfig?
+
+        struct PlannerConfig: Codable, Sendable {
+            var maxPlanRetries: Int?
+            var maxLoopIterations: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case maxPlanRetries = "max_plan_retries"
+                case maxLoopIterations = "max_loop_iterations"
+            }
+        }
 
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
@@ -100,6 +113,7 @@ final class AppSettings: ObservableObject {
             case verifyCommand = "verify_command"
             case checkCommand = "check_command"
             case activeDomainID = "active_domain"
+            case planner
         }
     }
 
@@ -178,6 +192,14 @@ final class AppSettings: ObservableObject {
         if let value = config.activeDomainID {
             activeDomainID = value
         }
+        if let planner = config.planner {
+            if let value = planner.maxPlanRetries {
+                maxPlanRetries = value
+            }
+            if let value = planner.maxLoopIterations {
+                maxLoopIterations = value
+            }
+        }
     }
 
     func save(to url: URL) async throws {
@@ -216,6 +238,12 @@ final class AppSettings: ObservableObject {
             if checkCommand.isEmpty == false {
                 lines.append("check_command = \(quoted(checkCommand))")
             }
+        }
+        if maxPlanRetries != 2 || maxLoopIterations != 10 {
+            lines.append("")
+            lines.append("[planner]")
+            lines.append("max_plan_retries = \(maxPlanRetries)")
+            lines.append("max_loop_iterations = \(maxLoopIterations)")
         }
 
         lines.append("")
