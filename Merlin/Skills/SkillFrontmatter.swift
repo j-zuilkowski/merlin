@@ -9,6 +9,8 @@ struct SkillFrontmatter: Sendable {
     var disableModelInvocation: Bool = false
     var allowedTools: [String] = []
     var context: String = ""
+    var role: AgentSlot?
+    var complexity: ComplexityTier?
 
     static func parse(_ yaml: String) -> SkillFrontmatter {
         var frontmatter = SkillFrontmatter()
@@ -41,6 +43,10 @@ struct SkillFrontmatter: Sendable {
                 frontmatter.context = value
             case "allowed-tools":
                 frontmatter.allowedTools = value.components(separatedBy: " ").filter { !$0.isEmpty }
+            case "role":
+                frontmatter.role = AgentSlot(rawValue: value)
+            case "complexity":
+                frontmatter.complexity = ComplexityTier(rawValue: value)
             default:
                 break
             }

@@ -78,7 +78,7 @@ final class SkillFrontmatterV5Tests: XCTestCase {
 
     func testInvokeSkillWithHighStakesComplexityRunsCritic() async {
         let criticSpy = CriticSpy()
-        let engine = makeEngine()
+        let engine = makeEngine(reasonProvider: ScriptedProvider(id: "reason", response: "PASS: looks good"))
         engine.criticOverride = criticSpy
 
         var frontmatter = SkillFrontmatter(name: "test", description: "test")

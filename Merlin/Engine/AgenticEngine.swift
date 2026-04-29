@@ -97,7 +97,15 @@ final class AgenticEngine {
             return runFork(prompt: body)
         }
 
-        return send(userMessage: body)
+        var message = body
+        if let role = skill.frontmatter.role {
+            message = "@\(role.rawValue) \(message)"
+        }
+        if let complexity = skill.frontmatter.complexity {
+            message = "#\(complexity.rawValue) \(message)"
+        }
+
+        return send(userMessage: message)
     }
 
     func buildSystemPromptForTesting(slot: AgentSlot = .execute) async -> String {
