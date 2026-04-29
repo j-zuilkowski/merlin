@@ -52,6 +52,28 @@ struct RoleSlotSettingsView: View {
                         .font(.system(.body, design: .monospaced))
                 }
             }
+
+            Section("Library") {
+                LabeledContent("Project Path") {
+                    TextField(
+                        "e.g. /Users/you/Projects/my-app",
+                        text: Binding(
+                            get: { settings.projectPath },
+                            set: { settings.projectPath = $0 }
+                        )
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+                    .help("Scopes xcalibre memory search to this project directory. Leave empty to search all memory.")
+                }
+                LabeledContent("Memory Enabled") {
+                    Toggle("", isOn: Binding(
+                        get: { settings.memoriesEnabled },
+                        set: { settings.memoriesEnabled = $0 }
+                    ))
+                        .labelsHidden()
+                }
+            }
         }
         .formStyle(.grouped)
         .navigationTitle("Providers & Slots")

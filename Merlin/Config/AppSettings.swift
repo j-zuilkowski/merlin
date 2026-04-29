@@ -43,6 +43,7 @@ final class AppSettings: ObservableObject {
     @Published var disabledSkillNames: [String] = []
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
+    @Published var projectPath: String = ""
     @Published var xcalibreToken: String = ""
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
@@ -75,6 +76,7 @@ final class AppSettings: ObservableObject {
         var disabledSkillNames: [String]?
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
+        var projectPath: String?
         var xcalibreToken: String?
         var slots: [String: String]?
         var verifyCommand: String?
@@ -111,6 +113,7 @@ final class AppSettings: ObservableObject {
             case disabledSkillNames = "disabled_skill_names"
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
+            case projectPath = "project_path"
             case xcalibreToken = "xcalibre_token"
             case slots
             case verifyCommand = "verify_command"
@@ -128,93 +131,15 @@ final class AppSettings: ObservableObject {
         let source = try String(contentsOf: url, encoding: .utf8)
         let decoder = TOMLDecoder()
         let config = try decoder.decode(ConfigFile.self, from: source)
-
-        if let value = config.autoCompact {
-            autoCompact = value
-        }
-        if let value = config.maxTokens {
-            maxTokens = value
-        }
-        if let value = config.keepAwake {
-            keepAwake = value
-        }
-        if let value = config.providerName {
-            providerName = value
-        }
-        if let value = config.modelID {
-            modelID = value
-        }
-        if let value = config.defaultPermissionMode {
-            defaultPermissionMode = value
-        }
-        if let value = config.notificationsEnabled {
-            notificationsEnabled = value
-        }
-        if let value = config.messageDensity {
-            messageDensity = value
-        }
-        if let value = config.standingInstructions {
-            standingInstructions = value
-        }
-        if let value = config.hooks {
-            hooks = value
-        }
-        if let value = config.appearance {
-            appearance = value
-        }
-        if let value = config.providers {
-            providers = value
-        }
-        if let value = config.reasoningEnabledOverrides {
-            reasoningEnabledOverrides = value
-        }
-        if let value = config.maxSubagentThreads {
-            maxSubagentThreads = value
-        }
-        if let value = config.maxSubagentDepth {
-            maxSubagentDepth = value
-        }
-        if let value = config.disabledSkillNames {
-            disabledSkillNames = value
-        }
-        if let value = config.memoriesEnabled {
-            memoriesEnabled = value
-        }
-        if let value = config.memoryIdleTimeout {
-            memoryIdleTimeout = value
-        }
-        if let value = config.xcalibreToken {
-            xcalibreToken = value
-        }
-        if let slots = config.slots {
-            var assignments: [AgentSlot: String] = [:]
-            for slot in AgentSlot.allCases {
-                if let providerID = slots[slot.rawValue], !providerID.isEmpty {
-                    assignments[slot] = providerID
-                }
-            }
-            slotAssignments = assignments
-        }
-        if let value = config.verifyCommand {
-            verifyCommand = value
-        }
-        if let value = config.checkCommand {
-            checkCommand = value
-        }
-        if let value = config.activeDomainID {
-            activeDomainID = value
-        }
-        if let planner = config.planner {
-            if let value = planner.maxPlanRetries {
-                maxPlanRetries = value
-            }
-            if let value = planner.maxLoopIterations {
-                maxLoopIterations = value
-            }
-        }
+        apply(config)
     }
 
     func save(to url: URL) async throws {
+        let content = serializedTOML()
+        try content.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    func serializedTOML() -> String {
         var lines: [String] = []
         lines.append("auto_compact = \(autoCompact)")
         lines.append("max_tokens = \(maxTokens)")
@@ -236,6 +161,9 @@ final class AppSettings: ObservableObject {
         if memoriesEnabled {
             lines.append("memories_enabled = true")
             lines.append("memory_idle_timeout = \(memoryIdleTimeout)")
+        }
+        if projectPath.isEmpty == false {
+            lines.append("project_path = \(quoted(projectPath))")
         }
         if slotAssignments.isEmpty == false {
             lines.append("")
@@ -324,8 +252,15 @@ final class AppSettings: ObservableObject {
             }
         }
 
-        let content = lines.joined(separator: "\n") + "\n"
-        try content.write(to: url, atomically: true, encoding: .utf8)
+        return lines.joined(separator: "\n") + "\n"
+    }
+
+    func applyTOML(_ toml: String) {
+        let decoder = TOMLDecoder()
+        guard let config = try? decoder.decode(ConfigFile.self, from: toml) else {
+            return
+        }
+        apply(config)
     }
 
     func propose(_ change: SettingsProposal) async -> Bool {
@@ -409,6 +344,95 @@ final class AppSettings: ObservableObject {
             hooks.append(value)
         case .removeHook(let event):
             hooks.removeAll { $0.event == event }
+        }
+    }
+
+    private func apply(_ config: ConfigFile) {
+        if let value = config.autoCompact {
+            autoCompact = value
+        }
+        if let value = config.maxTokens {
+            maxTokens = value
+        }
+        if let value = config.keepAwake {
+            keepAwake = value
+        }
+        if let value = config.providerName {
+            providerName = value
+        }
+        if let value = config.modelID {
+            modelID = value
+        }
+        if let value = config.defaultPermissionMode {
+            defaultPermissionMode = value
+        }
+        if let value = config.notificationsEnabled {
+            notificationsEnabled = value
+        }
+        if let value = config.messageDensity {
+            messageDensity = value
+        }
+        if let value = config.standingInstructions {
+            standingInstructions = value
+        }
+        if let value = config.hooks {
+            hooks = value
+        }
+        if let value = config.appearance {
+            appearance = value
+        }
+        if let value = config.providers {
+            providers = value
+        }
+        if let value = config.reasoningEnabledOverrides {
+            reasoningEnabledOverrides = value
+        }
+        if let value = config.maxSubagentThreads {
+            maxSubagentThreads = value
+        }
+        if let value = config.maxSubagentDepth {
+            maxSubagentDepth = value
+        }
+        if let value = config.disabledSkillNames {
+            disabledSkillNames = value
+        }
+        if let value = config.memoriesEnabled {
+            memoriesEnabled = value
+        }
+        if let value = config.memoryIdleTimeout {
+            memoryIdleTimeout = value
+        }
+        if let value = config.projectPath {
+            projectPath = value
+        }
+        if let value = config.xcalibreToken {
+            xcalibreToken = value
+        }
+        if let slots = config.slots {
+            var assignments: [AgentSlot: String] = [:]
+            for slot in AgentSlot.allCases {
+                if let providerID = slots[slot.rawValue], !providerID.isEmpty {
+                    assignments[slot] = providerID
+                }
+            }
+            slotAssignments = assignments
+        }
+        if let value = config.verifyCommand {
+            verifyCommand = value
+        }
+        if let value = config.checkCommand {
+            checkCommand = value
+        }
+        if let value = config.activeDomainID {
+            activeDomainID = value
+        }
+        if let planner = config.planner {
+            if let value = planner.maxPlanRetries {
+                maxPlanRetries = value
+            }
+            if let value = planner.maxLoopIterations {
+                maxLoopIterations = value
+            }
         }
     }
 

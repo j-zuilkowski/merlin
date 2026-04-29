@@ -76,11 +76,8 @@ final class ProjectPathSettingsTests: XCTestCase {
 /// Uses the real AppSettings type — tests verify the property exists at compile time.
 @MainActor
 private func makeFreshSettings() -> AppSettings {
-    // Re-use AppSettings.shared but reset projectPath after each test via tearDown
-    // is not safe in parallel tests. Instead use the minimal constructor if available,
-    // or accept shared-state risk for this compile-time-focused test file.
-    // If AppSettings has no isolated init, the compile will at minimum verify
-    // .projectPath, .serializedTOML(), and .applyTOML(_:) all exist.
+    // Reset the singleton field that this phase introduces so tests remain independent.
+    AppSettings.shared.projectPath = ""
     return AppSettings.shared
 }
 

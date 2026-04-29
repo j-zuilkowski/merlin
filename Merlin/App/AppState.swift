@@ -73,6 +73,7 @@ final class AppState: ObservableObject {
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
+    private var projectPathCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
@@ -146,6 +147,9 @@ final class AppState: ObservableObject {
             contextManager: ctx,
             xcalibreClient: xcalibreClient
         )
+        engine.currentProjectPath = AppSettings.shared.projectPath.isEmpty
+            ? nil
+            : AppSettings.shared.projectPath
         contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)
         engine.registry = registry
         engine.sessionStore = sessionStore
@@ -205,6 +209,14 @@ final class AppState: ObservableObject {
                 self?.syncEngineProviders()
             }
         }
+
+        projectPathCancellable = AppSettings.shared.$projectPath
+            .dropFirst()
+            .sink { [weak self] newPath in
+                Task { @MainActor [weak self] in
+                    self?.engine?.currentProjectPath = newPath.isEmpty ? nil : newPath
+                }
+            }
 
         toolRouter.register(name: "rag_search") { [weak self] args in
             guard let client = self?.engine?.xcalibreClient else {
