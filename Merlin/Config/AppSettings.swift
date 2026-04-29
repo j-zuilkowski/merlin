@@ -44,6 +44,9 @@ final class AppSettings: ObservableObject {
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
     @Published var xcalibreToken: String = ""
+    @Published var verifyCommand: String = ""
+    @Published var checkCommand: String = ""
+    @Published var activeDomainID: String = "software"
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
@@ -70,6 +73,9 @@ final class AppSettings: ObservableObject {
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
         var xcalibreToken: String?
+        var verifyCommand: String?
+        var checkCommand: String?
+        var activeDomainID: String?
 
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
@@ -91,6 +97,9 @@ final class AppSettings: ObservableObject {
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
             case xcalibreToken = "xcalibre_token"
+            case verifyCommand = "verify_command"
+            case checkCommand = "check_command"
+            case activeDomainID = "active_domain"
         }
     }
 
@@ -160,6 +169,15 @@ final class AppSettings: ObservableObject {
         if let value = config.xcalibreToken {
             xcalibreToken = value
         }
+        if let value = config.verifyCommand {
+            verifyCommand = value
+        }
+        if let value = config.checkCommand {
+            checkCommand = value
+        }
+        if let value = config.activeDomainID {
+            activeDomainID = value
+        }
     }
 
     func save(to url: URL) async throws {
@@ -187,6 +205,17 @@ final class AppSettings: ObservableObject {
         }
         if standingInstructions.isEmpty == false {
             lines.append("standing_instructions = \(quoted(standingInstructions))")
+        }
+        if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainID != "software" {
+            lines.append("")
+            lines.append("[domain]")
+            lines.append("active_domain = \(quoted(activeDomainID))")
+            if verifyCommand.isEmpty == false {
+                lines.append("verify_command = \(quoted(verifyCommand))")
+            }
+            if checkCommand.isEmpty == false {
+                lines.append("check_command = \(quoted(checkCommand))")
+            }
         }
 
         lines.append("")
