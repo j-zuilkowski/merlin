@@ -306,7 +306,7 @@ final class AgenticEngine {
         let context = contextOverride ?? contextManager
         let domain = await DomainRegistry.shared.activeDomain()
         let planner = classifierOverride ?? PlannerEngine(
-            executeProvider: resolvedProvider(for: .execute),
+            executeProvider: selectProvider(for: userMessage),
             orchestrateProvider: provider(for: .orchestrate),
             maxPlanRetries: AppSettings.shared.maxPlanRetries
         )
@@ -331,7 +331,19 @@ final class AgenticEngine {
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
             continuation.yield(.systemNote(augmented))
         }
+        let hadCompactionBeforeTurn = context.compactionCount > 0
+        let shouldHintCompaction = context.messages.count > 80
+        var turnCompactionCount = context.compactionCount
+        var didEmitCompactionNote = false
+        func emitCompactionNoteIfNeeded() {
+            guard !didEmitCompactionNote else { return }
+            guard hadCompactionBeforeTurn || shouldHintCompaction || context.compactionCount != turnCompactionCount else { return }
+            turnCompactionCount = context.compactionCount
+            didEmitCompactionNote = true
+            continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
+        }
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
+        emitCompactionNoteIfNeeded()
 
         if classification.needsPlanning {
             let planSteps = await planner.decompose(task: userMessage, context: context.messages)
@@ -350,7 +362,12 @@ final class AgenticEngine {
             }
             loopCount += 1
 
-            let provider = resolvedProvider(for: workingSlot)
+            let provider: any LLMProvider
+            if workingSlot == .reason {
+                provider = resolvedProvider(for: .reason)
+            } else {
+                provider = selectProvider(for: userMessage)
+            }
             let requestModel = modelID(for: provider)
             let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
             let request = CompletionRequest(
@@ -440,7 +457,6 @@ final class AgenticEngine {
 
             toolRouter.permissionMode = permissionMode
             var regularCalls: [ToolCall] = []
-            let prevCompactionCount = context.compactionCount
             for call in calls {
                 if call.function.name == "spawn_agent" {
                     await handleSpawnAgent(call: call, depth: depth, continuation: continuation)
@@ -484,6 +500,7 @@ final class AgenticEngine {
                     toolCallId: result.toolCallId,
                     timestamp: Date()
                 ))
+                emitCompactionNoteIfNeeded()
 
                 if let note = await hookEngine.runPostToolUse(
                     toolName: call.function.name,
@@ -491,10 +508,8 @@ final class AgenticEngine {
                 ) {
                     continuation.yield(.systemNote(note))
                     context.append(Message(role: .system, content: .text(note), timestamp: Date()))
+                    emitCompactionNoteIfNeeded()
                 }
-            }
-            if context.compactionCount != prevCompactionCount {
-                continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
             }
         }
 
@@ -616,30 +631,33 @@ final class AgenticEngine {
     // ProviderRegistry overrides take precedence when the user has selected a provider.
     private func selectProvider(for message: String) -> any LLMProvider {
         let slot = selectSlot(for: message)
+        let lower = message.lowercased()
+
+        if lower.hasPrefix("@reason ") || lower.contains(" @reason ") ||
+            lower.hasPrefix("@execute ") || lower.contains(" @execute ") ||
+            lower.hasPrefix("@orchestrate ") || lower.contains(" @orchestrate ") {
+            if let provider = provider(for: slot) {
+                return provider
+            }
+        }
+
+        let visionKeywords = ["screenshot", "screen", "vision", "ui", "click", "button"]
+        if visionKeywords.contains(where: { lower.contains($0) }) {
+            return provider(for: .vision) ?? visionProvider
+        }
+
+        if shouldUseThinking(for: message) {
+            return proProvider
+        }
+
+        if ["read", "write", "run", "list", "build", "open", "create", "delete", "move", "show"].contains(where: { lower.contains($0) }) {
+            return flashProvider
+        }
+
         if let provider = provider(for: slot) {
             return provider
         }
 
-        if let registry {
-            let lower = message.lowercased()
-            if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {
-                return registry.visionProvider ?? visionProvider
-            }
-            if let primary = registry.primaryProvider {
-                return primary
-            }
-        }
-
-        let lower = message.lowercased()
-        if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {
-            return visionProvider
-        }
-        if shouldUseThinking(for: message) {
-            return proProvider
-        }
-        if ["read", "write", "run", "list", "build", "open", "create", "delete", "move", "show"].contains(where: { lower.contains($0) }) {
-            return flashProvider
-        }
         return proProvider
     }
 
