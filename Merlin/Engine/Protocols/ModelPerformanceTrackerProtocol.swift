@@ -5,6 +5,8 @@ protocol ModelPerformanceTrackerProtocol: Sendable {
     func successRate(for modelID: String, taskType: DomainTaskType) -> Double?
     func profile(for modelID: String) -> [ModelPerformanceProfile]
     func allProfiles() -> [ModelPerformanceProfile]
+    func records(for modelID: String, taskType: DomainTaskType) async -> [OutcomeRecord]
+    func exportTrainingData(minScore: Double) async -> [OutcomeRecord]
 }
 
 extension ModelPerformanceTracker: @preconcurrency ModelPerformanceTrackerProtocol {}

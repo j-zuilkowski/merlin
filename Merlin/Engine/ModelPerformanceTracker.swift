@@ -69,6 +69,7 @@ actor ModelPerformanceTracker {
     init(storageURL: URL) {
         self.storageURL = storageURL
         profiles = Self.loadProfiles(from: storageURL)
+        records = Self.loadRecords(from: storageURL)
     }
 
     // MARK: - Public API
@@ -93,6 +94,7 @@ actor ModelPerformanceTracker {
             newScore: score
         )
         saveToDisk(modelID: modelID)
+        saveRecordsToDisk(modelID: modelID)
     }
 
     /// Returns nil until sampleCount >= 30 (calibration minimum).
@@ -109,6 +111,25 @@ actor ModelPerformanceTracker {
 
     func allProfiles() -> [ModelPerformanceProfile] {
         Array(profiles.values)
+    }
+
+    /// Returns all persisted OutcomeRecords for a given model + task type.
+    /// Used by V6 LoRA training to build the fine-tuning dataset.
+    func records(for modelID: String, taskType: DomainTaskType) async -> [OutcomeRecord] {
+        records.values
+            .flatMap { $0 }
+            .filter { $0.modelID == modelID && $0.taskType == taskType }
+            .sorted { $0.timestamp < $1.timestamp }
+    }
+
+    /// Returns all OutcomeRecords with score >= minScore across all models and task types.
+    /// The caller formats these as instruction/response pairs for LoRA fine-tuning.
+    /// minScore: 0.0–1.0; recommended minimum 0.7 to exclude poor-quality examples.
+    func exportTrainingData(minScore: Double) async -> [OutcomeRecord] {
+        records.values
+            .flatMap { $0 }
+            .filter { $0.score >= minScore }
+            .sorted { $0.timestamp < $1.timestamp }
     }
 
     // MARK: - Score computation
@@ -201,6 +222,22 @@ actor ModelPerformanceTracker {
         }
     }
 
+    private func saveRecordsToDisk(modelID: String) {
+        let modelRecords = records.values
+            .flatMap { $0 }
+            .filter { $0.modelID == modelID }
+
+        guard !modelRecords.isEmpty else { return }
+
+        let sanitised = modelID.replacingOccurrences(of: "/", with: "_")
+        let fileURL = storageURL.appendingPathComponent("records-\(sanitised).json")
+
+        try? FileManager.default.createDirectory(at: storageURL, withIntermediateDirectories: true)
+        if let data = try? JSONEncoder().encode(modelRecords) {
+            try? data.write(to: fileURL, options: .atomic)
+        }
+    }
+
     private static func loadProfiles(from storageURL: URL) -> [String: ModelPerformanceProfile] {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: storageURL, includingPropertiesForKeys: nil
@@ -220,6 +257,35 @@ actor ModelPerformanceTracker {
         }
 
         return loadedProfiles
+    }
+
+    private static func loadRecords(from storageURL: URL) -> [String: [OutcomeRecord]] {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: storageURL, includingPropertiesForKeys: nil
+        ) else { return [:] }
+
+        var loaded: [String: [OutcomeRecord]] = [:]
+
+        for file in files where file.lastPathComponent.hasPrefix("records-") &&
+                                 file.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: file),
+                  let fileRecords = try? JSONDecoder().decode([OutcomeRecord].self, from: data)
+            else { continue }
+
+            for record in fileRecords {
+                let key = "\(record.modelID)|\(record.taskType.domainID)|\(record.taskType.name)|\(record.addendumHash)"
+                loaded[key, default: []].append(record)
+            }
+        }
+
+        return loaded.mapValues { records in
+            Array(
+                Dictionary(grouping: records, by: { $0.timestamp.timeIntervalSince1970 })
+                    .values
+                    .compactMap { $0.first }
+            )
+            .sorted { $0.timestamp < $1.timestamp }
+        }
     }
 }
 

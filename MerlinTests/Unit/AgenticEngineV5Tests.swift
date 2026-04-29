@@ -173,6 +173,8 @@ private final class PerformanceTrackerSpy: @unchecked Sendable, ModelPerformance
     func successRate(for modelID: String, taskType: DomainTaskType) -> Double? { nil }
     func profile(for modelID: String) -> [ModelPerformanceProfile] { [] }
     func allProfiles() -> [ModelPerformanceProfile] { [] }
+    func records(for modelID: String, taskType: DomainTaskType) async -> [OutcomeRecord] { [] }
+    func exportTrainingData(minScore: Double) async -> [OutcomeRecord] { [] }
 }
 
 private final class CriticSpy: @unchecked Sendable, CriticEngineProtocol {
