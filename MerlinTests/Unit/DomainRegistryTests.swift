@@ -66,6 +66,7 @@ final class DomainRegistryTests: XCTestCase {
     }
 }
 
+@MainActor
 final class DomainManifestTests: XCTestCase {
 
     func testDecodesManifestFromJSON() throws {

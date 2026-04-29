@@ -79,6 +79,7 @@ struct MCPDomainAdapter: DomainPlugin {
     let verificationBackend: any VerificationBackend
     let mcpServerID: String
 
+    @MainActor
     init(manifest: DomainManifest, mcpServerID: String) {
         self.id = manifest.id
         self.displayName = manifest.displayName
@@ -94,6 +95,7 @@ struct MCPDomainAdapter: DomainPlugin {
 // MARK: - ManifestVerificationBackend
 
 /// VerificationBackend built from a DomainManifest's verificationCommands map.
+@MainActor
 struct ManifestVerificationBackend: VerificationBackend {
     private let commandMap: [String: [DomainManifest.ManifestVerificationCommand]]
 
