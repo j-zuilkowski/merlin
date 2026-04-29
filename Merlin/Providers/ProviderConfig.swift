@@ -33,6 +33,60 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         case kind
         case systemPromptAddendum = "system_prompt_addendum"
     }
+
+    init(
+        id: String,
+        displayName: String,
+        baseURL: String,
+        model: String,
+        isEnabled: Bool,
+        isLocal: Bool,
+        supportsThinking: Bool,
+        supportsVision: Bool,
+        kind: ProviderKind,
+        systemPromptAddendum: String = ""
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.baseURL = baseURL
+        self.model = model
+        self.isEnabled = isEnabled
+        self.isLocal = isLocal
+        self.supportsThinking = supportsThinking
+        self.supportsVision = supportsVision
+        self.kind = kind
+        self.systemPromptAddendum = systemPromptAddendum
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        baseURL = try container.decode(String.self, forKey: .baseURL)
+        model = try container.decode(String.self, forKey: .model)
+        isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        isLocal = try container.decode(Bool.self, forKey: .isLocal)
+        supportsThinking = try container.decode(Bool.self, forKey: .supportsThinking)
+        supportsVision = try container.decode(Bool.self, forKey: .supportsVision)
+        kind = try container.decode(ProviderKind.self, forKey: .kind)
+        systemPromptAddendum = try container.decodeIfPresent(String.self, forKey: .systemPromptAddendum) ?? ""
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encode(model, forKey: .model)
+        try container.encode(isEnabled, forKey: .isEnabled)
+        try container.encode(isLocal, forKey: .isLocal)
+        try container.encode(supportsThinking, forKey: .supportsThinking)
+        try container.encode(supportsVision, forKey: .supportsVision)
+        try container.encode(kind, forKey: .kind)
+        if systemPromptAddendum.isEmpty == false {
+            try container.encode(systemPromptAddendum, forKey: .systemPromptAddendum)
+        }
+    }
 }
 
 // MARK: - ProviderRegistry
@@ -76,7 +130,7 @@ final class ProviderRegistry: ObservableObject {
     // MARK: Known model lists (static metadata — not persisted)
 
     static let knownModels: [String: [String]] = [
-        "deepseek": ["deepseek-v4-flash", "deepseek-v4-pro"],
+        "deepseek": ["deepseek-chat", "deepseek-reasoner", "deepseek-v4-flash", "deepseek-v4-pro"],
         "openai": ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini"],
         "anthropic": ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
         "qwen": ["qwen2.5-72b-instruct", "qwen2.5-32b-instruct",

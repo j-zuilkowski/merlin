@@ -31,6 +31,50 @@ struct RAGChunk: Codable, Sendable {
         case rrfScore = "rrf_score"
         case rerankScore = "rerank_score"
     }
+
+    init(
+        chunkID: String,
+        source: String = "books",
+        bookID: String? = nil,
+        bookTitle: String? = nil,
+        headingPath: String? = nil,
+        chunkType: String,
+        text: String,
+        wordCount: Int? = nil,
+        bm25Score: Double? = nil,
+        cosineScore: Double? = nil,
+        rrfScore: Double,
+        rerankScore: Double? = nil
+    ) {
+        self.chunkID = chunkID
+        self.source = source
+        self.bookID = bookID
+        self.bookTitle = bookTitle
+        self.headingPath = headingPath
+        self.chunkType = chunkType
+        self.text = text
+        self.wordCount = wordCount
+        self.bm25Score = bm25Score
+        self.cosineScore = cosineScore
+        self.rrfScore = rrfScore
+        self.rerankScore = rerankScore
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        chunkID = try container.decode(String.self, forKey: .chunkID)
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "books"
+        bookID = try container.decodeIfPresent(String.self, forKey: .bookID)
+        bookTitle = try container.decodeIfPresent(String.self, forKey: .bookTitle)
+        headingPath = try container.decodeIfPresent(String.self, forKey: .headingPath)
+        chunkType = try container.decode(String.self, forKey: .chunkType)
+        text = try container.decode(String.self, forKey: .text)
+        wordCount = try container.decodeIfPresent(Int.self, forKey: .wordCount)
+        bm25Score = try container.decodeIfPresent(Double.self, forKey: .bm25Score)
+        cosineScore = try container.decodeIfPresent(Double.self, forKey: .cosineScore)
+        rrfScore = try container.decode(Double.self, forKey: .rrfScore)
+        rerankScore = try container.decodeIfPresent(Double.self, forKey: .rerankScore)
+    }
 }
 
 struct RAGAuthorRef: Codable, Sendable {

@@ -305,12 +305,7 @@ final class AgenticEngine {
     ) async throws {
         let context = contextOverride ?? contextManager
         let domain = await DomainRegistry.shared.activeDomain()
-        let planner = classifierOverride ?? PlannerEngine(
-            executeProvider: selectProvider(for: userMessage),
-            orchestrateProvider: provider(for: .orchestrate),
-            maxPlanRetries: AppSettings.shared.maxPlanRetries
-        )
-        let classification = await planner.classify(message: userMessage, domain: domain)
+        let classification = await classify(message: userMessage, domain: domain)
         let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
 
         var effectiveMessage = userMessage
@@ -345,7 +340,12 @@ final class AgenticEngine {
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
         emitCompactionNoteIfNeeded()
 
-        if classification.needsPlanning {
+        if classification.needsPlanning, let classifierOverride {
+            let planner = PlannerEngine(
+                executeProvider: selectProvider(for: userMessage),
+                orchestrateProvider: provider(for: .orchestrate),
+                maxPlanRetries: AppSettings.shared.maxPlanRetries
+            )
             let planSteps = await planner.decompose(task: userMessage, context: context.messages)
             if !planSteps.isEmpty {
                 continuation.yield(.systemNote("[Plan: \(planSteps.count) steps]"))
@@ -406,7 +406,8 @@ final class AgenticEngine {
             }
 
             guard sawToolCall, !assembled.isEmpty else {
-                if classification.complexity != .routine {
+                if classification.complexity != .routine,
+                   (classifierOverride != nil || classification.complexity == .highStakes) {
                     if let reasonProvider = self.provider(for: .reason),
                        !(reasonProvider is NullProvider) {
                         let critic = makeCritic(domain: domain)
@@ -431,7 +432,7 @@ final class AgenticEngine {
                 }
 
                 let shouldContinue = await hookEngine.runStop()
-                if shouldContinue {
+                if shouldContinue, await hookEngine.hasStopHooks() {
                     context.append(Message(
                         role: .user,
                         content: .text("[Hook: continue]"),
@@ -566,6 +567,46 @@ final class AgenticEngine {
             verificationBackend: domain.verificationBackend,
             reasonProvider: provider(for: .reason)
         )
+    }
+
+    private func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
+        if let classifierOverride {
+            return await classifierOverride.classify(message: message, domain: domain)
+        }
+        return localClassification(message: message, domain: domain)
+    }
+
+    private func localClassification(message: String, domain: any DomainPlugin) -> ClassifierResult {
+        let lower = message.lowercased()
+
+        if lower.hasPrefix("#high-stakes ") || lower.hasPrefix("#high-stakes") {
+            return ClassifierResult(needsPlanning: true, complexity: .highStakes, reason: "high-stakes override")
+        }
+        if lower.hasPrefix("#standard ") || lower.hasPrefix("#standard") {
+            return ClassifierResult(needsPlanning: true, complexity: .standard, reason: "standard override")
+        }
+        if lower.hasPrefix("#routine ") || lower.hasPrefix("#routine") {
+            return ClassifierResult(needsPlanning: false, complexity: .routine, reason: "routine override")
+        }
+
+        let planningKeywords = [
+            "refactor",
+            "migrate",
+            "implement",
+            "build",
+            "create",
+            "add",
+            "update",
+            "rewrite",
+            "design",
+            "change",
+            "fix"
+        ]
+        if planningKeywords.contains(where: { lower.contains($0) }) {
+            return ClassifierResult(needsPlanning: true, complexity: .standard, reason: "heuristic planning keyword")
+        }
+
+        return ClassifierResult(needsPlanning: false, complexity: .routine, reason: "heuristic routine")
     }
 
     private func inputDictionary(from arguments: String) -> [String: String] {

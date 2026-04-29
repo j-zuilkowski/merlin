@@ -26,7 +26,7 @@ struct WorkspaceLayoutManager: Sendable {
     static var defaultLayout: WorkspaceLayout {
         WorkspaceLayout(
             showDiffPane: false,
-            showFilePane: false,
+            showFilePane: true,
             showTerminalPane: false,
             showPreviewPane: false,
             showSideChat: false,
