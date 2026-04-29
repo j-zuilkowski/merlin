@@ -222,7 +222,12 @@ final class AppState: ObservableObject {
             guard let client = self?.engine?.xcalibreClient else {
                 return "RAG service not configured."
             }
-            return await RAGTools.search(args: args, client: client)
+            let projectPath = AppSettings.shared.projectPath
+            return await RAGTools.search(
+                args: args,
+                client: client,
+                projectPath: projectPath.isEmpty ? nil : projectPath
+            )
         }
 
         toolRouter.register(name: "rag_list_books") { [weak self] _ in

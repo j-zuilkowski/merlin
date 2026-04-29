@@ -11,12 +11,27 @@ enum RAGTools {
 
     // MARK: - Tool handlers
 
-    static func search(args: String, client: any XcalibreClientProtocol) async -> String {
+    static func search(
+        args: String,
+        client: any XcalibreClientProtocol,
+        projectPath: String? = nil
+    ) async -> String {
         struct Args: Decodable {
             var query: String
+            var source: String?
             var bookIDs: [String]?
+            var projectPath: String?
             var limit: Int?
             var rerank: Bool?
+
+            enum CodingKeys: String, CodingKey {
+                case query
+                case source
+                case bookIDs = "book_ids"
+                case projectPath = "project_path"
+                case limit
+                case rerank
+            }
         }
 
         guard let decoded = try? JSONDecoder().decode(Args.self, from: Data(args.utf8)) else {
@@ -26,11 +41,15 @@ enum RAGTools {
             return unavailableMessage
         }
 
+        let effectiveProjectPath = decoded.projectPath?.isEmpty == false
+            ? decoded.projectPath
+            : projectPath
+
         let chunks = await client.searchChunks(
             query: decoded.query,
-            source: "books",
+            source: decoded.source ?? "books",
             bookIDs: decoded.bookIDs,
-            projectPath: nil,
+            projectPath: effectiveProjectPath,
             limit: min(max(decoded.limit ?? 10, 1), 20),
             rerank: decoded.rerank ?? false
         )

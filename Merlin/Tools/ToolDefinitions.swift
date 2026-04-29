@@ -446,19 +446,36 @@ enum ToolDefinitions {
     // RAG
     static let ragSearch = ToolDefinition(function: .init(
         name: "rag_search",
-        description: "Search your personal library for relevant passages using semantic and keyword search. Use when you need to look something up in your books. Returns ranked text chunks with source and heading.",
+        description: "Search your personal library for relevant passages using semantic and keyword search. Use when you need to look something up in your books or memory. Returns ranked text chunks with source and heading.",
         parameters: JSONSchema(
             type: "object",
             properties: [
-                "query": JSONSchema(type: "string",
-                    description: "The search query"),
-                "book_ids": JSONSchema(type: "array",
+                "query": JSONSchema(
+                    type: "string",
+                    description: "The search query"
+                ),
+                "source": JSONSchema(
+                    type: "string",
+                    description: #"Scope of search: "books" (default), "memory", or "all"."#,
+                    enumValues: ["books", "memory", "all"]
+                ),
+                "book_ids": JSONSchema(
+                    type: "array",
                     items: JSONSchema(type: "string"),
-                    description: "Optional book IDs to scope the search. Omit to search all books."),
-                "limit": JSONSchema(type: "integer",
-                    description: "Number of passages to return (1-20). Default: 10."),
-                "rerank": JSONSchema(type: "boolean",
-                    description: "LLM reranking for higher quality at the cost of latency (~8s). Default: false."),
+                    description: "Optional book IDs to scope the search. Omit to search all books."
+                ),
+                "project_path": JSONSchema(
+                    type: "string",
+                    description: "Optional project directory to scope memory results."
+                ),
+                "limit": JSONSchema(
+                    type: "integer",
+                    description: "Number of passages to return (1-20). Default: 10."
+                ),
+                "rerank": JSONSchema(
+                    type: "boolean",
+                    description: "LLM reranking for higher quality at the cost of latency (~8s). Default: false."
+                ),
             ],
             required: ["query"]
         )
