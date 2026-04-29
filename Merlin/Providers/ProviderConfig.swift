@@ -33,6 +33,7 @@ final class ProviderRegistry: ObservableObject {
     @Published var availabilityByID: [String: Bool] = [:]
     @Published private(set) var keyedProviderIDs: Set<String> = []
 
+    private var liveProviders: [String: any LLMProvider] = [:]
     private let persistURL: URL
 
     static var defaultPersistURL: URL {
@@ -200,6 +201,20 @@ final class ProviderRegistry: ObservableObject {
         let candidate = providers.first { $0.isEnabled && $0.isLocal && $0.supportsVision }
             ?? providers.first { $0.isEnabled && $0.supportsVision }
         return candidate.map { makeLLMProvider(for: $0) }
+    }
+
+    func add(_ provider: any LLMProvider) {
+        liveProviders[provider.id] = provider
+    }
+
+    func provider(for id: String) -> (any LLMProvider)? {
+        if let live = liveProviders[id] {
+            return live
+        }
+        guard let config = providers.first(where: { $0.id == id }) else {
+            return nil
+        }
+        return makeLLMProvider(for: config)
     }
 
     // MARK: Mutation

@@ -1,6 +1,7 @@
 import XCTest
 @testable import Merlin
 
+@MainActor
 final class AgenticEngineSlotTests: XCTestCase {
 
     private func makeEngine(
@@ -10,10 +11,13 @@ final class AgenticEngineSlotTests: XCTestCase {
         visionID: String = "vision-model"
     ) -> AgenticEngine {
         let registry = ProviderRegistry()
-        registry.add(MockProvider(id: "fast-local"))
-        registry.add(MockProvider(id: "deep-remote"))
-        registry.add(MockProvider(id: "vision-model"))
-        if let oid = orchestrateID { registry.add(MockProvider(id: oid)) }
+        registry.add(SlotMockProvider(id: "fast-local"))
+        registry.add(SlotMockProvider(id: "deep-remote"))
+        registry.add(SlotMockProvider(id: "vision-model"))
+        if let oid = orchestrateID { registry.add(SlotMockProvider(id: oid)) }
+
+        let memory = AuthMemory(storePath: "/tmp/auth-agenticengine-slot-tests.json")
+        let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
 
         var slots: [AgentSlot: String] = [
             .execute: executeID,
@@ -25,7 +29,7 @@ final class AgenticEngineSlotTests: XCTestCase {
         return AgenticEngine(
             slotAssignments: slots,
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: ToolRouter(authGate: gate),
             contextManager: ContextManager()
         )
     }
@@ -92,9 +96,10 @@ final class AgenticEngineSlotTests: XCTestCase {
 
 // MARK: - Helpers
 
-private final class MockProvider: LLMProvider {
+private final class SlotMockProvider: LLMProvider {
     let id: String
     init(id: String) { self.id = id }
+    let baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         AsyncThrowingStream { $0.finish() }
     }

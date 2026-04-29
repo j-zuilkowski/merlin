@@ -30,7 +30,7 @@ final class AgenticEngine {
     private let thinkingDetector = ThinkingModeDetector.self
     var proProvider: any LLMProvider
     var flashProvider: any LLMProvider
-    private let visionProvider: any LLMProvider
+    private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
     var xcalibreClient: XcalibreClient?
     var registry: ProviderRegistry?
@@ -42,23 +42,43 @@ final class AgenticEngine {
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
     }
+    private var slotAssignments: [AgentSlot: String]
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
     @Published var isRunning: Bool = false
 
-    init(proProvider: any LLMProvider,
-         flashProvider: any LLMProvider,
-         visionProvider: any LLMProvider,
+    init(slotAssignments: [AgentSlot: String] = [:],
+         registry: ProviderRegistry? = nil,
          toolRouter: ToolRouter,
          contextManager: ContextManager,
          xcalibreClient: XcalibreClient? = nil) {
-        self.proProvider = proProvider
-        self.flashProvider = flashProvider
-        self.visionProvider = visionProvider
+        self.proProvider = NullProvider()
+        self.flashProvider = NullProvider()
+        self.visionProvider = NullProvider()
+        self.slotAssignments = slotAssignments
+        self.registry = registry
         self.toolRouter = toolRouter
         self.contextManager = contextManager
         self.xcalibreClient = xcalibreClient
+    }
+
+    convenience init(proProvider: any LLMProvider,
+                     flashProvider: any LLMProvider,
+                     visionProvider: any LLMProvider,
+                     toolRouter: ToolRouter,
+                     contextManager: ContextManager,
+                     xcalibreClient: XcalibreClient? = nil) {
+        self.init(
+            slotAssignments: [:],
+            registry: nil,
+            toolRouter: toolRouter,
+            contextManager: contextManager,
+            xcalibreClient: xcalibreClient
+        )
+        self.proProvider = proProvider
+        self.flashProvider = flashProvider
+        self.visionProvider = visionProvider
     }
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
@@ -74,6 +94,49 @@ final class AgenticEngine {
         }
 
         return send(userMessage: body)
+    }
+
+    /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
+    /// `orchestrate` falls back to `reason` when not explicitly assigned.
+    func provider(for slot: AgentSlot) -> (any LLMProvider)? {
+        let effectiveSlot: AgentSlot
+        if slot == .orchestrate, slotAssignments[.orchestrate] == nil {
+            effectiveSlot = .reason
+        } else {
+            effectiveSlot = slot
+        }
+
+        if let providerID = slotAssignments[effectiveSlot],
+           let registry {
+            return registry.provider(for: providerID)
+        }
+
+        switch effectiveSlot {
+        case .execute:
+            return proProvider
+        case .reason, .orchestrate:
+            return flashProvider
+        case .vision:
+            return visionProvider
+        }
+    }
+
+    /// Determines which slot should handle this message.
+    /// Checks `@slot` override annotation first, then vision keywords, then defaults to execute.
+    func selectSlot(for message: String) -> AgentSlot {
+        let lower = message.lowercased()
+
+        // Explicit slot override annotations
+        if lower.hasPrefix("@reason ") || lower.contains(" @reason ") { return .reason }
+        if lower.hasPrefix("@execute ") || lower.contains(" @execute ") { return .execute }
+        if lower.hasPrefix("@orchestrate ") || lower.contains(" @orchestrate ") { return .orchestrate }
+
+        // Vision keywords
+        let visionKeywords = ["screenshot", "screen", "vision", "ui", "click", "button"]
+        if visionKeywords.contains(where: { lower.contains($0) }) { return .vision }
+
+        // Default: execute slot handles all other work
+        return .execute
     }
 
     func cancel() {
@@ -408,6 +471,11 @@ final class AgenticEngine {
     // action keywords → flashProvider, everything else → proProvider.
     // ProviderRegistry overrides take precedence when the user has selected a provider.
     private func selectProvider(for message: String) -> any LLMProvider {
+        let slot = selectSlot(for: message)
+        if let provider = provider(for: slot) {
+            return provider
+        }
+
         if let registry {
             let lower = message.lowercased()
             if ["screenshot", "screen", "vision", "ui", "click", "button"].contains(where: { lower.contains($0) }) {

@@ -87,6 +87,7 @@
 		589EDE4E05FA6938504676B0 /* WorkspaceLayoutManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAE8EDECADBF721CD652BF9 /* WorkspaceLayoutManagerTests.swift */; };
 		58A89D514466E5DACCC0702B /* SkillFrontmatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F07D71DC49B1245D4AD5DD /* SkillFrontmatter.swift */; };
 		58DCB74B4EE207E8F4FFBC2C /* ScheduledTask.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017BE52E9FB37750D343ACED /* ScheduledTask.swift */; };
+		5A50B92FF3740D878AC81CAE /* NullProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DD2796B13F22A3D1B0154F /* NullProvider.swift */; };
 		5BA49F34585F47B0521E4627 /* LMStudioProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7967EC45667E0D2C35EC6543 /* LMStudioProvider.swift */; };
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
@@ -100,6 +101,7 @@
 		63ADB537CEBCC8E73F0F0611 /* ProjectPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6143C997B792E607040419 /* ProjectPickerView.swift */; };
 		63E72143BDE8E47B7D8D6B57 /* SubagentSidebarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACD3D3A1857E0C07C192B30 /* SubagentSidebarViewModel.swift */; };
 		63F4CF3B30038B6E693E886D /* FirstLaunchSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 714CE3DC97F4018EACDE55C6 /* FirstLaunchSetupView.swift */; };
+		64899BFCD9D3A30826EDF4D7 /* AgentSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B6610DB9A5FDADAD72CA67 /* AgentSlot.swift */; };
 		651EC86FCF21425006734E79 /* SubagentEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD886551A64C574A90DA0C59 /* SubagentEngineTests.swift */; };
 		656B515CDBC75DC6B3A4D3C9 /* AXInspectorTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = A661789CB90529FD746DA620 /* AXInspectorTool.swift */; };
 		6631E4883388644E8381C32A /* WorkerDiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91AFB2E34EC877BD0D6601D /* WorkerDiffView.swift */; };
@@ -354,6 +356,7 @@
 		803889700AE9486CD3A8A0D4 /* ConnectorCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorCredentials.swift; sourceTree = "<group>"; };
 		821C53246D5E3AB28225851D /* TOMLDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLDecoder.swift; sourceTree = "<group>"; };
 		83376AE73E0A86AF538F5881 /* MerlinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MerlinApp.swift; sourceTree = "<group>"; };
+		84DD2796B13F22A3D1B0154F /* NullProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NullProvider.swift; sourceTree = "<group>"; };
 		85C6DF69B2D78173D8A33A75 /* PermissionMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionMode.swift; sourceTree = "<group>"; };
 		871665DBD8007EE7BD516A6D /* SkillsRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsRegistry.swift; sourceTree = "<group>"; };
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
@@ -460,6 +463,7 @@
 		F4A3E7BC1DB1F40B9BDB5C3D /* SubagentBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockView.swift; sourceTree = "<group>"; };
 		F800B4D9703BCD2F802BAA40 /* FloatingWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingWindowManager.swift; sourceTree = "<group>"; };
 		F9B5BF2FC12D8E3AB2A1A5D7 /* AgentRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRegistryTests.swift; sourceTree = "<group>"; };
+		F9B6610DB9A5FDADAD72CA67 /* AgentSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSlot.swift; sourceTree = "<group>"; };
 		FB592DE05AB89FF71E587C0A /* Merlin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Merlin.entitlements; sourceTree = "<group>"; };
 		FB63718E38C096E40A8A2532 /* RAGToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGToolsTests.swift; sourceTree = "<group>"; };
 		FBC98AE09D2DC4ED58987185 /* MerlinTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MerlinTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -582,12 +586,14 @@
 			isa = PBXGroup;
 			children = (
 				A9994CB480DAB11B8081EC89 /* AgenticEngine.swift */,
+				F9B6610DB9A5FDADAD72CA67 /* AgentSlot.swift */,
 				8DEAE4AFECE902973EADC31F /* CLAUDEMDLoader.swift */,
 				A65F30CE00DABF745DC5826D /* ContextInjector.swift */,
 				9893A2495D30F7BB69D2C739 /* ContextManager.swift */,
 				6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */,
 				CC3EDFAAE6C71A8DE7832A27 /* DiffComment.swift */,
 				7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */,
+				84DD2796B13F22A3D1B0154F /* NullProvider.swift */,
 				85C6DF69B2D78173D8A33A75 /* PermissionMode.swift */,
 				DDA51BFAC63102AF61997974 /* StagingBuffer.swift */,
 				D817F3FD1F961E50D157C3EB /* ThinkingModeDetector.swift */,
@@ -1279,6 +1285,7 @@
 				656B515CDBC75DC6B3A4D3C9 /* AXInspectorTool.swift in Sources */,
 				CC16717AD9A0E0673F92039D /* AgentDefinition.swift in Sources */,
 				09C60B5AD678EC046B5DCD83 /* AgentRegistry.swift in Sources */,
+				64899BFCD9D3A30826EDF4D7 /* AgentSlot.swift in Sources */,
 				B757FF9372A54C02A867514D /* AgenticEngine.swift in Sources */,
 				34E95FCCA1015C43BFDDA0C1 /* AnthropicProvider.swift in Sources */,
 				6C1340E09002C6962B3AF5B7 /* AnthropicSSEParser.swift in Sources */,
@@ -1332,6 +1339,7 @@
 				000C78AA9999D2BCD378DC69 /* MerlinApp.swift in Sources */,
 				120A11CBB686768C09BA3DF0 /* MerlinCommands.swift in Sources */,
 				466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */,
+				5A50B92FF3740D878AC81CAE /* NullProvider.swift in Sources */,
 				BD776023D0704FE63E552DDB /* OpenAICompatibleProvider.swift in Sources */,
 				625D3D0D2FC9A9CBC024F14E /* PRMonitor.swift in Sources */,
 				93963248993487D653B2FB2F /* PatternMatcher.swift in Sources */,
