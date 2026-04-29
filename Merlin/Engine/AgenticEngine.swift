@@ -17,6 +17,7 @@ enum AgentEvent {
     case subagentStarted(id: UUID, agentName: String)
     case subagentUpdate(id: UUID, event: SubagentEvent)
     case systemNote(String)
+    case ragSources([RAGChunk])
     case error(Error)
 }
 
@@ -320,7 +321,7 @@ final class AgenticEngine {
             )
             if !chunks.isEmpty {
                 effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: chunks)
-                continuation.yield(.systemNote("Library: \(chunks.count) passage\(chunks.count == 1 ? "" : "s") retrieved"))
+                continuation.yield(.ragSources(chunks))
             }
         }
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {

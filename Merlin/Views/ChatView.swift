@@ -426,6 +426,7 @@ final class ChatViewModel: ObservableObject {
     var subagentVMs: [UUID: SubagentBlockViewModel] = [:]
     private var assistantIndex: Int?
     private var toolIndexByCallID: [String: Int] = [:]
+    private(set) var lastRAGSources: [RAGChunk] = []
 
     func submit(appState: AppState) async {
         let message = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -437,6 +438,7 @@ final class ChatViewModel: ObservableObject {
         isSending = true
         assistantIndex = nil
         toolIndexByCallID.removeAll()
+        lastRAGSources = []
         appState.toolActivityState = .streaming
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
@@ -457,6 +459,12 @@ final class ChatViewModel: ObservableObject {
             case .toolCallResult(let result):
                 appState.toolActivityState = .toolExecuting
                 updateToolResult(result)
+            case .ragSources(let chunks):
+                lastRAGSources = chunks
+                if let index = assistantIndex, items.indices.contains(index) {
+                    items[index].ragSources = chunks
+                    bumpRevision()
+                }
             case .subagentStarted, .subagentUpdate:
                 applyEngineEvent(event)
             case .systemNote(let note):
@@ -477,6 +485,7 @@ final class ChatViewModel: ObservableObject {
         draft = ""
         assistantIndex = nil
         toolIndexByCallID.removeAll()
+        lastRAGSources = []
         subagentVMs.removeAll()
         bumpRevision()
     }
@@ -505,6 +514,12 @@ final class ChatViewModel: ObservableObject {
         case .subagentUpdate(let id, let subagentEvent):
             subagentVMs[id]?.apply(subagentEvent)
             bumpRevision()
+        case .ragSources(let chunks):
+            lastRAGSources = chunks
+            if let index = assistantIndex, items.indices.contains(index) {
+                items[index].ragSources = chunks
+                bumpRevision()
+            }
         default:
             break
         }
@@ -518,8 +533,13 @@ final class ChatViewModel: ObservableObject {
     private func appendAssistantText(_ text: String) {
         if let index = assistantIndex, items.indices.contains(index) {
             items[index].text += text
+            if items[index].ragSources.isEmpty {
+                items[index].ragSources = lastRAGSources
+            }
         } else {
-            items.append(ChatEntry(role: .assistant, text: text))
+            var entry = ChatEntry(role: .assistant, text: text)
+            entry.ragSources = lastRAGSources
+            items.append(entry)
             assistantIndex = items.count - 1
         }
         bumpRevision()
@@ -528,8 +548,13 @@ final class ChatViewModel: ObservableObject {
     private func appendThinking(_ text: String) {
         if let index = assistantIndex, items.indices.contains(index) {
             items[index].thinkingText += text
+            if items[index].ragSources.isEmpty {
+                items[index].ragSources = lastRAGSources
+            }
         } else {
-            items.append(ChatEntry(role: .assistant, text: "", thinkingText: text))
+            var entry = ChatEntry(role: .assistant, text: "", thinkingText: text)
+            entry.ragSources = lastRAGSources
+            items.append(entry)
             assistantIndex = items.count - 1
         }
         bumpRevision()
@@ -628,6 +653,7 @@ struct ChatEntry: Identifiable, Sendable {
     var toolIsError: Bool = false
     var toolExpanded: Bool = true
     var subagentID: UUID? = nil
+    var ragSources: [RAGChunk] = []
 }
 
 private struct ChatEntryRow: View {
@@ -711,6 +737,11 @@ private struct ChatEntryRow: View {
                             }
                         }
                         .padding(.top, 4)
+                    }
+
+                    if item.ragSources.isEmpty == false {
+                        RAGSourcesView(chunks: item.ragSources)
+                            .padding(.top, 4)
                     }
                 }
             }
