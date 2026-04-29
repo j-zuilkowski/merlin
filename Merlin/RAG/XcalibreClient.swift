@@ -109,6 +109,10 @@ actor XcalibreClient {
         }
     }
 
+    func isAvailable() async -> Bool {
+        isAvailable
+    }
+
     // MARK: - Search chunks
 
     /// Search book and/or memory chunks.

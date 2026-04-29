@@ -18,7 +18,7 @@ final class HookEngineTests: XCTestCase {
     func test_preToolUse_scriptReturnsAllow() async throws {
         let script = makeScript(stdout: #"{"decision":"allow"}"#, exitCode: 0)
         engine = HookEngine(hooks: [HookConfig(event: "PreToolUse", command: script)])
-        let decision = await engine.runPreToolUse(toolName: "bash", input: ["cmd": "ls" as AnyObject])
+        let decision = await engine.runPreToolUse(toolName: "bash", input: ["cmd": "ls"])
         if case .allow = decision {
         } else {
             XCTFail("Expected .allow, got \(decision)")

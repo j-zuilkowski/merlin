@@ -11,7 +11,7 @@ enum RAGTools {
 
     // MARK: - Tool handlers
 
-    static func search(args: String, client: XcalibreClient) async -> String {
+    static func search(args: String, client: any XcalibreClientProtocol) async -> String {
         struct Args: Decodable {
             var query: String
             var bookIDs: [String]?
@@ -22,13 +22,15 @@ enum RAGTools {
         guard let decoded = try? JSONDecoder().decode(Args.self, from: Data(args.utf8)) else {
             return "Invalid arguments for rag_search."
         }
-        guard await client.isAvailable else {
+        guard await client.isAvailable() else {
             return unavailableMessage
         }
 
         let chunks = await client.searchChunks(
             query: decoded.query,
+            source: "books",
             bookIDs: decoded.bookIDs,
+            projectPath: nil,
             limit: min(max(decoded.limit ?? 10, 1), 20),
             rerank: decoded.rerank ?? false
         )
@@ -38,11 +40,11 @@ enum RAGTools {
         return formatChunks(chunks)
     }
 
-    static func listBooks(client: XcalibreClient) async -> String {
-        guard await client.isAvailable else {
+    static func listBooks(client: any XcalibreClientProtocol) async -> String {
+        guard await client.isAvailable() else {
             return unavailableMessage
         }
-        let books = await client.listBooks()
+        let books = await client.listBooks(limit: 200)
         guard !books.isEmpty else {
             return "No books found in the library."
         }

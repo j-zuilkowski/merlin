@@ -22,7 +22,7 @@ actor HookEngine {
         self.hooks = hooks
     }
 
-    func runPreToolUse(toolName: String, input: [String: Any]) async -> HookDecision {
+    func runPreToolUse(toolName: String, input: [String: String]) async -> HookDecision {
         let relevant = hooks.filter { $0.event == "PreToolUse" && $0.enabled }
         guard relevant.isEmpty == false else {
             return .allow

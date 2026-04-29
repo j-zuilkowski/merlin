@@ -32,13 +32,17 @@ final class AgenticEngine {
     var flashProvider: any LLMProvider
     private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
-    var xcalibreClient: XcalibreClient?
+    var xcalibreClient: (any XcalibreClientProtocol)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
     var permissionMode: PermissionMode = .ask
     var claudeMDContent: String = ""
     var memoriesContent: String = ""
     var onUsageUpdate: ((Int) -> Void)?
+    var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
+    var criticOverride: (any CriticEngineProtocol)?
+    var classifierOverride: (any PlannerEngineProtocol)?
+    var currentProjectPath: String?
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
     }
@@ -52,7 +56,7 @@ final class AgenticEngine {
          registry: ProviderRegistry? = nil,
          toolRouter: ToolRouter,
          contextManager: ContextManager,
-         xcalibreClient: XcalibreClient? = nil) {
+         xcalibreClient: (any XcalibreClientProtocol)? = nil) {
         self.proProvider = NullProvider()
         self.flashProvider = NullProvider()
         self.visionProvider = NullProvider()
@@ -68,7 +72,7 @@ final class AgenticEngine {
                      visionProvider: any LLMProvider,
                      toolRouter: ToolRouter,
                      contextManager: ContextManager,
-                     xcalibreClient: XcalibreClient? = nil) {
+                     xcalibreClient: (any XcalibreClientProtocol)? = nil) {
         self.init(
             slotAssignments: [:],
             registry: nil,
@@ -145,6 +149,16 @@ final class AgenticEngine {
 
         // Default: execute slot handles all other work
         return .execute
+    }
+
+    private func resolvedProvider(for slot: AgentSlot) -> any LLMProvider {
+        if let provider = provider(for: slot) {
+            return provider
+        }
+        if let provider = provider(for: .execute) {
+            return provider
+        }
+        return NullProvider()
     }
 
     func cancel() {
@@ -282,9 +296,25 @@ final class AgenticEngine {
         depth: Int
     ) async throws {
         let context = contextOverride ?? contextManager
+        let domain = await DomainRegistry.shared.activeDomain()
+        let planner = classifierOverride ?? PlannerEngine(
+            executeProvider: resolvedProvider(for: .execute),
+            orchestrateProvider: provider(for: .orchestrate),
+            maxPlanRetries: AppSettings.shared.maxPlanRetries
+        )
+        let classification = await planner.classify(message: userMessage, domain: domain)
+        let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
+
         var effectiveMessage = userMessage
         if let client = xcalibreClient {
-            let chunks = await client.searchChunks(query: userMessage, limit: 3, rerank: false)
+            let chunks = await client.searchChunks(
+                query: userMessage,
+                source: "all",
+                bookIDs: nil,
+                projectPath: currentProjectPath,
+                limit: 3,
+                rerank: false
+            )
             if !chunks.isEmpty {
                 effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: chunks)
                 continuation.yield(.systemNote("Library: \(chunks.count) passage\(chunks.count == 1 ? "" : "s") retrieved"))
@@ -295,18 +325,36 @@ final class AgenticEngine {
         }
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
 
+        if classification.needsPlanning {
+            let planSteps = await planner.decompose(task: userMessage, context: context.messages)
+            if !planSteps.isEmpty {
+                continuation.yield(.systemNote("[Plan: \(planSteps.count) steps]"))
+            }
+        }
+
+        var loopCount = 0
+        let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
+
         while true {
-            let provider = selectProvider(for: userMessage)
+            guard loopCount < maxIterations else {
+                continuation.yield(.systemNote("[Loop ceiling reached — stopping]"))
+                break
+            }
+            loopCount += 1
+
+            let provider = resolvedProvider(for: workingSlot)
             let requestModel = modelID(for: provider)
+            let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
             let request = CompletionRequest(
                 model: requestModel,
                 messages: messagesForProvider(),
-                thinking: shouldUseThinking(for: userMessage) ? ThinkingModeDetector.config(for: userMessage) : nil
+                thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
             )
 
             let stream = try await provider.complete(request: request)
             var assembled: [Int: (id: String, name: String, args: String)] = [:]
             var sawToolCall = false
+            var fullText = ""
 
             for try await chunk in stream {
                 if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
@@ -314,6 +362,7 @@ final class AgenticEngine {
                 }
                 if let content = chunk.delta?.content, !content.isEmpty {
                     continuation.yield(.text(content))
+                    fullText += content
                 }
                 if let toolCalls = chunk.delta?.toolCalls {
                     sawToolCall = true
@@ -332,6 +381,30 @@ final class AgenticEngine {
             }
 
             guard sawToolCall, !assembled.isEmpty else {
+                if classification.complexity != .routine {
+                    if let reasonProvider = self.provider(for: .reason),
+                       !(reasonProvider is NullProvider) {
+                        let critic = makeCritic(domain: domain)
+                        let taskType = domain.taskTypes.first
+                            ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+                        let verdict = await critic.evaluate(
+                            taskType: taskType,
+                            output: fullText,
+                            context: context.messages
+                        )
+                        switch verdict {
+                        case .pass:
+                            break
+                        case .fail(let reason):
+                            continuation.yield(.systemNote("[Critic: \(reason)]"))
+                        case .skipped:
+                            continuation.yield(.systemNote("[unverified — critic unavailable]"))
+                        }
+                    } else {
+                        continuation.yield(.systemNote("[unverified — critic unavailable]"))
+                    }
+                }
+
                 let shouldContinue = await hookEngine.runStop()
                 if shouldContinue {
                     context.append(Message(
@@ -369,9 +442,7 @@ final class AgenticEngine {
             }
 
             for call in regularCalls {
-                let input = (try? JSONSerialization.jsonObject(
-                    with: Data(call.function.arguments.utf8)
-                ) as? [String: Any]) ?? [:]
+                let input = inputDictionary(from: call.function.arguments)
 
                 let hookDecision = await hookEngine.runPreToolUse(
                     toolName: call.function.name,
@@ -426,7 +497,64 @@ final class AgenticEngine {
             try? sessionStore?.save(updated)
         }
 
+        let taskType = domain.taskTypes.first
+            ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+        let signals = OutcomeSignals(
+            stage1Passed: nil,
+            stage2Score: nil,
+            diffAccepted: true,
+            diffEditedOnAccept: false,
+            criticRetryCount: 0,
+            userCorrectedNextTurn: false,
+            sessionCompleted: true,
+            addendumHash: await currentAddendumHash(for: workingSlot)
+        )
+        await performanceTracker.record(
+            modelID: slotAssignments[workingSlot] ?? "",
+            taskType: taskType,
+            signals: signals
+        )
+
+        if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {
+            let summary = context.messages
+                .filter { $0.role == .assistant }
+                .compactMap { if case .text(let t) = $0.content { return t } else { return nil } }
+                .joined(separator: "\n")
+                .prefix(2000)
+            if !summary.isEmpty {
+                _ = await client.writeMemoryChunk(
+                    text: String(summary),
+                    chunkType: "episodic",
+                    sessionID: sessionStore?.activeSession?.id.uuidString,
+                    projectPath: currentProjectPath,
+                    tags: []
+                )
+            }
+        }
+
         onUsageUpdate?(approximateTokens(in: context))
+    }
+
+    private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
+        if let override = criticOverride {
+            return override
+        }
+        return CriticEngine(
+            verificationBackend: domain.verificationBackend,
+            reasonProvider: provider(for: .reason)
+        )
+    }
+
+    private func inputDictionary(from arguments: String) -> [String: String] {
+        guard let data = arguments.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = json as? [String: Any] else {
+            return [:]
+        }
+
+        return dictionary.reduce(into: [:]) { result, pair in
+            result[pair.key] = String(describing: pair.value)
+        }
     }
 
     private func handleSpawnAgent(
@@ -450,7 +578,7 @@ final class AgenticEngine {
         let agentID = UUID()
         continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
 
-        let provider = registry?.primaryProvider ?? proProvider
+        let provider = resolvedProvider(for: .orchestrate)
         let hookEngine = HookEngine(hooks: AppSettings.shared.hooks)
         let subagent = SubagentEngine(
             definition: definition,
