@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsWindowView: View {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var registry = ProviderRegistry()
+    @StateObject private var appState = AppState(projectPath: "")
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
@@ -17,6 +18,7 @@ struct SettingsWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .navigationTitle(selectedSection.label)
         }
+        .environmentObject(appState)
         .frame(minWidth: 640, minHeight: 480)
     }
 
@@ -41,6 +43,8 @@ struct SettingsWindowView: View {
             SchedulerSettingsView()
         case .memories:
             MemoriesSettingsView(settings: settings)
+        case .library:
+            MemoryBrowserView()
         case .mcp:
             MCPSettingsView()
         case .skills:
@@ -68,6 +72,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case hooks
     case scheduler
     case memories
+    case library
     case mcp
     case skills
     case search
@@ -86,6 +91,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .hooks: return "Hooks"
         case .scheduler: return "Scheduler"
         case .memories: return "Memories"
+        case .library: return "Library"
         case .mcp: return "MCP Servers"
         case .skills: return "Skills"
         case .search: return "Web Search"
@@ -106,6 +112,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .hooks: return "terminal"
         case .scheduler: return "clock"
         case .memories: return "brain"
+        case .library: return "books.vertical"
         case .mcp: return "puzzlepiece"
         case .skills: return "star"
         case .search: return "magnifyingglass"

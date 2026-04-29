@@ -161,6 +161,7 @@ private final class XcalibreClientSpy: @unchecked Sendable, XcalibreClientProtoc
         lastSearchProjectPath = projectPath
         return []
     }
+    func searchMemory(query: String, projectPath: String?, limit: Int) async -> [RAGChunk] { [] }
     func writeMemoryChunk(text: String, chunkType: String, sessionID: String?, projectPath: String?, tags: [String]) async -> String? { nil }
     func deleteMemoryChunk(id: String) async {}
     func listBooks(limit: Int) async -> [RAGBook] { [] }

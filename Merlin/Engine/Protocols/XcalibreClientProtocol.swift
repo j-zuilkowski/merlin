@@ -5,6 +5,7 @@ protocol XcalibreClientProtocol: Sendable {
     func isAvailable() async -> Bool
     func searchChunks(query: String, source: String, bookIDs: [String]?,
                       projectPath: String?, limit: Int, rerank: Bool) async -> [RAGChunk]
+    func searchMemory(query: String, projectPath: String?, limit: Int) async -> [RAGChunk]
     func writeMemoryChunk(text: String, chunkType: String, sessionID: String?,
                           projectPath: String?, tags: [String]) async -> String?
     func deleteMemoryChunk(id: String) async

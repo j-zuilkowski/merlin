@@ -79,6 +79,7 @@
 		431702F121351568B8793A6A /* ConnectorCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803889700AE9486CD3A8A0D4 /* ConnectorCredentials.swift */; };
 		456CABC0851E73CA7F0D09FF /* ReasoningEffort.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA231BB600D5DA17BBB560F3 /* ReasoningEffort.swift */; };
 		466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F4442460A9F85EBB2236D6D /* NotificationEngine.swift */; };
+		46AEF34DEEAF9AD236D467CE /* MemoryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */; };
 		49423F862E06BF829B1FEA3B /* ContextInjectorVisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA229D76BE446602D1792C1 /* ContextInjectorVisionTests.swift */; };
 		49B0C1CC9D3B7C91A6C067F7 /* SubagentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C1C016F54B6FA9F5520B08 /* SubagentEngine.swift */; };
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
@@ -413,6 +414,7 @@
 		9A6143C997B792E607040419 /* ProjectPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPickerView.swift; sourceTree = "<group>"; };
 		9A7B9BE28E7E41F1BAC4F667 /* SubagentBlockViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockViewModelTests.swift; sourceTree = "<group>"; };
 		9B6924F574A25CB419F66863 /* MemoryInjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInjectionTests.swift; sourceTree = "<group>"; };
+		9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryBrowserView.swift; sourceTree = "<group>"; };
 		9EA9D168EE03ED999D3C9E6E /* AppSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
 		9F5A34C572AD3C149CB95E10 /* TOMLValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLValue.swift; sourceTree = "<group>"; };
 		9F5C166B601F372FE87B663D /* DisabledSkillsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisabledSkillsTests.swift; sourceTree = "<group>"; };
@@ -823,6 +825,7 @@
 		691B1A2792977F44E441BEC9 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */,
 				F6EC30AA86593D0E23A30FE3 /* PerformanceDashboardView.swift */,
 				49A706366E0093B50E14CF59 /* ProviderSettingsView.swift */,
 				29EDE0CF4979E6BB1C024011 /* RoleSlotSettingsView.swift */,
@@ -1413,6 +1416,7 @@
 				B88477A9FA70506A96ED4174 /* MCPBridge.swift in Sources */,
 				98F281EDA0972A2E66469B9D /* MCPConfig.swift in Sources */,
 				B67A488C32B0230261875BA6 /* MCPToolDefinition.swift in Sources */,
+				46AEF34DEEAF9AD236D467CE /* MemoryBrowserView.swift in Sources */,
 				A7FF08F2D1F8435D4DCCDADA /* MemoryEngine.swift in Sources */,
 				15EB04BBECFCB1030A523CFE /* MemoryEntry.swift in Sources */,
 				BF61D1B976BFCE8E86D6603A /* MemoryReviewView.swift in Sources */,

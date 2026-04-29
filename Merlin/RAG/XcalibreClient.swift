@@ -205,6 +205,22 @@ actor XcalibreClient {
         }
     }
 
+    /// Search xcalibre memory chunks only.
+    /// - Parameters:
+    ///   - query: Full-text search query.
+    ///   - projectPath: Optional project directory to scope results.
+    ///   - limit: Maximum results, clamped to 1...100.
+    func searchMemory(query: String, projectPath: String? = nil, limit: Int = 10) async -> [RAGChunk] {
+        await searchChunks(
+            query: query,
+            source: "memory",
+            bookIDs: nil,
+            projectPath: projectPath,
+            limit: min(max(limit, 1), 100),
+            rerank: false
+        )
+    }
+
     // MARK: - Memory chunks
 
     /// Write a Merlin memory chunk to xcalibre-server.
