@@ -4,6 +4,7 @@ import SwiftUI
 
 // MARK: - AppSettings V5 property tests
 
+@MainActor
 final class V5SettingsUITests: XCTestCase {
 
     // MARK: slotAssignments
@@ -88,7 +89,6 @@ final class V5SettingsUITests: XCTestCase {
 
 /// An in-memory, isolated AppSettings substitute for unit tests.
 /// Does NOT touch UserDefaults, Keychain, or config.toml.
-@MainActor
 private final class TestAppSettings {
     var slotAssignments: [AgentSlot: String] = [:]
     var activeDomainID: String = "software"

@@ -30,6 +30,9 @@ struct SettingsWindowView: View {
         case .providers:
             ProvidersSettingsView()
                 .environmentObject(registry)
+        case .roleSlots:
+            RoleSlotSettingsView()
+                .environmentObject(registry)
         case .agents:
             AgentSettingsView(settings: settings)
         case .hooks:
@@ -48,6 +51,8 @@ struct SettingsWindowView: View {
             PermissionsSettingsView()
         case .connectors:
             ConnectorsSettingsView()
+        case .performance:
+            PerformanceDashboardView()
         case .advanced:
             AdvancedSettingsView()
         }
@@ -58,6 +63,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case general
     case appearance
     case providers
+    case roleSlots
     case agents
     case hooks
     case scheduler
@@ -67,6 +73,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case search
     case permissions
     case connectors
+    case performance
     case advanced
 
     var label: String {
@@ -74,6 +81,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .general: return "General"
         case .appearance: return "Appearance"
         case .providers: return "Providers"
+        case .roleSlots: return "Providers & Slots"
         case .agents: return "Agents"
         case .hooks: return "Hooks"
         case .scheduler: return "Scheduler"
@@ -83,6 +91,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .search: return "Web Search"
         case .permissions: return "Permissions"
         case .connectors: return "Connectors"
+        case .performance: return "Performance Dashboard"
         case .advanced: return "Advanced"
         }
     }
@@ -92,6 +101,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .general: return "gearshape"
         case .appearance: return "paintbrush"
         case .providers: return "server.rack"
+        case .roleSlots: return "person.3"
         case .agents: return "cpu"
         case .hooks: return "terminal"
         case .scheduler: return "clock"
@@ -101,6 +111,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .search: return "magnifyingglass"
         case .permissions: return "lock.shield"
         case .connectors: return "link"
+        case .performance: return "chart.bar"
         case .advanced: return "slider.horizontal.3"
         }
     }

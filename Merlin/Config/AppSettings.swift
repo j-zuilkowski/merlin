@@ -44,6 +44,7 @@ final class AppSettings: ObservableObject {
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
     @Published var xcalibreToken: String = ""
+    @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
     @Published var checkCommand: String = ""
     @Published var activeDomainID: String = "software"
@@ -75,6 +76,7 @@ final class AppSettings: ObservableObject {
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
         var xcalibreToken: String?
+        var slots: [String: String]?
         var verifyCommand: String?
         var checkCommand: String?
         var activeDomainID: String?
@@ -110,6 +112,7 @@ final class AppSettings: ObservableObject {
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
             case xcalibreToken = "xcalibre_token"
+            case slots
             case verifyCommand = "verify_command"
             case checkCommand = "check_command"
             case activeDomainID = "active_domain"
@@ -183,6 +186,15 @@ final class AppSettings: ObservableObject {
         if let value = config.xcalibreToken {
             xcalibreToken = value
         }
+        if let slots = config.slots {
+            var assignments: [AgentSlot: String] = [:]
+            for slot in AgentSlot.allCases {
+                if let providerID = slots[slot.rawValue], !providerID.isEmpty {
+                    assignments[slot] = providerID
+                }
+            }
+            slotAssignments = assignments
+        }
         if let value = config.verifyCommand {
             verifyCommand = value
         }
@@ -224,6 +236,15 @@ final class AppSettings: ObservableObject {
         if memoriesEnabled {
             lines.append("memories_enabled = true")
             lines.append("memory_idle_timeout = \(memoryIdleTimeout)")
+        }
+        if slotAssignments.isEmpty == false {
+            lines.append("")
+            lines.append("[slots]")
+            for slot in AgentSlot.allCases {
+                if let providerID = slotAssignments[slot], !providerID.isEmpty {
+                    lines.append("\(slot.rawValue) = \(quoted(providerID))")
+                }
+            }
         }
         if standingInstructions.isEmpty == false {
             lines.append("standing_instructions = \(quoted(standingInstructions))")

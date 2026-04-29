@@ -72,6 +72,7 @@ final class AppState: ObservableObject {
     let xcalibreClient: XcalibreClient
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
+    private var settingsCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
@@ -157,7 +158,9 @@ final class AppState: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.restartPRMonitor()
+            Task { @MainActor [weak self] in
+                self?.restartPRMonitor()
+            }
         }
         Task {
             let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
@@ -189,11 +192,19 @@ final class AppState: ObservableObject {
             queue: .main
         ) { [weak self] note in
             guard let id = note.userInfo?["providerID"] as? String else { return }
-            self?.activeProviderID = id
+            Task { @MainActor [weak self] in
+                self?.activeProviderID = id
+            }
         }
         KeepAwakeManager.shared.apply(AppSettings.shared.keepAwake)
         keepAwakeCancellable = AppSettings.shared.$keepAwake
             .sink { KeepAwakeManager.shared.apply($0) }
+
+        settingsCancellable = AppSettings.shared.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.syncEngineProviders()
+            }
+        }
 
         toolRouter.register(name: "rag_search") { [weak self] args in
             guard let client = self?.engine?.xcalibreClient else {
@@ -296,7 +307,9 @@ final class AppState: ObservableObject {
             engine.proProvider = fallbackPro
             engine.flashProvider = fallbackFlash
         }
+        engine.slotAssignments = AppSettings.shared.slotAssignments
         activeProviderID = registry.activeProviderID
+        Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
     }
 }
 

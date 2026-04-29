@@ -46,7 +46,7 @@ final class AgenticEngine {
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
     }
-    private var slotAssignments: [AgentSlot: String]
+    var slotAssignments: [AgentSlot: String]
 
     weak var sessionStore: SessionStore?
     private var currentTask: Task<Void, Never>?
