@@ -162,6 +162,8 @@ struct CompletionChunk: Sendable {
     }
 }
 
+typealias ChunkDelta = CompletionChunk.Delta
+
 struct ToolDefinition: Codable, Sendable {
     var type: String = "function"
     var function: FunctionDefinition

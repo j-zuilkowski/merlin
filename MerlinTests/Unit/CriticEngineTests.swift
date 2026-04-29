@@ -110,14 +110,14 @@ private struct StubShellRunner: ShellRunning {
 
 private final class MockReasonProvider: LLMProvider {
     let id = "mock-reason"
-    var response: String
+    let response: String
     init(response: String) { self.response = response }
-    var baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
+    let baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         let text = response
         return AsyncThrowingStream { continuation in
             continuation.yield(CompletionChunk(
-                delta: ChunkDelta(content: text, thinkingContent: nil, toolCalls: nil),
+                delta: ChunkDelta(content: text, toolCalls: nil, thinkingContent: nil),
                 finishReason: "stop"
             ))
             continuation.finish()

@@ -149,6 +149,7 @@
 		98F281EDA0972A2E66469B9D /* MCPConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D5F272696DE3A8AFB9A327 /* MCPConfig.swift */; };
 		9B59C2925E4DF5A22F7F0520 /* TerminalPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D431F5A6C3382C7EE8D9CE5 /* TerminalPane.swift */; };
 		A0000DAB0EA8A483D997B121 /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */; };
+		A14542D1DE4FFA0D57C960AF /* CriticEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */; };
 		A302A47E83B978AEDA39E00A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010B889262AAE8AF30CF04F1 /* AppState.swift */; };
 		A7FF08F2D1F8435D4DCCDADA /* MemoryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39224BAE470FF0BF54304051 /* MemoryEngine.swift */; };
 		A87795245D6852BED4CCAEE9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A385F93C62395C46EB6AEDD8 /* ContentView.swift */; };
@@ -400,6 +401,7 @@
 		A9994CB480DAB11B8081EC89 /* AgenticEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngine.swift; sourceTree = "<group>"; };
 		AA231BB600D5DA17BBB560F3 /* ReasoningEffort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReasoningEffort.swift; sourceTree = "<group>"; };
 		AACD3D3A1857E0C07C192B30 /* SubagentSidebarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentSidebarViewModel.swift; sourceTree = "<group>"; };
+		AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticEngine.swift; sourceTree = "<group>"; };
 		AD4315F5CC65750F4E68F04C /* VoiceDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictationTests.swift; sourceTree = "<group>"; };
 		B0133F4927860C3DEA9F2DE5 /* PRMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRMonitorTests.swift; sourceTree = "<group>"; };
 		B11CD06F1170B3F5FA23984D /* CLAUDEMDLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLAUDEMDLoaderTests.swift; sourceTree = "<group>"; };
@@ -597,6 +599,7 @@
 				A65F30CE00DABF745DC5826D /* ContextInjector.swift */,
 				9893A2495D30F7BB69D2C739 /* ContextManager.swift */,
 				6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */,
+				AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */,
 				CC3EDFAAE6C71A8DE7832A27 /* DiffComment.swift */,
 				7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */,
 				C89702EADAB9966D9D5BF0D0 /* ModelPerformanceTracker.swift */,
@@ -1319,6 +1322,7 @@
 				7CD14B6A0B8C6A6AD3D244C7 /* ContextInjector.swift in Sources */,
 				174394DE8B17C3EBB5495E58 /* ContextManager.swift in Sources */,
 				1978829EFB49171EA494B584 /* ContextUsageTracker.swift in Sources */,
+				A14542D1DE4FFA0D57C960AF /* CriticEngine.swift in Sources */,
 				7DC399E6543DDB473F3D0F70 /* DeepSeekProvider.swift in Sources */,
 				3BE60BAB4A9808649E49D4AF /* DiffComment.swift in Sources */,
 				A0000DAB0EA8A483D997B121 /* DiffEngine.swift in Sources */,
