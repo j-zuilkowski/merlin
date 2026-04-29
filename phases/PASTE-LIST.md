@@ -536,7 +536,337 @@ cat phases/phase-59-subagent-sidebar-ui.md
 # Verify: BUILD SUCCEEDED; all SubagentSidebarViewModelTests pass
 # Commit: Phase 59 — SubagentSidebar UI
 
-# ── DONE (v4) ─────────────────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 4 (continued) — Skills, Vision, Memory, Settings, Workspace, Wiring
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 60a — Skill Compaction Tests ───────────────────────────────────────
+cat phases/phase-60a-skill-compaction-tests.md
+# Verify: BUILD FAILED with errors for SkillCompactionEngine (expected)
+# Commit: Phase 60a — SkillCompactionTests (failing)
+
+# ── PHASE 60b — Skill Compaction Implementation ───────────────────────────────
+cat phases/phase-60b-skill-compaction.md
+# Verify: BUILD SUCCEEDED; SkillCompactionTests → pass
+# Commit: Phase 60b — Skill Compaction
+
+# ── PHASE 61a — Vision Attachment Tests ──────────────────────────────────────
+cat phases/phase-61a-vision-attachment-tests.md
+# Verify: BUILD FAILED with errors for ContextInjector vision methods (expected)
+# Commit: Phase 61a — ContextInjectorVisionTests (failing)
+
+# ── PHASE 61b — Vision Attachment Implementation ──────────────────────────────
+cat phases/phase-61b-vision-attachment.md
+# Verify: BUILD SUCCEEDED; ContextInjectorVisionTests → pass
+# Commit: Phase 61b — Vision Attachment
+
+# ── PHASE 62a — Memory Generation Tests ──────────────────────────────────────
+cat phases/phase-62a-memory-generation-tests.md
+# Verify: BUILD FAILED with errors for MemoryEngine generation methods (expected)
+# Commit: Phase 62a — MemoryGenerationTests (failing)
+
+# ── PHASE 62b — Memory Generation Implementation ─────────────────────────────
+cat phases/phase-62b-memory-generation.md
+# Verify: BUILD SUCCEEDED; MemoryGenerationTests → pass
+# Commit: Phase 62b — Memory Generation
+
+# ── PHASE 63a — Memory Injection Tests ───────────────────────────────────────
+cat phases/phase-63a-memory-injection-tests.md
+# Verify: BUILD FAILED with errors for MemoryEngine injection methods (expected)
+# Commit: Phase 63a — MemoryInjectionTests (failing)
+
+# ── PHASE 63b — Memory Injection Implementation ───────────────────────────────
+cat phases/phase-63b-memory-injection.md
+# Verify: BUILD SUCCEEDED; MemoryInjectionTests → pass
+# Commit: Phase 63b — Memory Injection
+
+# ── PHASE 64 — SettingsSection Enum ──────────────────────────────────────────
+cat phases/phase-64-settings-section-enum.md
+# Verify: BUILD SUCCEEDED; settings navigation includes all sections
+# Commit: Phase 64 — SettingsSection Enum
+
+# ── PHASE 65 — Agent Settings Section ────────────────────────────────────────
+cat phases/phase-65-agent-settings.md
+# Verify: BUILD SUCCEEDED; Agent settings section renders in Settings window
+# Commit: Phase 65 — Agent Settings Section
+
+# ── PHASE 66 — Memories Settings Section ─────────────────────────────────────
+cat phases/phase-66-memories-settings.md
+# Verify: BUILD SUCCEEDED; Memories settings section renders
+# Commit: Phase 66 — Memories Settings Section
+
+# ── PHASE 67 — MCP Settings Section ──────────────────────────────────────────
+cat phases/phase-67-mcp-settings.md
+# Verify: BUILD SUCCEEDED; MCP settings section renders
+# Commit: Phase 67 — MCP Settings Section
+
+# ── PHASE 68 — Skills Settings Section ───────────────────────────────────────
+cat phases/phase-68-skills-settings.md
+# Verify: BUILD SUCCEEDED; Skills settings section renders
+# Commit: Phase 68 — Skills Settings Section
+
+# ── PHASE 69 — Web Search Settings Section ───────────────────────────────────
+cat phases/phase-69-search-settings.md
+# Verify: BUILD SUCCEEDED; Web Search settings section renders
+# Commit: Phase 69 — Web Search Settings Section
+
+# ── PHASE 70 — Permissions Settings Section ──────────────────────────────────
+cat phases/phase-70-permissions-settings.md
+# Verify: BUILD SUCCEEDED; Permissions settings section renders
+# Commit: Phase 70 — Permissions Settings Section
+
+# ── PHASE 71 — Advanced + Connectors Settings ────────────────────────────────
+cat phases/phase-71-advanced-connectors-settings.md
+# Verify: BUILD SUCCEEDED; Advanced and Connectors settings sections render
+# Commit: Phase 71 — Advanced + Connectors Settings
+
+# ── PHASE 72a — WorkspaceLayoutManager Tests ─────────────────────────────────
+cat phases/phase-72a-workspace-layout-tests.md
+# Verify: BUILD FAILED with errors for WorkspaceLayoutManager (expected)
+# Commit: Phase 72a — WorkspaceLayoutManagerTests (failing)
+
+# ── PHASE 72b — WorkspaceLayoutManager Implementation ────────────────────────
+cat phases/phase-72b-workspace-layout.md
+# Verify: BUILD SUCCEEDED; WorkspaceLayoutManagerTests → pass
+# Commit: Phase 72b — WorkspaceLayoutManager
+
+# ── PHASE 73 — FilePane ───────────────────────────────────────────────────────
+cat phases/phase-73-file-pane.md
+# Verify: BUILD SUCCEEDED; FilePane renders inline file viewer
+# Commit: Phase 73 — FilePane
+
+# ── PHASE 74 — TerminalPane ───────────────────────────────────────────────────
+cat phases/phase-74-terminal-pane.md
+# Verify: BUILD SUCCEEDED; TerminalPane renders inline PTY terminal
+# Commit: Phase 74 — TerminalPane
+
+# ── PHASE 75 — PreviewPane ────────────────────────────────────────────────────
+cat phases/phase-75-preview-pane.md
+# Verify: BUILD SUCCEEDED; PreviewPane renders HTML/Markdown via WKWebView
+# Commit: Phase 75 — PreviewPane
+
+# ── PHASE 76 — SideChat ──────────────────────────────────────────────────────
+cat phases/phase-76-side-chat.md
+# Verify: BUILD SUCCEEDED; SideChat renders independent secondary chat panel
+# Commit: Phase 76 — SideChat
+
+# ── PHASE 77 — WorkspaceView Wiring ──────────────────────────────────────────
+cat phases/phase-77-workspace-wiring.md
+# Verify: BUILD SUCCEEDED; all panes wire into WorkspaceView with layout persistence
+# Commit: Phase 77 — WorkspaceView Wiring
+
+# ── PHASE 78 — Fix MerlinApp Settings Scene ──────────────────────────────────
+cat phases/phase-78-fix-settings-scene.md
+# Verify: BUILD SUCCEEDED; Settings window opens correctly from menu
+# Commit: Phase 78 — Fix Settings Scene
+
+# ── PHASE 79a — Subagent Chat Integration Tests ───────────────────────────────
+cat phases/phase-79a-subagent-chat-tests.md
+# Verify: BUILD FAILED with errors for subagent chat integration (expected)
+# Commit: Phase 79a — SubagentChatIntegrationTests (failing)
+
+# ── PHASE 79b — Subagent Chat Integration ────────────────────────────────────
+cat phases/phase-79b-subagent-chat.md
+# Verify: BUILD SUCCEEDED; SubagentChatIntegrationTests → pass
+# Commit: Phase 79b — Subagent Chat Integration
+
+# ── PHASE 80a — DisabledSkillNames Enforcement Tests ─────────────────────────
+cat phases/phase-80a-disabled-skills-tests.md
+# Verify: BUILD FAILED with errors for disabled skill enforcement (expected)
+# Commit: Phase 80a — DisabledSkillNamesTests (failing)
+
+# ── PHASE 80b — DisabledSkillNames Enforcement ───────────────────────────────
+cat phases/phase-80b-disabled-skills.md
+# Verify: BUILD SUCCEEDED; DisabledSkillNamesTests → pass
+# Commit: Phase 80b — DisabledSkillNames Enforcement
+
+# ── PHASE 81 — Scheduler Settings + Wiring ───────────────────────────────────
+cat phases/phase-81-scheduler-settings.md
+# Verify: BUILD SUCCEEDED; Scheduler settings section renders; SchedulerEngine wired
+# Commit: Phase 81 — Scheduler Settings + Wiring
+
+# ── PHASE 82 — ContextUsageTracker: Wire Into ProviderHUD ────────────────────
+cat phases/phase-82-context-usage-indicator.md
+# Verify: BUILD SUCCEEDED; context usage indicator appears in ProviderHUD
+# Commit: Phase 82 — ContextUsageTracker
+
+# ── PHASE 83 — Voice Dictation Button ────────────────────────────────────────
+cat phases/phase-83-voice-dictation-button.md
+# Verify: BUILD SUCCEEDED; microphone button appears in ChatView input area
+# Commit: Phase 83 — Voice Dictation Button
+
+# ── PHASE 84 — FloatingWindowManager ─────────────────────────────────────────
+cat phases/phase-84-floating-window.md
+# Verify: BUILD SUCCEEDED; floating window opens from menu item and keyboard shortcut
+# Commit: Phase 84 — FloatingWindowManager
+
+# ── PHASE 85 — ThreadAutomationEngine Wiring ─────────────────────────────────
+cat phases/phase-85-thread-automations.md
+# Verify: BUILD SUCCEEDED; ThreadAutomationEngine wired into LiveSession
+# Commit: Phase 85 — ThreadAutomationEngine Wiring
+
+# ── PHASE 86 — ToolbarActionStore Wiring ─────────────────────────────────────
+cat phases/phase-86-toolbar-actions.md
+# Verify: BUILD SUCCEEDED; toolbar actions render and fire from ChatView toolbar
+# Commit: Phase 86 — ToolbarActionStore Wiring
+
+# ── PHASE 87 — PRMonitor Wiring ───────────────────────────────────────────────
+cat phases/phase-87-pr-monitor.md
+# Verify: BUILD SUCCEEDED; PRMonitor wired into AppState
+# Commit: Phase 87 — PRMonitor Wiring
+
+# ── PHASE 88a — AppSettings Additions Tests ───────────────────────────────────
+cat phases/phase-88a-appsettings-additions-tests.md
+# Verify: BUILD FAILED with errors for keepAwake, permissionMode, notifications, messageDensity (expected)
+# Commit: Phase 88a — AppSettingsAdditionsTests (failing)
+
+# ── PHASE 88b — AppSettings Additions Implementation ─────────────────────────
+cat phases/phase-88b-appsettings-additions.md
+# Verify: BUILD SUCCEEDED; AppSettingsAdditionsTests → pass
+# Commit: Phase 88b — AppSettings Additions
+
+# ── PHASE 89 — General + Appearance Settings ─────────────────────────────────
+cat phases/phase-89-settings-general-appearance.md
+# Verify: BUILD SUCCEEDED; General and Appearance settings sections complete
+# Commit: Phase 89 — General + Appearance Settings
+
+# ── PHASE 90 — Advanced Settings ─────────────────────────────────────────────
+cat phases/phase-90-advanced-settings.md
+# Verify: BUILD SUCCEEDED; Advanced settings section complete
+# Commit: Phase 90 — Advanced Settings
+
+# ── PHASE 91 — Register Built-in Tools at Launch ─────────────────────────────
+cat phases/phase-91-tool-registry-launch.md
+# Verify: BUILD SUCCEEDED; all built-in tools registered via ToolRegistry at launch
+# Commit: Phase 91 — Tool Registry Launch
+
+# ── PHASE 92 — Apply messageDensity to ChatView ───────────────────────────────
+cat phases/phase-92-message-density-chat.md
+# Verify: BUILD SUCCEEDED; message density setting applied to ChatView rows
+# Commit: Phase 92 — Message Density ChatView
+
+# ── PHASE 93 — Keep Awake (IOPMAssertion) ────────────────────────────────────
+cat phases/phase-93-keep-awake.md
+# Verify: BUILD SUCCEEDED; IOPMAssertion held while keepAwake is enabled
+# Commit: Phase 93 — Keep Awake
+
+# ── PHASE 94 — Notifications Enabled Guard ───────────────────────────────────
+cat phases/phase-94-notifications-enabled-guard.md
+# Verify: BUILD SUCCEEDED; NotificationEngine gated on notificationsEnabled setting
+# Commit: Phase 94 — Notifications Enabled Guard
+
+# ── PHASE 95 — Default Permission Mode ───────────────────────────────────────
+cat phases/phase-95-default-permission-mode.md
+# Verify: BUILD SUCCEEDED; defaultPermissionMode applied to new sessions
+# Commit: Phase 95 — Default Permission Mode
+
+# ── PHASE 96 — AgentRegistry Launch Registration ─────────────────────────────
+cat phases/phase-96-agent-registry-launch.md
+# Verify: BUILD SUCCEEDED; AgentRegistry.registerBuiltins() called at launch
+# Commit: Phase 96 — AgentRegistry Launch
+
+# ── PHASE 97 — HookEngine Main Loop Wiring ───────────────────────────────────
+cat phases/phase-97-hook-engine-main-loop.md
+# Verify: BUILD SUCCEEDED; HookEngine wired into AgenticEngine main loop
+# Commit: Phase 97 — HookEngine Main Loop Wiring
+
+# ── PHASE 98 — Apply AppTheme + Font Settings to UI ──────────────────────────
+cat phases/phase-98-appearance-application.md
+# Verify: BUILD SUCCEEDED; AppTheme and font settings applied throughout UI
+# Commit: Phase 98 — Appearance Application
+
+# ── DONE (v4 complete) ────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
 #        xcodebuild -scheme Merlin → zero errors, zero warnings
+
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 5 — Supervisor-Worker Multi-LLM + Domain Plugin System
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 99a — DomainRegistry + DomainPlugin Tests ───────────────────────────
+cat phases/phase-99a-domain-registry-tests.md
+# Verify: BUILD FAILED — DomainRegistry, DomainPlugin, DomainTaskType, DomainManifest, MCPDomainAdapter not defined (expected)
+# Commit: Phase 99a — DomainRegistryTests + DomainManifestTests (failing)
+
+# ── PHASE 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain ──
+cat phases/phase-99b-domain-registry.md
+# Verify: BUILD SUCCEEDED; DomainRegistryTests → 5 pass; DomainManifestTests → 2 pass
+# Commit: Phase 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain
+
+# ── PHASE 100a — AgenticEngine Role Slot Routing Tests ────────────────────────
+cat phases/phase-100a-role-slot-routing-tests.md
+# Verify: BUILD FAILED — AgentSlot, AgenticEngine slot init not defined (expected)
+# Commit: Phase 100a — AgenticEngineSlotTests (failing)
+
+# ── PHASE 100b — AgenticEngine Role Slot Routing ──────────────────────────────
+cat phases/phase-100b-role-slot-routing.md
+# Verify: BUILD SUCCEEDED; AgenticEngineSlotTests → 7 pass; zero warnings
+# Commit: Phase 100b — AgenticEngine role slot routing (execute/reason/orchestrate/vision)
+
+# ── PHASE 101a — ModelPerformanceTracker Tests ────────────────────────────────
+cat phases/phase-101a-performance-tracker-tests.md
+# Verify: BUILD FAILED — OutcomeSignals, ModelPerformanceTracker not defined (expected)
+# Commit: Phase 101a — ModelPerformanceTrackerTests (failing)
+
+# ── PHASE 101b — ModelPerformanceTracker ──────────────────────────────────────
+cat phases/phase-101b-performance-tracker.md
+# Verify: BUILD SUCCEEDED; ModelPerformanceTrackerTests → 6 pass; zero warnings
+# Commit: Phase 101b — ModelPerformanceTracker
+
+# ── PHASE 102a — CriticEngine Tests ───────────────────────────────────────────
+cat phases/phase-102a-critic-engine-tests.md
+# Verify: BUILD FAILED — CriticResult, CriticEngine, ShellRunning not defined (expected)
+# Commit: Phase 102a — CriticEngineTests (failing)
+
+# ── PHASE 102b — CriticEngine (Stage 1 + Stage 2) ────────────────────────────
+cat phases/phase-102b-critic-engine.md
+# Verify: BUILD SUCCEEDED; CriticEngineTests → 5 pass; zero warnings
+# Commit: Phase 102b — CriticEngine (Stage 1 domain verification + Stage 2 reason slot)
+
+# ── PHASE 103a — PlannerEngine Tests ──────────────────────────────────────────
+cat phases/phase-103a-planner-tests.md
+# Verify: BUILD FAILED — ComplexityTier, ClassifierResult, PlannerEngine, PlanStep not defined (expected)
+# Commit: Phase 103a — PlannerEngineTests (failing)
+
+# ── PHASE 103b — PlannerEngine ────────────────────────────────────────────────
+cat phases/phase-103b-planner-engine.md
+# Verify: BUILD SUCCEEDED; PlannerEngineTests → 7 pass; zero warnings
+# Commit: Phase 103b — PlannerEngine
+
+# ── PHASE 104 — System Prompt Addendum ────────────────────────────────────────
+cat phases/phase-104-system-prompt-addendum.md
+# Verify: BUILD SUCCEEDED; all existing tests pass; addendum wired in buildSystemPrompt()
+# Commit: Phase 104 — system_prompt_addendum injection
+
+# ── PHASE 105a — V5 AgenticEngine Run Loop Tests ──────────────────────────────
+cat phases/phase-105a-v5-runloop-tests.md
+# Verify: BUILD FAILED — protocols and engine test hooks not defined (expected)
+# Commit: Phase 105a — AgenticEngineV5Tests (failing)
+
+# ── PHASE 105b — V5 AgenticEngine Run Loop ────────────────────────────────────
+cat phases/phase-105b-v5-runloop.md
+# Verify: BUILD SUCCEEDED; AgenticEngineV5Tests → 6 pass; all prior tests pass
+# Commit: Phase 105b — V5 AgenticEngine run loop (planner + critic + tracker + memory write)
+
+# ── PHASE 106 — V5 Settings UI ────────────────────────────────────────────────
+cat phases/phase-106-v5-settings-ui.md
+# Verify: BUILD SUCCEEDED; Settings > Providers & Slots renders; Performance Dashboard renders
+# Commit: Phase 106 — V5 Settings UI (role slot assignment + domain selector + performance dashboard)
+
+# ── PHASE 107a — V5 Skill Frontmatter Tests ───────────────────────────────────
+cat phases/phase-107a-skill-frontmatter-v5-tests.md
+# Verify: BUILD FAILED — SkillFrontmatter.role, SkillFrontmatter.complexity not defined (expected)
+# Commit: Phase 107a — SkillFrontmatterV5Tests (failing)
+
+# ── PHASE 107b — V5 Skill Frontmatter ─────────────────────────────────────────
+cat phases/phase-107b-skill-frontmatter-v5.md
+# Verify: BUILD SUCCEEDED; SkillFrontmatterV5Tests → 6 pass; zero warnings
+# Commit: Phase 107b — Skill frontmatter role: and complexity: declarations
+
+# ── DONE (v5 core) ────────────────────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass
+#        xcodebuild -scheme Merlin → zero errors, zero warnings
+#
+# V5 RAG Memory Extension (phases 108+) — xcalibre Phase 18 shipped, implement next.
+# V6 LoRA Self-Training — needs Unsloth/LM Studio adapter exploration first.
 ```

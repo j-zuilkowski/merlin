@@ -4,23 +4,30 @@ import Foundation
 
 struct RAGChunk: Codable, Sendable {
     var chunkID: String
-    var bookID: String
-    var bookTitle: String
+    /// "books" or "memory" — distinguishes book content chunks from Merlin memory chunks.
+    var source: String
+    var bookID: String?
+    var bookTitle: String?
     var headingPath: String?
     var chunkType: String
     var text: String
-    var wordCount: Int
+    var wordCount: Int?
+    var bm25Score: Double?
+    var cosineScore: Double?
     var rrfScore: Double
     var rerankScore: Double?
 
     enum CodingKeys: String, CodingKey {
         case chunkID = "chunk_id"
+        case source
         case bookID = "book_id"
         case bookTitle = "book_title"
         case headingPath = "heading_path"
         case chunkType = "chunk_type"
         case text
         case wordCount = "word_count"
+        case bm25Score = "bm25_score"
+        case cosineScore = "cosine_score"
         case rrfScore = "rrf_score"
         case rerankScore = "rerank_score"
     }
@@ -52,6 +59,16 @@ extension URLSession: HTTPFetching {}
 
 private struct ChunkSearchResponse: Decodable {
     var chunks: [RAGChunk]
+    // query, total_searched, retrieval_ms also present in response — ignored here
+}
+
+private struct IngestMemoryChunkResponse: Decodable {
+    var id: String
+    var createdAt: Int64
+    enum CodingKeys: String, CodingKey {
+        case id
+        case createdAt = "created_at"
+    }
 }
 
 private struct BooksListResponse: Decodable {
@@ -94,9 +111,15 @@ actor XcalibreClient {
 
     // MARK: - Search chunks
 
+    /// Search book and/or memory chunks.
+    /// - Parameters:
+    ///   - source: `"books"` (default), `"memory"`, or `"all"`.
+    ///   - projectPath: Scopes memory chunk results to a specific project path.
     func searchChunks(
         query: String,
+        source: String = "books",
         bookIDs: [String]? = nil,
+        projectPath: String? = nil,
         limit: Int = 5,
         rerank: Bool = false
     ) async -> [RAGChunk] {
@@ -106,10 +129,14 @@ actor XcalibreClient {
         var components = URLComponents(string: "\(baseURL)/api/v1/search/chunks")!
         var items: [URLQueryItem] = [
             URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "source", value: source),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "rerank", value: rerank ? "true" : "false")
         ]
         bookIDs?.forEach { items.append(URLQueryItem(name: "book_ids[]", value: $0)) }
+        if let projectPath {
+            items.append(URLQueryItem(name: "project_path", value: projectPath))
+        }
         components.queryItems = items
 
         guard let url = components.url else { return [] }
@@ -128,6 +155,59 @@ actor XcalibreClient {
             isAvailable = false
             return []
         }
+    }
+
+    // MARK: - Memory chunks
+
+    /// Write a Merlin memory chunk to xcalibre-server.
+    /// Returns the TEXT UUID assigned by the server, or nil on failure (silent — no user-facing error).
+    @discardableResult
+    func writeMemoryChunk(
+        text: String,
+        chunkType: String,        // "episodic" | "factual"
+        sessionID: String? = nil,
+        projectPath: String? = nil,
+        tags: [String] = []
+    ) async -> String? {
+        guard isAvailable else { return nil }
+        guard !token.isEmpty else { return nil }
+        guard let url = URL(string: "\(baseURL)/api/v1/memory") else { return nil }
+
+        var body: [String: Any] = ["text": text, "chunk_type": chunkType]
+        if let sessionID { body["session_id"] = sessionID }
+        if let projectPath { body["project_path"] = projectPath }
+        if !tags.isEmpty { body["tags"] = tags }
+
+        guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = bodyData
+        request.timeoutInterval = 10
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let (data, response) = try await fetcher.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 201 else { return nil }
+            return (try? JSONDecoder().decode(IngestMemoryChunkResponse.self, from: data))?.id
+        } catch {
+            return nil
+        }
+    }
+
+    /// Delete a Merlin memory chunk by its TEXT UUID. Silent on failure.
+    func deleteMemoryChunk(id: String) async {
+        guard isAvailable else { return }
+        guard !token.isEmpty else { return }
+        guard let url = URL(string: "\(baseURL)/api/v1/memory/\(id)") else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 10
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        _ = try? await fetcher.data(for: request)
     }
 
     // MARK: - List books

@@ -33,6 +33,7 @@ private let sampleChunkJSON = """
     "chunks": [
         {
             "chunk_id": "abc123",
+            "source": "books",
             "book_id": "book1",
             "book_title": "Swift Programming",
             "heading_path": "Closures › Capturing Values",

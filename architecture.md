@@ -193,7 +193,7 @@ User message arrives
 └── All other tasks        → registry.primaryProvider (user-selected active provider)
 ```
 
-The pro/flash split is retired. One active provider per session. A skill's `model` frontmatter field overrides the active provider for that skill's turn. [v2]
+The pro/execute split is retired. One active provider per session. A skill's `model` frontmatter field overrides the active provider for that skill's turn. [v2]
 
 ---
 
@@ -1360,3 +1360,818 @@ max_subagent_depth = 2     # max spawn_agent nesting depth
 | V4a UI | Inline collapsible blocks in parent chat stream |
 | V4b UI | Promote write-capable workers to SessionSidebar child entries with per-worktree diff view |
 | Streaming shell pane | Deferred to v5 |
+
+---
+
+## V5 — Domain Plugin System
+
+Merlin is a general-purpose agentic assistant, not a software development tool. Current focus is software development (Swift/Xcode, any language via SSH or remote plugin), but the architecture is designed so that new domains — electronics (schematics, PCB gerber files), construction (building plans, wiring, plumbing, code compliance), culinary (recipes), or any other — can be added without modifying core Merlin code.
+
+A domain is packaged as an MCP server. It registers at startup and contributes domain-specific task types, a verification backend, complexity keywords, tools, and prompt guidance. The core V5 mechanisms (critic, tracker, planner, routing) consume whatever the active domain provides — they have no knowledge of which domain is running.
+
+### DomainPlugin Protocol
+
+Every domain implements this contract:
+
+```swift
+protocol DomainPlugin {
+    var id: String { get }                          // e.g. "software", "pcb", "construction"
+    var displayName: String { get }
+    var taskTypes: [DomainTaskType] { get }         // domain-specific task classifications
+    var verificationBackend: VerificationBackend { get }
+    var highStakesKeywords: [String] { get }        // elevates complexity tier on match
+    var systemPromptAddendum: String? { get }       // domain-specific system prompt addition
+    var mcpToolNames: [String] { get }              // tools this domain contributes via MCP
+}
+```
+
+**MCP bridge — `MCPDomainAdapter`**
+
+MCP servers are external processes communicating via JSON-RPC — they cannot directly conform to a Swift protocol. An MCP domain server advertises its capabilities through a standard resource schema (`merlin://domain/manifest`), and a Swift `MCPDomainAdapter` reads that manifest at connection time and wraps it into a `DomainPlugin`:
+
+```swift
+struct MCPDomainAdapter: DomainPlugin {
+    // Populated from the MCP server's domain manifest at startup
+    init(manifest: DomainManifest, mcpServerID: String)
+}
+
+struct DomainManifest: Decodable {
+    var id: String
+    var displayName: String
+    var taskTypes: [DomainTaskType]
+    var highStakesKeywords: [String]
+    var systemPromptAddendum: String?
+    var verificationCommands: [String: [VerificationCommand]]  // taskType.name → commands
+}
+```
+
+The built-in `SoftwareDomain` conforms directly to `DomainPlugin` in Swift. All external domains (PCB, construction, etc.) arrive via `MCPDomainAdapter`.
+
+### DomainTaskType
+
+Replaces the hardcoded `TaskType` enum. Each domain registers its own task types, which the tracker records against and the planner classifier uses:
+
+```swift
+struct DomainTaskType: Hashable, Codable {
+    var domainID: String    // "software", "pcb", "construction", etc.
+    var name: String        // "codeGeneration", "schematicDesign", "floorPlan", etc.
+    var displayName: String
+}
+```
+
+`DomainRegistry.shared` maintains the live set of registered task types. The `ModelPerformanceTracker` keys profiles on `DomainTaskType` rather than a hardcoded enum, so it automatically tracks performance for any domain that registers.
+
+### VerificationBackend Protocol
+
+Stage 1 of the critic is domain-provided, not hardcoded to compile/test/lint:
+
+```swift
+protocol VerificationBackend {
+    // Returns nil if this domain has no deterministic verification for the given task type.
+    // The backend is initialised with its config at construction — no config parameter here.
+    func verificationCommands(for taskType: DomainTaskType) -> [VerificationCommand]?
+}
+
+enum PassCondition {
+    case exitCode(Int)                    // process exit code must match
+    case outputContains(String)           // stdout/stderr must contain this substring
+    case custom((String) -> Bool)         // arbitrary predicate on combined output
+}
+
+struct VerificationCommand {
+    var label: String           // "Compile", "DRC", "Code compliance check"
+    var command: String         // shell command — may be local, SSH, or plugin-provided
+    var passCondition: PassCondition
+}
+```
+
+Remote execution (SSH, plugin API) is handled at the command level — `command` can be `ssh user@host 'cargo check'` or any other shell-executable string. Merlin's `ShellTool` runs it without knowing whether it's local or remote.
+
+Built-in backends shipped with Merlin:
+
+| Backend | Domain | Checks |
+|---|---|---|
+| `SoftwareVerificationBackend` | Software development | Compile, test, lint — configured via `verify_command` / `check_command` |
+| `NullVerificationBackend` | Domains with no deterministic check | Stage 1 always passes; Stage 2 (model) handles all verification |
+
+Future backends (shipped as domain plugins):
+
+| Backend | Domain | Checks |
+|---|---|---|
+| `PCBVerificationBackend` | Electronics | DRC, electrical rules check (ERC), Gerber export validation |
+| `ComplianceVerificationBackend` | Construction | Building code compliance — queries xcalibre or online code databases |
+
+### DomainRegistry
+
+```swift
+actor DomainRegistry {
+    static let shared: DomainRegistry
+
+    func register(_ plugin: DomainPlugin) async
+    func unregister(id: String) async
+    func activeDomain() -> DomainPlugin        // falls back to SoftwareDomain if none set
+    func taskTypes() -> [DomainTaskType]       // active domain only (multi-domain deferred)
+    func plugin(for id: String) -> DomainPlugin?
+}
+```
+
+Domains register at MCP server startup and unregister when the server disconnects. The active domain is set in `AppSettings` and shown in the toolbar alongside the active provider. One active domain at a time — multi-domain sessions are deferred.
+
+### Built-in: Software Domain
+
+The software development domain is the default plugin, always registered. It provides:
+
+```swift
+struct SoftwareDomain: DomainPlugin {
+    let id = "software"
+    let displayName = "Software Development"
+
+    let taskTypes: [DomainTaskType] = [
+        .init(domainID: "software", name: "codeGeneration",  displayName: "Code Generation"),
+        .init(domainID: "software", name: "refactoring",     displayName: "Refactoring"),
+        .init(domainID: "software", name: "explanation",     displayName: "Explanation"),
+        .init(domainID: "software", name: "multiFileEdit",   displayName: "Multi-File Edit"),
+        .init(domainID: "software", name: "shellCommand",    displayName: "Shell Command"),
+        .init(domainID: "software", name: "other",           displayName: "Other"),
+    ]
+
+    let highStakesKeywords = ["migration", "auth", "security", "delete", "drop", "permission"]
+
+    var verificationBackend: VerificationBackend { SoftwareVerificationBackend() }
+}
+```
+
+Verification config per project in `config.toml`:
+
+```toml
+[domain.software.verification]
+verify_command = "xcodebuild build -scheme Merlin"
+check_command  = "xcodebuild test -scheme MerlinTests"
+lint_command   = "swiftlint"
+# Remote example:
+# verify_command = "ssh build-host 'cargo check --manifest-path /srv/project/Cargo.toml'"
+```
+
+### Adding a New Domain
+
+To add a domain (e.g. PCB):
+
+1. Build an MCP server that exposes a `merlin://domain/manifest` resource — `MCPDomainAdapter` reads it at connection time and wraps it into a `DomainPlugin` automatically
+2. Provide `taskTypes`, `highStakesKeywords`, `verificationCommands`, and any MCP tools in the manifest
+3. Set `active_domain = "pcb"` in `config.toml` or switch in Settings
+4. No changes to core Merlin required
+
+The tracker, critic, planner, and routing all adapt automatically to whatever the registered domain provides.
+
+| Decision | Domain system |
+|---|---|
+| Extension mechanism | MCP server exposing `merlin://domain/manifest`; `MCPDomainAdapter` wraps it into `DomainPlugin` |
+| Task types | Domain-registered `DomainTaskType` — no hardcoded enum |
+| Verification | `VerificationBackend` protocol — domain provides check commands |
+| Remote execution | `verify_command` can be any shell string, including SSH |
+| Default domain | `SoftwareDomain` — always registered, cannot be removed |
+| Multi-domain | One active domain at a time — multi-domain sessions deferred |
+| Core changes on new domain | None required |
+
+---
+
+## V5 — Supervisor-Worker Multi-LLM Architecture
+
+Merlin currently targets software development but the supervisor-worker mechanisms are domain-agnostic — role slots, routing, critic, tracker, and planner operate on whatever the active domain provides. Cheap models execute bulk work; a thinking model plans and verifies.
+
+**Current domain focus:** Software development — Swift/Xcode natively; any language or platform via SSH remote execution or language-specific MCP plugins.
+
+### Role Slots
+
+| Slot | Purpose | Default structural trigger |
+|---|---|---|
+| `orchestrate` | Decomposes tasks, writes step instructions | Multi-step agentic tasks, planning keywords |
+| `reason` | Long CoT, math, deep analysis, verification | Thinking mode active, `@reason` declaration |
+| `execute` | Tool calls, summaries, bulk execution | Tool result processing, routine completions |
+| `vision` | Image / screenshot analysis | Image present in context |
+| `memory` | Background memory generation | Internal only — no user override |
+
+Each slot maps to a configured provider in `AppSettings`. A slot with no distinct assignment falls through to the next available provider.
+
+### Routing Priority Stack
+
+```
+1. Declarative override  — @role in message, or skill frontmatter `role: <slot>`
+2. Structural routing    — engine infers role from task shape (image → vision, etc.)
+3. Active provider       — unresolved slot uses the globally active provider
+```
+
+**Declarative syntax:**
+
+```
+@reason explain this     → one-shot override, stripped before sending to model
+@reason! explain this    → sticky for rest of session
+```
+
+Skill frontmatter:
+
+```yaml
+role: reason   # all invocations of this skill use the reason slot
+```
+
+### Critic Layer
+
+After the agentic loop produces output, the critic runs in two stages before the result reaches the user.
+
+**Stage 1 — Domain verification (deterministic, free)**
+
+The active domain's `VerificationBackend` provides the verification commands for the current task type. The critic runs all of them via `ShellTool` before any model evaluation:
+
+```
+VerificationBackend.verificationCommands(for: taskType, config: domainConfig)
+  → [VerificationCommand]   (nil if domain has no deterministic check for this task type)
+      ↓
+ShellTool executes each command
+      ↓
+Any failure → definitive critic fail → correction triggered (no remote model call consumed)
+All pass    → proceed to Stage 2
+```
+
+For the software domain this means compile, test, and lint. For a PCB domain it would be DRC and ERC. For domains with no deterministic check (`NullVerificationBackend`), Stage 1 passes immediately and Stage 2 carries the full verification burden.
+
+Tasks that produce no verifiable artifact (explanations, summaries) return `nil` from `verificationCommands` and skip Stage 1 entirely.
+
+**Stage 2 — Model evaluation (reason slot)**
+
+A silent eval pass runs using the `reason` slot:
+
+```
+Critic prompt: "Given task X and output Y, does the output satisfy the intent?
+                If not, what specifically is wrong?"
+```
+
+- **Pass** → result shown to user (optional "verified by [model]" badge)
+- **Fail** → correction injected as system message; worker re-runs (up to `max_critic_retries`)
+- **Retries exhausted** → escalate to user or promote to stronger model
+
+The inner loop (both stages) is collapsible in a "reasoning trace" block. The user sees the final output only.
+
+**Critical constraint:** The reason slot must be assigned to a genuinely stronger model than the execute slot — typically a remote thinking model (Claude, Sonnet, etc.). A weak model cannot reliably catch its own class of errors. The settings UI must surface this constraint clearly.
+
+**Graceful degradation when the reason slot is unavailable**
+
+If the provider assigned to the `reason` slot is unreachable (no API key, provider down, network failure), the critic does not block:
+
+```
+Reason slot unavailable
+  ↓
+Stage 1 (execution verification) still runs — deterministic checks proceed regardless
+  ↓
+Stage 2 skipped — output marked "unverified" with a visible badge in the UI
+  ↓
+Output delivered to user with degraded-mode indicator
+```
+
+The user sees a persistent "reason slot offline — outputs unverified" banner until the slot becomes available again. No silent failure — the degraded state is always visible.
+
+```swift
+// AppSettings additions
+var criticEnabled: Bool           // default true
+var maxCriticRetries: Int         // default 2
+var roleAssignments: [String: String]  // slot → providerID
+var executionVerificationEnabled: Bool // default true
+```
+
+### Model Performance Tracker
+
+Rather than assuming confidence from model metadata or relying on self-reported uncertainty, Merlin builds an empirical performance profile for each model from observed outcomes on the user's actual workload. After 30 samples, the profile drives routing decisions automatically.
+
+#### Outcome Signals (auto-collected, no user action required)
+
+| Signal | Source | Weight |
+|---|---|---|
+| Stage 1 verification passed / failed | `VerificationBackend` result via ShellTool | High |
+| Diff accepted as-is | StagingBuffer accept action | High |
+| Diff accepted with edits | Accept+Edit path | Medium |
+| Diff rejected | StagingBuffer reject | High |
+| Critic passed first attempt | CriticEngine result | Medium |
+| Critic failed N times before passing | retry count | Medium |
+| Follow-up correction detected | next message correction heuristic | Medium |
+| Session completed vs abandoned | new session without completion | Low |
+
+Signals are domain-agnostic — Stage 1 verification covers whatever the active domain's `VerificationBackend` checks (compile+test for software, DRC for PCB, etc.). No user action or tagging is required.
+
+#### Data Model
+
+`TaskType` is not a hardcoded enum — it comes from the active domain via `DomainRegistry`. The tracker records against `DomainTaskType` values, so it automatically handles any domain without code changes:
+
+```swift
+struct OutcomeSignals {
+    var stage1Passed: Bool?          // nil if Stage 1 was skipped (NullVerificationBackend)
+    var stage2Score: Double?         // reason-slot critic score 0.0–1.0; nil if critic was skipped
+    var diffAccepted: Bool           // true = accepted as-is or with edits; false = rejected
+    var diffEditedOnAccept: Bool     // true = user edited before accepting
+    var criticRetryCount: Int        // number of critic feedback loops before pass
+    var userCorrectedNextTurn: Bool  // heuristic: follow-up message is a correction
+    var sessionCompleted: Bool       // false = new session started without task completion
+    var addendumHash: String         // SHA256 of the provider's system_prompt_addendum at call time
+}
+
+struct OutcomeRecord: Codable {
+    var modelID: String
+    var taskType: DomainTaskType   // domain-registered — works for any domain
+    var score: Double              // 0.0 (failure) – 1.0 (full success), weighted from signals above
+    var addendumHash: String       // tracks which addendum variant produced this outcome
+    var timestamp: Date
+}
+
+enum Trend: String, Codable {
+    case improving
+    case stable
+    case declining
+}
+
+struct ModelPerformanceProfile: Codable {
+    var modelID: String
+    var taskType: DomainTaskType
+    var successRate: Double        // rolling weighted average
+    var sampleCount: Int
+    var trend: Trend
+    var lastUpdated: Date
+
+    var isCalibrated: Bool { sampleCount >= 30 }
+}
+```
+
+Profiles are persisted at `~/.merlin/performance/<model-id>.json`. Each model × domain × task-type combination maintains its own profile — a model's Swift performance does not affect its PCB schematic profile.
+
+#### actor ModelPerformanceTracker
+
+```swift
+actor ModelPerformanceTracker {
+    func record(modelID: String, taskType: DomainTaskType, signals: OutcomeSignals) async
+    func successRate(for modelID: String, taskType: DomainTaskType) -> Double?  // nil if uncalibrated
+    func profile(for modelID: String) -> [ModelPerformanceProfile]
+    func allProfiles() -> [ModelPerformanceProfile]
+}
+```
+
+`record()` is called by `AgenticEngine` at session end, after all outcome signals are available. It updates the rolling weighted average using an exponential decay window (recent outcomes weighted more than older ones).
+
+`successRate()` returns `nil` until `sampleCount >= 30` — the minimum sample threshold for a calibrated score. Below this the model is treated conservatively (always run critic).
+
+#### How the Score Drives Routing
+
+The empirical success rate replaces static model tier assumptions as the primary confidence input:
+
+```
+Uncalibrated (< 30 samples)  → always run critic, show "learning…" in UI
+score < 0.60                 → always run critic; flag for possible worker slot upgrade
+score 0.60 – 0.85            → standard critic gating; use structural signals to refine
+score > 0.85                 → skip critic for routine-tier tasks; run for standard+
+```
+
+Logprobs (when the provider exposes them) and structural signals (hedging phrases, repeated tool retries, empty results) remain active as real-time refinements within the `0.60–0.85` band — but they do not override a well-established low score. A model with a 55% success rate does not earn a critic skip because one response had high logprobs.
+
+```toml
+[routing]
+confidence_skip_threshold    = 0.85
+confidence_escalate_threshold = 0.60
+logprobs_enabled             = true   # request logprobs if provider supports them
+min_calibration_samples      = 30
+```
+
+#### Settings — Performance Dashboard
+
+The Settings > Providers panel shows a per-model performance breakdown:
+
+```
+Mistral 7B Instruct (local)
+  Code generation    ████████░░  74%  (52 tasks)
+  Explanation        █████████░  89%  (31 tasks)
+  Refactoring        ██████░░░░  61%  (18 tasks)
+  ─────────────────────────────────
+  Effective routing  standard    (empirical — 116 total tasks)
+  Trend              ↑ improving
+
+Llama 3.2 3B (local)
+  Code generation    learning…   (12 / 30 tasks)
+```
+
+The "effective routing" label is derived from the profile, not manually set. The user can inspect it but the system manages it automatically.
+
+#### Model-Specific Prompt Addenda
+
+Local models respond differently to prompt format. Each provider can declare a `system_prompt_addendum` in `config.toml` — appended to the base system prompt for every call to that provider:
+
+```toml
+[providers.mistral-7b]
+system_prompt_addendum = "Always produce complete code blocks. Do not truncate."
+
+[providers.deepseek-coder]
+system_prompt_addendum = "Think through each step before writing code."
+```
+
+Domain plugins contribute their own addendum via `DomainPlugin.systemPromptAddendum`. Both are appended in order: provider addendum first, then domain addendum.
+
+**Tracker-informed addendum tuning:**
+
+`ModelPerformanceTracker` records success rate per model × task-type × addendum hash. When the user changes a provider's addendum, the tracker starts a new profile for that variant and compares performance once calibrated (≥ 30 samples each). The dashboard surfaces the comparison:
+
+```
+Mistral 7B Instruct — Code generation
+  Addendum v1 (current)   ████████░░  78%  (34 tasks)
+  Addendum v2 (previous)  █████░░░░░  54%  (18 tasks)
+  ✓ Current addendum is performing better
+```
+
+The user always controls the addendum via `config.toml`. The tracker advises; it does not auto-switch.
+
+#### Connection to V6 LoRA Corpus
+
+The performance tracker is the quality filter for the V6 LoRA training pipeline. Sessions with a high outcome score on a given task type are the best training candidates — the `LoRATrainingEngine` (V6) pulls high-scoring sessions directly from the tracker rather than proposing everything to the review queue. Low-scoring sessions are never proposed as training data regardless of other signals. The tracker data structure requires no changes in V6 — it already records everything LoRA needs.
+
+### Planner Layer
+
+**Classification (execute slot)**
+
+Before the planner engages, the execute slot makes a lightweight classification call — a single structured completion that returns a JSON object:
+
+```json
+{ "needs_planning": true, "complexity": "standard", "reason": "multi-file refactor" }
+```
+
+If `needs_planning` is false, the execute slot handles the task directly and the planner is bypassed entirely. If true, the orchestrate slot takes over for decomposition. This handoff is the only time the execute slot fires before the orchestrate slot in a planned task.
+
+**Planned task loop:**
+
+```
+1. Orchestrate slot — decomposes task → steps + per-step success criteria + complexity tag
+2. Critic evaluates the PLAN before any execution begins         ← plan evaluation
+3. Execute slot     — executes each step
+4. Critic evaluates each step OUTPUT (Stage 1 + Stage 2)
+5. Loop until all steps pass or retry limit hit
+```
+
+**Plan evaluation (step 2)**
+
+Before execution begins, the critic reviews the plan itself:
+
+```
+Plan critic prompt: "Given task X, does this plan correctly decompose it into steps
+                    that will achieve the goal? Are any steps missing, wrong, or in
+                    the wrong order? If so, what specifically needs to change?"
+```
+
+- **Pass** → execution proceeds
+- **Fail** → corrected plan injected back to orchestrate slot for revision (up to `max_plan_retries`)
+- **Retries exhausted** → escalate to user with plan summary
+
+This catches a class of errors that step-level evaluation cannot: a bad decomposition produces steps that each pass individually but fail collectively at the task level. Plan evaluation is always a Stage 2 (model) check — there is no execution artifact to verify at planning time.
+
+```swift
+// AppSettings additions
+var maxPlanRetries: Int      // default 2 — plan revision loops before escalating to user
+var maxLoopIterations: Int   // default 10 — hard ceiling on planner step-execution loop
+```
+
+### Task Complexity Routing
+
+The planner classifier tags each task with a complexity tier, which determines slot assignment for that task regardless of global defaults. This allows high-stakes work to automatically use stronger models without the user having to declare it manually.
+
+**Complexity tiers:**
+
+Tiers are domain-agnostic. Examples vary by active domain:
+
+| Tier | Software example | PCB example | Construction example | Worker slot | Critic slot |
+|---|---|---|---|---|---|
+| `routine` | Summarise, rename, explain | Component search, netlist export | Material list, room label | local execute | skip |
+| `standard` | Refactor, write tests, implement feature | Schematic design, footprint assignment | Floor plan, wiring diagram | local execute | reason |
+| `high-stakes` | Schema migration, auth, security logic | Power routing, impedance matching, DRC | Load-bearing walls, electrical, plumbing vs. code | reason | reason |
+
+The execute-slot classifier produces a tier label alongside its plan/bypass decision. High-stakes keyword lists are domain-provided via `DomainPlugin.highStakesKeywords` — not hardcoded. Tier assignment can be overridden declaratively:
+
+```
+#high-stakes migrate the users table to add TOTP columns
+```
+
+The `#` prefix distinguishes tier overrides from slot overrides (`@reason`, `@execute`). Skill frontmatter uses a separate key:
+
+```yaml
+complexity: high-stakes   # always routes this skill to the stronger worker slot
+```
+
+**Why this matters for cost:** Routine tasks (the majority) never touch remote models at all. Standard tasks pay for one remote critic pass. Only high-stakes tasks pay for full remote execution. In practice this means most sessions are local-only, with targeted remote calls for the work that most benefits from them.
+
+### Implementation Order
+
+1. `DomainRegistry` + `DomainPlugin` protocol + `MCPDomainAdapter` + `SoftwareDomain` built-in
+2. `VerificationBackend` protocol + `SoftwareVerificationBackend` + `NullVerificationBackend`
+3. Settings UI — role-to-provider assignment panel + active domain selector + degraded-mode indicator
+4. Structural routing in `AgenticEngine`
+5. `ModelPerformanceTracker` — `DomainTaskType`-keyed profiles, outcome signal collection, addendum tracking, dashboard UI
+6. Critic Stage 1 — domain verification via `VerificationBackend`
+7. Critic Stage 2 — reason slot, performance-score-gated, graceful degradation
+8. Per-provider `system_prompt_addendum` config + domain addendum appending
+9. `@role` and `#tier` declaration parsing in `ChatView`
+10. Planner layer (execute-slot classifier → orchestrate handoff) + plan evaluation + complexity tier routing
+11. Skill frontmatter `role:` and `complexity:` declarations
+
+| Decision | v5 |
+|---|---|
+| Domain extensibility | New domains added as MCP servers implementing `DomainPlugin` — no core changes |
+| Task types | `DomainTaskType` registered by domain — no hardcoded enum |
+| Stage 1 verification | `VerificationBackend` protocol — domain-provided commands, runs via ShellTool |
+| Remote execution | `verify_command` is any shell string including SSH — domain decides |
+| Default domain | `SoftwareDomain` — always registered, cannot be removed |
+| Routing default | Structural routing; declarative `@role` slot overrides |
+| Tier override syntax | `#high-stakes` prefix — distinct from `@role` slot overrides |
+| Critic constraint | Reason slot must be stronger than execute slot — settings UI warning enforced |
+| Critic Stage 1 | Domain verification — deterministic, free, no remote cost |
+| Critic Stage 2 | Model evaluation via reason slot — only runs after Stage 1 passes |
+| Critic timing | Synchronous — safer, simpler to start; async option deferred |
+| Correction injection | System message (invisible to user, visible to model) |
+| Inner loop UI | Collapsible reasoning trace block, same as tool calls |
+| Reason slot unavailable | Stage 1 still runs; Stage 2 skipped; output marked "unverified"; banner shown |
+| Confidence source | Empirical success rate from `ModelPerformanceTracker` — not self-reported |
+| Calibration threshold | 30 samples per model × domain × task-type before score is trusted |
+| Uncalibrated path | Always run critic; show "learning…" in dashboard |
+| High-score path (>0.85) | Critic Stage 2 skipped for routine tasks — local only, zero remote cost |
+| Low-score path (<0.60) | Always run critic; flag for possible execute slot upgrade |
+| Logprobs / structural signals | Active as real-time refinements within 0.60–0.85 band only |
+| Self-assessment | Removed — replaced by empirical profile |
+| Prompt addenda | Per-provider `system_prompt_addendum` in config.toml; tracker compares addendum versions (≥30 samples each) |
+| Plan evaluation | Critic reviews plan before execution; bad plan corrected before any step runs |
+| Complexity tiers | `routine` / `standard` / `high-stakes` — classifier assigns, user can override |
+| High-stakes keywords | Domain-provided via `DomainPlugin.highStakesKeywords` — not hardcoded |
+| Planner bypass | Execute-slot classifier gates the planner — simple queries skip it |
+| LoRA corpus quality | V6 — tracker already collects the data; LoRATrainingEngine reads it without tracker changes |
+| LoRA training scope | V6 — execute-slot outputs only; reason-slot outputs excluded |
+| Skill declarations | `role:` and `complexity:` frontmatter keys in SKILL.md |
+
+---
+
+## V5 — RAG Memory Extension
+
+> **xcalibre-server Phase 18 is shipped** — migration `0028_memory_chunks.sql`, `POST /api/v1/memory`, `DELETE /api/v1/memory/:id`, and unified `GET /api/v1/search/chunks?source=all` are all live. Merlin-side implementation can proceed.
+
+Extends xcalibre-server as a persistent memory store for Merlin. Local LLMs have limited context windows; precision-retrieved prior memory lets a 4k context window punch above its weight.
+
+### Memory Types
+
+| Type | Content | Write trigger | Granularity |
+|---|---|---|---|
+| Episodic | Session summary — what was worked on, decisions made, outcome | Session end / `MemoryEngine` idle fire | One chunk per session |
+| Factual | Discrete extracted facts — "user prefers X", "project uses Y" | Post-session background pass | One chunk per fact |
+
+Excluded from xcalibre memory: recent turns (stay in-context as sliding window), procedural/how-to (already in book content), tool outputs and file contents (too large, too ephemeral).
+
+### Unified Retrieval
+
+At query time, memory and book content are retrieved in parallel and merged:
+
+```
+User message
+  ├── xcalibre books  → relevant documentation / knowledge chunks
+  └── xcalibre memory → relevant episodic summaries + factual chunks
+        ↓ merged + reranked by RRF (xcalibre-server side)
+        ↓ injected as context prefix
+LLM sees: [memory] + [book knowledge] + [recent turns] + [user message]
+```
+
+Memory chunks are scoped to `project_path` — a session in project A does not bleed into project B.
+
+### XcalibreClient Changes
+
+```swift
+extension XcalibreClient {
+    func writeMemoryChunk(
+        text: String,
+        chunkType: MemoryChunkType,   // .episodic | .factual
+        sessionID: String,
+        projectPath: String,
+        tags: [String] = []
+    ) async throws -> String          // returns TEXT UUID chunk ID
+
+    func deleteMemoryChunk(id: String) async throws
+}
+```
+
+### MemoryEngine
+
+`MemoryEngine` is a background actor that fires on session idle or explicit session end:
+
+```swift
+actor MemoryEngine {
+    func onSessionEnd(context: [ConversationTurn], projectPath: String) async
+    func onIdle(context: [ConversationTurn], projectPath: String) async
+}
+```
+
+**Episodic write (session end / idle):**
+1. Execute slot summarises recent turns into a single episodic chunk (≤400 words)
+2. `XcalibreClient.writeMemoryChunk(chunkType: .episodic, …)`
+
+**Fact extraction (background, post-session):**
+1. Execute slot extracts discrete facts from the session as a list
+2. Each fact written as a separate `.factual` chunk
+
+### RAGTools Integration
+
+`RAGTools.buildEnrichedMessage` already injects retrieved chunks as a context prefix. The only change is passing `source=all` and optionally `project_path` to the existing `searchChunks` call — no restructuring of the injection or ranking logic.
+
+### Token Budget
+
+Memory injection is bounded by a configurable token budget in `AppSettings`:
+
+```toml
+[memory]
+enabled = true
+max_memory_tokens = 1000   # total budget for injected memory chunks
+```
+
+Chunks are ranked by RRF score; lowest-scoring chunks are dropped first when the budget is exceeded.
+
+### AppSettings additions (v5 memory)
+
+```toml
+[memory]
+enabled = true
+max_memory_tokens = 1000
+idle_fire_minutes = 15      # how long idle before episodic write fires
+fact_extraction = true      # async fact extraction post-session
+```
+
+| Decision | v5 memory |
+|---|---|
+| Memory store | xcalibre-server `memory_chunks` table (new in xcalibre Phase 18) |
+| Retrieval | Unified — xcalibre `GET /api/v1/search/chunks?source=all` with RRF merge |
+| Episodic write trigger | Session end OR `MemoryEngine` idle fire |
+| Fact extraction | Execute slot, async background, post-session |
+| Project scoping | `project_path` filter on all memory reads and writes |
+| Token budget | `max_memory_tokens` — lowest-ranked chunks dropped first |
+
+---
+
+## V6 — LoRA Self-Training Pipeline
+
+> **V6 — not in V5 scope.** Requires Unsloth integration exploration and LM Studio adapter loading investigation before phase files can be written. The `ModelPerformanceTracker` (V5) already collects the training corpus as a byproduct — no tracker changes needed in V6.
+
+Complements RAG memory with weight-level adaptation. RAG handles explicit, retrievable facts; LoRA bakes behavioral patterns, style preferences, and domain vocabulary into the model itself. The user reviews and approves all training data before any fine-tuning occurs.
+
+### Mental Model
+
+| Layer | Captures | Mechanism |
+|---|---|---|
+| RAG memory | Explicit facts, episodic history | Retrieval at inference time |
+| LoRA adapter | Behavioral patterns, style, domain vocabulary | Weight delta baked into model |
+
+Both layers are active simultaneously. RAG answers "what happened in that session"; LoRA answers "how should I respond given this user's preferences."
+
+### Training Signal Types
+
+Two formats, automatically collected from normal use:
+
+**SFT pair** (Supervised Fine-Tuning) — user accepts a response without correction:
+```json
+{
+  "instruction": "Refactor AuthGate to use async/await",
+  "response": "…model output…"
+}
+```
+
+**DPO pair** (Direct Preference Optimization) — user corrects or declines a response:
+```json
+{
+  "prompt": "Refactor AuthGate to use async/await",
+  "chosen": "…user-corrected version…",
+  "rejected": "…original model output…"
+}
+```
+
+DPO pairs are higher-value: they explicitly encode what to avoid, not just what to do. The existing correction flow (user edits a model response) is the natural source — Merlin proposes the original + corrected form as a DPO pair automatically.
+
+### Review Queue
+
+Follows the same UX pattern as `~/.merlin/memories/pending/` — AI-generated items wait for explicit user approval before entering the training corpus.
+
+Each item in the queue shows:
+
+```
+Task:     "Refactor AuthGate to use async/await"
+Response: [first 200 chars of model output…]
+Type:     SFT pair
+Signals:  ✓ session completed  ✓ no tool errors  ✓ no follow-up correction
+
+[Accept]  [Accept + Edit]  [Decline]
+```
+
+- **Accept** — adds as-is to corpus
+- **Accept + Edit** — user trims or corrects the response before committing; edited version is what trains on. Produces a DPO pair if the edit is substantial.
+- **Decline** — discarded; optionally prompts "provide a correction?" to convert to a DPO pair
+
+**Queue stored at:** `~/.merlin/lora/pending/<uuid>.json`
+**Accepted corpus:** `~/.merlin/lora/corpus/<model-id>/`
+
+### Auto-Filtering (what gets proposed)
+
+Not every response generates a queue item. Merlin scores sessions post-completion:
+
+**Auto-reject (never proposed):**
+- Session aborted by user
+- One or more tool errors occurred
+- Response was immediately followed by a correction request
+
+**Always propose:**
+- Correction pairs — highest-signal regardless of session length
+- Explicit user upvote action
+
+**Propose if high-signal:**
+- Long successful session (high effort, no corrections)
+- Repeated task pattern — one clean generalised example per pattern type
+
+In normal use this yields ~10–20 proposed items per week — reviewable in a few minutes.
+
+### Training Trigger
+
+Training is always user-initiated, never automatic.
+
+```toml
+[lora]
+enabled = true
+min_examples_to_prompt = 50   # notify user when accepted corpus reaches this size
+adapter_per_model = true      # separate adapter per base model checkpoint
+training_backend = "unsloth"  # "unsloth" | "axolotl" (future)
+```
+
+When the corpus crosses `min_examples_to_prompt`, Merlin surfaces a notification:
+
+```
+50 training examples ready. Train now?   [Train]  [Later]
+```
+
+Training runs as a background shell process via `ShellTool`. A progress indicator appears in the toolbar. On completion, the new adapter is registered and loads on the next model initialisation.
+
+### Adapter Management
+
+Each base model checkpoint gets its own adapter. The corpus (text pairs) is model-agnostic and reusable, but training must be re-run when the user switches base models.
+
+```
+~/.merlin/lora/
+  pending/                        — proposed items awaiting review
+  corpus/
+    <model-id>/                   — accepted training pairs for this model
+      sft/
+        <uuid>.json
+      dpo/
+        <uuid>.json
+  adapters/
+    <model-id>/
+      adapter_config.json
+      adapter_model.safetensors
+      training_log.txt
+```
+
+`model-id` is derived from the model's file hash or LM Studio model identifier — not the display name, which can change.
+
+### LoRATrainingEngine
+
+```swift
+actor LoRATrainingEngine {
+    func proposeItem(_ item: TrainingItem) async
+    func acceptItem(id: UUID, editedResponse: String?) async
+    func declineItem(id: UUID, correction: String?) async
+    func pendingCount(for modelID: String) -> Int
+    func trainAdapter(for modelID: String, progressHandler: @escaping (Double) -> Void) async throws -> URL
+    func loadAdapter(at url: URL, for modelID: String) async throws
+}
+```
+
+`proposeItem` is called by `MemoryEngine` at session end after quality scoring. `trainAdapter` shells out to Unsloth, streams progress, returns the adapter path on success.
+
+### AppSettings additions (v6 LoRA)
+
+```toml
+[lora]
+enabled = false                 # opt-in — off by default
+min_examples_to_prompt = 50
+adapter_per_model = true
+training_backend = "unsloth"
+max_sft_examples = 500         # cap corpus size; oldest examples rotate out
+max_dpo_examples = 200
+```
+
+### Implementation Order
+
+1. `TrainingItem` model + `~/.merlin/lora/` directory layout
+2. `LoRATrainingEngine` actor — propose, accept, decline
+3. Auto-filtering quality scorer (post-session)
+4. Review queue UI — pending list with Accept / Accept+Edit / Decline actions
+5. Training trigger notification + progress indicator
+6. Unsloth shell integration (`trainAdapter`)
+7. Adapter registration + LM Studio hot-swap
+
+| Decision | v6 LoRA |
+|---|---|
+| User control | All training data reviewed before corpus entry — no automatic ingestion |
+| Training trigger | User-initiated only; notification when corpus threshold reached |
+| Training formats | SFT (accept) and DPO (decline + correction) — both collected from day one |
+| Adapter scope | One adapter per base model checkpoint; corpus is model-agnostic |
+| Training backend | Unsloth via ShellTool (MPS on Apple Silicon; CUDA on NVIDIA) |
+| Queue UX pattern | Same as `memories/pending/` — generated by AI, reviewed by user |
+| Bad data prevention | Auto-filtering rejects aborted/error sessions; Accept+Edit lets user clean partial errors; Decline+correction converts errors to DPO signal |

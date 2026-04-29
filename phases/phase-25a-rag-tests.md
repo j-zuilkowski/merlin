@@ -59,6 +59,7 @@ private let sampleChunkJSON = """
     "chunks": [
         {
             "chunk_id": "abc123",
+            "source": "books",
             "book_id": "book1",
             "book_title": "Swift Programming",
             "heading_path": "Closures › Capturing Values",
@@ -229,7 +230,7 @@ final class RAGToolsTests: XCTestCase {
     func testBuildEnrichedMessagePrependsContext() {
         let chunks = [
             RAGChunk(
-                chunkID: "c1", bookID: "b1", bookTitle: "Swift Book",
+                chunkID: "c1", source: "books", bookID: "b1", bookTitle: "Swift Book",
                 headingPath: "Generics", chunkType: "paragraph",
                 text: "Generic code enables flexible, reusable functions.",
                 wordCount: 8, rrfScore: 0.9, rerankScore: nil
@@ -250,7 +251,7 @@ final class RAGToolsTests: XCTestCase {
     func testBuildEnrichedMessageHandlesMissingHeadingPath() {
         let chunks = [
             RAGChunk(
-                chunkID: "c1", bookID: "b1", bookTitle: "Swift Book",
+                chunkID: "c1", source: "books", bookID: "b1", bookTitle: "Swift Book",
                 headingPath: nil, chunkType: "paragraph",
                 text: "Some text.", wordCount: 2, rrfScore: 0.5, rerankScore: nil
             )
@@ -262,10 +263,10 @@ final class RAGToolsTests: XCTestCase {
 
     func testFormatChunksProducesNumberedList() {
         let chunks = [
-            RAGChunk(chunkID: "1", bookID: "b1", bookTitle: "Book A",
+            RAGChunk(chunkID: "1", source: "books", bookID: "b1", bookTitle: "Book A",
                      headingPath: "Chapter 1", chunkType: "paragraph",
                      text: "First chunk.", wordCount: 2, rrfScore: 0.9, rerankScore: nil),
-            RAGChunk(chunkID: "2", bookID: "b1", bookTitle: "Book A",
+            RAGChunk(chunkID: "2", source: "books", bookID: "b1", bookTitle: "Book A",
                      headingPath: "Chapter 2", chunkType: "paragraph",
                      text: "Second chunk.", wordCount: 2, rrfScore: 0.8, rerankScore: nil),
         ]
@@ -300,7 +301,8 @@ final class RAGToolsHandlerTests: XCTestCase {
         "query": "closures",
         "chunks": [
             {
-                "chunk_id": "c1", "book_id": "b1", "book_title": "Swift Book",
+                "chunk_id": "c1", "source": "books",
+                "book_id": "b1", "book_title": "Swift Book",
                 "heading_path": "Closures", "chunk_type": "paragraph",
                 "text": "Closures capture values.", "word_count": 4,
                 "bm25_score": 0.9, "cosine_score": 0.8,
@@ -456,7 +458,8 @@ final class RAGEngineTests: XCTestCase {
         "query": "closures",
         "chunks": [
             {
-                "chunk_id": "c1", "book_id": "b1", "book_title": "Swift Book",
+                "chunk_id": "c1", "source": "books",
+                "book_id": "b1", "book_title": "Swift Book",
                 "heading_path": "Closures", "chunk_type": "paragraph",
                 "text": "Closures capture values.", "word_count": 4,
                 "bm25_score": 0.9, "cosine_score": 0.8,

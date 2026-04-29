@@ -32,23 +32,30 @@ import Security
 
 struct RAGChunk: Codable, Sendable {
     var chunkID: String
-    var bookID: String
-    var bookTitle: String
+    /// "books" or "memory" — distinguishes book content from Merlin memory chunks.
+    var source: String
+    var bookID: String?
+    var bookTitle: String?
     var headingPath: String?
     var chunkType: String
     var text: String
-    var wordCount: Int
+    var wordCount: Int?
+    var bm25Score: Double?
+    var cosineScore: Double?
     var rrfScore: Double
     var rerankScore: Double?
 
     enum CodingKeys: String, CodingKey {
         case chunkID = "chunk_id"
+        case source
         case bookID = "book_id"
         case bookTitle = "book_title"
         case headingPath = "heading_path"
         case chunkType = "chunk_type"
         case text
         case wordCount = "word_count"
+        case bm25Score = "bm25_score"
+        case cosineScore = "cosine_score"
         case rrfScore = "rrf_score"
         case rerankScore = "rerank_score"
     }
@@ -81,6 +88,7 @@ extension URLSession: HTTPFetching {}
 
 private struct ChunkSearchResponse: Decodable {
     var chunks: [RAGChunk]
+    // query, total_searched, retrieval_ms also present in response — ignored here
 }
 
 private struct BooksListResponse: Decodable {
@@ -163,9 +171,14 @@ actor XcalibreClient {
     // MARK: - Search chunks
 
     /// Returns top matching chunks. Returns [] on any failure — never throws.
+    /// - Parameters:
+    ///   - source: `"books"` (default), `"memory"`, or `"all"`.
+    ///   - projectPath: Scopes memory chunk results to a specific project path.
     func searchChunks(
         query: String,
+        source: String = "books",
         bookIDs: [String]? = nil,
+        projectPath: String? = nil,
         limit: Int = 5,
         rerank: Bool = false
     ) async -> [RAGChunk] {
@@ -175,10 +188,14 @@ actor XcalibreClient {
         var components = URLComponents(string: "\(baseURL)/api/v1/search/chunks")!
         var items: [URLQueryItem] = [
             URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "source", value: source),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "rerank", value: rerank ? "true" : "false")
         ]
         bookIDs?.forEach { items.append(URLQueryItem(name: "book_ids[]", value: $0)) }
+        if let projectPath {
+            items.append(URLQueryItem(name: "project_path", value: projectPath))
+        }
         components.queryItems = items
 
         guard let url = components.url else { return [] }
