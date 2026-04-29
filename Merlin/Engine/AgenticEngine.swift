@@ -44,6 +44,10 @@ final class AgenticEngine {
     var criticOverride: (any CriticEngineProtocol)?
     var classifierOverride: (any PlannerEngineProtocol)?
     var currentProjectPath: String?
+    /// Mirrors AppSettings.ragRerank. Set at init and kept in sync by AppState.
+    var ragRerank: Bool = false
+    /// Mirrors AppSettings.ragChunkLimit. Clamped to 1...20 at call site.
+    var ragChunkLimit: Int = 3
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
     }
@@ -316,8 +320,8 @@ final class AgenticEngine {
                 source: "all",
                 bookIDs: nil,
                 projectPath: currentProjectPath,
-                limit: 3,
-                rerank: false
+                limit: min(max(ragChunkLimit, 1), 20),
+                rerank: ragRerank
             )
             if !chunks.isEmpty {
                 effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: chunks)

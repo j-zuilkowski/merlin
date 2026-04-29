@@ -62,16 +62,54 @@ struct RoleSlotSettingsView: View {
                             set: { settings.projectPath = $0 }
                         )
                     )
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(.body, design: .monospaced))
-                    .help("Scopes xcalibre memory search to this project directory. Leave empty to search all memory.")
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
+                        .help("Scopes xcalibre memory search to this project directory. Leave empty to search all memory.")
                 }
                 LabeledContent("Memory Enabled") {
                     Toggle("", isOn: Binding(
                         get: { settings.memoriesEnabled },
                         set: { settings.memoriesEnabled = $0 }
-                    ))
+                        ))
                         .labelsHidden()
+                }
+                LabeledContent("Rerank Results") {
+                    HStack(spacing: 8) {
+                        Toggle("", isOn: Binding(
+                            get: { settings.ragRerank },
+                            set: { settings.ragRerank = $0 }
+                        ))
+                            .labelsHidden()
+                        if settings.ragRerank {
+                            Text("Requires 7B+ reranking model and ≥12GB VRAM")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Off — recommended for RTX 2070 / 8GB hardware")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                LabeledContent("Chunk Limit") {
+                    HStack(spacing: 8) {
+                        Stepper(
+                            value: Binding(
+                                get: { settings.ragChunkLimit },
+                                set: { settings.ragChunkLimit = $0 }
+                            ),
+                            in: 1...20,
+                            step: 1
+                        ) {
+                            Text("\(settings.ragChunkLimit) chunks")
+                                .monospacedDigit()
+                        }
+                        Text(settings.ragRerank
+                             ? "Increase to 8–10 for best rerank quality"
+                             : "3 is optimal without reranking")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }

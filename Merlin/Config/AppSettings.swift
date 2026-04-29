@@ -44,6 +44,8 @@ final class AppSettings: ObservableObject {
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
     @Published var projectPath: String = ""
+    @Published var ragRerank: Bool = false
+    @Published var ragChunkLimit: Int = 3
     @Published var xcalibreToken: String = ""
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
@@ -77,6 +79,8 @@ final class AppSettings: ObservableObject {
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
         var projectPath: String?
+        var ragRerank: Bool?
+        var ragChunkLimit: Int?
         var xcalibreToken: String?
         var slots: [String: String]?
         var verifyCommand: String?
@@ -114,6 +118,8 @@ final class AppSettings: ObservableObject {
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
             case projectPath = "project_path"
+            case ragRerank = "rag_rerank"
+            case ragChunkLimit = "rag_chunk_limit"
             case xcalibreToken = "xcalibre_token"
             case slots
             case verifyCommand = "verify_command"
@@ -164,6 +170,12 @@ final class AppSettings: ObservableObject {
         }
         if projectPath.isEmpty == false {
             lines.append("project_path = \(quoted(projectPath))")
+        }
+        if ragRerank {
+            lines.append("rag_rerank = true")
+        }
+        if ragChunkLimit != 3 {
+            lines.append("rag_chunk_limit = \(ragChunkLimit)")
         }
         if slotAssignments.isEmpty == false {
             lines.append("")
@@ -404,6 +416,12 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.projectPath {
             projectPath = value
+        }
+        if let value = config.ragRerank {
+            ragRerank = value
+        }
+        if let value = config.ragChunkLimit {
+            ragChunkLimit = value
         }
         if let value = config.xcalibreToken {
             xcalibreToken = value

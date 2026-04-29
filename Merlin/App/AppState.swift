@@ -74,6 +74,8 @@ final class AppState: ObservableObject {
     private var registryCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
     private var projectPathCancellable: AnyCancellable?
+    private var ragRerankCancellable: AnyCancellable?
+    private var ragChunkLimitCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
@@ -150,6 +152,8 @@ final class AppState: ObservableObject {
         engine.currentProjectPath = AppSettings.shared.projectPath.isEmpty
             ? nil
             : AppSettings.shared.projectPath
+        engine.ragRerank = AppSettings.shared.ragRerank
+        engine.ragChunkLimit = AppSettings.shared.ragChunkLimit
         contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)
         engine.registry = registry
         engine.sessionStore = sessionStore
@@ -215,6 +219,22 @@ final class AppState: ObservableObject {
             .sink { [weak self] newPath in
                 Task { @MainActor [weak self] in
                     self?.engine?.currentProjectPath = newPath.isEmpty ? nil : newPath
+                }
+            }
+
+        ragRerankCancellable = AppSettings.shared.$ragRerank
+            .dropFirst()
+            .sink { [weak self] value in
+                Task { @MainActor [weak self] in
+                    self?.engine?.ragRerank = value
+                }
+            }
+
+        ragChunkLimitCancellable = AppSettings.shared.$ragChunkLimit
+            .dropFirst()
+            .sink { [weak self] value in
+                Task { @MainActor [weak self] in
+                    self?.engine?.ragChunkLimit = value
                 }
             }
 
