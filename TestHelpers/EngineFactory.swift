@@ -4,7 +4,8 @@ import Foundation
 @MainActor
 func makeEngine(provider: MockProvider? = nil,
                 proProvider: MockProvider? = nil,
-                flashProvider: MockProvider? = nil) -> AgenticEngine {
+                flashProvider: MockProvider? = nil,
+                xcalibreClient: (any XcalibreClientProtocol)? = nil) -> AgenticEngine {
     let memory = AuthMemory(storePath: "/dev/null")
     memory.addAllowPattern(tool: "*", pattern: "*")
     let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
@@ -14,5 +15,6 @@ func makeEngine(provider: MockProvider? = nil,
     let flash = flashProvider ?? provider ?? MockProvider(chunks: [])
     return AgenticEngine(proProvider: pro, flashProvider: flash,
                          visionProvider: LMStudioProvider(),
-                         toolRouter: router, contextManager: ctx)
+                         toolRouter: router, contextManager: ctx,
+                         xcalibreClient: xcalibreClient)
 }
