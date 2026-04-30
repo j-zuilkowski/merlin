@@ -11,7 +11,7 @@ Merlin connects to remote and local providers interchangeably. Switch mid-sessio
 **Remote**
 - Anthropic (Claude Opus, Sonnet, Haiku)
 - DeepSeek
-- OpenAI (GPT-4o, o1, o3, o4-mini)
+- OpenAI (GPT-5.5, GPT-5.4, GPT-5.4 mini, GPT-5.4 nano)
 - Qwen
 - OpenRouter
 
@@ -467,7 +467,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 | Capability | Merlin | Codex (OpenAI) | Claude Code (Anthropic) |
 |---|---|---|---|
 | **Interface** | macOS native SwiftUI app | Desktop app + CLI + web | CLI (terminal-first) |
-| **LLM providers** | Any — Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, vLLM, + more | OpenAI models only (GPT-5.5+) | Anthropic models only (Opus/Sonnet/Haiku) |
+| **LLM providers** | Any — Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, vLLM, + more | OpenAI models only (GPT-5.5 / GPT-5.4 family) | Anthropic models only (Opus/Sonnet/Haiku) |
 | **Local model support** | Full — LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM | CLI supports custom endpoints (workaround); app is cloud-first | Primarily Anthropic cloud; limited Ollama workaround |
 | **Execution environment** | Local machine, non-sandboxed | Cloud sandboxes (tasks run remotely) or local CLI | Local machine |
 | **Multi-LLM routing** | Yes — execute / reason / orchestrate / vision slots with automatic complexity routing | No | No |
@@ -518,7 +518,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 
 ### Where Codex and Claude Code have advantages
 
-**Codex** runs tasks in cloud sandboxes, which means agents can execute long-running jobs without tying up your machine. Remote devbox SSH support makes it practical for teams with shared infrastructure. Codex is embedded in the broader ChatGPT + OpenAI ecosystem, which benefits users already on that platform. GPT-5.5 is one of the strongest available models for coding tasks.
+**Codex** runs tasks in cloud sandboxes, which means agents can execute long-running jobs without tying up your machine. Remote devbox SSH support makes it practical for teams with shared infrastructure. Codex is embedded in the broader ChatGPT + OpenAI ecosystem, which benefits users already on that platform. GPT-5.5 is the current flagship model for complex reasoning and coding tasks.
 
 **Claude Code** has a lower barrier to entry — it is a single CLI install with no configuration required. Scheduled routines run on Anthropic-managed infrastructure and continue even when your laptop is off. The ultrareview subcommand integrates into CI pipelines without a running desktop session. Claude's models consistently perform at the top of coding benchmarks, and the tool benefits from continuous Anthropic investment.
 

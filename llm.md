@@ -8,7 +8,7 @@ Merlin runs across three distinct LLM pools. Each has a different role.
 |---|---|---|---|
 | **Windows 11 machine (xcalibre-server)** | RTX 2070 | phi-3-mini-4k-instruct + nomic-embed-text-v1.5 (LM Studio) | xcalibre-server — ebook library maintenance tasks and vector embeddings for RAG. `ragRerank` defaults to `false` because the RTX 2070 benefits from the reduced load. No code changes needed to enable reranking on an RTX 5080 upgrade. |
 | **M4 Mac 128GB (Merlin local)** | 128GB unified memory | Qwen2.5-VL-72B-Instruct (LM Studio, vision slot) + LoRA base model via mlx_lm.server (execute slot after training) | Primary Merlin host — vision queries, LoRA training via `mlx_lm.lora`, adapter inference via `mlx_lm.server`. MLX backend preferred over GGUF for 15–30% speed improvement. |
-| **External APIs** | — | DeepSeek V4 Pro/Flash, Anthropic Claude, OpenAI GPT-4o/o1, Qwen, OpenRouter | Remote providers for reason/orchestrate slots and sessions where local capacity is insufficient. |
+| **External APIs** | — | DeepSeek V4 Pro/Flash, Anthropic Claude, OpenAI GPT-5.5/GPT-5.4 family, Qwen, OpenRouter | Remote providers for reason/orchestrate slots and sessions where local capacity is insufficient. |
 
 ---
 
