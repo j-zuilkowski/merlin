@@ -74,7 +74,8 @@ final class AppState: ObservableObject {
 
     let xcalibreClient: XcalibreClient
     /// Registry of all MemoryBackendPlugin implementations.
-    /// Populated at init; active plugin is injected into AgenticEngine.
+    /// AppState registers the built-in local backend at init, selects the persisted
+    /// setting, and injects the active plugin into AgenticEngine.
     let memoryRegistry = MemoryBackendRegistry()
     /// Local model managers keyed by providerID; rebuilt from ProviderRegistry at init and whenever providers change.
     var localModelManagers: [String: any LocalModelManagerProtocol] = [:]
@@ -102,11 +103,13 @@ final class AppState: ObservableObject {
 
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
+        // 1. Register the built-in local backend.
         let vectorPlugin = LocalVectorPlugin(
             databasePath: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".merlin/memory.sqlite").path,
             embeddingProvider: NLContextualEmbeddingProvider()
         )
+        // 2. Select the persisted memory backend ID.
         memoryRegistry.register(vectorPlugin)
         memoryRegistry.setActive(pluginID: AppSettings.shared.memoryBackendID)
         Self.installBuiltinSkills()
@@ -172,6 +175,7 @@ final class AppState: ObservableObject {
             toolRouter: toolRouter,
             contextManager: ctx,
             xcalibreClient: xcalibreClient,
+            // 3. Inject the active backend into the engine at init.
             memoryBackend: memoryRegistry.activePlugin
         )
         engine.currentProjectPath = AppSettings.shared.projectPath.isEmpty
@@ -346,6 +350,8 @@ final class AppState: ObservableObject {
     func newSession() {
         engine.cancel()
         engine.contextManager.clear()
+        // Reset the circuit breaker counter so a new session always starts clean.
+        engine.consecutiveCriticFailures = 0
         toolLogLines.removeAll()
         toolActivityState = .idle
         thinkingModeActive = false
@@ -422,6 +428,7 @@ final class AppState: ObservableObject {
     }
 
     private func syncMemoryBackend() async {
+        // Keep the active backend aligned with the persisted setting.
         memoryRegistry.setActive(pluginID: AppSettings.shared.memoryBackendID)
         let active = memoryRegistry.activePlugin
         await engine.setMemoryBackend(active)

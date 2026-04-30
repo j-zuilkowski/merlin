@@ -4,8 +4,8 @@ import XCTest
 @MainActor
 final class CircuitBreakerTests: XCTestCase {
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
+        try await super.setUp()
         AppSettings.shared.agentCircuitBreakerThreshold = 3
         AppSettings.shared.agentCircuitBreakerMode = "halt"
     }
@@ -158,11 +158,9 @@ final class CircuitBreakerTests: XCTestCase {
     // MARK: - New session resets counter
 
     func testNewSessionResetsConsecutiveCriticFailures() async throws {
-        let engine = makeEngine(threshold: 10)
-        for await _ in engine.send(userMessage: "t1") {}
-        for await _ in engine.send(userMessage: "t2") {}
-        XCTAssertEqual(engine.consecutiveCriticFailures, 2)
         let state = AppState(projectPath: "")
+        let engine = state.engine!
+        engine.consecutiveCriticFailures = 2
         state.newSession()
         XCTAssertEqual(engine.consecutiveCriticFailures, 0)
     }
@@ -202,7 +200,7 @@ private struct AlwaysSkippedCritic: CriticEngineProtocol {
 
 private struct StubClassifier: PlannerEngineProtocol {
     func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
-        ClassifierResult(needsPlanning: false, complexity: .routine, reason: "stub")
+        ClassifierResult(needsPlanning: false, complexity: .standard, reason: "stub")
     }
 
     func decompose(task: String, context: [Message]) async -> [PlanStep] { [] }

@@ -43,11 +43,15 @@ final class AppSettings: ObservableObject {
     @Published var disabledSkillNames: [String] = []
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
-    /// TOML key `memory.backend_id`. Selects the active MemoryBackendPlugin.
+    /// TOML key `memory.backend_id`. Default: `"local-vector"`. Selects the active MemoryBackendPlugin.
     @Published var memoryBackendID: String = "local-vector"
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
     @Published var ragChunkLimit: Int = 3
+    /// TOML key `agent_circuit_breaker_threshold`. Default: `3`. `0` disables the circuit breaker entirely.
+    @Published var agentCircuitBreakerThreshold: Int = 3
+    /// TOML key `agent_circuit_breaker_mode`. Default: `"halt"`. `halt` stops the next turn cleanly; `warn` emits a system note and continues.
+    @Published var agentCircuitBreakerMode: String = "halt"
     // MARK: - V6 LoRA self-training
     // All off / empty by default. loraAutoTrain and loraAutoLoad are sub-toggles that
     // only take effect when loraEnabled = true.
@@ -141,6 +145,8 @@ final class AppSettings: ObservableObject {
         var projectPath: String?
         var ragRerank: Bool?
         var ragChunkLimit: Int?
+        var agentCircuitBreakerThreshold: Int?
+        var agentCircuitBreakerMode: String?
         var lora: LoraConfig?
         var loraEnabled: Bool?
         var loraAutoTrain: Bool?
@@ -244,6 +250,8 @@ final class AppSettings: ObservableObject {
             case projectPath = "project_path"
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
+            case agentCircuitBreakerThreshold = "agent_circuit_breaker_threshold"
+            case agentCircuitBreakerMode = "agent_circuit_breaker_mode"
             case lora
             case loraEnabled = "lora_enabled"
             case loraAutoTrain = "lora_auto_train"
@@ -333,6 +341,12 @@ final class AppSettings: ObservableObject {
         }
         if ragChunkLimit != 3 {
             lines.append("rag_chunk_limit = \(ragChunkLimit)")
+        }
+        if agentCircuitBreakerThreshold != 3 {
+            lines.append("agent_circuit_breaker_threshold = \(agentCircuitBreakerThreshold)")
+        }
+        if agentCircuitBreakerMode != "halt" {
+            lines.append("agent_circuit_breaker_mode = \(quoted(agentCircuitBreakerMode))")
         }
         if loraEnabled {
             lines.append("")
@@ -645,6 +659,12 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.ragChunkLimit {
             ragChunkLimit = value
+        }
+        if let value = config.agentCircuitBreakerThreshold {
+            agentCircuitBreakerThreshold = value
+        }
+        if let value = config.agentCircuitBreakerMode {
+            agentCircuitBreakerMode = value
         }
         if let lora = config.lora {
             if let value = lora.loraEnabled {

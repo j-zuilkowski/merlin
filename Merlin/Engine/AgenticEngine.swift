@@ -9,7 +9,7 @@
 // V5+: runLoop() classifies task complexity, routes to the correct
 // AgentSlot, runs the CriticEngine on final responses, records
 // OutcomeSignals (including real diffAccepted/diffEditedOnAccept
-// values from StagingBuffer), and gates xcalibre memory writes on
+// values from StagingBuffer), and gates local memory writes on
 // the critic verdict.
 //
 // V6: calls LoRACoordinator.considerTraining() after each record();
@@ -46,8 +46,8 @@ final class AgenticEngine {
     private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
-    /// Local memory backend plugin. Receives episodic writes and provides memory
-    /// chunks for RAG enrichment. Defaults to `NullMemoryPlugin`.
+    /// Local memory backend plugin for episodic writes and local memory RAG.
+    /// This is separate from `xcalibreClient`, which remains book-content only.
     var memoryBackend: any MemoryBackendPlugin = NullMemoryPlugin()
     var loraCoordinator: LoRACoordinator?
     var parameterAdvisor: ModelParameterAdvisor?
@@ -66,8 +66,11 @@ final class AgenticEngine {
     var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
     /// Reset to nil at the start of every runLoop invocation.
-    /// When .fail, the xcalibre memory write is suppressed at the end of the turn.
+    /// When .fail, the backend memory write is suppressed at the end of the turn.
     var lastCriticVerdict: CriticResult?
+    /// Counts consecutive turns where the critic returned `.fail`.
+    /// Reset to 0 on `.pass` or `.skipped`, and reset by `AppState.newSession()`.
+    var consecutiveCriticFailures: Int = 0
     var classifierOverride: (any PlannerEngineProtocol)?
     var currentProjectPath: String?
     /// Mirrors AppSettings.ragRerank. Set at init and kept in sync by AppState.
@@ -363,6 +366,16 @@ final class AgenticEngine {
         let classification = await classify(message: userMessage, domain: domain)
         let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
 
+        let cbThreshold = AppSettings.shared.agentCircuitBreakerThreshold
+        let cbMode = AppSettings.shared.agentCircuitBreakerMode
+        if cbThreshold > 0, consecutiveCriticFailures >= cbThreshold, cbMode == "halt" {
+            continuation.yield(.systemNote(
+                "🛑 Halted after \(consecutiveCriticFailures) consecutive reliability failures. " +
+                "Start a new session or adjust Settings → Providers before continuing."
+            ))
+            return
+        }
+
         if let buffer = toolRouter.stagingBuffer {
             await buffer.resetSessionCounts()
         }
@@ -370,6 +383,7 @@ final class AgenticEngine {
         var effectiveMessage = userMessage
         var ragChunks: [RAGChunk] = []
 
+        // Merge the two RAG sources in order: local memory first, then book content.
         if let memResults = try? await memoryBackend.search(query: userMessage, topK: 5) {
             ragChunks.append(contentsOf: memResults.map { $0.toRAGChunk() })
         }
@@ -504,6 +518,12 @@ final class AgenticEngine {
                             context: context.messages
                         )
                         lastCriticVerdict = verdict
+                        switch verdict {
+                        case .pass, .skipped:
+                            consecutiveCriticFailures = 0
+                        case .fail:
+                            consecutiveCriticFailures += 1
+                        }
                         switch verdict {
                         case .pass:
                             break
@@ -668,7 +688,7 @@ final class AgenticEngine {
 
         if AppSettings.shared.memoriesEnabled {
             if case .fail = lastCriticVerdict {
-                // Critic failed - suppress memory write for this turn.
+                // Critic failure suppresses the episodic backend write for this turn.
             } else {
                 let summary = context.messages
                     .filter { $0.role == .assistant }
@@ -676,6 +696,7 @@ final class AgenticEngine {
                     .joined(separator: "\n")
                     .prefix(2000)
                 if !summary.isEmpty {
+                    // Preserve the critic gating while redirecting the write to the local backend.
                     let chunk = MemoryChunk(
                         content: String(summary),
                         chunkType: "episodic",
@@ -685,6 +706,13 @@ final class AgenticEngine {
                     try? await memoryBackend.write(chunk)
                 }
             }
+        }
+
+        if cbThreshold > 0, consecutiveCriticFailures >= cbThreshold, cbMode == "warn" {
+            continuation.yield(.systemNote(
+                "⚠️ Reliability check failed \(consecutiveCriticFailures) time\(consecutiveCriticFailures == 1 ? "" : "s") consecutively. " +
+                "Output quality may be degraded. Check Settings → Providers for suggestions."
+            ))
         }
 
         onUsageUpdate?(approximateTokens(in: context))
