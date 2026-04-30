@@ -46,6 +46,16 @@ final class AppSettings: ObservableObject {
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
     @Published var ragChunkLimit: Int = 3
+    // MARK: - V6 LoRA self-training
+    // All off / empty by default. loraAutoTrain and loraAutoLoad are sub-toggles that
+    // only take effect when loraEnabled = true.
+    @Published var loraEnabled: Bool = false
+    @Published var loraAutoTrain: Bool = false
+    @Published var loraAutoLoad: Bool = false
+    @Published var loraMinSamples: Int = 50
+    @Published var loraBaseModel: String = ""
+    @Published var loraAdapterPath: String = ""
+    @Published var loraServerURL: String = ""
     @Published var xcalibreToken: String = ""
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
@@ -81,6 +91,14 @@ final class AppSettings: ObservableObject {
         var projectPath: String?
         var ragRerank: Bool?
         var ragChunkLimit: Int?
+        var lora: LoraConfig?
+        var loraEnabled: Bool?
+        var loraAutoTrain: Bool?
+        var loraAutoLoad: Bool?
+        var loraMinSamples: Int?
+        var loraBaseModel: String?
+        var loraAdapterPath: String?
+        var loraServerURL: String?
         var xcalibreToken: String?
         var slots: [String: String]?
         var verifyCommand: String?
@@ -95,6 +113,26 @@ final class AppSettings: ObservableObject {
             enum CodingKeys: String, CodingKey {
                 case maxPlanRetries = "max_plan_retries"
                 case maxLoopIterations = "max_loop_iterations"
+            }
+        }
+
+        struct LoraConfig: Codable, Sendable {
+            var loraEnabled: Bool?
+            var loraAutoTrain: Bool?
+            var loraAutoLoad: Bool?
+            var loraMinSamples: Int?
+            var loraBaseModel: String?
+            var loraAdapterPath: String?
+            var loraServerURL: String?
+
+            enum CodingKeys: String, CodingKey {
+                case loraEnabled = "lora_enabled"
+                case loraAutoTrain = "lora_auto_train"
+                case loraAutoLoad = "lora_auto_load"
+                case loraMinSamples = "lora_min_samples"
+                case loraBaseModel = "lora_base_model"
+                case loraAdapterPath = "lora_adapter_path"
+                case loraServerURL = "lora_server_url"
             }
         }
 
@@ -120,6 +158,14 @@ final class AppSettings: ObservableObject {
             case projectPath = "project_path"
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
+            case lora
+            case loraEnabled = "lora_enabled"
+            case loraAutoTrain = "lora_auto_train"
+            case loraAutoLoad = "lora_auto_load"
+            case loraMinSamples = "lora_min_samples"
+            case loraBaseModel = "lora_base_model"
+            case loraAdapterPath = "lora_adapter_path"
+            case loraServerURL = "lora_server_url"
             case xcalibreToken = "xcalibre_token"
             case slots
             case verifyCommand = "verify_command"
@@ -176,6 +222,29 @@ final class AppSettings: ObservableObject {
         }
         if ragChunkLimit != 3 {
             lines.append("rag_chunk_limit = \(ragChunkLimit)")
+        }
+        if loraEnabled {
+            lines.append("")
+            lines.append("[lora]")
+            lines.append("lora_enabled = true")
+            if loraAutoTrain {
+                lines.append("lora_auto_train = true")
+            }
+            if loraAutoLoad {
+                lines.append("lora_auto_load = true")
+            }
+            if loraMinSamples != 50 {
+                lines.append("lora_min_samples = \(loraMinSamples)")
+            }
+            if loraBaseModel.isEmpty == false {
+                lines.append("lora_base_model = \(quoted(loraBaseModel))")
+            }
+            if loraAdapterPath.isEmpty == false {
+                lines.append("lora_adapter_path = \(quoted(loraAdapterPath))")
+            }
+            if loraServerURL.isEmpty == false {
+                lines.append("lora_server_url = \(quoted(loraServerURL))")
+            }
         }
         if slotAssignments.isEmpty == false {
             lines.append("")
@@ -269,10 +338,10 @@ final class AppSettings: ObservableObject {
 
     func applyTOML(_ toml: String) {
         let decoder = TOMLDecoder()
-        guard let config = try? decoder.decode(ConfigFile.self, from: toml) else {
-            return
+        if let config = try? decoder.decode(ConfigFile.self, from: toml) {
+            apply(config)
         }
-        apply(config)
+        applyLoRASection(from: toml)
     }
 
     func propose(_ change: SettingsProposal) async -> Bool {
@@ -423,6 +492,29 @@ final class AppSettings: ObservableObject {
         if let value = config.ragChunkLimit {
             ragChunkLimit = value
         }
+        if let lora = config.lora {
+            if let value = lora.loraEnabled {
+                loraEnabled = value
+            }
+            if let value = lora.loraAutoTrain {
+                loraAutoTrain = value
+            }
+            if let value = lora.loraAutoLoad {
+                loraAutoLoad = value
+            }
+            if let value = lora.loraMinSamples {
+                loraMinSamples = value
+            }
+            if let value = lora.loraBaseModel {
+                loraBaseModel = value
+            }
+            if let value = lora.loraAdapterPath {
+                loraAdapterPath = value
+            }
+            if let value = lora.loraServerURL {
+                loraServerURL = value
+            }
+        }
         if let value = config.xcalibreToken {
             xcalibreToken = value
         }
@@ -462,5 +554,87 @@ final class AppSettings: ObservableObject {
             .replacingOccurrences(of: "\r", with: "\\r")
             .replacingOccurrences(of: "\t", with: "\\t")
         return "\"\(escaped)\""
+    }
+
+    private func applyLoRASection(from toml: String) {
+        let lines = toml.split(separator: "\n", omittingEmptySubsequences: false)
+        var inLoRASection = false
+
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line == "[lora]" {
+                inLoRASection = true
+                continue
+            }
+            if line.hasPrefix("[") && line != "[lora]" {
+                if inLoRASection {
+                    break
+                }
+                continue
+            }
+            guard inLoRASection, !line.isEmpty, !line.hasPrefix("#") else {
+                continue
+            }
+
+            if let value = parsedBoolValue(from: line, key: "lora_enabled") {
+                loraEnabled = value
+            } else if let value = parsedBoolValue(from: line, key: "lora_auto_train") {
+                loraAutoTrain = value
+            } else if let value = parsedBoolValue(from: line, key: "lora_auto_load") {
+                loraAutoLoad = value
+            } else if let value = parsedIntValue(from: line, key: "lora_min_samples") {
+                loraMinSamples = value
+            } else if let value = parsedStringValue(from: line, key: "lora_base_model") {
+                loraBaseModel = value
+            } else if let value = parsedStringValue(from: line, key: "lora_adapter_path") {
+                loraAdapterPath = value
+            } else if let value = parsedStringValue(from: line, key: "lora_server_url") {
+                loraServerURL = value
+            }
+        }
+    }
+
+    private func parsedBoolValue(from line: String, key: String) -> Bool? {
+        guard line.hasPrefix("\(key) = ") else {
+            return nil
+        }
+        let raw = String(line.dropFirst(key.count + 3))
+        switch raw {
+        case "true":
+            return true
+        case "false":
+            return false
+        default:
+            return nil
+        }
+    }
+
+    private func parsedIntValue(from line: String, key: String) -> Int? {
+        guard line.hasPrefix("\(key) = ") else {
+            return nil
+        }
+        let raw = String(line.dropFirst(key.count + 3))
+        return Int(raw)
+    }
+
+    private func parsedStringValue(from line: String, key: String) -> String? {
+        guard line.hasPrefix("\(key) = ") else {
+            return nil
+        }
+        let raw = String(line.dropFirst(key.count + 3))
+        return unquoted(raw)
+    }
+
+    private func unquoted(_ value: String) -> String {
+        guard value.count >= 2, value.first == "\"", value.last == "\"" else {
+            return value
+        }
+        let body = String(value.dropFirst().dropLast())
+        return body
+            .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\r", with: "\r")
+            .replacingOccurrences(of: "\\t", with: "\t")
+            .replacingOccurrences(of: "\\\"", with: "\"")
+            .replacingOccurrences(of: "\\\\", with: "\\")
     }
 }

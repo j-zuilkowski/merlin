@@ -6,7 +6,7 @@
 //
 // Opened via MerlinCommands Help menu (⌘? for User Guide).
 import SwiftUI
-import WebKit
+@preconcurrency import WebKit
 
 enum HelpDocument: String, Identifiable {
     case userGuide = "UserGuide"
@@ -80,27 +80,10 @@ struct HelpWebView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
+    @MainActor
     final class Coordinator: NSObject, WKNavigationDelegate {
         // Tracks the content currently loaded so updateNSView is idempotent.
         var loadedHTML: String = ""
-
-        func webView(_ webView: WKWebView,
-                     decidePolicyFor action: WKNavigationAction,
-                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            guard action.navigationType == .linkActivated,
-                  let url = action.request.url else {
-                decisionHandler(.allow)
-                return
-            }
-            // Fragment links (#anchor) — let WKWebView scroll in-page
-            if url.fragment != nil && (url.host == nil || url.absoluteString.hasPrefix("about:")) {
-                decisionHandler(.allow)
-                return
-            }
-            // Real external links — open in default browser
-            NSWorkspace.shared.open(url)
-            decisionHandler(.cancel)
-        }
 
         // When the user triggers Reload (⌘R or context menu), re-inject the
         // HTML string so the page doesn't go blank (WKWebView reloads about:blank
@@ -200,7 +183,6 @@ enum MarkdownToHTML {
         var codeLang = ""
         var codeLines: [String] = []
         var inTable = false
-        var tableHeaderDone = false
         var inList = false
         var listOrdered = false
         var listItems: [String] = []
@@ -232,7 +214,7 @@ enum MarkdownToHTML {
                     inCodeBlock = false
                 } else {
                     flushList()
-                    if inTable { inTable = false; tableHeaderDone = false; output += "</table>\n" }
+                    if inTable { inTable = false; output += "</table>\n" }
                     codeLang = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces)
                     inCodeBlock = true
                 }
@@ -248,7 +230,7 @@ enum MarkdownToHTML {
             // Blank line
             if line.trimmingCharacters(in: .whitespaces).isEmpty {
                 flushList()
-                if inTable { inTable = false; tableHeaderDone = false; output += "</table>\n" }
+                if inTable { inTable = false; output += "</table>\n" }
                 output += "\n"
                 i += 1
                 continue
@@ -270,7 +252,6 @@ enum MarkdownToHTML {
                     for cell in cells { output += "<th>\(renderInline(cell))</th>" }
                     output += "</tr>\n"
                     inTable = true
-                    tableHeaderDone = true
                 } else {
                     output += "<tr>"
                     for cell in cells { output += "<td>\(renderInline(cell))</td>" }
@@ -281,7 +262,6 @@ enum MarkdownToHTML {
             }
             if inTable {
                 inTable = false
-                tableHeaderDone = false
                 output += "</table>\n"
             }
 
@@ -334,7 +314,7 @@ enum MarkdownToHTML {
 
             // Ordered list
             let orderedPattern = #"^\d+\. (.+)$"#
-            if let match = line.range(of: orderedPattern, options: .regularExpression) {
+            if line.range(of: orderedPattern, options: .regularExpression) != nil {
                 if inList && !listOrdered { flushList() }
                 inList = true; listOrdered = true
                 let itemText = String(line[line.index(line.startIndex, offsetBy: line.firstIndex(of: ".")!.utf16Offset(in: line) + 2)...])

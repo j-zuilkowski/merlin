@@ -22,6 +22,8 @@ targets:
       - path: Merlin/
         excludes:
           - Skills/Builtin/**
+    dependencies:
+      - sdk: AppIntents.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.merlin.app

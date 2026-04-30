@@ -4,21 +4,14 @@ import XCTest
 @MainActor
 final class DisabledSkillsTests: XCTestCase {
 
-    private var tempDir: URL!
-
-    override func setUp() {
-        super.setUp()
-        tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
+    private func makeTempDir() -> URL {
+        let tempDir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("skills-\(UUID().uuidString)")
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        return tempDir
     }
 
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: tempDir)
-        super.tearDown()
-    }
-
-    private func makeSkill(name: String) -> Skill {
+    private func makeSkill(name: String, in tempDir: URL) -> Skill {
         let dir = tempDir.appendingPathComponent(name)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let frontmatter = "---\nname: \(name)\ndescription: test skill\n---\n"
@@ -27,38 +20,48 @@ final class DisabledSkillsTests: XCTestCase {
     }
 
     func testDisabledSkillExcluded() {
+        let tempDir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let registry = SkillsRegistry(personalDir: tempDir, projectDir: nil)
-        let skills = [makeSkill(name: "alpha"), makeSkill(name: "beta")]
+        let skills = [makeSkill(name: "alpha", in: tempDir), makeSkill(name: "beta", in: tempDir)]
         let enabled = registry.enabledSkills(from: skills, disabledNames: ["beta"])
         XCTAssertEqual(enabled.map(\.name), ["alpha"])
     }
 
     func testEnabledSkillIncluded() {
+        let tempDir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let registry = SkillsRegistry(personalDir: tempDir, projectDir: nil)
-        let skills = [makeSkill(name: "alpha"), makeSkill(name: "beta")]
+        let skills = [makeSkill(name: "alpha", in: tempDir), makeSkill(name: "beta", in: tempDir)]
         let enabled = registry.enabledSkills(from: skills, disabledNames: [])
         XCTAssertEqual(Set(enabled.map(\.name)), Set(["alpha", "beta"]))
     }
 
     func testEmptyDisabledListReturnsAll() {
+        let tempDir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let registry = SkillsRegistry(personalDir: tempDir, projectDir: nil)
-        let skills = [makeSkill(name: "a"), makeSkill(name: "b"), makeSkill(name: "c")]
+        let skills = [makeSkill(name: "a", in: tempDir), makeSkill(name: "b", in: tempDir), makeSkill(name: "c", in: tempDir)]
         let enabled = registry.enabledSkills(from: skills, disabledNames: [])
         XCTAssertEqual(enabled.count, 3)
     }
 
     func testAllDisabledReturnsEmpty() {
+        let tempDir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let registry = SkillsRegistry(personalDir: tempDir, projectDir: nil)
-        let skills = [makeSkill(name: "a"), makeSkill(name: "b")]
+        let skills = [makeSkill(name: "a", in: tempDir), makeSkill(name: "b", in: tempDir)]
         let enabled = registry.enabledSkills(from: skills, disabledNames: ["a", "b"])
         XCTAssertTrue(enabled.isEmpty)
     }
 
     @MainActor
     func testContextManagerBlockOmitsDisabledSkill() throws {
+        let tempDir = makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
         let ctx = ContextManager()
-        let skillA = makeSkill(name: "review")
-        let skillB = makeSkill(name: "commit")
+        let skillA = makeSkill(name: "review", in: tempDir)
+        let skillB = makeSkill(name: "commit", in: tempDir)
 
         let block = ctx.buildSkillReinjectionBlock(
             skills: [skillA, skillB],

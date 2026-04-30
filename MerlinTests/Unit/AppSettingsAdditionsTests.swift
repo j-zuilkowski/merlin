@@ -4,17 +4,9 @@ import XCTest
 @MainActor
 final class AppSettingsAdditionsTests: XCTestCase {
 
-    private var tempFile: URL!
-
-    override func setUp() {
-        super.setUp()
-        tempFile = URL(fileURLWithPath: NSTemporaryDirectory())
+    private func makeTempFile() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("settings-\(UUID().uuidString).toml")
-    }
-
-    override func tearDown() {
-        try? FileManager.default.removeItem(at: tempFile)
-        super.tearDown()
     }
 
     func testDefaultValues() {
@@ -28,6 +20,8 @@ final class AppSettingsAdditionsTests: XCTestCase {
     func testRoundTripPersistsKeepAwake() async throws {
         let settings = AppSettings()
         settings.keepAwake = true
+        let tempFile = makeTempFile()
+        defer { try? FileManager.default.removeItem(at: tempFile) }
         try await settings.save(to: tempFile)
 
         let settings2 = AppSettings()
@@ -38,6 +32,8 @@ final class AppSettingsAdditionsTests: XCTestCase {
     func testRoundTripPersistsPermissionMode() async throws {
         let settings = AppSettings()
         settings.defaultPermissionMode = .plan
+        let tempFile = makeTempFile()
+        defer { try? FileManager.default.removeItem(at: tempFile) }
         try await settings.save(to: tempFile)
 
         let settings2 = AppSettings()
@@ -48,6 +44,8 @@ final class AppSettingsAdditionsTests: XCTestCase {
     func testRoundTripPersistsNotificationsEnabled() async throws {
         let settings = AppSettings()
         settings.notificationsEnabled = false
+        let tempFile = makeTempFile()
+        defer { try? FileManager.default.removeItem(at: tempFile) }
         try await settings.save(to: tempFile)
 
         let settings2 = AppSettings()
@@ -58,6 +56,8 @@ final class AppSettingsAdditionsTests: XCTestCase {
     func testRoundTripPersistsMessageDensity() async throws {
         let settings = AppSettings()
         settings.messageDensity = .compact
+        let tempFile = makeTempFile()
+        defer { try? FileManager.default.removeItem(at: tempFile) }
         try await settings.save(to: tempFile)
 
         let settings2 = AppSettings()

@@ -96,6 +96,7 @@ final class MemoryBrowserTests: XCTestCase {
 
     // MARK: - View type existence
 
+    @MainActor
     func testMemoryBrowserViewTypeExists() {
         guard ProcessInfo.processInfo.environment["RUN_VIEW_INSTANTIATION"] == "1" else { return }
         _ = MemoryBrowserView()

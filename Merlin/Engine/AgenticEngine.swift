@@ -352,7 +352,7 @@ final class AgenticEngine {
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
         emitCompactionNoteIfNeeded()
 
-        if classification.needsPlanning, let classifierOverride {
+        if classification.needsPlanning {
             let planner = PlannerEngine(
                 executeProvider: selectProvider(for: userMessage),
                 orchestrateProvider: provider(for: .orchestrate),
