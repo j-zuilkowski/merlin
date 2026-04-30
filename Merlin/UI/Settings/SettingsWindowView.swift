@@ -19,6 +19,7 @@ struct SettingsWindowView: View {
                 .navigationTitle(selectedSection.label)
         }
         .environmentObject(appState)
+        .environment(\.merlinAppState, appState)
         .frame(minWidth: 640, minHeight: 480)
     }
 
@@ -57,6 +58,8 @@ struct SettingsWindowView: View {
             ConnectorsSettingsView()
         case .performance:
             PerformanceDashboardView()
+        case .lora:
+            LoRASettingsSection()
         case .advanced:
             AdvancedSettingsView()
         }
@@ -79,6 +82,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case permissions
     case connectors
     case performance
+    case lora
     case advanced
 
     var label: String {
@@ -98,6 +102,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .permissions: return "Permissions"
         case .connectors: return "Connectors"
         case .performance: return "Performance Dashboard"
+        case .lora: return "LoRA"
         case .advanced: return "Advanced"
         }
     }
@@ -119,6 +124,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .permissions: return "lock.shield"
         case .connectors: return "link"
         case .performance: return "chart.bar"
+        case .lora: return "cpu"
         case .advanced: return "slider.horizontal.3"
         }
     }
