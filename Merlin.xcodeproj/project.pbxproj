@@ -199,6 +199,7 @@
 		BFD6928F3D6092F0F90A0962 /* ToolbarActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4219AF1A6BFAF34B2084BFE /* ToolbarActionStore.swift */; };
 		C0555F5014066213306EDC83 /* ScreenCaptureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F4EFAE441F408FDA62B675 /* ScreenCaptureTests.swift */; };
 		C1B6E354EFC8DF8AD29795C3 /* FilePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60898163F147C93BF66B39D /* FilePane.swift */; };
+		C1C5E0974CFB3BA0436BB545 /* CompletionRequestSamplingParamsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C50E715472E2F395B24830A5 /* CompletionRequestSamplingParamsTests.swift */; };
 		C26DF83B0A2259D091F26D58 /* ToolDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70C83D88223C2B2DE3A5242 /* ToolDefinitions.swift */; };
 		C3F55446A4AB27B204D98A79 /* AgenticEngineSlotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942F9DBBE67AC6DC3CDEB693 /* AgenticEngineSlotTests.swift */; };
 		C4318507ADF3219D2FB94D33 /* XcalibreClientProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4151D1646DB0DF94D14EB859 /* XcalibreClientProtocol.swift */; };
@@ -472,6 +473,7 @@
 		C477E3FBD10A251B84FF1904 /* WebSearchTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchTool.swift; sourceTree = "<group>"; };
 		C4856A31F59A8254539A2923 /* AgentRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentRegistry.swift; sourceTree = "<group>"; };
 		C49FBF865B679572259ABF7C /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		C50E715472E2F395B24830A5 /* CompletionRequestSamplingParamsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletionRequestSamplingParamsTests.swift; sourceTree = "<group>"; };
 		C69382D667DD3BE1FA7E1C42 /* ContextInjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextInjectionTests.swift; sourceTree = "<group>"; };
 		C69D40E1AB139559D7CAC634 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		C70C83D88223C2B2DE3A5242 /* ToolDefinitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolDefinitions.swift; sourceTree = "<group>"; };
@@ -779,6 +781,7 @@
 				2988D5A14565391542674258 /* AuthMemoryTests.swift */,
 				E0B3F4871689D08DFF5511D9 /* CGEventToolTests.swift */,
 				B11CD06F1170B3F5FA23984D /* CLAUDEMDLoaderTests.swift */,
+				C50E715472E2F395B24830A5 /* CompletionRequestSamplingParamsTests.swift */,
 				48F1814987B2646E8CD8E875 /* ConnectorTests.swift */,
 				C69382D667DD3BE1FA7E1C42 /* ContextInjectionTests.swift */,
 				8BA229D76BE446602D1792C1 /* ContextInjectorVisionTests.swift */,
@@ -1334,6 +1337,7 @@
 				7621709D16BBAB8DA4D03F02 /* BundleModule.swift in Sources */,
 				88F9D22262AA2FC15B71B589 /* CGEventToolTests.swift in Sources */,
 				B3D64C96D670DECEF44FE747 /* CLAUDEMDLoaderTests.swift in Sources */,
+				C1C5E0974CFB3BA0436BB545 /* CompletionRequestSamplingParamsTests.swift in Sources */,
 				E98888AFCDEEEC71D8006B15 /* ConnectorTests.swift in Sources */,
 				A8DF211813085E8FAA7E483F /* ContextInjectionTests.swift in Sources */,
 				49423F862E06BF829B1FEA3B /* ContextInjectorVisionTests.swift in Sources */,
