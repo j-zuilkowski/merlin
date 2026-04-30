@@ -18,3 +18,18 @@ func makeEngine(provider: MockProvider? = nil,
                          toolRouter: router, contextManager: ctx,
                          xcalibreClient: xcalibreClient)
 }
+
+enum EngineFactory {
+    @MainActor
+    static func make(provider: MockProvider? = nil,
+                     proProvider: MockProvider? = nil,
+                     flashProvider: MockProvider? = nil,
+                     xcalibreClient: (any XcalibreClientProtocol)? = nil) -> AgenticEngine {
+        makeEngine(
+            provider: provider,
+            proProvider: proProvider,
+            flashProvider: flashProvider,
+            xcalibreClient: xcalibreClient
+        )
+    }
+}

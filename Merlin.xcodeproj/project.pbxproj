@@ -155,6 +155,7 @@
 		7C247B86E483FEE5E2065B78 /* ShellToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788C316547E5D5E66150F69A /* ShellToolTests.swift */; };
 		7CD14B6A0B8C6A6AD3D244C7 /* ContextInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65F30CE00DABF745DC5826D /* ContextInjector.swift */; };
 		7DC399E6543DDB473F3D0F70 /* DeepSeekProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F0905E8B59CA9201AB055D /* DeepSeekProvider.swift */; };
+		7DF6322F4CD38449C7DF05CB /* NullModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F945E3E5B2790E2E2ED374C /* NullModelManager.swift */; };
 		7F2D0BE882993B20A930F82F /* ProviderRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C07A06E404659EA74281294 /* ProviderRegistryTests.swift */; };
 		7F50927666335BC7708917BE /* LoRATrainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4919A99A39BBA0124C04C20 /* LoRATrainer.swift */; };
 		82249D2A3CAC92C35AC3788F /* StagingBufferSignalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D603DCD19F997A62ADB6F2 /* StagingBufferSignalsTests.swift */; };
@@ -317,6 +318,7 @@
 		085460D786AF42FCACB6A117 /* AppSettingsAdditionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsAdditionsTests.swift; sourceTree = "<group>"; };
 		0B06E7E62E91DDEB30C7E997 /* GitHubConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubConnector.swift; sourceTree = "<group>"; };
 		0F4442460A9F85EBB2236D6D /* NotificationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationEngine.swift; sourceTree = "<group>"; };
+		0F945E3E5B2790E2E2ED374C /* NullModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NullModelManager.swift; sourceTree = "<group>"; };
 		10467AB025B17A607DA0179F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		10837B219D957A914ABD59F0 /* SessionSerializationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSerializationTests.swift; sourceTree = "<group>"; };
 		111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFrontmatterV5Tests.swift; sourceTree = "<group>"; };
@@ -945,6 +947,7 @@
 				13A5B8915DC469508A39149F /* LocalModelManagerProtocol.swift */,
 				940B179816BAF554FDE883A5 /* LocalModelManagerSupport.swift */,
 				55F40E9AAFB218E238C971D2 /* MistralRSModelManager.swift */,
+				0F945E3E5B2790E2E2ED374C /* NullModelManager.swift */,
 				4B746A70DE6F0D68E4B36A3A /* OllamaModelManager.swift */,
 				89183F04816C851AB7EFD89A /* VLLMModelManager.swift */,
 			);
@@ -1582,6 +1585,7 @@
 				20CE7E1B8ED6F5F66F12B50D /* ModelPerformanceTracker.swift in Sources */,
 				8D0CFAD6918A6C212027EBC2 /* ModelPerformanceTrackerProtocol.swift in Sources */,
 				466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */,
+				7DF6322F4CD38449C7DF05CB /* NullModelManager.swift in Sources */,
 				5A50B92FF3740D878AC81CAE /* NullProvider.swift in Sources */,
 				B0188C8E3FDBC9ED481EAD16 /* OllamaModelManager.swift in Sources */,
 				BD776023D0704FE63E552DDB /* OpenAICompatibleProvider.swift in Sources */,

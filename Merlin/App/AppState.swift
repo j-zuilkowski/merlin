@@ -58,6 +58,7 @@ final class AppState: ObservableObject {
     @Published var lastScreenshot: (data: Data, timestamp: Date, sourceBundleID: String)? = nil
     @Published var contextUsage: ContextUsageTracker = ContextUsageTracker(contextWindowSize: 200_000)
     @Published var toolbarActionsList: [ToolbarAction] = []
+    @Published var pendingRestartInstructions: RestartInstructions? = nil
 
     @Published var activeProviderID: String = "deepseek" {
         didSet {
@@ -71,6 +72,8 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
+    var localModelManagers: [String: any LocalModelManagerProtocol] = [:]
+    var activeLocalProviderID: String? = nil
     let loraCoordinator = LoRACoordinator()
     let parameterAdvisor = ModelParameterAdvisor()
     let toolbarActions = ToolbarActionStore()
@@ -163,11 +166,16 @@ final class AppState: ObservableObject {
         engine.sessionStore = sessionStore
         engine.loraCoordinator = loraCoordinator
         engine.parameterAdvisor = parameterAdvisor
+        rebuildLocalModelManagers()
         engine.onParameterAdvisoriesUpdate = { [weak self] modelID in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 await self.refreshParameterAdvisories(for: modelID)
             }
+        }
+        engine.onAdvisory = { [weak self] advisory in
+            guard let self else { return }
+            await self.handleAdvisory(advisory)
         }
         refreshLoRAProvider(
             enabled: AppSettings.shared.loraEnabled,
@@ -372,6 +380,7 @@ final class AppState: ObservableObject {
     }
 
     private func syncEngineProviders() {
+        rebuildLocalModelManagers()
         let apiKey = registry.readAPIKey(for: "deepseek") ?? ""
         let fallbackPro = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-pro")
         let fallbackFlash = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-flash")
@@ -384,9 +393,54 @@ final class AppState: ObservableObject {
         }
         engine.slotAssignments = AppSettings.shared.slotAssignments
         activeProviderID = registry.activeProviderID
+        if let activeConfig = registry.activeConfig, activeConfig.isLocal {
+            activeLocalProviderID = activeConfig.localModelManagerID ?? activeConfig.id
+        } else {
+            activeLocalProviderID = nil
+        }
         Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
         Task { [weak self] in
             await self?.refreshParameterAdvisories()
+        }
+    }
+
+    func manager(for providerID: String) -> (any LocalModelManagerProtocol)? {
+        localModelManagers[providerID]
+    }
+
+    func applyAdvisory(_ advisory: ParameterAdvisory) async throws {
+        switch advisory.kind {
+        case .contextLengthTooSmall:
+            let suggested = Int(advisory.suggestedValue.components(separatedBy: .whitespaces).first ?? "") ?? 16_384
+            var config = LocalModelConfig()
+            config.contextLength = suggested
+
+            guard let providerID = activeLocalProviderID ?? registry.activeConfig?.id,
+                  let manager = localModelManagers[providerID] else {
+                throw ModelManagerError.providerUnavailable
+            }
+
+            pendingRestartInstructions = nil
+            do {
+                try await manager.reload(modelID: advisory.modelID, config: config)
+            } catch ModelManagerError.requiresRestart(let instructions) {
+                pendingRestartInstructions = instructions
+                throw ModelManagerError.requiresRestart(instructions)
+            }
+
+        case .maxTokensTooLow:
+            let suggested = Int(advisory.suggestedValue.components(separatedBy: .whitespaces).first ?? "") ?? 2_048
+            AppSettings.shared.inferenceMaxTokens = suggested
+
+        case .temperatureUnstable:
+            let current = AppSettings.shared.inferenceTemperature ?? 0.7
+            AppSettings.shared.inferenceTemperature = max(0.1, current - 0.1)
+
+        case .repetitiveOutput:
+            let current = AppSettings.shared.inferenceRepeatPenalty ?? 1.0
+            if current < 1.1 {
+                AppSettings.shared.inferenceRepeatPenalty = 1.15
+            }
         }
     }
 
@@ -420,6 +474,61 @@ final class AppState: ObservableObject {
             apiKey: nil,
             modelID: "lora-adapter"
         )
+    }
+
+    private func rebuildLocalModelManagers() {
+        var managers: [String: any LocalModelManagerProtocol] = [:]
+        for config in registry.providers where config.isLocal {
+            managers[config.id] = makeManager(for: config)
+        }
+        localModelManagers = managers
+    }
+
+    private func makeManager(for config: ProviderConfig) -> any LocalModelManagerProtocol {
+        guard let url = normalizedLocalManagerBaseURL(for: config.baseURL) else {
+            return NullModelManager(providerID: config.id)
+        }
+
+        switch config.localModelManagerID ?? config.id {
+        case "lmstudio":
+            return LMStudioModelManager(baseURL: url)
+        case "ollama":
+            return OllamaModelManager(baseURL: url)
+        case "jan":
+            return JanModelManager(baseURL: url)
+        case "localai":
+            return LocalAIModelManager(baseURL: url)
+        case "mistralrs":
+            return MistralRSModelManager(baseURL: url)
+        case "vllm":
+            return VLLMModelManager(baseURL: url)
+        default:
+            return NullModelManager(providerID: config.id)
+        }
+    }
+
+    private func normalizedLocalManagerBaseURL(for baseURL: String) -> URL? {
+        let string = baseURL.hasPrefix("http") ? baseURL : "http://\(baseURL)"
+        guard var url = URL(string: string) else {
+            return nil
+        }
+        if url.path.hasSuffix("/v1") {
+            url.deleteLastPathComponent()
+        }
+        return url
+    }
+
+    private func handleAdvisory(_ advisory: ParameterAdvisory) async {
+        engine.isReloadingModel = advisory.kind == .contextLengthTooSmall
+        defer { engine.isReloadingModel = false }
+
+        do {
+            try await applyAdvisory(advisory)
+        } catch ModelManagerError.requiresRestart(let instructions) {
+            pendingRestartInstructions = instructions
+        } catch {
+            // Advisory application is best-effort. Other errors are intentionally ignored here.
+        }
     }
 }
 

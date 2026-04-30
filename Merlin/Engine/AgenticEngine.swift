@@ -58,6 +58,7 @@ final class AgenticEngine {
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
+    var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
     /// Reset to nil at the start of every runLoop invocation.
     /// When .fail, the xcalibre memory write is suppressed at the end of the turn.
@@ -68,6 +69,7 @@ final class AgenticEngine {
     var ragRerank: Bool = false
     /// Mirrors AppSettings.ragChunkLimit. Clamped to 1...20 at call site.
     var ragChunkLimit: Int = 3
+    var isReloadingModel: Bool = false
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
     }
@@ -202,6 +204,12 @@ final class AgenticEngine {
         currentTask?.cancel()
         currentTask = nil
         isRunning = false
+    }
+
+    func pauseForReload() async {
+        while isReloadingModel {
+            try? await Task.sleep(for: .milliseconds(500))
+        }
     }
 
     func submitDiffComments(changeIDs: [UUID]) -> AsyncStream<AgentEvent> {
@@ -394,6 +402,7 @@ final class AgenticEngine {
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
 
         while true {
+            await pauseForReload()
             guard loopCount < maxIterations else {
                 continuation.yield(.systemNote("[Loop ceiling reached — stopping]"))
                 break
@@ -612,7 +621,11 @@ final class AgenticEngine {
         }
 
         if let trackerRecord = trackerRecords.last, let advisor = parameterAdvisor {
-            _ = await advisor.checkRecord(trackerRecord)
+            let advisories = await advisor.checkRecord(trackerRecord)
+            for advisory in advisories {
+                isReloadingModel = advisory.kind == .contextLengthTooSmall
+                await onAdvisory?(advisory)
+            }
             if trackerRecords.count % 10 == 0 {
                 _ = await advisor.analyze(records: Array(trackerRecords.suffix(20)), modelID: trackerRecord.modelID)
             }

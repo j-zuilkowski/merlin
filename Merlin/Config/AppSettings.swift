@@ -57,6 +57,8 @@ final class AppSettings: ObservableObject {
     @Published var loraAdapterPath: String = ""
     @Published var loraServerURL: String = ""
     // MARK: - Inference defaults
+    @Published var inferenceTemperature: Double? = nil
+    @Published var inferenceMaxTokens: Int? = nil
     @Published var inferenceTopP: Double? = nil
     @Published var inferenceTopK: Int? = nil
     @Published var inferenceMinP: Double? = nil
@@ -79,6 +81,8 @@ final class AppSettings: ObservableObject {
     private var watchedURL: URL?
 
     struct InferenceDefaults: Sendable {
+        var temperature: Double?
+        var maxTokens: Int?
         var topP: Double?
         var topK: Int?
         var minP: Double?
@@ -89,6 +93,8 @@ final class AppSettings: ObservableObject {
         var stop: [String]
 
         func apply(to request: inout CompletionRequest) {
+            if request.temperature == nil { request.temperature = temperature }
+            if request.maxTokens == nil { request.maxTokens = maxTokens }
             if request.topP == nil { request.topP = topP }
             if request.topK == nil { request.topK = topK }
             if request.minP == nil { request.minP = minP }
@@ -169,6 +175,8 @@ final class AppSettings: ObservableObject {
         }
 
         struct InferenceConfig: Codable, Sendable {
+            var temperature: Double?
+            var maxTokens: Int?
             var topP: Double?
             var topK: Int?
             var minP: Double?
@@ -179,6 +187,8 @@ final class AppSettings: ObservableObject {
             var stop: [String]?
 
             enum CodingKeys: String, CodingKey {
+                case temperature
+                case maxTokens = "max_tokens"
                 case topP = "top_p"
                 case topK = "top_k"
                 case minP = "min_p"
@@ -254,6 +264,8 @@ final class AppSettings: ObservableObject {
 
     var inferenceDefaults: InferenceDefaults {
         InferenceDefaults(
+            temperature: inferenceTemperature,
+            maxTokens: inferenceMaxTokens,
             topP: inferenceTopP,
             topK: inferenceTopK,
             minP: inferenceMinP,
@@ -321,6 +333,12 @@ final class AppSettings: ObservableObject {
             }
         }
         var inferenceLines: [String] = []
+        if let value = inferenceTemperature {
+            inferenceLines.append("temperature = \(value)")
+        }
+        if let value = inferenceMaxTokens {
+            inferenceLines.append("max_tokens = \(value)")
+        }
         if let value = inferenceTopP {
             inferenceLines.append("top_p = \(value)")
         }
@@ -621,6 +639,12 @@ final class AppSettings: ObservableObject {
             }
         }
         if let inference = config.inference {
+            if let value = inference.temperature {
+                inferenceTemperature = value
+            }
+            if let value = inference.maxTokens {
+                inferenceMaxTokens = value
+            }
             if let value = inference.topP {
                 inferenceTopP = value
             }

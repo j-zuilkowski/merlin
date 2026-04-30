@@ -14,6 +14,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
     var displayName: String
     var baseURL: String
     var model: String
+    var localModelManagerID: String?
     var isEnabled: Bool
     var isLocal: Bool
     var supportsThinking: Bool
@@ -26,6 +27,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         case displayName
         case baseURL
         case model
+        case localModelManagerID = "local_model_manager_id"
         case isEnabled
         case isLocal
         case supportsThinking
@@ -39,6 +41,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         displayName: String,
         baseURL: String,
         model: String,
+        localModelManagerID: String? = nil,
         isEnabled: Bool,
         isLocal: Bool,
         supportsThinking: Bool,
@@ -50,6 +53,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         self.displayName = displayName
         self.baseURL = baseURL
         self.model = model
+        self.localModelManagerID = localModelManagerID
         self.isEnabled = isEnabled
         self.isLocal = isLocal
         self.supportsThinking = supportsThinking
@@ -64,6 +68,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         displayName = try container.decode(String.self, forKey: .displayName)
         baseURL = try container.decode(String.self, forKey: .baseURL)
         model = try container.decode(String.self, forKey: .model)
+        localModelManagerID = try container.decodeIfPresent(String.self, forKey: .localModelManagerID)
         isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
         isLocal = try container.decode(Bool.self, forKey: .isLocal)
         supportsThinking = try container.decode(Bool.self, forKey: .supportsThinking)
@@ -78,6 +83,9 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         try container.encode(displayName, forKey: .displayName)
         try container.encode(baseURL, forKey: .baseURL)
         try container.encode(model, forKey: .model)
+        if let localModelManagerID {
+            try container.encode(localModelManagerID, forKey: .localModelManagerID)
+        }
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(isLocal, forKey: .isLocal)
         try container.encode(supportsThinking, forKey: .supportsThinking)
