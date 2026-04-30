@@ -77,6 +77,7 @@ final class AppState: ObservableObject {
     private var projectPathCancellable: AnyCancellable?
     private var ragRerankCancellable: AnyCancellable?
     private var ragChunkLimitCancellable: AnyCancellable?
+    private var loraProviderCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
 
@@ -159,6 +160,12 @@ final class AppState: ObservableObject {
         engine.registry = registry
         engine.sessionStore = sessionStore
         engine.loraCoordinator = loraCoordinator
+        refreshLoRAProvider(
+            enabled: AppSettings.shared.loraEnabled,
+            autoLoad: AppSettings.shared.loraAutoLoad,
+            serverURL: AppSettings.shared.loraServerURL,
+            adapterPath: AppSettings.shared.loraAdapterPath
+        )
         syncEngineProviders()
         if let token = ConnectorCredentials.retrieve(service: "github"), !token.isEmpty {
             prMonitor.start(projectPath: projectPath, token: token)
@@ -239,6 +246,22 @@ final class AppState: ObservableObject {
                     self?.engine?.ragChunkLimit = value
                 }
             }
+
+        loraProviderCancellable = Publishers.CombineLatest4(
+            AppSettings.shared.$loraEnabled,
+            AppSettings.shared.$loraAutoLoad,
+            AppSettings.shared.$loraServerURL,
+            AppSettings.shared.$loraAdapterPath
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] enabled, autoLoad, serverURL, adapterPath in
+            self?.refreshLoRAProvider(
+                enabled: enabled,
+                autoLoad: autoLoad,
+                serverURL: serverURL,
+                adapterPath: adapterPath
+            )
+        }
 
         toolRouter.register(name: "rag_search") { [weak self] args in
             guard let client = self?.engine?.xcalibreClient else {
@@ -349,6 +372,30 @@ final class AppState: ObservableObject {
         engine.slotAssignments = AppSettings.shared.slotAssignments
         activeProviderID = registry.activeProviderID
         Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
+    }
+
+    private func refreshLoRAProvider(
+        enabled: Bool,
+        autoLoad: Bool,
+        serverURL: String,
+        adapterPath: String
+    ) {
+        guard enabled,
+              autoLoad,
+              !serverURL.isEmpty,
+              !adapterPath.isEmpty,
+              FileManager.default.fileExists(atPath: adapterPath),
+              let url = URL(string: serverURL) else {
+            engine.loraProvider = nil
+            return
+        }
+
+        engine.loraProvider = OpenAICompatibleProvider(
+            id: "lora-local",
+            baseURL: url,
+            apiKey: nil,
+            modelID: "lora-adapter"
+        )
     }
 }
 

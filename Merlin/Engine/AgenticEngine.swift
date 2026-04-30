@@ -35,6 +35,7 @@ final class AgenticEngine {
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
     var loraCoordinator: LoRACoordinator?
+    var loraProvider: (any LLMProvider)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
     var permissionMode: PermissionMode = .ask
@@ -142,7 +143,7 @@ final class AgenticEngine {
 
         switch effectiveSlot {
         case .execute:
-            return proProvider
+            return loraProvider ?? proProvider
         case .reason, .orchestrate:
             return flashProvider
         case .vision:
