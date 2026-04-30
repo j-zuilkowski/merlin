@@ -168,10 +168,3 @@ extension EnvironmentValues {
     }
 }
 
-// MARK: - Preview
-
-#Preview {
-    LoRASettingsSection()
-        .environment(\.merlinAppState, AppState())
-        .frame(width: 480)
-}
