@@ -255,8 +255,10 @@ Merlin stores approved memories and session summaries in a local SQLite database
 - xcalibre-server remains available as an optional book-content source; it is no longer used for Merlin session memory.
 
 **Behavioral reliability:**
-- Circuit breaker phase 140 surfaces repeated critic failures instead of letting them accumulate silently.
-- Grounding confidence phase 141 adds a retrieval confidence signal so stale or thin context is easier to spot.
+
+- **Circuit breaker** — after `agentCircuitBreakerThreshold` consecutive critic `.fail` verdicts (default: 3), the engine activates. In `halt` mode (default) it stops the next turn cleanly and emits a `systemNote` directing the user to act. In `warn` mode it emits a warning but lets the turn proceed. The counter resets to zero on any `.pass` or `.skipped` verdict, and on every new session. Addresses the *silent partial failure* pattern — sustained degradation that accumulates below any single-turn alert threshold. Configure in Settings → Agent or via `agent_circuit_breaker_threshold` / `agent_circuit_breaker_mode` in `~/.merlin/config.toml`.
+
+- **Grounding confidence** — every turn emits a `GroundingReport` as an `AgentEvent`, even when no chunks were retrieved. The report contains: `totalChunks` (chunks injected this turn), `averageScore` (mean cosine similarity, 0–1), `hasStaleMemory` (true when any injected memory chunk is older than `ragFreshnessThresholdDays`, default 90), and `isWellGrounded` (true when `totalChunks > 0` and `averageScore ≥ ragMinGroundingScore`, default 0.30). Both thresholds are configurable in Settings → Agent or via `rag_freshness_threshold_days` / `rag_min_grounding_score` in `~/.merlin/config.toml`. Addresses the *context degradation* pattern — the model reasoning confidently over stale or thin retrieval in a way invisible to the user.
 
 ---
 
