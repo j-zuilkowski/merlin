@@ -1099,4 +1099,55 @@ cat phases/phase-122a-memory-xcalibre-index-tests.md
 cat phases/phase-122b-memory-xcalibre-index.md
 # Verify: BUILD SUCCEEDED; MemoryXcalibreIndexTests → 6 pass; all prior tests pass
 # Commit: Phase 122b — approved memories indexed in xcalibre-server as factual RAG chunks
+
+# ── V7 Local Model Management ─────────────────────────────────────────────────
+# Unified LocalModelManagerProtocol across all 6 local providers (LM Studio, Ollama,
+# Jan, LocalAI, Mistral.rs, vLLM). Runtime reload where supported; restart instructions
+# where not. AppState registry + ApplyAdvisory routing. ModelControlView UI.
+
+# ── PHASE 125a — LocalModelManagerProtocol Tests ─────────────────────────────
+cat phases/phase-125a-local-model-manager-protocol-tests.md
+# Verify: BUILD FAILED — LocalModelManagerProtocol, LoadParam, LocalModelConfig etc. not defined (expected)
+# Commit: Phase 125a — LocalModelManagerProtocolTests (failing)
+
+# ── PHASE 125b — LocalModelManagerProtocol + LMStudio + Ollama ───────────────
+cat phases/phase-125b-local-model-manager-protocol.md
+# Verify: BUILD SUCCEEDED; LocalModelManagerProtocolTests → 22 pass; all prior tests pass
+# Commit: Phase 125b — LocalModelManagerProtocol + LMStudioModelManager + OllamaModelManager
+
+# ── PHASE 126a — Extended Provider Manager Tests ─────────────────────────────
+cat phases/phase-126a-local-model-manager-extended-tests.md
+# Verify: BUILD FAILED — JanModelManager, LocalAIModelManager, MistralRSModelManager, VLLMModelManager not defined (expected)
+# Commit: Phase 126a — LocalModelManagerExtendedTests (failing)
+
+# ── PHASE 126b — Jan, LocalAI, MistralRS, vLLM Managers ─────────────────────
+cat phases/phase-126b-local-model-manager-extended.md
+# Verify: BUILD SUCCEEDED; LocalModelManagerExtendedTests → 20 pass; all prior tests pass
+# Commit: Phase 126b — Jan/LocalAI/MistralRS/vLLM model managers
+
+# ── PHASE 127a — Model Manager Wiring Tests ──────────────────────────────────
+cat phases/phase-127a-model-manager-wiring-tests.md
+# Verify: BUILD FAILED — AppState.localModelManagers, applyAdvisory, AgenticEngine.isReloadingModel not defined (expected)
+# Commit: Phase 127a — ModelManagerWiringTests (failing)
+
+# ── PHASE 127b — Model Manager Wiring ────────────────────────────────────────
+cat phases/phase-127b-model-manager-wiring.md
+# Verify: BUILD SUCCEEDED; ModelManagerWiringTests → 9 pass; all prior tests pass
+# Commit: Phase 127b — model manager wiring: AppState registry, applyAdvisory, engine reload pause
+
+# ── PHASE 128a — Model Control UI Tests ──────────────────────────────────────
+cat phases/phase-128a-model-control-ui-tests.md
+# Verify: BUILD FAILED — ModelControlView, RestartInstructionsSheet, ModelControlSectionView not defined (expected)
+# Commit: Phase 128a — ModelControlViewTests (failing)
+
+# ── PHASE 128b — Model Control UI ────────────────────────────────────────────
+cat phases/phase-128b-model-control-ui.md
+# Verify: BUILD SUCCEEDED; ModelControlViewTests → 6 pass; all prior tests pass
+# Commit: Phase 128b — ModelControlView: per-provider load param editor + restart instructions sheet
+
+# ── DONE (v7 Local Model Management) ─────────────────────────────────────────
+# All 6 local providers unified under LocalModelManagerProtocol.
+# AppState registry routes advisories to manager.reload() or surfaces restart instructions.
+# ModelControlView shows editable load params per provider in Settings → Providers.
+# AgenticEngine pauses run loop during reload to prevent mid-generation context mutations.
 ```

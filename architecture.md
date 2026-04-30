@@ -10,6 +10,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v4]** Subagents (Explorer + Worker), WorktreeManager, SubagentEngine, SubagentStreamUI, full settings surface (all 12 sections), WorkspaceLayoutManager, wired panes (FilePane, TerminalPane, PreviewPane, SideChat), DisabledSkillNames enforcement, keep-awake (IOPMAssertion), AgentRegistry, HookEngine wiring, tool registry launch.
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, xcalibre memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
+**[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -196,6 +197,160 @@ Three LLM pool wiring:
   reason/critic slot → external API provider (base model, unmodified)
   vision slot ───────→ Qwen2.5-VL-72B via LM Studio (M4 Mac local)
   RAG embed/search ──→ nomic-embed-text + phi-3-mini (Windows RTX 2070)
+```
+
+### [v7] Architecture
+
+```
+Inference Parameter Expansion [v7]:
+
+  CompletionRequest
+    ├── (existing) maxTokens, temperature
+    └── (new) topP, topK, minP, repeatPenalty, frequencyPenalty,
+               presencePenalty, seed, stop
+
+  AppSettings [inference] TOML section
+    ├── inferenceTopP, inferenceTopK, inferenceMinP, inferenceRepeatPenalty
+    ├── inferenceFrequencyPenalty, inferencePresencePenalty, inferenceSeed, inferenceStop
+    └── applyInferenceDefaults(to: &CompletionRequest) — fills nil fields, respects overrides
+
+  encodeRequest() Body
+    └── serialises all new fields; nil → omitted from JSON (no provider surprises)
+
+ModelParameterAdvisor [v7]:
+
+  OutcomeRecord.finishReason: String?  (backward-compat decode)
+  OutcomeSignals.finishReason: String? (captured from last CompletionChunk)
+
+  ModelParameterAdvisor.checkRecord(_:) → immediate per-turn checks:
+    finishReason == "length"   → ParameterAdvisory(.maxTokensTooLow)
+    context overflow string    → ParameterAdvisory(.contextLengthTooSmall)
+
+  ModelParameterAdvisor.analyze(records:modelID:) → batch checks:
+    score std-dev > 0.25 (≥5 records)           → .temperatureUnstable
+    trigram repetition > 50% in ≥60% of records → .repetitiveOutput
+
+  Advisories surface in Settings → Performance with "Fix this" button.
+
+Local Model Management [v7]:
+
+  LocalModelManagerProtocol
+    ├── capabilities: ModelManagerCapabilities
+    │     ├── canReloadAtRuntime: Bool
+    │     └── supportedLoadParams: Set<LoadParam>
+    ├── loadedModels() → [LoadedModelInfo]
+    ├── reload(modelID:config:) async throws   — ModelManagerError.requiresRestart if unsupported
+    └── restartInstructions(modelID:config:)   — shell command + config snippet
+
+  Provider implementations:
+    LMStudioModelManager   — REST API /api/v1/unload + /api/v1/load; lms CLI fallback
+                             canReloadAtRuntime = true
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads,
+                                                  flashAttention, cacheTypeK/V, ropeFrequencyBase, batchSize
+
+    OllamaModelManager     — Modelfile generation + POST /api/create; force-unload via keep_alive:0
+                             canReloadAtRuntime = true
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads,
+                                                  ropeFrequencyBase, batchSize, useMmap, useMlock
+
+    JanModelManager        — POST /v1/models/stop → edit model.json → POST /v1/models/start
+                             canReloadAtRuntime = true
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads
+
+    LocalAIModelManager    — YAML snippet + restart instructions (no runtime reload)
+                             canReloadAtRuntime = false
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads,
+                                                  ropeFrequencyBase, batchSize, useMmap
+
+    MistralRSModelManager  — mistralrs-server CLI command (restart only)
+                             canReloadAtRuntime = false
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads,
+                                                  flashAttention, ropeFrequencyBase, batchSize
+
+    VLLMModelManager       — python -m vllm.entrypoints.openai.api_server CLI (restart only)
+                             canReloadAtRuntime = false
+                             supportedLoadParams: contextLength, gpuLayers, ropeFrequencyBase,
+                                                  batchSize, cacheTypeK
+
+    NullModelManager       — no-op; used for unrecognised local providers
+
+  AppState registry:
+    localModelManagers: [String: any LocalModelManagerProtocol]  — keyed by providerID
+    activeLocalProviderID: String?
+    applyAdvisory(_ advisory: ParameterAdvisory) async throws
+      → load-time kinds (.contextLengthTooSmall) → manager.reload()
+      → inference kinds (.maxTokensTooLow, .temperatureUnstable, .repetitiveOutput)
+           → AppSettings inference defaults update
+
+  AgenticEngine:
+    isReloadingModel: Bool         — run loop polls and suspends while true
+    onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
+
+  ModelControlView (Settings → Providers → local provider):
+    ├── Fields filtered by capabilities.supportedLoadParams
+    ├── "Apply & Reload" button (canReloadAtRuntime = true)
+    ├── "Show Restart Instructions" button (canReloadAtRuntime = false)
+    └── RestartInstructionsSheet — copyable shell command + config snippet
+
+Memory dual-path [v7]:
+  Accepted AI-generated memories → ~/.merlin/memories/ (file injection, unchanged)
+                                 → xcalibre.writeMemoryChunk(chunkType:"factual",
+                                     tags:["session-memory"]) (RAG indexing, new)
+```
+
+---
+
+## Local Model Management [v7]
+
+### Design Decision: Protocol over Provider-Specific Paths
+
+Every supported local provider has a different mechanism for changing load-time parameters. Rather than adding per-provider branches throughout the codebase, all management is routed through `LocalModelManagerProtocol`. Callers (AppState, ModelControlView, ModelParameterAdvisor wiring) are fully decoupled from provider details.
+
+### Capability Matrix
+
+| Provider | Runtime Reload | Context Length | GPU Layers | Flash Attn | KV Cache Type | Rope Base | mmap/mlock |
+|---|---|---|---|---|---|---|---|
+| LM Studio | ✅ REST + CLI | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Ollama | ✅ Modelfile | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Jan.ai | ✅ model.json | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| LocalAI | ❌ restart | ✅ | ✅ | ⚠️ | ⚠️ | ✅ | ✅ |
+| Mistral.rs | ❌ restart | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| vLLM | ❌ restart | ✅ | ✅ | N/A | ✅ kv-cache-dtype | ✅ | N/A |
+
+### Advisory → Action Routing
+
+```
+ModelParameterAdvisor advisory
+        │
+        ▼
+AppState.applyAdvisory(_:)
+        │
+        ├── .contextLengthTooSmall
+        │     └── manager.reload(modelID:config:)
+        │           ├── (canReloadAtRuntime) → REST/Modelfile reload
+        │           └── (!canReloadAtRuntime) → throw .requiresRestart(instructions)
+        │                                         → AppState.pendingRestartInstructions
+        │
+        ├── .maxTokensTooLow          → AppSettings.inferenceMaxTokens += 50%
+        ├── .temperatureUnstable      → AppSettings.inferenceTemperature -= 0.1
+        └── .repetitiveOutput         → AppSettings.inferenceRepeatPenalty = 1.15
+```
+
+### File Layout
+
+```
+Merlin/Providers/LocalModelManager/
+  LocalModelManagerProtocol.swift   — protocol + all shared types
+  LMStudioModelManager.swift
+  OllamaModelManager.swift
+  JanModelManager.swift
+  LocalAIModelManager.swift
+  MistralRSModelManager.swift
+  VLLMModelManager.swift
+  NullModelManager.swift
+
+Merlin/Views/Settings/
+  ModelControlView.swift            — ModelControlView + ModelControlSectionView + RestartInstructionsSheet
 ```
 
 ---
