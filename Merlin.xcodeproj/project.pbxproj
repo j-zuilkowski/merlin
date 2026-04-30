@@ -133,6 +133,7 @@
 		651EC86FCF21425006734E79 /* SubagentEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD886551A64C574A90DA0C59 /* SubagentEngineTests.swift */; };
 		656B515CDBC75DC6B3A4D3C9 /* AXInspectorTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = A661789CB90529FD746DA620 /* AXInspectorTool.swift */; };
 		6631E4883388644E8381C32A /* WorkerDiffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91AFB2E34EC877BD0D6601D /* WorkerDiffView.swift */; };
+		678C1CC971038445D05743BD /* MemoryBackendPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079286843DC823E54414395E /* MemoryBackendPluginTests.swift */; };
 		6802C87B3F5C9EBC3AFD72E1 /* XcodeTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */; };
 		6953E00FE2EF3C7C10C1BBEF /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C69D40E1AB139559D7CAC634 /* AppIntents.framework */; };
 		6A3BE638CA60364F47B45B6E /* Connector.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF41D65339667C7A65B05B9 /* Connector.swift */; };
@@ -330,6 +331,7 @@
 		03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeTools.swift; sourceTree = "<group>"; };
 		04DF9AAC218773D5197F27F2 /* CalibrationReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationReportView.swift; sourceTree = "<group>"; };
 		059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProviderRegistry+ReasoningEffort.swift"; sourceTree = "<group>"; };
+		079286843DC823E54414395E /* MemoryBackendPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryBackendPluginTests.swift; sourceTree = "<group>"; };
 		07F33955DA778562CF661683 /* LocalModelManagerProtocolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelManagerProtocolTests.swift; sourceTree = "<group>"; };
 		085460D786AF42FCACB6A117 /* AppSettingsAdditionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsAdditionsTests.swift; sourceTree = "<group>"; };
 		0B06E7E62E91DDEB30C7E997 /* GitHubConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubConnector.swift; sourceTree = "<group>"; };
@@ -891,6 +893,7 @@
 				EA984C160727658DFC5F3BD0 /* LoRASettingsUITests.swift */,
 				4CE3E6B611505F4A46D94198 /* LoRATrainerTests.swift */,
 				2C12FBEBB27753C9DCA5F42E /* MCPBridgeTests.swift */,
+				079286843DC823E54414395E /* MemoryBackendPluginTests.swift */,
 				A0497D0872850BF658998C76 /* MemoryBrowserTests.swift */,
 				1E8ACDC8C4937F1B05DC995B /* MemoryEngineTests.swift */,
 				8E5A5E169A06FCE20422F60C /* MemoryGenerationTests.swift */,
@@ -1506,6 +1509,7 @@
 				D219026E5D6E73109D15D003 /* LocalModelManagerExtendedTests.swift in Sources */,
 				06FDB75DC86BFDBB82F925AD /* LocalModelManagerProtocolTests.swift in Sources */,
 				6F93F1A6F0B5CB1934D23ACC /* MCPBridgeTests.swift in Sources */,
+				678C1CC971038445D05743BD /* MemoryBackendPluginTests.swift in Sources */,
 				850761BA6DE8676F4E411EEF /* MemoryBrowserTests.swift in Sources */,
 				B582F8B93C822CFFF5778857 /* MemoryEngineTests.swift in Sources */,
 				D27425C20D9CC3FAC57266EE /* MemoryGenerationTests.swift in Sources */,
