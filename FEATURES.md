@@ -455,3 +455,79 @@ The model can spawn child agents to work in parallel using the `spawn_agent` too
 - **Accent colour** — full colour picker
 
 All appearance settings apply live with a preview pane in Settings.
+
+---
+
+## Comparison: Merlin vs. Codex vs. Claude Code
+
+Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools with autonomous loop execution, file operations, and shell access. They diverge significantly in architecture, provider strategy, and target use case.
+
+### At a Glance
+
+| Capability | Merlin | Codex (OpenAI) | Claude Code (Anthropic) |
+|---|---|---|---|
+| **Interface** | macOS native SwiftUI app | Desktop app + CLI + web | CLI (terminal-first) |
+| **LLM providers** | Any — Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, vLLM, + more | OpenAI models only (GPT-5.5+) | Anthropic models only (Opus/Sonnet/Haiku) |
+| **Local model support** | Full — LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM | CLI supports custom endpoints (workaround); app is cloud-first | Primarily Anthropic cloud; limited Ollama workaround |
+| **Execution environment** | Local machine, non-sandboxed | Cloud sandboxes (tasks run remotely) or local CLI | Local machine |
+| **Multi-LLM routing** | Yes — execute / reason / orchestrate / vision slots with automatic complexity routing | No | No |
+| **Vision / GUI automation** | AX tree + ScreenCaptureKit + CGEvent (3 strategies, auto-selected) | Computer use (desktop control) | Computer use (added March 2026) |
+| **Xcode integration** | Deep — build, test, clean, xcresult parsing, open-at-line, simulator control | IDE plugin only | IDE plugin only |
+| **RAG / persistent memory** | Yes — xcalibre-server (vector search, project-scoped, critic-gated writes) | No | No (uses agentic grep/search instead) |
+| **LoRA self-training** | Yes — MLX-LM on M4 Mac; adapts execute slot to your own sessions | No | No |
+| **Diff review layer** | Yes — all writes staged; accept/reject per change; inline comments | No (direct writes) | No (direct writes) |
+| **Auth gate** | Yes — glob-pattern permission gate on every tool call, per session mode | No | No |
+| **Permission modes** | Ask / Auto-accept / Plan (read-only) | No equivalent | No equivalent |
+| **Parallel sessions** | Yes — each in its own git worktree, independent context | Yes — background agents in cloud | Yes — up to 10 subagents |
+| **Subagents** | Yes — up to 4 concurrent, 2 nesting levels | Yes — multiple parallel agents | Yes — up to 10 parallel |
+| **Skills / slash commands** | Yes — Markdown files, personal + project-scoped, auto-reload | No | Yes — built-in and custom |
+| **Hooks** | Yes — PreToolUse, PostToolUse, UserPromptSubmit, Stop | No | Yes — PreToolUse, PostToolUse |
+| **MCP support** | Yes | No | Yes |
+| **Scheduling** | Local scheduler (cron-like, macOS notifications) | Cloud-managed (runs when computer is off) | Cloud-managed routines |
+| **PR / CI monitor** | Yes — GitHub PR polling, auto-merge on CI pass | Yes — PR review built-in | Limited |
+| **External connectors** | GitHub, Slack, Linear | GitHub, SSH to remote devboxes | GitHub |
+| **Web search** | Brave Search integration | Yes | Yes |
+| **In-app browser / preview** | WKWebView preview pane | In-app browser | No |
+| **Voice dictation** | Yes (SFSpeechRecognizer) | No | No |
+| **IDE integration** | No (standalone app) | VS Code, JetBrains, Xcode, Eclipse | VS Code, JetBrains, Xcode, Eclipse |
+| **Cost** | Self-hosted; no subscription fee (pay per API call or free for local models) | Pro $100/mo (OpenAI subscription) | Max plan $100–200/mo (Anthropic subscription) |
+| **Distribution** | Personal use (not distributed) | Public — macOS app + CLI | Public — CLI |
+| **Platform** | macOS 14+ only | macOS (desktop app), cross-platform (CLI) | macOS and Linux (CLI) |
+
+---
+
+### Where Merlin goes further
+
+**Provider freedom.** Merlin is the only tool in this group that routes work across genuinely different providers — switching between DeepSeek for reasoning, a local Qwen model for fast iteration, and a vision model for GUI work — all within the same session. Codex is GPT-only. Claude Code is Claude-only. Merlin has no lock-in.
+
+**Supervisor-worker multi-LLM routing.** Merlin classifies each task by complexity tier and routes it to the most appropriate LLM slot. Routine file operations go to the execute slot (fast/cheap); architecture decisions go to the reason slot (most capable). Neither Codex nor Claude Code do this — they use a single model for all task types.
+
+**LoRA self-training.** Merlin is unique in being able to fine-tune a local model on your own accepted session data using MLX-LM on an M4 Mac. Over time, the execute slot adapts to your coding patterns and project conventions. This is not a feature Codex or Claude Code offer.
+
+**Persistent RAG memory.** Merlin stores project knowledge in xcalibre-server as vector embeddings and injects relevant context into every prompt. Memory writes are critic-gated — only outputs that passed the quality check enter the memory store. Claude Code explicitly chose not to do RAG, relying on agentic grep/search instead. Codex has no RAG layer.
+
+**Diff review + inline comments.** In Ask and Plan modes, every file write is staged rather than applied. You review a unified diff, accept or reject per change, and can attach inline comments that feed back to the agent for revision — without leaving the app. Both Codex and Claude Code apply writes directly with no staging step.
+
+**Auth gate.** Merlin intercepts every tool call — including MCP tools — through a pattern-matching permission gate before execution. You can allow or deny by glob pattern, and decisions persist. This gives fine-grained, auditable control over what the agent can touch. Neither Codex nor Claude Code have an equivalent mechanism.
+
+**Deep Xcode integration.** Merlin parses `.xcresult` bundles, extracts structured errors and coverage, controls simulators, and can jump Xcode to an exact file and line via AppleScript. IDE plugins (the approach both Codex and Claude Code take) are shallower — they don't parse build artifacts or own the build loop.
+
+**macOS-native, non-sandboxed.** As a native SwiftUI app, Merlin integrates with the macOS Accessibility tree, ScreenCaptureKit, CGEvent, SFSpeechRecognizer, and macOS Keychain in ways a CLI or Electron app cannot. GUI automation uses three complementary strategies and auto-selects the best one per target app.
+
+---
+
+### Where Codex and Claude Code have advantages
+
+**Codex** runs tasks in cloud sandboxes, which means agents can execute long-running jobs without tying up your machine. Remote devbox SSH support makes it practical for teams with shared infrastructure. Codex is embedded in the broader ChatGPT + OpenAI ecosystem, which benefits users already on that platform. GPT-5.5 is one of the strongest available models for coding tasks.
+
+**Claude Code** has a lower barrier to entry — it is a single CLI install with no configuration required. Scheduled routines run on Anthropic-managed infrastructure and continue even when your laptop is off. The ultrareview subcommand integrates into CI pipelines without a running desktop session. Claude's models consistently perform at the top of coding benchmarks, and the tool benefits from continuous Anthropic investment.
+
+**Both** are publicly distributed, actively maintained by large engineering teams, and have broad ecosystem support (IDE plugins, CI integrations, community plugins). Merlin is a personal tool maintained by one person and is not distributed.
+
+---
+
+### Summary
+
+Merlin is built for a specific workflow: a single developer on Apple Silicon who wants full control over every layer — which models run, what they can touch, how outputs are reviewed, and how the system improves over time from their own data. It trades distribution breadth and zero-setup convenience for depth of integration, provider flexibility, and long-term self-improvement via LoRA.
+
+Codex is best for teams embedded in the OpenAI ecosystem who want cloud-isolated execution and a polished multi-platform app. Claude Code is best for developers who want a capable, low-friction CLI agent and are comfortable with Anthropic's model portfolio.
