@@ -1064,6 +1064,32 @@ cat phases/phase-121b-lora-settings-ui.md
 # Accepted AI-generated memories now also write to xcalibre-server as factual RAG
 # chunks, so they surface via semantic search rather than always being injected verbatim.
 
+# ── V7 Inference Parameter Expansion ─────────────────────────────────────────
+# Expands CompletionRequest with all llama.cpp/LM Studio sampling params,
+# adds AppSettings inference defaults, and introduces ModelParameterAdvisor
+# for automatic detection of bad settings from observed model behaviour.
+
+# ── PHASE 123a — Sampling Params Tests ───────────────────────────────────────
+cat phases/phase-123a-sampling-params-tests.md
+# Verify: BUILD FAILED — CompletionRequest.topK etc. not defined (expected)
+# Commit: Phase 123a — CompletionRequestSamplingParamsTests (failing)
+
+# ── PHASE 123b — Sampling Params Implementation ───────────────────────────────
+cat phases/phase-123b-sampling-params.md
+# Verify: BUILD SUCCEEDED; CompletionRequestSamplingParamsTests → 13 pass; all prior tests pass
+# Commit: Phase 123b — expand CompletionRequest with 8 sampling params; AppSettings inference defaults
+
+# ── PHASE 124a — ModelParameterAdvisor Tests ─────────────────────────────────
+cat phases/phase-124a-parameter-advisor-tests.md
+# Verify: BUILD FAILED — ModelParameterAdvisor, ParameterAdvisory not defined (expected)
+# Commit: Phase 124a — ModelParameterAdvisorTests (failing)
+
+# ── PHASE 124b — ModelParameterAdvisor Implementation ────────────────────────
+cat phases/phase-124b-parameter-advisor.md
+# Verify: BUILD SUCCEEDED; ModelParameterAdvisorTests → 12 pass; all prior tests pass
+# Commit: Phase 124b — ModelParameterAdvisor (truncation, variance, repetition, context overflow)
+
+# ── V6 LOOSE END — Memory → xcalibre RAG indexing ────────────────────────────
 # ── PHASE 122a — Memory Xcalibre Index Tests ─────────────────────────────────
 cat phases/phase-122a-memory-xcalibre-index-tests.md
 # Verify: BUILD FAILED — MemoryEngine has no setXcalibreClient method (expected)
