@@ -190,7 +190,9 @@ Connect any MCP server via stdio transport. Configure in `~/.merlin/mcp.json`. S
 Opt-in. After 5 minutes of session inactivity, Merlin uses the fastest available model to distill the session transcript into a memory file. Memories capture preferences, workflow conventions, project patterns, and known pitfalls — never raw file contents or secrets.
 
 - Pending memories appear in Settings → Memories for review before acceptance.
-- Accepted memories live in `~/.merlin/memories/` and are injected at the start of every future session.
+- Accepted memories follow two paths simultaneously:
+  1. **File injection** — moved to `~/.merlin/memories/` and prepended to the system prompt as a verbatim block at the start of every future session.
+  2. **RAG indexing** — written to xcalibre-server as a `"factual"` chunk tagged `"session-memory"`, making them queryable by the RAG layer so only contextually relevant memories surface per prompt rather than all memories all the time.
 
 ---
 
@@ -473,7 +475,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 | **Multi-LLM routing** | Yes — execute / reason / orchestrate / vision slots with automatic complexity routing | No | No |
 | **Vision / GUI automation** | AX tree + ScreenCaptureKit + CGEvent (3 strategies, auto-selected) | Computer use (desktop control) | Computer use (added March 2026) |
 | **Xcode integration** | Deep — build, test, clean, xcresult parsing, open-at-line, simulator control | IDE plugin only | IDE plugin only |
-| **RAG / persistent memory** | Yes — xcalibre-server (vector search, project-scoped, critic-gated writes) | No | No (uses agentic grep/search instead) |
+| **RAG / persistent memory** | Yes — xcalibre-server (vector search, project-scoped, critic-gated per-turn writes + accepted memories indexed as factual chunks) | No | No (uses agentic grep/search instead) |
 | **LoRA self-training** | Yes — MLX-LM on M4 Mac; adapts execute slot to your own sessions | No | No |
 | **Diff review layer** | Yes — all writes staged; accept/reject per change; inline comments | No (direct writes) | No (direct writes) |
 | **Auth gate** | Yes — glob-pattern permission gate on every tool call, per session mode | No | No |

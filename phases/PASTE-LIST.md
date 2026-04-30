@@ -833,10 +833,15 @@ cat phases/phase-103b-planner-engine.md
 # Verify: BUILD SUCCEEDED; PlannerEngineTests → 7 pass; zero warnings
 # Commit: Phase 103b — PlannerEngine
 
-# ── PHASE 104 — System Prompt Addendum ────────────────────────────────────────
-cat phases/phase-104-system-prompt-addendum.md
-# Verify: BUILD SUCCEEDED; all existing tests pass; addendum wired in buildSystemPrompt()
-# Commit: Phase 104 — system_prompt_addendum injection
+# ── PHASE 104a — System Prompt Addendum Tests ─────────────────────────────────
+cat phases/phase-104a-system-prompt-addendum-tests.md
+# Verify: BUILD FAILED — ProviderConfig.systemPromptAddendum, String.addendumHash, buildSystemPromptForTesting not defined (expected)
+# Commit: Phase 104a — SystemPromptAddendumTests (failing)
+
+# ── PHASE 104b — System Prompt Addendum ───────────────────────────────────────
+cat phases/phase-104b-system-prompt-addendum.md
+# Verify: BUILD SUCCEEDED; SystemPromptAddendumTests → 7 pass; all prior tests pass
+# Commit: Phase 104b — system_prompt_addendum injection
 
 # ── PHASE 105a — V5 AgenticEngine Run Loop Tests ──────────────────────────────
 cat phases/phase-105a-v5-runloop-tests.md
@@ -848,10 +853,15 @@ cat phases/phase-105b-v5-runloop.md
 # Verify: BUILD SUCCEEDED; AgenticEngineV5Tests → 6 pass; all prior tests pass
 # Commit: Phase 105b — V5 AgenticEngine run loop (planner + critic + tracker + memory write)
 
-# ── PHASE 106 — V5 Settings UI ────────────────────────────────────────────────
-cat phases/phase-106-v5-settings-ui.md
-# Verify: BUILD SUCCEEDED; Settings > Providers & Slots renders; Performance Dashboard renders
-# Commit: Phase 106 — V5 Settings UI (role slot assignment + domain selector + performance dashboard)
+# ── PHASE 106a — V5 Settings UI Tests ────────────────────────────────────────
+cat phases/phase-106a-v5-settings-ui-tests.md
+# Verify: BUILD FAILED — RoleSlotSettingsView, PerformanceDashboardView, AppSettings new properties not defined (expected)
+# Commit: Phase 106a — V5SettingsUITests (failing)
+
+# ── PHASE 106b — V5 Settings UI ──────────────────────────────────────────────
+cat phases/phase-106b-v5-settings-ui.md
+# Verify: BUILD SUCCEEDED; V5SettingsUITests → all pass; Settings UI renders
+# Commit: Phase 106b — V5 Settings UI (role slot assignment + domain selector + performance dashboard)
 
 # ── PHASE 107a — V5 Skill Frontmatter Tests ───────────────────────────────────
 cat phases/phase-107a-skill-frontmatter-v5-tests.md
@@ -866,7 +876,201 @@ cat phases/phase-107b-skill-frontmatter-v5.md
 # ── DONE (v5 core) ────────────────────────────────────────────────────────────
 # Final: xcodebuild -scheme MerlinTests → all unit + integration pass
 #        xcodebuild -scheme Merlin → zero errors, zero warnings
+
+# VERSION 5 — RAG Memory Extension
+# ════════════════════════════════════════════════════════════════════════════
+# Prereq: xcalibre Phase 18 shipped (POST /api/v1/memory, GET /api/v1/search/chunks?source=all)
+
+# ── PHASE 108a — RAG Source Attribution Tests ─────────────────────────────────
+cat phases/phase-108a-rag-source-attribution-tests.md
+# Verify: BUILD FAILED — AgentEvent.ragSources not defined; RAGSourcesView not defined (expected)
+# Commit: Phase 108a — RAGSourceAttributionTests (failing)
+
+# ── PHASE 108b — RAG Source Attribution ───────────────────────────────────────
+cat phases/phase-108b-rag-source-attribution.md
+# Verify: BUILD SUCCEEDED; RAGSourceAttributionTests → 4 pass; all prior tests pass
+# Commit: Phase 108b — RAG source attribution (.ragSources event + Sources footer in chat)
+
+# ── PHASE 109a — Project Path AppSettings Tests ───────────────────────────────
+cat phases/phase-109a-project-path-tests.md
+# Verify: BUILD FAILED — AppSettings.projectPath not defined; serializedTOML/applyTOML mismatch (expected)
+# Commit: Phase 109a — ProjectPathSettingsTests (failing)
+
+# ── PHASE 109b — Project Path AppSettings Wiring ──────────────────────────────
+cat phases/phase-109b-project-path.md
+# Verify: BUILD SUCCEEDED; ProjectPathSettingsTests → all pass; all prior tests pass
+# Commit: Phase 109b — AppSettings.projectPath wired into engine and Settings UI
+
+# ── PHASE 110a — Memory Browser Tests ─────────────────────────────────────────
+cat phases/phase-110a-memory-browser-tests.md
+# Verify: BUILD FAILED — XcalibreClient.searchMemory not defined; MemoryBrowserView not defined (expected)
+# Commit: Phase 110a — MemoryBrowserTests (failing)
+
+# ── PHASE 110b — Memory Browser ───────────────────────────────────────────────
+cat phases/phase-110b-memory-browser.md
+# Verify: BUILD SUCCEEDED; MemoryBrowserTests → 5 pass; all prior tests pass
+# Commit: Phase 110b — Memory browser (searchMemory convenience + MemoryBrowserView)
+
+# ── PHASE 111a — rag_search Tool Source/ProjectPath Tests ─────────────────────
+cat phases/phase-111a-rag-search-tool-tests.md
+# Verify: BUILD FAILED — RAGTools.search signature mismatch; Args.source not defined (expected)
+# Commit: Phase 111a — RAGSearchToolTests (failing)
+
+# ── PHASE 111b — rag_search Tool Source/ProjectPath ───────────────────────────
+cat phases/phase-111b-rag-search-tool.md
+# Verify: BUILD SUCCEEDED; RAGSearchToolTests → 6 pass; all prior tests pass
+# Commit: Phase 111b — rag_search tool: source + project_path parameters
+
+# ── PHASE 112a — RAG Settings Tests ──────────────────────────────────────────
+cat phases/phase-112a-rag-settings-tests.md
+# Verify: BUILD FAILED — AppSettings.ragRerank, AppSettings.ragChunkLimit not defined (expected)
+# Commit: Phase 112a — RAGSettingsTests (failing)
+
+# ── PHASE 112b — RAG Settings ─────────────────────────────────────────────────
+cat phases/phase-112b-rag-settings.md
+# Verify: BUILD SUCCEEDED; RAGSettingsTests → all pass; all prior tests pass
+# Commit: Phase 112b — ragRerank + ragChunkLimit configurable (default off, safe for RTX 2070)
+
+# ── DONE (v5 RAG memory extension) ────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass; zero warnings
 #
-# V5 RAG Memory Extension (phases 108+) — xcalibre Phase 18 shipped, implement next.
-# V6 LoRA Self-Training — needs Unsloth/LM Studio adapter exploration first.
+# Hardware upgrade path (RTX 5080 + Mistral-7B):
+#   xcalibre config.toml: [llm.librarian] model = "mistral-7b-instruct-q4_k_m"
+#   ~/.merlin/config.toml: rag_rerank = true / rag_chunk_limit = 10
+#   No code changes required.
+#
+# V6 LoRA Self-Training — deferred pending hardware upgrade.
+
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 5 — V5 Loose Ends (performance data integrity)
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── PHASE 113a — OutcomeRecord Persistence Tests ──────────────────────────────
+cat phases/phase-113a-outcome-record-persistence-tests.md
+# Verify: BUILD FAILED — ModelPerformanceTracker.records(for:taskType:) and
+#         ModelPerformanceTracker.exportTrainingData(minScore:) not defined (expected)
+# Commit: Phase 113a — OutcomeRecordPersistenceTests (failing)
+
+# ── PHASE 113b — OutcomeRecord Persistence ────────────────────────────────────
+cat phases/phase-113b-outcome-record-persistence.md
+# Verify: BUILD SUCCEEDED; OutcomeRecordPersistenceTests → 6 pass; all prior tests pass
+# Commit: Phase 113b — OutcomeRecord persistence (V6 training data survives restarts)
+
+# ── PHASE 114a — StagingBuffer OutcomeSignals Tests ───────────────────────────
+cat phases/phase-114a-staging-buffer-signals-tests.md
+# Verify: BUILD FAILED — StagingBuffer.acceptedCount, rejectedCount,
+#         editedOnAcceptCount, resetSessionCounts() not defined (expected)
+# Commit: Phase 114a — StagingBufferSignalsTests (failing)
+
+# ── PHASE 114b — StagingBuffer OutcomeSignals Wiring ──────────────────────────
+cat phases/phase-114b-staging-buffer-signals.md
+# Verify: BUILD SUCCEEDED; StagingBufferSignalsTests → 9 pass; all prior tests pass
+# Commit: Phase 114b — StagingBuffer accept/reject wired into OutcomeSignals
+
+# ── PHASE 115a — Critic-Gated Memory Tests ────────────────────────────────────
+cat phases/phase-115a-critic-gated-memory-tests.md
+# Verify: BUILD FAILED — AgenticEngine.lastCriticVerdict not defined (expected)
+# Commit: Phase 115a — CriticGatedMemoryTests (failing)
+
+# ── PHASE 115b — Critic-Gated Memory Write ────────────────────────────────────
+cat phases/phase-115b-critic-gated-memory.md
+# Verify: BUILD SUCCEEDED; CriticGatedMemoryTests → 7 pass; all prior tests pass
+# Commit: Phase 115b — critic-gated memory write (suppress xcalibre write on critic .fail)
+
+# ── DONE (v5 loose ends) ──────────────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass; zero warnings
+
+# ════════════════════════════════════════════════════════════════════════════
+# VERSION 6 — LoRA Self-Training (MLX-LM on M4 Mac)
+# ════════════════════════════════════════════════════════════════════════════
+# Hardware: M4 Mac 128 GB unified memory (already present)
+# Prereq: python -m mlx_lm installed; base model downloaded via mlx_lm
+# All features default-off (loraEnabled = false). App builds and ships cleanly
+# with everything disabled.
+
+# ── PHASE 116a — LoRA AppSettings Tests ──────────────────────────────────────
+cat phases/phase-116a-lora-appsettings-tests.md
+# Verify: BUILD FAILED — AppSettings.loraEnabled (and 6 other properties) not defined (expected)
+# Commit: Phase 116a — LoRASettingsTests (failing)
+
+# ── PHASE 116b — LoRA AppSettings ────────────────────────────────────────────
+cat phases/phase-116b-lora-appsettings.md
+# Verify: BUILD SUCCEEDED; LoRASettingsTests → 10 pass; all prior tests pass
+# Commit: Phase 116b — LoRA AppSettings (loraEnabled + 6 sub-settings, [lora] TOML section)
+
+# ── PHASE 117a — OutcomeRecord Training Fields Tests ─────────────────────────
+cat phases/phase-117a-outcome-record-training-fields-tests.md
+# Verify: BUILD FAILED — OutcomeRecord.prompt, OutcomeRecord.response not defined (expected)
+# Commit: Phase 117a — OutcomeRecordTrainingFieldsTests (failing)
+
+# ── PHASE 117b — OutcomeRecord Training Fields ────────────────────────────────
+cat phases/phase-117b-outcome-record-training-fields.md
+# Verify: BUILD SUCCEEDED; OutcomeRecordTrainingFieldsTests → 6 pass; all prior tests pass
+# Commit: Phase 117b — OutcomeRecord prompt/response fields; record() captures conversation text
+
+# ── PHASE 118a — LoRATrainer Tests ───────────────────────────────────────────
+cat phases/phase-118a-lora-trainer-tests.md
+# Verify: BUILD FAILED — LoRATrainer, LoRATrainingResult, ShellRunnerProtocol not defined (expected)
+# Commit: Phase 118a — LoRATrainerTests (failing)
+
+# ── PHASE 118b — LoRATrainer ──────────────────────────────────────────────────
+cat phases/phase-118b-lora-trainer.md
+# Verify: BUILD SUCCEEDED; LoRATrainerTests → 5 pass; all prior tests pass
+# Commit: Phase 118b — LoRATrainer (JSONL export + mlx_lm.lora shell invocation)
+
+# ── PHASE 119a — LoRACoordinator Tests ───────────────────────────────────────
+cat phases/phase-119a-lora-coordinator-tests.md
+# Verify: BUILD FAILED — LoRACoordinator not defined (expected)
+# Commit: Phase 119a — LoRACoordinatorTests (failing)
+
+# ── PHASE 119b — LoRACoordinator ─────────────────────────────────────────────
+cat phases/phase-119b-lora-coordinator.md
+# Verify: BUILD SUCCEEDED; LoRACoordinatorTests → 4 pass; all prior tests pass
+# Commit: Phase 119b — LoRACoordinator (threshold-gated auto-train trigger, concurrent-safe)
+
+# ── PHASE 120a — LoRA Provider Routing Tests ─────────────────────────────────
+cat phases/phase-120a-lora-provider-routing-tests.md
+# Verify: BUILD FAILED — AgenticEngine.loraProvider not defined (expected)
+# Commit: Phase 120a — LoRAProviderRoutingTests (failing)
+
+# ── PHASE 120b — LoRA Provider Routing ───────────────────────────────────────
+cat phases/phase-120b-lora-provider-routing.md
+# Verify: BUILD SUCCEEDED; LoRAProviderRoutingTests → 4 pass; all prior tests pass
+# Commit: Phase 120b — LoRA provider routing (execute slot → mlx_lm.server when adapter loaded)
+
+# ── PHASE 121a — LoRA Settings UI Tests ──────────────────────────────────────
+cat phases/phase-121a-lora-settings-ui-tests.md
+# Verify: BUILD FAILED — LoRASettingsSection not defined (expected)
+# Commit: Phase 121a — LoRASettingsUITests (failing)
+
+# ── PHASE 121b — LoRA Settings UI ────────────────────────────────────────────
+cat phases/phase-121b-lora-settings-ui.md
+# Verify: BUILD SUCCEEDED; LoRASettingsUITests → 4 pass; all prior tests pass
+# Commit: Phase 121b — LoRA Settings UI (master toggle + training config + status row)
+
+# ── DONE (v6 LoRA self-training) ──────────────────────────────────────────────
+# Final: xcodebuild -scheme MerlinTests → all unit + integration pass; zero warnings
+#
+# To activate after model download:
+#   1. pip install mlx-lm
+#   2. python -m mlx_lm.convert --hf-path <model> --mlx-path ~/.merlin/lora/base
+#   3. Open Settings → LoRA; enable, set base model path and adapter path
+#   4. Run sessions until sample count reaches loraMinSamples
+#   5. Training fires automatically (or tap Train Now)
+#   6. Start server: python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080
+#   7. Enable Auto-load adapter; set server URL to http://localhost:8080
+
+# ── V6 LOOSE END — Memory → xcalibre RAG indexing ────────────────────────────
+# Accepted AI-generated memories now also write to xcalibre-server as factual RAG
+# chunks, so they surface via semantic search rather than always being injected verbatim.
+
+# ── PHASE 122a — Memory Xcalibre Index Tests ─────────────────────────────────
+cat phases/phase-122a-memory-xcalibre-index-tests.md
+# Verify: BUILD FAILED — MemoryEngine has no setXcalibreClient method (expected)
+# Commit: Phase 122a — MemoryXcalibreIndexTests (failing)
+
+# ── PHASE 122b — Memory Xcalibre Index ───────────────────────────────────────
+cat phases/phase-122b-memory-xcalibre-index.md
+# Verify: BUILD SUCCEEDED; MemoryXcalibreIndexTests → 6 pass; all prior tests pass
+# Commit: Phase 122b — approved memories indexed in xcalibre-server as factual RAG chunks
 ```
