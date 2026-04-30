@@ -172,5 +172,6 @@ extension EnvironmentValues {
 
 #Preview {
     LoRASettingsSection()
+        .environment(\.merlinAppState, AppState())
         .frame(width: 480)
 }
