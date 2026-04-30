@@ -10,7 +10,7 @@
 import Foundation
 
 @MainActor
-final class ContextManager: ObservableObject {
+class ContextManager: ObservableObject {
     @Published private(set) var messages: [Message] = []
     private(set) var estimatedTokens: Int = 0
     private(set) var compactionCount: Int = 0

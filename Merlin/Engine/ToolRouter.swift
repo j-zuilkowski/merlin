@@ -12,7 +12,7 @@
 import Foundation
 
 @MainActor
-final class ToolRouter {
+class ToolRouter {
     private let authGate: AuthGate
     private var handlers: [String: (String) async throws -> String] = [:]
     private var mcpHandlers: [String: (String) async throws -> String] = [:]
@@ -47,7 +47,7 @@ final class ToolRouter {
     }
 
     func registerMCPTool(_ definition: ToolDefinition,
-                         handler: @escaping ([String: Any]) async -> String) {
+                         handler: @MainActor @escaping ([String: Any]) async -> String) {
         let name = definition.function.name
         mcpDefinitions.append(definition)
         mcpHandlers[name] = { arguments in
@@ -130,27 +130,23 @@ final class ToolRouter {
             return ToolResult(toolCallId: call.id, content: "error: no staging buffer", isError: true)
         }
 
-        do {
-            let args = stringArguments(from: call.function.arguments)
-            let path = args["path"] ?? args["source_path"] ?? args["src"] ?? ""
-            let kind = changeKind(for: call.function.name)
-            let before = path.isEmpty ? nil : (try? String(contentsOfFile: path, encoding: .utf8))
-            let change = StagedChange(
-                path: path,
-                kind: kind,
-                before: before,
-                after: args["content"] ?? args["new_content"],
-                destinationPath: args["destination_path"] ?? args["dst"]
-            )
-            await buffer.stage(change)
-            return ToolResult(
-                toolCallId: call.id,
-                content: "Staged \(kind.rawValue) for \(path) — awaiting review",
-                isError: false
-            )
-        } catch {
-            return ToolResult(toolCallId: call.id, content: "staging error: \(error)", isError: true)
-        }
+        let args = stringArguments(from: call.function.arguments)
+        let path = args["path"] ?? args["source_path"] ?? args["src"] ?? ""
+        let kind = changeKind(for: call.function.name)
+        let before = path.isEmpty ? nil : (try? String(contentsOfFile: path, encoding: .utf8))
+        let change = StagedChange(
+            path: path,
+            kind: kind,
+            before: before,
+            after: args["content"] ?? args["new_content"],
+            destinationPath: args["destination_path"] ?? args["dst"]
+        )
+        await buffer.stage(change)
+        return ToolResult(
+            toolCallId: call.id,
+            content: "Staged \(kind.rawValue) for \(path) — awaiting review",
+            isError: false
+        )
     }
 
     private func changeKind(for toolName: String) -> ChangeKind {
