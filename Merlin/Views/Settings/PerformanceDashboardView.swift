@@ -94,6 +94,7 @@ struct PerformanceDashboardView: View {
 
     private struct AdvisoryRow: View {
         let advisory: ParameterAdvisory
+        @EnvironmentObject var appState: AppState
 
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
@@ -106,12 +107,23 @@ struct PerformanceDashboardView: View {
                     Text("→ \(advisory.suggestedValue)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if isActionable {
+                        Button("Fix this") {
+                            Task { try? await appState.applyAdvisory(advisory) }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
                 }
                 Text(advisory.explanation)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
+        }
+
+        private var isActionable: Bool {
+            true
         }
     }
 }

@@ -27,6 +27,7 @@
 		0C56C14039D9AEA8F411655A /* ProjectPathSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8342FAD802DCE4DF18053002 /* ProjectPathSettingsTests.swift */; };
 		0C9256FD64E162246A1FBB9F /* SubagentSidebarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC8E2CE6897385D30C3C5E1 /* SubagentSidebarViewModelTests.swift */; };
 		0CD3AAC5F4FD68108823FA64 /* AXInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407684584E51B6800F7E654D /* AXInspectorTests.swift */; };
+		10658091031D263DC7268997 /* ModelControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7288D50FB7BDB82A4950C059 /* ModelControlView.swift */; };
 		119758F3D3907D9DC4029D37 /* ThreadAutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CCCD6384273AA9C07C6738 /* ThreadAutomationTests.swift */; };
 		120A11CBB686768C09BA3DF0 /* MerlinCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362E865430B1AF348968A2DC /* MerlinCommands.swift */; };
 		15EB04BBECFCB1030A523CFE /* MemoryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB16EBE40439C420878A0C2 /* MemoryEntry.swift */; };
@@ -110,6 +111,7 @@
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
 		5E0546E78590C81217AA873D /* VisionQueryTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19DE0FBDE08CA74A748E58F /* VisionQueryTool.swift */; };
+		5E1087C883714F696C651BAF /* ModelControlViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF80CDB4576042C834A75A7A /* ModelControlViewTests.swift */; };
 		5E199C071E8CEAD24923190F /* OpenAICompatibleProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A52C00C0BC245D6D31DF70 /* OpenAICompatibleProviderTests.swift */; };
 		5F03A2241969ACDCA02D9CDB /* UserGuide.md in Resources */ = {isa = PBXBuildFile; fileRef = 3D98BDBFD96996938F220F6A /* UserGuide.md */; };
 		608CBBA9B276A21E72135C48 /* LinearConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80C2C861A60045CC3CF769B /* LinearConnector.swift */; };
@@ -415,6 +417,7 @@
 		6F80997D9F5275363D0894F6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		714CE3DC97F4018EACDE55C6 /* FirstLaunchSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstLaunchSetupView.swift; sourceTree = "<group>"; };
 		71C1C016F54B6FA9F5520B08 /* SubagentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentEngine.swift; sourceTree = "<group>"; };
+		7288D50FB7BDB82A4950C059 /* ModelControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelControlView.swift; sourceTree = "<group>"; };
 		7306BD77A5F6F3910A0F5C5C /* AuthGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateTests.swift; sourceTree = "<group>"; };
 		748C0EACA020EEBA816A27E3 /* KeychainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTests.swift; sourceTree = "<group>"; };
 		75FE6BC176D952AA94622B45 /* CGEventTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGEventTool.swift; sourceTree = "<group>"; };
@@ -576,6 +579,7 @@
 		FBE91528B70860D12EC1079B /* ProjectRef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRef.swift; sourceTree = "<group>"; };
 		FC6E1F55194B08C8A1A77DD2 /* SessionSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSidebar.swift; sourceTree = "<group>"; };
 		FD886551A64C574A90DA0C59 /* SubagentEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentEngineTests.swift; sourceTree = "<group>"; };
+		FF80CDB4576042C834A75A7A /* ModelControlViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelControlViewTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -856,6 +860,7 @@
 				8E5A5E169A06FCE20422F60C /* MemoryGenerationTests.swift */,
 				9B6924F574A25CB419F66863 /* MemoryInjectionTests.swift */,
 				3949488AD7F80BADC3BAF286 /* MemoryXcalibreIndexTests.swift */,
+				FF80CDB4576042C834A75A7A /* ModelControlViewTests.swift */,
 				2F4A6766C80ED76CF770A4C9 /* ModelManagerWiringTests.swift */,
 				C1C2104BDF2AA60A7A53161A /* ModelParameterAdvisorTests.swift */,
 				51C1D9FC9EC34E4AC273415B /* ModelPerformanceTrackerTests.swift */,
@@ -931,6 +936,7 @@
 			children = (
 				83BFBCCEA4E8C81C8805F611 /* LoRASettingsSection.swift */,
 				9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */,
+				7288D50FB7BDB82A4950C059 /* ModelControlView.swift */,
 				F6EC30AA86593D0E23A30FE3 /* PerformanceDashboardView.swift */,
 				49A706366E0093B50E14CF59 /* ProviderSettingsView.swift */,
 				29EDE0CF4979E6BB1C024011 /* RoleSlotSettingsView.swift */,
@@ -1443,6 +1449,7 @@
 				74646282C9E3002A3A75F891 /* MemoryInjectionTests.swift in Sources */,
 				FD2B56D632499963539B106F /* MemoryXcalibreIndexTests.swift in Sources */,
 				00D9D63A7E64B33E0507648D /* MockProvider.swift in Sources */,
+				5E1087C883714F696C651BAF /* ModelControlViewTests.swift in Sources */,
 				C46CDA8E2AB57B16A3DE93C2 /* ModelManagerWiringTests.swift in Sources */,
 				49A749C076FD1920F45DC1BA /* ModelParameterAdvisorTests.swift in Sources */,
 				16294070012D5C8B978DEE66 /* ModelPerformanceTrackerTests.swift in Sources */,
@@ -1581,6 +1588,7 @@
 				000C78AA9999D2BCD378DC69 /* MerlinApp.swift in Sources */,
 				120A11CBB686768C09BA3DF0 /* MerlinCommands.swift in Sources */,
 				F39878543A36AC7C5F67C0EB /* MistralRSModelManager.swift in Sources */,
+				10658091031D263DC7268997 /* ModelControlView.swift in Sources */,
 				A30D4466BA15F961F4CAE292 /* ModelParameterAdvisor.swift in Sources */,
 				20CE7E1B8ED6F5F66F12B50D /* ModelPerformanceTracker.swift in Sources */,
 				8D0CFAD6918A6C212027EBC2 /* ModelPerformanceTrackerProtocol.swift in Sources */,

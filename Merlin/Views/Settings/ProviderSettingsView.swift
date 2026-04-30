@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProviderSettingsView: View {
     @EnvironmentObject var registry: ProviderRegistry
+    @EnvironmentObject private var appState: AppState
     @State private var editingKeyFor: EditingKeyTarget? = nil
     @State private var keyDraft: String = ""
 
@@ -9,21 +10,31 @@ struct ProviderSettingsView: View {
         Form {
             Section("Providers") {
                 ForEach(registry.providers) { config in
-                    ProviderRow(
-                        config: config,
-                        availableModels: ProviderRegistry.knownModels[config.id] ?? [],
-                        isActive: registry.activeProviderID == config.id,
-                        hasKey: config.isLocal
-                            ? registry.availabilityByID[config.id] == true
-                            : registry.keyedProviderIDs.contains(config.id),
-                        onActivate: { registry.activeProviderID = config.id },
-                        onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
-                        onEditKey: {
-                            editingKeyFor = EditingKeyTarget(id: config.id)
-                            keyDraft = ""
-                        },
-                        onModelChange: { registry.updateModel($0, for: config.id) }
-                    )
+                    VStack(alignment: .leading, spacing: 8) {
+                        ProviderRow(
+                            config: config,
+                            availableModels: ProviderRegistry.knownModels[config.id] ?? [],
+                            isActive: registry.activeProviderID == config.id,
+                            hasKey: config.isLocal
+                                ? registry.availabilityByID[config.id] == true
+                                : registry.keyedProviderIDs.contains(config.id),
+                            onActivate: { registry.activeProviderID = config.id },
+                            onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
+                            onEditKey: {
+                                editingKeyFor = EditingKeyTarget(id: config.id)
+                                keyDraft = ""
+                            },
+                            onModelChange: { registry.updateModel($0, for: config.id) }
+                        )
+
+                        if config.isLocal, let manager = appState.manager(for: config.id) {
+                            Divider()
+                            ModelControlSectionView(
+                                manager: manager,
+                                modelID: config.model
+                            )
+                        }
+                    }
                 }
             }
         }
