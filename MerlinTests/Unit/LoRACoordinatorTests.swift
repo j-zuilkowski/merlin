@@ -3,9 +3,9 @@ import XCTest
 
 // MARK: - Stub trainer that records call count without running a process
 
-private actor StubLoRATrainer {
-    var trainCallCount = 0
-    var stubbedResult = LoRATrainingResult(
+private final class StubLoRATrainer: @unchecked Sendable, LoRATrainable {
+    nonisolated(unsafe) var trainCallCount = 0
+    nonisolated(unsafe) var stubbedResult = LoRATrainingResult(
         sampleCount: 5, adapterPath: "/tmp/adapter", success: true, errorMessage: nil
     )
 
@@ -62,7 +62,7 @@ final class LoRACoordinatorTests: XCTestCase {
         // Give any potential background task time to fire
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        let callCount = await stubTrainer.trainCallCount
+        let callCount = stubTrainer.trainCallCount
         XCTAssertEqual(callCount, 0, "Training must not fire when record count < minSamples")
     }
 
@@ -83,7 +83,7 @@ final class LoRACoordinatorTests: XCTestCase {
         // Wait for background task
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        let callCount = await stubTrainer.trainCallCount
+        let callCount = stubTrainer.trainCallCount
         XCTAssertEqual(callCount, 1, "Training must fire when record count >= minSamples")
     }
 
@@ -107,7 +107,7 @@ final class LoRACoordinatorTests: XCTestCase {
         )
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        let callCount = await stubTrainer.trainCallCount
+        let callCount = stubTrainer.trainCallCount
         XCTAssertLessThanOrEqual(callCount, 1,
                                  "Concurrent training runs must be prevented by isTraining guard")
     }

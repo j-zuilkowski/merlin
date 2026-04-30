@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-final class SchedulerEngine: ObservableObject {
+final class SchedulerEngine: ObservableObject, @unchecked Sendable {
     @Published private(set) var tasks: [ScheduledTask] = []
 
     private let configPath: String

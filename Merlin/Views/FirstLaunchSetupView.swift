@@ -82,7 +82,7 @@ struct FirstLaunchSetupView: View {
                     if needsKey && keyIsEmpty { return }
                     let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
-                        try? appState.registry.setAPIKey(trimmed, for: selectedID)
+                        appState.registry.setAPIKey(trimmed, for: selectedID)
                     }
                     appState.registry.activeProviderID = selectedID
                     appState.activeProviderID = selectedID

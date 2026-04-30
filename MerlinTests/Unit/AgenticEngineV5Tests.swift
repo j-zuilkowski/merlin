@@ -20,7 +20,7 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     func testHighStakesUsesReasonSlot() async {
         let providerSpy = ProviderCallSpy()
-        let engine = makeEngine(
+        let engine = makeV5Engine(
             executeProvider: ScriptedProvider(id: "execute", response: "done"),
             reasonProvider: providerSpy
         )
@@ -32,7 +32,7 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     func testRAGSearchUsesSourceAll() async {
         let clientSpy = XcalibreClientSpy()
-        let engine = makeEngine(xcalibreClient: clientSpy)
+        let engine = makeV5Engine(xcalibreClient: clientSpy)
         _ = await collectEvents(engine.send(userMessage: "how does auth work?"))
         XCTAssertEqual(clientSpy.lastSearchSource, "all",
                        "RAG search should use source=all to include memory chunks")
@@ -40,7 +40,7 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     func testRAGSearchPassesProjectPath() async {
         let clientSpy = XcalibreClientSpy()
-        let engine = makeEngine(xcalibreClient: clientSpy)
+        let engine = makeV5Engine(xcalibreClient: clientSpy)
         engine.currentProjectPath = "/Users/jon/project"
         _ = await collectEvents(engine.send(userMessage: "explain this"))
         XCTAssertEqual(clientSpy.lastSearchProjectPath, "/Users/jon/project")
@@ -50,7 +50,7 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     func testOutcomeRecordedAtSessionEnd() async {
         let trackerSpy = PerformanceTrackerSpy()
-        let engine = makeEngine(tracker: trackerSpy)
+        let engine = makeV5Engine(tracker: trackerSpy)
         _ = await collectEvents(engine.send(userMessage: "write tests for the auth module"))
         XCTAssertTrue(trackerSpy.recordCalled, "Outcome should be recorded at session end")
     }
@@ -80,7 +80,7 @@ private func collectEvents(_ stream: AsyncStream<AgentEvent>) async -> [AgentEve
 }
 
 @MainActor
-private func makeEngine(
+private func makeV5Engine(
     executeProvider: any LLMProvider = ScriptedProvider(id: "execute", response: "done"),
     reasonProvider: (any LLMProvider)? = nil,
     xcalibreClient: (any XcalibreClientProtocol)? = nil,
@@ -117,7 +117,7 @@ private func makeEngineWithCriticSpy(
     let spy = CriticSpy()
     let reason: (any LLMProvider)? = reasonProviderAvailable
         ? ScriptedProvider(id: "reason", response: "PASS: looks good") : nil
-    let engine = makeEngine(reasonProvider: reason)
+    let engine = makeV5Engine(reasonProvider: reason)
     engine.criticOverride = spy
     engine.classifierOverride = FixedClassifier(tier: classifierTier)
     return (engine, spy)

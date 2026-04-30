@@ -166,7 +166,7 @@ final class ModelParameterAdvisorTests: XCTestCase {
         let json = """
         {
           "modelID": "test-model",
-          "taskType": "codeGeneration",
+          "taskType": {"domainID": "software", "name": "codeGeneration", "displayName": "Code Generation"},
           "score": 0.75,
           "addendumHash": "abc123",
           "timestamp": "2026-04-30T00:00:00Z",

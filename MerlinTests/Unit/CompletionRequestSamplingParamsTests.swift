@@ -1,6 +1,7 @@
 import XCTest
 @testable import Merlin
 
+@MainActor
 final class CompletionRequestSamplingParamsTests: XCTestCase {
 
     // MARK: - Helpers

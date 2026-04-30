@@ -129,10 +129,13 @@ final class RAGSettingsTests: XCTestCase {
         let provider = MinimalProviderRS()
         let registry = ProviderRegistry()
         registry.add(provider)
+        let memory = AuthMemory(storePath: "/dev/null")
+        memory.addAllowPattern(tool: "*", pattern: "*")
+        let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let engine = AgenticEngine(
             slotAssignments: [.execute: provider.id],
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: ToolRouter(authGate: gate),
             contextManager: ContextManager(),
             xcalibreClient: xcalibre
         )
@@ -163,7 +166,7 @@ private final class MinimalProviderRS: LLMProvider, @unchecked Sendable {
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         AsyncThrowingStream { c in
             c.yield(CompletionChunk(
-                delta: ChunkDelta(content: "ok", thinkingContent: nil, toolCalls: nil),
+                delta: ChunkDelta(content: "ok", toolCalls: nil, thinkingContent: nil),
                 finishReason: "stop"
             ))
             c.finish()

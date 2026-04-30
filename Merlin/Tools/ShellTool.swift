@@ -47,6 +47,14 @@ enum ShellTool {
         process.arguments = ["-c", command]
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
+        // Suppress any attempt by Python subprocesses to open a Tk/Wish GUI window.
+        // On macOS 26+ the old Tk 8.5 Wish binary violates launch constraints and
+        // triggers a system crash report whenever a library (e.g. matplotlib) tries
+        // to initialise a GUI backend.  Forcing the non-interactive Agg backend
+        // keeps all subprocess output headless.
+        var env = ProcessInfo.processInfo.environment
+        env["MPLBACKEND"] = "Agg"
+        process.environment = env
         if let cwd {
             process.currentDirectoryURL = URL(fileURLWithPath: cwd)
         }

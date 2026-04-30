@@ -28,6 +28,12 @@ struct ProcessShellRunner: ShellRunnerProtocol {
             let errPipe = Pipe()
             process.standardOutput = outPipe
             process.standardError = errPipe
+            // Suppress Tk/Wish GUI launch from Python subprocesses (e.g. mlx_lm
+            // dependencies that import matplotlib).  macOS 26 kills the old Tk 8.5
+            // Wish binary with a launch constraint violation, producing crash reports.
+            var env = ProcessInfo.processInfo.environment
+            env["MPLBACKEND"] = "Agg"
+            process.environment = env
 
             do {
                 try process.run()
