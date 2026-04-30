@@ -119,6 +119,7 @@
 		608CBBA9B276A21E72135C48 /* LinearConnector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80C2C861A60045CC3CF769B /* LinearConnector.swift */; };
 		60FB535A117E5C28BDC2CD19 /* MockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D668025EC8FF40063C869BB /* MockProvider.swift */; };
 		6215E002BC3B8C4245FD222D /* ThreadAutomationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE88791F6ABE15DD10D51 /* ThreadAutomationEngine.swift */; };
+		6219702079F7F84275125E24 /* CalibrationAdvisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */; };
 		625B99FA4CA1C7EA3DF0C2C8 /* CalibrationRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6DA79C0A7864E74D544C651 /* CalibrationRunnerTests.swift */; };
 		625D3D0D2FC9A9CBC024F14E /* PRMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00AA179B30FCAB6615ECD1A /* PRMonitor.swift */; };
 		63ADB537CEBCC8E73F0F0611 /* ProjectPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A6143C997B792E607040419 /* ProjectPickerView.swift */; };
@@ -434,6 +435,7 @@
 		771F529757CEE05DAD31B2A9 /* ScreenPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenPreviewView.swift; sourceTree = "<group>"; };
 		77EDDA93C8FE9A4BE7FC0176 /* OpenAICompatibleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAICompatibleProvider.swift; sourceTree = "<group>"; };
 		780C9155D3371C4648AFD217 /* SubagentBlockViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockViewModel.swift; sourceTree = "<group>"; };
+		785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAdvisor.swift; sourceTree = "<group>"; };
 		788C316547E5D5E66150F69A /* ShellToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellToolTests.swift; sourceTree = "<group>"; };
 		78CAF89EA21DC3E47F923F95 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
 		7967EC45667E0D2C35EC6543 /* LMStudioProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LMStudioProvider.swift; sourceTree = "<group>"; };
@@ -1015,6 +1017,7 @@
 		84F56205093AACB129C0D609 /* Calibration */ = {
 			isa = PBXGroup;
 			children = (
+				785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */,
 				9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */,
 				377D24125CA1E78926B4B4BC /* CalibrationSuite.swift */,
 				26B899E94DE350B70B073A72 /* CalibrationTypes.swift */,
@@ -1564,6 +1567,7 @@
 				B69FF2330CD5A8C70A765975 /* BraveSearchClient.swift in Sources */,
 				5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */,
 				F2782415BE26DBA76D3D9D0F /* CLAUDEMDLoader.swift in Sources */,
+				6219702079F7F84275125E24 /* CalibrationAdvisor.swift in Sources */,
 				AD357A18591C5A9EA6ECCE93 /* CalibrationRunner.swift in Sources */,
 				47A136A3280A8AF7478C7110 /* CalibrationSuite.swift in Sources */,
 				2484AD6AFDE2828CC4923C19 /* CalibrationTypes.swift in Sources */,
