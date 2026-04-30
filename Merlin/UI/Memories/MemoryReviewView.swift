@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct MemoryReviewView: View {
-    @Environment(\.merlinAppState) private var appState
     @State private var pendingURLs: [URL] = []
     @State private var selectedURL: URL?
     @State private var previewContent: String = ""
@@ -74,9 +73,6 @@ struct MemoryReviewView: View {
     private func approveSelected() async {
         guard let url = selectedURL else {
             return
-        }
-        if let client = appState?.xcalibreClient {
-            await engine.setXcalibreClient(client)
         }
         try? await engine.approve(url, movingTo: acceptedDir)
         await refresh()

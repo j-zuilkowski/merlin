@@ -3,28 +3,29 @@ import XCTest
 
 // MARK: - Spy
 
-private final class SpyXcalibreClient: XcalibreClientProtocol, @unchecked Sendable {
-    var writeCallCount = 0
-    var lastText: String?
-    var lastChunkType: String?
-    var lastTags: [String] = []
-    var writeReturnValue: String? = "chunk-id-1"
+actor SpyMemoryBackend: MemoryBackendPlugin {
+    nonisolated let pluginID = "spy-memory"
+    nonisolated let displayName = "Spy memory"
 
-    func probe() async {}
-    func isAvailable() async -> Bool { true }
-    func searchChunks(query: String, source: String, bookIDs: [String]?,
-                      projectPath: String?, limit: Int, rerank: Bool) async -> [RAGChunk] { [] }
-    func searchMemory(query: String, projectPath: String?, limit: Int) async -> [RAGChunk] { [] }
-    func writeMemoryChunk(text: String, chunkType: String, sessionID: String?,
-                          projectPath: String?, tags: [String]) async -> String? {
-        writeCallCount += 1
-        lastText = text
-        lastChunkType = chunkType
-        lastTags = tags
-        return writeReturnValue
+    var writeCallCount = 0
+    var lastChunk: MemoryChunk?
+    var shouldThrowOnWrite = false
+
+    init(shouldThrowOnWrite: Bool = false) {
+        self.shouldThrowOnWrite = shouldThrowOnWrite
     }
-    func deleteMemoryChunk(id: String) async {}
-    func listBooks(limit: Int) async -> [RAGBook] { [] }
+
+    func write(_ chunk: MemoryChunk) async throws {
+        writeCallCount += 1
+        lastChunk = chunk
+        if shouldThrowOnWrite {
+            struct WriteError: Error {}
+            throw WriteError()
+        }
+    }
+
+    func search(query: String, topK: Int) async throws -> [MemorySearchResult] { [] }
+    func delete(id: String) async throws {}
 }
 
 // MARK: - Tests
@@ -60,77 +61,76 @@ final class MemoryXcalibreIndexTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testSetXcalibreClientCompiles() async {
-        // Verifies the method exists on the actor — fails to build without phase 122b.
+    func testSetMemoryBackendCompiles() async {
         let engine = MemoryEngine()
-        let spy = SpyXcalibreClient()
-        await engine.setXcalibreClient(spy)
-        // No assertion needed — compilation is the test.
+        let spy = SpyMemoryBackend()
+        await engine.setMemoryBackend(spy)
     }
 
-    func testApproveCallsXcalibreWriteWithFileContent() async throws {
+    func testApproveWritesChunkWithFileContent() async throws {
         let engine = MemoryEngine()
-        let spy = SpyXcalibreClient()
-        await engine.setXcalibreClient(spy)
+        let spy = SpyMemoryBackend()
+        await engine.setMemoryBackend(spy)
 
         let content = "- Always use actors for shared mutable state"
         let url = makePendingFile(content: content)
 
         try await engine.approve(url, movingTo: acceptedDir)
 
-        XCTAssertEqual(spy.writeCallCount, 1)
-        XCTAssertEqual(spy.lastText, content)
+        let writeCallCount = await spy.writeCallCount
+        let lastChunk = await spy.lastChunk
+        XCTAssertEqual(writeCallCount, 1)
+        XCTAssertEqual(lastChunk?.content, content)
     }
 
     func testApproveChunkTypeIsFactual() async throws {
         let engine = MemoryEngine()
-        let spy = SpyXcalibreClient()
-        await engine.setXcalibreClient(spy)
+        let spy = SpyMemoryBackend()
+        await engine.setMemoryBackend(spy)
 
         let url = makePendingFile()
         try await engine.approve(url, movingTo: acceptedDir)
 
-        XCTAssertEqual(spy.lastChunkType, "factual")
+        let lastChunk = await spy.lastChunk
+        XCTAssertEqual(lastChunk?.chunkType, "factual")
     }
 
     func testApproveTagsIncludeSessionMemory() async throws {
         let engine = MemoryEngine()
-        let spy = SpyXcalibreClient()
-        await engine.setXcalibreClient(spy)
+        let spy = SpyMemoryBackend()
+        await engine.setMemoryBackend(spy)
 
         let url = makePendingFile()
         try await engine.approve(url, movingTo: acceptedDir)
 
-        XCTAssertTrue(spy.lastTags.contains("session-memory"),
-                      "Expected tags to contain 'session-memory', got \(spy.lastTags)")
+        let lastChunk = await spy.lastChunk
+        XCTAssertTrue(lastChunk?.tags.contains("session-memory") == true,
+                      "Expected tags to contain 'session-memory'")
     }
 
-    func testApproveNilClientSucceeds() async throws {
-        // No xcalibre client set — approve must still move the file.
+    func testApproveNilBackendSucceeds() async throws {
         let engine = MemoryEngine()
-        // Do NOT call setXcalibreClient
 
         let url = makePendingFile()
         try await engine.approve(url, movingTo: acceptedDir)
 
         let movedURL = acceptedDir.appendingPathComponent(url.lastPathComponent)
         XCTAssertTrue(FileManager.default.fileExists(atPath: movedURL.path),
-                      "File should be moved even with no xcalibre client")
+                      "File should be moved even with no backend writes")
     }
 
-    func testXcalibreWriteFailureDoesNotBlockFileMove() async throws {
+    func testBackendWriteFailureDoesNotBlockFileMove() async throws {
         let engine = MemoryEngine()
-        let spy = SpyXcalibreClient()
-        spy.writeReturnValue = nil          // simulate xcalibre unavailable / write failed
-        await engine.setXcalibreClient(spy)
+        let spy = SpyMemoryBackend(shouldThrowOnWrite: true)
+        await engine.setMemoryBackend(spy)
 
         let url = makePendingFile()
         try await engine.approve(url, movingTo: acceptedDir)
 
         let movedURL = acceptedDir.appendingPathComponent(url.lastPathComponent)
         XCTAssertTrue(FileManager.default.fileExists(atPath: movedURL.path),
-                      "File should be moved even when xcalibre write returns nil")
-        XCTAssertEqual(spy.writeCallCount, 1,
-                       "writeMemoryChunk should have been attempted regardless of return value")
+                      "File should be moved even when backend write throws")
+        let writeCallCount = await spy.writeCallCount
+        XCTAssertEqual(writeCallCount, 1)
     }
 }
