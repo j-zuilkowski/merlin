@@ -67,7 +67,9 @@
 		3212EEE0FE3A78B6F379EBFA /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EA9D168EE03ED999D3C9E6E /* AppSettingsTests.swift */; };
 		32A4A3E864E2EA5A8819A215 /* V5SettingsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5359C05F7386F4D88A6F1D78 /* V5SettingsUITests.swift */; };
 		331A03FF42A45C1391F6A8F0 /* SkillCompactionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A27179BFF930CC92478C31D /* SkillCompactionTests.swift */; };
+		3357C446316339F2728A7008 /* LMStudioModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C59DB864AA62B5EC1BC9377 /* LMStudioModelManager.swift */; };
 		336F8A15B125A2E17649D5E8 /* SessionSidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6E1F55194B08C8A1A77DD2 /* SessionSidebar.swift */; };
+		33C3F9C8593E8FBFCFC65AE7 /* LocalModelManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A5B8915DC469508A39149F /* LocalModelManagerProtocol.swift */; };
 		34A95198EDDD0536DFDBAFD0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6F80997D9F5275363D0894F6 /* Assets.xcassets */; };
 		34E95FCCA1015C43BFDDA0C1 /* AnthropicProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D05400A389ABBA606A1B0BC5 /* AnthropicProvider.swift */; };
 		3500BE1D1253F5A2AB3BF070 /* PermissionModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA26416648E05C84B52865D7 /* PermissionModeTests.swift */; };
@@ -185,6 +187,7 @@
 		A8DF211813085E8FAA7E483F /* ContextInjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69382D667DD3BE1FA7E1C42 /* ContextInjectionTests.swift */; };
 		AC9115019B64AA2B1B033D62 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC940A41BD64C1D0F3201AEF /* TOMLParser.swift */; };
 		AF7B6C64B1D9AEB98460E23E /* VerificationBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26F883190E34EFA1262B19C /* VerificationBackend.swift */; };
+		B0188C8E3FDBC9ED481EAD16 /* OllamaModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B746A70DE6F0D68E4B36A3A /* OllamaModelManager.swift */; };
 		B074154F934A8E616C2C48E3 /* LoRASettingsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA984C160727658DFC5F3BD0 /* LoRASettingsUITests.swift */; };
 		B0CF7A52840CE6DE232B84E6 /* AuthGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31885D17C1754C25CB7123B0 /* AuthGate.swift */; };
 		B169594CF06C9B24777A0CC9 /* SchedulerEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D2D077E373F74AF6AD556F6 /* SchedulerEngineTests.swift */; };
@@ -312,6 +315,7 @@
 		111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFrontmatterV5Tests.swift; sourceTree = "<group>"; };
 		11210162FADED2E2E8052679 /* FileSystemToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemToolTests.swift; sourceTree = "<group>"; };
 		11F668D82D2CE9C0925BE74E /* PatternMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternMatcher.swift; sourceTree = "<group>"; };
+		13A5B8915DC469508A39149F /* LocalModelManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelManagerProtocol.swift; sourceTree = "<group>"; };
 		13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderConfig.swift; sourceTree = "<group>"; };
 		13FDE07DDA81945D1D6EC917 /* SessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManager.swift; sourceTree = "<group>"; };
 		1644B717ECEF9823F2E96994 /* BundleModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleModule.swift; sourceTree = "<group>"; };
@@ -337,6 +341,7 @@
 		2AA0F591A251334D32D0BBEF /* ProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTests.swift; sourceTree = "<group>"; };
 		2B95E8440462CFAB92BE56B6 /* ToolDiscoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolDiscoveryTests.swift; sourceTree = "<group>"; };
 		2C12FBEBB27753C9DCA5F42E /* MCPBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPBridgeTests.swift; sourceTree = "<group>"; };
+		2C59DB864AA62B5EC1BC9377 /* LMStudioModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LMStudioModelManager.swift; sourceTree = "<group>"; };
 		2C90671064F342278AEEC0F6 /* SlackConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlackConnector.swift; sourceTree = "<group>"; };
 		2CC2DE6BBD3111E153605E48 /* HelpWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpWindowView.swift; sourceTree = "<group>"; };
 		2D668025EC8FF40063C869BB /* MockProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProvider.swift; sourceTree = "<group>"; };
@@ -361,6 +366,7 @@
 		48F1814987B2646E8CD8E875 /* ConnectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorTests.swift; sourceTree = "<group>"; };
 		49A706366E0093B50E14CF59 /* ProviderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsView.swift; sourceTree = "<group>"; };
 		4A2A2707D0E8F3D979BDADB0 /* ToolRouterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouterTests.swift; sourceTree = "<group>"; };
+		4B746A70DE6F0D68E4B36A3A /* OllamaModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaModelManager.swift; sourceTree = "<group>"; };
 		4CE3E6B611505F4A46D94198 /* LoRATrainerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRATrainerTests.swift; sourceTree = "<group>"; };
 		4F8C288255350E8636F488AA /* ToolRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistryTests.swift; sourceTree = "<group>"; };
 		513B34F67D09BA6824D13F40 /* SettingsWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowView.swift; sourceTree = "<group>"; };
@@ -914,6 +920,16 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
+		69D27DF0D72DA9DA7145B0A6 /* LocalModelManager */ = {
+			isa = PBXGroup;
+			children = (
+				2C59DB864AA62B5EC1BC9377 /* LMStudioModelManager.swift */,
+				13A5B8915DC469508A39149F /* LocalModelManagerProtocol.swift */,
+				4B746A70DE6F0D68E4B36A3A /* OllamaModelManager.swift */,
+			);
+			path = LocalModelManager;
+			sourceTree = "<group>";
+		};
 		718BB43F60F40E2725E6823F /* MCP */ = {
 			isa = PBXGroup;
 			children = (
@@ -1100,6 +1116,7 @@
 				059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */,
 				AA231BB600D5DA17BBB560F3 /* ReasoningEffort.swift */,
 				5DB30D8DFDDE23D92A41241C /* SSEParser.swift */,
+				69D27DF0D72DA9DA7145B0A6 /* LocalModelManager */,
 			);
 			path = Providers;
 			sourceTree = "<group>";
@@ -1517,12 +1534,14 @@
 				EA0C3CE0B4B3750A2917FE2C /* KeepAwakeManager.swift in Sources */,
 				D0E9F93738DE92EFFA66A401 /* KeychainManager.swift in Sources */,
 				35F0807BBC38C3A910C029DD /* LLMProvider.swift in Sources */,
+				3357C446316339F2728A7008 /* LMStudioModelManager.swift in Sources */,
 				5BA49F34585F47B0521E4627 /* LMStudioProvider.swift in Sources */,
 				608CBBA9B276A21E72135C48 /* LinearConnector.swift in Sources */,
 				56D1555D248E47296349EFE8 /* LiveSession.swift in Sources */,
 				7032901BC4F47BCD1173AC85 /* LoRACoordinator.swift in Sources */,
 				B65FF54C8A58D8893D5F61DC /* LoRASettingsSection.swift in Sources */,
 				7F50927666335BC7708917BE /* LoRATrainer.swift in Sources */,
+				33C3F9C8593E8FBFCFC65AE7 /* LocalModelManagerProtocol.swift in Sources */,
 				B88477A9FA70506A96ED4174 /* MCPBridge.swift in Sources */,
 				98F281EDA0972A2E66469B9D /* MCPConfig.swift in Sources */,
 				B67A488C32B0230261875BA6 /* MCPToolDefinition.swift in Sources */,
@@ -1537,6 +1556,7 @@
 				8D0CFAD6918A6C212027EBC2 /* ModelPerformanceTrackerProtocol.swift in Sources */,
 				466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */,
 				5A50B92FF3740D878AC81CAE /* NullProvider.swift in Sources */,
+				B0188C8E3FDBC9ED481EAD16 /* OllamaModelManager.swift in Sources */,
 				BD776023D0704FE63E552DDB /* OpenAICompatibleProvider.swift in Sources */,
 				625D3D0D2FC9A9CBC024F14E /* PRMonitor.swift in Sources */,
 				93963248993487D653B2FB2F /* PatternMatcher.swift in Sources */,
