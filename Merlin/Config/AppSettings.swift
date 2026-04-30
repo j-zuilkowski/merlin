@@ -48,6 +48,10 @@ final class AppSettings: ObservableObject {
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
     @Published var ragChunkLimit: Int = 3
+    /// TOML key `rag_freshness_threshold_days`. Memory chunks older than this many days are flagged as stale in GroundingReport.
+    @Published var ragFreshnessThresholdDays: Int = 90
+    /// TOML key `rag_min_grounding_score`. Average RAG score below this threshold makes GroundingReport.isWellGrounded false.
+    @Published var ragMinGroundingScore: Double = 0.30
     /// TOML key `agent_circuit_breaker_threshold`. Default: `3`. `0` disables the circuit breaker entirely.
     @Published var agentCircuitBreakerThreshold: Int = 3
     /// TOML key `agent_circuit_breaker_mode`. Default: `"halt"`. `halt` stops the next turn cleanly; `warn` emits a system note and continues.
@@ -145,6 +149,8 @@ final class AppSettings: ObservableObject {
         var projectPath: String?
         var ragRerank: Bool?
         var ragChunkLimit: Int?
+        var ragFreshnessThresholdDays: Int?
+        var ragMinGroundingScore: Double?
         var agentCircuitBreakerThreshold: Int?
         var agentCircuitBreakerMode: String?
         var lora: LoraConfig?
@@ -250,6 +256,8 @@ final class AppSettings: ObservableObject {
             case projectPath = "project_path"
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
+            case ragFreshnessThresholdDays = "rag_freshness_threshold_days"
+            case ragMinGroundingScore = "rag_min_grounding_score"
             case agentCircuitBreakerThreshold = "agent_circuit_breaker_threshold"
             case agentCircuitBreakerMode = "agent_circuit_breaker_mode"
             case lora
@@ -341,6 +349,12 @@ final class AppSettings: ObservableObject {
         }
         if ragChunkLimit != 3 {
             lines.append("rag_chunk_limit = \(ragChunkLimit)")
+        }
+        if ragFreshnessThresholdDays != 90 {
+            lines.append("rag_freshness_threshold_days = \(ragFreshnessThresholdDays)")
+        }
+        if abs(ragMinGroundingScore - 0.30) > 0.001 {
+            lines.append("rag_min_grounding_score = \(ragMinGroundingScore)")
         }
         if agentCircuitBreakerThreshold != 3 {
             lines.append("agent_circuit_breaker_threshold = \(agentCircuitBreakerThreshold)")
@@ -659,6 +673,12 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.ragChunkLimit {
             ragChunkLimit = value
+        }
+        if let value = config.ragFreshnessThresholdDays {
+            ragFreshnessThresholdDays = value
+        }
+        if let value = config.ragMinGroundingScore {
+            ragMinGroundingScore = value
         }
         if let value = config.agentCircuitBreakerThreshold {
             agentCircuitBreakerThreshold = value

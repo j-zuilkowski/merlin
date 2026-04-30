@@ -483,6 +483,8 @@ final class ChatViewModel: ObservableObject {
                     items[index].ragSources = chunks
                     bumpRevision()
                 }
+            case .groundingReport:
+                break
             case .subagentStarted, .subagentUpdate:
                 applyEngineEvent(event)
             case .systemNote(let note):

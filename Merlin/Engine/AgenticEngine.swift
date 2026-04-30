@@ -30,6 +30,9 @@ enum AgentEvent {
     case subagentUpdate(id: UUID, event: SubagentEvent)
     case systemNote(String)
     case ragSources([RAGChunk])
+    /// Per-turn grounding confidence report. Emitted after RAG search even when
+    /// `totalChunks == 0`, so callers can distinguish ungrounded from well-grounded turns.
+    case groundingReport(GroundingReport)
     case error(Error)
 }
 
@@ -381,15 +384,14 @@ final class AgenticEngine {
         }
 
         var effectiveMessage = userMessage
-        var ragChunks: [RAGChunk] = []
+        let memResults = (try? await memoryBackend.search(query: userMessage, topK: 5)) ?? []
+        let memoryDates = memResults.map { $0.chunk.createdAt }
+        let memChunks = memResults.map { $0.toRAGChunk() }
+        var bookChunks: [RAGChunk] = []
 
         // Merge the two RAG sources in order: local memory first, then book content.
-        if let memResults = try? await memoryBackend.search(query: userMessage, topK: 5) {
-            ragChunks.append(contentsOf: memResults.map { $0.toRAGChunk() })
-        }
-
         if let client = xcalibreClient {
-            let bookChunks = await client.searchChunks(
+            bookChunks = await client.searchChunks(
                 query: userMessage,
                 source: "all",
                 bookIDs: nil,
@@ -397,13 +399,23 @@ final class AgenticEngine {
                 limit: min(max(ragChunkLimit, 1), 20),
                 rerank: ragRerank
             )
-            ragChunks.append(contentsOf: bookChunks)
         }
+
+        let ragChunks = memChunks + bookChunks
 
         if !ragChunks.isEmpty {
             effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: ragChunks)
             continuation.yield(.ragSources(ragChunks))
         }
+
+        let groundingReport = GroundingReport.build(
+            ragChunks: ragChunks,
+            memoryCreatedAts: memoryDates,
+            freshnessThresholdDays: AppSettings.shared.ragFreshnessThresholdDays,
+            minGroundingScore: AppSettings.shared.ragMinGroundingScore
+        )
+        continuation.yield(.groundingReport(groundingReport))
+
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
             continuation.yield(.systemNote(augmented))
         }
