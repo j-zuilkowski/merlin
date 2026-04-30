@@ -2,8 +2,8 @@ import Foundation
 
 /// Mistral.rs manager.
 ///
-/// This provider is restart-only in phase 126b. The manager surfaces a CLI
-/// command that captures the load-time flags supported by the runtime.
+/// This provider is restart-only. The restart command maps each supported
+/// `LoadParam` to the corresponding `mistralrs-server` CLI flag.
 final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "mistralrs"

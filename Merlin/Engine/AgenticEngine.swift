@@ -58,6 +58,8 @@ final class AgenticEngine {
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
+    /// Set by AppState so advisory routing can pause the run loop while a local model reload is in flight.
+    /// The handler clears `isReloadingModel` after the reload/restart attempt finishes.
     var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
     /// Reset to nil at the start of every runLoop invocation.
@@ -69,6 +71,7 @@ final class AgenticEngine {
     var ragRerank: Bool = false
     /// Mirrors AppSettings.ragChunkLimit. Clamped to 1...20 at call site.
     var ragChunkLimit: Int = 3
+    /// True while AppState is applying a load-time advisory; pauseForReload() waits on this flag.
     var isReloadingModel: Bool = false
     private var hookEngine: HookEngine {
         HookEngine(hooks: AppSettings.shared.hooks)
@@ -208,6 +211,7 @@ final class AgenticEngine {
 
     func pauseForReload() async {
         while isReloadingModel {
+            // Poll at 500ms so the agent loop resumes quickly without busy-waiting.
             try? await Task.sleep(for: .milliseconds(500))
         }
     }
@@ -623,6 +627,7 @@ final class AgenticEngine {
         if let trackerRecord = trackerRecords.last, let advisor = parameterAdvisor {
             let advisories = await advisor.checkRecord(trackerRecord)
             for advisory in advisories {
+                // Mark the loop as paused until AppState finishes the local reload or restart flow.
                 isReloadingModel = advisory.kind == .contextLengthTooSmall
                 await onAdvisory?(advisory)
             }

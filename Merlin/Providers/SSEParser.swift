@@ -122,6 +122,8 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         }
     }
 
+    /// Request body for OpenAI-compatible completions.
+    /// Synthesized optionals behave like `encodeIfPresent`, so nil fields are omitted.
     struct Body: Encodable {
         var model: String
         var messages: [WireMessage]
@@ -140,13 +142,24 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         var stop: [String]?
 
         enum CodingKeys: String, CodingKey {
-            case model, messages, tools, stream, thinking, temperature, seed, stop
+            case model, messages, tools, stream, thinking, temperature
+            /// `seed` ↔ `seed`.
+            case seed
+            /// `stop` ↔ `stop`.
+            case stop
+            /// `maxTokens` ↔ `max_tokens`.
             case maxTokens = "max_tokens"
+            /// `topP` ↔ `top_p`.
             case topP = "top_p"
+            /// `topK` ↔ `top_k`.
             case topK = "top_k"
+            /// `minP` ↔ `min_p`.
             case minP = "min_p"
+            /// `repeatPenalty` ↔ `repeat_penalty`.
             case repeatPenalty = "repeat_penalty"
+            /// `frequencyPenalty` ↔ `frequency_penalty`.
             case frequencyPenalty = "frequency_penalty"
+            /// `presencePenalty` ↔ `presence_penalty`.
             case presencePenalty = "presence_penalty"
         }
     }

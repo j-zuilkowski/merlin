@@ -39,6 +39,29 @@ All providers share a single configuration surface (Settings → Providers). API
 
 ---
 
+## Inference Settings
+
+Merlin persists default sampling values in the `[inference]` TOML section and applies them only when a request leaves the corresponding field unset.
+
+- `applyInferenceDefaults(to:)` fills nil fields without overwriting explicit per-request overrides.
+- Supported keys are `temperature`, `max_tokens`, `top_p`, `top_k`, `min_p`, `repeat_penalty`, `frequency_penalty`, `presence_penalty`, `seed`, and `stop`.
+- `stop` is stored as a list of stop strings; leaving it empty preserves provider defaults.
+- These defaults feed the OpenAI-compatible `CompletionRequest` payload used by the provider adapters.
+
+---
+
+## Local Model Management
+
+Local providers expose load-time controls in Settings → Providers. The editor only shows fields that the provider manager advertises through `supportedLoadParams`.
+
+- `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
+- LM Studio, Ollama, and Jan.ai can reload at runtime.
+- LocalAI, Mistral.rs, and vLLM are restart-only and surface a copyable command plus any config snippet they need.
+- The Performance Dashboard automatically detects truncation, critic-score variance, trigram repetition, and context-overflow markers.
+- Each advisory has a one-tap `Fix this` action that routes through the same `applyAdvisory(_:)` path used by the engine.
+
+---
+
 ## Multi-Provider Setup
 
 On first launch, a setup wizard lets you pick and configure any provider. You can skip it and configure later in Settings → Providers.

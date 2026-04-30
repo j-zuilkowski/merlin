@@ -2,8 +2,9 @@ import Foundation
 
 /// vLLM manager.
 ///
-/// This provider is restart-only in phase 126b. The restart instruction uses the
-/// OpenAI-compatible server entry point with the load-time flags exposed by vLLM.
+/// This provider is restart-only. The restart instruction uses the OpenAI
+/// compatible API server entry point and maps supported `LoadParam` values to
+/// the corresponding `python -m vllm.entrypoints.openai.api_server` flags.
 final class VLLMModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "vllm"

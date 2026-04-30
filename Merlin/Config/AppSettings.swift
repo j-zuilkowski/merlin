@@ -57,15 +57,25 @@ final class AppSettings: ObservableObject {
     @Published var loraAdapterPath: String = ""
     @Published var loraServerURL: String = ""
     // MARK: - Inference defaults
+    /// TOML key `temperature` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceTemperature: Double? = nil
+    /// TOML key `max_tokens` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceMaxTokens: Int? = nil
+    /// TOML key `top_p` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceTopP: Double? = nil
+    /// TOML key `top_k` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceTopK: Int? = nil
+    /// TOML key `min_p` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceMinP: Double? = nil
+    /// TOML key `repeat_penalty` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceRepeatPenalty: Double? = nil
+    /// TOML key `frequency_penalty` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceFrequencyPenalty: Double? = nil
+    /// TOML key `presence_penalty` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferencePresencePenalty: Double? = nil
+    /// TOML key `seed` inside `[inference]`; default `nil` keeps provider randomness.
     @Published var inferenceSeed: Int? = nil
+    /// TOML key `stop` inside `[inference]`; default `[]` leaves stop-sequence handling unchanged.
     @Published var inferenceStop: [String] = []
     @Published var xcalibreToken: String = ""
     @Published var slotAssignments: [AgentSlot: String] = [:]
@@ -257,7 +267,7 @@ final class AppSettings: ObservableObject {
     }
 
     /// Applies stored inference defaults to a request, filling only nil fields.
-    /// Call before dispatching a CompletionRequest so per-request overrides take precedence.
+    /// Per-request overrides always win because existing values are never replaced.
     func applyInferenceDefaults(to request: inout CompletionRequest) {
         inferenceDefaults.apply(to: &request)
     }
@@ -365,6 +375,9 @@ final class AppSettings: ObservableObject {
             inferenceLines.append("stop = [\(escaped)]")
         }
         if inferenceLines.isEmpty == false {
+            // [inference] keys:
+            // temperature, max_tokens, top_p, top_k, min_p, repeat_penalty,
+            // frequency_penalty, presence_penalty, seed, stop
             lines.append("")
             lines.append("[inference]")
             lines.append(contentsOf: inferenceLines)

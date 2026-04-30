@@ -2,11 +2,9 @@ import Foundation
 
 /// Jan.ai local model manager.
 ///
-/// Jan uses an OpenAI-compatible REST API for runtime reloads and stores model
-/// configuration in model.json files on disk. This implementation keeps the API
-/// surface intentionally small: it reports the runtime-capable load parameters,
-/// loads model listings from the OpenAI-compatible endpoint, and issues a best-
-/// effort reload request using the same base server URL.
+/// Jan stores per-model configuration under `~/jan/models/<id>/model.json`,
+/// but this manager talks to the OpenAI-compatible runtime endpoint and only
+/// forwards the load-time fields Jan accepts at reload time.
 final class JanModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "jan"

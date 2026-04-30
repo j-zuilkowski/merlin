@@ -1,7 +1,10 @@
 import Foundation
 
-/// Manages model loading for LM Studio via its management REST API.
-/// Falls back to the `lms` CLI for params not accepted by the REST API.
+/// LM Studio local model manager.
+///
+/// Prefers the management REST API for reloads, and falls back to the `lms`
+/// CLI when the REST path rejects a load-time parameter or the server declines
+/// the request.
 ///
 /// REST endpoints (same host as the chat completions server):
 ///   GET  /api/v1/models            - list loaded models
@@ -53,6 +56,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
     // MARK: - reload
 
+    /// Reloads by unloading the model first, then loading it again with the new config.
     func reload(modelID: String, config: LocalModelConfig) async throws {
         try await unload(modelID: modelID)
 

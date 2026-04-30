@@ -3,8 +3,11 @@ import SwiftUI
 
 // MARK: - ModelControlView
 
-/// Shows editable load-time parameters for a local model provider and
-/// provides Apply & Reload or Restart Instructions actions.
+/// Capability-filtered editor for local model load-time parameters.
+///
+/// The form only shows the fields advertised by `manager.capabilities`, then
+/// routes the edit through either `Apply & Reload` or a restart-instructions
+/// sheet depending on `canReloadAtRuntime`.
 @MainActor
 struct ModelControlView: View {
 
@@ -134,9 +137,11 @@ struct ModelControlView: View {
         do {
             try await manager.reload(modelID: modelID, config: config)
         } catch ModelManagerError.requiresRestart(let instr) {
+            // Restart-required errors are surfaced as a sheet so the user can copy the command.
             restartInstructions = instr
             showRestartSheet = true
         } catch ModelManagerError.reloadFailed(let reason) {
+            // Other reload failures stay inline so the caller can retry or edit the config.
             reloadError = "Reload failed: \(reason)"
         } catch {
             reloadError = error.localizedDescription
@@ -152,6 +157,7 @@ private struct IntField: View {
     @Binding var value: Int?
     let placeholder: Int
 
+    /// Creates a nil-pass-through binding so empty text keeps the config unset.
     init(_ label: String, value: Binding<Int?>, placeholder: Int) {
         self.label = label
         self._value = value
@@ -177,6 +183,7 @@ private struct DoubleField: View {
     @Binding var value: Double?
     let placeholder: Double
 
+    /// Creates a nil-pass-through binding so empty text keeps the config unset.
     init(_ label: String, value: Binding<Double?>, placeholder: Double) {
         self.label = label
         self._value = value
@@ -213,6 +220,9 @@ struct ModelControlSectionView: View {
 // MARK: - RestartInstructionsSheet
 
 /// Sheet shown when a provider requires a server restart to apply parameter changes.
+///
+/// Uses `NSPasteboard` directly so the shell command and optional config snippet
+/// can be copied without needing a separate sharing or paste command view.
 struct RestartInstructionsSheet: View {
     let instructions: RestartInstructions
     @Environment(\.dismiss) private var dismiss

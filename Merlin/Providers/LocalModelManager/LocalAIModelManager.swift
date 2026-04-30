@@ -51,6 +51,7 @@ final class LocalAIModelManager: LocalModelManagerProtocol, @unchecked Sendable 
 
     private func yamlConfigSnippet(for config: LocalModelConfig) -> String? {
         var lines: [String] = []
+        // Emit the YAML snippet as simple `key: value` pairs that can be pasted into LocalAI's config.
         if let value = config.contextLength {
             lines.append("context_size: \(value)")
         }

@@ -93,21 +93,41 @@ struct ToolResult: Codable, Sendable {
     var isError: Bool
 }
 
+/// OpenAI-compatible completion payload used by Merlin's provider adapters.
+///
+/// Optional fields are omitted from the encoded JSON when nil, so provider
+/// defaults remain in effect unless `AppSettings.applyInferenceDefaults(to:)`
+/// fills them first.
 struct CompletionRequest: Sendable {
+    /// Target model identifier.
     var model: String
+    /// Ordered chat messages sent to the model.
     var messages: [Message]
+    /// Tool definitions exposed to the provider for this turn.
     var tools: [ToolDefinition]?
+    /// Streams deltas instead of waiting for a single final completion.
     var stream: Bool = true
+    /// Optional reasoning/thinking configuration for providers that support it.
     var thinking: ThinkingConfig?
+    /// Maximum generated tokens; `nil` keeps the provider or app default.
     var maxTokens: Int?
+    /// Temperature sampling factor; `nil` keeps the provider or app default.
     var temperature: Double?
+    /// Nucleus sampling probability, usually `0...1`; `nil` keeps defaults.
     var topP: Double?
+    /// Top-k cutoff; provider-specific positive integer, `nil` keeps defaults.
     var topK: Int?
+    /// Minimum probability filter, usually `0...1`; `nil` keeps defaults.
     var minP: Double?
+    /// Repetition penalty, usually `1.0...2.0`; `nil` keeps defaults.
     var repeatPenalty: Double?
+    /// Frequency penalty adjustment, usually `-2.0...2.0`; `nil` keeps defaults.
     var frequencyPenalty: Double?
+    /// Presence penalty adjustment, usually `-2.0...2.0`; `nil` keeps defaults.
     var presencePenalty: Double?
+    /// Deterministic sampling seed; `nil` keeps provider randomness.
     var seed: Int?
+    /// Stop sequences that terminate generation; `nil` or empty keeps defaults.
     var stop: [String]?
 }
 

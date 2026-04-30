@@ -58,6 +58,7 @@ final class AppState: ObservableObject {
     @Published var lastScreenshot: (data: Data, timestamp: Date, sourceBundleID: String)? = nil
     @Published var contextUsage: ContextUsageTracker = ContextUsageTracker(contextWindowSize: 200_000)
     @Published var toolbarActionsList: [ToolbarAction] = []
+    /// Published so the UI can present a restart-instructions sheet after a reload request requires it.
     @Published var pendingRestartInstructions: RestartInstructions? = nil
 
     @Published var activeProviderID: String = "deepseek" {
@@ -72,7 +73,9 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
+    /// Local model managers keyed by providerID; rebuilt from ProviderRegistry at init and whenever providers change.
     var localModelManagers: [String: any LocalModelManagerProtocol] = [:]
+    /// The active local provider ID derived when the user selects a local provider in Settings → Providers.
     var activeLocalProviderID: String? = nil
     let loraCoordinator = LoRACoordinator()
     let parameterAdvisor = ModelParameterAdvisor()
@@ -404,10 +407,16 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Returns the local model manager for a providerID, if one exists.
     func manager(for providerID: String) -> (any LocalModelManagerProtocol)? {
         localModelManagers[providerID]
     }
 
+    /// Applies an advisory to either the active local model or AppSettings inference defaults.
+    /// `.contextLengthTooSmall` reloads the local manager and may surface restart instructions.
+    /// `.maxTokensTooLow` raises `AppSettings.inferenceMaxTokens`.
+    /// `.temperatureUnstable` lowers `AppSettings.inferenceTemperature`.
+    /// `.repetitiveOutput` raises `AppSettings.inferenceRepeatPenalty`.
     func applyAdvisory(_ advisory: ParameterAdvisory) async throws {
         switch advisory.kind {
         case .contextLengthTooSmall:
@@ -484,6 +493,8 @@ final class AppState: ObservableObject {
         localModelManagers = managers
     }
 
+    // Map each local provider ID to its concrete manager. Unknown IDs and malformed URLs
+    // fall back to NullModelManager so the Settings UI can still render safely.
     private func makeManager(for config: ProviderConfig) -> any LocalModelManagerProtocol {
         guard let url = normalizedLocalManagerBaseURL(for: config.baseURL) else {
             return NullModelManager(providerID: config.id)
@@ -503,6 +514,7 @@ final class AppState: ObservableObject {
         case "vllm":
             return VLLMModelManager(baseURL: url)
         default:
+            // Unknown local provider IDs use a NullModelManager rather than failing the settings UI.
             return NullModelManager(providerID: config.id)
         }
     }

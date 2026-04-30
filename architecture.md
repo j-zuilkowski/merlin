@@ -247,14 +247,15 @@ Local Model Management [v7]:
     LMStudioModelManager   — REST API /api/v1/unload + /api/v1/load; lms CLI fallback
                              canReloadAtRuntime = true
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads,
-                                                  flashAttention, cacheTypeK/V, ropeFrequencyBase, batchSize
+                                                  flashAttention, cacheTypeK/V, ropeFrequencyBase,
+                                                  batchSize
 
     OllamaModelManager     — Modelfile generation + POST /api/create; force-unload via keep_alive:0
                              canReloadAtRuntime = true
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads,
                                                   ropeFrequencyBase, batchSize, useMmap, useMlock
 
-    JanModelManager        — POST /v1/models/stop → edit model.json → POST /v1/models/start
+    JanModelManager        — OpenAI-compatible reload endpoint; Jan stores model config on disk at `~/jan/models/<id>/model.json`
                              canReloadAtRuntime = true
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads
 
@@ -270,8 +271,8 @@ Local Model Management [v7]:
 
     VLLMModelManager       — python -m vllm.entrypoints.openai.api_server CLI (restart only)
                              canReloadAtRuntime = false
-                             supportedLoadParams: contextLength, gpuLayers, ropeFrequencyBase,
-                                                  batchSize, cacheTypeK
+                             supportedLoadParams: contextLength, gpuLayers, cacheTypeK,
+                                                  ropeFrequencyBase, batchSize
 
     NullModelManager       — no-op; used for unrecognised local providers
 
@@ -309,14 +310,14 @@ Every supported local provider has a different mechanism for changing load-time 
 
 ### Capability Matrix
 
-| Provider | Runtime Reload | Context Length | GPU Layers | Flash Attn | KV Cache Type | Rope Base | mmap/mlock |
-|---|---|---|---|---|---|---|---|
-| LM Studio | ✅ REST + CLI | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Ollama | ✅ Modelfile | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| Jan.ai | ✅ model.json | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| LocalAI | ❌ restart | ✅ | ✅ | ⚠️ | ⚠️ | ✅ | ✅ |
-| Mistral.rs | ❌ restart | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| vLLM | ❌ restart | ✅ | ✅ | N/A | ✅ kv-cache-dtype | ✅ | N/A |
+| Provider | Runtime Reload | Context Length | GPU Layers | CPU Threads | Flash Attn | KV Cache Type | Rope Base | Batch Size | mmap/mlock |
+|---|---|---|---|---|---|---|---|---|---|
+| LM Studio | ✅ REST + CLI | ✅ | ✅ | ✅ | ✅ | ✅ K/V | ✅ | ✅ | ❌ |
+| Ollama | ✅ Modelfile | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Jan.ai | ✅ reload API | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| LocalAI | ❌ restart | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Mistral.rs | ❌ restart | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| vLLM | ❌ restart | ✅ | ✅ | ❌ | ❌ | ✅ K | ✅ | ✅ | ❌ |
 
 ### Advisory → Action Routing
 

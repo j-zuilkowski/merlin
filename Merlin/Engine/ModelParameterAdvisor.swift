@@ -3,18 +3,21 @@ import Foundation
 // MARK: - ParameterAdvisoryKind
 
 enum ParameterAdvisoryKind: String, Codable, Sendable, Equatable {
-    /// `finish_reason == "length"` — model hit the max_tokens cap before completing.
+    /// `finish_reason == "length"` — the model hit the max_tokens cap before completing.
     case maxTokensTooLow
-    /// Critic score standard deviation over last N turns is above threshold.
+    /// Critic score standard deviation over the last 5+ turns is above 0.25.
     case temperatureUnstable
-    /// Trigram repetition ratio in recent responses is above threshold.
+    /// Trigram repetition ratio is above 0.50 in at least 60% of the sampled turns.
     case repetitiveOutput
-    /// Response text contains known context-overflow error substrings.
+    /// Response text contains a known context-overflow marker from the provider.
     case contextLengthTooSmall
 }
 
 // MARK: - ParameterAdvisory
 
+/// A model-specific tuning recommendation surfaced from either a single turn or
+/// a recent batch of outcomes. `Equatable` compares only `kind + modelID` so
+/// repeated detections for the same issue collapse into one advisory.
 struct ParameterAdvisory: Sendable, Equatable, Identifiable {
     var kind: ParameterAdvisoryKind
     var parameterName: String
@@ -35,8 +38,10 @@ struct ParameterAdvisory: Sendable, Equatable, Identifiable {
 
 // MARK: - ModelParameterAdvisor
 
-/// Detects inference parameter problems from OutcomeRecord streams and surfaces
-/// actionable ParameterAdvisory values. Used by the Performance Dashboard.
+/// Detects inference parameter problems from OutcomeRecord streams using four
+/// heuristics: finish-reason truncation, critic-score variance, trigram
+/// repetition, and context-overflow markers. The actor stores advisories per
+/// model so the Performance Dashboard can present a stable list of fixes.
 actor ModelParameterAdvisor {
     private let minRecordsForVariance = 5
     private let varianceThreshold: Double = 0.25
@@ -51,6 +56,8 @@ actor ModelParameterAdvisor {
 
     private var stored: [String: [ParameterAdvisory]] = [:]
 
+    /// Checks a single OutcomeRecord for immediate signs of truncation or
+    /// context-window overflow and stores any advisories it discovers.
     func checkRecord(_ record: OutcomeRecord) -> [ParameterAdvisory] {
         var advisories: [ParameterAdvisory] = []
 
@@ -83,6 +90,9 @@ actor ModelParameterAdvisor {
         return advisories
     }
 
+    /// Analyzes a batch of OutcomeRecord values for aggregate instability and
+    /// repetition patterns. This is the variance/repetition pass that complements
+    /// the single-record finish-reason and overflow checks.
     func analyze(records: [OutcomeRecord], modelID: String) -> [ParameterAdvisory] {
         var advisories: [ParameterAdvisory] = []
 
@@ -136,6 +146,7 @@ actor ModelParameterAdvisor {
         stored[modelID] ?? []
     }
 
+    /// Removes any stored advisory that matches the same kind and modelID.
     func dismiss(_ advisory: ParameterAdvisory) {
         stored[advisory.modelID]?.removeAll { $0 == advisory }
     }
@@ -148,6 +159,9 @@ actor ModelParameterAdvisor {
         stored[modelID] = existing
     }
 
+    /// Computes the trigram repetition ratio for a response string.
+    /// Higher values mean the response reuses the same three-word windows more
+    /// often; short responses under six words are treated as non-repetitive.
     private func repetitionRatio(in text: String) -> Double {
         let words = text.split(separator: " ").map(String.init)
         guard words.count >= 6 else { return 0.0 }

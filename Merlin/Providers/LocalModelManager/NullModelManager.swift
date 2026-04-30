@@ -1,7 +1,8 @@
 import Foundation
 
-/// No-op manager for providers that don't have a specific LocalModelManager implementation.
-/// Reports canReloadAtRuntime = false and generates an explanation-only RestartInstructions.
+/// No-op manager used when a provider ID is unknown or its base URL cannot be
+/// normalized into a concrete local manager. Reports `canReloadAtRuntime = false`
+/// and generates explanation-only `RestartInstructions`.
 struct NullModelManager: LocalModelManagerProtocol {
     let providerID: String
 

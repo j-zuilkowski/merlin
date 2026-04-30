@@ -1,12 +1,13 @@
 import Foundation
 
-/// Manages model loading for Ollama via its REST API and Modelfile generation.
+/// Ollama local model manager.
 ///
 /// Strategy:
-///   - Runtime "reload": generate a Modelfile variant baking in the new params,
-///     create the variant via POST /api/create, then unload the old model.
-///   - Ollama options{} in generate requests are per-request only; for persistent
-///     config the Modelfile approach is used.
+///   - Runtime "reload": generate a Modelfile variant that bakes in the new
+///     load-time parameters, create the variant via POST /api/create, then
+///     unload the old model.
+///   - Request-time `options {}` are ignored here because this manager handles
+///     persistent config through the Modelfile path instead.
 ///
 /// Ollama REST endpoints:
 ///   GET  /api/tags          - list downloaded models
@@ -24,6 +25,7 @@ final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
             .ropeFrequencyBase, .batchSize, .useMmap, .useMlock
         ]
     )
+    // Ollama does not persist flashAttention in a Modelfile; that knob is request-time only.
 
     private let baseURL: URL
 
@@ -81,6 +83,7 @@ final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     private func buildModelfile(base: String, config: LocalModelConfig) -> String {
         var lines = ["FROM \(base)"]
+        // Ollama Modelfiles use one `PARAMETER <name> <value>` directive per persisted knob.
         if let value = config.contextLength { lines.append("PARAMETER num_ctx \(value)") }
         if let value = config.gpuLayers { lines.append("PARAMETER num_gpu \(value)") }
         if let value = config.cpuThreads { lines.append("PARAMETER num_thread \(value)") }
