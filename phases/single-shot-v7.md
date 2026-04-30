@@ -1,17 +1,13 @@
-# V7 Complete — Single-Shot Implementation Prompt
-## Context
+# V7 — Complete Implementation
+
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 121b complete: LoRA settings UI in place. All prior tests pass.
+Starting point: Phase 121b complete — LoRA settings UI in place, all prior tests passing.
 
-Execute every step below in order. Write all test files, then all implementation files, then
-all edits, then run the single verify command at the bottom, then run all commits in order.
-
----
----
-
-## Phase 122a — Memory Xcalibre Index Tests
+Implement everything below in order. Write every file exactly as specified.
+Make every edit exactly as specified. Run the verify command once at the end.
+Run the commits in order after verify passes.
 
 ## Write to: MerlinTests/Unit/MemoryXcalibreIndexTests.swift
 
@@ -156,10 +152,6 @@ final class MemoryXcalibreIndexTests: XCTestCase {
 
 ---
 
----
-
-## Phase 122b — Memory Xcalibre Index Implementation
-
 ## Edit: Merlin/Memories/MemoryEngine.swift
 
 Add a stored property and a setter immediately after the existing stored properties, and
@@ -302,10 +294,6 @@ MemoryReviewView(xcalibreClient: appState.xcalibreClient)
 `XcalibreClientProtocol` via the extension in `XcalibreClientProtocol.swift`.
 
 ---
-
----
-
-## Phase 123a — Sampling Parameters Tests
 
 ## Write to: MerlinTests/Unit/CompletionRequestSamplingParamsTests.swift
 
@@ -487,10 +475,6 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 123b — Sampling Parameters Implementation
 
 ## Edit 1: Merlin/Providers/LLMProvider.swift
 
@@ -728,10 +712,6 @@ Or, if the engine already has a pattern for reading AppSettings on the main acto
 
 ---
 
----
-
-## Phase 124a — ModelParameterAdvisor Tests
-
 ## Write to: MerlinTests/Unit/ModelParameterAdvisorTests.swift
 
 ```swift
@@ -956,10 +936,6 @@ final class ModelParameterAdvisorTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 124b — ModelParameterAdvisor Implementation
 
 ## Write to: Merlin/Engine/ModelParameterAdvisor.swift
 
@@ -1353,10 +1329,6 @@ private struct AdvisoryRow: View {
 
 ---
 
----
-
-## Phase 125a — LocalModelManagerProtocol Tests
-
 ## Write to: MerlinTests/Unit/LocalModelManagerProtocolTests.swift
 
 ```swift
@@ -1538,10 +1510,6 @@ final class LocalModelManagerProtocolTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 125b — LocalModelManagerProtocol + LMStudio + Ollama Implementation
 
 ## Write to: Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift
 
@@ -1875,10 +1843,6 @@ actor OllamaModelManager: LocalModelManagerProtocol {
 
 ---
 
----
-
-## Phase 126a — Local Model Manager Extended Tests (Jan, LocalAI, Mistral.rs, vLLM)
-
 ## Write to: MerlinTests/Unit/LocalModelManagerExtendedTests.swift
 
 ```swift
@@ -2026,10 +1990,6 @@ final class LocalModelManagerExtendedTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 126b — Jan, LocalAI, Mistral.rs, vLLM Manager Implementations
 
 ## Write to: Merlin/Providers/LocalModelManager/JanModelManager.swift
 
@@ -2359,10 +2319,6 @@ actor VLLMModelManager: LocalModelManagerProtocol {
 
 ---
 
----
-
-## Phase 127a — Model Manager Wiring Tests
-
 ## Write to: MerlinTests/Unit/ModelManagerWiringTests.swift
 
 ```swift
@@ -2543,10 +2499,6 @@ final class ModelManagerWiringTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 127b — Model Manager Wiring Implementation
 
 ## Edit: Merlin/App/AppState.swift
 
@@ -2771,10 +2723,6 @@ engine.onAdvisory = { [weak self] advisory in
 
 ---
 
----
-
-## Phase 128a — Model Control UI Tests
-
 ## Write to: MerlinTests/Unit/ModelControlViewTests.swift
 
 ```swift
@@ -2869,10 +2817,6 @@ final class ModelControlViewTests: XCTestCase {
 ```
 
 ---
-
----
-
-## Phase 128b — Model Control UI Implementation
 
 ## Write to: Merlin/Views/Settings/ModelControlView.swift
 
@@ -3249,10 +3193,6 @@ private struct AdvisoryRow: View {
 
 ---
 
----
-
-## Phase 132 — V7 Documentation & Code Comment Update
-
 ## Files to audit and update
 
 ### Merlin/Providers/LLMProvider.swift
@@ -3366,7 +3306,7 @@ Find the existing sections for:
 
 ---
 
-## Final Verify
+## Verify
 
 ```bash
 xcodebuild -scheme MerlinTests test \
@@ -3375,11 +3315,13 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -60
 ```
 
-Expected: **BUILD SUCCEEDED** — all new tests pass; zero warnings; all prior tests pass.
+Expected: BUILD SUCCEEDED — all new tests pass, zero warnings, all prior tests pass.
 
 ---
 
-## Commits (run in order after verify passes)
+## Commits
+
+Run after verify:
 
 ```bash
 git add MerlinTests/Unit/MemoryXcalibreIndexTests.swift
