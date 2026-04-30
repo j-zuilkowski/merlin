@@ -1145,6 +1145,11 @@ cat phases/phase-128b-model-control-ui.md
 # Verify: BUILD SUCCEEDED; ModelControlViewTests → 6 pass; all prior tests pass
 # Commit: Phase 128b — ModelControlView: per-provider load param editor + restart instructions sheet
 
+# ── PHASE 132 — V7 Documentation & Code Comment Update ───────────────────────
+cat phases/phase-132-v7-docs.md
+# Verify: BUILD SUCCEEDED; zero warnings; all prior tests pass
+# Commit: Phase 132 — V7 docs + code comments: inference params, ModelParameterAdvisor, LocalModelManagerProtocol, ModelControlView
+
 # ── DONE (v7 Local Model Management) ─────────────────────────────────────────
 # All 6 local providers unified under LocalModelManagerProtocol.
 # AppState registry routes advisories to manager.reload() or surfaces restart instructions.
@@ -1189,6 +1194,11 @@ cat phases/phase-131a-calibration-skill-tests.md
 cat phases/phase-131b-calibration-skill.md
 # Verify: BUILD SUCCEEDED; CalibrationSkillTests → 9 pass; all prior tests pass
 # Commit: Phase 131b — /calibrate skill: provider picker, runner wiring, report view with apply-all
+
+# ── PHASE 133 — V8 Documentation & Code Comment Update ───────────────────────
+cat phases/phase-133-v8-docs.md
+# Verify: BUILD SUCCEEDED; zero warnings; all prior tests pass
+# Commit: Phase 133 — V8 docs + code comments: CalibrationSuite, CalibrationRunner, CalibrationAdvisor, CalibrationCoordinator, report views
 
 # ── DONE (v8 /calibrate) ──────────────────────────────────────────────────────
 # To use: type /calibrate in the chat bar; pick a reference provider; tap Start.
