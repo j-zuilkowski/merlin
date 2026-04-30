@@ -8,13 +8,13 @@ final class MemoryBackendAppSettingsTests: XCTestCase {
         XCTAssertEqual(AppSettings.shared.memoryBackendID, "local-vector")
     }
 
-    func testMemoryBackendIDRoundTripsThroughTOML() throws {
+    func testMemoryBackendIDRoundTripsThroughTOML() async throws {
         let tmp = URL(fileURLWithPath: "/tmp/mba-settings-\(UUID().uuidString).toml")
         let settings = AppSettings()
         settings.memoryBackendID = "null"
-        try settings.save(to: tmp)
+        try await settings.save(to: tmp)
         let loaded = AppSettings()
-        try loaded.load(from: tmp)
+        try await loaded.load(from: tmp)
         XCTAssertEqual(loaded.memoryBackendID, "null")
         try? FileManager.default.removeItem(at: tmp)
     }

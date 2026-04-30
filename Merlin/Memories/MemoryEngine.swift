@@ -5,6 +5,7 @@ actor MemoryEngine {
     private var timeout: TimeInterval = 300
     private var onIdleFired: (@Sendable () -> Void)?
     private var provider: (any LLMProvider)?
+    /// Active memory backend. Defaults to `NullMemoryPlugin` until AppState wires settings.
     private var memoryBackend: any MemoryBackendPlugin = NullMemoryPlugin()
 
     func setProvider(_ provider: any LLMProvider) {
@@ -134,6 +135,8 @@ actor MemoryEngine {
         return items.filter { $0.pathExtension.lowercased() == "md" }
     }
 
+    /// Move an approved memory file into the accepted directory and persist it as a
+    /// factual `MemoryChunk` in the configured backend.
     func approve(_ url: URL, movingTo acceptedDir: URL) async throws {
         try FileManager.default.createDirectory(at: acceptedDir, withIntermediateDirectories: true)
         let destination = acceptedDir.appendingPathComponent(url.lastPathComponent)

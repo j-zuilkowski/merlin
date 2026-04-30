@@ -6,7 +6,7 @@ import NaturalLanguage
 /// Produces a fixed-length floating-point embedding vector for a text string.
 ///
 /// The `dimension` property declares the output size of every vector returned by
-/// `embed(_:)`, which lets callers validate storage and similarity calculations.
+/// `embed(_:)`. Conforming types must also be `Sendable` so they can be shared across actors.
 protocol EmbeddingProviderProtocol: Sendable {
     /// Number of dimensions in the embedding vector returned by `embed(_:)`.
     var dimension: Int { get }
@@ -18,9 +18,9 @@ protocol EmbeddingProviderProtocol: Sendable {
 // MARK: - EmbeddingError
 
 enum EmbeddingError: Error, Sendable {
-    /// The contextual embedding model is unavailable on this device.
+    /// The contextual embedding model assets are not cached or cannot be loaded.
     case modelUnavailable
-    /// The input text produced no tokens.
+    /// The input text produced no tokens, so no usable vector can be formed.
     case emptyInput
 }
 
@@ -28,8 +28,8 @@ enum EmbeddingError: Error, Sendable {
 
 /// Production embedding provider backed by `NLContextualEmbedding`.
 ///
-/// The provider downloads Apple’s contextual embedding assets on demand and
-/// mean-pools the token vectors into a single sentence embedding.
+/// The provider downloads Apple’s contextual embedding assets on demand, produces a
+/// 512-dimensional vector, and mean-pools the token vectors into a single sentence embedding.
 struct NLContextualEmbeddingProvider: EmbeddingProviderProtocol {
     /// 512 dimensions for the standard English contextual embedding model.
     let dimension: Int = 512
@@ -44,6 +44,7 @@ struct NLContextualEmbeddingProvider: EmbeddingProviderProtocol {
             throw EmbeddingError.modelUnavailable
         }
 
+        // Bridge the callback-based asset download API into async/await.
         if !model.hasAvailableAssets {
             let assetsResult = try await model.requestAssets()
             guard assetsResult == .available else {
@@ -57,6 +58,7 @@ struct NLContextualEmbeddingProvider: EmbeddingProviderProtocol {
         var accumulator = [Double](repeating: 0, count: dimension)
         var tokenCount = 0
 
+        // Iterate the token vectors and accumulate them before averaging.
         result.enumerateTokenVectors(in: trimmed.startIndex..<trimmed.endIndex) { vector, _ in
             let count = min(vector.count, self.dimension)
             for index in 0..<count {
@@ -70,6 +72,7 @@ struct NLContextualEmbeddingProvider: EmbeddingProviderProtocol {
             throw EmbeddingError.emptyInput
         }
 
+        // Mean pool the per-token vectors to get the final sentence embedding.
         let scale = 1.0 / Double(tokenCount)
         return accumulator.map { Float($0 * scale) }
     }

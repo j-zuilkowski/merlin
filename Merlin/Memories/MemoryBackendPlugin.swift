@@ -2,12 +2,14 @@ import Foundation
 
 // MARK: - MemoryChunk
 
-/// A single stored memory record — the on-disk unit written by MemoryEngine.approve()
-/// and the episodic summaries written by AgenticEngine at session end.
+/// A single stored memory record.
 ///
-/// All fields except `id`, `content`, and `chunkType` are optional so the type works
-/// for both factual approved memories (tags: ["session-memory"]) and ephemeral
-/// episodic summaries (sessionID + projectPath set).
+/// Merlin uses this one type for two cases:
+/// - approved factual memories from the Memory Review flow
+/// - episodic summaries written automatically at the end of an agentic turn
+///
+/// All fields except `id`, `content`, and `chunkType` are optional so both cases can
+/// share the same storage schema.
 struct MemoryChunk: Sendable, Equatable {
     /// Stable UUID string assigned at creation time.
     let id: String
@@ -46,14 +48,16 @@ struct MemoryChunk: Sendable, Equatable {
 // MARK: - MemorySearchResult
 
 /// A search result returned by `MemoryBackendPlugin.search(query:topK:)`.
-/// `score` is a cosine similarity value in [0, 1] — higher is more relevant.
+/// `score` is cosine similarity in `[0, 1]`, where higher values are more relevant.
 struct MemorySearchResult: Sendable {
     let chunk: MemoryChunk
     /// Cosine similarity score in [0, 1].
     let score: Float
 
-    /// Converts this result into a `RAGChunk` for use in the existing RAG enrichment pipeline.
-    /// The source field is set to "memory" so the UI can distinguish memory chunks from book chunks.
+    /// Converts this result into a `RAGChunk` for the RAG enrichment pipeline.
+    /// `source` is set to `"memory"` so the UI can distinguish memory chunks from book chunks.
+    /// `bm25Score` stays nil because the row was ranked by embeddings, while `cosineScore`
+    /// and `rrfScore` both carry the similarity score that produced the ranking.
     func toRAGChunk() -> RAGChunk {
         RAGChunk(
             chunkID: chunk.id,
@@ -76,13 +80,12 @@ struct MemorySearchResult: Sendable {
 
 /// Protocol for all memory storage backends.
 ///
-/// Conforming types are actors so all storage operations are automatically serialised.
-/// `pluginID` and `displayName` are `nonisolated` so they can be read by the registry
-/// without an `await`.
+/// Built-in implementations:
+/// - `NullMemoryPlugin` (`"null"`) — no-op default while the app is still wiring settings.
+/// - `LocalVectorPlugin` (`"local-vector"`) — SQLite + `NLContextualEmbedding` production backend.
 ///
-/// Built-in plugins:
-///   - `NullMemoryPlugin` ("null") — no-op default, used when memory storage is disabled.
-///   - `LocalVectorPlugin` ("local-vector") — SQLite + NLContextualEmbedding; added in phase 135b.
+/// Conforming types are actors so storage operations are serialized. `pluginID` and
+/// `displayName` are `nonisolated` so the registry can read them without an `await`.
 protocol MemoryBackendPlugin: Actor {
     /// Stable identifier used to persist the active plugin choice in AppSettings.
     nonisolated var pluginID: String { get }
@@ -102,9 +105,10 @@ protocol MemoryBackendPlugin: Actor {
 
 // MARK: - NullMemoryPlugin
 
-/// No-op memory backend. All writes are discarded; all searches return empty.
-/// Used as the default when no backend is configured, and as the base for tests
-/// that don't care about storage behaviour.
+/// No-op memory backend.
+///
+/// AppState uses this before the real backend is wired, and tests use it when they only
+/// care that memory calls are safe to make.
 actor NullMemoryPlugin: MemoryBackendPlugin {
     nonisolated let pluginID = "null"
     nonisolated let displayName = "None"
@@ -119,9 +123,9 @@ actor NullMemoryPlugin: MemoryBackendPlugin {
 /// Maintains the set of registered `MemoryBackendPlugin` implementations and tracks
 /// which one is currently active.
 ///
-/// Ownership: `AppState` creates one registry at init, registers built-in plugins,
-/// and sets the active plugin from `AppSettings.memoryBackendID`.
-/// `AppState` then injects `registry.activePlugin` into `MemoryEngine` and `AgenticEngine`.
+/// `AppState` owns one registry, registers the built-in plugins at init, then selects
+/// the active plugin from `AppSettings.memoryBackendID` before injecting it into the
+/// engines.
 @MainActor
 final class MemoryBackendRegistry {
     private var plugins: [String: any MemoryBackendPlugin] = [:]
@@ -135,19 +139,19 @@ final class MemoryBackendRegistry {
         plugins[null.pluginID] = null
     }
 
-    /// Add a plugin to the registry. Does not change the active plugin.
+    /// Add a plugin to the registry without changing the active plugin.
     func register(_ plugin: any MemoryBackendPlugin) {
         plugins[plugin.pluginID] = plugin
     }
 
-    /// Set the active plugin by ID. If `pluginID` is not registered, the call is ignored.
+    /// Set the active plugin by ID. Unknown IDs are ignored so the current selection stays valid.
     func setActive(pluginID: String) {
         guard plugins[pluginID] != nil else { return }
         activePluginID = pluginID
     }
 
     /// The currently active plugin. Falls back to `NullMemoryPlugin` if the stored ID
-    /// is not in the registry (e.g. after a plugin is unregistered).
+    /// is not present in the registry.
     var activePlugin: any MemoryBackendPlugin {
         plugins[activePluginID] ?? NullMemoryPlugin()
     }
