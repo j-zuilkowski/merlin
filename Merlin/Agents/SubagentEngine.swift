@@ -89,7 +89,7 @@ actor SubagentEngine {
         await context.append(Message(role: .user, content: .text(prompt), timestamp: Date()))
 
         do {
-            let request = CompletionRequest(
+            var request = CompletionRequest(
                 model: definition.model ?? "",
                 messages: await context.messagesForProvider(),
                 tools: await toolDefinitions(),
@@ -98,6 +98,8 @@ actor SubagentEngine {
                 maxTokens: nil,
                 temperature: nil
             )
+            let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+            inferenceDefaults.apply(to: &request)
             let stream = try await provider.complete(request: request)
             var accumulated = ""
             for try await chunk in stream {

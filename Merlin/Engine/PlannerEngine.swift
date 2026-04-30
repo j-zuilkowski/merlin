@@ -90,11 +90,13 @@ actor PlannerEngine {
         Task: \(task)
         """
 
-        let request = CompletionRequest(
+        var request = CompletionRequest(
             model: provider.id,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )
+        let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+        inferenceDefaults.apply(to: &request)
 
         for _ in 0..<max(1, maxPlanRetries) {
             do {
@@ -135,11 +137,13 @@ actor PlannerEngine {
         Request: \(message)
         """
 
-        let request = CompletionRequest(
+        var request = CompletionRequest(
             model: executeProvider.id,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )
+        let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+        inferenceDefaults.apply(to: &request)
 
         do {
             var raw = ""

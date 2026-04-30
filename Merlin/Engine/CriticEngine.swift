@@ -122,11 +122,13 @@ actor CriticEngine {
         \(output.prefix(4000))
         """
 
-        let request = CompletionRequest(
+        var request = CompletionRequest(
             model: provider.id,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )
+        let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+        inferenceDefaults.apply(to: &request)
 
         do {
             var fullResponse = ""

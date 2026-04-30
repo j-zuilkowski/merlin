@@ -56,6 +56,15 @@ final class AppSettings: ObservableObject {
     @Published var loraBaseModel: String = ""
     @Published var loraAdapterPath: String = ""
     @Published var loraServerURL: String = ""
+    // MARK: - Inference defaults
+    @Published var inferenceTopP: Double? = nil
+    @Published var inferenceTopK: Int? = nil
+    @Published var inferenceMinP: Double? = nil
+    @Published var inferenceRepeatPenalty: Double? = nil
+    @Published var inferenceFrequencyPenalty: Double? = nil
+    @Published var inferencePresencePenalty: Double? = nil
+    @Published var inferenceSeed: Int? = nil
+    @Published var inferenceStop: [String] = []
     @Published var xcalibreToken: String = ""
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
@@ -68,6 +77,28 @@ final class AppSettings: ObservableObject {
 
     private var fsStream: FSEventStreamRef?
     private var watchedURL: URL?
+
+    struct InferenceDefaults: Sendable {
+        var topP: Double?
+        var topK: Int?
+        var minP: Double?
+        var repeatPenalty: Double?
+        var frequencyPenalty: Double?
+        var presencePenalty: Double?
+        var seed: Int?
+        var stop: [String]
+
+        func apply(to request: inout CompletionRequest) {
+            if request.topP == nil { request.topP = topP }
+            if request.topK == nil { request.topK = topK }
+            if request.minP == nil { request.minP = minP }
+            if request.repeatPenalty == nil { request.repeatPenalty = repeatPenalty }
+            if request.frequencyPenalty == nil { request.frequencyPenalty = frequencyPenalty }
+            if request.presencePenalty == nil { request.presencePenalty = presencePenalty }
+            if request.seed == nil { request.seed = seed }
+            if request.stop == nil, !stop.isEmpty { request.stop = stop }
+        }
+    }
 
     private struct ConfigFile: Codable, Sendable {
         var autoCompact: Bool?
@@ -99,6 +130,7 @@ final class AppSettings: ObservableObject {
         var loraBaseModel: String?
         var loraAdapterPath: String?
         var loraServerURL: String?
+        var inference: InferenceConfig?
         var xcalibreToken: String?
         var slots: [String: String]?
         var verifyCommand: String?
@@ -136,6 +168,28 @@ final class AppSettings: ObservableObject {
             }
         }
 
+        struct InferenceConfig: Codable, Sendable {
+            var topP: Double?
+            var topK: Int?
+            var minP: Double?
+            var repeatPenalty: Double?
+            var frequencyPenalty: Double?
+            var presencePenalty: Double?
+            var seed: Int?
+            var stop: [String]?
+
+            enum CodingKeys: String, CodingKey {
+                case topP = "top_p"
+                case topK = "top_k"
+                case minP = "min_p"
+                case repeatPenalty = "repeat_penalty"
+                case frequencyPenalty = "frequency_penalty"
+                case presencePenalty = "presence_penalty"
+                case seed
+                case stop
+            }
+        }
+
         enum CodingKeys: String, CodingKey {
             case autoCompact = "auto_compact"
             case maxTokens = "max_tokens"
@@ -166,6 +220,7 @@ final class AppSettings: ObservableObject {
             case loraBaseModel = "lora_base_model"
             case loraAdapterPath = "lora_adapter_path"
             case loraServerURL = "lora_server_url"
+            case inference
             case xcalibreToken = "xcalibre_token"
             case slots
             case verifyCommand = "verify_command"
@@ -189,6 +244,25 @@ final class AppSettings: ObservableObject {
     func save(to url: URL) async throws {
         let content = serializedTOML()
         try content.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// Applies stored inference defaults to a request, filling only nil fields.
+    /// Call before dispatching a CompletionRequest so per-request overrides take precedence.
+    func applyInferenceDefaults(to request: inout CompletionRequest) {
+        inferenceDefaults.apply(to: &request)
+    }
+
+    var inferenceDefaults: InferenceDefaults {
+        InferenceDefaults(
+            topP: inferenceTopP,
+            topK: inferenceTopK,
+            minP: inferenceMinP,
+            repeatPenalty: inferenceRepeatPenalty,
+            frequencyPenalty: inferenceFrequencyPenalty,
+            presencePenalty: inferencePresencePenalty,
+            seed: inferenceSeed,
+            stop: inferenceStop
+        )
     }
 
     func serializedTOML() -> String {
@@ -245,6 +319,37 @@ final class AppSettings: ObservableObject {
             if loraServerURL.isEmpty == false {
                 lines.append("lora_server_url = \(quoted(loraServerURL))")
             }
+        }
+        var inferenceLines: [String] = []
+        if let value = inferenceTopP {
+            inferenceLines.append("top_p = \(value)")
+        }
+        if let value = inferenceTopK {
+            inferenceLines.append("top_k = \(value)")
+        }
+        if let value = inferenceMinP {
+            inferenceLines.append("min_p = \(value)")
+        }
+        if let value = inferenceRepeatPenalty {
+            inferenceLines.append("repeat_penalty = \(value)")
+        }
+        if let value = inferenceFrequencyPenalty {
+            inferenceLines.append("frequency_penalty = \(value)")
+        }
+        if let value = inferencePresencePenalty {
+            inferenceLines.append("presence_penalty = \(value)")
+        }
+        if let value = inferenceSeed {
+            inferenceLines.append("seed = \(value)")
+        }
+        if inferenceStop.isEmpty == false {
+            let escaped = inferenceStop.map { quoted($0) }.joined(separator: ", ")
+            inferenceLines.append("stop = [\(escaped)]")
+        }
+        if inferenceLines.isEmpty == false {
+            lines.append("")
+            lines.append("[inference]")
+            lines.append(contentsOf: inferenceLines)
         }
         if slotAssignments.isEmpty == false {
             lines.append("")
@@ -514,6 +619,30 @@ final class AppSettings: ObservableObject {
             if let value = lora.loraServerURL {
                 loraServerURL = value
             }
+        }
+        if let inference = config.inference {
+            if let value = inference.topP {
+                inferenceTopP = value
+            }
+            if let value = inference.topK {
+                inferenceTopK = value
+            }
+            if let value = inference.minP {
+                inferenceMinP = value
+            }
+            if let value = inference.repeatPenalty {
+                inferenceRepeatPenalty = value
+            }
+            if let value = inference.frequencyPenalty {
+                inferenceFrequencyPenalty = value
+            }
+            if let value = inference.presencePenalty {
+                inferencePresencePenalty = value
+            }
+            if let value = inference.seed {
+                inferenceSeed = value
+            }
+            inferenceStop = inference.stop ?? []
         }
         if let value = config.xcalibreToken {
             xcalibreToken = value

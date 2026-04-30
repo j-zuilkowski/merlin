@@ -101,6 +101,14 @@ struct CompletionRequest: Sendable {
     var thinking: ThinkingConfig?
     var maxTokens: Int?
     var temperature: Double?
+    var topP: Double?
+    var topK: Int?
+    var minP: Double?
+    var repeatPenalty: Double?
+    var frequencyPenalty: Double?
+    var presencePenalty: Double?
+    var seed: Int?
+    var stop: [String]?
 }
 
 struct ThinkingConfig: Codable, Sendable {

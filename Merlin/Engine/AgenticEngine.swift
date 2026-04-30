@@ -401,11 +401,12 @@ final class AgenticEngine {
             }
             let requestModel = modelID(for: provider)
             let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
-            let request = CompletionRequest(
+            var request = CompletionRequest(
                 model: requestModel,
                 messages: messagesForProvider(),
                 thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
             )
+            AppSettings.shared.applyInferenceDefaults(to: &request)
 
             let stream = try await provider.complete(request: request)
             var assembled: [Int: (id: String, name: String, args: String)] = [:]

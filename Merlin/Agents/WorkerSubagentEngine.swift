@@ -118,7 +118,7 @@ actor WorkerSubagentEngine {
         while Task.isCancelled == false, iterations < maxIterations {
             iterations += 1
 
-            let request = CompletionRequest(
+            var request = CompletionRequest(
                 model: definition.model ?? "",
                 messages: await context.messagesForProvider(),
                 tools: await availableTools(),
@@ -127,6 +127,8 @@ actor WorkerSubagentEngine {
                 maxTokens: nil,
                 temperature: nil
             )
+            let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+            inferenceDefaults.apply(to: &request)
 
             do {
                 let stream = try await provider.complete(request: request)

@@ -130,11 +130,24 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         var thinking: ThinkingConfig?
         var maxTokens: Int?
         var temperature: Double?
+        var topP: Double?
+        var topK: Int?
+        var minP: Double?
+        var repeatPenalty: Double?
+        var frequencyPenalty: Double?
+        var presencePenalty: Double?
+        var seed: Int?
+        var stop: [String]?
 
         enum CodingKeys: String, CodingKey {
-            case model, messages, tools, stream, thinking
+            case model, messages, tools, stream, thinking, temperature, seed, stop
             case maxTokens = "max_tokens"
-            case temperature
+            case topP = "top_p"
+            case topK = "top_k"
+            case minP = "min_p"
+            case repeatPenalty = "repeat_penalty"
+            case frequencyPenalty = "frequency_penalty"
+            case presencePenalty = "presence_penalty"
         }
     }
 
@@ -145,7 +158,15 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         stream: request.stream,
         thinking: includeThinking ? request.thinking : nil,
         maxTokens: request.maxTokens,
-        temperature: request.temperature
+        temperature: request.temperature,
+        topP: request.topP,
+        topK: request.topK,
+        minP: request.minP,
+        repeatPenalty: request.repeatPenalty,
+        frequencyPenalty: request.frequencyPenalty,
+        presencePenalty: request.presencePenalty,
+        seed: request.seed,
+        stop: request.stop
     )
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .iso8601

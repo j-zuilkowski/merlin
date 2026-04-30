@@ -66,7 +66,7 @@ actor MemoryEngine {
         - If there is nothing worth remembering, output nothing
         """
 
-        let request = CompletionRequest(
+        var request = CompletionRequest(
             model: provider.id,
             messages: [
                 Message(role: .system, content: .text(systemPrompt), timestamp: Date()),
@@ -76,6 +76,8 @@ actor MemoryEngine {
             maxTokens: 512,
             temperature: 0.3
         )
+        let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+        inferenceDefaults.apply(to: &request)
 
         let stream = try await provider.complete(request: request)
         var raw = ""
