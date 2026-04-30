@@ -365,6 +365,7 @@ final class AgenticEngine {
         }
 
         lastCriticVerdict = nil
+        var lastResponseText = ""
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
 
@@ -419,6 +420,7 @@ final class AgenticEngine {
             }
 
             guard sawToolCall, !assembled.isEmpty else {
+                lastResponseText = fullText
                 if classification.complexity != .routine,
                    (classifierOverride != nil || classification.complexity == .highStakes) {
                     if let reasonProvider = self.provider(for: .reason),
@@ -562,7 +564,9 @@ final class AgenticEngine {
         await performanceTracker.record(
             modelID: slotAssignments[workingSlot] ?? "",
             taskType: taskType,
-            signals: signals
+            signals: signals,
+            prompt: userMessage,
+            response: lastResponseText
         )
 
         if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {

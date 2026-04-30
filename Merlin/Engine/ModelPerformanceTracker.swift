@@ -23,6 +23,39 @@ struct OutcomeRecord: Codable, Sendable {
     var score: Double
     var addendumHash: String
     var timestamp: Date
+    /// The user message that triggered this session. Empty for records created before phase 117b.
+    var prompt: String
+    /// The model's final text response. Empty for records created before phase 117b.
+    var response: String
+
+    init(
+        modelID: String,
+        taskType: DomainTaskType,
+        score: Double,
+        addendumHash: String,
+        timestamp: Date,
+        prompt: String = "",
+        response: String = ""
+    ) {
+        self.modelID = modelID
+        self.taskType = taskType
+        self.score = score
+        self.addendumHash = addendumHash
+        self.timestamp = timestamp
+        self.prompt = prompt
+        self.response = response
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        modelID = try c.decode(String.self, forKey: .modelID)
+        taskType = try c.decode(DomainTaskType.self, forKey: .taskType)
+        score = try c.decode(Double.self, forKey: .score)
+        addendumHash = try c.decode(String.self, forKey: .addendumHash)
+        timestamp = try c.decode(Date.self, forKey: .timestamp)
+        prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
+        response = (try? c.decode(String.self, forKey: .response)) ?? ""
+    }
 }
 
 // MARK: - Trend
@@ -74,7 +107,13 @@ actor ModelPerformanceTracker {
 
     // MARK: - Public API
 
-    func record(modelID: String, taskType: DomainTaskType, signals: OutcomeSignals) async {
+    func record(
+        modelID: String,
+        taskType: DomainTaskType,
+        signals: OutcomeSignals,
+        prompt: String = "",
+        response: String = ""
+    ) async {
         let key = profileKey(modelID: modelID, taskType: taskType, addendumHash: signals.addendumHash)
         let score = computeScore(from: signals)
         let record = OutcomeRecord(
@@ -82,7 +121,9 @@ actor ModelPerformanceTracker {
             taskType: taskType,
             score: score,
             addendumHash: signals.addendumHash,
-            timestamp: Date()
+            timestamp: Date(),
+            prompt: prompt,
+            response: response
         )
 
         records[key, default: []].append(record)
@@ -95,6 +136,20 @@ actor ModelPerformanceTracker {
         )
         saveToDisk(modelID: modelID)
         saveRecordsToDisk(modelID: modelID)
+    }
+
+    func record(
+        modelID: String,
+        taskType: DomainTaskType,
+        signals: OutcomeSignals
+    ) async {
+        await record(
+            modelID: modelID,
+            taskType: taskType,
+            signals: signals,
+            prompt: "",
+            response: ""
+        )
     }
 
     /// Returns nil until sampleCount >= 30 (calibration minimum).
@@ -128,7 +183,7 @@ actor ModelPerformanceTracker {
     func exportTrainingData(minScore: Double) async -> [OutcomeRecord] {
         records.values
             .flatMap { $0 }
-            .filter { $0.score >= minScore }
+            .filter { $0.score >= minScore && !$0.prompt.isEmpty && !$0.response.isEmpty }
             .sorted { $0.timestamp < $1.timestamp }
     }
 

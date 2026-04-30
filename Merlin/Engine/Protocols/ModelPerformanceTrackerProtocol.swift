@@ -9,4 +9,20 @@ protocol ModelPerformanceTrackerProtocol: Sendable {
     func exportTrainingData(minScore: Double) async -> [OutcomeRecord]
 }
 
+extension ModelPerformanceTrackerProtocol {
+    func record(
+        modelID: String,
+        taskType: DomainTaskType,
+        signals: OutcomeSignals,
+        prompt: String,
+        response: String
+    ) async {
+        await record(
+            modelID: modelID,
+            taskType: taskType,
+            signals: signals
+        )
+    }
+}
+
 extension ModelPerformanceTracker: @preconcurrency ModelPerformanceTrackerProtocol {}
