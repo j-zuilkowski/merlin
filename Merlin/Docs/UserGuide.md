@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 6.0**
+**Version 9.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -376,6 +376,38 @@ Select a memory and click **Delete**. The chunk is immediately removed from the 
 
 ---
 
+## Behavioral Reliability (v9)
+
+Merlin monitors its own output quality and intervenes when confidence cannot be maintained. These features address the failure patterns described in ["Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems"](https://venturebeat.com/infrastructure/context-decay-orchestration-drift-and-the-rise-of-silent-failures-in-ai-systems) (S. Patil, VentureBeat, 2025).
+
+### Circuit Breaker
+
+If the critic returns a failing verdict on several consecutive turns, the circuit breaker activates:
+
+- **Halt mode** (default) — the engine stops the next turn cleanly and shows a banner explaining what happened. You need to act before the agent continues.
+- **Warn mode** — a warning is shown but the turn proceeds.
+
+The counter resets to zero on any passing verdict or when you start a new session. Configure the threshold and mode in **Settings → Agent** or via `agent_circuit_breaker_threshold` / `agent_circuit_breaker_mode` in `~/.merlin/config.toml` (default: halt after 3 failures).
+
+This addresses the *silent partial failure* pattern — sustained quality degradation that falls below any single-turn alert threshold.
+
+### Grounding Confidence
+
+Every turn, Merlin emits a `GroundingReport` describing how well the model's response was grounded in retrieved memory context:
+
+| Field | Meaning |
+|---|---|
+| **Total chunks** | Number of RAG chunks injected this turn |
+| **Average score** | Mean cosine similarity of retrieved chunks (0–1) |
+| **Has stale memory** | True when any injected memory chunk is older than `ragFreshnessThresholdDays` (default 90 days) |
+| **Is well-grounded** | True when chunks were retrieved and average score ≥ `ragMinGroundingScore` (default 0.30) |
+
+These signals are visible in the Tool Log. Configure thresholds via `rag_freshness_threshold_days` / `rag_min_grounding_score` in `~/.merlin/config.toml`.
+
+This addresses the *context degradation* pattern — the model reasoning confidently over stale or sparse retrieval without any visible signal to the user.
+
+---
+
 ## Hooks
 
 Hooks let you run shell scripts at specific points in the agent lifecycle to customise or constrain its behaviour.
@@ -464,7 +496,7 @@ Access via **Merlin → Settings…** (⌘,).
 | **Agents** | Custom subagent definitions loaded from `~/.merlin/agents/` |
 | **Hooks** | Lifecycle hooks with event, command, and enabled toggle |
 | **Scheduler** | Cron-based task automations |
-| **Memories** | Enable/disable memory generation, configure idle timeout, browse xcalibre memories |
+| **Memories** | Enable/disable memory generation, configure idle timeout, browse local memory store, select memory backend |
 | **LoRA** | Master toggle, auto-train, sample threshold, base model path, adapter path, auto-load, server URL |
 
 ---

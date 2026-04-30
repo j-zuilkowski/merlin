@@ -490,7 +490,9 @@ TestHelpers/
 
 ### Behavioral Reliability Framework
 
-Merlin's v9 reliability features were designed against the failure taxonomy in S. Patil's 2025 VentureBeat article on context decay and silent failures.
+Merlin's v9 reliability features were designed against the failure taxonomy in:
+
+["Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems"](https://venturebeat.com/infrastructure/context-decay-orchestration-drift-and-the-rise-of-silent-failures-in-ai-systems) — S. Patil, VentureBeat, 2025
 
 #### Failure patterns
 

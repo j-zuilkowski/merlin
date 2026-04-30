@@ -1,6 +1,6 @@
 # Merlin — Developer Manual
 
-**Version 6.0**
+**Version 9.0**
 
 This manual covers the complete architecture, development workflow, and code organisation of Merlin. It is intended for contributors working on the codebase. Code references use the format `File.swift:ClassName.method()` matching the comments embedded throughout the source.
 
@@ -89,6 +89,7 @@ merlin/
 ├── MerlinLiveTests/          # Real-provider API tests (manual scheme)
 ├── MerlinE2ETests/           # Full agentic loop + UI tests (manual scheme)
 ├── TestHelpers/              # MockProvider, NullAuthPresenter, EngineFactory (shared)
+│   └── SemanticFaults/       # Fault injection doubles: stale retrieval, truncation, empty tools, context drop
 ├── TestTargetApp/            # Minimal target app for AX/UI tests
 ├── phases/                   # Phase sheet Markdown files
 ├── architecture.md           # High-level design document
@@ -311,12 +312,14 @@ All outputs are yielded as `AgentEvent` values:
 
 ```swift
 enum AgentEvent {
-    case text(String)           // streamed text delta
-    case thinking(String)       // extended thinking block
+    case text(String)                   // streamed text delta
+    case thinking(String)               // extended thinking block
     case toolCallStarted(ToolCall)
     case toolCallResult(ToolResult)
     case subagentStarted(id:agentName:)
     case subagentUpdate(id:event:)
+    case ragSources([RAGChunk])         // emitted after RAG search; shown in Sources footer
+    case groundingReport(GroundingReport) // emitted after RAG search every turn (v9)
     case systemNote(String)
     case error(Error)
 }
@@ -725,7 +728,9 @@ When the user types `/skill-name arg`, `ChatView` matches the skill name, retrie
 
 ## Memory System
 
-**Files:** `Merlin/Memories/MemoryEngine.swift`, `Merlin/Memories/MemoryEntry.swift`
+**Files:** `Merlin/Memories/MemoryEngine.swift`, `Merlin/Memories/MemoryEntry.swift`, `Merlin/Memories/MemoryBackendPlugin.swift`, `Merlin/Memories/LocalVectorPlugin.swift`, `Merlin/Memories/EmbeddingProvider.swift`
+
+### MemoryEngine
 
 `MemoryEngine` is an `actor`. It starts an idle timer when `startIdleTimer(timeout:)` is called. When the timer fires without being reset by conversation activity:
 
@@ -733,8 +738,56 @@ When the user types `/skill-name arg`, `ChatView` matches the skill name, retrie
 2. Sends them to the flash provider with a summarisation prompt
 3. Writes the result as a Markdown file to `~/.merlin/memories/pending/<timestamp>.md`
 4. Posts a `UNUserNotification` prompting the user to review
+5. Writes the summary as an `episodic` chunk to `MemoryBackendPlugin` (v9)
 
 `CLAUDEMDLoader.defaultMemoriesBlock()` reads all approved memory files from `~/.merlin/memories/` at session init and injects them into the system prompt.
+
+### Local Vector Store (v9)
+
+**Files:** `Merlin/Memories/MemoryBackendPlugin.swift`, `Merlin/Memories/LocalVectorPlugin.swift`, `Merlin/Memories/EmbeddingProvider.swift`
+
+Session memory is stored locally in SQLite, replacing xcalibre-server as the memory backend. xcalibre-server is retained for book-content RAG only.
+
+| Symbol | Role |
+|---|---|
+| `MemoryBackendPlugin` | Actor protocol: `write(chunk:)`, `search(query:topK:)`, `delete(id:)` |
+| `MemoryBackendRegistry` | `@MainActor` registry owned by `AppState`; keyed by backend ID |
+| `NullMemoryPlugin` | Default no-op backend — use for ephemeral sessions |
+| `LocalVectorPlugin` | Production backend: SQLite + `NLContextualEmbedding` (512-dim, mean-pooled, on-device) |
+| `EmbeddingProviderProtocol` | Testable abstraction over the embedding model |
+| `NLContextualEmbeddingProvider` | Apple neural embeddings (macOS 14+, no network, no dependencies) |
+
+**Write paths:**
+- Approved user memories → written as `factual` chunks by `MemoryEngine.approve()`
+- Session summaries → written as `episodic` chunks by `MemoryEngine` on idle fire; suppressed when the critic returned `.fail` for that turn
+
+**Read path:** `AgenticEngine.runLoop()` calls `memoryBackend.search(query:topK:5)` at the start of each turn. Results are merged with any xcalibre book-content chunks, converted to `RAGChunk`, and injected as context via `RAGTools.buildEnrichedMessage`.
+
+**Test doubles:** `TestHelpers/MockEmbeddingProvider.swift` and `TestHelpers/CapturingMemoryBackend.swift` replace the production implementations in unit tests. Semantic fault injection doubles live in `TestHelpers/SemanticFaults/`.
+
+### Behavioral Reliability Framework (v9)
+
+Designed against the failure taxonomy in ["Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems"](https://venturebeat.com/infrastructure/context-decay-orchestration-drift-and-the-rise-of-silent-failures-in-ai-systems) (S. Patil, VentureBeat, 2025).
+
+| Failure pattern | Merlin mitigation |
+|---|---|
+| **Context degradation** — model reasons confidently over stale/thin retrieval | `GroundingReport` (phase 141): per-turn chunk count, average cosine score, staleness flag, `isWellGrounded` |
+| **Orchestration drift** — multi-step runs diverge under load | `CriticEngine` evaluates every turn; `ModelParameterAdvisor` tracks score trends |
+| **Silent partial failure** — subsystem degrades before fully breaking | `consecutiveCriticFailures` + circuit breaker (phase 140): halt or warn after N failures |
+| **Automation blast radius** — a bad step propagates into later decisions | `AuthGate` blocks unauthorised calls; critic failure suppresses backend memory writes |
+
+**`GroundingReport`** (`Merlin/Engine/GroundingReport.swift`) — emitted as `AgentEvent.groundingReport(_:)` after every RAG search step, even when no chunks were found. Fields: `totalChunks`, `memoryChunks`, `bookChunks`, `averageScore`, `oldestMemoryAgeDays`, `hasStaleMemory`, `isWellGrounded`. `hasStaleMemory` uses `AppSettings.ragFreshnessThresholdDays` (default 90). `isWellGrounded` is `totalChunks > 0 && averageScore >= AppSettings.ragMinGroundingScore` (default 0.30). Staleness does not affect `isWellGrounded`.
+
+**Circuit breaker** (`AgenticEngine`) — `consecutiveCriticFailures: Int` increments on every `.fail` verdict, resets on `.pass`/`.skipped` and on new session (`Notification.Name.merlinNewSession`). When it reaches `AppSettings.agentCircuitBreakerThreshold` (default 3): `halt` mode cancels the next turn and emits `AgentEvent.systemNote`; `warn` mode emits a warning and proceeds. Configure via `agent_circuit_breaker_threshold` / `agent_circuit_breaker_mode` in `config.toml`.
+
+**Semantic fault injection** (`TestHelpers/SemanticFaults/`) — four test doubles for simulating reliability failures without live infrastructure:
+
+| Double | Simulates |
+|---|---|
+| `StalenessInjectingMemoryBackend` | Returns chunks with artificially old `createdAt` dates |
+| `TruncatingMockProvider` | Returns responses truncated mid-sentence with `finishReason: "length"` |
+| `EmptyToolResultRouter` | Returns empty strings for all tool calls |
+| `DroppingContextManager` | Silently drops messages above a configurable count |
 
 ---
 
@@ -988,6 +1041,13 @@ Cross-reference between code comments and this manual:
 | `PerformanceDashboardView` | `Views/Settings/PerformanceDashboardView.swift` | [Supervisor-Worker Engine → ModelPerformanceTracker](#modelperformancetracker) |
 | `MemoryBrowserView` | `Views/Settings/MemoryBrowserView.swift` | [RAG Memory Browser](#rag-memory-browser) |
 | `RAGSourcesView` | `Views/RAGSourcesView.swift` | [RAG Memory Extension](#rag-memory-extension) |
+| `MemoryBackendPlugin` | `Memories/MemoryBackendPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `MemoryBackendRegistry` | `Memories/MemoryBackendPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `LocalVectorPlugin` | `Memories/LocalVectorPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `NullMemoryPlugin` | `Memories/MemoryBackendPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `EmbeddingProviderProtocol` | `Memories/EmbeddingProvider.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `NLContextualEmbeddingProvider` | `Memories/EmbeddingProvider.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
+| `GroundingReport` | `Engine/GroundingReport.swift` | [Memory System → Behavioral Reliability Framework (v9)](#behavioral-reliability-framework-v9) |
 | `ToolRouter` | `Engine/ToolRouter.swift` | [Tool System → ToolRouter](#toolrouter) |
 | `ToolRouter.dispatch()` | `Engine/ToolRouter.swift` | [Tool System → ToolRouter](#toolrouter) |
 | `ContextManager` | `Engine/ContextManager.swift` | [ContextManager](#contextmanager) |
