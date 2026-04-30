@@ -1150,4 +1150,49 @@ cat phases/phase-128b-model-control-ui.md
 # AppState registry routes advisories to manager.reload() or surfaces restart instructions.
 # ModelControlView shows editable load params per provider in Settings → Providers.
 # AgenticEngine pauses run loop during reload to prevent mid-generation context mutations.
+
+# ── V7 /calibrate — Local Model Calibration ───────────────────────────────────
+# /calibrate fires an 18-prompt battery against the active local model and a chosen
+# reference provider (Anthropic, OpenAI, DeepSeek, etc.) in parallel, critic-scores
+# all responses, and maps gaps to ParameterAdvisory items (context length, temperature,
+# max tokens, repeat penalty) that flow into the existing applyAdvisory() pipeline.
+
+# ── PHASE 129a — CalibrationRunner Tests ─────────────────────────────────────
+cat phases/phase-129a-calibration-runner-tests.md
+# Verify: BUILD FAILED — CalibrationCategory, CalibrationPrompt, CalibrationResponse,
+#         CalibrationReport, CalibrationSuite, CalibrationRunner not defined (expected)
+# Commit: Phase 129a — CalibrationRunnerTests (failing)
+
+# ── PHASE 129b — CalibrationRunner Implementation ────────────────────────────
+cat phases/phase-129b-calibration-runner.md
+# Verify: BUILD SUCCEEDED; CalibrationRunnerTests → 14 pass; all prior tests pass
+# Commit: Phase 129b — CalibrationTypes + CalibrationSuite (18-prompt battery) + CalibrationRunner
+
+# ── PHASE 130a — CalibrationAdvisor Tests ────────────────────────────────────
+cat phases/phase-130a-calibration-advisor-tests.md
+# Verify: BUILD FAILED — CalibrationAdvisor, CategoryScores not defined (expected)
+# Commit: Phase 130a — CalibrationAdvisorTests (failing)
+
+# ── PHASE 130b — CalibrationAdvisor Implementation ───────────────────────────
+cat phases/phase-130b-calibration-advisor.md
+# Verify: BUILD SUCCEEDED; CalibrationAdvisorTests → 14 pass; all prior tests pass
+# Commit: Phase 130b — CalibrationAdvisor: maps score gaps to ParameterAdvisory
+
+# ── PHASE 131a — Calibration Skill & UI Tests ────────────────────────────────
+cat phases/phase-131a-calibration-skill-tests.md
+# Verify: BUILD FAILED — CalibrationCoordinator, CalibrationSheet, CalibrationProgressInfo,
+#         CalibrationProviderPickerView, CalibrationProgressView, CalibrationReportView,
+#         AppState.calibrationCoordinator not defined (expected)
+# Commit: Phase 131a — CalibrationSkillTests (failing)
+
+# ── PHASE 131b — Calibration Skill & UI Implementation ───────────────────────
+cat phases/phase-131b-calibration-skill.md
+# Verify: BUILD SUCCEEDED; CalibrationSkillTests → 9 pass; all prior tests pass
+# Commit: Phase 131b — /calibrate skill: provider picker, runner wiring, report view with apply-all
+
+# ── DONE (v7 /calibrate) ──────────────────────────────────────────────────────
+# To use: type /calibrate in the chat bar; pick a reference provider; tap Start.
+# Results show overall score gap, per-category breakdown, and one-tap parameter fixes.
+# All fixes route through applyAdvisory() — runtime reload where supported, restart
+# instructions where not (same path as ModelControlView and PerformanceDashboard).
 ```
