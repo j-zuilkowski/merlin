@@ -54,6 +54,7 @@ struct WorkspaceView: View {
         .preferredColorScheme(settings.appearance.theme.colorScheme)
         .sheet(isPresented: $showMemoriesWindow) {
             MemoryReviewView()
+                .environment(\.merlinAppState, sessionManager.activeSession?.appState)
                 .frame(minWidth: 600, minHeight: 400)
         }
     }

@@ -5,9 +5,14 @@ actor MemoryEngine {
     private var timeout: TimeInterval = 300
     private var onIdleFired: (@Sendable () -> Void)?
     private var provider: (any LLMProvider)?
+    private var xcalibreClient: (any XcalibreClientProtocol)?
 
     func setProvider(_ provider: any LLMProvider) {
         self.provider = provider
+    }
+
+    func setXcalibreClient(_ client: any XcalibreClientProtocol) {
+        xcalibreClient = client
     }
 
     func setOnIdleFired(_ handler: @escaping @Sendable () -> Void) {
@@ -133,6 +138,16 @@ actor MemoryEngine {
             try FileManager.default.removeItem(at: destination)
         }
         try FileManager.default.moveItem(at: url, to: destination)
+
+        guard let xcalibreClient else { return }
+        guard let content = try? String(contentsOf: destination, encoding: .utf8) else { return }
+        _ = await xcalibreClient.writeMemoryChunk(
+            text: content,
+            chunkType: "factual",
+            sessionID: nil,
+            projectPath: nil,
+            tags: ["session-memory"]
+        )
     }
 
     func reject(_ url: URL) async throws {
