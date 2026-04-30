@@ -4,9 +4,21 @@
 // Every user message enters via send() or invokeSkill(), which
 // drive the recursive runLoop(). The loop streams AgentEvent
 // values: text deltas, thinking blocks, tool call start/result
-// pairs, subagent events, and system notes.
+// pairs, subagent events, system notes, and RAG source attributions.
 //
-// See: Developer Manual § "Engine — The Agentic Loop"
+// V5+: runLoop() classifies task complexity, routes to the correct
+// AgentSlot, runs the CriticEngine on final responses, records
+// OutcomeSignals (including real diffAccepted/diffEditedOnAccept
+// values from StagingBuffer), and gates xcalibre memory writes on
+// the critic verdict.
+//
+// V6: calls LoRACoordinator.considerTraining() after each record();
+// captures lastResponseText for OutcomeRecord prompt/response fields;
+// loraProvider routes the execute slot through mlx_lm.server when
+// a LoRA adapter is loaded.
+//
+// See: Developer Manual § "Engine — The Agentic Loop" and
+//      § "Supervisor-Worker Engine" and § "LoRA Training Pipeline"
 import Foundation
 
 enum AgentEvent {
@@ -46,6 +58,7 @@ final class AgenticEngine {
     var criticOverride: (any CriticEngineProtocol)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
     /// Reset to nil at the start of every runLoop invocation.
+    /// When .fail, the xcalibre memory write is suppressed at the end of the turn.
     var lastCriticVerdict: CriticResult?
     var classifierOverride: (any PlannerEngineProtocol)?
     var currentProjectPath: String?
@@ -367,6 +380,8 @@ final class AgenticEngine {
         }
 
         lastCriticVerdict = nil
+        // lastResponseText captures the full assistant text from the last no-tool-call response.
+        // Passed to performanceTracker.record() as the response field for LoRA training data.
         var lastResponseText = ""
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
@@ -541,6 +556,8 @@ final class AgenticEngine {
 
         let taskType = domain.taskTypes.first
             ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+        // diffAccepted and diffEditedOnAccept are real values from StagingBuffer counters
+        // (acceptedCount, rejectedCount, editedOnAcceptCount), not hardcoded placeholders.
         let stagingAccepted: Int
         let stagingRejected: Int
         let stagingEdited: Int
@@ -582,10 +599,11 @@ final class AgenticEngine {
         }
 
         if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {
-            // Skip memory write when critic explicitly rejected this session's output.
-            // nil (critic not invoked) and .pass / .skipped both allow the write.
+            // Skip memory write when critic explicitly returned .fail for this turn.
+            // nil verdict (critic not invoked) and .pass / .skipped all allow the write.
+            // This prevents low-quality outputs from polluting the xcalibre memory store.
             if case .fail = lastCriticVerdict {
-                // Critic failed — do not pollute the memory store with low-quality output.
+                // Critic failed — suppress memory write for this turn.
             } else {
                 let summary = context.messages
                     .filter { $0.role == .assistant }

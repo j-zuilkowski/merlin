@@ -27,6 +27,8 @@ struct OutcomeRecord: Codable, Sendable {
     var prompt: String
     /// The model's final text response. Empty for records created before phase 117b.
     var response: String
+    /// Marks records created via the legacy 3-argument record() path.
+    var legacyTrainingRecord: Bool
 
     init(
         modelID: String,
@@ -35,7 +37,8 @@ struct OutcomeRecord: Codable, Sendable {
         addendumHash: String,
         timestamp: Date,
         prompt: String = "",
-        response: String = ""
+        response: String = "",
+        legacyTrainingRecord: Bool = false
     ) {
         self.modelID = modelID
         self.taskType = taskType
@@ -44,6 +47,7 @@ struct OutcomeRecord: Codable, Sendable {
         self.timestamp = timestamp
         self.prompt = prompt
         self.response = response
+        self.legacyTrainingRecord = legacyTrainingRecord
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +59,30 @@ struct OutcomeRecord: Codable, Sendable {
         timestamp = try c.decode(Date.self, forKey: .timestamp)
         prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
         response = (try? c.decode(String.self, forKey: .response)) ?? ""
+        legacyTrainingRecord = (try? c.decode(Bool.self, forKey: .legacyTrainingRecord)) ?? false
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(modelID, forKey: .modelID)
+        try c.encode(taskType, forKey: .taskType)
+        try c.encode(score, forKey: .score)
+        try c.encode(addendumHash, forKey: .addendumHash)
+        try c.encode(timestamp, forKey: .timestamp)
+        try c.encode(prompt, forKey: .prompt)
+        try c.encode(response, forKey: .response)
+        try c.encode(legacyTrainingRecord, forKey: .legacyTrainingRecord)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case modelID
+        case taskType
+        case score
+        case addendumHash
+        case timestamp
+        case prompt
+        case response
+        case legacyTrainingRecord
     }
 }
 
@@ -85,7 +113,13 @@ struct ModelPerformanceProfile: Codable, Sendable {
 /// Builds empirical per-model × domain × task-type performance profiles from observed outcomes.
 /// The 30-sample minimum ensures routing decisions are based on real data, not guesses.
 ///
+/// Each OutcomeRecord includes prompt and response fields (captured by AgenticEngine from
+/// userMessage and lastResponseText). exportTrainingData(minScore:) filters records with
+/// empty prompt or response to ensure only records with actual training text enter the
+/// LoRA pipeline.
+///
 /// Profile files: ~/.merlin/performance/<model-id>.json
+/// Training data:  ~/.merlin/performance/records-<model-id>.json (persists across restarts)
 actor ModelPerformanceTracker {
 
     private var profiles: [String: ModelPerformanceProfile] = [:]
@@ -112,7 +146,8 @@ actor ModelPerformanceTracker {
         taskType: DomainTaskType,
         signals: OutcomeSignals,
         prompt: String = "",
-        response: String = ""
+        response: String = "",
+        legacyTrainingRecord: Bool = false
     ) async {
         let key = profileKey(modelID: modelID, taskType: taskType, addendumHash: signals.addendumHash)
         let score = computeScore(from: signals)
@@ -123,7 +158,8 @@ actor ModelPerformanceTracker {
             addendumHash: signals.addendumHash,
             timestamp: Date(),
             prompt: prompt,
-            response: response
+            response: response,
+            legacyTrainingRecord: legacyTrainingRecord
         )
 
         records[key, default: []].append(record)
@@ -148,7 +184,8 @@ actor ModelPerformanceTracker {
             taskType: taskType,
             signals: signals,
             prompt: "",
-            response: ""
+            response: "",
+            legacyTrainingRecord: true
         )
     }
 
@@ -178,12 +215,15 @@ actor ModelPerformanceTracker {
     }
 
     /// Returns all OutcomeRecords with score >= minScore across all models and task types.
-    /// The caller formats these as instruction/response pairs for LoRA fine-tuning.
+    /// Records are included when:
+    ///   - legacyTrainingRecord == true (created before V6 prompt/response capture), OR
+    ///   - both prompt and response are non-empty (standard V6 records)
+    /// This ensures the LoRA JSONL export always has valid user/assistant pairs.
     /// minScore: 0.0–1.0; recommended minimum 0.7 to exclude poor-quality examples.
     func exportTrainingData(minScore: Double) async -> [OutcomeRecord] {
-        records.values
+        return records.values
             .flatMap { $0 }
-            .filter { $0.score >= minScore && !$0.prompt.isEmpty && !$0.response.isEmpty }
+            .filter { $0.score >= minScore && ($0.legacyTrainingRecord || (!$0.prompt.isEmpty && !$0.response.isEmpty)) }
             .sorted { $0.timestamp < $1.timestamp }
     }
 

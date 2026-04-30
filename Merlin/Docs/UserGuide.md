@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 4.0**
+**Version 6.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -22,12 +22,16 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 12. [Preview Pane](#preview-pane)
 13. [Side Chat](#side-chat)
 14. [Subagents](#subagents)
-15. [Memories](#memories)
-16. [Hooks](#hooks)
-17. [Connectors](#connectors)
-18. [Scheduled Automations](#scheduled-automations)
-19. [Settings](#settings)
-20. [Keyboard Shortcuts](#keyboard-shortcuts)
+15. [Multi-LLM Roles](#multi-llm-roles)
+16. [Performance Dashboard](#performance-dashboard)
+17. [Memories](#memories)
+18. [RAG Memory Browser](#rag-memory-browser)
+19. [Hooks](#hooks)
+20. [Connectors](#connectors)
+21. [Scheduled Automations](#scheduled-automations)
+22. [LoRA Self-Training](#lora-self-training)
+23. [Settings](#settings)
+24. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -184,6 +188,7 @@ Available providers:
 | LocalAI | Local | Must be running on localhost:8080. |
 | Mistral.rs | Local | Must be running on localhost:1234. |
 | vLLM | Local | Must be running on localhost:8000. |
+| mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |
 
 Configure API keys, base URLs, and model names in **Settings → Providers**.
 
@@ -293,6 +298,51 @@ Subagents appear as collapsible blocks in the parent conversation, showing their
 
 ---
 
+## Multi-LLM Roles
+
+Merlin routes each message to the most appropriate LLM based on its complexity and content. There are four slots:
+
+| Slot | Purpose |
+|---|---|
+| **Execute** | General task execution — file operations, code writing, shell commands, tool loops. When LoRA self-training is active, this slot uses your fine-tuned adapter. |
+| **Reason** | Deep reasoning, debugging, architecture analysis. Uses the base model without any adapter. |
+| **Orchestrate** | Multi-step task decomposition and subagent coordination. Falls back to the Reason slot if not explicitly assigned. |
+| **Vision** | GUI screenshot analysis and UI element localization. |
+
+### Assigning providers to slots
+
+Open **Settings → Role Slots** and choose which LLM provider handles each slot. You can assign different providers — for example, a local model on the Execute slot and a remote API on the Reason slot.
+
+### Overriding routing manually
+
+Prefix your message with a slot annotation to override automatic routing:
+
+- `@reason <message>` — force the reason slot
+- `@execute <message>` — force the execute slot
+- `@orchestrate <message>` — force the orchestrate slot
+
+You can also prefix with a complexity override:
+
+- `#high-stakes <message>` — use the reason slot with full planning
+- `#standard <message>` — planning pass, execute slot
+- `#routine <message>` — no planning, execute slot directly
+
+---
+
+## Performance Dashboard
+
+Merlin tracks how well each model performs across different task types. Open **Settings → Performance** to see the dashboard.
+
+For each model and task type combination, the dashboard shows:
+
+- **Success rate** — an exponentially-weighted score based on critic verdicts, diff accept/reject counts, and session completion
+- **Sample count** — how many sessions have been recorded. The profile is considered calibrated once 30 samples are collected; routing decisions use uncalibrated profiles as hints only.
+- **Trend** — improving, stable, or declining (based on recent sessions vs. the running average)
+
+Performance data is stored in `~/.merlin/performance/`. It persists across restarts and is also used as the training dataset for LoRA self-training.
+
+---
+
 ## Memories
 
 Merlin watches for periods of inactivity in a session. After the configured idle timeout, it uses the AI to generate a concise memory from the recent conversation and saves it as a Markdown file to `~/.merlin/memories/pending/`.
@@ -305,6 +355,24 @@ Click the **Memories** toolbar button to open the review sheet. Each pending mem
 - **Reject** — deletes the file
 
 Memories are automatically prepended to the system context at the start of each session.
+
+---
+
+## RAG Memory Browser
+
+When a xcalibre-server instance is configured, Merlin can write session summaries to it as memory chunks and retrieve them in future sessions. The Memory Browser lets you manage those stored memories.
+
+### Opening the Memory Browser
+
+Go to **Settings → Memories** and click **Browse xcalibre Memories**.
+
+### Searching memories
+
+Type in the search field to find memories by content. Results are scoped to the active project path if one is configured in Settings → Agent.
+
+### Deleting memories
+
+Select a memory and click **Delete**. The chunk is immediately removed from xcalibre-server. Deletion is permanent.
 
 ---
 
@@ -351,6 +419,37 @@ Automations fire against the active session.
 
 ---
 
+## LoRA Self-Training
+
+Merlin can fine-tune a local language model on your accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory. Once trained, the adapter is loaded automatically and the execute slot routes through it.
+
+### What it does
+
+After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 50), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served via `mlx_lm.server`, which exposes an OpenAI-compatible API. Merlin then routes execute-slot messages through that server instead of the base provider.
+
+### Requirements
+
+- macOS on an Apple Silicon Mac (M4 with 128GB recommended for 32B models)
+- Python with MLX-LM installed: `pip install mlx-lm`
+- A downloaded base model (Qwen2.5-Coder-7B-Instruct for testing, Qwen2.5-Coder-32B-Instruct for production)
+- `mlx_lm.server` running locally
+
+### Step-by-step activation
+
+1. Install MLX-LM: `pip install mlx-lm`
+2. Download a base model, e.g. `mlx_lm.convert --hf-path Qwen/Qwen2.5-Coder-32B-Instruct`
+3. Open **Settings → LoRA** and enable **LoRA Self-Training** (master toggle)
+4. Set **Base Model** to the path of your downloaded MLX model
+5. Set **Adapter Path** to a directory where the trained adapter will be written (e.g. `~/.merlin/adapters/qwen32b`)
+6. Set **Server URL** to the address where `mlx_lm.server` will run (default: `http://localhost:8080/v1`)
+7. Enable **Auto-Train** to start training automatically once the sample threshold is met
+8. Enable **Auto-Load** to automatically route the execute slot through the trained adapter
+9. Start the server: `python -m mlx_lm.server --model <model-path> --adapter-path <adapter-path> --port 8080`
+
+Once Auto-Load is enabled and an adapter file exists, Merlin automatically switches the execute slot to your local fine-tuned model. The reason and critic slots always use the unmodified base provider.
+
+---
+
 ## Settings
 
 Access via **Merlin → Settings…** (⌘,).
@@ -360,10 +459,13 @@ Access via **Merlin → Settings…** (⌘,).
 | **General** | Default permission mode, auto-compaction toggle, max context tokens, keep-awake toggle |
 | **Appearance** | Theme (light/dark/system), font size, accent colour, line spacing |
 | **Providers** | Enable/disable providers, set API keys, base URLs, and model names |
+| **Role Slots** | Assign LLM providers to execute / reason / orchestrate / vision slots |
+| **Performance** | Per-model performance dashboard, trend, calibration status, export training data |
 | **Agents** | Custom subagent definitions loaded from `~/.merlin/agents/` |
 | **Hooks** | Lifecycle hooks with event, command, and enabled toggle |
 | **Scheduler** | Cron-based task automations |
-| **Memories** | Enable/disable memory generation, configure idle timeout |
+| **Memories** | Enable/disable memory generation, configure idle timeout, browse xcalibre memories |
+| **LoRA** | Master toggle, auto-train, sample threshold, base model path, adapter path, auto-load, server URL |
 
 ---
 

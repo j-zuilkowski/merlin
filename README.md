@@ -1,14 +1,20 @@
 # Merlin
 
-A personal, non-sandboxed agentic development assistant for macOS. Merlin connects to multiple LLM providers — remote and local — and gives an AI agent full access to your file system, shell, Xcode, GUI automation, and external services to work through development tasks autonomously.
+A personal, non-sandboxed agentic development assistant for macOS. Merlin connects to multiple LLM providers — remote and local — and gives an AI agent full access to your file system, shell, Xcode, GUI automation, and external services to work through development tasks autonomously. It includes a supervisor-worker multi-LLM routing layer and LoRA self-training to improve on your own hardware over time.
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
+
+**Version 6.0** — 653 tests passing.
 
 ---
 
 ## What it does
 
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
+
+**Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
+
+**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local model (via MLX-LM) on your own accepted sessions. The trained adapter is loaded into `mlx_lm.server` and Merlin routes the execute slot through it automatically.
 
 See [`FEATURES.md`](FEATURES.md) for a complete capability reference.  
 See [`architecture.md`](architecture.md) for implementation details and design decisions.
@@ -99,8 +105,8 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh 4.0
-# → dist/Merlin-4.0.dmg
+bash scripts/package-dmg.sh 6.0
+# → dist/Merlin-6.0.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.

@@ -1,6 +1,6 @@
 # Merlin — Developer Manual
 
-**Version 4.0**
+**Version 6.0**
 
 This manual covers the complete architecture, development workflow, and code organisation of Merlin. It is intended for contributors working on the codebase. Code references use the format `File.swift:ClassName.method()` matching the comments embedded throughout the source.
 
@@ -15,24 +15,26 @@ This manual covers the complete architecture, development workflow, and code org
 5. [Phase Sheet Format](#phase-sheet-format)
 6. [Core Architecture](#core-architecture)
 7. [Engine — The Agentic Loop](#engine--the-agentic-loop)
-8. [Tool System](#tool-system)
-9. [Provider System](#provider-system)
-10. [Auth & Permission System](#auth--permission-system)
-11. [Session & State Management](#session--state-management)
-12. [Hook System](#hook-system)
-13. [Skill System](#skill-system)
-14. [Memory System](#memory-system)
-15. [MCP Integration](#mcp-integration)
-16. [Subagent System](#subagent-system)
-17. [UI Architecture](#ui-architecture)
-18. [Configuration System](#configuration-system)
-19. [Connectors](#connectors)
-20. [Testing Strategy](#testing-strategy)
-21. [Code Map](#code-map)
-22. [Adding a New Tool](#adding-a-new-tool)
-23. [Adding a New Provider](#adding-a-new-provider)
-24. [Writing a Skill](#writing-a-skill)
-25. [Non-Negotiable Rules](#non-negotiable-rules)
+8. [Supervisor-Worker Engine](#supervisor-worker-engine)
+9. [LoRA Training Pipeline](#lora-training-pipeline)
+10. [Tool System](#tool-system)
+11. [Provider System](#provider-system)
+12. [Auth & Permission System](#auth--permission-system)
+13. [Session & State Management](#session--state-management)
+14. [Hook System](#hook-system)
+15. [Skill System](#skill-system)
+16. [Memory System](#memory-system)
+17. [MCP Integration](#mcp-integration)
+18. [Subagent System](#subagent-system)
+19. [UI Architecture](#ui-architecture)
+20. [Configuration System](#configuration-system)
+21. [Connectors](#connectors)
+22. [Testing Strategy](#testing-strategy)
+23. [Code Map](#code-map)
+24. [Adding a New Tool](#adding-a-new-tool)
+25. [Adding a New Provider](#adding-a-new-provider)
+26. [Writing a Skill](#writing-a-skill)
+27. [Non-Negotiable Rules](#non-negotiable-rules)
 
 ---
 
@@ -330,6 +332,131 @@ Manages the `[Message]` array sent to the provider on each turn.
 - Compaction threshold: 800,000 estimated tokens. When exceeded, old tool result messages are collapsed to a summary line to keep the context window from overflowing
 - After compaction, recently-invoked skill bodies are re-injected so the model retains them
 - `forceCompaction()` is exposed for test use
+
+---
+
+## Supervisor-Worker Engine
+
+**Files:** `Merlin/Engine/AgenticEngine.swift`, `Merlin/Engine/CriticEngine.swift`, `Merlin/Engine/PlannerEngine.swift`, `Merlin/Engine/ModelPerformanceTracker.swift`, `Merlin/Engine/AgentSlot.swift`, `Merlin/MCP/DomainRegistry.swift`, `Merlin/MCP/DomainPlugin.swift`, `Merlin/MCP/SoftwareDomain.swift`
+
+### AgentSlot
+
+**File:** `Merlin/Engine/AgentSlot.swift`
+
+Four routing destinations:
+
+```swift
+enum AgentSlot: String, CaseIterable, Codable, Sendable {
+    case execute, reason, orchestrate, vision
+}
+```
+
+`AgenticEngine.provider(for:)` resolves the LLM provider for a slot. `orchestrate` falls back to `reason` when not explicitly assigned. The execute slot uses `loraProvider` when a LoRA adapter is loaded; otherwise uses `proProvider`.
+
+### DomainRegistry / DomainPlugin
+
+**Files:** `Merlin/MCP/DomainRegistry.swift`, `Merlin/MCP/DomainPlugin.swift`, `Merlin/MCP/SoftwareDomain.swift`
+
+`DomainRegistry.shared.activeDomain()` returns the active `DomainPlugin` instance. Domains supply:
+- `verificationBackend` — used by `CriticEngine` stage 1 (e.g. `xcodebuild` in `SoftwareDomain`)
+- `systemPromptAddendum` — injected per-slot into the system prompt
+- `taskTypes: [DomainTaskType]` — performance tracking buckets
+
+The `addendumHash` (8-char SHA256 prefix of the addendum string) is stored on every `OutcomeRecord` to attribute performance to the specific addendum variant that produced it.
+
+### CriticEngine
+
+**File:** `Merlin/Engine/CriticEngine.swift`
+
+Evaluates model output after a turn completes without tool calls. Two stages:
+
+1. **Stage 1** — domain verification backend. Runs the domain's verification command (e.g. `xcodebuild test`) and returns pass/fail.
+2. **Stage 2** — reason-slot LLM scoring. Sends the output to the reason provider with a scoring rubric and returns a `stage2Score` in 0.0–1.0.
+
+Returns `CriticResult`: `.pass`, `.fail(reason:)`, or `.skipped`.
+
+`AgenticEngine.lastCriticVerdict` stores the most recent verdict. It is reset to `nil` at the start of every `runLoop` invocation. When the verdict is `.fail`, the xcalibre memory write at the end of the turn is suppressed.
+
+### PlannerEngine
+
+**File:** `Merlin/Engine/PlannerEngine.swift`
+
+Classifies incoming messages into `ComplexityTier` (.routine / .standard / .high-stakes) and optionally decomposes high-complexity tasks into a step list.
+
+`ClassifierResult` carries:
+- `needsPlanning: Bool` — whether to run the planning pass
+- `complexity: ComplexityTier` — which slot handles the work
+- `reason: String` — diagnostic string for logging
+
+`AgenticEngine` accepts a `classifierOverride: (any PlannerEngineProtocol)?` for test injection.
+
+### ModelPerformanceTracker
+
+**File:** `Merlin/Engine/ModelPerformanceTracker.swift`
+
+`actor` that accumulates `OutcomeRecord` values and updates `ModelPerformanceProfile` entries with exponential-decay scoring (factor 0.9). Calibrated at 30 samples — `successRate(for:taskType:)` returns `nil` until then.
+
+`record(modelID:taskType:signals:prompt:response:)` is the primary write path. `AgenticEngine` passes `userMessage` and `lastResponseText` (the full assistant text from the last response that had no tool calls). The legacy 3-argument overload marks records with `legacyTrainingRecord: true`.
+
+`exportTrainingData(minScore:)` returns records where `score >= minScore` AND (`legacyTrainingRecord == true` OR both `prompt` and `response` are non-empty). This ensures only records with actual training text are exported to the LoRA pipeline.
+
+Profile files: `~/.merlin/performance/<model-id>.json`  
+Training data: `~/.merlin/performance/records-<model-id>.json`
+
+---
+
+## LoRA Training Pipeline
+
+**Files:** `Merlin/Engine/LoRATrainer.swift`, `Merlin/Engine/LoRACoordinator.swift`
+
+### LoRATrainer
+
+**File:** `Merlin/Engine/LoRATrainer.swift`
+
+`actor` responsible for exporting training data and invoking `mlx_lm.lora`.
+
+`exportJSONL(_ records: [OutcomeRecord], to url: URL)` writes one JSON line per record in MLX-LM chat format:
+```json
+{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}
+```
+Records with empty `prompt` or `response` are silently skipped. The method is `nonisolated` — safe to call from tests without actor isolation.
+
+`train(records:baseModel:adapterOutputPath:iterations:)` exports a temp JSONL, ensures the adapter directory exists, assembles the `python -m mlx_lm.lora --train` command string, and delegates execution to `ShellRunnerProtocol`. Returns `LoRATrainingResult`.
+
+### ShellRunnerProtocol
+
+**File:** `Merlin/Engine/LoRATrainer.swift`
+
+```swift
+protocol ShellRunnerProtocol: Sendable {
+    func run(command: String) async -> ShellRunResult
+}
+```
+
+`ProcessShellRunner` is the production implementation — runs via `/bin/zsh -c`. Tests inject a stub runner (e.g. `CapturingShellRunner`) to avoid executing real shell commands. This is the standard test-injection pattern used across the project.
+
+### LoRACoordinator
+
+**File:** `Merlin/Engine/LoRACoordinator.swift`
+
+`actor` that sits between `AgenticEngine` and `LoRATrainer`. Responsibilities:
+- Threshold gate: only fires training when `exportTrainingData(minScore: 0.7)` returns `>= minSamples` records
+- Concurrency guard: `isTraining` prevents overlapping training runs
+- Result storage: `lastResult: LoRATrainingResult?` for display in `LoRASettingsSection`
+
+Called from `AgenticEngine.runLoop()` after `performanceTracker.record()` when both `loraEnabled` and `loraAutoTrain` are true.
+
+### loraProvider routing
+
+`AgenticEngine.loraProvider: (any LLMProvider)?` holds an `OpenAICompatibleProvider` pointing at `AppSettings.loraServerURL`. When set, `provider(for: .execute)` returns `loraProvider` instead of `proProvider`. The reason slot, critic slot, and orchestrate slot are never affected by the LoRA provider — they always use the unmodified base provider assignment.
+
+`AppState` wires `loraProvider` via Combine: subscribes to changes in `loraEnabled`, `loraAutoLoad`, `loraAdapterPath`, and `loraServerURL`. When all conditions are met (enabled + autoLoad + adapter file exists), it constructs the `loraProvider` and assigns it to `engine.loraProvider`.
+
+### LoRASettingsSection
+
+**File:** `Merlin/Views/Settings/LoRASettingsSection.swift`
+
+Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train options (hidden when master is off), base model field, adapter path field with Browse button, auto-load toggle, server URL field, status row showing `loraCoordinator.isTraining` and `loraCoordinator.lastResult`.
 
 ---
 
@@ -847,6 +974,20 @@ Cross-reference between code comments and this manual:
 |---|---|---|
 | `AgenticEngine` | `Engine/AgenticEngine.swift` | [Engine — The Agentic Loop](#engine--the-agentic-loop) |
 | `AgenticEngine.runLoop()` | `Engine/AgenticEngine.swift` | [The Run Loop](#the-run-loop-runloop) |
+| `AgentSlot` | `Engine/AgentSlot.swift` | [Supervisor-Worker Engine → AgentSlot](#agentslot) |
+| `CriticEngine` | `Engine/CriticEngine.swift` | [Supervisor-Worker Engine → CriticEngine](#criticengine) |
+| `PlannerEngine` | `Engine/PlannerEngine.swift` | [Supervisor-Worker Engine → PlannerEngine](#plannerengine) |
+| `ModelPerformanceTracker` | `Engine/ModelPerformanceTracker.swift` | [Supervisor-Worker Engine → ModelPerformanceTracker](#modelperformancetracker) |
+| `LoRATrainer` | `Engine/LoRATrainer.swift` | [LoRA Training Pipeline → LoRATrainer](#loratrainer) |
+| `LoRACoordinator` | `Engine/LoRACoordinator.swift` | [LoRA Training Pipeline → LoRACoordinator](#loracoordinator) |
+| `DomainRegistry` | `MCP/DomainRegistry.swift` | [Supervisor-Worker Engine → DomainRegistry / DomainPlugin](#domainregistry--domainplugin) |
+| `DomainPlugin` | `MCP/DomainPlugin.swift` | [Supervisor-Worker Engine → DomainRegistry / DomainPlugin](#domainregistry--domainplugin) |
+| `SoftwareDomain` | `MCP/SoftwareDomain.swift` | [Supervisor-Worker Engine → DomainRegistry / DomainPlugin](#domainregistry--domainplugin) |
+| `LoRASettingsSection` | `Views/Settings/LoRASettingsSection.swift` | [LoRA Training Pipeline → LoRASettingsSection](#lorasettingssection) |
+| `RoleSlotSettingsView` | `Views/Settings/RoleSlotSettingsView.swift` | [Supervisor-Worker Engine → AgentSlot](#agentslot) |
+| `PerformanceDashboardView` | `Views/Settings/PerformanceDashboardView.swift` | [Supervisor-Worker Engine → ModelPerformanceTracker](#modelperformancetracker) |
+| `MemoryBrowserView` | `Views/Settings/MemoryBrowserView.swift` | [RAG Memory Browser](#rag-memory-browser) |
+| `RAGSourcesView` | `Views/RAGSourcesView.swift` | [RAG Memory Extension](#rag-memory-extension) |
 | `ToolRouter` | `Engine/ToolRouter.swift` | [Tool System → ToolRouter](#toolrouter) |
 | `ToolRouter.dispatch()` | `Engine/ToolRouter.swift` | [Tool System → ToolRouter](#toolrouter) |
 | `ContextManager` | `Engine/ContextManager.swift` | [ContextManager](#contextmanager) |

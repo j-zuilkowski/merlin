@@ -249,12 +249,120 @@ Brave Search integration. When a Brave API key is configured (Settings → Searc
 
 ---
 
+## Supervisor-Worker Multi-LLM
+
+Tasks are classified by complexity and routed to the most appropriate LLM slot. Different providers can be assigned to each slot in Settings → Role Slots.
+
+**Agent Slots**
+
+| Slot | Purpose |
+|---|---|
+| `execute` | General task execution — file ops, code generation, tool loops. LoRA adapter routes here when loaded. |
+| `reason` | Deep reasoning, debugging, architecture decisions. Always uses the unmodified base model. |
+| `orchestrate` | Multi-step planning and subagent coordination. Falls back to `reason` if unassigned. |
+| `vision` | GUI screenshot analysis, UI element localization. |
+
+**Domain System** — `DomainRegistry` holds pluggable `DomainPlugin` instances that supply domain-specific verification commands and task types. The built-in `SoftwareDomain` covers Swift/Xcode workflows. Domains inject a `systemPromptAddendum` into the system prompt for the active slot.
+
+**Complexity Classification** — `PlannerEngine` classifies each message into one of three tiers:
+
+| Tier | Routing |
+|---|---|
+| `routine` | Execute slot, no planning pass |
+| `standard` | Execute slot, optional planning pass |
+| `high-stakes` | Reason slot, full planning pass |
+
+Override with `#routine`, `#standard`, or `#high-stakes` prefix in your message.
+
+**Critic Engine** — `CriticEngine` scores outputs after the LLM responds without tool calls:
+
+- **Stage 1** — domain verification backend (e.g. `xcodebuild` for Swift tasks)
+- **Stage 2** — reason-slot LLM scoring on a 0.0–1.0 scale
+
+Critic verdicts gate xcalibre memory writes: `.fail` suppresses the write so low-quality outputs do not pollute the memory store.
+
+**Performance Tracking** — `ModelPerformanceTracker` builds empirical performance profiles per model × domain × task type from observed outcomes. Profiles are calibrated at 30 samples. Used for model selection and as the data source for LoRA training.
+
+**Skill frontmatter** — skills can declare `role:` (execute/reason/orchestrate/vision) and `complexity:` (routine/standard/high-stakes) in their YAML frontmatter to pre-select routing.
+
+**Settings** — `RoleSlotSettingsView` (Settings → Role Slots), `PerformanceDashboardView` (Settings → Performance).
+
+---
+
+## Performance Tracking
+
+`ModelPerformanceTracker` records an `OutcomeRecord` at the end of every session turn, capturing:
+
+- `OutcomeSignals`: stage1Passed (domain verification), stage2Score (critic LLM score), diffAccepted, diffEditedOnAccept, criticRetryCount, userCorrectedNextTurn, sessionCompleted, addendumHash
+- `prompt` and `response` text — stored for LoRA training export
+
+`ModelPerformanceProfile` aggregates these into a per-model × task-type profile with:
+- Exponentially-weighted success rate (decay factor 0.9)
+- Sample count (calibration minimum: 30 samples)
+- Trend: improving / stable / declining
+
+Profile files: `~/.merlin/performance/<model-id>.json`  
+Training data files: `~/.merlin/performance/records-<model-id>.json` (persist across restarts)
+
+`exportTrainingData(minScore:)` filters records by score threshold and excludes records with empty prompt or response text — ensuring only high-quality session data enters the LoRA pipeline.
+
+---
+
 ## RAG (Retrieval-Augmented Generation)
 
 Connects to a local xcalibre-server instance. When available:
 
 - **Auto-inject** — relevant context chunks are injected into the prompt before each LLM call.
-- **Explicit tools** — `rag_search(query)` and `rag_list_books()` available as explicit tool calls.
+- **Explicit tools** — `rag_search(query, source?, project_path?)` and `rag_list_books()` available as explicit tool calls.
+- **Source attribution** — `RAGSourcesView` shows a "Sources" footer in the chat after every RAG-enriched message, listing book titles and memory chunk IDs used.
+- **Project scoping** — `AppSettings.projectPath` scopes memory chunk retrieval to the active project path. Set in Settings → Agent.
+- **Memory Browser** — `MemoryBrowserView` (Settings → Memories) lets you search and delete individual xcalibre memory chunks.
+- **Hardware-configurable** — `ragRerank` (default `false`) and `ragChunkLimit` (default 3) are tunable in Settings. On an RTX 5080, set `ragRerank = true` and `ragChunkLimit = 10` with no code changes.
+- **Critic-gated writes** — when the critic returns `.fail`, the memory write to xcalibre is suppressed for that session. This keeps low-quality outputs out of the memory store.
+
+**xcalibre-server hardware** — runs on a Windows 11 machine with RTX 2070, serving phi-3-mini-4k-instruct (library maintenance tasks) and nomic-embed-text-v1.5 (vector embeddings) via LM Studio. `ragRerank` is off by default because the RTX 2070 benefits from the reduced load; the code requires no changes for an RTX 5080 upgrade.
+
+---
+
+## LoRA Self-Training
+
+Merlin can fine-tune a local model on your own accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory.
+
+**How it works**
+
+1. `ModelPerformanceTracker` accumulates `OutcomeRecord` entries after each session turn, storing the user prompt and the model's response.
+2. `LoRATrainer.exportJSONL()` serialises records above the score threshold as MLX-LM chat-format JSONL: `{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}`. Records with empty prompt or response are silently skipped.
+3. `LoRATrainer.train()` shells out to `python -m mlx_lm.lora --train` with the exported JSONL and writes the adapter to `loraAdapterPath`.
+4. When `loraAutoLoad` is true and the adapter file exists, `AppState` constructs a `loraProvider` pointing at `mlx_lm.server` and routes the execute slot through it.
+5. `LoRACoordinator` handles threshold-gating (`loraMinSamples`, default 50) and prevents concurrent training runs via `isTraining`.
+
+**Activation**
+
+1. Install MLX-LM: `pip install mlx-lm`
+2. Download a base model (see recommendations below)
+3. Open Settings → LoRA and enable **LoRA Self-Training**
+4. Set **Base Model** to the model path or Hugging Face ID
+5. Set **Adapter Path** to a local directory for the trained adapter
+6. Set **Server URL** to `http://localhost:8080/v1` (or the port `mlx_lm.server` is listening on)
+7. Enable **Auto-Train** to trigger training automatically once the sample threshold is reached
+8. Enable **Auto-Load** to route the execute slot through the trained adapter
+
+**Recommended models**
+
+| Model | Purpose | Notes |
+|---|---|---|
+| `Qwen2.5-Coder-7B-Instruct` | Development and testing | Fits in ~15GB RAM; fast LoRA iterations |
+| `Qwen2.5-Coder-32B-Instruct` | Production use | Requires ~65GB; recommended for M4 128GB |
+
+**mlx_lm.server** — after training, serve the adapter:
+
+```bash
+python -m mlx_lm.server --model Qwen2.5-Coder-32B-Instruct \
+    --adapter-path ~/merlin-adapters/my-adapter \
+    --port 8080
+```
+
+**ShellRunnerProtocol** — the trainer uses an injectable `ShellRunnerProtocol` so tests inject a stub runner rather than executing real system commands.
 
 ---
 
@@ -317,6 +425,9 @@ Full settings window (⌘,) with these sections:
 | Search | Brave API key, enable/disable |
 | Permissions | Current allow/deny pattern list, clear all |
 | Advanced | Open config in Finder, open memories folder, reset to defaults |
+| Role Slots | Assign LLM providers to execute / reason / orchestrate / vision slots |
+| Performance | ModelPerformanceProfile dashboard per model × task type, trend chart, export training data |
+| LoRA | Master toggle, auto-train, min-samples threshold, base model, adapter path, auto-load, server URL |
 
 ---
 

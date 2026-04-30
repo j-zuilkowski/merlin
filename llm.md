@@ -1,5 +1,17 @@
 # LLM Configuration
 
+## Three LLM Pools
+
+Merlin runs across three distinct LLM pools. Each has a different role.
+
+| Pool | Hardware | Models | Role in Merlin |
+|---|---|---|---|
+| **Windows 11 machine (xcalibre-server)** | RTX 2070 | phi-3-mini-4k-instruct + nomic-embed-text-v1.5 (LM Studio) | xcalibre-server — ebook library maintenance tasks and vector embeddings for RAG. `ragRerank` defaults to `false` because the RTX 2070 benefits from the reduced load. No code changes needed to enable reranking on an RTX 5080 upgrade. |
+| **M4 Mac 128GB (Merlin local)** | 128GB unified memory | Qwen2.5-VL-72B-Instruct (LM Studio, vision slot) + LoRA base model via mlx_lm.server (execute slot after training) | Primary Merlin host — vision queries, LoRA training via `mlx_lm.lora`, adapter inference via `mlx_lm.server`. MLX backend preferred over GGUF for 15–30% speed improvement. |
+| **External APIs** | — | DeepSeek V4 Pro/Flash, Anthropic Claude, OpenAI GPT-4o/o1, Qwen, OpenRouter | Remote providers for reason/orchestrate slots and sessions where local capacity is insufficient. |
+
+---
+
 ## Provider Overview
 
 | Provider | Endpoint | Auth | Use Case |
@@ -7,6 +19,7 @@
 | DeepSeek V4 Pro | `https://api.deepseek.com/v1` | API key | Reasoning, long context, code, tool calls |
 | DeepSeek V4 Flash | `https://api.deepseek.com/v1` | API key | Fast agentic loops, cheap tool iteration |
 | LM Studio (local) | `http://localhost:1234/v1` | None | Vision tasks, offline, privacy |
+| mlx_lm.server (local) | configurable, default `http://localhost:8080/v1` | None | LoRA-adapted model inference on M4 Mac |
 
 ---
 
@@ -203,6 +216,63 @@ To minimize RAM usage and maximize model accuracy on macOS screenshots:
 - Encode as **JPEG at quality 85** — good detail, ~2–4x smaller than PNG
 - Crop to the **active window** rather than full screen when possible
 - Target image size: under 1MB before base64 encoding
+
+---
+
+## LoRA / MLX-LM (V6)
+
+Merlin can fine-tune a local model on your accepted sessions using MLX-LM on an M4 Mac.
+
+### Recommended models
+
+| Model | HuggingFace ID | Purpose |
+|---|---|---|
+| Qwen2.5-Coder-7B-Instruct | `Qwen/Qwen2.5-Coder-7B-Instruct` | Development and testing — ~15GB RAM, fast iteration |
+| Qwen2.5-Coder-32B-Instruct | `Qwen/Qwen2.5-Coder-32B-Instruct` | Production use — ~65GB RAM on M4 128GB |
+
+### Training command (mlx_lm.lora)
+
+`LoRATrainer.train()` assembles and runs the following command:
+
+```bash
+python -m mlx_lm.lora \
+    --model "<base-model-path-or-hf-id>" \
+    --train \
+    --data "<temp-jsonl-path>" \
+    --adapter-path "<adapter-output-dir>" \
+    --iters 100 \
+    --batch-size 1
+```
+
+Training JSONL format (MLX-LM chat format):
+```json
+{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}
+```
+
+### Serving with adapter (mlx_lm.server)
+
+After training, serve the fine-tuned adapter:
+
+```bash
+python -m mlx_lm.server \
+    --model Qwen/Qwen2.5-Coder-32B-Instruct \
+    --adapter-path ~/merlin-adapters/my-adapter \
+    --port 8080
+```
+
+The server exposes an OpenAI-compatible `/v1/chat/completions` endpoint. Merlin's `loraProvider` property creates an `OpenAICompatibleProvider` pointing at this URL. The execute slot routes through it when `loraEnabled` and `loraAutoLoad` are both true and the adapter file exists.
+
+The reason/orchestrate/critic slots always use the unmodified base model — never the LoRA adapter.
+
+### M4 Mac 128GB capacity notes
+
+| Model | Quantization | RAM | LoRA training | Inference speed |
+|---|---|---|---|---|
+| Qwen2.5-Coder-7B | 4-bit MLX | ~8GB | Yes — fast | 80–120 tok/s |
+| Qwen2.5-Coder-32B | 4-bit MLX | ~20GB | Yes — slower | 25–40 tok/s |
+| Qwen2.5-VL-72B | Q4_K_M GGUF | ~47GB | No (too large for LoRA on 128GB alongside other models) | ~15–20 tok/s |
+
+For LoRA training, prefer MLX 4-bit quantized variants over GGUF. Training at `--iters 100 --batch-size 1` on 50 samples takes roughly 5–15 minutes depending on model size.
 
 ---
 

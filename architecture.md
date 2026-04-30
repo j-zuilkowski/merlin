@@ -7,6 +7,9 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
 **[v3]** Agent intelligence + UX completeness: unified settings window, config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
+**[v4]** Subagents (Explorer + Worker), WorktreeManager, SubagentEngine, SubagentStreamUI, full settings surface (all 12 sections), WorkspaceLayoutManager, wired panes (FilePane, TerminalPane, PreviewPane, SideChat), DisabledSkillNames enforcement, keep-awake (IOPMAssertion), AgentRegistry, HookEngine wiring, tool registry launch.
+**[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, xcalibre memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
+**[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -83,6 +86,116 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 │  FileSystemTools  ShellTool  XcodeTools  AXInspectorTool  ScreenCaptureTool  │
 │  CGEventTool  VisionQueryTool  AppControlTools  ToolDiscovery  [mcp:*]       │
 └──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### [v4] Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         Full Workspace [v4]                                  │
+│                                                                              │
+│  FilePane  TerminalPane  PreviewPane  SideChat (all wired + persisted)       │
+│  FloatingWindowManager  WorkspaceLayoutManager                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                        Subagent System [v4]                                  │
+│                                                                              │
+│  SubagentEngine (explorer, read-only)   WorkerSubagentEngine (worktree)      │
+│  AgentRegistry (built-in + custom TOML) SpawnAgentTool → AgentEvent stream   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                     Full Settings Surface [v4]                               │
+│                                                                              │
+│  General  Appearance  Providers  Memories  Connectors  MCP  Skills  Hooks    │
+│  Search   Permissions  Advanced  Scheduler  (all sections live)              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                     System Utilities [v4]                                    │
+│                                                                              │
+│  KeepAwakeManager (IOPMAssertion)  NotificationsGuard  DisabledSkillNames    │
+│  HookEngine main loop wiring  DefaultPermissionMode  ToolRegistry launch     │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### [v5] Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                    Supervisor-Worker Multi-LLM [v5]                          │
+│                                                                              │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐       │
+│  │  PlannerEngine   │    │  AgenticEngine   │    │  CriticEngine    │       │
+│  │  (complexity     │───▶│  runLoop()       │───▶│  stage1: domain  │       │
+│  │   classify)      │    │                  │    │  stage2: reason  │       │
+│  └──────────────────┘    └──────────────────┘    └──────────────────┘       │
+│                                   │                       │                  │
+│                      AgentSlot routing                 verdict               │
+│                   (execute/reason/orchestrate/vision)  (pass/fail/skipped)  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                       Domain System [v5]                                     │
+│                                                                              │
+│  DomainRegistry.shared    DomainPlugin protocol    SoftwareDomain            │
+│  verificationBackend      systemPromptAddendum      taskTypes                │
+│  addendumHash (SHA256 prefix — tracks which addendum produced each outcome) │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                   ModelPerformanceTracker [v5]                               │
+│                                                                              │
+│  OutcomeSignals → computeScore() → OutcomeRecord                            │
+│  profiles: [key: ModelPerformanceProfile]   (calibrated at 30 samples)     │
+│  records:  [key: [OutcomeRecord]]           (persists to records-<id>.json) │
+│  successRate(for:taskType:) returns nil until calibrated                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                       RAG Memory Extension [v5]                              │
+│                                                                              │
+│  AgentEvent.ragSources([RAGChunk])  RAGSourcesView (Sources footer)         │
+│  MemoryBrowserView (search + delete xcalibre memories)                      │
+│  XcalibreClient.searchMemory()  projectPath scoping                         │
+│  ragRerank + ragChunkLimit (hardware-configurable)                          │
+│  xcalibre.writeMemoryChunk suppressed when critic returned .fail            │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### [v6] Architecture
+
+```
+Training data flow:
+
+  AgenticEngine.runLoop()
+       │
+       ▼  (end of turn)
+  performanceTracker.record(
+       modelID:, taskType:, signals:,
+       prompt: userMessage,
+       response: lastResponseText
+  )
+       │
+       ▼
+  OutcomeRecord persisted to records-<model-id>.json
+       │
+       ▼  (when loraEnabled + loraAutoTrain + sample threshold met)
+  LoRACoordinator.considerTraining()
+       │  guard !isTraining
+       ▼
+  tracker.exportTrainingData(minScore: 0.7)
+       │  filters empty prompt/response records
+       ▼
+  LoRATrainer.exportJSONL()
+       │  → temp .jsonl in MLX-LM chat format
+       ▼
+  python -m mlx_lm.lora --train --model <base> --data <jsonl> --adapter-path <dir>
+       │
+       ▼  (on completion)
+  LoRACoordinator.finishTraining(result:) → isTraining = false, lastResult set
+       │
+       ▼  (when loraAutoLoad + adapter file exists)
+  AppState wires loraProvider = OpenAICompatibleProvider(baseURL: loraServerURL)
+       │
+       ▼
+  AgenticEngine.provider(for: .execute) → loraProvider (adapter inference)
+
+Three LLM pool wiring:
+
+  execute slot ──────→ mlx_lm.server (LoRA adapter, M4 Mac local)
+  reason/critic slot → external API provider (base model, unmodified)
+  vision slot ───────→ Qwen2.5-VL-72B via LM Studio (M4 Mac local)
+  RAG embed/search ──→ nomic-embed-text + phi-3-mini (Windows RTX 2070)
 ```
 
 ---
