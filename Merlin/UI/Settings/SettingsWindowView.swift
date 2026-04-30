@@ -622,15 +622,15 @@ struct SearchSettingsView: View {
         let key = apiKey.trimmingCharacters(in: .whitespaces)
         if key.isEmpty {
             try? ConnectorCredentials.delete(service: "brave-search")
-            Task {
-                await ToolRegistry.shared.unregister(named: "web_search")
+            Task { @MainActor in
+                ToolRegistry.shared.unregister(named: "web_search")
             }
             saveStatus = "Key cleared."
         } else {
             do {
                 try ConnectorCredentials.store(token: key, service: "brave-search")
-                Task {
-                    await ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
+                Task { @MainActor in
+                    ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
                 }
                 saveStatus = "Saved."
             } catch {

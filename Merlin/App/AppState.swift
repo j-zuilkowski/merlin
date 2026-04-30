@@ -79,6 +79,7 @@ final class AppState: ObservableObject {
     var activeLocalProviderID: String? = nil
     let loraCoordinator = LoRACoordinator()
     let parameterAdvisor = ModelParameterAdvisor()
+    lazy var calibrationCoordinator: CalibrationCoordinator = CalibrationCoordinator(appState: self)
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
@@ -98,7 +99,8 @@ final class AppState: ObservableObject {
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
         Self.installBuiltinSkills()
-        Task { await ToolRegistry.shared.registerBuiltins() }
+        ToolRegistry.shared.registerBuiltins()
+        CalibrationCoordinator.registerSkill()
         Task {
             await AgentRegistry.shared.registerBuiltins()
             let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
@@ -207,11 +209,9 @@ final class AppState: ObservableObject {
         }
         Task { await xcalibreClient.probe() }
         Task { await registry.probeLocalProviders() }
-        Task {
-            let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
-            if !key.isEmpty {
-                await ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
-            }
+        let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
+        if !key.isEmpty {
+            ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)
         }
 
         registryCancellable = registry.objectWillChange.sink { [weak self] _ in
@@ -410,6 +410,22 @@ final class AppState: ObservableObject {
     /// Returns the local model manager for a providerID, if one exists.
     func manager(for providerID: String) -> (any LocalModelManagerProtocol)? {
         localModelManagers[providerID]
+    }
+
+    func provider(for providerID: String) -> (any LLMProvider)? {
+        registry.provider(for: providerID)
+    }
+
+    func providerConfig(for providerID: String) -> ProviderConfig? {
+        registry.providers.first { $0.id == providerID }
+    }
+
+    var configuredProviders: [ProviderConfig] {
+        registry.providers.filter(\.isEnabled)
+    }
+
+    var activeModelID: String {
+        engine.currentModelID
     }
 
     /// Applies an advisory to either the active local model or AppSettings inference defaults.

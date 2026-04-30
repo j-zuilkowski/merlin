@@ -51,6 +51,23 @@ struct ContentView: View {
             FirstLaunchSetupView()
                 .environmentObject(appState)
         }
+        .sheet(item: Binding(
+            get: { appState.calibrationCoordinator.sheet },
+            set: { appState.calibrationCoordinator.sheet = $0 }
+        )) { sheetState in
+            switch sheetState {
+            case .pickProvider(let providers):
+                CalibrationProviderPickerView(availableProviders: providers) { selected in
+                    Task { await appState.calibrationCoordinator.start(referenceProviderID: selected) }
+                }
+            case .running(let info):
+                CalibrationProgressView(info: info)
+            case .report(let report):
+                CalibrationReportView(report: report) {
+                    Task { await appState.calibrationCoordinator.applyAll() }
+                }
+            }
+        }
         .focusedObject(appState)
         .focusedObject(registry)
         .focusedValue(\.isEngineRunning, $engineRunning)

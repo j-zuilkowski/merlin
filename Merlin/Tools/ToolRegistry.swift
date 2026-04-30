@@ -1,6 +1,7 @@
 import Foundation
 
-actor ToolRegistry {
+@MainActor
+final class ToolRegistry {
     static let shared = ToolRegistry()
 
     private var tools: [ToolDefinition] = []
@@ -27,6 +28,10 @@ actor ToolRegistry {
         tools
     }
 
+    func tool(named name: String) -> ToolDefinition? {
+        tools.first { $0.function.name == name }
+    }
+
     func contains(named name: String) -> Bool {
         names.contains(name)
     }
@@ -48,4 +53,8 @@ actor ToolRegistry {
         }
         register(WebSearchTool.toolDefinition)
     }
+}
+
+extension ToolDefinition {
+    var description: String { function.description }
 }

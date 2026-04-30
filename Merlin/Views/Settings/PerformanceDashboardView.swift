@@ -28,7 +28,9 @@ struct PerformanceDashboardView: View {
                     if !appState.parameterAdvisories.isEmpty {
                         Section("Parameter Suggestions") {
                             ForEach(appState.parameterAdvisories) { advisory in
-                                AdvisoryRow(advisory: advisory)
+                                AdvisoryRow(advisory: advisory) {
+                                    Task { try? await appState.applyAdvisory(advisory) }
+                                }
                             }
                         }
                     }
@@ -92,38 +94,4 @@ struct PerformanceDashboardView: View {
         }
     }
 
-    private struct AdvisoryRow: View {
-        let advisory: ParameterAdvisory
-        @EnvironmentObject var appState: AppState
-
-        var body: some View {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
-                    Text(advisory.parameterName)
-                        .font(.headline)
-                    Spacer()
-                    Text("→ \(advisory.suggestedValue)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if isActionable {
-                        Button("Fix this") {
-                            Task { try? await appState.applyAdvisory(advisory) }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-                }
-                Text(advisory.explanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, 4)
-        }
-
-        private var isActionable: Bool {
-            true
-        }
-    }
 }

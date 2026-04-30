@@ -284,9 +284,27 @@ struct ChatView: View {
     }
 
     private func sendMessage() {
+        let message = model.draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if handleSlashCommandIfNeeded(message) {
+            model.draft = ""
+            return
+        }
         Task { @MainActor in
             await model.submit(appState: appState)
         }
+    }
+
+    private func handleSlashCommandIfNeeded(_ message: String) -> Bool {
+        guard message.hasPrefix("/") else { return false }
+        let command = message.dropFirst().split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
+        guard command.lowercased() == "calibrate" else { return false }
+
+        let localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
+        appState.calibrationCoordinator.begin(
+            localProviderID: localProviderID,
+            localModelID: appState.activeModelID
+        )
+        return true
     }
 
     private func updateAtSuggestions(for draft: String) {
