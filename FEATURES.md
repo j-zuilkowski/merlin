@@ -262,6 +262,41 @@ Merlin stores approved memories and session summaries in a local SQLite database
 
 ---
 
+## Behavioral Reliability
+
+Merlin's reliability features address four failure patterns described in ["Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems"](https://venturebeat.com/infrastructure/context-decay-orchestration-drift-and-the-rise-of-silent-failures-in-ai-systems) (S. Patil, VentureBeat, 2025).
+
+| Failure pattern | What goes wrong | Merlin's response |
+|---|---|---|
+| **Context degradation** | The model's retrieval becomes stale or incomplete. Answers look polished but lose grounding — the model doesn't know what it doesn't know. | `GroundingReport` is emitted every turn: chunk count, average cosine score, staleness flag, and `isWellGrounded`. Visible in the Tool Log. |
+| **Orchestration drift** | Multi-step agentic runs diverge over time — small errors compound across tool calls until the output no longer matches the original intent. | `CriticEngine` scores every turn independently. `ModelParameterAdvisor` tracks score variance across sessions and surfaces an advisory before drift becomes visible. |
+| **Silent partial failure** | A subsystem degrades before it fully breaks. Each individual turn looks acceptable; the cumulative pattern does not. | The circuit breaker counts consecutive critic failures. After `agentCircuitBreakerThreshold` (default 3) failures, it halts the engine and notifies the user. Nothing fails silently. |
+| **Automation blast radius** | A bad step in an agentic loop propagates into later steps and decisions, compounding the damage before anything is flagged. | `AuthGate` blocks unauthorised tool calls at the boundary. Critic failures suppress memory writes, so low-quality outputs cannot pollute the retrieval store and corrupt future sessions. |
+
+### Circuit Breaker
+
+After `agentCircuitBreakerThreshold` consecutive critic `.fail` verdicts (default: 3), the engine activates:
+
+- **Halt mode** (default) — stops the next turn cleanly and emits a system note directing the user to act.
+- **Warn mode** — emits a warning but lets the turn proceed.
+
+The counter resets to zero on any `.pass` or `.skipped` verdict, and on every new session. Configure in **Settings → Agent** or via `agent_circuit_breaker_threshold` / `agent_circuit_breaker_mode` in `~/.merlin/config.toml`.
+
+### Grounding Confidence
+
+Every turn emits a `GroundingReport` as an `AgentEvent`, even when no chunks were retrieved. The report contains:
+
+| Field | Meaning |
+|---|---|
+| `totalChunks` | Number of RAG chunks injected this turn |
+| `averageScore` | Mean cosine similarity across all chunks (0–1) |
+| `hasStaleMemory` | True when any memory chunk is older than `ragFreshnessThresholdDays` (default: 90 days) |
+| `isWellGrounded` | True when `totalChunks > 0` and `averageScore ≥ ragMinGroundingScore` (default: 0.30) |
+
+Configure thresholds in **Settings → Agent** or via `rag_freshness_threshold_days` / `rag_min_grounding_score` in `~/.merlin/config.toml`.
+
+---
+
 ## Hooks
 
 Shell scripts that intercept the agentic lifecycle. Defined in `~/.merlin/config.toml`.
