@@ -11,6 +11,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, xcalibre memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
+**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (parallel local + reference provider dispatch with critic scoring), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -351,6 +352,87 @@ Merlin/Providers/LocalModelManager/
 
 Merlin/Views/Settings/
   ModelControlView.swift            — ModelControlView + ModelControlSectionView + RestartInstructionsSheet
+```
+
+---
+
+## Cross-Provider Calibration [v8]
+
+### Design Decision: Closures over Protocol Coupling
+
+`CalibrationRunner` takes `(String) async throws -> String` closures for local and reference
+providers rather than `any LLMProvider` directly. This keeps the calibration engine decoupled
+from the provider abstraction layer and makes it trivially testable with stubs.
+
+### Calibration Flow
+
+```
+User types /calibrate
+        │
+        ▼
+CalibrationCoordinator.begin()
+  → CalibrationSheet.pickProvider([remoteProviderIDs])
+        │
+        ▼  user selects reference + taps Start
+CalibrationCoordinator.start(referenceProviderID:)
+  → builds localClosure    from appState.provider(for: localProviderID)
+  → builds referenceClosure from appState.provider(for: referenceProviderID)
+  → builds scorerClosure    from appState.criticEngine.score(prompt:response:)
+        │
+        ▼
+CalibrationRunner.run(suite: .default)           ← TaskGroup: all 18 prompts in parallel
+  for each prompt:
+    async let local     = localClosure(prompt)
+    async let reference = referenceClosure(prompt)
+    async let localScore     = scorer(prompt, local)
+    async let referenceScore = scorer(prompt, reference)
+  → [CalibrationResponse]  (sorted by prompt.id)
+        │
+        ▼
+CalibrationAdvisor.analyze(responses:localModelID:localProviderID:)
+  checks:
+    overallDelta ≥ 0.40          → .contextLengthTooSmall  (suggestedValue: "32768")
+    local score σ ≥ 0.22         → .temperatureUnstable    (suggestedValue: "0.3")
+    ≥50% responses length < 30%  → .maxTokensTooLow        (suggestedValue: "4096")
+    ≥50% responses trigram rep   → .repetitiveOutput       (suggestedValue: "1.15")
+  → [ParameterAdvisory]
+        │
+        ▼
+CalibrationReport { responses, advisories, overallDelta, responsesByCategory }
+        │
+        ▼
+CalibrationSheet.report(report)
+  → CalibrationReportView:
+      overall score gauges  (local % vs reference %)
+      per-category bar chart (reasoning / coding / instruction-following / summarization)
+      advisory list with suggested values
+      "Apply All Suggestions" → applyAdvisory() for each advisory
+                                (runtime reload or restart instructions — same path as v7)
+```
+
+### Prompt Battery [v8]
+
+| ID | Category | Signal targeted |
+|---|---|---|
+| r1–r5 | Reasoning | variance detection, context gap |
+| c1–c5 | Coding | instruction compliance, length |
+| i1–i4 | Instruction Following | format compliance, truncation |
+| s1–s4 | Summarization | repetition, coherence |
+
+### File Layout
+
+```
+Merlin/Calibration/
+  CalibrationTypes.swift       — CalibrationCategory, CalibrationPrompt, CalibrationResponse, CalibrationReport
+  CalibrationSuite.swift       — CalibrationSuite + default 18-prompt battery
+  CalibrationRunner.swift      — actor; parallel dispatch via TaskGroup
+  CalibrationAdvisor.swift     — CalibrationAdvisor + CategoryScores; maps gaps to ParameterAdvisory
+  CalibrationCoordinator.swift — @MainActor ObservableObject; CalibrationSheet enum; registerSkill()
+
+Merlin/Views/Calibration/
+  CalibrationProviderPickerView.swift — step 1: choose reference provider
+  CalibrationProgressView.swift       — step 2: live progress bar
+  CalibrationReportView.swift         — step 3: scores, breakdown, apply-all
 ```
 
 ---

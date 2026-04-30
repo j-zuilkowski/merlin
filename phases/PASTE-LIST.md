@@ -1151,7 +1151,7 @@ cat phases/phase-128b-model-control-ui.md
 # ModelControlView shows editable load params per provider in Settings → Providers.
 # AgenticEngine pauses run loop during reload to prevent mid-generation context mutations.
 
-# ── V7 /calibrate — Local Model Calibration ───────────────────────────────────
+# ── V8 /calibrate — Cross-Provider Model Calibration ─────────────────────────
 # /calibrate fires an 18-prompt battery against the active local model and a chosen
 # reference provider (Anthropic, OpenAI, DeepSeek, etc.) in parallel, critic-scores
 # all responses, and maps gaps to ParameterAdvisory items (context length, temperature,
@@ -1190,7 +1190,7 @@ cat phases/phase-131b-calibration-skill.md
 # Verify: BUILD SUCCEEDED; CalibrationSkillTests → 9 pass; all prior tests pass
 # Commit: Phase 131b — /calibrate skill: provider picker, runner wiring, report view with apply-all
 
-# ── DONE (v7 /calibrate) ──────────────────────────────────────────────────────
+# ── DONE (v8 /calibrate) ──────────────────────────────────────────────────────
 # To use: type /calibrate in the chat bar; pick a reference provider; tap Start.
 # Results show overall score gap, per-category breakdown, and one-tap parameter fixes.
 # All fixes route through applyAdvisory() — runtime reload where supported, restart
