@@ -46,6 +46,9 @@ final class AgenticEngine {
     private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
+    /// Local memory backend plugin. Receives episodic writes and provides memory
+    /// chunks for RAG enrichment. Defaults to `NullMemoryPlugin`.
+    var memoryBackend: any MemoryBackendPlugin = NullMemoryPlugin()
     var loraCoordinator: LoRACoordinator?
     var parameterAdvisor: ModelParameterAdvisor?
     var loraProvider: (any LLMProvider)?
@@ -86,7 +89,8 @@ final class AgenticEngine {
          registry: ProviderRegistry? = nil,
          toolRouter: ToolRouter,
          contextManager: ContextManager,
-         xcalibreClient: (any XcalibreClientProtocol)? = nil) {
+         xcalibreClient: (any XcalibreClientProtocol)? = nil,
+         memoryBackend: (any MemoryBackendPlugin)? = nil) {
         self.proProvider = NullProvider()
         self.flashProvider = NullProvider()
         self.visionProvider = NullProvider()
@@ -95,6 +99,9 @@ final class AgenticEngine {
         self.toolRouter = toolRouter
         self.contextManager = contextManager
         self.xcalibreClient = xcalibreClient
+        if let memoryBackend {
+            self.memoryBackend = memoryBackend
+        }
     }
 
     convenience init(proProvider: any LLMProvider,
@@ -102,17 +109,24 @@ final class AgenticEngine {
                      visionProvider: any LLMProvider,
                      toolRouter: ToolRouter,
                      contextManager: ContextManager,
-                     xcalibreClient: (any XcalibreClientProtocol)? = nil) {
+                     xcalibreClient: (any XcalibreClientProtocol)? = nil,
+                     memoryBackend: (any MemoryBackendPlugin)? = nil) {
         self.init(
             slotAssignments: [:],
             registry: nil,
             toolRouter: toolRouter,
             contextManager: contextManager,
-            xcalibreClient: xcalibreClient
+            xcalibreClient: xcalibreClient,
+            memoryBackend: memoryBackend
         )
         self.proProvider = proProvider
         self.flashProvider = flashProvider
         self.visionProvider = visionProvider
+    }
+
+    /// Inject the active memory backend.
+    func setMemoryBackend(_ backend: any MemoryBackendPlugin) async {
+        memoryBackend = backend
     }
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
@@ -354,8 +368,14 @@ final class AgenticEngine {
         }
 
         var effectiveMessage = userMessage
+        var ragChunks: [RAGChunk] = []
+
+        if let memResults = try? await memoryBackend.search(query: userMessage, topK: 5) {
+            ragChunks.append(contentsOf: memResults.map { $0.toRAGChunk() })
+        }
+
         if let client = xcalibreClient {
-            let chunks = await client.searchChunks(
+            let bookChunks = await client.searchChunks(
                 query: userMessage,
                 source: "all",
                 bookIDs: nil,
@@ -363,10 +383,12 @@ final class AgenticEngine {
                 limit: min(max(ragChunkLimit, 1), 20),
                 rerank: ragRerank
             )
-            if !chunks.isEmpty {
-                effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: chunks)
-                continuation.yield(.ragSources(chunks))
-            }
+            ragChunks.append(contentsOf: bookChunks)
+        }
+
+        if !ragChunks.isEmpty {
+            effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: ragChunks)
+            continuation.yield(.ragSources(ragChunks))
         }
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
             continuation.yield(.systemNote(augmented))
@@ -462,6 +484,13 @@ final class AgenticEngine {
 
             guard sawToolCall, !assembled.isEmpty else {
                 lastResponseText = fullText
+                if !fullText.isEmpty {
+                    context.append(Message(
+                        role: .assistant,
+                        content: .text(fullText),
+                        timestamp: Date()
+                    ))
+                }
                 if classification.complexity != .routine,
                    (classifierOverride != nil || classification.complexity == .highStakes) {
                     if let reasonProvider = self.provider(for: .reason),
@@ -637,12 +666,9 @@ final class AgenticEngine {
             onParameterAdvisoriesUpdate?(trackerRecord.modelID)
         }
 
-        if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {
-            // Skip memory write when critic explicitly returned .fail for this turn.
-            // nil verdict (critic not invoked) and .pass / .skipped all allow the write.
-            // This prevents low-quality outputs from polluting the xcalibre memory store.
+        if AppSettings.shared.memoriesEnabled {
             if case .fail = lastCriticVerdict {
-                // Critic failed — suppress memory write for this turn.
+                // Critic failed - suppress memory write for this turn.
             } else {
                 let summary = context.messages
                     .filter { $0.role == .assistant }
@@ -650,13 +676,13 @@ final class AgenticEngine {
                     .joined(separator: "\n")
                     .prefix(2000)
                 if !summary.isEmpty {
-                    _ = await client.writeMemoryChunk(
-                        text: String(summary),
+                    let chunk = MemoryChunk(
+                        content: String(summary),
                         chunkType: "episodic",
                         sessionID: sessionStore?.activeSession?.id.uuidString,
-                        projectPath: currentProjectPath,
-                        tags: []
+                        projectPath: currentProjectPath
                     )
+                    try? await memoryBackend.write(chunk)
                 }
             }
         }
