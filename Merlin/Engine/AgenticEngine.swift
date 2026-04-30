@@ -47,6 +47,7 @@ final class AgenticEngine {
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
     var loraCoordinator: LoRACoordinator?
+    var parameterAdvisor: ModelParameterAdvisor?
     var loraProvider: (any LLMProvider)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
@@ -54,6 +55,7 @@ final class AgenticEngine {
     var claudeMDContent: String = ""
     var memoriesContent: String = ""
     var onUsageUpdate: ((Int) -> Void)?
+    var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
@@ -137,6 +139,10 @@ final class AgenticEngine {
 
     func currentAddendumHash(for slot: AgentSlot) async -> String {
         await combinedAddendum(for: slot).addendumHash
+    }
+
+    var currentModelID: String {
+        modelID(for: resolvedProvider(for: .execute))
     }
 
     /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
@@ -383,6 +389,7 @@ final class AgenticEngine {
         // lastResponseText captures the full assistant text from the last no-tool-call response.
         // Passed to performanceTracker.record() as the response field for LoRA training data.
         var lastResponseText = ""
+        var capturedFinishReason: String?
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
 
@@ -414,6 +421,9 @@ final class AgenticEngine {
             var fullText = ""
 
             for try await chunk in stream {
+                if let reason = chunk.finishReason {
+                    capturedFinishReason = reason
+                }
                 if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
                     continuation.yield(.thinking(thinkingContent))
                 }
@@ -579,16 +589,18 @@ final class AgenticEngine {
             criticRetryCount: 0,
             userCorrectedNextTurn: false,
             sessionCompleted: true,
-            addendumHash: await currentAddendumHash(for: workingSlot)
+            addendumHash: await currentAddendumHash(for: workingSlot),
+            finishReason: capturedFinishReason
         )
+        let trackerModelID = slotAssignments[workingSlot] ?? ""
         await performanceTracker.record(
-            modelID: slotAssignments[workingSlot] ?? "",
+            modelID: trackerModelID,
             taskType: taskType,
             signals: signals,
             prompt: userMessage,
             response: lastResponseText
         )
-
+        let trackerRecords = await performanceTracker.records(for: trackerModelID, taskType: taskType)
         if AppSettings.shared.loraEnabled, AppSettings.shared.loraAutoTrain,
            let coordinator = loraCoordinator {
             await coordinator.considerTraining(
@@ -597,6 +609,14 @@ final class AgenticEngine {
                 baseModel: AppSettings.shared.loraBaseModel,
                 adapterOutputPath: AppSettings.shared.loraAdapterPath
             )
+        }
+
+        if let trackerRecord = trackerRecords.last, let advisor = parameterAdvisor {
+            _ = await advisor.checkRecord(trackerRecord)
+            if trackerRecords.count % 10 == 0 {
+                _ = await advisor.analyze(records: Array(trackerRecords.suffix(20)), modelID: trackerRecord.modelID)
+            }
+            onParameterAdvisoriesUpdate?(trackerRecord.modelID)
         }
 
         if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {

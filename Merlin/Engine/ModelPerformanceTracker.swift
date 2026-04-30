@@ -13,6 +13,7 @@ struct OutcomeSignals: Sendable {
     var userCorrectedNextTurn: Bool   // heuristic: next message is a correction
     var sessionCompleted: Bool        // false = new session without task completion
     var addendumHash: String          // SHA256 of the provider's system_prompt_addendum
+    var finishReason: String? = nil   // nil = not captured; "stop" = normal completion
 }
 
 // MARK: - OutcomeRecord
@@ -29,6 +30,8 @@ struct OutcomeRecord: Codable, Sendable {
     var response: String
     /// Marks records created via the legacy 3-argument record() path.
     var legacyTrainingRecord: Bool
+    /// finish_reason from the last chunk. nil for records created before phase 124b.
+    var finishReason: String?
 
     init(
         modelID: String,
@@ -38,7 +41,8 @@ struct OutcomeRecord: Codable, Sendable {
         timestamp: Date,
         prompt: String = "",
         response: String = "",
-        legacyTrainingRecord: Bool = false
+        legacyTrainingRecord: Bool = false,
+        finishReason: String? = nil
     ) {
         self.modelID = modelID
         self.taskType = taskType
@@ -48,6 +52,7 @@ struct OutcomeRecord: Codable, Sendable {
         self.prompt = prompt
         self.response = response
         self.legacyTrainingRecord = legacyTrainingRecord
+        self.finishReason = finishReason
     }
 
     init(from decoder: Decoder) throws {
@@ -60,6 +65,7 @@ struct OutcomeRecord: Codable, Sendable {
         prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
         response = (try? c.decode(String.self, forKey: .response)) ?? ""
         legacyTrainingRecord = (try? c.decode(Bool.self, forKey: .legacyTrainingRecord)) ?? false
+        finishReason = try? c.decode(String.self, forKey: .finishReason)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -72,6 +78,7 @@ struct OutcomeRecord: Codable, Sendable {
         try c.encode(prompt, forKey: .prompt)
         try c.encode(response, forKey: .response)
         try c.encode(legacyTrainingRecord, forKey: .legacyTrainingRecord)
+        try c.encodeIfPresent(finishReason, forKey: .finishReason)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -83,6 +90,7 @@ struct OutcomeRecord: Codable, Sendable {
         case prompt
         case response
         case legacyTrainingRecord
+        case finishReason
     }
 }
 
@@ -159,7 +167,8 @@ actor ModelPerformanceTracker {
             timestamp: Date(),
             prompt: prompt,
             response: response,
-            legacyTrainingRecord: legacyTrainingRecord
+            legacyTrainingRecord: legacyTrainingRecord,
+            finishReason: signals.finishReason
         )
 
         records[key, default: []].append(record)

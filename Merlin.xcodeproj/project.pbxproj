@@ -178,6 +178,7 @@
 		A0000DAB0EA8A483D997B121 /* DiffEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */; };
 		A14542D1DE4FFA0D57C960AF /* CriticEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */; };
 		A302A47E83B978AEDA39E00A /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 010B889262AAE8AF30CF04F1 /* AppState.swift */; };
+		A30D4466BA15F961F4CAE292 /* ModelParameterAdvisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D071C531B8120B730DC2F6FB /* ModelParameterAdvisor.swift */; };
 		A7FF08F2D1F8435D4DCCDADA /* MemoryEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39224BAE470FF0BF54304051 /* MemoryEngine.swift */; };
 		A87795245D6852BED4CCAEE9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A385F93C62395C46EB6AEDD8 /* ContentView.swift */; };
 		A8DF211813085E8FAA7E483F /* ContextInjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69382D667DD3BE1FA7E1C42 /* ContextInjectionTests.swift */; };
@@ -505,6 +506,7 @@
 		CF4C3A1F6423CEE3BC941887 /* SubagentChatIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentChatIntegrationTests.swift; sourceTree = "<group>"; };
 		D03565FECA8DBC4D3751CA2D /* DiffPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPane.swift; sourceTree = "<group>"; };
 		D05400A389ABBA606A1B0BC5 /* AnthropicProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnthropicProvider.swift; sourceTree = "<group>"; };
+		D071C531B8120B730DC2F6FB /* ModelParameterAdvisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelParameterAdvisor.swift; sourceTree = "<group>"; };
 		D618333C226998B947B39EA5 /* SkillsPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsPicker.swift; sourceTree = "<group>"; };
 		D68DF90F638AEABE20362678 /* AppStateSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSessionTests.swift; sourceTree = "<group>"; };
 		D70896CAA2B15470C27B1C84 /* ContextManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextManagerTests.swift; sourceTree = "<group>"; };
@@ -695,6 +697,7 @@
 				7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */,
 				AE4BC7B7FEC65D3BA6A3FB16 /* LoRACoordinator.swift */,
 				F4919A99A39BBA0124C04C20 /* LoRATrainer.swift */,
+				D071C531B8120B730DC2F6FB /* ModelParameterAdvisor.swift */,
 				C89702EADAB9966D9D5BF0D0 /* ModelPerformanceTracker.swift */,
 				84DD2796B13F22A3D1B0154F /* NullProvider.swift */,
 				85C6DF69B2D78173D8A33A75 /* PermissionMode.swift */,
@@ -1525,6 +1528,7 @@
 				BF61D1B976BFCE8E86D6603A /* MemoryReviewView.swift in Sources */,
 				000C78AA9999D2BCD378DC69 /* MerlinApp.swift in Sources */,
 				120A11CBB686768C09BA3DF0 /* MerlinCommands.swift in Sources */,
+				A30D4466BA15F961F4CAE292 /* ModelParameterAdvisor.swift in Sources */,
 				20CE7E1B8ED6F5F66F12B50D /* ModelPerformanceTracker.swift in Sources */,
 				8D0CFAD6918A6C212027EBC2 /* ModelPerformanceTrackerProtocol.swift in Sources */,
 				466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */,

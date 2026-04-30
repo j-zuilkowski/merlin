@@ -66,11 +66,13 @@ final class AppState: ObservableObject {
             syncEngineProviders()
         }
     }
+    @Published var parameterAdvisories: [ParameterAdvisory] = []
     @Published var thinkingModeActive: Bool = false
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
     let loraCoordinator = LoRACoordinator()
+    let parameterAdvisor = ModelParameterAdvisor()
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
@@ -160,6 +162,13 @@ final class AppState: ObservableObject {
         engine.registry = registry
         engine.sessionStore = sessionStore
         engine.loraCoordinator = loraCoordinator
+        engine.parameterAdvisor = parameterAdvisor
+        engine.onParameterAdvisoriesUpdate = { [weak self] modelID in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.refreshParameterAdvisories(for: modelID)
+            }
+        }
         refreshLoRAProvider(
             enabled: AppSettings.shared.loraEnabled,
             autoLoad: AppSettings.shared.loraAutoLoad,
@@ -216,6 +225,10 @@ final class AppState: ObservableObject {
         KeepAwakeManager.shared.apply(AppSettings.shared.keepAwake)
         keepAwakeCancellable = AppSettings.shared.$keepAwake
             .sink { KeepAwakeManager.shared.apply($0) }
+
+        Task { [weak self] in
+            await self?.refreshParameterAdvisories()
+        }
 
         settingsCancellable = AppSettings.shared.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -372,6 +385,17 @@ final class AppState: ObservableObject {
         engine.slotAssignments = AppSettings.shared.slotAssignments
         activeProviderID = registry.activeProviderID
         Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
+        Task { [weak self] in
+            await self?.refreshParameterAdvisories()
+        }
+    }
+
+    private func refreshParameterAdvisories() async {
+        await refreshParameterAdvisories(for: engine.currentModelID)
+    }
+
+    private func refreshParameterAdvisories(for modelID: String) async {
+        parameterAdvisories = await parameterAdvisor.currentAdvisories(for: modelID)
     }
 
     private func refreshLoRAProvider(

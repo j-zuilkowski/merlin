@@ -3,11 +3,12 @@ import SwiftUI
 /// Settings > Providers — per-model performance breakdown.
 /// Shows success rates, sample counts, trends, and addendum variant comparison.
 struct PerformanceDashboardView: View {
+    @EnvironmentObject private var appState: AppState
     @State private var profiles: [ModelPerformanceProfile] = []
 
     var body: some View {
         Group {
-            if profiles.isEmpty {
+            if profiles.isEmpty && appState.parameterAdvisories.isEmpty {
                 ContentUnavailableView(
                     "No performance data yet",
                     systemImage: "chart.bar",
@@ -15,10 +16,19 @@ struct PerformanceDashboardView: View {
                 )
             } else {
                 List {
-                    ForEach(groupedByModel, id: \.key) { modelID, modelProfiles in
-                        Section(header: Text(modelID).font(.headline)) {
-                            ForEach(modelProfiles, id: \.taskType.name) { profile in
-                                profileRow(profile)
+                    if !profiles.isEmpty {
+                        ForEach(groupedByModel, id: \.key) { modelID, modelProfiles in
+                            Section(header: Text(modelID).font(.headline)) {
+                                ForEach(modelProfiles, id: \.taskType.name) { profile in
+                                    profileRow(profile)
+                                }
+                            }
+                        }
+                    }
+                    if !appState.parameterAdvisories.isEmpty {
+                        Section("Parameter Suggestions") {
+                            ForEach(appState.parameterAdvisories) { advisory in
+                                AdvisoryRow(advisory: advisory)
                             }
                         }
                     }
@@ -79,6 +89,29 @@ struct PerformanceDashboardView: View {
             Text("→")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private struct AdvisoryRow: View {
+        let advisory: ParameterAdvisory
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text(advisory.parameterName)
+                        .font(.headline)
+                    Spacer()
+                    Text("→ \(advisory.suggestedValue)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(advisory.explanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 4)
         }
     }
 }

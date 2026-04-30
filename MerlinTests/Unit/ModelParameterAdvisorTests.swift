@@ -191,9 +191,14 @@ final class ModelParameterAdvisorTests: XCTestCase {
         finishReason: String? = nil,
         response: String = "This is a response."
     ) -> OutcomeRecord {
+        let taskType = DomainTaskType(
+            domainID: "test-domain",
+            name: "code_generation",
+            displayName: "Code Generation"
+        )
         var record = OutcomeRecord(
             modelID: modelID,
-            taskType: .codeGeneration,
+            taskType: taskType,
             score: score,
             addendumHash: "",
             timestamp: Date(),
