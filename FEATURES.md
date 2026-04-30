@@ -234,7 +234,29 @@ Opt-in. After 5 minutes of session inactivity, Merlin uses the fastest available
 - Pending memories appear in Settings → Memories for review before acceptance.
 - Accepted memories follow two paths simultaneously:
   1. **File injection** — moved to `~/.merlin/memories/` and prepended to the system prompt as a verbatim block at the start of every future session.
-  2. **RAG indexing** — written to xcalibre-server as a `"factual"` chunk tagged `"session-memory"`, making them queryable by the RAG layer so only contextually relevant memories surface per prompt rather than all memories all the time.
+  2. **Local RAG indexing** — written to Merlin's local SQLite memory store as a `"factual"` chunk tagged `"session-memory"`, making them queryable by the RAG layer so only contextually relevant memories surface per prompt rather than all memories all the time.
+
+---
+
+## Local Memory Storage (v9)
+
+Merlin stores approved memories and session summaries in a local SQLite database, so session memory no longer depends on an external server.
+
+**How it works:**
+- Approved memories from the Memory Review sheet are written as `factual` chunks.
+- Session summaries are written as `episodic` chunks at the end of each turn, unless the critic marks the turn as failed.
+- Both chunk types are embedded with Apple's built-in `NLContextualEmbedding` model on macOS 14+.
+- At the start of each turn, Merlin retrieves the top-5 matching chunks by cosine similarity and prepends them to the user message as RAG context.
+
+**Plugin system:**
+- The backend is selectable in Settings → Memories → Memory backend.
+- `Local (on-device)` is the default and stores data at `~/.merlin/memory.sqlite`.
+- `None` disables memory persistence for ephemeral sessions.
+- xcalibre-server remains available as an optional book-content source; it is no longer used for Merlin session memory.
+
+**Behavioral reliability:**
+- Circuit breaker phase 140 surfaces repeated critic failures instead of letting them accumulate silently.
+- Grounding confidence phase 141 adds a retrieval confidence signal so stale or thin context is easier to spot.
 
 ---
 
@@ -323,7 +345,7 @@ Override with `#routine`, `#standard`, or `#high-stakes` prefix in your message.
 - **Stage 1** — domain verification backend (e.g. `xcodebuild` for Swift tasks)
 - **Stage 2** — reason-slot LLM scoring on a 0.0–1.0 scale
 
-Critic verdicts gate xcalibre memory writes: `.fail` suppresses the write so low-quality outputs do not pollute the memory store.
+Critic verdicts gate local memory writes: `.fail` suppresses the episodic backend write so low-quality outputs do not pollute the memory store.
 
 **Performance Tracking** — `ModelPerformanceTracker` builds empirical performance profiles per model × domain × task type from observed outcomes. Profiles are calibrated at 30 samples. Used for model selection and as the data source for LoRA training.
 
@@ -354,17 +376,17 @@ Training data files: `~/.merlin/performance/records-<model-id>.json` (persist ac
 
 ## RAG (Retrieval-Augmented Generation)
 
-Connects to a local xcalibre-server instance. When available:
+Connects to Merlin's local memory store and, when configured, an optional xcalibre-server book-content source. When available:
 
 - **Auto-inject** — relevant context chunks are injected into the prompt before each LLM call.
 - **Explicit tools** — `rag_search(query, source?, project_path?)` and `rag_list_books()` available as explicit tool calls.
 - **Source attribution** — `RAGSourcesView` shows a "Sources" footer in the chat after every RAG-enriched message, listing book titles and memory chunk IDs used.
 - **Project scoping** — `AppSettings.projectPath` scopes memory chunk retrieval to the active project path. Set in Settings → Agent.
-- **Memory Browser** — `MemoryBrowserView` (Settings → Memories) lets you search and delete individual xcalibre memory chunks.
+- **Memory Browser** — `MemoryBrowserView` (Settings → Memories) lets you search and delete individual memory chunks.
 - **Hardware-configurable** — `ragRerank` (default `false`) and `ragChunkLimit` (default 3) are tunable in Settings. On an RTX 5080, set `ragRerank = true` and `ragChunkLimit = 10` with no code changes.
-- **Critic-gated writes** — when the critic returns `.fail`, the memory write to xcalibre is suppressed for that session. This keeps low-quality outputs out of the memory store.
+- **Critic-gated writes** — when the critic returns `.fail`, the episodic memory write is suppressed for that session. This keeps low-quality outputs out of the memory store.
 
-**xcalibre-server hardware** — runs on a Windows 11 machine with RTX 2070, serving phi-3-mini-4k-instruct (library maintenance tasks) and nomic-embed-text-v1.5 (vector embeddings) via LM Studio. `ragRerank` is off by default because the RTX 2070 benefits from the reduced load; the code requires no changes for an RTX 5080 upgrade.
+**xcalibre-server hardware** — when present, it runs on a Windows 11 machine with RTX 2070, serving phi-3-mini-4k-instruct (library maintenance tasks) and nomic-embed-text-v1.5 (vector embeddings) via LM Studio. `ragRerank` is off by default because the RTX 2070 benefits from the reduced load; the code requires no changes for an RTX 5080 upgrade.
 
 ---
 
@@ -517,7 +539,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 | **Multi-LLM routing** | Yes — execute / reason / orchestrate / vision slots with automatic complexity routing | No | No |
 | **Vision / GUI automation** | AX tree + ScreenCaptureKit + CGEvent (3 strategies, auto-selected) | Computer use (desktop control) | Computer use (added March 2026) |
 | **Xcode integration** | Deep — build, test, clean, xcresult parsing, open-at-line, simulator control | IDE plugin only | IDE plugin only |
-| **RAG / persistent memory** | Yes — xcalibre-server (vector search, project-scoped, critic-gated per-turn writes + accepted memories indexed as factual chunks) | No | No (uses agentic grep/search instead) |
+| **RAG / persistent memory** | Yes — local SQLite memory store (vector search, project-scoped, critic-gated per-turn writes + accepted memories indexed as factual chunks); optional xcalibre-server for book content only | No | No (uses agentic grep/search instead) |
 | **LoRA self-training** | Yes — MLX-LM on M4 Mac; adapts execute slot to your own sessions | No | No |
 | **Diff review layer** | Yes — all writes staged; accept/reject per change; inline comments | No (direct writes) | No (direct writes) |
 | **Auth gate** | Yes — glob-pattern permission gate on every tool call, per session mode | No | No |
@@ -548,7 +570,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 
 **LoRA self-training.** Merlin is unique in being able to fine-tune a local model on your own accepted session data using MLX-LM on an M4 Mac. Over time, the execute slot adapts to your coding patterns and project conventions. This is not a feature Codex or Claude Code offer.
 
-**Persistent RAG memory.** Merlin stores project knowledge in xcalibre-server as vector embeddings and injects relevant context into every prompt. Memory writes are critic-gated — only outputs that passed the quality check enter the memory store. Claude Code explicitly chose not to do RAG, relying on agentic grep/search instead. Codex has no RAG layer.
+**Persistent RAG memory.** Merlin stores project knowledge in a local SQLite-backed vector store and injects relevant context into every prompt. Memory writes are critic-gated — only outputs that passed the quality check enter the memory store. xcalibre-server remains available for book content, but it no longer stores Merlin session memory. Claude Code explicitly chose not to do RAG, relying on agentic grep/search instead. Codex has no RAG layer.
 
 **Diff review + inline comments.** In Ask and Plan modes, every file write is staged rather than applied. You review a unified diff, accept or reject per change, and can attach inline comments that feed back to the agent for revision — without leaving the app. Both Codex and Claude Code apply writes directly with no staging step.
 

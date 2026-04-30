@@ -205,7 +205,7 @@ actor XcalibreClient {
         }
     }
 
-    /// Search xcalibre memory chunks only.
+    /// Search legacy xcalibre memory chunks only.
     /// - Parameters:
     ///   - query: Full-text search query.
     ///   - projectPath: Optional project directory to scope results.
@@ -223,7 +223,7 @@ actor XcalibreClient {
 
     // MARK: - Memory chunks
 
-    /// Write a Merlin memory chunk to xcalibre-server.
+    /// Legacy write path for xcalibre-backed memory chunks.
     /// Returns the TEXT UUID assigned by the server, or nil on failure (silent — no user-facing error).
     @discardableResult
     func writeMemoryChunk(

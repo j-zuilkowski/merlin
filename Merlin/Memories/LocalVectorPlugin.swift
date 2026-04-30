@@ -5,6 +5,12 @@ import SQLite3
 
 /// Memory backend plugin that stores chunks in SQLite and ranks them with cosine
 /// similarity over on-device embeddings.
+///
+/// Production storage lives at `~/.merlin/memory.sqlite`. Approved factual memories and
+/// episodic summaries both land here. `write(_:)` computes the embedding during the call
+/// so the inserted row is immediately searchable. `search(query:topK:)` loads all rows
+/// with a non-NULL embedding, computes cosine similarity in Swift, and returns the top-K
+/// results. That brute-force scan is fast enough for hundreds to low thousands of chunks.
 actor LocalVectorPlugin: MemoryBackendPlugin {
     nonisolated let pluginID = "local-vector"
     nonisolated let displayName = "Local (on-device)"
@@ -22,6 +28,7 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
 
     func write(_ chunk: MemoryChunk) async throws {
         try ensureOpen()
+        // Compute the embedding before persisting so the row can be searched right away.
         let embedding = try? await embeddingProvider.embed(chunk.content)
         let tagsJSON = (try? JSONEncoder().encode(chunk.tags))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
@@ -67,6 +74,7 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
         return Array(scored.prefix(topK))
     }
 
+    /// Remove the row with the matching memory chunk ID.
     func delete(id: String) async throws {
         try ensureOpen()
         try execute(
@@ -97,6 +105,8 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
 
         db = connection
         do {
+            // Actual schema used by the plugin; the embedding column is nullable until the
+            // row has been written with vector data.
             try execute(
                 sql: """
                     CREATE TABLE IF NOT EXISTS memory_chunks (
@@ -203,6 +213,8 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
             }
 
             let tags = (try? JSONDecoder().decode([String].self, from: Data(tagsJSON.utf8))) ?? []
+            // Rows without embeddings are skipped by the SELECT clause, but keep this guard
+            // so corrupted rows do not crash the search path.
             let embedding = Self.floats(from: embeddingData)
 
             rows.append(
@@ -244,6 +256,9 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
 
     // MARK: - Similarity
 
+    /// Cosine similarity between two Float vectors.
+    ///
+    /// Returns 0 when the vectors differ in length or either one has zero magnitude.
     private func cosine(_ a: [Float], _ b: [Float]) -> Float {
         guard a.count == b.count, !a.isEmpty else { return 0 }
 

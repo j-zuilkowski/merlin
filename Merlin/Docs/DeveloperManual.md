@@ -375,7 +375,7 @@ Evaluates model output after a turn completes without tool calls. Two stages:
 
 Returns `CriticResult`: `.pass`, `.fail(reason:)`, or `.skipped`.
 
-`AgenticEngine.lastCriticVerdict` stores the most recent verdict. It is reset to `nil` at the start of every `runLoop` invocation. When the verdict is `.fail`, the xcalibre memory write at the end of the turn is suppressed.
+`AgenticEngine.lastCriticVerdict` stores the most recent verdict. It is reset to `nil` at the start of every `runLoop` invocation. When the verdict is `.fail`, the episodic memory write at the end of the turn is suppressed.
 
 ### PlannerEngine
 

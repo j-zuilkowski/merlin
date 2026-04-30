@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings > Library — browse and delete xcalibre memory chunks.
+/// Settings > Library — browse and delete legacy xcalibre memory chunks.
 /// The user searches by keyword; results show chunk text, session ID (if any),
 /// and a delete button. Scoped to the configured project path when non-empty.
 struct MemoryBrowserView: View {

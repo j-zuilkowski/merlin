@@ -360,11 +360,11 @@ Memories are automatically prepended to the system context at the start of each 
 
 ## RAG Memory Browser
 
-When a xcalibre-server instance is configured, Merlin can write session summaries to it as memory chunks and retrieve them in future sessions. The Memory Browser lets you manage those stored memories.
+Merlin writes session summaries to its local memory store and retrieves them in future sessions. The Memory Browser lets you manage those stored memories.
 
 ### Opening the Memory Browser
 
-Go to **Settings → Memories** and click **Browse xcalibre Memories**.
+Go to **Settings → Memories** and click **Browse Memory Store**.
 
 ### Searching memories
 
@@ -372,7 +372,7 @@ Type in the search field to find memories by content. Results are scoped to the 
 
 ### Deleting memories
 
-Select a memory and click **Delete**. The chunk is immediately removed from xcalibre-server. Deletion is permanent.
+Select a memory and click **Delete**. The chunk is immediately removed from the local store. Deletion is permanent.
 
 ---
 

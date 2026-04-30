@@ -8,10 +8,11 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
 **[v3]** Agent intelligence + UX completeness: unified settings window, config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
 **[v4]** Subagents (Explorer + Worker), WorktreeManager, SubagentEngine, SubagentStreamUI, full settings surface (all 12 sections), WorkspaceLayoutManager, wired panes (FilePane, TerminalPane, PreviewPane, SideChat), DisabledSkillNames enforcement, keep-awake (IOPMAssertion), AgentRegistry, HookEngine wiring, tool registry launch.
-**[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, xcalibre memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
+**[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
 **[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (parallel local + reference provider dispatch with critic scoring), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
+**[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -438,6 +439,76 @@ Merlin/Views/Calibration/
   CalibrationProgressView.swift       — step 2: live progress bar
   CalibrationReportView.swift         — step 3: scores, breakdown, apply-all
 ```
+
+---
+
+## Local Memory Store [v9]
+
+### Motivation
+
+xcalibre-server was the original memory backend, but Merlin no longer depends on it for session memory. v9 moves approved memories and episodic summaries into a local SQLite store so memory writes and retrieval work fully on-device.
+
+### Architecture
+
+```text
+MemoryEngine.approve()               AgenticEngine.runLoop()
+        │                                     │
+        ▼                                     ▼
+MemoryBackendPlugin (protocol)    memoryBackend.search(query:topK:)
+        │                                     │
+        ▼                                     ▼
+LocalVectorPlugin ──── SQLite ────── MemorySearchResult → RAGChunk
+        │                                                     │
+        └── NLContextualEmbedding                             ▼
+            (512-dim, mean-pooled)              RAGTools.buildEnrichedMessage
+```
+
+xcalibreClient is still available in `AgenticEngine` for optional book-content search (`source: "all"`). Memory writes and memory RAG retrieval are handled by the local backend.
+
+### Plugin protocol
+
+| Symbol | Role |
+|---|---|
+| `MemoryBackendPlugin` | Actor protocol for write, search, and delete |
+| `MemoryBackendRegistry` | `@MainActor` registry owned by `AppState` |
+| `NullMemoryPlugin` | Default no-op backend |
+| `LocalVectorPlugin` | SQLite + `NLContextualEmbedding` production backend |
+| `EmbeddingProviderProtocol` | Testable embedding abstraction |
+| `NLContextualEmbeddingProvider` | Apple neural embeddings (macOS 14+, no dependencies) |
+
+### File layout
+
+```text
+Merlin/Memories/
+  MemoryBackendPlugin.swift     — protocol, registry, NullMemoryPlugin, MemoryChunk, MemorySearchResult
+  EmbeddingProvider.swift       — EmbeddingProviderProtocol, NLContextualEmbeddingProvider
+  LocalVectorPlugin.swift       — SQLite actor backend
+TestHelpers/
+  MockEmbeddingProvider.swift   — deterministic embedding provider for tests
+  CapturingMemoryBackend.swift   — records writes for assertions
+```
+
+### Behavioral Reliability Framework
+
+Merlin's v9 reliability features were designed against the failure taxonomy in S. Patil's 2025 VentureBeat article on context decay and silent failures.
+
+#### Failure patterns
+
+| Failure pattern | Description | Merlin response |
+|---|---|---|
+| Context degradation | Retrieval becomes stale or incomplete, so answers look polished but lose grounding | `GroundingReport` (phase 141) tracks staleness, average score, and `isWellGrounded` |
+| Orchestration drift | Multi-step runs diverge under load | `CriticEngine` evaluates each turn; `ModelParameterAdvisor` tracks score trends |
+| Silent partial failure | A subsystem degrades before it fully breaks | `consecutiveCriticFailures` plus the circuit breaker (phase 140) surfaces sustained degradation |
+| Automation blast radius | A bad step propagates into later steps and decisions | `AuthGate` blocks unauthorised tool calls; critic failure suppresses backend memory writes |
+
+#### Mitigations
+
+| Mitigation | Description | Merlin implementation |
+|---|---|---|
+| Behavioral telemetry | Track grounding, fallback, and confidence per turn | `PerformanceTracker`, `ModelParameterAdvisor`, `AgentEvent.ragSources`, `AgentEvent.groundingReport` |
+| Semantic fault injection | Simulate stale retrieval, truncation, empty tools, and context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (phase 142) |
+| Safe halt conditions | Stop cleanly when confidence cannot be maintained | `agentCircuitBreakerMode = "halt"` (default) halts after repeated critic failures and surfaces the failure to the user |
+| Shared ownership | Each reliability signal has one owner | `CriticEngine` owns per-turn quality, `ModelParameterAdvisor` owns trend detection, `GroundingReport` owns retrieval confidence, and the circuit breaker owns halt decisions |
 
 ---
 
@@ -2260,11 +2331,11 @@ complexity: high-stakes   # always routes this skill to the stronger worker slot
 
 ---
 
-## V5 — RAG Memory Extension
+## V5 — Legacy RAG Memory Extension
 
 > **xcalibre-server Phase 18 is shipped** — migration `0028_memory_chunks.sql`, `POST /api/v1/memory`, `DELETE /api/v1/memory/:id`, and unified `GET /api/v1/search/chunks?source=all` are all live. Merlin-side implementation can proceed.
 
-Extends xcalibre-server as a persistent memory store for Merlin. Local LLMs have limited context windows; precision-retrieved prior memory lets a 4k context window punch above its weight.
+This was the original Merlin memory design: xcalibre-server acted as the persistent memory store for Merlin. v9 supersedes it with a local SQLite backend, but the historical flow remains documented here for reference. Local LLMs have limited context windows; precision-retrieved prior memory lets a 4k context window punch above its weight.
 
 ### Memory Types
 
@@ -2273,7 +2344,7 @@ Extends xcalibre-server as a persistent memory store for Merlin. Local LLMs have
 | Episodic | Session summary — what was worked on, decisions made, outcome | Session end / `MemoryEngine` idle fire | One chunk per session |
 | Factual | Discrete extracted facts — "user prefers X", "project uses Y" | Post-session background pass | One chunk per fact |
 
-Excluded from xcalibre memory: recent turns (stay in-context as sliding window), procedural/how-to (already in book content), tool outputs and file contents (too large, too ephemeral).
+Excluded from legacy xcalibre memory: recent turns (stay in-context as sliding window), procedural/how-to (already in book content), tool outputs and file contents (too large, too ephemeral).
 
 ### Unified Retrieval
 
@@ -2288,7 +2359,7 @@ User message
 LLM sees: [memory] + [book knowledge] + [recent turns] + [user message]
 ```
 
-Memory chunks are scoped to `project_path` — a session in project A does not bleed into project B.
+Memory chunks were scoped to `project_path` — a session in project A did not bleed into project B.
 
 ### XcalibreClient Changes
 
