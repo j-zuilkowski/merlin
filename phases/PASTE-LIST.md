@@ -1205,4 +1205,114 @@ cat phases/phase-133-v8-docs.md
 # Results show overall score gap, per-category breakdown, and one-tap parameter fixes.
 # All fixes route through applyAdvisory() — runtime reload where supported, restart
 # instructions where not (same path as ModelControlView and PerformanceDashboard).
+
+# ── V9 Local Memory Store — MemoryBackendPlugin system ───────────────────────
+# Replaces xcalibre-server as the memory write target. Merlin now stores approved
+# memories and episodic session summaries in a local SQLite database using
+# NLContextualEmbedding (macOS 14+, 512-dim, on-device, no external deps).
+# xcalibre-server is retained for optional book-content RAG search only.
+# Memory backend is a pluggable actor protocol — "local-vector" is the default;
+# "null" disables persistence. Active plugin is persisted in AppSettings (config.toml).
+
+# ── PHASE 134a — MemoryBackendPlugin Protocol Tests ──────────────────────────
+Read phases/phase-134a-memory-backend-plugin-tests.md and execute.
+# Verify: BUILD FAILED — MemoryChunk, MemorySearchResult, MemoryBackendPlugin,
+#         MemoryBackendRegistry, NullMemoryPlugin not defined (expected)
+# Commit: Phase 134a — MemoryBackendPlugin tests (failing)
+
+# ── PHASE 134b — MemoryBackendPlugin Protocol Implementation ─────────────────
+Read phases/phase-134b-memory-backend-plugin.md and execute.
+# Verify: BUILD SUCCEEDED; all 134a tests pass; zero warnings
+# Commit: Phase 134b — MemoryBackendPlugin: protocol, registry, NullMemoryPlugin
+
+# ── PHASE 135a — LocalVectorPlugin Tests ─────────────────────────────────────
+Read phases/phase-135a-local-vector-plugin-tests.md and execute.
+# Verify: BUILD FAILED — EmbeddingProviderProtocol, LocalVectorPlugin not defined (expected)
+# Commit: Phase 135a — LocalVectorPlugin tests (failing)
+
+# ── PHASE 135b — LocalVectorPlugin Implementation ────────────────────────────
+Read phases/phase-135b-local-vector-plugin.md and execute.
+# Verify: BUILD SUCCEEDED; all 135a tests pass; zero warnings
+# Commit: Phase 135b — LocalVectorPlugin: SQLite + NLContextualEmbedding cosine search
+
+# ── PHASE 136a — MemoryEngine Backend Wiring Tests ───────────────────────────
+Read phases/phase-136a-memory-engine-backend-wiring-tests.md and execute.
+# Verify: BUILD FAILED — MemoryEngine.setMemoryBackend not defined (expected)
+# Commit: Phase 136a — MemoryEngine backend wiring tests (failing)
+
+# ── PHASE 136b — MemoryEngine Backend Wiring ─────────────────────────────────
+Read phases/phase-136b-memory-engine-backend-wiring.md and execute.
+# Verify: BUILD SUCCEEDED; all 136a tests pass; zero warnings
+# Commit: Phase 136b — MemoryEngine: replace xcalibre write with MemoryBackendPlugin
+
+# ── PHASE 137a — AgenticEngine Memory Plugin Tests ───────────────────────────
+Read phases/phase-137a-agenticengine-memory-plugin-tests.md and execute.
+# Verify: BUILD FAILED — AgenticEngine.setMemoryBackend not defined (expected)
+# Commit: Phase 137a — AgenticEngine memory plugin tests (failing)
+
+# ── PHASE 137b — AgenticEngine Memory Plugin Wiring ──────────────────────────
+Read phases/phase-137b-agenticengine-memory-plugin.md and execute.
+# Verify: BUILD SUCCEEDED; all 137a tests pass; zero warnings
+# Commit: Phase 137b — AgenticEngine: local memory plugin for writes + merged RAG search
+
+# ── PHASE 138a — Memory Backend AppSettings Wiring Tests ─────────────────────
+Read phases/phase-138a-memory-backend-appsettings-tests.md and execute.
+# Verify: BUILD FAILED — AppSettings.memoryBackendID, AppState.memoryRegistry not defined (expected)
+# Commit: Phase 138a — memory backend AppSettings wiring tests (failing)
+
+# ── PHASE 138b — Memory Backend AppSettings Wiring ───────────────────────────
+Read phases/phase-138b-memory-backend-appsettings.md and execute.
+# Verify: BUILD SUCCEEDED; all 138a tests pass; zero warnings
+# Commit: Phase 138b — AppSettings.memoryBackendID + AppState memory registry wiring
+
+# ── PHASE 139 — V9 Documentation & Code Comment Update ───────────────────────
+Read phases/phase-139-v9-docs.md and execute.
+# Verify: BUILD SUCCEEDED; zero warnings; all prior tests pass
+# Commit: Phase 139 — V9 docs + code comments: local memory store plugin system
+
+# ── PHASE 140a — Circuit Breaker Tests ───────────────────────────────────────
+Read phases/phase-140a-circuit-breaker-tests.md and execute.
+# Verify: BUILD FAILED — AgenticEngine.consecutiveCriticFailures,
+#         AppSettings.agentCircuitBreakerThreshold not defined (expected)
+# Commit: Phase 140a — circuit breaker tests (failing)
+
+# ── PHASE 140b — Circuit Breaker Implementation ───────────────────────────────
+Read phases/phase-140b-circuit-breaker.md and execute.
+# Verify: BUILD SUCCEEDED; all 140a tests pass; zero warnings
+# Commit: Phase 140b — reasoning-layer circuit breaker: warn after N consecutive critic failures
+
+# ── PHASE 141a — Grounding Confidence Tests ──────────────────────────────────
+Read phases/phase-141a-grounding-confidence-tests.md and execute.
+# Verify: BUILD FAILED — GroundingReport, AgentEvent.groundingReport,
+#         AppSettings.ragFreshnessThresholdDays, AppSettings.ragMinGroundingScore not defined (expected)
+# Commit: Phase 141a — grounding confidence signal tests (failing)
+
+# ── PHASE 141b — Grounding Confidence Implementation ─────────────────────────
+Read phases/phase-141b-grounding-confidence.md and execute.
+# Verify: BUILD SUCCEEDED; all 141a tests pass; zero warnings
+# Commit: Phase 141b — GroundingReport: per-turn grounding confidence signal
+
+# ── PHASE 142a — Semantic Fault Injection Tests ──────────────────────────────
+Read phases/phase-142a-semantic-fault-injection-tests.md and execute.
+# Verify: BUILD FAILED — StalenessInjectingMemoryBackend, TruncatingMockProvider,
+#         EmptyToolResultRouter, DroppingContextManager not defined (expected)
+# Commit: Phase 142a — semantic fault injection tests (failing)
+
+# ── PHASE 142b — Semantic Fault Injection Implementation ─────────────────────
+Read phases/phase-142b-semantic-fault-injection.md and execute.
+# Verify: BUILD SUCCEEDED; all 142a tests pass; zero warnings
+# Commit: Phase 142b — semantic fault injection test doubles: stale retrieval, truncation, empty tools, context drop
+
+# ── DONE (v9 Local Memory Store) ──────────────────────────────────────────────
+# Memory is fully local: SQLite at ~/.merlin/memory.sqlite, embedded with Apple
+# NLContextualEmbedding, retrieved by cosine similarity. xcalibre-server is now
+# optional book-content only. Backend is swappable via Settings → Memory.
+#
+# Behavioral reliability (v9 additions, phases 140–142):
+# - Circuit breaker (phase 140): halt/warn after N consecutive critic failures
+# - Grounding confidence signal (phase 141): GroundingReport per turn
+# - Semantic fault injection (phase 142): test doubles for stale retrieval,
+#   token pressure, empty tool results, context drop
+# All four mitigations from "Context Decay, Orchestration Drift, and the Rise of
+# Silent Failures in AI Systems" (VentureBeat, 2025) are implemented and documented.
 ```
