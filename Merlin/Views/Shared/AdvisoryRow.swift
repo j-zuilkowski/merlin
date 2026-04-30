@@ -53,6 +53,8 @@ struct AdvisoryRow: View {
     private var iconColor: Color {
         switch advisory.kind {
         case .contextLengthTooSmall:
+            // Match the performance dashboard's severity styling so every
+            // advisory surface reads the same at a glance.
             return .red
         default:
             return .orange

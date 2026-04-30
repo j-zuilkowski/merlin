@@ -2,9 +2,10 @@ import SwiftUI
 
 // MARK: - CalibrationProviderPickerView
 
-/// Step 1 sheet: choose a reference provider, then tap Start.
+/// Sheet step 1 of 3 for `/calibrate`: choose a reference provider, then tap Start.
 struct CalibrationProviderPickerView: View {
     let availableProviders: [String]
+    /// Called with the selected providerID when the user taps Start.
     let onStart: (String) -> Void
 
     @State private var selectedProvider: String = ""
@@ -45,6 +46,8 @@ struct CalibrationProviderPickerView: View {
                     selectedProvider = first
                 }
             }
+            // onAppear seeds the first selection immediately; onChange handles
+            // asynchronous provider-list updates after the sheet is already open.
             .onAppear {
                 if selectedProvider.isEmpty, let first = availableProviders.first {
                     selectedProvider = first

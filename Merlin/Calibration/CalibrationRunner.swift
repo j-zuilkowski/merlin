@@ -2,19 +2,24 @@ import Foundation
 
 // MARK: - CalibrationRunner
 
-/// Runs a CalibrationSuite against two providers in parallel and scores each response.
+/// Runs a calibration suite against local and reference providers.
 ///
-/// `localProvider` and `referenceProvider` are `(prompt: String) async throws -> String`
-/// closures — the caller (AppState) builds them from real LLMProvider instances.
-/// `scorer` is a `(prompt: String, response: String) async throws -> Double` closure
-/// that returns a quality score in [0, 1]; in production this wraps CriticEngine.
+/// The runner is closure-injected instead of coupled directly to `LLMProvider`
+/// so tests can supply lightweight stubs and AppState can decide how to build
+/// provider-specific requests. Both provider closures receive the full
+/// `CalibrationPrompt.prompt` string; any system prompt composition happens
+/// before the closure is built. The scorer is also injected and is called once
+/// per response, so local and reference outputs are evaluated independently.
 ///
-/// Results are sorted by `CalibrationPrompt.id` for deterministic UI display.
+/// Results are collected concurrently and sorted by `CalibrationPrompt.id` for
+/// deterministic display in the report view.
 actor CalibrationRunner {
 
     // MARK: - Closure type aliases (also used by CalibrationAdvisor tests)
 
+    /// Completes a single prompt against one provider and returns the raw text.
     typealias ProviderClosure = @Sendable (String) async throws -> String
+    /// Scores one prompt/response pair on a 0...1 scale.
     typealias ScorerClosure = @Sendable (String, String) async throws -> Double
 
     // MARK: - Private
@@ -37,9 +42,9 @@ actor CalibrationRunner {
 
     // MARK: - Public
 
-    /// Fires all prompts in `suite` in parallel - local and reference calls for each
-    /// prompt run concurrently. Returns one `CalibrationResponse` per prompt, sorted
-    /// by prompt ID.
+    /// Fires the full battery in a TaskGroup so every prompt starts
+    /// concurrently. Within each prompt, the local and reference requests also
+    /// run concurrently, followed by separate scores for each response.
     func run(suite: CalibrationSuite) async throws -> [CalibrationResponse] {
         let localProvider = localProvider
         let referenceProvider = referenceProvider

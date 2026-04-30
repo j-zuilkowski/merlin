@@ -3,55 +3,64 @@ import Foundation
 // MARK: - CategoryScores
 
 /// Per-category score summary produced by CalibrationAdvisor.categoryBreakdown.
+///
+/// `delta` follows the same sign convention as CalibrationResponse.scoreDelta:
+/// positive values mean the reference provider scored better.
 struct CategoryScores: Sendable {
     let localAverage: Double
     let referenceAverage: Double
 
-    /// Positive = reference is better. Negative = local is better.
     var delta: Double { referenceAverage - localAverage }
 }
 
 // MARK: - CalibrationAdvisor
 
-/// Analyses the output of CalibrationRunner and maps observed gaps to
-/// ParameterAdvisory items that feed directly into the existing
-/// ModelParameterAdvisor / applyAdvisory() pipeline.
+/// Analyses calibration results and maps observed gaps to `ParameterAdvisory`
+/// items that feed directly into the existing `applyAdvisory()` pipeline.
 ///
-/// All thresholds are conservative by design - better to under-advise
-/// than to thrash parameters on noisy signal.
+/// The advisor uses four detection algorithms: `contextLengthTooSmall` when
+/// `overallDelta >= 0.40`, `temperatureUnstable` when local score standard
+/// deviation is at least `0.22`, `maxTokensTooLow` when at least 50% of
+/// responses are shorter than 30% of their reference counterpart, and
+/// `repetitiveOutput` when at least 50% of responses have a trigram repetition
+/// ratio above `0.45`.
 struct CalibrationAdvisor: Sendable {
 
     // MARK: - Thresholds
 
-    /// Overall score delta below which no advisory is worth surfacing.
+    /// Below this gap, the calibration signal is treated as too weak to act on.
     private let minActionableDelta: Double = 0.15
 
-    /// Overall delta at or above which context length is implicated as
-    /// the primary bottleneck.
+    /// A 40-point average gap is large enough to implicate missing context
+    /// before the other heuristics, so context length is surfaced first.
     private let contextDeltaThreshold: Double = 0.40
 
-    /// Local score standard deviation at or above which temperature is
-    /// considered too high.
+    /// Standard deviation above 0.22 indicates unstable quality across prompts,
+    /// which usually means temperature is too high.
     private let varianceThreshold: Double = 0.22
 
-    /// local/reference response character-length ratio below which a
-    /// response is considered truncated.
+    /// Length ratios below 0.30 catch obvious truncation without overfitting to
+    /// naturally concise answers.
     private let truncationRatioThreshold: Double = 0.30
 
-    /// Fraction of responses that must be truncated to emit a maxTokens advisory.
+    /// A 50% cutoff keeps a single short outlier from triggering maxTokens advice.
     private let truncationFraction: Double = 0.50
 
-    /// Trigram repetition ratio in a single response above which that
-    /// response is considered repetitive.
+    /// Repetition above 0.45 means more than half of the trigrams are duplicates,
+    /// which is strong evidence of looping or self-repetition.
     private let repetitionRatioThreshold: Double = 0.45
 
-    /// Fraction of responses that must be repetitive to emit a repeatPenalty advisory.
+    /// Requiring half the sample set to be repetitive avoids overreacting to one
+    /// bad answer.
     private let repetitionFraction: Double = 0.50
 
     // MARK: - Public API
 
-    /// Main entry point. Returns zero or more ParameterAdvisory items ordered
+    /// Main entry point. Returns zero or more `ParameterAdvisory` items ordered
     /// from highest to lowest expected impact.
+    ///
+    /// The method returns early when `overallDelta < minActionableDelta` so the
+    /// UI does not surface low-signal noise as a suggested fix.
     func analyze(
         responses: [CalibrationResponse],
         localModelID: String,
@@ -68,10 +77,9 @@ struct CalibrationAdvisor: Sendable {
         let overallRef = average(refScores)
         let overallDelta = overallRef - overallLocal
 
-        // Guard: gap too small to act on
         guard overallDelta >= minActionableDelta else { return [] }
 
-        // 1. Context length - large consistent gap implicates context window first
+        // contextLengthTooSmall: large consistent gap implicates the context window first.
         if overallDelta >= contextDeltaThreshold {
             advisories.append(ParameterAdvisory(
                 kind: .contextLengthTooSmall,
@@ -88,7 +96,7 @@ struct CalibrationAdvisor: Sendable {
             ))
         }
 
-        // 2. Temperature - high variance across local scores
+        // temperatureUnstable: quality variance across prompts suggests sampling is too hot.
         let variance = stddev(localScores)
         if variance >= varianceThreshold {
             advisories.append(ParameterAdvisory(
@@ -106,7 +114,7 @@ struct CalibrationAdvisor: Sendable {
             ))
         }
 
-        // 3. Max tokens - local responses consistently much shorter than reference
+        // maxTokensTooLow: local responses are consistently truncated relative to the reference.
         let truncatedCount = responses.filter { r in
             let ratio = Double(r.localResponse.count) / max(1.0, Double(r.referenceResponse.count))
             return ratio < truncationRatioThreshold
@@ -127,7 +135,7 @@ struct CalibrationAdvisor: Sendable {
             ))
         }
 
-        // 4. Repeat penalty - high trigram repetition in local responses
+        // repetitiveOutput: repeated trigrams indicate looping or phrase reuse.
         let repetitiveCount = responses.filter { r in
             repetitionRatio(in: r.localResponse) > repetitionRatioThreshold
         }.count
@@ -149,8 +157,11 @@ struct CalibrationAdvisor: Sendable {
         return advisories
     }
 
-    /// Per-category average scores - used by CalibrationReportView to show a
-    /// breakdown table so the user can see where the biggest gaps lie.
+    /// Per-category average scores for display only.
+    ///
+    /// CalibrationAdvisor does not use this breakdown when deciding whether to
+    /// surface advisories; the view layer uses it to render a stable category
+    /// table.
     func categoryBreakdown(responses: [CalibrationResponse]) -> [CalibrationCategory: CategoryScores] {
         let grouped = Dictionary(grouping: responses, by: \.prompt.category)
         return grouped.mapValues { group in
@@ -175,8 +186,12 @@ struct CalibrationAdvisor: Sendable {
         return sqrt(squaredDiffs.reduce(0, +) / Double(values.count))
     }
 
-    /// Trigram-based repetition ratio: fraction of trigrams that are duplicates.
-    /// Returns 0 for very short texts, 1.0 for entirely repeated text.
+    /// Trigram-based repetition ratio.
+    ///
+    /// The algorithm lowercases the text, splits on whitespace, builds a sliding
+    /// window of three consecutive words, and then computes `1 - unique / total`.
+    /// A return value of 0 means all trigrams were unique; a value of 1 means the
+    /// text collapsed into a fully repeated trigram pattern.
     private func repetitionRatio(in text: String) -> Double {
         let words = text.lowercased()
             .components(separatedBy: .whitespacesAndNewlines)

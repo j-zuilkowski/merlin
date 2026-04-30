@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - CalibrationProgressView
 
-/// Shown while the calibration suite is running.
+/// Sheet step 2 of 3 for `/calibrate`, shown while the calibration suite is running.
 struct CalibrationProgressView: View {
     let info: CalibrationProgressInfo
 
@@ -11,6 +11,7 @@ struct CalibrationProgressView: View {
             Image(systemName: "dial.medium")
                 .font(.system(size: 40))
                 .foregroundStyle(.blue)
+                // `.symbolEffect` is available on macOS 14+, which is the app's minimum target.
                 .symbolEffect(.pulse)
 
             Text("Calibrating...")

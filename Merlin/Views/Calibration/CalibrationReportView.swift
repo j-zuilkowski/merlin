@@ -2,8 +2,11 @@ import SwiftUI
 
 // MARK: - CalibrationReportView
 
-/// Final report sheet: overall scores, category breakdown, advisory list,
-/// and an "Apply All Suggestions" button.
+/// Sheet step 3 of 3 for `/calibrate`.
+///
+/// The report shows three visible regions: overall scores, category breakdown,
+/// and advisory list, plus a footer button that applies every suggestion through
+/// the existing advisory pipeline.
 @MainActor
 struct CalibrationReportView: View {
     let report: CalibrationReport
@@ -88,6 +91,8 @@ struct CalibrationReportView: View {
                     Text("Gap")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    // Match CalibrationAdvisor.minActionableDelta so gaps above
+                    // 15% read as red while smaller gaps stay green.
                     Text(String(format: "%+.0f%%", report.overallDelta * 100))
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(report.overallDelta > 0.15 ? .red : .green)
@@ -105,6 +110,8 @@ struct CalibrationReportView: View {
             Text("By Category")
                 .font(.subheadline.weight(.semibold))
 
+            // Iterate in CalibrationCategory.allCases order so the category
+            // rows stay stable even if the report only contains a subset.
             ForEach(CalibrationCategory.allCases, id: \.self) { cat in
                 if let scores = breakdown[cat] {
                     HStack {
@@ -130,6 +137,8 @@ struct CalibrationReportView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Suggested Fixes")
                 .font(.subheadline.weight(.semibold))
+            // Reuse the shared AdvisoryRow so calibration and dashboard surfaces
+            // keep the same icon and color language.
             ForEach(report.advisories) { advisory in
                 AdvisoryRow(advisory: advisory)
             }
@@ -166,6 +175,7 @@ private struct ScoreBar: View {
                     .frame(height: 6)
                 RoundedRectangle(cornerRadius: 3)
                     .fill(color)
+                    // `score` is already normalised into [0, 1] by the scorer.
                     .frame(width: geo.size.width * score, height: 6)
             }
         }
@@ -173,6 +183,8 @@ private struct ScoreBar: View {
     }
 }
 
+// Display strings belong in the view layer, so keep this extension private to
+// the calibration report rather than adding UI-only labels to the model type.
 private extension CalibrationCategory {
     var displayName: String {
         switch self {

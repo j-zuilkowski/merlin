@@ -363,7 +363,9 @@ Merlin/Views/Settings/
 
 `CalibrationRunner` takes `(String) async throws -> String` closures for local and reference
 providers rather than `any LLMProvider` directly. This keeps the calibration engine decoupled
-from the provider abstraction layer and makes it trivially testable with stubs.
+from the provider abstraction layer and makes it trivially testable with stubs. The provider
+closures receive the full `CalibrationPrompt.prompt` string, and the scorer closure is invoked
+once per response so local and reference answers are judged independently.
 
 ### Calibration Flow
 
@@ -371,27 +373,28 @@ from the provider abstraction layer and makes it trivially testable with stubs.
 User types /calibrate
         │
         ▼
-CalibrationCoordinator.begin()
+CalibrationCoordinator.begin(localProviderID:localModelID:)
   → CalibrationSheet.pickProvider([remoteProviderIDs])
         │
         ▼  user selects reference + taps Start
 CalibrationCoordinator.start(referenceProviderID:)
-  → builds localClosure    from appState.provider(for: localProviderID)
-  → builds referenceClosure from appState.provider(for: referenceProviderID)
-  → builds scorerClosure    from appState.criticEngine.score(prompt:response:)
+  → builds localClosure     with makeProviderClosure(providerID: localProviderID)
+  → builds referenceClosure with makeProviderClosure(providerID: referenceProviderID)
+  → builds scorerClosure    with makeScorerClosure()
         │
         ▼
 CalibrationRunner.run(suite: .default)           ← TaskGroup: all 18 prompts in parallel
   for each prompt:
-    async let local     = localClosure(prompt)
-    async let reference = referenceClosure(prompt)
-    async let localScore     = scorer(prompt, local)
-    async let referenceScore = scorer(prompt, reference)
+    async let local     = localClosure(prompt.prompt)
+    async let reference = referenceClosure(prompt.prompt)
+    async let localScore     = scorer(prompt.prompt, local)
+    async let referenceScore = scorer(prompt.prompt, reference)
   → [CalibrationResponse]  (sorted by prompt.id)
         │
         ▼
 CalibrationAdvisor.analyze(responses:localModelID:localProviderID:)
   checks:
+    overallDelta < 0.15         → return []
     overallDelta ≥ 0.40          → .contextLengthTooSmall  (suggestedValue: "32768")
     local score σ ≥ 0.22         → .temperatureUnstable    (suggestedValue: "0.3")
     ≥50% responses length < 30%  → .maxTokensTooLow        (suggestedValue: "4096")
@@ -415,10 +418,10 @@ CalibrationSheet.report(report)
 
 | ID | Category | Signal targeted |
 |---|---|---|
-| r1–r5 | Reasoning | variance detection, context gap |
-| c1–c5 | Coding | instruction compliance, length |
-| i1–i4 | Instruction Following | format compliance, truncation |
-| s1–s4 | Summarization | repetition, coherence |
+| r1–r5 | Reasoning (5) | multi-step deduction, context retention |
+| c1–c5 | Coding (5) | code synthesis, bug detection, technical formatting |
+| i1–i4 | Instruction Following (4) | format compliance, truncation, schema adherence |
+| s1–s4 | Summarization (4) | compression quality, repetition, salient detail selection |
 
 ### File Layout
 

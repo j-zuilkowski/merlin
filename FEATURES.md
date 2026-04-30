@@ -60,6 +60,25 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 - The Performance Dashboard automatically detects truncation, critic-score variance, trigram repetition, and context-overflow markers.
 - Each advisory has a one-tap `Fix this` action that routes through the same `applyAdvisory(_:)` path used by the engine.
 
+## Model Calibration (`/calibrate`)
+
+Type `/calibrate` in the chat bar to benchmark the active local model against any configured
+remote provider (Anthropic, OpenAI, DeepSeek, etc.).
+
+**What it does:**
+- Sends an 18-prompt battery (reasoning, coding, instruction-following, summarization) to both
+  the local and reference provider simultaneously.
+- Critic-scores every response pair and computes per-category and overall score gaps.
+- Identifies up to four parameter issues: context length too small, temperature too high,
+  output truncation, and repetitive output.
+- Shows a report with a side-by-side score breakdown and one-tap "Apply All Suggestions"
+  that routes fixes through the existing advisory pipeline (runtime reload where supported,
+  restart instructions where not).
+
+**What it cannot fix:**
+- Model weight quality - use the LoRA self-training pipeline (`/lora`) for that.
+- Provider network latency or API rate limits.
+
 ---
 
 ## Multi-Provider Setup

@@ -3,6 +3,10 @@ import SwiftUI
 
 // MARK: - CalibrationProgressInfo
 
+/// Live progress state shown while the calibration battery is running.
+///
+/// `fraction` is derived from `Double(completed) / Double(total)` so the view
+/// can feed the progress bar directly without additional clamping logic.
 struct CalibrationProgressInfo: Sendable {
     let completed: Int
     let total: Int
@@ -14,6 +18,7 @@ struct CalibrationProgressInfo: Sendable {
 
 // MARK: - CalibrationSheet
 
+/// The three-state calibration sheet flow: pickProvider → running → report.
 enum CalibrationSheet: Sendable {
     case pickProvider([String])
     case running(CalibrationProgressInfo)
@@ -21,6 +26,8 @@ enum CalibrationSheet: Sendable {
 }
 
 extension CalibrationSheet: Identifiable {
+    /// SwiftUI `.sheet(item:)` needs a stable identity; string IDs avoid
+    /// unnecessary re-presentation when the associated payload changes.
     var id: String {
         switch self {
         case .pickProvider:
@@ -35,8 +42,13 @@ extension CalibrationSheet: Identifiable {
 
 // MARK: - CalibrationCoordinator
 
-/// Owns the /calibrate workflow and drives the sheet state machine.
-/// Held by AppState; the chat input bar calls begin() when the user types /calibrate.
+/// Owns the `/calibrate` workflow while `AppState` holds the instance.
+///
+/// The coordinator drives the sheet state machine, captures the active local
+/// provider, builds the closure-injected runner, and feeds any resulting
+/// advisories back through the existing `applyAdvisory()` pipeline so
+/// calibration fixes reuse the same runtime-reload and restart behavior as the
+/// rest of the app.
 @MainActor
 final class CalibrationCoordinator: ObservableObject {
 
@@ -52,16 +64,18 @@ final class CalibrationCoordinator: ObservableObject {
 
     // MARK: - Public API
 
-    /// Step 1: called when user types /calibrate.
-    /// Determines which local provider is active and opens the reference provider picker.
+    /// Entry point from the chat input bar when the user types `/calibrate`.
+    /// Captures the active local provider and opens the reference-provider picker.
     func begin(localProviderID: String, localModelID: String) {
         self.localProviderID = localProviderID
         self.localModelID = localModelID
         sheet = .pickProvider(availableReferenceProviders())
     }
 
-    /// Step 2: called when user selects a reference provider and taps Start.
-    /// Runs the calibration suite and publishes progress, then the final report.
+    /// Starts the calibration run after the user chooses a reference provider.
+    ///
+    /// This builds the provider and scorer closures, runs the suite, publishes
+    /// the report state, and dismisses the sheet on error.
     func start(referenceProviderID: String) async {
         let total = CalibrationSuite.default.prompts.count
         sheet = .running(CalibrationProgressInfo(
@@ -103,8 +117,10 @@ final class CalibrationCoordinator: ObservableObject {
         }
     }
 
-    /// Step 3: "Apply All Suggestions" — feeds every advisory in the last report
-    /// through the existing applyAdvisory() pipeline.
+    /// Applies every advisory from the current report through
+    /// `AppState.applyAdvisory(_:)`, then dismisses the sheet.
+    ///
+    /// `try?` keeps one failed advisory from blocking later suggestions.
     func applyAll() async {
         guard let appState,
               case .report(let report) = sheet else { return }
@@ -120,9 +136,7 @@ final class CalibrationCoordinator: ObservableObject {
 
     // MARK: - ToolRegistry registration
 
-    /// Registers the "calibrate" tool definition into ToolRegistry so the
-    /// model can invoke /calibrate via function calling and the slash-command
-    /// overlay can discover it.
+    /// Registers the `calibrate` tool definition once at `AppState` init.
     static func registerSkill() {
         ToolRegistry.shared.register(ToolDefinition(function: .init(
             name: "calibrate",
@@ -142,6 +156,8 @@ final class CalibrationCoordinator: ObservableObject {
 
     // MARK: - Private
 
+    /// Filters enabled non-local providers so the picker only shows valid
+    /// reference targets.
     private func availableReferenceProviders() -> [String] {
         guard let appState else { return [] }
         return appState.configuredProviders
@@ -149,6 +165,11 @@ final class CalibrationCoordinator: ObservableObject {
             .map(\.id)
     }
 
+    /// Builds a single streamed completion request for one provider.
+    ///
+    /// The request uses the prompt text as a normal user turn, sets max tokens
+    /// through the standard inference defaults, and lets the provider-specific
+    /// adapter resolve any model defaults before dispatch.
     private func makeProviderClosure(providerID: String) -> CalibrationRunner.ProviderClosure {
         { [weak appState] prompt in
             guard let appState else {
@@ -178,6 +199,8 @@ final class CalibrationCoordinator: ObservableObject {
         }
     }
 
+    /// Wraps the judge-provider scoring request and returns 1.0 for PASS,
+    /// 0.0 for FAIL, or 0.5 when the scorer cannot produce a confident result.
     private func makeScorerClosure() -> CalibrationRunner.ScorerClosure {
         { [weak appState] prompt, response in
             guard let appState else { return 0.5 }
@@ -237,6 +260,7 @@ final class CalibrationCoordinator: ObservableObject {
 
 // MARK: - CalibrationError
 
+/// Errors produced while building providers or running the calibration suite.
 enum CalibrationError: Error, Sendable {
     case providerNotFound(String)
     case runnerFailed(String)

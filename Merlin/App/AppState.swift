@@ -79,6 +79,7 @@ final class AppState: ObservableObject {
     var activeLocalProviderID: String? = nil
     let loraCoordinator = LoRACoordinator()
     let parameterAdvisor = ModelParameterAdvisor()
+    /// Lazily created so CalibrationCoordinator can hold a weak reference back to AppState.
     lazy var calibrationCoordinator: CalibrationCoordinator = CalibrationCoordinator(appState: self)
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
@@ -100,6 +101,7 @@ final class AppState: ObservableObject {
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
         Self.installBuiltinSkills()
         ToolRegistry.shared.registerBuiltins()
+        // Idempotent registration; calling this once at init makes /calibrate available to the registry.
         CalibrationCoordinator.registerSkill()
         Task {
             await AgentRegistry.shared.registerBuiltins()
@@ -412,6 +414,7 @@ final class AppState: ObservableObject {
         localModelManagers[providerID]
     }
 
+    /// Returns the registered provider instance for a provider ID.
     func provider(for providerID: String) -> (any LLMProvider)? {
         registry.provider(for: providerID)
     }
@@ -420,6 +423,7 @@ final class AppState: ObservableObject {
         registry.providers.first { $0.id == providerID }
     }
 
+    /// Enabled provider configurations in the current registry state.
     var configuredProviders: [ProviderConfig] {
         registry.providers.filter(\.isEnabled)
     }
