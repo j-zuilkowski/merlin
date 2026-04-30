@@ -225,6 +225,7 @@
 		C1B6E354EFC8DF8AD29795C3 /* FilePane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B60898163F147C93BF66B39D /* FilePane.swift */; };
 		C1C5E0974CFB3BA0436BB545 /* CompletionRequestSamplingParamsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C50E715472E2F395B24830A5 /* CompletionRequestSamplingParamsTests.swift */; };
 		C26DF83B0A2259D091F26D58 /* ToolDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C70C83D88223C2B2DE3A5242 /* ToolDefinitions.swift */; };
+		C2F5078BA6DFEA570FD6C371 /* CalibrationAdvisorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02150624FD9EF00BB318E40B /* CalibrationAdvisorTests.swift */; };
 		C3F55446A4AB27B204D98A79 /* AgenticEngineSlotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 942F9DBBE67AC6DC3CDEB693 /* AgenticEngineSlotTests.swift */; };
 		C4318507ADF3219D2FB94D33 /* XcalibreClientProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4151D1646DB0DF94D14EB859 /* XcalibreClientProtocol.swift */; };
 		C46CDA8E2AB57B16A3DE93C2 /* ModelManagerWiringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A6766C80ED76CF770A4C9 /* ModelManagerWiringTests.swift */; };
@@ -317,6 +318,7 @@
 		010B889262AAE8AF30CF04F1 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		017BE52E9FB37750D343ACED /* ScheduledTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTask.swift; sourceTree = "<group>"; };
 		02044BCB2257F6F8D87EA37C /* XcalibreClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcalibreClientTests.swift; sourceTree = "<group>"; };
+		02150624FD9EF00BB318E40B /* CalibrationAdvisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAdvisorTests.swift; sourceTree = "<group>"; };
 		0311508A5D8A5706DC29D5E8 /* AgenticEngineProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineProviderTests.swift; sourceTree = "<group>"; };
 		03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeTools.swift; sourceTree = "<group>"; };
 		059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProviderRegistry+ReasoningEffort.swift"; sourceTree = "<group>"; };
@@ -841,6 +843,7 @@
 				D68DF90F638AEABE20362678 /* AppStateSessionTests.swift */,
 				7306BD77A5F6F3910A0F5C5C /* AuthGateTests.swift */,
 				2988D5A14565391542674258 /* AuthMemoryTests.swift */,
+				02150624FD9EF00BB318E40B /* CalibrationAdvisorTests.swift */,
 				E6DA79C0A7864E74D544C651 /* CalibrationRunnerTests.swift */,
 				E0B3F4871689D08DFF5511D9 /* CGEventToolTests.swift */,
 				B11CD06F1170B3F5FA23984D /* CLAUDEMDLoaderTests.swift */,
@@ -1440,6 +1443,7 @@
 				7621709D16BBAB8DA4D03F02 /* BundleModule.swift in Sources */,
 				88F9D22262AA2FC15B71B589 /* CGEventToolTests.swift in Sources */,
 				B3D64C96D670DECEF44FE747 /* CLAUDEMDLoaderTests.swift in Sources */,
+				C2F5078BA6DFEA570FD6C371 /* CalibrationAdvisorTests.swift in Sources */,
 				625B99FA4CA1C7EA3DF0C2C8 /* CalibrationRunnerTests.swift in Sources */,
 				C1C5E0974CFB3BA0436BB545 /* CompletionRequestSamplingParamsTests.swift in Sources */,
 				E98888AFCDEEEC71D8006B15 /* ConnectorTests.swift in Sources */,
