@@ -389,6 +389,11 @@ struct MemoriesSettingsView: View {
                     }
                 }
                 .disabled(!settings.memoriesEnabled)
+                Picker("Memory backend", selection: $settings.memoryBackendID) {
+                    Text("Local (on-device)").tag("local-vector")
+                    Text("None").tag("null")
+                }
+                .disabled(!settings.memoriesEnabled)
                 Text("After this idle period, Merlin summarises the conversation into memory files for your review.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -136,7 +136,7 @@ final class MemoryBackendRegistry {
     }
 
     /// Add a plugin to the registry. Does not change the active plugin.
-    func register(_ plugin: any MemoryBackendPlugin) async {
+    func register(_ plugin: any MemoryBackendPlugin) {
         plugins[plugin.pluginID] = plugin
     }
 

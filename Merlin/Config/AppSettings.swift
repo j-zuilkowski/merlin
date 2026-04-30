@@ -43,6 +43,8 @@ final class AppSettings: ObservableObject {
     @Published var disabledSkillNames: [String] = []
     @Published var memoriesEnabled: Bool = false
     @Published var memoryIdleTimeout: TimeInterval = 300
+    /// TOML key `memory.backend_id`. Selects the active MemoryBackendPlugin.
+    @Published var memoryBackendID: String = "local-vector"
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
     @Published var ragChunkLimit: Int = 3
@@ -135,6 +137,7 @@ final class AppSettings: ObservableObject {
         var disabledSkillNames: [String]?
         var memoriesEnabled: Bool?
         var memoryIdleTimeout: TimeInterval?
+        var memory: MemoryConfig?
         var projectPath: String?
         var ragRerank: Bool?
         var ragChunkLimit: Int?
@@ -184,6 +187,14 @@ final class AppSettings: ObservableObject {
             }
         }
 
+        struct MemoryConfig: Codable, Sendable {
+            var backendID: String?
+
+            enum CodingKeys: String, CodingKey {
+                case backendID = "backend_id"
+            }
+        }
+
         struct InferenceConfig: Codable, Sendable {
             var temperature: Double?
             var maxTokens: Int?
@@ -229,6 +240,7 @@ final class AppSettings: ObservableObject {
             case disabledSkillNames = "disabled_skill_names"
             case memoriesEnabled = "memories_enabled"
             case memoryIdleTimeout = "memory_idle_timeout"
+            case memory
             case projectPath = "project_path"
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
@@ -310,6 +322,9 @@ final class AppSettings: ObservableObject {
             lines.append("memories_enabled = true")
             lines.append("memory_idle_timeout = \(memoryIdleTimeout)")
         }
+        lines.append("")
+        lines.append("[memory]")
+        lines.append("backend_id = \(quoted(memoryBackendID))")
         if projectPath.isEmpty == false {
             lines.append("project_path = \(quoted(projectPath))")
         }
@@ -618,6 +633,9 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.memoryIdleTimeout {
             memoryIdleTimeout = value
+        }
+        if let value = config.memory?.backendID {
+            memoryBackendID = value
         }
         if let value = config.projectPath {
             projectPath = value

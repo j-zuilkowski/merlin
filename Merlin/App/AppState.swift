@@ -73,6 +73,9 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
+    /// Registry of all MemoryBackendPlugin implementations.
+    /// Populated at init; active plugin is injected into AgenticEngine.
+    let memoryRegistry = MemoryBackendRegistry()
     /// Local model managers keyed by providerID; rebuilt from ProviderRegistry at init and whenever providers change.
     var localModelManagers: [String: any LocalModelManagerProtocol] = [:]
     /// The active local provider ID derived when the user selects a local provider in Settings → Providers.
@@ -99,6 +102,13 @@ final class AppState: ObservableObject {
 
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
+        let vectorPlugin = LocalVectorPlugin(
+            databasePath: FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".merlin/memory.sqlite").path,
+            embeddingProvider: NLContextualEmbeddingProvider()
+        )
+        memoryRegistry.register(vectorPlugin)
+        memoryRegistry.setActive(pluginID: AppSettings.shared.memoryBackendID)
         Self.installBuiltinSkills()
         ToolRegistry.shared.registerBuiltins()
         // Idempotent registration; calling this once at init makes /calibrate available to the registry.
@@ -161,7 +171,8 @@ final class AppState: ObservableObject {
             visionProvider: vision,
             toolRouter: toolRouter,
             contextManager: ctx,
-            xcalibreClient: xcalibreClient
+            xcalibreClient: xcalibreClient,
+            memoryBackend: memoryRegistry.activePlugin
         )
         engine.currentProjectPath = AppSettings.shared.projectPath.isEmpty
             ? nil
@@ -246,6 +257,7 @@ final class AppState: ObservableObject {
         settingsCancellable = AppSettings.shared.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncEngineProviders()
+                await self?.syncMemoryBackend()
             }
         }
 
@@ -407,6 +419,12 @@ final class AppState: ObservableObject {
         Task { [weak self] in
             await self?.refreshParameterAdvisories()
         }
+    }
+
+    private func syncMemoryBackend() async {
+        memoryRegistry.setActive(pluginID: AppSettings.shared.memoryBackendID)
+        let active = memoryRegistry.activePlugin
+        await engine.setMemoryBackend(active)
     }
 
     /// Returns the local model manager for a providerID, if one exists.
