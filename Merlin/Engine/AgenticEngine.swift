@@ -34,6 +34,7 @@ final class AgenticEngine {
     private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
+    var loraCoordinator: LoRACoordinator?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
     var permissionMode: PermissionMode = .ask
@@ -568,6 +569,16 @@ final class AgenticEngine {
             prompt: userMessage,
             response: lastResponseText
         )
+
+        if AppSettings.shared.loraEnabled, AppSettings.shared.loraAutoTrain,
+           let coordinator = loraCoordinator {
+            await coordinator.considerTraining(
+                tracker: performanceTracker,
+                minSamples: AppSettings.shared.loraMinSamples,
+                baseModel: AppSettings.shared.loraBaseModel,
+                adapterOutputPath: AppSettings.shared.loraAdapterPath
+            )
+        }
 
         if let client = xcalibreClient, AppSettings.shared.memoriesEnabled {
             // Skip memory write when critic explicitly rejected this session's output.

@@ -70,6 +70,7 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
 
     let xcalibreClient: XcalibreClient
+    let loraCoordinator = LoRACoordinator()
     let toolbarActions = ToolbarActionStore()
     private var registryCancellable: AnyCancellable?
     private var settingsCancellable: AnyCancellable?
@@ -157,6 +158,7 @@ final class AppState: ObservableObject {
         contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)
         engine.registry = registry
         engine.sessionStore = sessionStore
+        engine.loraCoordinator = loraCoordinator
         syncEngineProviders()
         if let token = ConnectorCredentials.retrieve(service: "github"), !token.isEmpty {
             prMonitor.start(projectPath: projectPath, token: token)
