@@ -23,6 +23,25 @@ actor HookEngine {
     }
 
     func runPreToolUse(toolName: String, input: [String: String]) async -> HookDecision {
+        let hookStart = Date()
+        let result = await _runPreToolUse(toolName: toolName, input: input)
+        let ms = Date().timeIntervalSince(hookStart) * 1000
+        let decisionStr: String
+        switch result {
+        case .allow:
+            decisionStr = "allow"
+        case .deny:
+            decisionStr = "deny"
+        }
+        TelemetryEmitter.shared.emit("hook.pre_tool", durationMs: ms, data: [
+            "tool_name": toolName,
+            "decision": decisionStr,
+            "duration_ms": ms
+        ])
+        return result
+    }
+
+    private func _runPreToolUse(toolName: String, input: [String: String]) async -> HookDecision {
         let relevant = hooks.filter { $0.event == "PreToolUse" && $0.enabled }
         guard relevant.isEmpty == false else {
             return .allow
@@ -57,6 +76,18 @@ actor HookEngine {
     }
 
     func runPostToolUse(toolName: String, result: String) async -> String? {
+        let hookStart = Date()
+        let note = await _runPostToolUse(toolName: toolName, result: result)
+        let ms = Date().timeIntervalSince(hookStart) * 1000
+        TelemetryEmitter.shared.emit("hook.post_tool", durationMs: ms, data: [
+            "tool_name": toolName,
+            "had_note": note != nil,
+            "duration_ms": ms
+        ])
+        return note
+    }
+
+    private func _runPostToolUse(toolName: String, result: String) async -> String? {
         let relevant = hooks.filter { $0.event == "PostToolUse" && $0.enabled }
         guard relevant.isEmpty == false else {
             return nil
@@ -87,6 +118,17 @@ actor HookEngine {
     }
 
     func runUserPromptSubmit(prompt: String) async -> String? {
+        let hookStart = Date()
+        let modified = await _runUserPromptSubmit(prompt: prompt)
+        let ms = Date().timeIntervalSince(hookStart) * 1000
+        TelemetryEmitter.shared.emit("hook.prompt_submit", durationMs: ms, data: [
+            "modified": modified != nil,
+            "duration_ms": ms
+        ])
+        return modified
+    }
+
+    private func _runUserPromptSubmit(prompt: String) async -> String? {
         let relevant = hooks.filter { $0.event == "UserPromptSubmit" && $0.enabled }
         guard relevant.isEmpty == false else {
             return nil

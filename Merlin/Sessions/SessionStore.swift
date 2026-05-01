@@ -27,6 +27,7 @@ final class SessionStore: ObservableObject {
     }
 
     func save(_ session: Session) throws {
+        let saveStart = Date()
         let url = storeDirectory.appendingPathComponent(session.id.uuidString + ".json")
         let data = try JSONEncoder().encode(session)
         try data.write(to: url, options: .atomic)
@@ -37,6 +38,12 @@ final class SessionStore: ObservableObject {
             sessions.append(session)
         }
         activeSessionID = session.id
+
+        let ms = Date().timeIntervalSince(saveStart) * 1000
+        TelemetryEmitter.shared.emit("session.save", durationMs: ms, data: [
+            "session_id": session.id.uuidString,
+            "message_count": session.messages.count
+        ])
     }
 
     func delete(_ id: UUID) throws {

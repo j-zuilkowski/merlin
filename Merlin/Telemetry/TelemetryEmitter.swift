@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 // MARK: - TelemetryValue
 
@@ -173,6 +174,25 @@ public final class TelemetryEmitter: @unchecked Sendable {
     public func begin(_ event: String,
                       data: [String: Any] = [:]) -> TelemetrySpan {
         TelemetrySpan(event: event, startData: normalizeData(data))
+    }
+
+    /// Sample and emit current process RSS and virtual memory usage.
+    /// Uses `task_info` - available on macOS without entitlements.
+    public func emitProcessMemory() {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<integer_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        guard kr == KERN_SUCCESS else { return }
+        let rssMB = Double(info.resident_size) / 1_048_576
+        let vsizeMB = Double(info.virtual_size) / 1_048_576
+        emit("process.memory", data: [
+            "rss_mb": rssMB,
+            "vsize_mb": vsizeMB
+        ])
     }
 
     // MARK: Private file I/O (runs on `queue`)

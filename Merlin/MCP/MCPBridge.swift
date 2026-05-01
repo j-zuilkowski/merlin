@@ -45,6 +45,33 @@ actor MCPBridge {
     }
 
     func call(server: String, tool: String, arguments: [String: Any]) async throws -> String {
+        TelemetryEmitter.shared.emit("mcp.call.start", data: [
+            "server": server,
+            "tool": tool
+        ])
+        let callStart = Date()
+        do {
+            let result = try await _call(server: server, tool: tool, arguments: arguments)
+            let ms = Date().timeIntervalSince(callStart) * 1000
+            TelemetryEmitter.shared.emit("mcp.call.complete", durationMs: ms, data: [
+                "server": server,
+                "tool": tool,
+                "result_bytes": result.utf8.count
+            ])
+            return result
+        } catch {
+            let ms = Date().timeIntervalSince(callStart) * 1000
+            TelemetryEmitter.shared.emit("mcp.call.error", durationMs: ms, data: [
+                "server": server,
+                "tool": tool,
+                "error_domain": (error as NSError).domain,
+                "error_code": (error as NSError).code
+            ])
+            throw error
+        }
+    }
+
+    private func _call(server: String, tool: String, arguments: [String: Any]) async throws -> String {
         guard let session = sessions[server] else {
             throw MCPError.serverNotFound(server)
         }
