@@ -33,12 +33,40 @@ enum FileSystemTools {
         }
     }
 
+    /// Directories skipped during recursive enumeration to avoid runaway output
+    /// (build artefacts, dependency caches, VCS objects).
+    private static let skipDirs: Set<String> = [
+        "target", ".git", "node_modules", ".build", "DerivedData",
+        ".swiftpm", "Pods", "vendor", ".hg", "__pycache__", ".tox",
+        "dist", "build", ".gradle", ".idea", ".vscode",
+    ]
+
     static func listDirectory(path: String, recursive: Bool) async throws -> String {
         let url = URL(fileURLWithPath: path)
         let fm = FileManager.default
         if recursive {
-            guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: nil) else { return "" }
-            return enumerator.compactMap { $0 as? URL }.map { $0.path }.sorted().joined(separator: "\n")
+            guard let enumerator = fm.enumerator(
+                at: url,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [],
+                errorHandler: nil
+            ) else { return "" }
+
+            var results: [String] = []
+            let limit = 500
+            for case let fileURL as URL in enumerator {
+                // Skip known huge directories entirely.
+                if skipDirs.contains(fileURL.lastPathComponent) {
+                    enumerator.skipDescendants()
+                    continue
+                }
+                results.append(fileURL.path)
+                if results.count >= limit {
+                    results.append("… (truncated at \(limit) entries — use search_files for deeper exploration)")
+                    break
+                }
+            }
+            return results.sorted().joined(separator: "\n")
         } else {
             return try fm.contentsOfDirectory(atPath: url.path).sorted().joined(separator: "\n")
         }

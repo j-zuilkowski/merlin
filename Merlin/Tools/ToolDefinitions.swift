@@ -64,12 +64,12 @@ enum ToolDefinitions {
 
     static let listDirectory = ToolDefinition(function: .init(
         name: "list_directory",
-        description: "List directory contents",
+        description: "List directory contents. Recursive mode skips build/cache directories (target, node_modules, .git, DerivedData, vendor, .build, Pods) and is capped at 500 entries. Use search_files for deeper exploration.",
         parameters: JSONSchema(
             type: "object",
             properties: [
                 "path": JSONSchema(type: "string", description: "Absolute path"),
-                "recursive": JSONSchema(type: "boolean", description: "List recursively"),
+                "recursive": JSONSchema(type: "boolean", description: "List recursively (skips build/cache dirs, max 500 entries)"),
             ],
             required: ["path"]
         )
