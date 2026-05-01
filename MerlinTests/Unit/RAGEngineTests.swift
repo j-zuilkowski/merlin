@@ -55,7 +55,7 @@ final class RAGEngineTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: capturing,
             flashProvider: capturing,
-            visionProvider: LMStudioProvider(),
+            visionProvider: capturing,
             toolRouter: router,
             contextManager: ctx,
             xcalibreClient: xcalibreClient

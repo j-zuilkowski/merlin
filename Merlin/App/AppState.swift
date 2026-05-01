@@ -166,7 +166,7 @@ final class AppState: ObservableObject {
 
         let initialProvider = registry.primaryProvider
             ?? DeepSeekProvider(apiKey: "", model: "deepseek-v4-pro")
-        let vision = registry.visionProvider ?? LMStudioProvider()
+        let vision = registry.visionProvider ?? NullProvider()
 
         engine = AgenticEngine(
             proProvider: initialProvider,
@@ -549,9 +549,14 @@ final class AppState: ObservableObject {
             return NullModelManager(providerID: config.id)
         }
 
-        switch config.localModelManagerID ?? config.id {
-        case "lmstudio":
+        if config.isLocal,
+           config.kind == .openAICompatible,
+           url.host?.lowercased() == "localhost",
+           url.port == 1234 {
             return LMStudioModelManager(baseURL: url)
+        }
+
+        switch config.localModelManagerID ?? config.id {
         case "ollama":
             return OllamaModelManager(baseURL: url)
         case "jan":

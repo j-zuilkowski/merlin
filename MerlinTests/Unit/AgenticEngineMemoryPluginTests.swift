@@ -30,7 +30,7 @@ final class AgenticEngineMemoryPluginTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: provider,
             flashProvider: provider,
-            visionProvider: LMStudioProvider(),
+            visionProvider: provider,
             toolRouter: router,
             contextManager: ContextManager(),
             xcalibreClient: xcalibreClient

@@ -276,8 +276,5 @@ private func calibrationCompleteText(provider: any LLMProvider, request: Complet
 }
 
 private func calibrationResolvedModelID(for config: ProviderConfig) -> String {
-    if config.model.isEmpty, config.id == "lmstudio" {
-        return LMStudioProvider().model
-    }
     return config.model
 }

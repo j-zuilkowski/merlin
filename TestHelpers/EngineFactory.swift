@@ -13,8 +13,9 @@ func makeEngine(provider: MockProvider? = nil,
     let ctx = ContextManager()
     let pro = proProvider ?? provider ?? MockProvider(chunks: [])
     let flash = flashProvider ?? provider ?? MockProvider(chunks: [])
+    let vision = provider ?? flash
     return AgenticEngine(proProvider: pro, flashProvider: flash,
-                         visionProvider: LMStudioProvider(),
+                         visionProvider: vision,
                          toolRouter: router, contextManager: ctx,
                          xcalibreClient: xcalibreClient)
 }

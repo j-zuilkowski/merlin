@@ -24,7 +24,7 @@ final class AgenticEngineProviderTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: capturing,
             flashProvider: capturing,
-            visionProvider: LMStudioProvider(),
+            visionProvider: capturing,
             toolRouter: ToolRouter(authGate: gate),
             contextManager: ContextManager()
         )

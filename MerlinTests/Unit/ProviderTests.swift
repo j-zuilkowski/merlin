@@ -10,9 +10,14 @@ final class ProviderTests: XCTestCase {
         XCTAssertEqual(p.id, "deepseek-v4-pro")
     }
 
-    // LM Studio uses localhost
-    func testLMStudioBaseURL() {
-        let p = LMStudioProvider(model: "Qwen2.5-VL-72B-Instruct-Q4_K_M")
+    // Local OpenAI-compatible provider uses localhost
+    func testLocalOpenAICompatibleBaseURL() {
+        let p = OpenAICompatibleProvider(
+            id: "lmstudio",
+            baseURL: URL(string: "http://localhost:1234/v1")!,
+            apiKey: nil,
+            modelID: "Qwen2.5-VL-72B-Instruct-Q4_K_M"
+        )
         XCTAssertEqual(p.baseURL.host, "localhost")
         XCTAssertEqual(p.baseURL.port, 1234)
     }

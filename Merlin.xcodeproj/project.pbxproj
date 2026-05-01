@@ -138,7 +138,6 @@
 		5A50B92FF3740D878AC81CAE /* NullProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DD2796B13F22A3D1B0154F /* NullProvider.swift */; };
 		5B173BD3CF9D4C73B8775973 /* LocalAIModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97ABA91376C71D992319981 /* LocalAIModelManager.swift */; };
 		5B7EABA082DDEABF9947FFC6 /* AgenticEngineMemoryPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B6CDF8126C67EC37E4240C /* AgenticEngineMemoryPluginTests.swift */; };
-		5BA49F34585F47B0521E4627 /* LMStudioProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7967EC45667E0D2C35EC6543 /* LMStudioProvider.swift */; };
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
 		5E0546E78590C81217AA873D /* VisionQueryTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19DE0FBDE08CA74A748E58F /* VisionQueryTool.swift */; };
@@ -513,7 +512,6 @@
 		785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAdvisor.swift; sourceTree = "<group>"; };
 		788C316547E5D5E66150F69A /* ShellToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellToolTests.swift; sourceTree = "<group>"; };
 		78CAF89EA21DC3E47F923F95 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
-		7967EC45667E0D2C35EC6543 /* LMStudioProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LMStudioProvider.swift; sourceTree = "<group>"; };
 		7A27179BFF930CC92478C31D /* SkillCompactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillCompactionTests.swift; sourceTree = "<group>"; };
 		7C2C7B8E9D69BF79290F2BA4 /* WebSearchToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchToolTests.swift; sourceTree = "<group>"; };
 		7C92F5FBEEF02C47DFE81D56 /* ToolbarActionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarActionTests.swift; sourceTree = "<group>"; };
@@ -1331,7 +1329,6 @@
 				92CCAE00203ADEB7221BE9C2 /* AnthropicSSEParser.swift */,
 				A0F0905E8B59CA9201AB055D /* DeepSeekProvider.swift */,
 				6E61F50F86ADCF81DA14F7BA /* LLMProvider.swift */,
-				7967EC45667E0D2C35EC6543 /* LMStudioProvider.swift */,
 				77EDDA93C8FE9A4BE7FC0176 /* OpenAICompatibleProvider.swift */,
 				13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */,
 				059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */,
@@ -1812,7 +1809,6 @@
 				D0E9F93738DE92EFFA66A401 /* KeychainManager.swift in Sources */,
 				35F0807BBC38C3A910C029DD /* LLMProvider.swift in Sources */,
 				3357C446316339F2728A7008 /* LMStudioModelManager.swift in Sources */,
-				5BA49F34585F47B0521E4627 /* LMStudioProvider.swift in Sources */,
 				608CBBA9B276A21E72135C48 /* LinearConnector.swift in Sources */,
 				56D1555D248E47296349EFE8 /* LiveSession.swift in Sources */,
 				7032901BC4F47BCD1173AC85 /* LoRACoordinator.swift in Sources */,

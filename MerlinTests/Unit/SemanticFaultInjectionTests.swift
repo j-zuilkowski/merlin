@@ -51,7 +51,7 @@ final class SemanticFaultInjectionTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: provider,
             flashProvider: provider,
-            visionProvider: LMStudioProvider(),
+            visionProvider: provider,
             toolRouter: toolRouter,
             contextManager: contextManager,
             xcalibreClient: xcalibreClient,

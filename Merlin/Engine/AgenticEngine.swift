@@ -983,10 +983,12 @@ final class AgenticEngine {
 
     private func modelID(for provider: any LLMProvider) -> String {
         if let registry, let config = registry.providers.first(where: { $0.id == provider.id }) {
-            if config.model.isEmpty, config.id == "lmstudio" {
-                return LMStudioProvider().model
-            }
             return config.model.isEmpty ? provider.id : config.model
+        }
+        // Virtual provider IDs encode the model in the suffix.
+        if provider.id.contains(":"),
+           let modelID = provider.id.split(separator: ":", maxSplits: 1).last {
+            return String(modelID)
         }
         return provider.id
     }

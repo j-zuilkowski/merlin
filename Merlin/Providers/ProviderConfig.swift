@@ -107,7 +107,7 @@ final class ProviderRegistry: ObservableObject {
         didSet { if oldValue != activeProviderID { persist() } }
     }
     @Published var availabilityByID: [String: Bool] = [:]
-    @Published private(set) var modelsByProviderID: [String: [String]] = [:]
+    @Published var modelsByProviderID: [String: [String]] = [:]
     @Published private(set) var keyedProviderIDs: Set<String> = []
 
     private var liveProviders: [String: any LLMProvider] = [:]
@@ -282,13 +282,43 @@ final class ProviderRegistry: ObservableObject {
     }
 
     func provider(for id: String) -> (any LLMProvider)? {
-        if let live = liveProviders[id] {
-            return live
+        if let live = liveProviders[id] { return live }
+
+        if id.contains(":") {
+            let parts = id.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { return nil }
+            let backendID = String(parts[0])
+            let modelID = String(parts[1])
+            guard let config = providers.first(where: { $0.id == backendID && $0.isEnabled }),
+                  let url = URL(string: config.baseURL) else { return nil }
+            return OpenAICompatibleProvider(id: id, baseURL: url, apiKey: nil, modelID: modelID)
         }
-        guard let config = providers.first(where: { $0.id == id }) else {
-            return nil
-        }
+
+        guard let config = providers.first(where: { $0.id == id }) else { return nil }
         return makeLLMProvider(for: config)
+    }
+
+    /// Returns all addressable provider IDs for a given backend ID.
+    /// For a local backend with loaded models these are the base ID plus
+    /// one virtual ID per loaded model: `["lmstudio", "lmstudio:phi-4", ...]`.
+    func virtualProviderIDs(for backendID: String) -> [String] {
+        guard providers.contains(where: { $0.id == backendID }) else { return [] }
+        let models = modelsByProviderID[backendID] ?? []
+        return [backendID] + models.map { "\(backendID):\($0)" }
+    }
+
+    /// Human-readable label for any provider ID, including virtual ones.
+    /// `"lmstudio:phi-4"` → `"LM Studio — phi-4"`
+    func displayName(for id: String) -> String {
+        if id.contains(":") {
+            let parts = id.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { return id }
+            let backendID = String(parts[0])
+            let modelID = String(parts[1])
+            let backendName = providers.first(where: { $0.id == backendID })?.displayName ?? backendID
+            return "\(backendName) — \(modelID)"
+        }
+        return providers.first(where: { $0.id == id })?.displayName ?? id
     }
 
     // MARK: Mutation
@@ -359,10 +389,8 @@ final class ProviderRegistry: ObservableObject {
 
         switch config.kind {
         case .openAICompatible:
-            let modelID = config.model.isEmpty && config.id == "lmstudio"
-                ? LMStudioProvider().model
-                : config.model
-            return OpenAICompatibleProvider(id: config.id, baseURL: url, apiKey: apiKey, modelID: modelID)
+            return OpenAICompatibleProvider(id: config.id, baseURL: url, apiKey: apiKey,
+                                            modelID: config.model)
         case .anthropic:
             return AnthropicProvider(apiKey: apiKey ?? "", modelID: config.model)
         }

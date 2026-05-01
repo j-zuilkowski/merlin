@@ -34,7 +34,7 @@ final class GroundingConfidenceTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: MockProvider(responses: [.text("ok")]),
             flashProvider: MockProvider(responses: [.text("ok")]),
-            visionProvider: LMStudioProvider(),
+            visionProvider: MockProvider(responses: [.text("ok")]),
             toolRouter: router,
             contextManager: ContextManager(),
             xcalibreClient: xcalibreClient,

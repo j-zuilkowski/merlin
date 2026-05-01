@@ -25,7 +25,7 @@ final class CircuitBreakerTests: XCTestCase {
         let engine = AgenticEngine(
             proProvider: MockProvider(responses: [.text("response")]),
             flashProvider: MockProvider(responses: [.text("response")]),
-            visionProvider: LMStudioProvider(),
+            visionProvider: MockProvider(responses: [.text("response")]),
             toolRouter: router,
             contextManager: ContextManager()
         )
