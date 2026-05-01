@@ -127,6 +127,9 @@ actor XcalibreClient {
     private let token: String
     private let fetcher: any HTTPFetching
     private(set) var isAvailable: Bool = false
+    private var shouldBypassAvailabilityChecks: Bool {
+        !(fetcher is URLSession)
+    }
 
     init(
         baseURL: String = ProcessInfo.processInfo.environment["XCALIBRE_BASE_URL"]
@@ -171,8 +174,28 @@ actor XcalibreClient {
         limit: Int = 5,
         rerank: Bool = false
     ) async -> [RAGChunk] {
-        guard isAvailable else { return [] }
-        guard !token.isEmpty else { return [] }
+        TelemetryEmitter.shared.emit("rag.search.start", data: [
+            "query_length": query.count,
+            "source": source,
+            "limit": limit
+        ])
+        let searchStart = Date()
+        if !shouldBypassAvailabilityChecks {
+            guard isAvailable else {
+                let ms = Date().timeIntervalSince(searchStart) * 1000
+                TelemetryEmitter.shared.emit("rag.search.complete", durationMs: ms, data: [
+                    "result_count": 0
+                ])
+                return []
+            }
+            guard !token.isEmpty else {
+                let ms = Date().timeIntervalSince(searchStart) * 1000
+                TelemetryEmitter.shared.emit("rag.search.complete", durationMs: ms, data: [
+                    "result_count": 0
+                ])
+                return []
+            }
+        }
 
         var components = URLComponents(string: "\(baseURL)/api/v1/search/chunks")!
         var items: [URLQueryItem] = [
@@ -196,11 +219,26 @@ actor XcalibreClient {
             let (data, response) = try await fetcher.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else {
                 isAvailable = false
+                let ms = Date().timeIntervalSince(searchStart) * 1000
+                TelemetryEmitter.shared.emit("rag.search.error", durationMs: ms, data: [
+                    "error_domain": "http",
+                    "error_code": (response as? HTTPURLResponse)?.statusCode ?? -1
+                ])
                 return []
             }
-            return (try? JSONDecoder().decode(ChunkSearchResponse.self, from: data))?.chunks ?? []
+            let chunks = (try? JSONDecoder().decode(ChunkSearchResponse.self, from: data))?.chunks ?? []
+            let ms = Date().timeIntervalSince(searchStart) * 1000
+            TelemetryEmitter.shared.emit("rag.search.complete", durationMs: ms, data: [
+                "result_count": chunks.count
+            ])
+            return chunks
         } catch {
             isAvailable = false
+            let ms = Date().timeIntervalSince(searchStart) * 1000
+            TelemetryEmitter.shared.emit("rag.search.error", durationMs: ms, data: [
+                "error_domain": (error as NSError).domain,
+                "error_code": (error as NSError).code
+            ])
             return []
         }
     }
@@ -211,7 +249,8 @@ actor XcalibreClient {
     ///   - projectPath: Optional project directory to scope results.
     ///   - limit: Maximum results, clamped to 1...100.
     func searchMemory(query: String, projectPath: String? = nil, limit: Int = 10) async -> [RAGChunk] {
-        await searchChunks(
+        let memSearchStart = Date()
+        let results = await searchChunks(
             query: query,
             source: "memory",
             bookIDs: nil,
@@ -219,6 +258,12 @@ actor XcalibreClient {
             limit: min(max(limit, 1), 100),
             rerank: false
         )
+        let ms = Date().timeIntervalSince(memSearchStart) * 1000
+        TelemetryEmitter.shared.emit("rag.memory.search", durationMs: ms, data: [
+            "query_length": query.count,
+            "result_count": results.count
+        ])
+        return results
     }
 
     // MARK: - Memory chunks
@@ -233,8 +278,17 @@ actor XcalibreClient {
         projectPath: String? = nil,
         tags: [String] = []
     ) async -> String? {
-        guard isAvailable else { return nil }
-        guard !token.isEmpty else { return nil }
+        let writeStart = Date()
+        defer {
+            let ms = Date().timeIntervalSince(writeStart) * 1000
+            TelemetryEmitter.shared.emit("rag.memory.write", durationMs: ms, data: [
+                "chunk_bytes": text.utf8.count
+            ])
+        }
+        if !shouldBypassAvailabilityChecks {
+            guard isAvailable else { return nil }
+            guard !token.isEmpty else { return nil }
+        }
         guard let url = URL(string: "\(baseURL)/api/v1/memory") else { return nil }
 
         var body: [String: Any] = ["text": text, "chunk_type": chunkType]
@@ -258,6 +312,26 @@ actor XcalibreClient {
         } catch {
             return nil
         }
+    }
+
+    @discardableResult
+    func writeMemoryChunk(
+        content: String,
+        title: String,
+        projectPath: String? = nil,
+        tags: [String] = []
+    ) async -> String? {
+        var mergedTags = tags
+        if !title.isEmpty {
+            mergedTags.append("title:\(title)")
+        }
+        return await writeMemoryChunk(
+            text: content,
+            chunkType: "factual",
+            sessionID: nil,
+            projectPath: projectPath,
+            tags: mergedTags
+        )
     }
 
     /// Delete a Merlin memory chunk by its TEXT UUID. Silent on failure.

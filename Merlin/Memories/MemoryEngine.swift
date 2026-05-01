@@ -36,77 +36,113 @@ actor MemoryEngine {
     }
 
     func generateMemories(from messages: [Message]) async throws -> [MemoryEntry] {
-        let nonSystem = messages.filter { $0.role != .system }
-        guard !nonSystem.isEmpty else { return [] }
+        TelemetryEmitter.shared.emit("memory.generate.start", data: [
+            "message_count": messages.count
+        ])
+        let generateStart = Date()
 
-        guard let provider else { return [] }
-
-        let transcript = nonSystem.map { msg -> String in
-            let roleLabel = msg.role == .user ? "User" : "Assistant"
-            switch msg.content {
-            case .text(let t): return "\(roleLabel): \(t)"
-            case .parts(let parts):
-                let text = parts.compactMap { part -> String? in
-                    if case .text(let t) = part { return t }
-                    return nil
-                }.joined(separator: " ")
-                return "\(roleLabel): \(text)"
+        do {
+            let nonSystem = messages.filter { $0.role != .system }
+            guard !nonSystem.isEmpty else {
+                let ms = Date().timeIntervalSince(generateStart) * 1000
+                TelemetryEmitter.shared.emit("memory.generate.complete", durationMs: ms, data: [
+                    "entry_count": 0
+                ])
+                return []
             }
-        }.joined(separator: "\n")
 
-        let systemPrompt = """
-        You are a memory extraction assistant. Read the conversation transcript and extract \
-        concise, reusable facts about the user's preferences, workflow conventions, project \
-        patterns, and known pitfalls.
-
-        Rules:
-        - Output ONLY bullet lines starting with "- "
-        - No verbatim file contents
-        - No API keys, tokens, passwords, or secrets
-        - No raw tool output or file paths
-        - Extract only: preferences, conventions, patterns, pitfalls
-        - If there is nothing worth remembering, output nothing
-        - No tool call syntax: do not include content from ```bash blocks, <bash> tags, \
-        <tool_call> XML, or any shell command sequences
-        """
-
-        var request = CompletionRequest(
-            model: provider.id,
-            messages: [
-                Message(role: .system, content: .text(systemPrompt), timestamp: Date()),
-                Message(role: .user, content: .text(transcript), timestamp: Date())
-            ],
-            stream: true,
-            maxTokens: 512,
-            temperature: 0.3
-        )
-        let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
-        inferenceDefaults.apply(to: &request)
-
-        let stream = try await provider.complete(request: request)
-        var raw = ""
-        for try await chunk in stream {
-            if let content = chunk.delta?.content {
-                raw += content
+            guard let provider else {
+                let ms = Date().timeIntervalSince(generateStart) * 1000
+                TelemetryEmitter.shared.emit("memory.generate.complete", durationMs: ms, data: [
+                    "entry_count": 0
+                ])
+                return []
             }
-        }
 
-        let lines = raw.components(separatedBy: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { $0.hasPrefix("- ") }
+            let transcript = nonSystem.map { msg -> String in
+                let roleLabel = msg.role == .user ? "User" : "Assistant"
+                switch msg.content {
+                case .text(let t): return "\(roleLabel): \(t)"
+                case .parts(let parts):
+                    let text = parts.compactMap { part -> String? in
+                        if case .text(let t) = part { return t }
+                        return nil
+                    }.joined(separator: " ")
+                    return "\(roleLabel): \(text)"
+                }
+            }.joined(separator: "\n")
 
-        guard !lines.isEmpty else { return [] }
+            let systemPrompt = """
+            You are a memory extraction assistant. Read the conversation transcript and extract \
+            concise, reusable facts about the user's preferences, workflow conventions, project \
+            patterns, and known pitfalls.
 
-        var entries: [MemoryEntry] = []
-        for line in lines {
-            let sanitized = await sanitize(line)
-            let entry = MemoryEntry(
-                filename: "\(UUID().uuidString).md",
-                content: sanitized
+            Rules:
+            - Output ONLY bullet lines starting with "- "
+            - No verbatim file contents
+            - No API keys, tokens, passwords, or secrets
+            - No raw tool output or file paths
+            - Extract only: preferences, conventions, patterns, pitfalls
+            - If there is nothing worth remembering, output nothing
+            - No tool call syntax: do not include content from ```bash blocks, <bash> tags, \
+            <tool_call> XML, or any shell command sequences
+            """
+
+            var request = CompletionRequest(
+                model: provider.id,
+                messages: [
+                    Message(role: .system, content: .text(systemPrompt), timestamp: Date()),
+                    Message(role: .user, content: .text(transcript), timestamp: Date())
+                ],
+                stream: true,
+                maxTokens: 512,
+                temperature: 0.3
             )
-            entries.append(entry)
+            let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+            inferenceDefaults.apply(to: &request)
+
+            let stream = try await provider.complete(request: request)
+            var raw = ""
+            for try await chunk in stream {
+                if let content = chunk.delta?.content {
+                    raw += content
+                }
+            }
+
+            let lines = raw.components(separatedBy: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { $0.hasPrefix("- ") }
+
+            guard !lines.isEmpty else {
+                let ms = Date().timeIntervalSince(generateStart) * 1000
+                TelemetryEmitter.shared.emit("memory.generate.complete", durationMs: ms, data: [
+                    "entry_count": 0
+                ])
+                return []
+            }
+
+            var entries: [MemoryEntry] = []
+            for line in lines {
+                let sanitized = await sanitize(line)
+                let entry = MemoryEntry(
+                    filename: "\(UUID().uuidString).md",
+                    content: sanitized
+                )
+                entries.append(entry)
+            }
+            let ms = Date().timeIntervalSince(generateStart) * 1000
+            TelemetryEmitter.shared.emit("memory.generate.complete", durationMs: ms, data: [
+                "entry_count": entries.count
+            ])
+            return entries
+        } catch {
+            let ms = Date().timeIntervalSince(generateStart) * 1000
+            TelemetryEmitter.shared.emit("memory.generate.error", durationMs: ms, data: [
+                "error_domain": (error as NSError).domain,
+                "error_code": (error as NSError).code
+            ])
+            throw error
         }
-        return entries
     }
 
     func generateAndNotify(
@@ -162,6 +198,8 @@ actor MemoryEngine {
     }
 
     func sanitize(_ text: String) async -> String {
+        let inputBytes = text.utf8.count
+        let sanitizeStart = Date()
         var result = text
         let secretPatterns = [
             #"sk-ant-[A-Za-z0-9\-_]+"#,
@@ -181,6 +219,11 @@ actor MemoryEngine {
             let range = NSRange(result.startIndex..., in: result)
             result = regex.stringByReplacingMatches(in: result, range: range, withTemplate: "[PATH]")
         }
+        let ms = Date().timeIntervalSince(sanitizeStart) * 1000
+        TelemetryEmitter.shared.emit("memory.sanitize", durationMs: ms, data: [
+            "input_bytes": inputBytes,
+            "output_bytes": result.utf8.count
+        ])
         return result
     }
 

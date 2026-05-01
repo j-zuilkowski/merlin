@@ -150,6 +150,16 @@ struct CompletionChunk: Sendable {
         self.finishReason = finishReason
     }
 
+    init(delta: String, finishReason: String?) {
+        self.delta = Delta(content: delta)
+        self.finishReason = finishReason
+    }
+
+    init(delta: String, toolCallChunks: [Delta.ToolCallDelta], finishReason: String?) {
+        self.delta = Delta(content: delta, toolCalls: toolCallChunks)
+        self.finishReason = finishReason
+    }
+
     struct Delta: Sendable {
         var role: String?
         var content: String?
@@ -177,6 +187,12 @@ struct CompletionChunk: Sendable {
                 self.function = function
             }
 
+            init(index: Int, id: String, name: String, arguments: String) {
+                self.index = index
+                self.id = id
+                self.function = FunctionDelta(name: name, arguments: arguments)
+            }
+
             struct FunctionDelta: Sendable {
                 var name: String?
                 var arguments: String?
@@ -191,6 +207,7 @@ struct CompletionChunk: Sendable {
 }
 
 typealias ChunkDelta = CompletionChunk.Delta
+typealias ToolCallChunk = CompletionChunk.Delta.ToolCallDelta
 
 struct ToolDefinition: Codable, Sendable {
     var type: String = "function"

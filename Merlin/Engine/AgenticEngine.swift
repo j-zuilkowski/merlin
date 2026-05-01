@@ -41,6 +41,15 @@ private final class CancellationState: @unchecked Sendable {
 }
 
 @MainActor
+private final class AllowAllAuthPresenter: AuthPresenter {
+    static let shared = AllowAllAuthPresenter()
+
+    func requestDecision(tool: String, argument: String, suggestedPattern: String) async -> AuthDecision {
+        .allow
+    }
+}
+
+@MainActor
 final class AgenticEngine {
     let contextManager: ContextManager
     private let thinkingDetector = ThinkingModeDetector.self
@@ -128,6 +137,18 @@ final class AgenticEngine {
         self.proProvider = proProvider
         self.flashProvider = flashProvider
         self.visionProvider = visionProvider
+    }
+
+    convenience init() {
+        let gate = AuthGate(memory: AuthMemory(storePath: "/dev/null"), presenter: AllowAllAuthPresenter.shared)
+        self.init(
+            slotAssignments: [:],
+            registry: nil,
+            toolRouter: ToolRouter(authGate: gate),
+            contextManager: ContextManager(),
+            xcalibreClient: nil,
+            memoryBackend: nil
+        )
     }
 
     /// Inject the active memory backend.
