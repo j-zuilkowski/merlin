@@ -34,7 +34,12 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                 do {
                     let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
                     guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        throw URLError(.badServerResponse)
+                        var errorLines: [String] = []
+                        for try await line in bytes.lines { errorLines.append(line) }
+                        let body = errorLines.joined(separator: "\n").prefix(500)
+                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                        throw URLError(.badServerResponse,
+                            userInfo: [NSLocalizedDescriptionKey: "HTTP \(statusCode): \(body)"])
                     }
 
                     for try await line in bytes.lines {
