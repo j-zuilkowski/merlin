@@ -620,7 +620,31 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func appendError(_ error: Error) {
-        items.append(ChatEntry(role: .error, text: String(describing: error)))
+        // String(describing:) on a system URLError often produces
+        // "Error Domain=NSURLErrorDomain Code=-1011 "(null)"" because the
+        // NSError has no NSLocalizedDescriptionKey. Use localizedDescription
+        // first; if that also comes back as "(null)" or empty, synthesise a
+        // human-readable message from domain + code so the user knows what
+        // went wrong (usually an API key or network issue).
+        let nsError = error as NSError
+        let raw = nsError.localizedDescription
+        let message: String
+        if raw.isEmpty || raw == "(null)" {
+            if nsError.domain == NSURLErrorDomain {
+                switch nsError.code {
+                case -1011: message = "API error: the server returned an unexpected response. Check your API key in Settings."
+                case -1009: message = "No internet connection."
+                case -1001: message = "Request timed out."
+                case -1004: message = "Could not connect to the server."
+                default:    message = "Network error (NSURLError \(nsError.code)). Check your API key and connection."
+                }
+            } else {
+                message = "Error \(nsError.domain) \(nsError.code)"
+            }
+        } else {
+            message = raw
+        }
+        items.append(ChatEntry(role: .error, text: message))
         bumpRevision()
     }
 
