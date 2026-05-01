@@ -135,6 +135,13 @@ final class AgenticEngine {
         memoryBackend = backend
     }
 
+    /// Wire a single provider as pro/flash/vision for unit tests.
+    func setRegistryForTesting(provider: any LLMProvider) {
+        self.proProvider = provider
+        self.flashProvider = provider
+        self.visionProvider = provider
+    }
+
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
         toolRouter.register(name: name, handler: handler)
     }
@@ -299,6 +306,19 @@ final class AgenticEngine {
                 let state = CancellationState()
                 await withTaskCancellationHandler(operation: {
                     do {
+                        let turnNumber = self.contextManager.messages.filter { $0.role == .user }.count + 1
+                        let slot = self.selectSlot(for: userMessage)
+                        TelemetryEmitter.shared.emit("engine.turn.start", data: [
+                            "turn": turnNumber,
+                            "slot": slot.rawValue,
+                            "message_length": userMessage.count
+                        ])
+                        let provider = self.selectProvider(for: userMessage)
+                        TelemetryEmitter.shared.emit("engine.provider.selected", data: [
+                            "turn": turnNumber,
+                            "slot": slot.rawValue,
+                            "provider_id": provider.id
+                        ])
                         try await self.runLoop(userMessage: userMessage, continuation: continuation, depth: 0)
                         self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
@@ -463,206 +483,243 @@ final class AgenticEngine {
         }
 
         lastCriticVerdict = nil
+        let loopStart = Date()
+        let turn = context.messages.filter { $0.role == .user }.count
         // lastResponseText captures the full assistant text from the last no-tool-call response.
         // Passed to performanceTracker.record() as the response field for LoRA training data.
         var lastResponseText = ""
         var capturedFinishReason: String?
+        var totalToolCallCount = 0
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
-
-        while true {
-            await pauseForReload()
-            guard loopCount < maxIterations else {
-                continuation.yield(.systemNote("[Loop ceiling reached — stopping]"))
-                break
-            }
-            loopCount += 1
-
-            let provider: any LLMProvider
-            if workingSlot == .reason {
-                provider = resolvedProvider(for: .reason)
-            } else {
-                provider = selectProvider(for: userMessage)
-            }
-            let requestModel = modelID(for: provider)
-            let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
-            var request = CompletionRequest(
-                model: requestModel,
-                messages: messagesForProvider(),
-                thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
-            )
-            request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
-            AppSettings.shared.applyInferenceDefaults(to: &request)
-
-            let stream = try await provider.complete(request: request)
-            var assembled: [Int: (id: String, name: String, args: String)] = [:]
-            var sawToolCall = false
-            var fullText = ""
-            var fullThinking = ""   // accumulated reasoning_content for context round-trip
-
-            for try await chunk in stream {
-                if let reason = chunk.finishReason {
-                    capturedFinishReason = reason
+        do {
+            while true {
+                await pauseForReload()
+                guard loopCount < maxIterations else {
+                    continuation.yield(.systemNote("[Loop ceiling reached — stopping]"))
+                    break
                 }
-                if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
-                    continuation.yield(.thinking(thinkingContent))
-                    fullThinking += thinkingContent
+                loopCount += 1
+
+                let provider: any LLMProvider
+                if workingSlot == .reason {
+                    provider = resolvedProvider(for: .reason)
+                } else {
+                    provider = selectProvider(for: userMessage)
                 }
-                if let content = chunk.delta?.content, !content.isEmpty {
-                    continuation.yield(.text(content))
-                    fullText += content
-                }
-                if let toolCalls = chunk.delta?.toolCalls {
-                    sawToolCall = true
-                    for delta in toolCalls {
-                        var entry = assembled[delta.index] ?? (id: "", name: "", args: "")
-                        if let id = delta.id, !id.isEmpty {
-                            entry.id = id
+                let requestModel = modelID(for: provider)
+                let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
+                var request = CompletionRequest(
+                    model: requestModel,
+                    messages: messagesForProvider(),
+                    thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
+                )
+                request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
+                AppSettings.shared.applyInferenceDefaults(to: &request)
+
+                let stream = try await provider.complete(request: request)
+                var assembled: [Int: (id: String, name: String, args: String)] = [:]
+                var sawToolCall = false
+                var fullText = ""
+                var fullThinking = ""   // accumulated reasoning_content for context round-trip
+
+                for try await chunk in stream {
+                    if let reason = chunk.finishReason {
+                        capturedFinishReason = reason
+                    }
+                    if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
+                        continuation.yield(.thinking(thinkingContent))
+                        fullThinking += thinkingContent
+                    }
+                    if let content = chunk.delta?.content, !content.isEmpty {
+                        continuation.yield(.text(content))
+                        fullText += content
+                    }
+                    if let toolCalls = chunk.delta?.toolCalls {
+                        sawToolCall = true
+                        for delta in toolCalls {
+                            var entry = assembled[delta.index] ?? (id: "", name: "", args: "")
+                            if let id = delta.id, !id.isEmpty {
+                                entry.id = id
+                            }
+                            if let name = delta.function?.name, !name.isEmpty {
+                                entry.name = name
+                            }
+                            entry.args += delta.function?.arguments ?? ""
+                            assembled[delta.index] = entry
                         }
-                        if let name = delta.function?.name, !name.isEmpty {
-                            entry.name = name
-                        }
-                        entry.args += delta.function?.arguments ?? ""
-                        assembled[delta.index] = entry
                     }
                 }
-            }
 
-            guard sawToolCall, !assembled.isEmpty else {
-                lastResponseText = fullText
-                if !fullText.isEmpty {
-                    context.append(Message(
-                        role: .assistant,
-                        content: .text(fullText),
-                        thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
-                        timestamp: Date()
-                    ))
-                }
-                if classification.complexity != .routine,
-                   (classifierOverride != nil || classification.complexity == .highStakes) {
-                    if let reasonProvider = self.provider(for: .reason),
-                       !(reasonProvider is NullProvider) {
-                        let critic = makeCritic(domain: domain)
-                        let taskType = domain.taskTypes.first
-                            ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
-                        let verdict = await critic.evaluate(
-                            taskType: taskType,
-                            output: fullText,
-                            context: context.messages
-                        )
-                        lastCriticVerdict = verdict
-                        switch verdict {
-                        case .pass, .skipped:
-                            consecutiveCriticFailures = 0
-                        case .fail:
-                            consecutiveCriticFailures += 1
-                        }
-                        switch verdict {
-                        case .pass:
-                            break
-                        case .fail(let reason):
-                            continuation.yield(.systemNote("[Critic: \(reason)]"))
-                        case .skipped:
+                guard sawToolCall, !assembled.isEmpty else {
+                    lastResponseText = fullText
+                    if !fullText.isEmpty {
+                        context.append(Message(
+                            role: .assistant,
+                            content: .text(fullText),
+                            thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
+                            timestamp: Date()
+                        ))
+                    }
+                    if classification.complexity != .routine,
+                       (classifierOverride != nil || classification.complexity == .highStakes) {
+                        if let reasonProvider = self.provider(for: .reason),
+                           !(reasonProvider is NullProvider) {
+                            let critic = makeCritic(domain: domain)
+                            let taskType = domain.taskTypes.first
+                                ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+                            let verdict = await critic.evaluate(
+                                taskType: taskType,
+                                output: fullText,
+                                context: context.messages
+                            )
+                            lastCriticVerdict = verdict
+                            switch verdict {
+                            case .pass, .skipped:
+                                consecutiveCriticFailures = 0
+                            case .fail:
+                                consecutiveCriticFailures += 1
+                            }
+                            switch verdict {
+                            case .pass:
+                                break
+                            case .fail(let reason):
+                                continuation.yield(.systemNote("[Critic: \(reason)]"))
+                            case .skipped:
+                                continuation.yield(.systemNote("[unverified — critic unavailable]"))
+                            }
+                        } else {
                             continuation.yield(.systemNote("[unverified — critic unavailable]"))
                         }
-                    } else {
-                        continuation.yield(.systemNote("[unverified — critic unavailable]"))
                     }
+
+                    let shouldContinue = await hookEngine.runStop()
+                    if shouldContinue, await hookEngine.hasStopHooks() {
+                        context.append(Message(
+                            role: .user,
+                            content: .text("[Hook: continue]"),
+                            timestamp: Date()
+                        ))
+                        continue
+                    }
+                    break
                 }
 
-                let shouldContinue = await hookEngine.runStop()
-                if shouldContinue, await hookEngine.hasStopHooks() {
-                    context.append(Message(
-                        role: .user,
-                        content: .text("[Hook: continue]"),
-                        timestamp: Date()
-                    ))
-                    continue
+                let calls = assembled.keys.sorted().map { index in
+                    let item = assembled[index]!
+                    return ToolCall(
+                        id: item.id.isEmpty ? UUID().uuidString : item.id,
+                        type: "function",
+                        function: FunctionCall(name: item.name, arguments: item.args)
+                    )
                 }
-                break
-            }
+                totalToolCallCount += calls.count
 
-            let calls = assembled.keys.sorted().map { index in
-                let item = assembled[index]!
-                return ToolCall(
-                    id: item.id.isEmpty ? UUID().uuidString : item.id,
-                    type: "function",
-                    function: FunctionCall(name: item.name, arguments: item.args)
-                )
-            }
-
-            for call in calls {
-                continuation.yield(.toolCallStarted(call))
-            }
+                for call in calls {
+                    continuation.yield(.toolCallStarted(call))
+                }
 
             // Append the assistant turn that declared the tool calls.
             // The OpenAI wire format requires: assistant(tool_calls) → tool(result).
             // reasoning_content (DeepSeek thinking) must also be echoed back or the
             // provider returns HTTP 400 "reasoning_content must be passed back".
-            context.append(Message(
-                role: .assistant,
-                content: .text(""),
-                toolCalls: calls,
-                thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
-                timestamp: Date()
-            ))
-
-            toolRouter.permissionMode = permissionMode
-            var regularCalls: [ToolCall] = []
-            for call in calls {
-                if call.function.name == "spawn_agent" {
-                    await handleSpawnAgent(call: call, depth: depth, continuation: continuation)
-                    continue
-                }
-                regularCalls.append(call)
-            }
-
-            for call in regularCalls {
-                let input = inputDictionary(from: call.function.arguments)
-
-                let hookDecision = await hookEngine.runPreToolUse(
-                    toolName: call.function.name,
-                    input: input
-                )
-                switch hookDecision {
-                case .deny(let reason):
-                    let denied = ToolResult(
-                        toolCallId: call.id,
-                        content: "Blocked by hook: \(reason)",
-                        isError: true
-                    )
-                    continuation.yield(.toolCallResult(denied))
-                    context.append(Message(
-                        role: .tool,
-                        content: .text(denied.content),
-                        toolCallId: denied.toolCallId,
-                        timestamp: Date()
-                    ))
-                    continue
-                case .allow:
-                    break
-                }
-
-                let results = await toolRouter.dispatch([call])
-                guard let result = results.first else { continue }
-                continuation.yield(.toolCallResult(result))
                 context.append(Message(
-                    role: .tool,
-                    content: .text(result.content),
-                    toolCallId: result.toolCallId,
+                    role: .assistant,
+                    content: .text(""),
+                    toolCalls: calls,
+                    thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
                     timestamp: Date()
                 ))
-                emitCompactionNoteIfNeeded()
 
-                if let note = await hookEngine.runPostToolUse(
-                    toolName: call.function.name,
-                    result: result.content
-                ) {
-                    continuation.yield(.systemNote(note))
-                    context.append(Message(role: .system, content: .text(note), timestamp: Date()))
+                toolRouter.permissionMode = permissionMode
+                var regularCalls: [ToolCall] = []
+                for call in calls {
+                    if call.function.name == "spawn_agent" {
+                        await handleSpawnAgent(call: call, depth: depth, continuation: continuation)
+                        continue
+                    }
+                    regularCalls.append(call)
+                }
+
+                for call in regularCalls {
+                    let input = inputDictionary(from: call.function.arguments)
+
+                    let hookDecision = await hookEngine.runPreToolUse(
+                        toolName: call.function.name,
+                        input: input
+                    )
+                    switch hookDecision {
+                    case .deny(let reason):
+                        let denied = ToolResult(
+                            toolCallId: call.id,
+                            content: "Blocked by hook: \(reason)",
+                            isError: true
+                        )
+                        continuation.yield(.toolCallResult(denied))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(denied.content),
+                            toolCallId: denied.toolCallId,
+                            timestamp: Date()
+                        ))
+                        continue
+                    case .allow:
+                        break
+                    }
+
+                    TelemetryEmitter.shared.emit("engine.tool.dispatched", data: [
+                        "turn": turn,
+                        "tool_name": call.function.name,
+                        "loop": loopCount
+                    ])
+                    let toolStart = Date()
+                    let results = await toolRouter.dispatch([call])
+                    guard let result = results.first else { continue }
+                    let toolMs = Date().timeIntervalSince(toolStart) * 1000
+                    if result.isError {
+                        TelemetryEmitter.shared.emit("engine.tool.error", durationMs: toolMs, data: [
+                            "turn": turn,
+                            "tool_name": call.function.name,
+                            "loop": loopCount,
+                            "error_domain": "tool_dispatch"
+                        ])
+                    } else {
+                        TelemetryEmitter.shared.emit("engine.tool.complete", durationMs: toolMs, data: [
+                            "turn": turn,
+                            "tool_name": call.function.name,
+                            "loop": loopCount,
+                            "duration_ms": toolMs,
+                            "result_bytes": result.content.utf8.count
+                        ])
+                    }
+                    continuation.yield(.toolCallResult(result))
+                    context.append(Message(
+                        role: .tool,
+                        content: .text(result.content),
+                        toolCallId: result.toolCallId,
+                        timestamp: Date()
+                    ))
                     emitCompactionNoteIfNeeded()
+
+                    if let note = await hookEngine.runPostToolUse(
+                        toolName: call.function.name,
+                        result: result.content
+                    ) {
+                        continuation.yield(.systemNote(note))
+                        context.append(Message(role: .system, content: .text(note), timestamp: Date()))
+                        emitCompactionNoteIfNeeded()
+                    }
                 }
             }
+        } catch {
+            TelemetryEmitter.shared.emit("engine.turn.error", data: [
+                "turn": turn,
+                "slot": workingSlot.rawValue,
+                "provider_id": selectProvider(for: userMessage).id,
+                "error_domain": (error as NSError).domain,
+                "error_code": (error as NSError).code
+            ])
+            throw error
         }
 
         if contextOverride == nil, let session = sessionStore?.activeSession {
@@ -761,6 +818,15 @@ final class AgenticEngine {
         }
 
         onUsageUpdate?(approximateTokens(in: context))
+        let turnMs = Date().timeIntervalSince(loopStart) * 1000
+        TelemetryEmitter.shared.emit("engine.turn.complete", durationMs: turnMs, data: [
+            "turn": turn,
+            "slot": workingSlot.rawValue,
+            "provider_id": selectProvider(for: userMessage).id,
+            "total_duration_ms": turnMs,
+            "tool_call_count": totalToolCallCount,
+            "loop_count": loopCount
+        ])
     }
 
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
