@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 9.0**
+**Version 1.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 

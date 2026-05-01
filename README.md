@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 9.0** — 867 tests passing.
+**Version 1.0** — 867 tests passing.
 
 ---
 
@@ -105,8 +105,8 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh 9.0
-# → dist/Merlin-9.0.dmg
+bash scripts/package-dmg.sh 1.0
+# → dist/Merlin-1.0.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.
