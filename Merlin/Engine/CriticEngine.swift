@@ -60,21 +60,61 @@ actor CriticEngine {
         self.shellRunner = shellRunner
     }
 
+    init(
+        verificationBackend: any VerificationBackend,
+        shellRunner: any ShellRunning = LiveShellRunner(),
+        orchestrateProvider: (any LLMProvider)?
+    ) {
+        self.verificationBackend = verificationBackend
+        self.reasonProvider = orchestrateProvider
+        self.shellRunner = shellRunner
+    }
+
     func evaluate(
         taskType: DomainTaskType,
         output: String,
         context: [Message]
     ) async -> CriticResult {
+        TelemetryEmitter.shared.emit("critic.evaluate.start", data: [
+            "task_type": taskType.name
+        ])
+        let evalStart = Date()
         let stage1Result = await runStage1(taskType: taskType)
 
+        let finalResult: CriticResult
         switch stage1Result {
         case .fail(let reason):
-            return .fail(reason: reason)
-        case .pass:
-            return await runStage2(output: output, context: context, taskType: taskType) ?? .pass
-        case .skipped:
-            return await runStage2(output: output, context: context, taskType: taskType) ?? .skipped
+            finalResult = .fail(reason: reason)
+            TelemetryEmitter.shared.emit("critic.evaluate.fail", data: [
+                "reason": reason,
+                "stage": "stage1"
+            ])
+        case .pass, .skipped:
+            let s2 = await runStage2(output: output, context: context, taskType: taskType)
+            finalResult = s2 ?? (stage1Result == .pass ? .pass : .skipped)
+            if case .fail(let reason) = finalResult {
+                TelemetryEmitter.shared.emit("critic.evaluate.fail", data: [
+                    "reason": reason,
+                    "stage": "stage2"
+                ])
+            }
         }
+
+        let ms = Date().timeIntervalSince(evalStart) * 1000
+        let resultStr: String
+        switch finalResult {
+        case .pass:
+            resultStr = "pass"
+        case .fail:
+            resultStr = "fail"
+        case .skipped:
+            resultStr = "skipped"
+        }
+        TelemetryEmitter.shared.emit("critic.evaluate.complete", durationMs: ms, data: [
+            "task_type": taskType.name,
+            "result": resultStr
+        ])
+        return finalResult
     }
 
     // MARK: - Stage 1

@@ -106,10 +106,3 @@ final class MockPlannerProvider: LLMProvider, @unchecked Sendable {
         }
     }
 }
-
-extension PlannerEngine {
-    convenience init(orchestrateProvider: any LLMProvider) {
-        self.init()
-        self.orchestrateProvider = orchestrateProvider
-    }
-}

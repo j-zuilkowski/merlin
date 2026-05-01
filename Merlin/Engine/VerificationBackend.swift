@@ -14,6 +14,18 @@ struct VerificationCommand: Sendable {
     var label: String
     var command: String
     var passCondition: PassCondition
+
+    init(label: String, command: String, passCondition: PassCondition) {
+        self.label = label
+        self.command = command
+        self.passCondition = passCondition
+    }
+
+    init(command: String, description: String) {
+        self.label = description
+        self.command = command
+        self.passCondition = .exitCode(0)
+    }
 }
 
 // MARK: - VerificationBackend
@@ -23,7 +35,7 @@ struct VerificationCommand: Sendable {
 @MainActor
 protocol VerificationBackend: Sendable {
     /// Returns nil if this domain has no deterministic check for the given task type.
-    func verificationCommands(for taskType: DomainTaskType) -> [VerificationCommand]?
+    func verificationCommands(for taskType: DomainTaskType) async -> [VerificationCommand]?
 }
 
 // MARK: - NullVerificationBackend
@@ -32,5 +44,5 @@ protocol VerificationBackend: Sendable {
 /// Stage 1 always passes; Stage 2 (model critic) handles all verification.
 @MainActor
 struct NullVerificationBackend: VerificationBackend {
-    func verificationCommands(for taskType: DomainTaskType) -> [VerificationCommand]? { nil }
+    func verificationCommands(for taskType: DomainTaskType) async -> [VerificationCommand]? { nil }
 }

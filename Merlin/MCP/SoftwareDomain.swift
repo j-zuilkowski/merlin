@@ -34,7 +34,7 @@ struct SoftwareDomain: DomainPlugin {
 @MainActor
 struct SoftwareVerificationBackend: VerificationBackend {
 
-    func verificationCommands(for taskType: DomainTaskType) -> [VerificationCommand]? {
+    func verificationCommands(for taskType: DomainTaskType) async -> [VerificationCommand]? {
         let settings = AppSettings.shared
         switch taskType.name {
         case "code_generation", "refactoring", "test_writing", "debugging",

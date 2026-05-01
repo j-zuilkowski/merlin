@@ -34,8 +34,20 @@ struct PlanStep: Sendable {
 actor PlannerEngine {
 
     private let executeProvider: any LLMProvider
-    private let orchestrateProvider: (any LLMProvider)?
+    var orchestrateProvider: (any LLMProvider)?
     private let maxPlanRetries: Int
+
+    init() {
+        self.executeProvider = NullProvider()
+        self.orchestrateProvider = nil
+        self.maxPlanRetries = 2
+    }
+
+    init(orchestrateProvider: any LLMProvider) {
+        self.executeProvider = NullProvider()
+        self.orchestrateProvider = orchestrateProvider
+        self.maxPlanRetries = 2
+    }
 
     init(
         executeProvider: any LLMProvider,
@@ -50,33 +62,58 @@ actor PlannerEngine {
     // MARK: - Classification
 
     func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
+        let classifyStart = Date()
+        let result: ClassifierResult
+
         if let override = parseTierOverride(from: message) {
-            return ClassifierResult(
+            result = ClassifierResult(
                 needsPlanning: override != .routine,
                 complexity: override,
                 reason: "declarative override"
             )
-        }
-
-        let lower = message.lowercased()
-        for keyword in domain.highStakesKeywords {
-            guard keyword.count > 4 else { continue }
-            if lower.contains(keyword.lowercased()) {
-                return ClassifierResult(
-                    needsPlanning: true,
-                    complexity: .highStakes,
-                    reason: "high-stakes keyword: \(keyword)"
-                )
+        } else {
+            let lower = message.lowercased()
+            var keywordMatch: ClassifierResult? = nil
+            for keyword in domain.highStakesKeywords {
+                guard keyword.count > 4 else { continue }
+                if lower.contains(keyword.lowercased()) {
+                    keywordMatch = ClassifierResult(
+                        needsPlanning: true,
+                        complexity: .highStakes,
+                        reason: "high-stakes keyword: \(keyword)"
+                    )
+                    break
+                }
+            }
+            if let keywordMatch {
+                result = keywordMatch
+            } else {
+                result = await runClassifier(message: message)
             }
         }
 
-        return await runClassifier(message: message)
+        let ms = Date().timeIntervalSince(classifyStart) * 1000
+        TelemetryEmitter.shared.emit("planner.classify", durationMs: ms, data: [
+            "complexity": result.complexity.rawValue,
+            "reason": result.reason,
+            "used_llm": result.reason == "llm"
+        ])
+        return result
     }
 
     // MARK: - Decomposition
 
     func decompose(task: String, context: [Message]) async -> [PlanStep] {
-        guard let provider = orchestrateProvider else { return [] }
+        TelemetryEmitter.shared.emit("planner.decompose.start", data: [
+            "task_length": task.count
+        ])
+        let decomposeStart = Date()
+        guard let provider = orchestrateProvider else {
+            TelemetryEmitter.shared.emit("planner.decompose.error", data: [
+                "error_domain": "no_provider"
+            ])
+            return []
+        }
 
         let prompt = """
         Decompose the following task into concrete implementation steps.
@@ -107,14 +144,31 @@ actor PlannerEngine {
                 }
                 let steps = parseSteps(from: raw)
                 if !steps.isEmpty {
+                    let ms = Date().timeIntervalSince(decomposeStart) * 1000
+                    TelemetryEmitter.shared.emit("planner.decompose.complete", durationMs: ms, data: [
+                        "step_count": steps.count
+                    ])
                     return steps
                 }
             } catch {
+                TelemetryEmitter.shared.emit("planner.decompose.error", data: [
+                    "error_domain": (error as NSError).domain,
+                    "error_code": (error as NSError).code
+                ])
                 return []
             }
         }
 
+        let ms = Date().timeIntervalSince(decomposeStart) * 1000
+        TelemetryEmitter.shared.emit("planner.decompose.complete", durationMs: ms, data: [
+            "step_count": 0
+        ])
         return []
+    }
+
+    /// Test injection point - sets the orchestration provider.
+    func setOrchestrateProviderForTesting(_ provider: any LLMProvider) {
+        orchestrateProvider = provider
     }
 
     // MARK: - Tier override parsing

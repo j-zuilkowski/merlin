@@ -73,6 +73,8 @@ class ContextManager: ObservableObject {
     }
 
     private func compact(force: Bool) {
+        let countBefore = messages.count
+        let tokensBefore = estimatedTokens
         let toolIndices = messages.indices.filter { messages[$0].role == .tool }
         guard force || !toolIndices.isEmpty else { return }
 
@@ -135,6 +137,13 @@ class ContextManager: ObservableObject {
 
         estimatedTokens = recomputeEstimatedTokens()
         compactionCount += 1
+        TelemetryEmitter.shared.emit("context.compaction", data: [
+            "message_count_before": countBefore,
+            "message_count_after": messages.count,
+            "tokens_before": tokensBefore,
+            "tokens_after": estimatedTokens,
+            "forced": force
+        ])
     }
 
     func buildSkillReinjectionBlock(skills: [Skill], disabledNames: [String] = []) -> String {

@@ -103,7 +103,7 @@ struct ManifestVerificationBackend: VerificationBackend {
         self.commandMap = commands
     }
 
-    func verificationCommands(for taskType: DomainTaskType) -> [VerificationCommand]? {
+    func verificationCommands(for taskType: DomainTaskType) async -> [VerificationCommand]? {
         guard let cmds = commandMap[taskType.name], !cmds.isEmpty else { return nil }
         return cmds.map { c in
             let condition: PassCondition
