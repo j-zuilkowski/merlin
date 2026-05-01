@@ -183,7 +183,8 @@ final class AppState: ObservableObject {
         engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
         engine.ragRerank = AppSettings.shared.ragRerank
         engine.ragChunkLimit = AppSettings.shared.ragChunkLimit
-        contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)
+        // contextWindowSize stays at the declaration default (200_000); AppSettings.maxTokens
+        // is the max *output* tokens per request, not the model's context window size.
         engine.registry = registry
         engine.sessionStore = sessionStore
         engine.loraCoordinator = loraCoordinator

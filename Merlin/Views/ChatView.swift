@@ -734,6 +734,8 @@ private struct ChatEntryRow: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if item.text.isEmpty == false {
                         markdownText(item.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
                     }
 
                     if item.thinkingText.isEmpty == false {
@@ -889,10 +891,12 @@ private struct ChatEntryRow: View {
     }
 
     private func renderMarkdown(_ text: String) -> AttributedString {
-        // Two spaces before \n = hard line break in CommonMark
-        let fixed = text.replacingOccurrences(of: "\n", with: "  \n")
-        return (try? AttributedString(markdown: fixed,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+        // Use .full syntax so fenced code blocks (``` ... ```) are rendered with
+        // monospace font. This correctly handles tree-formatted output and preserves
+        // all block-level structure. The old "  \n" hack that added two spaces before
+        // every newline was corrupting code block alignment.
+        return (try? AttributedString(markdown: text,
+            options: .init(interpretedSyntax: .full)))
             ?? AttributedString(text)
     }
 }
