@@ -27,6 +27,7 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.settingsButton)
                     showToolPane.toggle()
                 } label: {
                     Label("Tool Log", systemImage: "wrench.and.screwdriver")
@@ -34,6 +35,7 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
                 .tint(showToolPane ? .accentColor : .secondary)
                 .help("Toggle tool log")
+                .accessibilityIdentifier(AccessibilityID.settingsButton)
             }
         }
         .sheet(isPresented: $appState.showAuthPopup) {

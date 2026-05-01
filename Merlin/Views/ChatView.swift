@@ -157,7 +157,7 @@ struct ChatView: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
                 )
-                .accessibilityIdentifier("chat-input")
+                .accessibilityIdentifier(AccessibilityID.chatInput)
                 .disabled(model.isSending)
                 .onSubmit(sendMessage)
                 .onChange(of: model.draft) { _, draft in
@@ -186,8 +186,10 @@ struct ChatView: View {
 
             Button {
                 if model.isSending {
+                    TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.chatCancelButton)
                     appState.stopEngine()
                 } else {
+                    TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.chatSendButton)
                     sendMessage()
                 }
             } label: {
@@ -203,6 +205,7 @@ struct ChatView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(model.isSending ? .red : .accentColor)
+            .accessibilityIdentifier(model.isSending ? AccessibilityID.chatCancelButton : AccessibilityID.chatSendButton)
             .disabled(!model.isSending && model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(16)

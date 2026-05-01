@@ -43,10 +43,12 @@ struct SessionSidebar: View {
                 .padding(.horizontal, 6)
                 .padding(.bottom, 8)
             }
+            .accessibilityIdentifier(AccessibilityID.sessionList)
 
             Divider()
 
             Button {
+                TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.newSessionButton)
                 Task { await mgr.newSession() }
             } label: {
                 Label("New Session", systemImage: "plus")
@@ -54,6 +56,7 @@ struct SessionSidebar: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(AccessibilityID.newSessionButton)
             .padding(8)
         }
         .background(.windowBackground)

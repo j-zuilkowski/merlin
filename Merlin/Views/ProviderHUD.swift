@@ -8,6 +8,7 @@ struct ProviderHUD: View {
 
     var body: some View {
         Button {
+            TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.providerHUD)
             showingPopover.toggle()
         } label: {
             VStack(alignment: .leading, spacing: 4) {
@@ -43,6 +44,7 @@ struct ProviderHUD: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(AccessibilityID.providerHUD)
         .popover(isPresented: $showingPopover, arrowEdge: .top) {
             providerPopover
                 .padding(16)

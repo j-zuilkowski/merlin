@@ -94,6 +94,7 @@ private struct ProviderRow: View {
                     }
                     .labelsHidden()
                     .frame(width: 200)
+                    .accessibilityIdentifier(AccessibilityID.providerSelector)
                 }
             }
 

@@ -195,6 +195,17 @@ public final class TelemetryEmitter: @unchecked Sendable {
         ])
     }
 
+    /// Emit a GUI interaction event. Call from SwiftUI button/field action closures.
+    /// - Parameters:
+    ///   - action: Short verb describing the interaction: `"tap"`, `"focus"`, `"dismiss"`.
+    ///   - identifier: The `AccessibilityID` constant for the control.
+    public func emitGUIAction(_ action: String, identifier: String) {
+        emit("gui.action", data: [
+            "action": action,
+            "identifier": identifier
+        ])
+    }
+
     // MARK: Private file I/O (runs on `queue`)
 
     private func openFile() {
