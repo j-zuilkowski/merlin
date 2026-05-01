@@ -24,6 +24,7 @@ final class DeepSeekProvider: LLMProvider, @unchecked Sendable {
                     urlRequest.httpMethod = "POST"
                     urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    urlRequest.timeoutInterval = 600 // match OpenAICompatibleProvider
                     urlRequest.httpBody = requestBody
 
                     let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)

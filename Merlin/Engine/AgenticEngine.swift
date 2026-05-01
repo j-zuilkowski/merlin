@@ -205,12 +205,29 @@ final class AgenticEngine {
         if lower.hasPrefix("@execute ") || lower.contains(" @execute ") { return .execute }
         if lower.hasPrefix("@orchestrate ") || lower.contains(" @orchestrate ") { return .orchestrate }
 
-        // Vision keywords
-        let visionKeywords = ["screenshot", "screen", "vision", "ui", "click", "button"]
-        if visionKeywords.contains(where: { lower.contains($0) }) { return .vision }
+        // Vision slot: whole-word match only.
+        // "ui" is intentionally excluded — it appears as a substring in paths/names (e.g. "jonzu*ui*lkowski").
+        // "screen" requires \b so it doesn't match inside "screensaver", filenames, etc.
+        if AgenticEngine.looksLikeVisionRequest(lower) { return .vision }
 
         // Default: execute slot handles all other work
         return .execute
+    }
+
+    /// Returns true when the message clearly targets the vision provider.
+    /// Uses word-boundary matching (\b) to avoid false positives from substrings
+    /// inside file paths or user names (e.g. "jonz**ui**lkowski" must not match "ui").
+    static func looksLikeVisionRequest(_ lower: String) -> Bool {
+        // Exact-phrase keywords that are unambiguous without boundary checks.
+        let phraseKeywords = ["screenshot", "take a picture", "capture the screen"]
+        if phraseKeywords.contains(where: { lower.contains($0) }) { return true }
+        // Word-boundary keywords: must appear as complete words.
+        let wordKeywords = ["screen", "vision", "click", "button"]
+        return wordKeywords.contains { keyword in
+            (try? NSRegularExpression(pattern: "\\b\(keyword)\\b"))
+                .map { $0.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)) != nil }
+                ?? false
+        }
     }
 
     private func resolvedProvider(for slot: AgentSlot) -> any LLMProvider {
@@ -864,8 +881,7 @@ final class AgenticEngine {
         let lower = message.lowercased()
 
         // Vision requests always go to the vision provider.
-        let visionKeywords = ["screenshot", "screen", "vision", "ui", "click", "button"]
-        if visionKeywords.contains(where: { lower.contains($0) }) {
+        if AgenticEngine.looksLikeVisionRequest(lower) {
             return provider(for: .vision) ?? visionProvider
         }
 
