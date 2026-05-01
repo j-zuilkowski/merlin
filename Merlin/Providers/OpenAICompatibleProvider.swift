@@ -42,13 +42,29 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                             userInfo: [NSLocalizedDescriptionKey: "HTTP \(statusCode): \(body)"])
                     }
 
-                    for try await line in bytes.lines {
-                        if let chunk = try SSEParser.parseChunk(line) {
-                            continuation.yield(chunk)
-                            if chunk.finishReason != nil {
-                                break
+                    // Stream with idle timeout: if no SSE chunk arrives for 45 s the
+                    // connection has stalled. Cancel the task so the engine can surface
+                    // a clear error rather than hanging indefinitely.
+                    try await withThrowingTaskGroup(of: Void.self) { group in
+                        group.addTask { @Sendable in
+                            for try await line in bytes.lines {
+                                if let chunk = try SSEParser.parseChunk(line) {
+                                    continuation.yield(chunk)
+                                    if chunk.finishReason != nil { return }
+                                }
                             }
                         }
+                        group.addTask { @Sendable in
+                            try await Task.sleep(nanoseconds: 45_000_000_000)
+                            throw URLError(.timedOut, userInfo: [
+                                NSLocalizedDescriptionKey:
+                                    "Stream stalled — no response from the API for 45 seconds. " +
+                                    "The request may be too large. Try a shorter prompt or a new session."
+                            ])
+                        }
+                        // First task to finish (stream end or timeout error) wins.
+                        try await group.next()
+                        group.cancelAll()
                     }
                     continuation.finish()
                 } catch {

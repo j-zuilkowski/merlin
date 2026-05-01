@@ -453,6 +453,10 @@ final class AgenticEngine {
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
 
+        // Approximate token budget. Beyond ~80 K tokens DeepSeek reliably stalls or
+        // times out mid-stream; we stop early and surface a note so the user knows why.
+        let contextTokenBudget = 80_000
+
         while true {
             await pauseForReload()
             guard loopCount < maxIterations else {
@@ -460,6 +464,15 @@ final class AgenticEngine {
                 break
             }
             loopCount += 1
+
+            let estimatedTokens = approximateTokens(in: context)
+            if estimatedTokens > contextTokenBudget {
+                continuation.yield(.systemNote(
+                    "⚠️ Context is large (~\(estimatedTokens / 1_000)K tokens). Stopping here to avoid an API timeout. " +
+                    "Ask a more focused question or start a new session."
+                ))
+                break
+            }
 
             let provider: any LLMProvider
             if workingSlot == .reason {

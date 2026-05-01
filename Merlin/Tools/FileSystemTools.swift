@@ -1,11 +1,21 @@
 import Foundation
 
 enum FileSystemTools {
+    /// Maximum lines returned by readFile. Large source files would otherwise fill the
+    /// entire context window, causing API timeouts and stalled streams.
+    static let readFileLineLimit = 300
+
     static func readFile(path: String) async throws -> String {
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let text = String(decoding: data, as: UTF8.self)
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        return lines.enumerated().map { "\($0.offset + 1)\t\($0.element)" }.joined(separator: "\n")
+        let total = lines.count
+        let visible = lines.prefix(readFileLineLimit)
+        let numbered = visible.enumerated().map { "\($0.offset + 1)\t\($0.element)" }.joined(separator: "\n")
+        if total > readFileLineLimit {
+            return numbered + "\n[\(total - readFileLineLimit) more lines not shown — file has \(total) lines total. Use a shell command with grep/sed/awk to search for specific content.]"
+        }
+        return numbered
     }
 
     static func writeFile(path: String, content: String) async throws {
