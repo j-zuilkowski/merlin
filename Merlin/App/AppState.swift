@@ -178,9 +178,9 @@ final class AppState: ObservableObject {
             // 3. Inject the active backend into the engine at init.
             memoryBackend: memoryRegistry.activePlugin
         )
-        engine.currentProjectPath = AppSettings.shared.projectPath.isEmpty
-            ? nil
-            : AppSettings.shared.projectPath
+        // Prefer the open project's path; fall back to the global config.toml setting.
+        let resolvedPath = projectPath.isEmpty ? AppSettings.shared.projectPath : projectPath
+        engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
         engine.ragRerank = AppSettings.shared.ragRerank
         engine.ragChunkLimit = AppSettings.shared.ragChunkLimit
         contextUsage = ContextUsageTracker(contextWindowSize: AppSettings.shared.maxTokens)

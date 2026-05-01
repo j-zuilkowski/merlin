@@ -112,7 +112,10 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
 
         func encode(to encoder: Encoder) throws {
             var c = encoder.singleValueContainer()
-            if let text {
+            // OpenAI wire format: assistant messages carrying only tool_calls must
+            // send content: null (not ""). An empty string is rejected by DeepSeek
+            // and other OpenAI-compatible providers with a 400/bad-response error.
+            if let text, !text.isEmpty {
                 try c.encode(text)
             } else if let parts {
                 try c.encode(parts)

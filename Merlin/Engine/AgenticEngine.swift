@@ -924,6 +924,9 @@ final class AgenticEngine {
         if permissionMode == .plan {
             parts.append(PermissionMode.planSystemPrompt)
         }
+        if let path = currentProjectPath {
+            parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
+        }
         parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
         return parts.joined(separator: "\n\n")
     }
@@ -938,6 +941,9 @@ final class AgenticEngine {
         }
         if permissionMode == .plan {
             parts.append(PermissionMode.planSystemPrompt)
+        }
+        if let path = currentProjectPath {
+            parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
         parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
 
