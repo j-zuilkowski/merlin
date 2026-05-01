@@ -15,7 +15,6 @@ struct ChatView: View {
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
-    @State private var isProgrammaticallyScrolling: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -225,10 +224,8 @@ struct ChatView: View {
             .onScrollGeometryChange(for: Double.self) { geo in
                 geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
             } action: { _, distanceFromBottom in
-                guard !isProgrammaticallyScrolling else { return }
-                // While the engine is streaming, content is growing from the bottom
-                // and the programmatic scroll-to-bottom is still catching up. Letting
-                // the geometry change disable auto-scroll here would freeze the view.
+                // Only update scroll lock when the engine is idle. While the engine
+                // is active the revision handler below handles locking/unlocking.
                 guard !appState.engine.isRunning else { return }
                 let shouldAutoScroll = distanceFromBottom < 40
                 if shouldAutoScroll != autoScrollEnabled {
@@ -239,18 +236,17 @@ struct ChatView: View {
                 }
             }
             .onChange(of: model.revision) { _, _ in
-                // While streaming, always scroll — auto-scroll may have been falsely
-                // disabled by a geometry tick that arrived before the scroll caught up.
-                let shouldScroll = autoScrollEnabled || appState.engine.isRunning
-                guard shouldScroll else { return }
-                if !autoScrollEnabled {
-                    autoScrollEnabled = true
-                    withAnimation(.easeInOut(duration: 0.2)) { scrollLockVisible = false }
-                }
-                isProgrammaticallyScrolling = true
-                proxy.scrollTo("bottom", anchor: .bottom)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isProgrammaticallyScrolling = false
+                if appState.engine.isRunning {
+                    // Engine is active: always scroll and always keep lock off.
+                    // This handles both streaming turns AND tool-execution gaps where
+                    // isRunning is true but no geometry change may be in flight.
+                    if !autoScrollEnabled {
+                        autoScrollEnabled = true
+                        withAnimation(.easeInOut(duration: 0.2)) { scrollLockVisible = false }
+                    }
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                } else if autoScrollEnabled {
+                    proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
         } else {
@@ -427,16 +423,10 @@ struct ChatView: View {
             Spacer()
             Button("Resume ↓") {
                 autoScrollEnabled = true
-                isProgrammaticallyScrolling = true
                 withAnimation(.easeInOut(duration: 0.2)) {
                     scrollLockVisible = false
                 }
-                withAnimation(.easeOut(duration: 0.18)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    isProgrammaticallyScrolling = false
-                }
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
             .font(.caption.weight(.medium))
             .buttonStyle(.plain)
