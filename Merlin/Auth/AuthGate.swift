@@ -70,13 +70,32 @@ final class AuthGate {
             ? "~" + argument.dropFirst(home.count)
             : argument
 
-        if arg.contains("/") {
-            let url = URL(fileURLWithPath: arg)
+        // Pure path argument (read_file, list_directory, write_file, etc.)
+        // Only treat as a path when the argument itself starts with / or ~.
+        // Shell commands like "cat /Users/.../file.py 2>&1 | head" start with the
+        // command name, not "/", so URL(fileURLWithPath:) would resolve them
+        // relative to the process cwd ("/"), producing "/cat /Users/..." — a
+        // pattern that never matches "cat /Users/..." and breaks Allow Always.
+        if arg.hasPrefix("/") || arg.hasPrefix("~") {
+            let expanded = arg.hasPrefix("~") ? home + arg.dropFirst() : arg
+            let url = URL(fileURLWithPath: expanded)
             let parent = url.deletingLastPathComponent().path
             return parent.hasSuffix("/**") ? parent : parent + "/**"
         }
 
-        let first = arg.components(separatedBy: " ").first ?? arg
-        return first.isEmpty ? "*" : first + " *"
+        // Shell command: use "<command> <parent-dir>/**" so the rule covers all
+        // future invocations of the same command in the same directory tree.
+        let words = arg.components(separatedBy: " ")
+        let command = words.first ?? ""
+        if let pathWord = words.dropFirst().first(where: { $0.hasPrefix("/") || $0.hasPrefix("~") }) {
+            let expanded = pathWord.hasPrefix("~") ? home + pathWord.dropFirst() : pathWord
+            let url = URL(fileURLWithPath: expanded)
+            let parent = url.deletingLastPathComponent().path
+            let dir = parent.hasSuffix("/**") ? parent : parent + "/**"
+            return command + " " + dir
+        }
+
+        // Fallback for short commands or anything without a path.
+        return command.isEmpty ? "**" : command + " **"
     }
 }
