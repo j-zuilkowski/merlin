@@ -223,25 +223,26 @@ struct ChatView: View {
                 messageList
             }
             .onScrollPhaseChange { _, newPhase in
-                // Track whether the current scroll is user-initiated.
-                // Programmatic scrollTo produces .animating; user touch produces
-                // .interacting/.tracking/.decelerating. We use this to avoid
-                // treating a programmatic mid-scroll geometry event as "user scrolled up".
+                // Disable auto-scroll the instant the user touches the scroll view.
+                // Waiting for the geometry change is racy: onChange(of: revision) can
+                // fire a programmatic scrollTo("bottom") between the phase change and
+                // the geometry callback, snapping the view back before the lock lands.
+                if newPhase == .interacting {
+                    autoScrollEnabled = false
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        scrollLockVisible = true
+                    }
+                }
                 scrollPhaseIsUser = (newPhase == .interacting || newPhase == .decelerating)
             }
             .onScrollGeometryChange(for: Bool.self) { geo in
-                (geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y) > 40
-            } action: { _, isScrolledUp in
-                // Only update the lock if the scroll was user-initiated.
-                // Geometry changes from programmatic scrollTo or content growth
-                // are ignored here — they fire with scrollPhaseIsUser = false.
-                guard scrollPhaseIsUser else { return }
-                let shouldAutoScroll = !isScrolledUp
-                if shouldAutoScroll != autoScrollEnabled {
-                    autoScrollEnabled = shouldAutoScroll
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollLockVisible = !shouldAutoScroll
-                    }
+                (geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y) < 40
+            } action: { _, isAtBottom in
+                // Re-enable auto-scroll only when the user has scrolled back to the bottom.
+                guard scrollPhaseIsUser, isAtBottom, !autoScrollEnabled else { return }
+                autoScrollEnabled = true
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    scrollLockVisible = false
                 }
             }
             .onChange(of: model.revision) { _, _ in
@@ -891,12 +892,13 @@ private struct ChatEntryRow: View {
     }
 
     private func renderMarkdown(_ text: String) -> AttributedString {
-        // Use .full syntax so fenced code blocks (``` ... ```) are rendered with
-        // monospace font. This correctly handles tree-formatted output and preserves
-        // all block-level structure. The old "  \n" hack that added two spaces before
-        // every newline was corrupting code block alignment.
+        // .inlineOnlyPreservingWhitespace preserves every \n as a real line break,
+        // which is essential for tree-formatted and code output. (.full would merge
+        // soft-break newlines into spaces, destroying tree alignment.)
+        // The old "  \n" hack (two spaces before every newline) was supposed to force
+        // hard line breaks but it corrupted indentation inside code blocks — removed.
         return (try? AttributedString(markdown: text,
-            options: .init(interpretedSyntax: .full)))
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
     }
 }
