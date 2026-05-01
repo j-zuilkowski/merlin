@@ -627,22 +627,22 @@ final class ChatViewModel: ObservableObject {
         // human-readable message from domain + code so the user knows what
         // went wrong (usually an API key or network issue).
         let nsError = error as NSError
-        let raw = nsError.localizedDescription
         let message: String
-        if raw.isEmpty || raw == "(null)" {
-            if nsError.domain == NSURLErrorDomain {
-                switch nsError.code {
-                case -1011: message = "API error: the server returned an unexpected response. Check your API key in Settings."
-                case -1009: message = "No internet connection."
-                case -1001: message = "Request timed out."
-                case -1004: message = "Could not connect to the server."
-                default:    message = "Network error (NSURLError \(nsError.code)). Check your API key and connection."
-                }
-            } else {
-                message = "Error \(nsError.domain) \(nsError.code)"
+        if nsError.domain == NSURLErrorDomain {
+            // Replace generic / null system strings with actionable messages.
+            switch nsError.code {
+            case -1011: message = "API connection error — the server returned an unexpected response. Check your API key in Settings and try again."
+            case -1009: message = "No internet connection."
+            case -1001: message = "Request timed out — the server took too long to respond."
+            case -1004: message = "Could not connect to the server."
+            case -1005: message = "The network connection was lost."
+            default:
+                let raw = nsError.localizedDescription
+                message = (raw.isEmpty || raw == "(null)") ? "Network error (NSURLError \(nsError.code))." : raw
             }
         } else {
-            message = raw
+            let raw = nsError.localizedDescription
+            message = (raw.isEmpty || raw == "(null)") ? "Error \(nsError.domain) \(nsError.code)" : raw
         }
         items.append(ChatEntry(role: .error, text: message))
         bumpRevision()
