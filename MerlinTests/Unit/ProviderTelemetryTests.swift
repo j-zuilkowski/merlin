@@ -170,10 +170,10 @@ enum MockChunkResponse {
 }
 
 final class MockTelemetryURLProtocol: URLProtocol {
-    static var responses: [MockChunkResponse] = []
-    static var shouldFail: Bool = false
-    static var failFirstAttempt: Bool = false
-    static var attemptCount: Int = 0
+    nonisolated(unsafe) static var responses: [MockChunkResponse] = []
+    nonisolated(unsafe) static var shouldFail: Bool = false
+    nonisolated(unsafe) static var failFirstAttempt: Bool = false
+    nonisolated(unsafe) static var attemptCount: Int = 0
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

@@ -226,7 +226,10 @@ final class AppState: ObservableObject {
             toolbarActionsList = await toolbarActions.all()
         }
         Task { await xcalibreClient.probe() }
-        Task { await registry.probeLocalProviders() }
+        Task {
+            await registry.probeAndFetchModels()
+            await registry.fetchAllModels()
+        }
         let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
         if !key.isEmpty {
             ToolRegistry.shared.registerWebSearchIfAvailable(apiKey: key)

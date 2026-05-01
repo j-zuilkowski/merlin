@@ -13,7 +13,7 @@ struct ProviderSettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         ProviderRow(
                             config: config,
-                            availableModels: ProviderRegistry.knownModels[config.id] ?? [],
+                            availableModels: registry.modelsByProviderID[config.id] ?? [],
                             isActive: registry.activeProviderID == config.id,
                             hasKey: config.isLocal
                                 ? registry.availabilityByID[config.id] == true

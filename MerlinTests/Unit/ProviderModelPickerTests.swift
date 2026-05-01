@@ -10,42 +10,11 @@ final class ProviderModelPickerTests: XCTestCase {
         return ProviderRegistry(persistURL: tmp)
     }
 
-    // MARK: knownModels content
+    // MARK: Dynamic model cache
 
-    func testDeepSeekHasKnownModels() {
-        let models = ProviderRegistry.knownModels["deepseek"]
-        XCTAssertNotNil(models)
-        XCTAssertTrue(models!.contains("deepseek-chat"))
-        XCTAssertTrue(models!.contains("deepseek-reasoner"))
-    }
-
-    func testOpenAIHasKnownModels() {
-        let models = ProviderRegistry.knownModels["openai"]
-        XCTAssertNotNil(models)
-        XCTAssertFalse(models!.isEmpty)
-        XCTAssertTrue(models!.contains("gpt-4o"))
-    }
-
-    func testAnthropicHasKnownModels() {
-        let models = ProviderRegistry.knownModels["anthropic"]
-        XCTAssertNotNil(models)
-        XCTAssertFalse(models!.isEmpty)
-        XCTAssertTrue(models!.contains("claude-sonnet-4-6"))
-    }
-
-    func testQwenHasKnownModels() {
-        let models = ProviderRegistry.knownModels["qwen"]
-        XCTAssertNotNil(models)
-        XCTAssertFalse(models!.isEmpty)
-    }
-
-    // Local providers have no fixed model list — user types whatever is loaded
-    func testOllamaHasNoKnownModels() {
-        XCTAssertNil(ProviderRegistry.knownModels["ollama"])
-    }
-
-    func testLMStudioHasNoKnownModels() {
-        XCTAssertNil(ProviderRegistry.knownModels["lmstudio"])
+    func testModelsCacheStartsEmpty() {
+        let registry = makeRegistry()
+        XCTAssertTrue(registry.modelsByProviderID.isEmpty)
     }
 
     // MARK: updateModel persistence

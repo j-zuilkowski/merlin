@@ -38,6 +38,7 @@ struct SettingsWindowView: View {
                 .environmentObject(registry)
         case .agents:
             AgentSettingsView(settings: settings)
+                .environmentObject(registry)
         case .hooks:
             HooksSettingsView()
         case .scheduler:
@@ -224,6 +225,7 @@ struct ProvidersSettingsView: View {
 
 struct AgentSettingsView: View {
     @ObservedObject var settings: AppSettings
+    @EnvironmentObject private var registry: ProviderRegistry
 
     var body: some View {
         Form {
@@ -234,7 +236,7 @@ struct AgentSettingsView: View {
                         Text(config.displayName).tag(config.id)
                     }
                 }
-                let models = ProviderRegistry.knownModels[settings.providerName] ?? []
+                let models = registry.modelsByProviderID[settings.providerName] ?? []
                 if !models.isEmpty {
                     Picker("Model", selection: $settings.modelID) {
                         ForEach(models, id: \.self) { model in

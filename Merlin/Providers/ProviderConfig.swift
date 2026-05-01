@@ -107,19 +107,27 @@ final class ProviderRegistry: ObservableObject {
         didSet { if oldValue != activeProviderID { persist() } }
     }
     @Published var availabilityByID: [String: Bool] = [:]
+    @Published private(set) var modelsByProviderID: [String: [String]] = [:]
     @Published private(set) var keyedProviderIDs: Set<String> = []
 
     private var liveProviders: [String: any LLMProvider] = [:]
     private let persistURL: URL
+    private let session: URLSession
 
     static var defaultPersistURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Merlin/providers.json")
     }
 
-    init(persistURL: URL = ProviderRegistry.defaultPersistURL) {
+    init(persistURL: URL = ProviderRegistry.defaultPersistURL,
+         session: URLSession = .shared,
+         initialProviders: [ProviderConfig]? = nil) {
         self.persistURL = persistURL
-        if let loaded = Self.load(from: persistURL) {
+        self.session = session
+        if let initialProviders {
+            providers = initialProviders
+            activeProviderID = initialProviders.first?.id ?? "deepseek"
+        } else if let loaded = Self.load(from: persistURL) {
             providers = loaded.providers
             activeProviderID = loaded.activeProviderID
         } else {
@@ -134,16 +142,6 @@ final class ProviderRegistry: ObservableObject {
             }
         }
     }
-
-    // MARK: Known model lists (static metadata — not persisted)
-
-    static let knownModels: [String: [String]] = [
-        "deepseek": ["deepseek-chat", "deepseek-reasoner", "deepseek-v4-flash", "deepseek-v4-pro"],
-        "openai": ["gpt-4o", "gpt-4o-mini", "o1", "o1-mini", "o3", "o3-mini", "o4-mini"],
-        "anthropic": ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
-        "qwen": ["qwen2.5-72b-instruct", "qwen2.5-32b-instruct",
-                 "qwen2.5-14b-instruct", "qwen2.5-7b-instruct", "qwq-32b"],
-    ]
 
     // MARK: Defaults
 
@@ -370,27 +368,98 @@ final class ProviderRegistry: ObservableObject {
         }
     }
 
-    // MARK: Availability
+    // MARK: Dynamic model discovery / availability
 
-    func probeLocalProviders() async {
-        for config in providers where config.isLocal && config.isEnabled {
-            guard let healthURL = URL(string: config.baseURL)?
-                .deletingLastPathComponent()
-                .appendingPathComponent("health") else { continue }
-            var request = URLRequest(url: healthURL)
-            request.timeoutInterval = 2
-            let available: Bool
-            if let result = try? await URLSession.shared.data(for: request) {
-                let response = result.1
-                if let http = response as? HTTPURLResponse {
-                    available = (200...299).contains(http.statusCode)
-                } else {
-                    available = false
+    func fetchModels(for config: ProviderConfig) async -> [String] {
+        guard config.isEnabled else { return [] }
+        if config.kind == .anthropic {
+            return await fetchAnthropicModels(config: config)
+        }
+        guard let url = URL(string: config.baseURL)?.appendingPathComponent("models") else {
+            return []
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        request.setValue(config.id, forHTTPHeaderField: "X-Merlin-Provider-ID")
+        if !config.isLocal, let key = readAPIKey(for: config.id), !key.isEmpty {
+            request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        }
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+            struct Model: Decodable { let id: String }
+            struct Response: Decodable { let data: [Model] }
+            return try JSONDecoder().decode(Response.self, from: data).data.map(\.id)
+        } catch {
+            return []
+        }
+    }
+
+    private func fetchAnthropicModels(config: ProviderConfig) async -> [String] {
+        guard let url = URL(string: "https://api.anthropic.com/v1/models") else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        request.setValue(config.id, forHTTPHeaderField: "X-Merlin-Provider-ID")
+        if let key = readAPIKey(for: config.id), !key.isEmpty {
+            request.setValue(key, forHTTPHeaderField: "x-api-key")
+            request.setValue(AnthropicProvider.anthropicVersion, forHTTPHeaderField: "anthropic-version")
+        }
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
+            struct Model: Decodable { let id: String }
+            struct Response: Decodable { let data: [Model] }
+            return try JSONDecoder().decode(Response.self, from: data).data.map(\.id)
+        } catch {
+            return []
+        }
+    }
+
+    func fetchAllModels() async {
+        await withTaskGroup(of: (String, [String]).self) { group in
+            for config in providers where config.isEnabled {
+                group.addTask { [weak self] in
+                    guard let self else { return (config.id, []) }
+                    let models = await self.fetchModels(for: config)
+                    return (config.id, models)
                 }
-            } else {
-                available = false
             }
-            availabilityByID[config.id] = available
+            for await (id, models) in group where !models.isEmpty {
+                modelsByProviderID[id] = models
+            }
+        }
+    }
+
+    /// Probes availability and fetches the model list for every enabled local provider.
+    /// Sets both `availabilityByID` and `modelsByProviderID`.
+    func probeAndFetchModels() async {
+        await withTaskGroup(of: (String, Bool, [String]).self) { group in
+            for config in providers where config.isLocal && config.isEnabled {
+                group.addTask { [weak self] in
+                    guard let self else { return (config.id, false, []) }
+                    let available: Bool
+                    if let healthURL = URL(string: config.baseURL)?
+                        .deletingLastPathComponent()
+                        .appendingPathComponent("health") {
+                        var request = URLRequest(url: healthURL)
+                        request.timeoutInterval = 2
+                        let status = (try? await self.session.data(for: request))
+                            .flatMap { $0.1 as? HTTPURLResponse }?.statusCode
+                        available = status.map { (200...299).contains($0) } ?? false
+                    } else {
+                        available = false
+                    }
+                    let models = available ? await self.fetchModels(for: config) : []
+                    return (config.id, available, models)
+                }
+            }
+            for await (id, available, models) in group {
+                availabilityByID[id] = available
+                if !models.isEmpty {
+                    modelsByProviderID[id] = models
+                }
+            }
         }
     }
 

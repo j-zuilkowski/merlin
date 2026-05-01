@@ -4,6 +4,13 @@ import XCTest
 @MainActor
 final class DynamicModelFetchTests: XCTestCase {
 
+    override func setUp() {
+        super.setUp()
+        MockModelsURLProtocol.nextResponse = .openAIModels([])
+        MockModelsURLProtocol.perIDResponse = [:]
+        MockModelsURLProtocol.capturedRequests = []
+    }
+
     // MARK: - Helpers
 
     private func makeRegistry(
@@ -125,12 +132,11 @@ final class DynamicModelFetchTests: XCTestCase {
     // MARK: - fetchAllModels()
 
     func testFetchAllModelsPopulatesCache() async throws {
+        let registry = makeRegistry(response: .openAIModels([]))
         MockModelsURLProtocol.perIDResponse = [
             "deepseek": .openAIModels(["deepseek-chat", "deepseek-reasoner"]),
             "lmstudio": .openAIModels(["Qwen2.5-VL-72B", "phi-4"]),
         ]
-        MockModelsURLProtocol.nextResponse = .openAIModels([])
-        let registry = makeRegistry(response: .openAIModels([]))
 
         await registry.fetchAllModels()
 
@@ -210,9 +216,9 @@ enum MockModelsResponse {
 }
 
 final class MockModelsURLProtocol: URLProtocol, @unchecked Sendable {
-    static var nextResponse: MockModelsResponse = .openAIModels([])
-    static var perIDResponse: [String: MockModelsResponse] = [:]
-    static var capturedRequests: [URLRequest] = []
+    nonisolated(unsafe) static var nextResponse: MockModelsResponse = .openAIModels([])
+    nonisolated(unsafe) static var perIDResponse: [String: MockModelsResponse] = [:]
+    nonisolated(unsafe) static var capturedRequests: [URLRequest] = []
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -220,8 +226,10 @@ final class MockModelsURLProtocol: URLProtocol, @unchecked Sendable {
     override func startLoading() {
         MockModelsURLProtocol.capturedRequests.append(request)
 
-        // Pick per-ID response if available (keyed by last path component of host or id)
-        let responseKey = request.url?.host?.components(separatedBy: ".").first ?? ""
+        // Pick per-ID response if available (host prefix, provider path token, or explicit header)
+        let hostPrefix = request.url?.host?.components(separatedBy: ".").first ?? ""
+        let providerHint = request.value(forHTTPHeaderField: "X-Merlin-Provider-ID") ?? ""
+        let responseKey = providerHint.isEmpty ? hostPrefix : providerHint
         let response = MockModelsURLProtocol.perIDResponse[responseKey]
             ?? MockModelsURLProtocol.nextResponse
 
