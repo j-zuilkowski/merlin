@@ -735,8 +735,6 @@ private struct ChatEntryRow: View {
                 VStack(alignment: .leading, spacing: 10) {
                     if item.text.isEmpty == false {
                         markdownText(item.text)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .textSelection(.enabled)
                     }
 
                     if item.thinkingText.isEmpty == false {
@@ -887,16 +885,100 @@ private struct ChatEntryRow: View {
             .textSelection(.enabled)
     }
 
-    private func markdownText(_ text: String) -> Text {
-        Text(renderMarkdown(text))
+    // MARK: – Markdown rendering
+
+    /// Renders `text` as a view, splitting fenced code blocks (``` … ```) out so
+    /// they get a monospace font and a horizontal scroll view. Prose segments use
+    /// AttributedString markdown inline rendering which preserves every \n.
+    @ViewBuilder
+    private func markdownText(_ text: String) -> some View {
+        let segs = codeSegments(from: text)
+        if segs.count == 1, !segs[0].isCode {
+            // Fast path — no code fence in this message.
+            Text(renderMarkdown(segs[0].content))
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
+        } else {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(segs) { seg in
+                    if seg.isCode {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            Text(seg.content)
+                                .font(.system(size: 12, design: .monospaced))
+                                .fixedSize(horizontal: true, vertical: true)
+                                .padding(8)
+                        }
+                        .background(Color(nsColor: .windowBackgroundColor))
+                        .cornerRadius(6)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
+                                              lineWidth: 1)
+                        )
+                    } else if !seg.content.isEmpty {
+                        Text(renderMarkdown(seg.content))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .textSelection(.enabled)
+        }
+    }
+
+    private struct CodeSegment: Identifiable {
+        let id: Int
+        let content: String
+        let isCode: Bool
+    }
+
+    /// Splits `text` on triple-backtick fences, returning alternating prose/code segments.
+    private func codeSegments(from text: String) -> [CodeSegment] {
+        var result: [CodeSegment] = []
+        var idx = 0
+        var remaining = text[...]
+        let fence = "```"
+
+        while !remaining.isEmpty {
+            guard let fenceRange = remaining.range(of: fence) else {
+                result.append(CodeSegment(id: idx, content: String(remaining), isCode: false))
+                break
+            }
+            // Prose before this fence
+            let before = String(remaining[..<fenceRange.lowerBound])
+            if !before.isEmpty {
+                result.append(CodeSegment(id: idx, content: before, isCode: false))
+                idx += 1
+            }
+            // Skip optional language tag on the same line as the opening fence
+            let afterOpening = remaining[fenceRange.upperBound...]
+            let codeBodyStart: String.Index
+            if let nl = afterOpening.firstIndex(of: "\n") {
+                codeBodyStart = afterOpening.index(after: nl)
+            } else {
+                codeBodyStart = afterOpening.startIndex
+            }
+            let codeBody = afterOpening[codeBodyStart...]
+
+            // Find the closing fence (must be on its own line)
+            if let closeRange = codeBody.range(of: "\n" + fence) {
+                result.append(CodeSegment(id: idx,
+                                          content: String(codeBody[..<closeRange.lowerBound]),
+                                          isCode: true))
+                idx += 1
+                remaining = codeBody[closeRange.upperBound...]
+                if remaining.first == "\n" { remaining = remaining.dropFirst() }
+            } else {
+                // Unclosed fence (still streaming) — treat the rest as code
+                result.append(CodeSegment(id: idx, content: String(codeBody), isCode: true))
+                break
+            }
+        }
+        return result.isEmpty ? [CodeSegment(id: 0, content: text, isCode: false)] : result
     }
 
     private func renderMarkdown(_ text: String) -> AttributedString {
-        // .inlineOnlyPreservingWhitespace preserves every \n as a real line break,
-        // which is essential for tree-formatted and code output. (.full would merge
-        // soft-break newlines into spaces, destroying tree alignment.)
-        // The old "  \n" hack (two spaces before every newline) was supposed to force
-        // hard line breaks but it corrupted indentation inside code blocks — removed.
+        // .inlineOnlyPreservingWhitespace preserves every \n as a real line break.
+        // (.full converts bare \n to a space, destroying tree / bullet alignment.)
         return (try? AttributedString(markdown: text,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
