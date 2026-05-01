@@ -226,6 +226,10 @@ struct ChatView: View {
                 geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
             } action: { _, distanceFromBottom in
                 guard !isProgrammaticallyScrolling else { return }
+                // While the engine is streaming, content is growing from the bottom
+                // and the programmatic scroll-to-bottom is still catching up. Letting
+                // the geometry change disable auto-scroll here would freeze the view.
+                guard !appState.engine.isRunning else { return }
                 let shouldAutoScroll = distanceFromBottom < 40
                 if shouldAutoScroll != autoScrollEnabled {
                     autoScrollEnabled = shouldAutoScroll
@@ -235,7 +239,14 @@ struct ChatView: View {
                 }
             }
             .onChange(of: model.revision) { _, _ in
-                guard autoScrollEnabled else { return }
+                // While streaming, always scroll — auto-scroll may have been falsely
+                // disabled by a geometry tick that arrived before the scroll caught up.
+                let shouldScroll = autoScrollEnabled || appState.engine.isRunning
+                guard shouldScroll else { return }
+                if !autoScrollEnabled {
+                    autoScrollEnabled = true
+                    withAnimation(.easeInOut(duration: 0.2)) { scrollLockVisible = false }
+                }
                 isProgrammaticallyScrolling = true
                 proxy.scrollTo("bottom", anchor: .bottom)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -289,6 +300,10 @@ struct ChatView: View {
             model.draft = ""
             return
         }
+        // Always re-enable auto-scroll when the user sends a new message so a
+        // previously locked view tracks the incoming response from the start.
+        autoScrollEnabled = true
+        scrollLockVisible = false
         Task { @MainActor in
             await model.submit(appState: appState)
         }
