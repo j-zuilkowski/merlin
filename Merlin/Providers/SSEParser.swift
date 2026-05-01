@@ -55,6 +55,17 @@ enum SSEParser {
                 case role, content
                 case toolCalls = "tool_calls"
                 case thinkingContent = "thinking_content"
+                case reasoningContent = "reasoning_content"   // DeepSeek field name
+            }
+
+            init(from decoder: Decoder) throws {
+                let c = try decoder.container(keyedBy: CodingKeys.self)
+                role = try c.decodeIfPresent(String.self, forKey: .role)
+                content = try c.decodeIfPresent(String.self, forKey: .content)
+                toolCalls = try c.decodeIfPresent([ToolCallDelta].self, forKey: .toolCalls)
+                // Accept both naming conventions; prefer reasoning_content (DeepSeek).
+                thinkingContent = try c.decodeIfPresent(String.self, forKey: .reasoningContent)
+                    ?? c.decodeIfPresent(String.self, forKey: .thinkingContent)
             }
         }
 
@@ -83,7 +94,8 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
             case role, content
             case toolCalls = "tool_calls"
             case toolCallId = "tool_call_id"
-            case thinkingContent = "thinking_content"
+            // DeepSeek and OpenAI-compatible providers expect "reasoning_content".
+            case thinkingContent = "reasoning_content"
         }
 
         init(_ message: Message) {

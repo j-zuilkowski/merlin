@@ -481,6 +481,7 @@ final class AgenticEngine {
             var assembled: [Int: (id: String, name: String, args: String)] = [:]
             var sawToolCall = false
             var fullText = ""
+            var fullThinking = ""   // accumulated reasoning_content for context round-trip
 
             for try await chunk in stream {
                 if let reason = chunk.finishReason {
@@ -488,6 +489,7 @@ final class AgenticEngine {
                 }
                 if let thinkingContent = chunk.delta?.thinkingContent, !thinkingContent.isEmpty {
                     continuation.yield(.thinking(thinkingContent))
+                    fullThinking += thinkingContent
                 }
                 if let content = chunk.delta?.content, !content.isEmpty {
                     continuation.yield(.text(content))
@@ -515,6 +517,7 @@ final class AgenticEngine {
                     context.append(Message(
                         role: .assistant,
                         content: .text(fullText),
+                        thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
                         timestamp: Date()
                     ))
                 }
@@ -577,12 +580,13 @@ final class AgenticEngine {
 
             // Append the assistant turn that declared the tool calls.
             // The OpenAI wire format requires: assistant(tool_calls) → tool(result).
-            // Without this message the next provider call gets a malformed context
-            // and returns an error or empty response, silently ending the loop.
+            // reasoning_content (DeepSeek thinking) must also be echoed back or the
+            // provider returns HTTP 400 "reasoning_content must be passed back".
             context.append(Message(
                 role: .assistant,
                 content: .text(""),
                 toolCalls: calls,
+                thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
                 timestamp: Date()
             ))
 
