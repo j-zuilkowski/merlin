@@ -150,6 +150,7 @@ final class AgenticEngine {
         reg.add(provider)
         reg.activeProviderID = provider.id
         self.registry = reg
+        self.slotAssignments = [.execute: provider.id, .reason: provider.id, .vision: provider.id]
     }
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
@@ -203,8 +204,11 @@ final class AgenticEngine {
             return resolved
         }
 
-        // No slot assignment — fall back to the registry's active primary provider.
-        return registry?.primaryProvider ?? NullProvider()
+        // No slot assignment — only the execute slot falls back to the registry primary provider.
+        // Reason, vision, and orchestrate return nil when not explicitly configured so callers
+        // can distinguish "no provider assigned" from "active primary provider".
+        guard effectiveSlot == .execute else { return nil }
+        return registry?.primaryProvider
     }
 
     /// Determines which slot should handle this message.

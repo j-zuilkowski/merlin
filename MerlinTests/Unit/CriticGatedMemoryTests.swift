@@ -43,6 +43,7 @@ private struct StubClassifier: PlannerEngineProtocol {
 @MainActor
 private func makeTestEngine(
     spy: SpyXcalibreClient,
+    memoryBackend: SpyMemoryBackend? = nil,
     executeResponse: String = "The answer is 42.",
     criticVerdict: CriticResult = .pass,
     classifierComplexity: ComplexityTier = .standard
@@ -53,6 +54,9 @@ private func makeTestEngine(
         provider: provider,
         xcalibreClient: spy
     )
+    if let mb = memoryBackend {
+        engine.memoryBackend = mb
+    }
     engine.criticOverride = StubCriticEngine(verdict: criticVerdict)
     // Non-routine complexity + classifierOverride != nil → critic branch entered
     engine.classifierOverride = StubClassifier(complexity: classifierComplexity)
@@ -132,41 +136,49 @@ final class CriticGatedMemoryTests: XCTestCase {
 
     func testMemoryNotWrittenWhenCriticFails() async throws {
         let spy = SpyXcalibreClient()
-        let engine = makeTestEngine(spy: spy, criticVerdict: .fail(reason: "wrong"))
+        let memSpy = SpyMemoryBackend()
+        let engine = makeTestEngine(spy: spy, memoryBackend: memSpy, criticVerdict: .fail(reason: "wrong"))
         seedAssistantMessage(engine)
 
         try await runEngine(engine)
 
-        XCTAssertEqual(spy.writeCallCount, 0,
-                       "writeMemoryChunk must be suppressed when critic verdict is .fail")
+        let count = await memSpy.writeCallCount
+        XCTAssertEqual(count, 0,
+                       "Memory write must be suppressed when critic verdict is .fail")
     }
 
     func testMemoryWrittenWhenCriticPasses() async throws {
         let spy = SpyXcalibreClient()
-        let engine = makeTestEngine(spy: spy, criticVerdict: .pass)
+        let memSpy = SpyMemoryBackend()
+        let engine = makeTestEngine(spy: spy, memoryBackend: memSpy, criticVerdict: .pass)
         seedAssistantMessage(engine)
 
         try await runEngine(engine)
 
-        XCTAssertEqual(spy.writeCallCount, 1,
+        let count = await memSpy.writeCallCount
+        XCTAssertEqual(count, 1,
                        "writeMemoryChunk must fire when critic verdict is .pass")
     }
 
     func testMemoryWrittenWhenCriticSkipped() async throws {
         let spy = SpyXcalibreClient()
-        let engine = makeTestEngine(spy: spy, criticVerdict: .skipped)
+        let memSpy = SpyMemoryBackend()
+        let engine = makeTestEngine(spy: spy, memoryBackend: memSpy, criticVerdict: .skipped)
         seedAssistantMessage(engine)
 
         try await runEngine(engine)
 
-        XCTAssertEqual(spy.writeCallCount, 1,
+        let count = await memSpy.writeCallCount
+        XCTAssertEqual(count, 1,
                        "writeMemoryChunk must fire when critic verdict is .skipped")
     }
 
     func testMemoryWrittenWhenCriticNotInvokedRoutineTask() async throws {
         let spy = SpyXcalibreClient()
+        let memSpy = SpyMemoryBackend()
         // Routine task: critic branch not entered, lastCriticVerdict stays nil
         let engine = makeTestEngine(spy: spy,
+                                    memoryBackend: memSpy,
                                     criticVerdict: .pass,      // irrelevant — not called
                                     classifierComplexity: .routine)
         seedAssistantMessage(engine)
@@ -175,7 +187,8 @@ final class CriticGatedMemoryTests: XCTestCase {
 
         XCTAssertNil(engine.lastCriticVerdict,
                      "Routine task must not invoke critic; lastCriticVerdict stays nil")
-        XCTAssertEqual(spy.writeCallCount, 1,
+        let count = await memSpy.writeCallCount
+        XCTAssertEqual(count, 1,
                        "Memory write must still occur when critic is not invoked (routine task)")
     }
 }

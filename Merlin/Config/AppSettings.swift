@@ -338,6 +338,9 @@ final class AppSettings: ObservableObject {
             lines.append("memories_enabled = true")
             lines.append("memory_idle_timeout = \(memoryIdleTimeout)")
         }
+        if standingInstructions.isEmpty == false {
+            lines.append("standing_instructions = \(quoted(standingInstructions))")
+        }
         lines.append("")
         lines.append("[memory]")
         lines.append("backend_id = \(quoted(memoryBackendID))")
@@ -433,9 +436,6 @@ final class AppSettings: ObservableObject {
                     lines.append("\(slot.rawValue) = \(quoted(providerID))")
                 }
             }
-        }
-        if standingInstructions.isEmpty == false {
-            lines.append("standing_instructions = \(quoted(standingInstructions))")
         }
         if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainID != "software" {
             lines.append("")

@@ -74,6 +74,7 @@ final class ContextCompactionTelemetryTests: XCTestCase {
         let before = d?["message_count_before"] as? Int ?? 0
         let after  = d?["message_count_after"]  as? Int ?? before
         XCTAssertEqual(before, countBefore)
-        XCTAssertLessThanOrEqual(after, before)
+        // Compaction may append a system summary note, so after may be before+1 at most.
+        XCTAssertLessThanOrEqual(after, before + 1)
     }
 }

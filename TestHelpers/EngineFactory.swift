@@ -43,7 +43,7 @@ func makeEngine(provider: MockProvider? = nil,
     registry.activeProviderID = pro.id
 
     return AgenticEngine(
-        slotAssignments: [.execute: pro.id, .reason: flash.id, .vision: vision.id],
+        slotAssignments: [.execute: flash.id, .reason: pro.id, .vision: vision.id],
         registry: registry,
         toolRouter: router,
         contextManager: ctx,

@@ -278,6 +278,7 @@ final class ProviderRegistry: ObservableObject {
 
     var primaryProvider: (any LLMProvider)? {
         guard let config = activeConfig else { return nil }
+        if let live = liveProviders[config.id] { return live }
         return makeLLMProvider(for: config)
     }
 
