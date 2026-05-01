@@ -65,7 +65,7 @@ class ToolRouter {
         }
 
         let argument = primaryArgument(from: call.function.arguments)
-        if !(permissionMode == .autoAccept && isFileWriteTool(call.function.name)) {
+        if permissionMode != .autoAccept {
             let decision = await authGate.check(tool: call.function.name, argument: argument)
             guard decision == .allow else {
                 return ToolResult(toolCallId: call.id, content: "Denied by user", isError: true)
