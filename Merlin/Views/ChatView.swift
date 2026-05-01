@@ -15,6 +15,7 @@ struct ChatView: View {
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
+    @State private var scrollPhaseIsUser: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -221,13 +222,21 @@ struct ChatView: View {
             ScrollView {
                 messageList
             }
-            .onScrollGeometryChange(for: Double.self) { geo in
-                geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y
-            } action: { _, distanceFromBottom in
-                // Only update scroll lock when the engine is idle. While the engine
-                // is active the revision handler below handles locking/unlocking.
-                guard !appState.engine.isRunning else { return }
-                let shouldAutoScroll = distanceFromBottom < 40
+            .onScrollPhaseChange { _, newPhase in
+                // Track whether the current scroll is user-initiated.
+                // Programmatic scrollTo produces .animating; user touch produces
+                // .interacting/.tracking/.decelerating. We use this to avoid
+                // treating a programmatic mid-scroll geometry event as "user scrolled up".
+                scrollPhaseIsUser = (newPhase == .interacting || newPhase == .decelerating)
+            }
+            .onScrollGeometryChange(for: Bool.self) { geo in
+                (geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y) > 40
+            } action: { _, isScrolledUp in
+                // Only update the lock if the scroll was user-initiated.
+                // Geometry changes from programmatic scrollTo or content growth
+                // are ignored here — they fire with scrollPhaseIsUser = false.
+                guard scrollPhaseIsUser else { return }
+                let shouldAutoScroll = !isScrolledUp
                 if shouldAutoScroll != autoScrollEnabled {
                     autoScrollEnabled = shouldAutoScroll
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -236,18 +245,8 @@ struct ChatView: View {
                 }
             }
             .onChange(of: model.revision) { _, _ in
-                if appState.engine.isRunning {
-                    // Engine is active: always scroll and always keep lock off.
-                    // This handles both streaming turns AND tool-execution gaps where
-                    // isRunning is true but no geometry change may be in flight.
-                    if !autoScrollEnabled {
-                        autoScrollEnabled = true
-                        withAnimation(.easeInOut(duration: 0.2)) { scrollLockVisible = false }
-                    }
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                } else if autoScrollEnabled {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+                guard autoScrollEnabled else { return }
+                proxy.scrollTo("bottom", anchor: .bottom)
             }
         } else {
             ScrollView {
@@ -262,7 +261,7 @@ struct ChatView: View {
 
     @ViewBuilder
     private var messageList: some View {
-        LazyVStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                 if let subagentID = item.subagentID,
                    let subagentVM = model.subagentVMs[subagentID] {
