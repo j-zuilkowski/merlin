@@ -83,7 +83,7 @@ final class TelemetryEmitterTests: XCTestCase {
     // MARK: - emit writes to file
 
     func testEmitWritesJSONLineToFile() async throws {
-        await TelemetryEmitter.shared.setContext(sessionID: "s1", turn: 1, loop: 1)
+        TelemetryEmitter.shared.setContext(sessionID: "s1", turn: 1, loop: 1)
         TelemetryEmitter.shared.emit("test.event", data: ["key": "value"])
         await TelemetryEmitter.shared.flushForTesting()
 

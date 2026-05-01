@@ -7,6 +7,16 @@ enum ProviderKind: String, Codable, Sendable {
     case anthropic
 }
 
+/// A single selectable entry in the role-slot assignment picker.
+struct SlotPickerEntry: Identifiable, Equatable, Sendable {
+    /// The provider ID stored in `slotAssignments` — either a plain ID or `"backendID:modelID"`.
+    let id: String
+    /// Human-readable label shown in the picker.
+    let displayName: String
+    /// True for virtual `"backendID:modelID"` entries derived from loaded local models.
+    let isVirtual: Bool
+}
+
 // MARK: - ProviderConfig
 
 struct ProviderConfig: Codable, Sendable, Identifiable {
@@ -269,6 +279,32 @@ final class ProviderRegistry: ObservableObject {
     var primaryProvider: (any LLMProvider)? {
         guard let config = activeConfig else { return nil }
         return makeLLMProvider(for: config)
+    }
+
+    /// All entries that can be assigned to a role slot.
+    /// Plain provider IDs come first (alphabetical by display name), followed by virtual
+    /// entries grouped by backend and sorted by model name.
+    var allSlotPickerEntries: [SlotPickerEntry] {
+        var plain: [SlotPickerEntry] = []
+        var virtual: [SlotPickerEntry] = []
+
+        let enabled = providers.filter(\.isEnabled)
+            .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+
+        for config in enabled {
+            let backendName = config.displayName.isEmpty ? config.id : config.displayName
+            plain.append(SlotPickerEntry(id: config.id, displayName: backendName, isVirtual: false))
+
+            if let models = modelsByProviderID[config.id], !models.isEmpty {
+                for model in models.sorted() {
+                    let vid = "\(config.id):\(model)"
+                    let vname = "\(backendName) — \(model)"
+                    virtual.append(SlotPickerEntry(id: vid, displayName: vname, isVirtual: true))
+                }
+            }
+        }
+
+        return plain + virtual
     }
 
     func add(_ provider: any LLMProvider) {

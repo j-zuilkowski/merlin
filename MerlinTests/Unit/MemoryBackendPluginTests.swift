@@ -98,7 +98,7 @@ final class MemoryBackendPluginTests: XCTestCase {
     func testRegistryRegisterAndSetActiveChangesPlugin() async {
         let registry = MemoryBackendRegistry()
         let plugin = NullMemoryPlugin()
-        await registry.register(plugin)
+        registry.register(plugin)
         registry.setActive(pluginID: "null")
         XCTAssertEqual(registry.activePluginID, "null")
     }
@@ -113,7 +113,7 @@ final class MemoryBackendPluginTests: XCTestCase {
     func testRegistryActivePulginReturnsMostRecentlyRegisteredMatch() async {
         let registry = MemoryBackendRegistry()
         let plugin = NullMemoryPlugin()
-        await registry.register(plugin)
+        registry.register(plugin)
         registry.setActive(pluginID: plugin.pluginID)
         let active = registry.activePlugin
         XCTAssertEqual(active.pluginID, plugin.pluginID)

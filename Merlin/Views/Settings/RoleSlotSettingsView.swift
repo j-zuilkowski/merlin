@@ -134,9 +134,8 @@ struct RoleSlotSettingsView: View {
             HStack {
                 Picker("", selection: binding) {
                     Text("(unassigned)").tag("")
-                    ForEach(registry.providers, id: \.id) { config in
-                        Text(config.displayName.isEmpty ? config.id : config.displayName)
-                            .tag(config.id)
+                    ForEach(registry.allSlotPickerEntries) { entry in
+                        Text(entry.displayName).tag(entry.id)
                     }
                 }
                 .labelsHidden()
@@ -144,10 +143,10 @@ struct RoleSlotSettingsView: View {
 
                 if let assignedID = settings.slotAssignments[slot],
                    !assignedID.isEmpty,
-                   registry.providers.contains(where: { $0.id == assignedID }) == false {
+                   registry.provider(for: assignedID) == nil {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
-                        .help("Degraded: \(slotLabel(slot)) slot provider unavailable — critic may be skipped")
+                        .help("Provider '\(registry.displayName(for: assignedID))' is unavailable")
                 }
             }
         }

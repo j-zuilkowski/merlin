@@ -5,10 +5,11 @@ struct ProviderSettingsView: View {
     @EnvironmentObject private var appState: AppState
     @State private var editingKeyFor: EditingKeyTarget? = nil
     @State private var keyDraft: String = ""
+    @State private var isFetchingModels = false
 
     var body: some View {
         Form {
-            Section("Providers") {
+            Section {
                 ForEach(registry.providers) { config in
                     VStack(alignment: .leading, spacing: 8) {
                         ProviderRow(
@@ -35,6 +36,28 @@ struct ProviderSettingsView: View {
                             )
                         }
                     }
+                }
+            } header: {
+                HStack {
+                    Text("Providers")
+                    Spacer()
+                    Button {
+                        isFetchingModels = true
+                        Task { @MainActor in
+                            await registry.probeAndFetchModels()
+                            await registry.fetchAllModels()
+                            isFetchingModels = false
+                        }
+                    } label: {
+                        if isFetchingModels {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Refresh Models", systemImage: "arrow.clockwise")
+                                .font(.caption)
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isFetchingModels)
                 }
             }
         }

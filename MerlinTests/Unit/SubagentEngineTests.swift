@@ -131,8 +131,8 @@ final class SubagentEngineTests: XCTestCase {
 
     func test_spawnAgentTool_registeredInToolRegistry() async {
         let registry = ToolRegistry()
-        await registry.registerBuiltins()
-        let found = await registry.contains(named: "spawn_agent")
+        registry.registerBuiltins()
+        let found = registry.contains(named: "spawn_agent")
         XCTAssertTrue(found)
     }
 
