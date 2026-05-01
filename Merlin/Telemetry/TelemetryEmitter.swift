@@ -92,10 +92,10 @@ public final class TelemetrySpan: Sendable {
     }
 
     /// Emit the span event with elapsed `duration_ms`. Merges start and finish data.
-    public func finish(data: [String: TelemetryValue] = [:]) {
+    public func finish(data: [String: Any] = [:]) {
         let ms = Date().timeIntervalSince(startedAt) * 1000
-        let merged = startData.merging(data) { _, new in new }
-        TelemetryEmitter.shared.emit(event, durationMs: ms, data: merged)
+        let merged = startData.merging(TelemetryEmitter.shared.normalizeData(data)) { _, new in new }
+        TelemetryEmitter.shared.emitNormalized(event, durationMs: ms, data: merged)
     }
 }
 
@@ -149,7 +149,14 @@ public final class TelemetryEmitter: @unchecked Sendable {
     /// Fire-and-forget event. Never blocks the caller.
     public func emit(_ event: String,
                      durationMs: Double? = nil,
-                     data: [String: TelemetryValue] = [:]) {
+                     data: [String: Any] = [:]) {
+        let normalizedData = normalizeData(data)
+        emitNormalized(event, durationMs: durationMs, data: normalizedData)
+    }
+
+    fileprivate func emitNormalized(_ event: String,
+                                    durationMs: Double? = nil,
+                                    data: [String: TelemetryValue] = [:]) {
         let e = TelemetryEvent(
             ts: Date(),
             sessionID: sessionID,
@@ -164,8 +171,8 @@ public final class TelemetryEmitter: @unchecked Sendable {
 
     /// Open a timing span. Call `span.finish(data:)` to emit with duration.
     public func begin(_ event: String,
-                      data: [String: TelemetryValue] = [:]) -> TelemetrySpan {
-        TelemetrySpan(event: event, startData: data)
+                      data: [String: Any] = [:]) -> TelemetrySpan {
+        TelemetrySpan(event: event, startData: normalizeData(data))
     }
 
     // MARK: Private file I/O (runs on `queue`)
@@ -228,5 +235,36 @@ public final class TelemetryEmitter: @unchecked Sendable {
         await withCheckedContinuation { continuation in
             queue.async { continuation.resume() }
         }
+    }
+
+    fileprivate func normalizeData(_ data: [String: Any]) -> [String: TelemetryValue] {
+        var normalized: [String: TelemetryValue] = [:]
+        normalized.reserveCapacity(data.count)
+        for (key, value) in data {
+            normalized[key] = normalizeValue(value)
+        }
+        return normalized
+    }
+
+    private func normalizeValue(_ value: Any) -> TelemetryValue {
+        if let telemetryValue = value as? TelemetryValue {
+            return telemetryValue
+        }
+        if let stringValue = value as? String {
+            return .string(stringValue)
+        }
+        if let intValue = value as? Int {
+            return .int(intValue)
+        }
+        if let doubleValue = value as? Double {
+            return .double(doubleValue)
+        }
+        if let boolValue = value as? Bool {
+            return .bool(boolValue)
+        }
+        if value is NSNull {
+            return .null
+        }
+        return .string(String(describing: value))
     }
 }
