@@ -66,6 +66,8 @@ actor MemoryEngine {
         - No raw tool output or file paths
         - Extract only: preferences, conventions, patterns, pitfalls
         - If there is nothing worth remembering, output nothing
+        - No tool call syntax: do not include content from ```bash blocks, <bash> tags, \
+        <tool_call> XML, or any shell command sequences
         """
 
         var request = CompletionRequest(

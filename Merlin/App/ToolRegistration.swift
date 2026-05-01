@@ -46,6 +46,16 @@ func registerAllTools(router: ToolRouter) {
         )
         return "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
     }
+    // Alias for models trained on Claude computer-use format (e.g. DeepSeek V4 Pro)
+    router.register(name: "bash") { args in
+        let a = try decode(args, as: RunShellArgs.self)
+        let result = try await ShellTool.run(
+            command: a.command,
+            cwd: a.cwd,
+            timeoutSeconds: a.timeoutSeconds ?? 120
+        )
+        return "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
+    }
 
     // MARK: App Control
     router.register(name: "app_launch") { args in
