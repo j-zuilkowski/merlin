@@ -854,38 +854,27 @@ final class AgenticEngine {
         return thinkingDetector.shouldEnableThinking(for: message)
     }
 
-    // Heuristic provider selection: vision keywords → visionProvider,
-    // action keywords → flashProvider, everything else → proProvider.
-    // ProviderRegistry overrides take precedence when the user has selected a provider.
+    // Provider selection: always use the configured provider for the resolved slot.
+    // Vision keywords route to the vision provider.
+    // Explicit @-slot annotations are honoured.
+    // No keyword-based routing to flashProvider — all non-vision messages use
+    // whatever the user has configured (registry slot or proProvider fallback).
     private func selectProvider(for message: String) -> any LLMProvider {
         let slot = selectSlot(for: message)
         let lower = message.lowercased()
 
-        if lower.hasPrefix("@reason ") || lower.contains(" @reason ") ||
-            lower.hasPrefix("@execute ") || lower.contains(" @execute ") ||
-            lower.hasPrefix("@orchestrate ") || lower.contains(" @orchestrate ") {
-            if let provider = provider(for: slot) {
-                return provider
-            }
-        }
-
+        // Vision requests always go to the vision provider.
         let visionKeywords = ["screenshot", "screen", "vision", "ui", "click", "button"]
         if visionKeywords.contains(where: { lower.contains($0) }) {
             return provider(for: .vision) ?? visionProvider
         }
 
-        if shouldUseThinking(for: message) {
-            return proProvider
+        // Use the registry-configured provider for the resolved slot when available.
+        if let p = provider(for: slot) {
+            return p
         }
 
-        if ["read", "write", "run", "list", "build", "open", "create", "delete", "move", "show"].contains(where: { lower.contains($0) }) {
-            return flashProvider
-        }
-
-        if let provider = provider(for: slot) {
-            return provider
-        }
-
+        // Final fallback: proProvider (the primary configured provider).
         return proProvider
     }
 
