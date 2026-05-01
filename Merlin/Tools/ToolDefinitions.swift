@@ -2,7 +2,7 @@ enum ToolDefinitions {
     static let all: [ToolDefinition] = [
         readFile, writeFile, createFile, deleteFile,
         listDirectory, moveFile, searchFiles,
-        runShell,
+        runShell, bash,
         appLaunch, appListRunning, appQuit, appFocus,
         toolDiscover,
         xcodeBuild, xcodeTest, xcodeClean, xcodeDerivedDataClean,
@@ -105,6 +105,23 @@ enum ToolDefinitions {
     // Shell
     static let runShell = ToolDefinition(function: .init(
         name: "run_shell",
+        description: "Run a shell command in /bin/zsh",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "command": JSONSchema(type: "string", description: "Shell command"),
+                "cwd": JSONSchema(type: "string", description: "Working directory"),
+                "timeout_seconds": JSONSchema(type: "integer", description: "Timeout (default 120)"),
+            ],
+            required: ["command"]
+        )
+    ))
+
+    // Alias: identical schema under the name "bash" for models trained on
+    // Claude computer-use format (e.g. DeepSeek V4 Pro). The handler in
+    // ToolRegistration.swift routes both names to the same ShellTool.run call.
+    static let bash = ToolDefinition(function: .init(
+        name: "bash",
         description: "Run a shell command in /bin/zsh",
         parameters: JSONSchema(
             type: "object",

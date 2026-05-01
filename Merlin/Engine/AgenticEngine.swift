@@ -474,6 +474,7 @@ final class AgenticEngine {
                 messages: messagesForProvider(),
                 thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
             )
+            request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
             AppSettings.shared.applyInferenceDefaults(to: &request)
 
             let stream = try await provider.complete(request: request)
@@ -573,6 +574,17 @@ final class AgenticEngine {
             for call in calls {
                 continuation.yield(.toolCallStarted(call))
             }
+
+            // Append the assistant turn that declared the tool calls.
+            // The OpenAI wire format requires: assistant(tool_calls) → tool(result).
+            // Without this message the next provider call gets a malformed context
+            // and returns an error or empty response, silently ending the loop.
+            context.append(Message(
+                role: .assistant,
+                content: .text(""),
+                toolCalls: calls,
+                timestamp: Date()
+            ))
 
             toolRouter.permissionMode = permissionMode
             var regularCalls: [ToolCall] = []
