@@ -36,28 +36,43 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
         let urlRequest = try buildRequest(request)
         return AsyncThrowingStream { continuation in
             let task = Task { @Sendable in
-                do {
-                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        var errorLines: [String] = []
-                        for try await line in bytes.lines { errorLines.append(line) }
-                        let body = errorLines.joined(separator: "\n").prefix(500)
-                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                        throw URLError(.badServerResponse,
-                            userInfo: [NSLocalizedDescriptionKey: "HTTP \(statusCode): \(body)"])
-                    }
+                // Retry once on connection-level failures (NSURLErrorBadServerResponse / -1011).
+                // DeepSeek and other OpenAI-compatible APIs occasionally drop the connection
+                // without sending a valid HTTP response — a single retry resolves these.
+                var attempt = 0
+                while attempt < 2 {
+                    attempt += 1
+                    do {
+                        let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                            var errorLines: [String] = []
+                            for try await line in bytes.lines { errorLines.append(line) }
+                            let body = errorLines.joined(separator: "\n").prefix(500)
+                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                            // 4xx errors are definitive — don't retry.
+                            throw URLError(.badServerResponse,
+                                userInfo: [NSLocalizedDescriptionKey: "HTTP \(statusCode): \(body)"])
+                        }
 
-                    for try await line in bytes.lines {
-                        if let chunk = try SSEParser.parseChunk(line) {
-                            continuation.yield(chunk)
-                            if chunk.finishReason != nil {
-                                break
+                        for try await line in bytes.lines {
+                            if let chunk = try SSEParser.parseChunk(line) {
+                                continuation.yield(chunk)
+                                if chunk.finishReason != nil {
+                                    break
+                                }
                             }
                         }
+                        continuation.finish()
+                        return
+                    } catch let urlError as URLError
+                        where urlError.code == .badServerResponse && attempt < 2 {
+                        // -1011: connection dropped before HTTP response — wait briefly and retry.
+                        try? await Task.sleep(for: .seconds(2))
+                        continue
+                    } catch {
+                        continuation.finish(throwing: error)
+                        return
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
             }
 

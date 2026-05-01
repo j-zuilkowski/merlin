@@ -19,36 +19,45 @@ final class DeepSeekProvider: LLMProvider, @unchecked Sendable {
 
         return AsyncThrowingStream { continuation in
             let task = Task { @Sendable in
-                do {
-                    var urlRequest = URLRequest(url: URL(string: endpoint)!)
-                    urlRequest.httpMethod = "POST"
-                    urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-                    urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    urlRequest.timeoutInterval = 600 // match OpenAICompatibleProvider
-                    urlRequest.httpBody = requestBody
+                var attempt = 0
+                while attempt < 2 {
+                    attempt += 1
+                    do {
+                        var urlRequest = URLRequest(url: URL(string: endpoint)!)
+                        urlRequest.httpMethod = "POST"
+                        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                        urlRequest.timeoutInterval = 600
+                        urlRequest.httpBody = requestBody
 
-                    let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
-                    guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                        // Collect the error body so we can surface a useful message.
-                        var errorLines: [String] = []
-                        for try await line in bytes.lines { errorLines.append(line) }
-                        let body = errorLines.joined(separator: "\n").prefix(500)
-                        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                        throw URLError(.badServerResponse,
-                            userInfo: [NSLocalizedDescriptionKey: "DeepSeek HTTP \(statusCode): \(body)"])
-                    }
+                        let (bytes, response) = try await URLSession.shared.bytes(for: urlRequest)
+                        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                            var errorLines: [String] = []
+                            for try await line in bytes.lines { errorLines.append(line) }
+                            let body = errorLines.joined(separator: "\n").prefix(500)
+                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                            throw URLError(.badServerResponse,
+                                userInfo: [NSLocalizedDescriptionKey: "DeepSeek HTTP \(statusCode): \(body)"])
+                        }
 
-                    for try await line in bytes.lines {
-                        if let chunk = try SSEParser.parseChunk(line) {
-                            continuation.yield(chunk)
+                        for try await line in bytes.lines {
+                            if let chunk = try SSEParser.parseChunk(line) {
+                                continuation.yield(chunk)
+                            }
+                            if line.trimmingCharacters(in: .whitespacesAndNewlines) == "data: [DONE]" {
+                                break
+                            }
                         }
-                        if line.trimmingCharacters(in: .whitespacesAndNewlines) == "data: [DONE]" {
-                            break
-                        }
+                        continuation.finish()
+                        return
+                    } catch let urlError as URLError
+                        where urlError.code == .badServerResponse && attempt < 2 {
+                        try? await Task.sleep(for: .seconds(2))
+                        continue
+                    } catch {
+                        continuation.finish(throwing: error)
+                        return
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
             }
 
