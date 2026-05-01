@@ -5,10 +5,26 @@ import XCTest
 final class SkillInvocationTests: XCTestCase {
 
     private func makeEngine(provider: any LLMProvider) -> AgenticEngine {
-        AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-skill-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
+        return AgenticEngine(
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
                 memory: AuthMemory(storePath: "/tmp/auth-skill-\(UUID().uuidString).json"),
                 presenter: NullAuthPresenter()

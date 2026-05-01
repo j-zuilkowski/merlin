@@ -52,10 +52,26 @@ final class RAGEngineTests: XCTestCase {
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let router = ToolRouter(authGate: gate)
         let ctx = ContextManager()
+        let config = ProviderConfig(
+            id: capturing.id,
+            displayName: capturing.id,
+            baseURL: capturing.baseURL.absoluteString,
+            model: capturing.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-rag-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(capturing)
+        registry.activeProviderID = capturing.id
         let engine = AgenticEngine(
-            proProvider: capturing,
-            flashProvider: capturing,
-            visionProvider: capturing,
+            slotAssignments: [.execute: capturing.id, .reason: capturing.id, .vision: capturing.id],
+            registry: registry,
             toolRouter: router,
             contextManager: ctx,
             xcalibreClient: xcalibreClient

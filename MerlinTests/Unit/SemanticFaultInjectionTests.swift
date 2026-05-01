@@ -48,10 +48,26 @@ final class SemanticFaultInjectionTests: XCTestCase {
         memory.addAllowPattern(tool: "*", pattern: "*")
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let toolRouter = router ?? ToolRouter(authGate: gate)
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-semantic-fault-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
         let engine = AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: toolRouter,
             contextManager: contextManager,
             xcalibreClient: xcalibreClient,

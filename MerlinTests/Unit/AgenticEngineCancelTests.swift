@@ -28,10 +28,26 @@ final class AgenticEngineCancelTests: XCTestCase {
 
     private func makeEngine() -> AgenticEngine {
         let slow = SlowProvider()
+        let config = ProviderConfig(
+            id: slow.id,
+            displayName: "slow",
+            baseURL: slow.baseURL.absoluteString,
+            model: slow.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-cancel-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(slow)
+        registry.activeProviderID = slow.id
         return AgenticEngine(
-            proProvider: slow,
-            flashProvider: slow,
-            visionProvider: slow,
+            slotAssignments: [.execute: slow.id, .reason: slow.id, .vision: slow.id],
+            registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
                 memory: AuthMemory(storePath: "/tmp/auth-cancel-test.json"),
                 presenter: NoOpAuthPresenter()
@@ -80,8 +96,10 @@ final class AgenticEngineCancelTests: XCTestCase {
 
         // Now wire a fast CapturingProvider and verify send() still works
         let fast = CapturingProvider()
-        engine.proProvider = fast
-        engine.flashProvider = fast
+        engine.registry?.add(fast)
+        engine.slotAssignments[.execute] = fast.id
+        engine.slotAssignments[.reason] = fast.id
+        engine.registry?.activeProviderID = fast.id
 
         var receivedText = false
         for await event in engine.send(userMessage: "hi") {

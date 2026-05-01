@@ -79,10 +79,27 @@ final class DiffCommentTests: XCTestCase {
         await buffer.stage(change)
         await buffer.addComment(DiffComment(lineIndex: 0, body: "please fix"), toChange: change.id)
 
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-diff-comment-reg-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
+
         let engine = AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
                 memory: AuthMemory(storePath: "/tmp/auth-diff-comment.json"),
                 presenter: NullAuthPresenter()

@@ -6,7 +6,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
 
     private func makeRegistry(primaryID: String,
                                providers: [ProviderConfig]) -> ProviderRegistry {
-        var reg = ProviderRegistry(
+        let reg = ProviderRegistry(
             persistURL: URL(fileURLWithPath: "/tmp/merlin-routing-\(UUID().uuidString).json"),
             initialProviders: providers
         )
@@ -16,6 +16,13 @@ final class ProviderRoutingCleanupTests: XCTestCase {
 
     private func mockProvider(id: String) -> MockRoutingProvider {
         MockRoutingProvider(providerID: id)
+    }
+
+    private func makeToolRouter() -> ToolRouter {
+        let memory = AuthMemory(storePath: "/tmp/auth-routing-cleanup.json")
+        memory.addAllowPattern(tool: "*", pattern: "*")
+        let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
+        return ToolRouter(authGate: gate)
     }
 
     // MARK: - Slot assignment routing
@@ -38,7 +45,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [.execute: "local-fast", .reason: "remote-think"],
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
 
@@ -62,7 +69,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [:],   // nothing assigned
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
 
@@ -75,7 +82,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [:],
             registry: nil,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
 
@@ -97,7 +104,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [.vision: "vision-model"],
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
 
@@ -118,7 +125,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [:],
             registry: registry,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
 
@@ -135,7 +142,7 @@ final class ProviderRoutingCleanupTests: XCTestCase {
         let engine = AgenticEngine(
             slotAssignments: [:],
             registry: nil,
-            toolRouter: ToolRouter(),
+            toolRouter: makeToolRouter(),
             contextManager: ContextManager()
         )
         _ = engine  // suppress unused warning

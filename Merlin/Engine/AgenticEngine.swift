@@ -53,9 +53,6 @@ private final class AllowAllAuthPresenter: AuthPresenter {
 final class AgenticEngine {
     let contextManager: ContextManager
     private let thinkingDetector = ThinkingModeDetector.self
-    var proProvider: any LLMProvider
-    var flashProvider: any LLMProvider
-    private var visionProvider: any LLMProvider
     let toolRouter: ToolRouter
     var xcalibreClient: (any XcalibreClientProtocol)?
     /// Local memory backend plugin for episodic writes and local memory RAG.
@@ -106,9 +103,6 @@ final class AgenticEngine {
          contextManager: ContextManager,
          xcalibreClient: (any XcalibreClientProtocol)? = nil,
          memoryBackend: (any MemoryBackendPlugin)? = nil) {
-        self.proProvider = NullProvider()
-        self.flashProvider = NullProvider()
-        self.visionProvider = NullProvider()
         self.slotAssignments = slotAssignments
         self.registry = registry
         self.toolRouter = toolRouter
@@ -117,26 +111,6 @@ final class AgenticEngine {
         if let memoryBackend {
             self.memoryBackend = memoryBackend
         }
-    }
-
-    convenience init(proProvider: any LLMProvider,
-                     flashProvider: any LLMProvider,
-                     visionProvider: any LLMProvider,
-                     toolRouter: ToolRouter,
-                     contextManager: ContextManager,
-                     xcalibreClient: (any XcalibreClientProtocol)? = nil,
-                     memoryBackend: (any MemoryBackendPlugin)? = nil) {
-        self.init(
-            slotAssignments: [:],
-            registry: nil,
-            toolRouter: toolRouter,
-            contextManager: contextManager,
-            xcalibreClient: xcalibreClient,
-            memoryBackend: memoryBackend
-        )
-        self.proProvider = proProvider
-        self.flashProvider = flashProvider
-        self.visionProvider = visionProvider
     }
 
     convenience init() {
@@ -158,9 +132,24 @@ final class AgenticEngine {
 
     /// Wire a single provider as pro/flash/vision for unit tests.
     func setRegistryForTesting(provider: any LLMProvider) {
-        self.proProvider = provider
-        self.flashProvider = provider
-        self.visionProvider = provider
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: "",
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: false,
+            supportsVision: false,
+            kind: .openAICompatible
+        )
+        let reg = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-test-registry-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        reg.add(provider)
+        reg.activeProviderID = provider.id
+        self.registry = reg
     }
 
     func registerTool(_ name: String, handler: @escaping (String) async throws -> String) {
@@ -201,26 +190,21 @@ final class AgenticEngine {
     /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
     /// `orchestrate` falls back to `reason` when not explicitly assigned.
     func provider(for slot: AgentSlot) -> (any LLMProvider)? {
-        let effectiveSlot: AgentSlot
-        if slot == .orchestrate, slotAssignments[.orchestrate] == nil {
-            effectiveSlot = .reason
-        } else {
-            effectiveSlot = slot
+        // LoRA provider overrides execute slot when active.
+        if slot == .execute, let lora = loraProvider {
+            return lora
         }
 
-        if let providerID = slotAssignments[effectiveSlot],
-           let registry {
-            return registry.provider(for: providerID)
+        let effectiveSlot: AgentSlot = (slot == .orchestrate && slotAssignments[.orchestrate] == nil)
+            ? .reason : slot
+
+        if let providerID = slotAssignments[effectiveSlot], !providerID.isEmpty,
+           let resolved = registry?.provider(for: providerID) {
+            return resolved
         }
 
-        switch effectiveSlot {
-        case .execute:
-            return loraProvider ?? proProvider
-        case .reason, .orchestrate:
-            return flashProvider
-        case .vision:
-            return visionProvider
-        }
+        // No slot assignment — fall back to the registry's active primary provider.
+        return registry?.primaryProvider ?? NullProvider()
     }
 
     /// Determines which slot should handle this message.
@@ -958,27 +942,10 @@ final class AgenticEngine {
         return thinkingDetector.shouldEnableThinking(for: message)
     }
 
-    // Provider selection: always use the configured provider for the resolved slot.
-    // Vision keywords route to the vision provider.
-    // Explicit @-slot annotations are honoured.
-    // No keyword-based routing to flashProvider — all non-vision messages use
-    // whatever the user has configured (registry slot or proProvider fallback).
+    // Provider selection always routes through slot assignments + registry fallback.
     private func selectProvider(for message: String) -> any LLMProvider {
         let slot = selectSlot(for: message)
-        let lower = message.lowercased()
-
-        // Vision requests always go to the vision provider.
-        if AgenticEngine.looksLikeVisionRequest(lower) {
-            return provider(for: .vision) ?? visionProvider
-        }
-
-        // Use the registry-configured provider for the resolved slot when available.
-        if let p = provider(for: slot) {
-            return p
-        }
-
-        // Final fallback: proProvider (the primary configured provider).
-        return proProvider
+        return provider(for: slot) ?? registry?.primaryProvider ?? NullProvider()
     }
 
     private func modelID(for provider: any LLMProvider) -> String {

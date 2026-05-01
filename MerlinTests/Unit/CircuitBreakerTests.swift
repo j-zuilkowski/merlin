@@ -22,10 +22,31 @@ final class CircuitBreakerTests: XCTestCase {
         memory.addAllowPattern(tool: "*", pattern: "*")
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let router = ToolRouter(authGate: gate)
+        let execute = MockProvider(responses: [.text("response")])
+        let reason = MockProvider(responses: [.text("response")])
+        let vision = MockProvider(responses: [.text("response")])
+        let configs: [ProviderConfig] = [
+            ProviderConfig(id: execute.id, displayName: execute.id, baseURL: execute.baseURL.absoluteString,
+                           model: execute.id, isEnabled: true, isLocal: true,
+                           supportsThinking: true, supportsVision: true, kind: .openAICompatible),
+            ProviderConfig(id: reason.id, displayName: reason.id, baseURL: reason.baseURL.absoluteString,
+                           model: reason.id, isEnabled: true, isLocal: true,
+                           supportsThinking: true, supportsVision: true, kind: .openAICompatible),
+            ProviderConfig(id: vision.id, displayName: vision.id, baseURL: vision.baseURL.absoluteString,
+                           model: vision.id, isEnabled: true, isLocal: true,
+                           supportsThinking: true, supportsVision: true, kind: .openAICompatible),
+        ]
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-circuit-\(UUID().uuidString).json"),
+            initialProviders: configs
+        )
+        registry.add(execute)
+        registry.add(reason)
+        registry.add(vision)
+        registry.activeProviderID = execute.id
         let engine = AgenticEngine(
-            proProvider: MockProvider(responses: [.text("response")]),
-            flashProvider: MockProvider(responses: [.text("response")]),
-            visionProvider: MockProvider(responses: [.text("response")]),
+            slotAssignments: [.execute: execute.id, .reason: reason.id, .vision: vision.id],
+            registry: registry,
             toolRouter: router,
             contextManager: ContextManager()
         )

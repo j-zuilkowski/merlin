@@ -27,10 +27,26 @@ final class AgenticEngineMemoryPluginTests: XCTestCase {
         memory.addAllowPattern(tool: "*", pattern: "*")
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let router = ToolRouter(authGate: gate)
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-memory-plugin-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
         let engine = AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: router,
             contextManager: ContextManager(),
             xcalibreClient: xcalibreClient

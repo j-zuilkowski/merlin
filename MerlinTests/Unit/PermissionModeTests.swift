@@ -80,10 +80,26 @@ final class PermissionModeTests: XCTestCase {
 
     @MainActor
     private func makeEngine(provider: any LLMProvider) -> AgenticEngine {
-        AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-perm-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
+        return AgenticEngine(
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
                 memory: AuthMemory(storePath: "/tmp/auth-perm-test.json"),
                 presenter: NullAuthPresenter()
@@ -104,10 +120,27 @@ final class PermissionModeTests: XCTestCase {
             args: #"{"path":"/tmp/test.txt","content":"hello"}"#
         ).chunks + MockLLMResponse.text("done").chunks
 
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-perm2-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
+
         return AgenticEngine(
-            proProvider: provider,
-            flashProvider: provider,
-            visionProvider: provider,
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
                 memory: AuthMemory(storePath: "/tmp/auth-perm-test2.json"),
                 presenter: presenter

@@ -110,35 +110,4 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNil(registry.primaryProvider)
     }
 
-    // MARK: Provider routing — visionProvider
-
-    func testVisionProviderPrefersLocalOverRemote() {
-        let registry = makeRegistry()
-        // Enable OpenAI (remote vision) and ensure LM Studio (local vision) is also enabled
-        registry.setEnabled(true, for: "openai")
-        registry.setEnabled(true, for: "lmstudio") // already enabled by default
-        let vision = registry.visionProvider
-        XCTAssertNotNil(vision)
-        XCTAssertEqual(vision?.id, "lmstudio", "Local vision provider should be preferred over remote")
-    }
-
-    func testVisionProviderFallsBackToRemoteWhenNoLocalVision() {
-        let registry = makeRegistry()
-        // Disable LM Studio (only local vision provider by default)
-        registry.setEnabled(false, for: "lmstudio")
-        // Enable OpenAI (remote, supports vision)
-        registry.setEnabled(true, for: "openai")
-        let vision = registry.visionProvider
-        XCTAssertEqual(vision?.id, "openai",
-                       "Should fall back to remote vision provider when no local is available")
-    }
-
-    func testVisionProviderIsNilWhenNoVisionProviderEnabled() {
-        let registry = makeRegistry()
-        // Disable all vision-capable providers
-        for config in registry.providers where config.supportsVision {
-            registry.setEnabled(false, for: config.id)
-        }
-        XCTAssertNil(registry.visionProvider)
-    }
 }

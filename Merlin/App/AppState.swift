@@ -164,14 +164,9 @@ final class AppState: ObservableObject {
         let ctx = ContextManager()
         sessionStore = SessionStore()
 
-        let initialProvider = registry.primaryProvider
-            ?? DeepSeekProvider(apiKey: "", model: "deepseek-v4-pro")
-        let vision = registry.visionProvider ?? NullProvider()
-
         engine = AgenticEngine(
-            proProvider: initialProvider,
-            flashProvider: initialProvider,
-            visionProvider: vision,
+            slotAssignments: AppSettings.shared.slotAssignments,
+            registry: registry,
             toolRouter: toolRouter,
             contextManager: ctx,
             xcalibreClient: xcalibreClient,
@@ -408,16 +403,7 @@ final class AppState: ObservableObject {
 
     private func syncEngineProviders() {
         rebuildLocalModelManagers()
-        let apiKey = registry.readAPIKey(for: "deepseek") ?? ""
-        let fallbackPro = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-pro")
-        let fallbackFlash = DeepSeekProvider(apiKey: apiKey, model: "deepseek-v4-flash")
-        if let primary = registry.primaryProvider {
-            engine.proProvider = primary
-            engine.flashProvider = primary
-        } else {
-            engine.proProvider = fallbackPro
-            engine.flashProvider = fallbackFlash
-        }
+        engine.registry = registry
         engine.slotAssignments = AppSettings.shared.slotAssignments
         activeProviderID = registry.activeProviderID
         if let activeConfig = registry.activeConfig, activeConfig.isLocal {
@@ -426,9 +412,7 @@ final class AppState: ObservableObject {
             activeLocalProviderID = nil
         }
         Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
-        Task { [weak self] in
-            await self?.refreshParameterAdvisories()
-        }
+        Task { [weak self] in await self?.refreshParameterAdvisories() }
     }
 
     private func syncMemoryBackend() async {

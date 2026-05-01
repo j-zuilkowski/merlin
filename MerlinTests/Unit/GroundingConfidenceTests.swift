@@ -31,10 +31,28 @@ final class GroundingConfidenceTests: XCTestCase {
         memory.addAllowPattern(tool: "*", pattern: "*")
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
         let router = ToolRouter(authGate: gate)
+        let provider = MockProvider(responses: [.text("ok")])
+        provider.id_ = "grounding-provider"
+        let config = ProviderConfig(
+            id: provider.id,
+            displayName: provider.id,
+            baseURL: provider.baseURL.absoluteString,
+            model: provider.id,
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: true,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-grounding-\(UUID().uuidString).json"),
+            initialProviders: [config]
+        )
+        registry.add(provider)
+        registry.activeProviderID = provider.id
         let engine = AgenticEngine(
-            proProvider: MockProvider(responses: [.text("ok")]),
-            flashProvider: MockProvider(responses: [.text("ok")]),
-            visionProvider: MockProvider(responses: [.text("ok")]),
+            slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
+            registry: registry,
             toolRouter: router,
             contextManager: ContextManager(),
             xcalibreClient: xcalibreClient,

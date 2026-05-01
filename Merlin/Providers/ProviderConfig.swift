@@ -271,12 +271,6 @@ final class ProviderRegistry: ObservableObject {
         return makeLLMProvider(for: config)
     }
 
-    var visionProvider: (any LLMProvider)? {
-        let candidate = providers.first { $0.isEnabled && $0.isLocal && $0.supportsVision }
-            ?? providers.first { $0.isEnabled && $0.supportsVision }
-        return candidate.map { makeLLMProvider(for: $0) }
-    }
-
     func add(_ provider: any LLMProvider) {
         liveProviders[provider.id] = provider
     }

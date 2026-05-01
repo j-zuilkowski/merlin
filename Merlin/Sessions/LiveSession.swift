@@ -70,7 +70,8 @@ final class LiveSession: ObservableObject, Identifiable {
         }
 
         Task {
-            await self.memoryEngine.setProvider(appState.engine.flashProvider)
+            let memoryProvider = appState.engine.provider(for: .reason) ?? NullProvider()
+            await self.memoryEngine.setProvider(memoryProvider)
             if AppSettings.shared.memoriesEnabled {
                 let timeout = AppSettings.shared.memoryIdleTimeout
                 let home = ProcessInfo.processInfo.environment["HOME"] ?? ""

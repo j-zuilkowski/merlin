@@ -17,19 +17,15 @@ final class AgenticEngineProviderTests: XCTestCase {
     }
 
     private func makeEngine(registry: ProviderRegistry) -> AgenticEngine {
-        let capturing = CapturingProvider()
         let memory = AuthMemory(storePath: "/dev/null")
         memory.addAllowPattern(tool: "*", pattern: "*")
         let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
-        let engine = AgenticEngine(
-            proProvider: capturing,
-            flashProvider: capturing,
-            visionProvider: capturing,
+        return AgenticEngine(
+            slotAssignments: [:],
+            registry: registry,
             toolRouter: ToolRouter(authGate: gate),
             contextManager: ContextManager()
         )
-        engine.registry = registry
-        return engine
     }
 
     // MARK: Thinking gate

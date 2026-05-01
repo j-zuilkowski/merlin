@@ -229,7 +229,7 @@ extension AgenticEngine {
     @MainActor
     static func makeForTesting(provider: any LLMProvider) async -> AgenticEngine {
         let engine = AgenticEngine()
-        await engine.setRegistryForTesting(provider: provider)
+        engine.setRegistryForTesting(provider: provider)
         return engine
     }
 }
