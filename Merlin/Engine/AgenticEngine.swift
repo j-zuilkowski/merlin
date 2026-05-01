@@ -453,10 +453,6 @@ final class AgenticEngine {
         var loopCount = 0
         let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
 
-        // Approximate token budget. Beyond ~80 K tokens DeepSeek reliably stalls or
-        // times out mid-stream; we stop early and surface a note so the user knows why.
-        let contextTokenBudget = 80_000
-
         while true {
             await pauseForReload()
             guard loopCount < maxIterations else {
@@ -464,15 +460,6 @@ final class AgenticEngine {
                 break
             }
             loopCount += 1
-
-            let estimatedTokens = approximateTokens(in: context)
-            if estimatedTokens > contextTokenBudget {
-                continuation.yield(.systemNote(
-                    "⚠️ Context is large (~\(estimatedTokens / 1_000)K tokens). Stopping here to avoid an API timeout. " +
-                    "Ask a more focused question or start a new session."
-                ))
-                break
-            }
 
             let provider: any LLMProvider
             if workingSlot == .reason {
@@ -944,9 +931,20 @@ final class AgenticEngine {
         if let path = currentProjectPath {
             parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
-        parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
+        parts.append(AgenticEngine.coreSystemPrompt)
         return parts.joined(separator: "\n\n")
     }
+
+    private static let coreSystemPrompt = """
+        You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.
+
+        ## Efficient file exploration
+        For large codebases, prefer targeted access over bulk reading:
+        - Use `search_files` or `run_shell` with `grep -r`, `rg`, or `find` to locate relevant files first.
+        - Use `run_shell` with `grep`, `sed`, or `awk` to extract specific sections rather than reading entire files with `read_file`.
+        - Use `read_file` for files you know are relevant; avoid reading every file in a directory sequentially.
+        - For understanding project structure, `list_directory` with recursive=true gives the full tree without reading file contents.
+        """
 
     private func buildSystemPrompt(for slot: AgentSlot) async -> String {
         var parts: [String] = []
@@ -962,7 +960,7 @@ final class AgenticEngine {
         if let path = currentProjectPath {
             parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
-        parts.append("You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.")
+        parts.append(AgenticEngine.coreSystemPrompt)
 
         let addendum = await combinedAddendum(for: slot)
         if !addendum.isEmpty {
