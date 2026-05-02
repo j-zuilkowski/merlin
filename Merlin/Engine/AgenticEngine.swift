@@ -788,7 +788,10 @@ final class AgenticEngine {
             addendumHash: await currentAddendumHash(for: workingSlot),
             finishReason: capturedFinishReason
         )
-        let trackerModelID = slotAssignments[workingSlot] ?? ""
+        // Use the resolved provider's id when the slot has no explicit assignment.
+        // An empty string causes all records to accumulate in a single "records-.json"
+        // file that bloats unboundedly and causes a multi-minute save on every turn.
+        let trackerModelID = slotAssignments[workingSlot] ?? resolvedProvider(for: workingSlot).id
         await performanceTracker.record(
             modelID: trackerModelID,
             taskType: taskType,
