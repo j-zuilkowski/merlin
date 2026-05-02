@@ -601,7 +601,7 @@ final class ChatViewModel: ObservableObject {
             toolCallID: call.id,
             toolName: call.function.name,
             toolArguments: call.function.arguments,
-            toolExpanded: true
+            toolExpanded: false   // collapsed by default — large results block CoreText layout
         )
         items.append(entry)
         toolIndexByCallID[call.id] = items.count - 1
@@ -882,7 +882,13 @@ private struct ChatEntryRow: View {
                             Text("Result")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
-                            Text(result)
+                            // Truncate large results — CoreText typesetting of tens of kilobytes
+                            // of plain text blocks the main thread and starves the engine actor.
+                            let truncated = result.count > 4000
+                            let displayResult = truncated
+                                ? String(result.prefix(4000)) + "\n… (\(result.count - 4000) more chars)"
+                                : result
+                            Text(displayResult)
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(item.toolIsError ? .orange : .primary)
                                 .textSelection(.enabled)
