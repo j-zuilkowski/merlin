@@ -589,6 +589,12 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func appendToolCall(_ call: ToolCall) {
+        // Reset assistantIndex so that any text response that arrives after this
+        // tool-call sequence creates a fresh assistant entry at the bottom of the
+        // chat, rather than being silently appended to an earlier assistant entry
+        // from a previous loop iteration (which would be invisible, above all the
+        // tool results).
+        assistantIndex = nil
         let entry = ChatEntry(
             role: .tool,
             text: "",
