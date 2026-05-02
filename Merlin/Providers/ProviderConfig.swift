@@ -144,7 +144,14 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
-        keyedProviderIDs = Set(Self.loadKeys().keys)
+        // Populate keyedProviderIDs from Keychain — any non-local provider with a stored key.
+        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
+            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
+        // Migrate any legacy keys from ~/.merlin/api-keys.json into Keychain, then delete the file.
+        Self.migrateFileKeysToKeychain(knownProviderIDs: Set(providers.map(\.id)))
+        // Re-check after migration
+        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
+            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
         // Auto-enable any non-local provider that already has a key
         for id in keyedProviderIDs {
             if let i = providers.firstIndex(where: { $0.id == id && !$0.isLocal && !$0.isEnabled }) {
@@ -372,37 +379,42 @@ final class ProviderRegistry: ObservableObject {
         persist()
     }
 
-    // MARK: Key Storage (~/.merlin/api-keys.json)
+    // MARK: Key Storage (Keychain)
 
-    private static var keysURL: URL {
+    /// One-time migration: if `~/.merlin/api-keys.json` exists, copy each entry into
+    /// the Keychain (skipping any that already have a Keychain entry), then delete the file.
+    private static func migrateFileKeysToKeychain(knownProviderIDs: Set<String>) {
         let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
-        return URL(fileURLWithPath: "\(home)/.merlin/api-keys.json")
-    }
-
-    private static func loadKeys() -> [String: String] {
-        guard let data = try? Data(contentsOf: keysURL),
+        let url = URL(fileURLWithPath: "\(home)/.merlin/api-keys.json")
+        guard let data = try? Data(contentsOf: url),
               let dict = try? JSONDecoder().decode([String: String].self, from: data)
-        else { return [:] }
-        return dict
+        else { return }
+        for (id, key) in dict where !key.isEmpty {
+            // Only migrate keys for known providers; skip placeholder test values.
+            guard knownProviderIDs.contains(id) || id == "deepseek" || id == "anthropic" else { continue }
+            if KeychainManager.readAPIKey(for: id) == nil {
+                try? KeychainManager.writeAPIKey(key, for: id)
+            }
+        }
+        try? FileManager.default.removeItem(at: url)
     }
 
-    private static func saveKeys(_ keys: [String: String]) {
-        guard let data = try? JSONEncoder().encode(keys) else { return }
-        let url = keysURL
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
-                                                  withIntermediateDirectories: true)
-        try? data.write(to: url, options: .atomic)
-    }
+    /// When non-nil, key reads and writes use this in-memory dict instead of the
+    /// Keychain. Set this in test setUp to prevent tests from touching the Keychain.
+    var apiKeysOverride: [String: String]? = nil
 
     func setAPIKey(_ key: String, for id: String) {
-        var keys = Self.loadKeys()
-        keys[id] = key
-        Self.saveKeys(keys)
+        if apiKeysOverride != nil {
+            apiKeysOverride![id] = key
+        } else {
+            try? KeychainManager.writeAPIKey(key, for: id)
+        }
         keyedProviderIDs.insert(id)
     }
 
     func readAPIKey(for id: String) -> String? {
-        Self.loadKeys()[id]
+        if let override = apiKeysOverride { return override[id] }
+        return KeychainManager.readAPIKey(for: id)
     }
 
     // MARK: Factory

@@ -2,45 +2,44 @@ import Foundation
 import Security
 
 enum KeychainManager {
-    static let service = "com.merlin.deepseek"
-    static let account = "api-key"
 
-    static func readAPIKey() -> String? {
+    // MARK: - Per-provider API keys
+
+    /// Keychain service used for all provider API keys.
+    private static let apiKeyService = "com.merlin.api-keys"
+
+    /// Read the stored API key for `providerID` (e.g. `"deepseek"`, `"anthropic"`).
+    static func readAPIKey(for providerID: String) -> String? {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne,
         ]
-
         var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess,
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data,
-              let key = String(data: data, encoding: .utf8) else {
-            return nil
-        }
+              let key = String(data: data, encoding: .utf8)
+        else { return nil }
         return key
     }
 
-    static func writeAPIKey(_ key: String) throws {
+    /// Persist (or update) the API key for `providerID`.
+    static func writeAPIKey(_ key: String, for providerID: String) throws {
         let data = Data(key.utf8)
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
         ]
-        let attributes: [String: Any] = [
-            kSecValueData as String: data
-        ]
-
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        let status = SecItemUpdate(query as CFDictionary,
+                                   [kSecValueData as String: data] as CFDictionary)
         if status == errSecItemNotFound {
-            var addQuery = query
-            addQuery[kSecValueData as String] = data
-            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+            var add = query
+            add[kSecValueData as String] = data
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            let addStatus = SecItemAdd(add as CFDictionary, nil)
             guard addStatus == errSecSuccess else {
                 throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
             }
@@ -51,15 +50,25 @@ enum KeychainManager {
         }
     }
 
-    static func deleteAPIKey() throws {
+    /// Remove the API key for `providerID`. Silent no-op if not found.
+    static func deleteAPIKey(for providerID: String) throws {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
         }
     }
+
+    // MARK: - Legacy single-key shims (used by KeychainTests)
+
+    static let service = "com.merlin.deepseek"
+    static let account = "api-key"
+
+    static func readAPIKey() -> String? { readAPIKey(for: "deepseek-legacy") }
+    static func writeAPIKey(_ key: String) throws { try writeAPIKey(key, for: "deepseek-legacy") }
+    static func deleteAPIKey() throws { try deleteAPIKey(for: "deepseek-legacy") }
 }

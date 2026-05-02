@@ -15,15 +15,19 @@ final class DynamicModelFetchTests: XCTestCase {
 
     private func makeRegistry(
         response: MockModelsResponse,
-        providers: [ProviderConfig] = []
+        providers: [ProviderConfig] = [],
+        apiKeys: [String: String] = [:]
     ) -> ProviderRegistry {
         MockModelsURLProtocol.nextResponse = response
         MockModelsURLProtocol.capturedRequests = []
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [MockModelsURLProtocol.self]
         let session = URLSession(configuration: config)
-        return ProviderRegistry(persistURL: testPersistURL(), session: session,
-                                initialProviders: providers.isEmpty ? testProviders() : providers)
+        let reg = ProviderRegistry(persistURL: testPersistURL(), session: session,
+                                   initialProviders: providers.isEmpty ? testProviders() : providers)
+        // Use in-memory override so tests never touch ~/.merlin/api-keys.json
+        reg.apiKeysOverride = apiKeys
+        return reg
     }
 
     private func testProviders() -> [ProviderConfig] {
@@ -83,8 +87,8 @@ final class DynamicModelFetchTests: XCTestCase {
     }
 
     func testFetchModelsSendsAuthHeaderForKeyedProvider() async throws {
-        let registry = makeRegistry(response: .openAIModels(["gpt-4o"]))
-        registry.setAPIKey("sk-test-key", for: "deepseek")
+        let registry = makeRegistry(response: .openAIModels(["gpt-4o"]),
+                                    apiKeys: ["deepseek": "sk-test-key"])
         let config = testProviders()[0]
 
         _ = await registry.fetchModels(for: config)
@@ -117,9 +121,9 @@ final class DynamicModelFetchTests: XCTestCase {
         )
         let registry = makeRegistry(
             response: .anthropicModels(["claude-opus-4-7", "claude-sonnet-4-6"]),
-            providers: [anthropicProvider]
+            providers: [anthropicProvider],
+            apiKeys: ["anthropic": "test-anthropic-key"]
         )
-        registry.setAPIKey("test-anthropic-key", for: "anthropic")
 
         let models = await registry.fetchModels(for: anthropicProvider)
 
