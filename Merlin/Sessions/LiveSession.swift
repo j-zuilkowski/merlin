@@ -69,6 +69,27 @@ final class LiveSession: ObservableObject, Identifiable {
             await engine.start(store: store)
         }
 
+        // File-based message injection: poll ~/.merlin/inject.txt every 2 seconds.
+        // When the file exists, post merlinInjectMessage so the active ChatView
+        // submits it as a real user message (visible in the UI with full response).
+        // Usage from shell: echo "your prompt" > ~/.merlin/inject.txt
+        Task { @MainActor in
+            let injectURL = URL(fileURLWithPath: (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.merlin/inject.txt")
+            while true {
+                if let data = try? Data(contentsOf: injectURL),
+                   let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !text.isEmpty {
+                    try? FileManager.default.removeItem(at: injectURL)
+                    NotificationCenter.default.post(
+                        name: .merlinInjectMessage,
+                        object: nil,
+                        userInfo: ["message": text]
+                    )
+                }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+
         Task {
             let memoryProvider = appState.engine.provider(for: .reason) ?? NullProvider()
             await self.memoryEngine.setProvider(memoryProvider)

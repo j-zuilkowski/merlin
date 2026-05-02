@@ -57,6 +57,11 @@ struct ChatView: View {
             autoScrollEnabled = true
             scrollLockVisible = false
         }
+        .onReceive(NotificationCenter.default.publisher(for: .merlinInjectMessage)) { note in
+            guard let msg = note.userInfo?["message"] as? String, !msg.isEmpty else { return }
+            model.draft = msg
+            Task { await model.submit(appState: appState) }
+        }
     }
 
     private var header: some View {
