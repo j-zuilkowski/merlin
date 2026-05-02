@@ -100,7 +100,10 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
 
         init(_ message: Message) {
             self.role = message.role
-            self.content = WireContent(message.content)
+            var wc = WireContent(message.content)
+            // Tool result messages must encode content as a string, never null.
+            wc.requiresStringContent = (message.role == .tool)
+            self.content = wc
             self.toolCalls = message.toolCalls
             self.toolCallId = message.toolCallId
             self.thinkingContent = message.thinkingContent
@@ -110,6 +113,10 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
     struct WireContent: Encodable {
         var text: String?
         var parts: [ContentPart]?
+        /// When true, encodes as `""` instead of `null` for empty/nil content.
+        /// Required for role=tool messages: DeepSeek (and OpenAI spec) require
+        /// content to be a string or list — never null — for tool result messages.
+        var requiresStringContent: Bool = false
 
         init(_ content: MessageContent) {
             switch content {
@@ -127,10 +134,13 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
             // OpenAI wire format: assistant messages carrying only tool_calls must
             // send content: null (not ""). An empty string is rejected by DeepSeek
             // and other OpenAI-compatible providers with a 400/bad-response error.
+            // However, role=tool (tool result) messages must always be a string.
             if let text, !text.isEmpty {
                 try c.encode(text)
             } else if let parts {
                 try c.encode(parts)
+            } else if requiresStringContent {
+                try c.encode("")
             } else {
                 try c.encodeNil()
             }
