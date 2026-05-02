@@ -81,7 +81,21 @@ final class AgenticEngine {
     /// Reset to 0 on `.pass` or `.skipped`, and reset by `AppState.newSession()`.
     var consecutiveCriticFailures: Int = 0
     var classifierOverride: (any PlannerEngineProtocol)?
-    var currentProjectPath: String?
+    var currentProjectPath: String? {
+        didSet {
+            guard currentProjectPath != oldValue else { return }
+            let path = currentProjectPath ?? ""
+            Task { [weak self] in
+                guard let self else { return }
+                let metrics = await self.sizeObserver.observe(path: path)
+                await MainActor.run { self.projectSizeMetrics = metrics }
+            }
+        }
+    }
+    /// Most-recently observed size metrics for `currentProjectPath`.
+    /// Updated in the background whenever `currentProjectPath` changes.
+    var projectSizeMetrics: ProjectSizeMetrics = .default
+    private let sizeObserver = ProjectSizeObserver()
     /// Mirrors AppSettings.ragRerank. Set at init and kept in sync by AppState.
     var ragRerank: Bool = false
     /// Mirrors AppSettings.ragChunkLimit. Clamped to 1...20 at call site.
@@ -186,6 +200,15 @@ final class AgenticEngine {
 
     var currentModelID: String {
         modelID(for: resolvedProvider(for: .execute))
+    }
+
+    /// Returns the effective loop ceiling for the given complexity tier.
+    ///
+    /// Takes the larger of the adaptive ceiling (derived from observed project size)
+    /// and `AppSettings.maxLoopIterations` so a user-configured higher value always wins.
+    func effectiveLoopCeiling(for tier: ComplexityTier) -> Int {
+        max(projectSizeMetrics.adaptiveCeiling(for: tier),
+            AppSettings.shared.maxLoopIterations)
     }
 
     /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
@@ -500,7 +523,7 @@ final class AgenticEngine {
         var capturedFinishReason: String?
         var totalToolCallCount = 0
         var loopCount = 0
-        let maxIterations = max(1, classification.needsPlanning ? AppSettings.shared.maxLoopIterations : AppSettings.shared.maxLoopIterations)
+        let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
         do {
             while true {
                 await pauseForReload()
