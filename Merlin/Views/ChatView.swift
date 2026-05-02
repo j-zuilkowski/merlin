@@ -708,15 +708,53 @@ struct ChatEntry: Identifiable, Sendable {
     var ragSources: [RAGChunk] = []
 }
 
+/// Pre-computed markdown segments for one chat message.
+/// Stored as `@State` so it is computed once per row and not re-derived
+/// on every SwiftUI layout pass.
+private struct RenderedMessage: Equatable {
+    struct Segment: Equatable {
+        let content: String
+        let isCode: Bool
+        let rendered: AttributedString?  // nil for code segments
+    }
+    let segments: [Segment]
+}
+
 private struct ChatEntryRow: View {
     let item: ChatEntry
     let onToggleThinking: (() -> Void)?
     let onToggleTool: (() -> Void)?
     @ObservedObject private var settings = AppSettings.shared
+    /// Lazily computed off the main thread. Nil while pending, populated by .task.
+    @State private var renderedMessage: RenderedMessage? = nil
 
     var body: some View {
         content
             .padding(.vertical, settings.messageDensity.verticalPadding)
+            .task(id: item.text) {
+                // Compute markdown segments + AttributedStrings off the main thread.
+                // Only runs when item.text changes (i.e. once per message, not per layout pass).
+                let text = item.text
+                let rendered = await Task.detached(priority: .userInitiated) {
+                    Self.buildRenderedMessage(text)
+                }.value
+                renderedMessage = rendered
+            }
+    }
+
+    /// Builds the pre-rendered message. Runs off the main thread.
+    private nonisolated static func buildRenderedMessage(_ text: String) -> RenderedMessage {
+        let segs = buildCodeSegments(from: text)
+        let segments: [RenderedMessage.Segment] = segs.map { seg in
+            if seg.isCode {
+                return .init(content: seg.content, isCode: true, rendered: nil)
+            }
+            let attributed = (try? AttributedString(markdown: seg.content,
+                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
+                ?? AttributedString(seg.content)
+            return .init(content: seg.content, isCode: false, rendered: attributed)
+        }
+        return RenderedMessage(segments: segments)
     }
 
     @ViewBuilder
@@ -917,38 +955,46 @@ private struct ChatEntryRow: View {
     /// Renders `text` as a view, splitting fenced code blocks (``` … ```) out so
     /// they get a monospace font and a horizontal scroll view. Prose segments use
     /// AttributedString markdown inline rendering which preserves every \n.
+    /// Uses the async-precomputed `renderedMessage` when available so that
+    /// `AttributedString(markdown:)` is never called on the main thread during layout.
     @ViewBuilder
     private func markdownText(_ text: String) -> some View {
-        let segs = codeSegments(from: text)
-        if segs.count == 1, !segs[0].isCode {
-            // Fast path — no code fence in this message.
-            Text(renderMarkdown(segs[0].content))
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(segs) { seg in
-                    if seg.isCode {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            Text(seg.content)
-                                .font(.system(size: 12, design: .monospaced))
-                                .fixedSize(horizontal: true, vertical: true)
-                                .padding(8)
+        if let rm = renderedMessage {
+            // Fast path — use the pre-rendered result.
+            if rm.segments.count == 1, !rm.segments[0].isCode {
+                Text(rm.segments[0].rendered ?? AttributedString(text))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(rm.segments.enumerated()), id: \.offset) { _, seg in
+                        if seg.isCode {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                Text(seg.content)
+                                    .font(.system(size: 12, design: .monospaced))
+                                    .fixedSize(horizontal: true, vertical: true)
+                                    .padding(8)
+                            }
+                            .background(Color(nsColor: .windowBackgroundColor))
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
+                                                  lineWidth: 1)
+                            )
+                        } else if !seg.content.isEmpty {
+                            Text(seg.rendered ?? AttributedString(seg.content))
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                        .background(Color(nsColor: .windowBackgroundColor))
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
-                                              lineWidth: 1)
-                        )
-                    } else if !seg.content.isEmpty {
-                        Text(renderMarkdown(seg.content))
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+                .textSelection(.enabled)
             }
-            .textSelection(.enabled)
+        } else {
+            // Pending render — show plain text immediately (no layout stall).
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
     }
 
@@ -959,7 +1005,16 @@ private struct ChatEntryRow: View {
     }
 
     /// Splits `text` on triple-backtick fences, returning alternating prose/code segments.
+    /// Static so it can be called from `buildRenderedMessage` off the main thread.
+    private nonisolated static func buildCodeSegments(from text: String) -> [CodeSegment] {
+        codeSegmentsImpl(text)
+    }
+
     private func codeSegments(from text: String) -> [CodeSegment] {
+        Self.codeSegmentsImpl(text)
+    }
+
+    private nonisolated static func codeSegmentsImpl(_ text: String) -> [CodeSegment] {
         var result: [CodeSegment] = []
         var idx = 0
         var remaining = text[...]
