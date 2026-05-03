@@ -53,22 +53,13 @@ struct ContentView: View {
             FirstLaunchSetupView()
                 .environmentObject(appState)
         }
-        .sheet(item: Binding(
-            get: { appState.calibrationCoordinator.sheet },
-            set: { appState.calibrationCoordinator.sheet = $0 }
-        )) { sheetState in
-            switch sheetState {
-            case .pickProvider(let providers):
-                CalibrationProviderPickerView(availableProviders: providers) { selected in
-                    Task { await appState.calibrationCoordinator.start(referenceProviderID: selected) }
-                }
-            case .running(let info):
-                CalibrationProgressView(info: info)
-            case .report(let report):
-                CalibrationReportView(report: report) {
-                    Task { await appState.calibrationCoordinator.applyAll() }
-                }
-            }
+        .sheet(isPresented: Binding(
+            get: { appState.calibrationCoordinator.sheet != nil },
+            set: { if !$0 { appState.calibrationCoordinator.sheet = nil } }
+        )) {
+            // Single persistent sheet — state switching happens inside so SwiftUI
+            // never has to dismiss + re-present (which silently drops the new sheet).
+            CalibrationFlowView(coordinator: appState.calibrationCoordinator)
         }
         .focusedObject(appState)
         .focusedObject(registry)

@@ -11,8 +11,11 @@ import Foundation
 /// before the closure is built. The scorer is also injected and is called once
 /// per response, so local and reference outputs are evaluated independently.
 ///
-/// Results are collected concurrently and sorted by `CalibrationPrompt.id` for
-/// deterministic display in the report view.
+/// Prompts run sequentially so local inference backends (e.g. LM Studio) are
+/// never flooded with concurrent requests they must serialise internally. Within
+/// each prompt, the local and reference requests run concurrently because they
+/// target different backends. An optional `onProgress` callback receives the
+/// completed count after each prompt so callers can update progress UI.
 actor CalibrationRunner {
 
     // MARK: - Closure type aliases (also used by CalibrationAdvisor tests)
@@ -21,6 +24,8 @@ actor CalibrationRunner {
     typealias ProviderClosure = @Sendable (String) async throws -> String
     /// Scores one prompt/response pair on a 0...1 scale.
     typealias ScorerClosure = @Sendable (String, String) async throws -> Double
+    /// Called on MainActor after each prompt completes with the running total.
+    typealias ProgressClosure = @MainActor @Sendable (Int) -> Void
 
     // MARK: - Private
 
@@ -42,40 +47,45 @@ actor CalibrationRunner {
 
     // MARK: - Public
 
-    /// Fires the full battery in a TaskGroup so every prompt starts
-    /// concurrently. Within each prompt, the local and reference requests also
-    /// run concurrently, followed by separate scores for each response.
-    func run(suite: CalibrationSuite) async throws -> [CalibrationResponse] {
+    /// Runs every prompt sequentially to avoid saturating single-threaded local
+    /// inference backends. Within each prompt, local and reference requests run
+    /// concurrently (different backends). `onProgress` is called on MainActor
+    /// after each prompt so the UI can display live counts.
+    func run(
+        suite: CalibrationSuite,
+        onProgress: ProgressClosure? = nil
+    ) async throws -> [CalibrationResponse] {
         let localProvider = localProvider
         let referenceProvider = referenceProvider
         let scorer = scorer
 
-        return try await withThrowingTaskGroup(of: CalibrationResponse.self) { group in
-            for prompt in suite.prompts {
-                group.addTask {
-                    async let localResp = localProvider(prompt.prompt)
-                    async let refResp = referenceProvider(prompt.prompt)
-                    let (local, ref) = try await (localResp, refResp)
+        var results: [CalibrationResponse] = []
 
-                    async let ls = scorer(prompt.prompt, local)
-                    async let rs = scorer(prompt.prompt, ref)
-                    let (localScore, refScore) = try await (ls, rs)
+        for (index, prompt) in suite.prompts.enumerated() {
+            // Local and reference can run concurrently — they target different backends.
+            async let localResp = localProvider(prompt.prompt)
+            async let refResp = referenceProvider(prompt.prompt)
+            let (local, ref) = try await (localResp, refResp)
 
-                    return CalibrationResponse(
-                        prompt: prompt,
-                        localResponse: local,
-                        referenceResponse: ref,
-                        localScore: localScore,
-                        referenceScore: refScore
-                    )
-                }
+            // Scorer uses the reason-slot provider (also local); run sequentially
+            // to avoid queuing two requests on the same LM Studio instance.
+            let localScore = try await scorer(prompt.prompt, local)
+            let refScore   = try await scorer(prompt.prompt, ref)
+
+            results.append(CalibrationResponse(
+                prompt: prompt,
+                localResponse: local,
+                referenceResponse: ref,
+                localScore: localScore,
+                referenceScore: refScore
+            ))
+
+            let completed = index + 1
+            if let onProgress {
+                await onProgress(completed)
             }
-
-            var results: [CalibrationResponse] = []
-            for try await response in group {
-                results.append(response)
-            }
-            return results.sorted { $0.prompt.id < $1.prompt.id }
         }
+
+        return results.sorted { $0.prompt.id < $1.prompt.id }
     }
 }

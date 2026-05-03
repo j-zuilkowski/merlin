@@ -433,7 +433,22 @@ final class AppState: ObservableObject {
     }
 
     func providerConfig(for providerID: String) -> ProviderConfig? {
-        registry.providers.first { $0.id == providerID }
+        // Direct match first.
+        if let config = registry.providers.first(where: { $0.id == providerID }) {
+            return config
+        }
+        // Virtual ID "backendID:modelID" — return backend config with model overridden.
+        // This lets calibration use lmstudio:google/gemma-4-31b without a separate registry entry.
+        if providerID.contains(":") {
+            let parts = providerID.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { return nil }
+            let backendID = String(parts[0])
+            let modelID   = String(parts[1])
+            guard var config = registry.providers.first(where: { $0.id == backendID }) else { return nil }
+            config.model = modelID
+            return config
+        }
+        return nil
     }
 
     /// Enabled provider configurations in the current registry state.

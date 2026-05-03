@@ -96,7 +96,16 @@ final class CalibrationCoordinator: ObservableObject {
                 scorer: scorerClosure
             )
 
-            let responses = try await runner.run(suite: .default)
+            let responses = try await runner.run(suite: .default) { @MainActor [weak self] completed in
+                guard let self,
+                      case .running(let info) = self.sheet else { return }
+                self.sheet = .running(CalibrationProgressInfo(
+                    completed: completed,
+                    total: info.total,
+                    localProviderID: info.localProviderID,
+                    referenceProviderID: info.referenceProviderID
+                ))
+            }
             let advisor = CalibrationAdvisor()
             let advisories = advisor.analyze(
                 responses: responses,

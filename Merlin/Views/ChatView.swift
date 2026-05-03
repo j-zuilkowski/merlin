@@ -60,7 +60,8 @@ struct ChatView: View {
         .onReceive(NotificationCenter.default.publisher(for: .merlinInjectMessage)) { note in
             guard let msg = note.userInfo?["message"] as? String, !msg.isEmpty else { return }
             model.draft = msg
-            Task { await model.submit(appState: appState) }
+            // Route through sendMessage so slash commands like /calibrate are handled.
+            sendMessage()
         }
     }
 
@@ -318,10 +319,23 @@ struct ChatView: View {
         let command = message.dropFirst().split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
         guard command.lowercased() == "calibrate" else { return false }
 
-        let localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
+        // When slot assignments are configured, calibrate the execute-slot provider
+        // (typically a local model) against a remote reference. This lets /calibrate
+        // compare LM Studio models even when deepseek is the primary provider.
+        let localProviderID: String
+        let localModelID: String
+        if let executeID = appState.engine.slotAssignments[.execute], !executeID.isEmpty {
+            localProviderID = executeID
+            localModelID = executeID.contains(":") ?
+                String(executeID.split(separator: ":", maxSplits: 1).last ?? Substring(executeID)) :
+                appState.activeModelID
+        } else {
+            localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
+            localModelID = appState.activeModelID
+        }
         appState.calibrationCoordinator.begin(
             localProviderID: localProviderID,
-            localModelID: appState.activeModelID
+            localModelID: localModelID
         )
         return true
     }

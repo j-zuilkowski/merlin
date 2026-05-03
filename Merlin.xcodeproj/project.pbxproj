@@ -142,6 +142,7 @@
 		5B173BD3CF9D4C73B8775973 /* LocalAIModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97ABA91376C71D992319981 /* LocalAIModelManager.swift */; };
 		5B7EABA082DDEABF9947FFC6 /* AgenticEngineMemoryPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B6CDF8126C67EC37E4240C /* AgenticEngineMemoryPluginTests.swift */; };
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
+		5D5B8655E0EB3BC0C0F8308F /* CalibrationFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4684727E5DF2B5B405CA78C /* CalibrationFlowView.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
 		5E0546E78590C81217AA873D /* VisionQueryTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19DE0FBDE08CA74A748E58F /* VisionQueryTool.swift */; };
 		5E1087C883714F696C651BAF /* ModelControlViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF80CDB4576042C834A75A7A /* ModelControlViewTests.swift */; };
@@ -573,6 +574,7 @@
 		A0F4EFAE441F408FDA62B675 /* ScreenCaptureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureTests.swift; sourceTree = "<group>"; };
 		A231B0513B388FE4EB74817E /* WorkspaceLayoutManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLayoutManager.swift; sourceTree = "<group>"; };
 		A385F93C62395C46EB6AEDD8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A4684727E5DF2B5B405CA78C /* CalibrationFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationFlowView.swift; sourceTree = "<group>"; };
 		A4781CD2816F2B1105F71278 /* EngineFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineFactory.swift; sourceTree = "<group>"; };
 		A65F30CE00DABF745DC5826D /* ContextInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextInjector.swift; sourceTree = "<group>"; };
 		A661789CB90529FD746DA620 /* AXInspectorTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXInspectorTool.swift; sourceTree = "<group>"; };
@@ -1315,6 +1317,7 @@
 		D9F55CEAA36B48A912869F41 /* Calibration */ = {
 			isa = PBXGroup;
 			children = (
+				A4684727E5DF2B5B405CA78C /* CalibrationFlowView.swift */,
 				218C6502D1FD274880D1BB8A /* CalibrationProgressView.swift */,
 				D38C8A2B7237A4C6BF14084E /* CalibrationProviderPickerView.swift */,
 				04DF9AAC218773D5197F27F2 /* CalibrationReportView.swift */,
@@ -1794,6 +1797,7 @@
 				F2782415BE26DBA76D3D9D0F /* CLAUDEMDLoader.swift in Sources */,
 				6219702079F7F84275125E24 /* CalibrationAdvisor.swift in Sources */,
 				58F2A3A430F2D0EDC9983729 /* CalibrationCoordinator.swift in Sources */,
+				5D5B8655E0EB3BC0C0F8308F /* CalibrationFlowView.swift in Sources */,
 				A02E74415AF7ACD9447864EE /* CalibrationProgressView.swift in Sources */,
 				0C2B8B52A8E2C902965BDA2A /* CalibrationProviderPickerView.swift in Sources */,
 				55E888720C73A18912E33D31 /* CalibrationReportView.swift in Sources */,
