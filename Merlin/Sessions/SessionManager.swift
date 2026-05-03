@@ -16,7 +16,7 @@ final class SessionManager: ObservableObject {
     }
 
     @discardableResult
-    func newSession(mode: PermissionMode = .ask) async -> LiveSession {
+    func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
         let session = LiveSession(projectRef: projectRef)
         session.permissionMode = mode
         liveSessions.append(session)
