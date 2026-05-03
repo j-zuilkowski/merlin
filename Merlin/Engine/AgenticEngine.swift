@@ -597,12 +597,15 @@ final class AgenticEngine {
                             timestamp: Date()
                         ))
                     }
-                    // Fire critic when: non-routine highStakes turn, classifierOverride is active,
-                    // OR any files were written during this turn (document verification use case).
-                    let shouldRunCritic = classification.complexity != .routine &&
-                        (classifierOverride != nil ||
-                         classification.complexity == .highStakes ||
-                         !writtenFilePaths.isEmpty)
+                    // Fire critic when any of:
+                    //   • write_file was called — written file contents fed to critic
+                    //   • fullText is a substantial response (> 1500 chars) — catches documents
+                    //     written via bash shell redirect, which bypass write_file tracking
+                    //   • non-routine highStakes turn or classifierOverride active
+                    let isSubstantialOutput = fullText.count > 1500
+                    let shouldRunCritic = !writtenFilePaths.isEmpty || isSubstantialOutput ||
+                        (classification.complexity != .routine &&
+                         (classifierOverride != nil || classification.complexity == .highStakes))
                     if shouldRunCritic {
                         if let reasonProvider = self.provider(for: .reason),
                            !(reasonProvider is NullProvider) {
@@ -922,7 +925,21 @@ final class AgenticEngine {
             "rewrite",
             "design",
             "change",
-            "fix"
+            "fix",
+            // Document / analysis generation
+            "generate",
+            "produce",
+            "write",
+            "analyse",
+            "analyze",
+            "explore",
+            "document",
+            "report",
+            "summarize",
+            "summarise",
+            "list all",
+            "list the",
+            "compare"
         ]
         if planningKeywords.contains(where: { lower.contains($0) }) {
             return ClassifierResult(needsPlanning: true, complexity: .standard, reason: "heuristic planning keyword")
