@@ -41,6 +41,7 @@ final class LiveSession: ObservableObject, Identifiable {
         self.appState.engine.skillsRegistry = self.skillsRegistry
         self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
         self.appState.engine.memoriesContent = CLAUDEMDLoader.defaultMemoriesBlock()
+        self.appState.engine.standingInstructions = AppSettings.shared.standingInstructions
         appState.engine.permissionMode = permissionMode
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage
         appState.engine.toolRouter.permissionMode = permissionMode

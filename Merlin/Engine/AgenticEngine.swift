@@ -66,6 +66,7 @@ final class AgenticEngine {
     var permissionMode: PermissionMode = .ask
     var claudeMDContent: String = ""
     var memoriesContent: String = ""
+    var standingInstructions: String = ""
     var onUsageUpdate: ((Int) -> Void)?
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
@@ -1023,11 +1024,20 @@ final class AgenticEngine {
             parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
         parts.append(AgenticEngine.coreSystemPrompt)
+        if !standingInstructions.isEmpty {
+            parts.append(standingInstructions)
+        }
         return parts.joined(separator: "\n\n")
     }
 
-    private static let coreSystemPrompt = """
+    private static var coreSystemPrompt: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        return """
         You are Merlin, a macOS agentic coding assistant. Use tools when helpful and keep responses concise.
+
+        Today's date is \(today).
 
         ## Efficient file exploration
         For large codebases, prefer targeted access over bulk reading:
@@ -1036,6 +1046,7 @@ final class AgenticEngine {
         - Use `read_file` for files you know are relevant; avoid reading every file in a directory sequentially.
         - For understanding project structure, `list_directory` with recursive=true gives the full tree without reading file contents.
         """
+    }
 
     private func buildSystemPrompt(for slot: AgentSlot) async -> String {
         var parts: [String] = []
@@ -1052,6 +1063,9 @@ final class AgenticEngine {
             parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
         parts.append(AgenticEngine.coreSystemPrompt)
+        if !standingInstructions.isEmpty {
+            parts.append(standingInstructions)
+        }
 
         let addendum = await combinedAddendum(for: slot)
         if !addendum.isEmpty {
