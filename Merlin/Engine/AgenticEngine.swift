@@ -525,6 +525,9 @@ final class AgenticEngine {
         var totalToolCallCount = 0
         var loopCount = 0
         let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
+        // Paths written via write_file during this turn — passed to CriticEngine for
+        // cross-referencing so the critic can verify document content against the assistant text.
+        var writtenFilePaths: [String] = []
         do {
             while true {
                 await pauseForReload()
@@ -594,8 +597,13 @@ final class AgenticEngine {
                             timestamp: Date()
                         ))
                     }
-                    if classification.complexity != .routine,
-                       (classifierOverride != nil || classification.complexity == .highStakes) {
+                    // Fire critic when: non-routine highStakes turn, classifierOverride is active,
+                    // OR any files were written during this turn (document verification use case).
+                    let shouldRunCritic = classification.complexity != .routine &&
+                        (classifierOverride != nil ||
+                         classification.complexity == .highStakes ||
+                         !writtenFilePaths.isEmpty)
+                    if shouldRunCritic {
                         if let reasonProvider = self.provider(for: .reason),
                            !(reasonProvider is NullProvider) {
                             let critic = makeCritic(domain: domain)
@@ -604,7 +612,8 @@ final class AgenticEngine {
                             let verdict = await critic.evaluate(
                                 taskType: taskType,
                                 output: fullText,
-                                context: context.messages
+                                context: context.messages,
+                                writtenFiles: writtenFilePaths
                             )
                             lastCriticVerdict = verdict
                             switch verdict {
@@ -705,6 +714,13 @@ final class AgenticEngine {
                         "tool_name": call.function.name,
                         "loop": loopCount
                     ])
+                    // Track write_file paths so the critic can read the written content.
+                    if call.function.name == "write_file" {
+                        let args = inputDictionary(from: call.function.arguments)
+                        if let path = args["path"], !path.isEmpty {
+                            writtenFilePaths.append(path)
+                        }
+                    }
                     let toolStart = Date()
                     let results = await toolRouter.dispatch([call])
                     guard let result = results.first else { continue }

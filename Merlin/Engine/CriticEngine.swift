@@ -75,6 +75,15 @@ actor CriticEngine {
         output: String,
         context: [Message]
     ) async -> CriticResult {
+        await evaluate(taskType: taskType, output: output, context: context, writtenFiles: [])
+    }
+
+    func evaluate(
+        taskType: DomainTaskType,
+        output: String,
+        context: [Message],
+        writtenFiles: [String]
+    ) async -> CriticResult {
         TelemetryEmitter.shared.emit("critic.evaluate.start", data: [
             "task_type": taskType.name
         ])
@@ -90,7 +99,7 @@ actor CriticEngine {
                 "stage": "stage1"
             ])
         case .pass, .skipped:
-            let s2 = await runStage2(output: output, context: context, taskType: taskType)
+            let s2 = await runStage2(output: output, context: context, taskType: taskType, writtenFiles: writtenFiles)
             finalResult = s2 ?? (stage1Result == .pass ? .pass : .skipped)
             if case .fail(let reason) = finalResult {
                 TelemetryEmitter.shared.emit("critic.evaluate.fail", data: [
@@ -148,18 +157,67 @@ actor CriticEngine {
     private func runStage2(
         output: String,
         context: [Message],
-        taskType: DomainTaskType
+        taskType: DomainTaskType,
+        writtenFiles: [String]
     ) async -> CriticResult? {
         guard let provider = reasonProvider else { return nil }
 
-        let prompt = """
-        You are a critic reviewing AI-generated output for a \(taskType.displayName) task.
-        Review the following output and respond with exactly one of:
-          PASS: <brief reason>
-          FAIL: <specific issue>
+        let today: String = {
+            let f = DateFormatter()
+            f.dateFormat = "yyyy-MM-dd"
+            return f.string(from: Date())
+        }()
 
-        Output to review:
-        \(output.prefix(4000))
+        // Build file-content block for any files written during the turn.
+        var writtenFilesBlock = ""
+        if !writtenFiles.isEmpty {
+            var blocks: [String] = []
+            for path in writtenFiles {
+                let content = (try? String(contentsOfFile: path, encoding: .utf8)) ?? "(could not read)"
+                blocks.append("### \(path)\n\(content)")
+            }
+            writtenFilesBlock = """
+
+            ## Written files — verify these match the stated output
+
+            \(blocks.joined(separator: "\n\n"))
+            """
+        }
+
+        // Build structured verification prompt.
+        // No output truncation — the reason slot (Qwen3-27B) has a 128K context window.
+        let hasDocumentContent = !writtenFiles.isEmpty
+        let documentCriterion = hasDocumentContent
+            ? "\n6. **Document integrity** — Document content matches the stated purpose; effort estimates are present and honest where work is proposed; no unrequested features added silently."
+            : ""
+
+        let prompt = """
+        You are a critic performing structured verification of AI-generated output.
+        Task type: \(taskType.displayName)
+        Today's date: \(today)
+
+        ## Verification criteria
+
+        Assess each criterion and note PASS or FAIL with a brief reason:
+
+        1. **Completeness** — Does the output fully address what was asked?
+        2. **Factual consistency** — Are technical/architectural claims consistent with the context provided?
+        3. **Date accuracy** — If the output contains dates, are they correct (today is \(today))?
+        4. **Scope adherence** — Does the output avoid adding unrequested features or scope?
+        5. **Internal consistency** — No contradictions within the output itself.\(documentCriterion)
+
+        ## Output to verify
+
+        \(output)
+        \(writtenFilesBlock)
+
+        ## Response format
+
+        List your verdict on each criterion above, then end with exactly one of:
+          PASS: <one-line summary of what was verified>
+          FAIL: <specific issue that must be addressed>
+
+        The final line must start with PASS or FAIL.
         """
 
         var request = CompletionRequest(
@@ -177,15 +235,21 @@ actor CriticEngine {
                 fullResponse += chunk.delta?.content ?? ""
             }
 
-            let trimmed = fullResponse.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("PASS") {
-                return .pass
-            }
-            if trimmed.hasPrefix("FAIL") {
-                let reason = trimmed.dropFirst(5).trimmingCharacters(in: CharacterSet(charactersIn: ": "))
-                return .fail(reason: String(reason))
+            // Find the final PASS/FAIL verdict — scan from the end so preamble reasoning
+            // doesn't shadow the final line.
+            let lines = fullResponse.components(separatedBy: .newlines)
+            for line in lines.reversed() {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.hasPrefix("PASS") {
+                    return .pass
+                }
+                if trimmed.hasPrefix("FAIL") {
+                    let reason = trimmed.dropFirst(4).trimmingCharacters(in: CharacterSet(charactersIn: ": "))
+                    return .fail(reason: String(reason))
+                }
             }
 
+            // No explicit verdict found — default to pass to avoid false negatives.
             return .pass
         } catch {
             return nil
