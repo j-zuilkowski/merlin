@@ -731,6 +731,12 @@ private struct RenderedMessage: Equatable {
     let segments: [Segment]
 }
 
+/// Characters displayed before "Show full response" is tapped.
+/// SwiftUI must call boundingRectWithSize() on every visible Text to lay it out;
+/// for responses longer than this the measurement cost blocks the main actor for
+/// minutes. Keeping visible text small caps that cost to milliseconds.
+private let kMessageDisplayCap = 6_000
+
 private struct ChatEntryRow: View {
     let item: ChatEntry
     let onToggleThinking: (() -> Void)?
@@ -738,13 +744,13 @@ private struct ChatEntryRow: View {
     @ObservedObject private var settings = AppSettings.shared
     /// Lazily computed off the main thread. Nil while pending, populated by .task.
     @State private var renderedMessage: RenderedMessage? = nil
+    /// Whether the user has expanded a capped message to show the full text.
+    @State private var showFullText = false
 
     var body: some View {
         content
             .padding(.vertical, settings.messageDensity.verticalPadding)
             .task(id: item.text) {
-                // Compute markdown segments + AttributedStrings off the main thread.
-                // Only runs when item.text changes (i.e. once per message, not per layout pass).
                 let text = item.text
                 let rendered = await Task.detached(priority: .userInitiated) {
                     Self.buildRenderedMessage(text)
@@ -754,11 +760,20 @@ private struct ChatEntryRow: View {
     }
 
     /// Builds the pre-rendered message. Runs off the main thread.
+    ///
+    /// Long segments skip AttributedString entirely — SwiftUI must call
+    /// boundingRectWithSize() on the main thread to measure any Text(AttributedString),
+    /// which calls CTLineCreateWithAttributedString for every line. For a 2 000+ character
+    /// segment that blocks the main actor for minutes. Plain Text(String) avoids this.
     private nonisolated static func buildRenderedMessage(_ text: String) -> RenderedMessage {
         let segs = buildCodeSegments(from: text)
         let segments: [RenderedMessage.Segment] = segs.map { seg in
             if seg.isCode {
                 return .init(content: seg.content, isCode: true, rendered: nil)
+            }
+            // Skip AttributedString for long segments — layout measurement cost is O(lines).
+            guard seg.content.count <= 2_000 else {
+                return .init(content: seg.content, isCode: false, rendered: nil)
             }
             let attributed = (try? AttributedString(markdown: seg.content,
                 options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
@@ -766,6 +781,12 @@ private struct ChatEntryRow: View {
             return .init(content: seg.content, isCode: false, rendered: attributed)
         }
         return RenderedMessage(segments: segments)
+    }
+
+    /// Synchronous version of `buildRenderedMessage` for capped-text rebuilds on the main actor.
+    /// Identical logic — named separately so call-sites are self-documenting.
+    private nonisolated static func buildRenderedMessageSync(_ text: String) -> RenderedMessage {
+        buildRenderedMessage(text)
     }
 
     @ViewBuilder
@@ -974,44 +995,66 @@ private struct ChatEntryRow: View {
     /// AttributedString markdown inline rendering which preserves every \n.
     /// Uses the async-precomputed `renderedMessage` when available so that
     /// `AttributedString(markdown:)` is never called on the main thread during layout.
+    ///
+    /// Long messages are capped at `kMessageDisplayCap` characters to bound the
+    /// CoreText layout cost; a "Show full response" button reveals the rest.
     @ViewBuilder
     private func markdownText(_ text: String) -> some View {
-        if let rm = renderedMessage {
-            // Fast path — use the pre-rendered result.
-            if rm.segments.count == 1, !rm.segments[0].isCode {
-                Text(rm.segments[0].rendered ?? AttributedString(text))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(Array(rm.segments.enumerated()), id: \.offset) { _, seg in
-                        if seg.isCode {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                Text(seg.content)
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .fixedSize(horizontal: true, vertical: true)
-                                    .padding(8)
+        // Cap the visible text to avoid blocking the main actor during SwiftUI layout.
+        let isCapped = !showFullText && text.count > kMessageDisplayCap
+        let visibleText = isCapped ? String(text.prefix(kMessageDisplayCap)) : text
+        let useRM = renderedMessage.map { rm in
+            // Rebuild a capped RenderedMessage from the full one when needed.
+            isCapped ? Self.buildRenderedMessageSync(visibleText) : rm
+        }
+
+        VStack(alignment: .leading, spacing: 6) {
+            if let rm = useRM {
+                if rm.segments.count == 1, !rm.segments[0].isCode {
+                    Text(rm.segments[0].rendered ?? AttributedString(visibleText))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(rm.segments.enumerated()), id: \.offset) { _, seg in
+                            if seg.isCode {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    Text(seg.content)
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .fixedSize(horizontal: true, vertical: true)
+                                        .padding(8)
+                                }
+                                .background(Color(nsColor: .windowBackgroundColor))
+                                .cornerRadius(6)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
+                                                      lineWidth: 1)
+                                )
+                            } else if !seg.content.isEmpty {
+                                Text(seg.rendered ?? AttributedString(seg.content))
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            .background(Color(nsColor: .windowBackgroundColor))
-                            .cornerRadius(6)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
-                                                  lineWidth: 1)
-                            )
-                        } else if !seg.content.isEmpty {
-                            Text(seg.rendered ?? AttributedString(seg.content))
-                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    .textSelection(.enabled)
                 }
-                .textSelection(.enabled)
+            } else {
+                // Pending render — show plain text immediately (no layout stall).
+                Text(visibleText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
             }
-        } else {
-            // Pending render — show plain text immediately (no layout stall).
-            Text(text)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
+
+            if isCapped {
+                Button("Show full response (\(text.count) chars)") {
+                    showFullText = true
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+            }
         }
     }
 

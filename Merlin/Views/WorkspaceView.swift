@@ -34,6 +34,13 @@ struct WorkspaceView: View {
             }
         }
         .task {
+            // Load and watch ~/.merlin/config.toml so slot assignments and other
+            // TOML settings take effect without requiring a Settings UI save.
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let configURL = home.appendingPathComponent(".merlin/config.toml")
+            try? await AppSettings.shared.load(from: configURL)
+            AppSettings.shared.startWatching(url: configURL)
+
             if sessionManager.liveSessions.isEmpty {
                 await sessionManager.newSession()
             }

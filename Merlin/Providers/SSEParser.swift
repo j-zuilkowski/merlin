@@ -101,8 +101,9 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         init(_ message: Message) {
             self.role = message.role
             var wc = WireContent(message.content)
-            // Tool result messages must encode content as a string, never null.
-            wc.requiresStringContent = (message.role == .tool)
+            // Only assistant messages may send null content (when they carry tool_calls
+            // and no text). All other roles — user, system, tool — must be a string.
+            wc.requiresStringContent = (message.role != .assistant)
             self.content = wc
             self.toolCalls = message.toolCalls
             self.toolCallId = message.toolCallId
