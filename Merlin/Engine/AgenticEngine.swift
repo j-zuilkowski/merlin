@@ -71,6 +71,9 @@ final class AgenticEngine {
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
+    /// Maps provider base ID (e.g. "lmstudio") to its local model manager.
+    /// Set by AppState at init and updated when providers change.
+    var localModelManagers: [String: any LocalModelManagerProtocol] = [:]
     /// Set by AppState so advisory routing can pause the run loop while a local model reload is in flight.
     /// The handler clears `isReloadingModel` after the reload/restart attempt finishes.
     var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
@@ -888,9 +891,15 @@ final class AgenticEngine {
         if let override = criticOverride {
             return override
         }
+        let reasonSlotID = slotAssignments[.reason] ?? ""
+        let baseProviderID = reasonSlotID.contains(":")
+            ? String(reasonSlotID.split(separator: ":", maxSplits: 1).first ?? Substring(""))
+            : reasonSlotID
+        let manager = localModelManagers[baseProviderID]
         return CriticEngine(
             verificationBackend: domain.verificationBackend,
-            reasonProvider: provider(for: .reason)
+            reasonProvider: provider(for: .reason),
+            modelManager: manager
         )
     }
 

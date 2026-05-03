@@ -26,11 +26,13 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
     private let baseURL: URL
     private let token: String?
     private let shell: any ShellRunnerProtocol
+    private let session: URLSession
 
-    init(baseURL: URL, token: String? = nil, shell: any ShellRunnerProtocol = ProcessShellRunner()) {
+    init(baseURL: URL, token: String? = nil, shell: any ShellRunnerProtocol = ProcessShellRunner(), session: URLSession = .shared) {
         self.baseURL = baseURL
         self.token = token
         self.shell = shell
+        self.session = session
     }
 
     // MARK: - loadedModels
@@ -40,7 +42,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         var request = URLRequest(url: url)
         applyAuth(&request)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.providerUnavailable
         }
@@ -81,7 +83,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         applyAuth(&request)
         request.httpBody = try JSONSerialization.data(withJSONObject: ["identifier": modelID])
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.reloadFailed("Unload failed for \(modelID)")
         }
@@ -108,7 +110,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         let body: [String: Any] = ["identifier": modelID, "config": configDict]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (_, response) = try await URLSession.shared.data(for: request)
+        let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.reloadFailed("REST load rejected for \(modelID)")
         }
@@ -132,5 +134,42 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         if let token, token.isEmpty == false {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+    }
+
+    // MARK: - Context auto-resize
+
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {
+        let url = baseURL.appendingPathComponent("api/v0/models")
+        var request = URLRequest(url: url)
+        applyAuth(&request)
+
+        let (data, response) = try await session.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw ModelManagerError.providerUnavailable
+        }
+
+        struct V0Entry: Decodable {
+            var id: String
+            var loaded_context_length: Int?
+            var max_context_length: Int?
+        }
+        struct V0Response: Decodable { var data: [V0Entry] }
+
+        let decoded = try JSONDecoder().decode(V0Response.self, from: data)
+        guard let entry = decoded.data.first(where: { $0.id == modelID }) else { return }
+
+        let loadedCtx = entry.loaded_context_length ?? 0
+        guard minimumTokens > loadedCtx else { return }
+
+        let maxCtx = entry.max_context_length ?? 131_072
+        let target = min(nextPowerOf2(minimumTokens), maxCtx)
+        try await reload(modelID: modelID, config: LocalModelConfig(contextLength: target))
+    }
+
+    private func nextPowerOf2(_ n: Int) -> Int {
+        guard n > 1 else { return 1 }
+        var result = 1
+        while result < n { result <<= 1 }
+        return result
     }
 }

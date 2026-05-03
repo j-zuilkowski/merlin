@@ -185,6 +185,7 @@ final class AppState: ObservableObject {
         engine.loraCoordinator = loraCoordinator
         engine.parameterAdvisor = parameterAdvisor
         rebuildLocalModelManagers()
+        engine.localModelManagers = localModelManagers
         engine.onParameterAdvisoriesUpdate = { [weak self] modelID in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -539,6 +540,7 @@ final class AppState: ObservableObject {
             managers[config.id] = makeManager(for: config)
         }
         localModelManagers = managers
+        engine.localModelManagers = managers
     }
 
     // Map each local provider ID to its concrete manager. Unknown IDs and malformed URLs

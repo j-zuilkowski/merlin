@@ -116,4 +116,13 @@ protocol LocalModelManagerProtocol: Sendable {
     /// Returns human-readable restart instructions for providers that cannot reload
     /// at runtime. Returns nil for providers that can reload at runtime.
     nonisolated func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions?
+
+    /// Checks the model's loaded context length and reloads with a larger context if
+    /// `minimumTokens` exceeds what is currently loaded. No-op for providers that do
+    /// not support runtime context inspection.
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws
+}
+
+extension LocalModelManagerProtocol {
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {}
 }

@@ -49,15 +49,18 @@ actor CriticEngine {
     private let verificationBackend: any VerificationBackend
     private let reasonProvider: (any LLMProvider)?
     private let shellRunner: any ShellRunning
+    private let modelManager: (any LocalModelManagerProtocol)?
 
     init(
         verificationBackend: any VerificationBackend,
         reasonProvider: (any LLMProvider)?,
-        shellRunner: any ShellRunning = LiveShellRunner()
+        shellRunner: any ShellRunning = LiveShellRunner(),
+        modelManager: (any LocalModelManagerProtocol)? = nil
     ) {
         self.verificationBackend = verificationBackend
         self.reasonProvider = reasonProvider
         self.shellRunner = shellRunner
+        self.modelManager = modelManager
     }
 
     init(
@@ -68,6 +71,7 @@ actor CriticEngine {
         self.verificationBackend = verificationBackend
         self.reasonProvider = orchestrateProvider
         self.shellRunner = shellRunner
+        self.modelManager = nil
     }
 
     func evaluate(
@@ -219,6 +223,15 @@ actor CriticEngine {
 
         The final line must start with PASS or FAIL.
         """
+
+        // Auto-resize the reason slot's context window when needed (e.g. LM Studio defaults to 4096).
+        if let manager = modelManager {
+            let estimatedTokens = prompt.count / 4 + 512
+            try? await manager.ensureContextLength(
+                modelID: provider.resolvedModelID,
+                minimumTokens: estimatedTokens
+            )
+        }
 
         var request = CompletionRequest(
             model: provider.resolvedModelID,
