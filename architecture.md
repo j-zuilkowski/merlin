@@ -2025,20 +2025,52 @@ Tasks that produce no verifiable artifact (explanations, summaries) return `nil`
 
 **Stage 2 — Model evaluation (reason slot)**
 
-A silent eval pass runs using the `reason` slot:
+A silent eval pass runs using the `reason` slot. The prompt is a structured six-criterion checklist — not a generic "does this look right?" question:
 
 ```
-Critic prompt: "Given task X and output Y, does the output satisfy the intent?
-                If not, what specifically is wrong?"
+1. Completeness       — does the output fully address what was asked?
+2. Factual consistency — are architectural/technical claims consistent with the context provided?
+3. Date accuracy       — if the output contains dates, are they correct?
+4. Scope adherence     — no unrequested features added silently?
+5. Internal consistency — no contradictions within the output itself?
+6. Document integrity  — (document turns only) effort estimates present and honest?
 ```
 
-- **Pass** → result shown to user (optional "verified by [model]" badge)
+The full output is passed to the reason slot — no truncation. When the turn involved `write_file` calls, the written file contents are read from disk and injected into the prompt so the critic can verify the document body directly rather than inferring it from the assistant text.
+
+The verdict is parsed from the **last** PASS/FAIL line in the response, so reasoning models that emit a thinking preamble before their final answer (e.g. Qwen3) are handled correctly.
+
+```
+Critic fires when any of:
+  classification.complexity == .highStakes
+  classifierOverride != nil
+  write_file was called during the turn    ← document verification path
+```
+
+- **Pass** → result shown to user
 - **Fail** → correction injected as system message; worker re-runs (up to `max_critic_retries`)
 - **Retries exhausted** → escalate to user or promote to stronger model
 
 The inner loop (both stages) is collapsible in a "reasoning trace" block. The user sees the final output only.
 
-**Critical constraint:** The reason slot must be assigned to a genuinely stronger model than the execute slot — typically a remote thinking model (Claude, Sonnet, etc.). A weak model cannot reliably catch its own class of errors. The settings UI must surface this constraint clearly.
+**Two-tier document verification [v9.1]**
+
+For document-generation turns (any turn that calls `write_file`), an optional second agentic verification pass is available via the `/verify-document` skill. This runs in a fork context on the reason slot with full tool access:
+
+```
+AgenticEngine critic (automatic, every document-write turn)
+  → Stage 1: domain shell commands
+  → Stage 2: structured Qwen3 checklist against full output + file contents
+       ↓
+/verify-document skill (on-demand, invoked by user or post-critic trigger)
+  → fork context, reason slot, full tool access
+  → greps source files to cross-reference architectural claims
+  → produces structured report: VERIFIED / UNVERIFIABLE / CONTRADICTED per claim
+```
+
+The skill is at `~/.merlin/skills/verify-document/SKILL.md`. Invoke it with `/verify-document path/to/document.md` after any document generation turn that warrants deeper review.
+
+**Critical constraint:** The reason slot must be assigned to a genuinely stronger model than the execute slot. A weak model cannot reliably catch its own class of errors. For local-only setups, Qwen3-27B (128K context, thinking mode) is the minimum viable reason slot for document verification.
 
 **Graceful degradation when the reason slot is unavailable**
 
