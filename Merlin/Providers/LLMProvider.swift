@@ -266,3 +266,18 @@ protocol LLMProvider: AnyObject, Sendable {
     var baseURL: URL { get }
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error>
 }
+
+extension LLMProvider {
+    /// Strips the virtual-provider prefix from a compound ID so local backends
+    /// (e.g. LM Studio) receive only the bare model identifier they expect.
+    ///
+    /// `"lmstudio:qwen/qwen3.6-27b"` → `"qwen/qwen3.6-27b"`
+    /// `"deepseek-v4-pro"` → `"deepseek-v4-pro"`  (unchanged)
+    var resolvedModelID: String {
+        guard id.contains(":"),
+              let suffix = id.split(separator: ":", maxSplits: 1).last else {
+            return id
+        }
+        return String(suffix)
+    }
+}

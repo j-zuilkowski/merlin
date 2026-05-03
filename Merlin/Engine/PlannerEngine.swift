@@ -128,7 +128,7 @@ actor PlannerEngine {
         """
 
         var request = CompletionRequest(
-            model: provider.id,
+            model: provider.resolvedModelID,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )
@@ -192,7 +192,7 @@ actor PlannerEngine {
         """
 
         var request = CompletionRequest(
-            model: executeProvider.id,
+            model: executeProvider.resolvedModelID,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )

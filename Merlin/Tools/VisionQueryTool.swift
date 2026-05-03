@@ -12,7 +12,7 @@ enum VisionQueryTool {
     static func query(imageData: Data, prompt: String, provider: any LLMProvider) async throws -> String {
         let encodedImage = imageData.base64EncodedString()
         let request = CompletionRequest(
-            model: provider.id,
+            model: provider.resolvedModelID,
             messages: [
                 Message(
                     role: .user,

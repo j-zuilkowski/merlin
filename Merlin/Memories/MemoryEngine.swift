@@ -89,7 +89,7 @@ actor MemoryEngine {
             """
 
             var request = CompletionRequest(
-                model: provider.id,
+                model: provider.resolvedModelID,
                 messages: [
                     Message(role: .system, content: .text(systemPrompt), timestamp: Date()),
                     Message(role: .user, content: .text(transcript), timestamp: Date())

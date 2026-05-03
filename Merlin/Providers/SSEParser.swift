@@ -191,7 +191,11 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
     }
 
     let body = Body(
-        model: request.model.isEmpty ? model : request.model,
+        // Always use the explicitly-passed `model` (the provider's resolved bare model ID).
+        // `request.model` may carry a virtual compound ID such as
+        // "lmstudio:qwen/qwen3.6-27b" that local backends cannot recognise.
+        // Callers that need a different model should pass it via the `model` parameter.
+        model: model.isEmpty ? request.model : model,
         messages: request.messages.map(WireMessage.init),
         tools: request.tools,
         stream: request.stream,
