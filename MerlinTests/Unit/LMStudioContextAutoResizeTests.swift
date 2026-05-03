@@ -114,7 +114,22 @@ final class CtxResizeMockURLProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         do {
-            let (response, data) = try handler(request)
+            // URLSession converts httpBody to httpBodyStream when routing through URLProtocol.
+            // Re-materialise the body so the handler can read it as Data.
+            var hydrated = request
+            if hydrated.httpBody == nil, let stream = hydrated.httpBodyStream {
+                var bodyData = Data()
+                stream.open()
+                let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: 65_536)
+                defer { buf.deallocate() }
+                while stream.hasBytesAvailable {
+                    let n = stream.read(buf, maxLength: 65_536)
+                    if n > 0 { bodyData.append(buf, count: n) }
+                }
+                stream.close()
+                hydrated.httpBody = bodyData
+            }
+            let (response, data) = try handler(hydrated)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
