@@ -571,7 +571,10 @@ final class AgenticEngine {
                 // Budget = maxIterations / 10, minimum 1. The /10 divisor is deliberately
                 // conservative: each plan step can require many tool-call iterations, so
                 // we keep the batch small to avoid exhausting the loop ceiling mid-step.
-                let stepsPerTurn = max(1, maxIterations / 10)
+                // Hard cap at 2 steps per turn so that large projects (adaptive ceiling
+                // ~80) don't produce a batch size equal to the plan size, which would
+                // defeat the split entirely and exhaust the ceiling in a single turn.
+                let stepsPerTurn = max(1, min(2, maxIterations / 10))
                 if planSteps.count > stepsPerTurn {
                     let thisBatch = Array(planSteps.prefix(stepsPerTurn))
                     let remaining = Array(planSteps.dropFirst(stepsPerTurn))
@@ -1016,7 +1019,9 @@ final class AgenticEngine {
 
         // Use the same conservative budget as the initial split so each continuation
         // turn stays well within the loop ceiling.
-        let batchSize = max(1, effectiveLoopCeiling(for: .highStakes) / 10)
+        // Hard cap at 2 — mirrors the initial split cap so continuation turns
+        // are also protected against the ceiling-equals-plan-size failure mode.
+        let batchSize = max(1, min(2, effectiveLoopCeiling(for: .highStakes) / 10))
 
         let thisBatch   = Array(pendingContinuationSteps.prefix(batchSize))
         let stillRemaining = Array(pendingContinuationSteps.dropFirst(batchSize))
