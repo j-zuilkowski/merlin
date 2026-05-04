@@ -112,7 +112,8 @@ final class AgenticEngine {
 
     /// How many iterations from the ceiling triggers the near-ceiling warning.
     /// Exposed as a var so tests can set a larger value when maxIterations is small.
-    var nearCeilingThreshold = 3
+    /// Default is 8 — gives the LLM enough runway to commit and wrap up complex tasks.
+    var nearCeilingThreshold = 8
 
     var currentProjectPath: String? {
         didSet {
@@ -567,8 +568,10 @@ final class AgenticEngine {
             if !planSteps.isEmpty {
                 // Batch split: if the plan exceeds the per-turn step budget, execute the
                 // first batch now and schedule the remainder as a [CONTINUATION] inject.
-                // Budget = maxIterations / 4, minimum 1.
-                let stepsPerTurn = max(1, maxIterations / 4)
+                // Budget = maxIterations / 10, minimum 1. The /10 divisor is deliberately
+                // conservative: each plan step can require many tool-call iterations, so
+                // we keep the batch small to avoid exhausting the loop ceiling mid-step.
+                let stepsPerTurn = max(1, maxIterations / 10)
                 if planSteps.count > stepsPerTurn {
                     let thisBatch = Array(planSteps.prefix(stepsPerTurn))
                     let remaining = Array(planSteps.dropFirst(stepsPerTurn))
@@ -986,25 +989,35 @@ final class AgenticEngine {
 
     // MARK: - Plan continuation
 
-    /// Writes deferred plan steps to ~/.merlin/inject.txt as a [CONTINUATION] message.
-    /// The engine's inject watcher picks it up and submits it as a new user turn,
-    /// which bypasses re-classification and re-planning (see isContinuation check above).
+    /// Writes the next batch of deferred plan steps to the inject URL as a [CONTINUATION]
+    /// message. Only writes one batch per call — remaining steps stay in
+    /// `pendingContinuationSteps` so the post-turn hook schedules the next batch
+    /// automatically at the end of every continuation turn, forming a correct chain.
     private func schedulePendingContinuation() {
-        let steps = pendingContinuationSteps
-        let originalTask = pendingContinuationOriginalTask
-        let completedCount = pendingContinuationCompletedCount
+        guard !pendingContinuationSteps.isEmpty else { return }
 
-        pendingContinuationSteps = []
-        pendingContinuationOriginalTask = ""
-        pendingContinuationCompletedCount = 0
+        // Use the same conservative budget as the initial split so each continuation
+        // turn stays well within the loop ceiling.
+        let batchSize = max(1, effectiveLoopCeiling(for: .highStakes) / 10)
 
-        let stepList = steps.enumerated()
+        let thisBatch   = Array(pendingContinuationSteps.prefix(batchSize))
+        let stillRemaining = Array(pendingContinuationSteps.dropFirst(batchSize))
+
+        let completedCount   = pendingContinuationCompletedCount
+        let originalTask     = pendingContinuationOriginalTask
+
+        // Advance state: keep remaining steps for the NEXT continuation turn.
+        // pendingContinuationOriginalTask is intentionally preserved.
+        pendingContinuationSteps          = stillRemaining
+        pendingContinuationCompletedCount = completedCount + thisBatch.count
+
+        let stepList = thisBatch.enumerated()
             .map { "  \(completedCount + $0.offset + 1). \($0.element.description)" }
             .joined(separator: "\n")
 
         let message = """
         [CONTINUATION] Steps 1–\(completedCount) of the following task are complete. \
-        Execute the remaining \(steps.count) step(s) now:
+        Execute the next \(thisBatch.count) step(s) now:
         \(stepList)
 
         Original task: \(originalTask)
@@ -1014,7 +1027,8 @@ final class AgenticEngine {
 
         TelemetryEmitter.shared.emit("engine.continuation.scheduled", data: [
             "completed_steps": completedCount,
-            "remaining_steps": steps.count
+            "batch_steps": thisBatch.count,
+            "remaining_steps": stillRemaining.count
         ])
     }
 
