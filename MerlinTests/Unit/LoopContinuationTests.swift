@@ -48,8 +48,10 @@ final class LoopContinuationTests: XCTestCase {
 
     override func setUp() async throws {
         try await super.setUp()
-        injectURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".merlin/inject.txt")
+        // Use a per-test temp file so Merlin (if running) never consumes the inject
+        // before our assertion reads it.
+        injectURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("merlin-continuation-\(UUID().uuidString).txt")
         try? FileManager.default.removeItem(at: injectURL)
     }
 
@@ -66,10 +68,10 @@ final class LoopContinuationTests: XCTestCase {
         let provider = MockProvider(responses: [MockLLMResponse.text("done with batch")])
         let engine = makeEngine(provider: provider)
 
-        let savedMax = AppSettings.shared.maxLoopIterations
-        defer { AppSettings.shared.maxLoopIterations = savedMax }
-        // stepsPerTurn = max(1, 4/4) = 1 → any plan with 2+ steps triggers batching
-        AppSettings.shared.maxLoopIterations = 4
+        // Force maxIterations=4 so stepsPerTurn = max(1, 4/4) = 1.
+        // Any plan with 2+ steps will be split.
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
 
         engine.classifierOverride = StubPlanner(
             classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "test"),
@@ -107,9 +109,9 @@ final class LoopContinuationTests: XCTestCase {
         let provider = MockProvider(responses: [MockLLMResponse.text("done")])
         let engine = makeEngine(provider: provider)
 
-        let savedMax = AppSettings.shared.maxLoopIterations
-        defer { AppSettings.shared.maxLoopIterations = savedMax }
-        AppSettings.shared.maxLoopIterations = 16  // stepsPerTurn = max(1,16/4) = 4
+        // stepsPerTurn = max(1, 16/4) = 4 → a single-step plan fits comfortably.
+        engine.maxIterationsOverride = 16
+        engine.continuationInjectURL = injectURL
 
         engine.classifierOverride = StubPlanner(
             classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "test"),
@@ -162,8 +164,8 @@ final class LoopContinuationTests: XCTestCase {
 
     /// When loopCount approaches maxIterations, a ⚠️ system note is emitted.
     func testNearCeilingWarningNoteEmitted() async throws {
-        // 2 tool calls then a final text — with maxIterations=5 the ceiling warning
-        // fires when remaining == nearCeilingThreshold (3), i.e. after the 2nd tool call.
+        // maxIterations=5, threshold=3: warning fires when loopsRemaining ≤ 3.
+        // 2 tool calls + text: after loop 2, remaining = 5-2 = 3 → warning fires before loop 3.
         let provider = MockProvider(responses: [
             MockLLMResponse.toolCall(id: "t1", name: "noop", args: "{}"),
             MockLLMResponse.toolCall(id: "t2", name: "noop", args: "{}"),
@@ -171,10 +173,9 @@ final class LoopContinuationTests: XCTestCase {
         ])
         let engine = makeEngine(provider: provider)
         engine.registerTool("noop") { _ in "ok" }
-
-        let savedMax = AppSettings.shared.maxLoopIterations
-        defer { AppSettings.shared.maxLoopIterations = savedMax }
-        AppSettings.shared.maxLoopIterations = 5
+        engine.maxIterationsOverride = 5
+        // threshold=3 → fires when loopsRemaining (5-2=3) ≤ 3 after loop 2.
+        engine.nearCeilingThreshold = 3
 
         var events: [AgentEvent] = []
         for await event in engine.send(userMessage: "do loops") {
@@ -191,7 +192,9 @@ final class LoopContinuationTests: XCTestCase {
     /// The near-ceiling warning is only emitted once per turn regardless of how many
     /// iterations fall within the warning window.
     func testNearCeilingWarningEmittedOnce() async throws {
-        // 4 tool calls then text — multiple iterations will be within the warning window.
+        // maxIterations=6, threshold=4: warning fires at loop 2 (remaining=4).
+        // 4 tool calls + text: loops 2,3,4,5 are all within the warning window,
+        // but the note must only appear once.
         let provider = MockProvider(responses: [
             MockLLMResponse.toolCall(id: "t1", name: "noop", args: "{}"),
             MockLLMResponse.toolCall(id: "t2", name: "noop", args: "{}"),
@@ -201,10 +204,8 @@ final class LoopContinuationTests: XCTestCase {
         ])
         let engine = makeEngine(provider: provider)
         engine.registerTool("noop") { _ in "ok" }
-
-        let savedMax = AppSettings.shared.maxLoopIterations
-        defer { AppSettings.shared.maxLoopIterations = savedMax }
-        AppSettings.shared.maxLoopIterations = 6
+        engine.maxIterationsOverride = 6
+        engine.nearCeilingThreshold = 4  // fires from loop 2 onward (remaining = 5,4,3,2,1)
 
         var events: [AgentEvent] = []
         for await event in engine.send(userMessage: "many loops") {
