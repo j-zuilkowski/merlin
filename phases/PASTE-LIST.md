@@ -1315,4 +1315,103 @@ Read phases/phase-142b-semantic-fault-injection.md and execute.
 #   token pressure, empty tool results, context drop
 # All four mitigations from "Context Decay, Orchestration Drift, and the Rise of
 # Silent Failures in AI Systems" (VentureBeat, 2025) are implemented and documented.
+
+# ── PHASE 143a — Dynamic Model Fetch Tests ───────────────────────────────────
+Read phases/phase-143a-dynamic-model-fetch-tests.md and execute.
+# Verify: BUILD FAILED — dynamic model fetch symbols not defined (expected)
+# Commit: Phase 143a — dynamic model fetch tests (failing)
+
+# ── PHASE 143b — Dynamic Model Fetch ─────────────────────────────────────────
+Read phases/phase-143b-dynamic-model-fetch.md and execute.
+# Verify: BUILD SUCCEEDED; all 143a tests pass; zero warnings
+# Commit: Phase 143b — Dynamic model fetch
+
+# ── PHASE 144a — Virtual Provider ID Tests ───────────────────────────────────
+Read phases/phase-144a-virtual-provider-id-tests.md and execute.
+# Verify: BUILD FAILED — VirtualProviderID symbols not defined (expected)
+# Commit: Phase 144a — virtual provider ID tests (failing)
+
+# ── PHASE 144b — Virtual Provider IDs ────────────────────────────────────────
+Read phases/phase-144b-virtual-provider-id.md and execute.
+# Verify: BUILD SUCCEEDED; all 144a tests pass; zero warnings
+# Commit: Phase 144b — Virtual provider IDs, delete LMStudioProvider
+
+# ── PHASE 145a — Provider Routing Cleanup Tests ──────────────────────────────
+Read phases/phase-145a-provider-routing-cleanup-tests.md and execute.
+# Verify: BUILD FAILED — routing cleanup symbols not defined (expected)
+# Commit: Phase 145a — provider routing cleanup tests (failing)
+
+# ── PHASE 145b — Provider Routing Cleanup ────────────────────────────────────
+Read phases/phase-145b-provider-routing-cleanup.md and execute.
+# Verify: BUILD SUCCEEDED; all 145a tests pass; zero warnings
+# Commit: Phase 145b — Remove proProvider/flashProvider/visionProvider, simplify routing
+
+# ── PHASE 146a — Provider Settings UI Tests ──────────────────────────────────
+Read phases/phase-146a-provider-settings-ui-tests.md and execute.
+# Verify: BUILD FAILED — ProviderSettingsView symbols not defined (expected)
+# Commit: Phase 146a — provider settings UI tests (failing)
+
+# ── PHASE 146b — Provider Settings UI ────────────────────────────────────────
+Read phases/phase-146b-provider-settings-ui.md and execute.
+# Verify: BUILD SUCCEEDED; all 146a tests pass; zero warnings
+# Commit: Phase 146b — Provider settings UI with dynamic model picker
+
+# ── PHASE 147a — Adaptive Loop Ceiling Tests ─────────────────────────────────
+Read phases/phase-147a-adaptive-loop-ceiling-tests.md and execute.
+# Verify: BUILD FAILED — adaptive ceiling symbols not defined (expected)
+# Commit: Phase 147a — adaptive loop ceiling tests (failing)
+
+# ── PHASE 147b — Adaptive Loop Ceiling ───────────────────────────────────────
+Read phases/phase-147b-adaptive-loop-ceiling.md and execute.
+# Verify: BUILD SUCCEEDED; all 147a tests pass; zero warnings
+# Commit: Phase 147b — Adaptive loop ceiling based on project size
+
+# ── PHASE 148a — Document Verification Tests ─────────────────────────────────
+Read phases/phase-148a-document-verification-tests.md and execute.
+# Verify: BUILD FAILED — document verification symbols not defined (expected)
+# Commit: Phase 148a — document verification tests (failing)
+
+# ── PHASE 148b — Document Verification ───────────────────────────────────────
+Read phases/phase-148b-document-verification.md and execute.
+# Verify: BUILD SUCCEEDED; all 148a tests pass; zero warnings
+# Commit: Phase 148b — Two-tier document verification (truncation fix, firing condition, structured prompt, verdict parsing)
+
+# ── PHASE 149a — LM Studio Context Auto-Resize Tests ─────────────────────────
+Read phases/phase-149a-lmstudio-context-autoresize-tests.md and execute.
+# Verify: BUILD FAILED — ensureContextLength not defined (expected)
+# Commit: Phase 149a — LM Studio context auto-resize tests (failing)
+
+# ── PHASE 149b — LM Studio Context Auto-Resize ───────────────────────────────
+Read phases/phase-149b-lmstudio-context-autoresize.md and execute.
+# Verify: BUILD SUCCEEDED; all 149a tests pass; zero warnings
+# Commit: Phase 149b — LM Studio context auto-resize
+
+# ── PHASE 150a — Loop Continuation Tests ─────────────────────────────────────
+Read phases/phase-150a-loop-continuation-tests.md and execute.
+# Verify: BUILD SUCCEEDED; tests compile but LoopContinuationTests fail at runtime (expected)
+# Commit: Phase 150a — LoopContinuationTests (failing)
+
+# ── PHASE 150b — Loop Continuation and Near-Ceiling Warning ──────────────────
+Read phases/phase-150b-loop-continuation.md and execute.
+# Verify: BUILD SUCCEEDED; all 6 LoopContinuationTests pass; zero warnings
+# Commit: Phase 150b — loop continuation and near-ceiling warning
+
+# ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
+# Phases 143–150 close two categories of silent failure:
+#
+# Provider layer (143–149):
+# - Dynamic model fetch (143): ProviderRegistry pulls live model lists from LM Studio
+# - Virtual provider IDs (144): decouple slot assignments from physical provider URLs
+# - Provider routing cleanup (145): single selectProvider() path, no proProvider/flashProvider
+# - Provider settings UI (146): dynamic model picker with live fetch
+# - Adaptive loop ceiling (147): ceiling scales with project size (10–80 iterations)
+# - Document verification (148): critic fires for all substantial output; no truncation
+# - LM Studio context auto-resize (149): critic queries /api/v0/models and reloads
+#   with nextPowerOf2 context length before Stage 2 — fixes error 4865 (n_keep >= n_ctx)
+#
+# Engine orchestration (150):
+# - Plan batching: large plans are split across turns via [CONTINUATION] inject;
+#   continuation turns bypass re-planning and use the high-stakes loop ceiling
+# - Near-ceiling warning: ⚠️ system note + system prompt addendum when
+#   loopsRemaining ≤ nearCeilingThreshold; fires once per turn
 ```
