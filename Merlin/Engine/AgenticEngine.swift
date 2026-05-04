@@ -85,6 +85,35 @@ final class AgenticEngine {
     /// Reset to 0 on `.pass` or `.skipped`, and reset by `AppState.newSession()`.
     var consecutiveCriticFailures: Int = 0
     var classifierOverride: (any PlannerEngineProtocol)?
+
+    /// Test-only override for the loop ceiling. When set, bypasses the adaptive calculation
+    /// so tests can exercise near-ceiling and batch-split behaviour with a small iteration count.
+    var maxIterationsOverride: Int?
+
+    /// URL written by schedulePendingContinuation(). Override in tests to avoid touching
+    /// the live ~/.merlin/inject.txt while Merlin is running.
+    var continuationInjectURL: URL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".merlin/inject.txt")
+
+    // MARK: - Loop continuation state (Fix 1)
+
+    /// Steps deferred from a batch-split plan. Written as a [CONTINUATION] inject
+    /// after the current turn finishes. Cleared in schedulePendingContinuation().
+    private var pendingContinuationSteps: [PlanStep] = []
+    private var pendingContinuationOriginalTask: String = ""
+    private var pendingContinuationCompletedCount: Int = 0
+
+    // MARK: - Near-ceiling warning (Fix 2)
+
+    /// Non-nil while the engine is within nearCeilingThreshold iterations of the ceiling.
+    /// Appended to the system prompt so the LLM knows to commit and wrap up.
+    /// Reset to nil at turn end.
+    var nearCeilingWarningAddendum: String?
+
+    /// How many iterations from the ceiling triggers the near-ceiling warning.
+    /// Exposed as a var so tests can set a larger value when maxIterations is small.
+    var nearCeilingThreshold = 3
+
     var currentProjectPath: String? {
         didSet {
             guard currentProjectPath != oldValue else { return }
@@ -211,8 +240,9 @@ final class AgenticEngine {
     /// Takes the larger of the adaptive ceiling (derived from observed project size)
     /// and `AppSettings.maxLoopIterations` so a user-configured higher value always wins.
     func effectiveLoopCeiling(for tier: ComplexityTier) -> Int {
-        max(projectSizeMetrics.adaptiveCeiling(for: tier),
-            AppSettings.shared.maxLoopIterations)
+        if let override = maxIterationsOverride { return override }
+        return max(projectSizeMetrics.adaptiveCeiling(for: tier),
+                   AppSettings.shared.maxLoopIterations)
     }
 
     /// Returns the provider assigned to the given slot, or nil if the slot cannot be resolved.
@@ -439,7 +469,17 @@ final class AgenticEngine {
     ) async throws {
         let context = contextOverride ?? contextManager
         let domain = await DomainRegistry.shared.activeDomain()
-        let classification = await classify(message: userMessage, domain: domain)
+
+        // [CONTINUATION] messages are produced by the engine's own plan-batching logic.
+        // Skip re-classification and re-planning: treat as high-stakes so the ceiling is
+        // generous, but needsPlanning=false to avoid re-decomposing the already-split task.
+        let isContinuation = userMessage.hasPrefix("[CONTINUATION]")
+        let classification: ClassifierResult
+        if isContinuation {
+            classification = ClassifierResult(needsPlanning: false, complexity: .highStakes, reason: "continuation turn")
+        } else {
+            classification = await classify(message: userMessage, domain: domain)
+        }
         let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
 
         let cbThreshold = AppSettings.shared.agentCircuitBreakerThreshold
@@ -506,15 +546,48 @@ final class AgenticEngine {
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
         emitCompactionNoteIfNeeded()
 
+        // Compute the loop ceiling early so the planner batch-split logic can reference it.
+        let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
+
         if classification.needsPlanning {
-            let planner = PlannerEngine(
-                executeProvider: selectProvider(for: userMessage),
-                orchestrateProvider: provider(for: .orchestrate),
-                maxPlanRetries: AppSettings.shared.maxPlanRetries
-            )
-            let planSteps = await planner.decompose(task: userMessage, context: context.messages)
+            // Use classifierOverride for decompose when available (enables test injection
+            // and keeps the override as a full PlannerEngineProtocol).
+            let planSteps: [PlanStep]
+            if let override = classifierOverride {
+                planSteps = await override.decompose(task: userMessage, context: context.messages)
+            } else {
+                let planner = PlannerEngine(
+                    executeProvider: selectProvider(for: userMessage),
+                    orchestrateProvider: provider(for: .orchestrate),
+                    maxPlanRetries: AppSettings.shared.maxPlanRetries
+                )
+                planSteps = await planner.decompose(task: userMessage, context: context.messages)
+            }
+
             if !planSteps.isEmpty {
-                continuation.yield(.systemNote("[Plan: \(planSteps.count) steps]"))
+                // Batch split: if the plan exceeds the per-turn step budget, execute the
+                // first batch now and schedule the remainder as a [CONTINUATION] inject.
+                // Budget = maxIterations / 4, minimum 1.
+                let stepsPerTurn = max(1, maxIterations / 4)
+                if planSteps.count > stepsPerTurn {
+                    let thisBatch = Array(planSteps.prefix(stepsPerTurn))
+                    let remaining = Array(planSteps.dropFirst(stepsPerTurn))
+                    let totalBatches = Int(ceil(Double(planSteps.count) / Double(stepsPerTurn)))
+
+                    // Store deferred steps for post-turn inject.
+                    pendingContinuationSteps = remaining
+                    pendingContinuationOriginalTask = userMessage
+                    pendingContinuationCompletedCount = thisBatch.count
+
+                    let stepList = thisBatch.enumerated()
+                        .map { "  \($0.offset + 1). \($0.element.description)" }
+                        .joined(separator: "\n")
+                    continuation.yield(.systemNote(
+                        "[Plan batch 1/\(totalBatches): executing steps 1–\(thisBatch.count) of \(planSteps.count) — remaining steps will run in subsequent turns]\n\(stepList)"
+                    ))
+                } else {
+                    continuation.yield(.systemNote("[Plan: \(planSteps.count) steps]"))
+                }
             }
         }
 
@@ -527,10 +600,10 @@ final class AgenticEngine {
         var capturedFinishReason: String?
         var totalToolCallCount = 0
         var loopCount = 0
-        let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
         // Paths written via write_file during this turn — passed to CriticEngine for
         // cross-referencing so the critic can verify document content against the assistant text.
         var writtenFilePaths: [String] = []
+        var nearCeilingEmitted = false
         do {
             while true {
                 await pauseForReload()
@@ -539,6 +612,21 @@ final class AgenticEngine {
                     break
                 }
                 loopCount += 1
+
+                // Fix 2: Warn the LLM (via system prompt addendum + visible note) when
+                // the loop budget is nearly exhausted so it commits and wraps up.
+                let loopsRemaining = maxIterations - loopCount
+                if loopsRemaining <= nearCeilingThreshold && !nearCeilingEmitted {
+                    nearCeilingEmitted = true
+                    nearCeilingWarningAddendum = """
+                    ⚠️ LOOP BUDGET CRITICAL: You have \(loopsRemaining) iteration(s) remaining \
+                    in this turn. Immediately commit all pending work (git commit), save any \
+                    in-progress files, and wrap up. Do not start new tasks.
+                    """
+                    continuation.yield(.systemNote(
+                        "[⚠️ \(loopsRemaining) loop iteration(s) remaining — commit all pending work now]"
+                    ))
+                }
 
                 let provider: any LLMProvider
                 if workingSlot == .reason {
@@ -885,6 +973,49 @@ final class AgenticEngine {
             "tool_call_count": totalToolCallCount,
             "loop_count": loopCount
         ])
+
+        // Fix 2: Reset near-ceiling addendum so it doesn't bleed into the next turn.
+        nearCeilingWarningAddendum = nil
+
+        // Fix 1: If this turn processed a batch-split plan, write the remaining steps
+        // as a [CONTINUATION] inject so the engine picks them up automatically.
+        if !pendingContinuationSteps.isEmpty {
+            schedulePendingContinuation()
+        }
+    }
+
+    // MARK: - Plan continuation
+
+    /// Writes deferred plan steps to ~/.merlin/inject.txt as a [CONTINUATION] message.
+    /// The engine's inject watcher picks it up and submits it as a new user turn,
+    /// which bypasses re-classification and re-planning (see isContinuation check above).
+    private func schedulePendingContinuation() {
+        let steps = pendingContinuationSteps
+        let originalTask = pendingContinuationOriginalTask
+        let completedCount = pendingContinuationCompletedCount
+
+        pendingContinuationSteps = []
+        pendingContinuationOriginalTask = ""
+        pendingContinuationCompletedCount = 0
+
+        let stepList = steps.enumerated()
+            .map { "  \(completedCount + $0.offset + 1). \($0.element.description)" }
+            .joined(separator: "\n")
+
+        let message = """
+        [CONTINUATION] Steps 1–\(completedCount) of the following task are complete. \
+        Execute the remaining \(steps.count) step(s) now:
+        \(stepList)
+
+        Original task: \(originalTask)
+        """
+
+        try? message.write(to: continuationInjectURL, atomically: true, encoding: .utf8)
+
+        TelemetryEmitter.shared.emit("engine.continuation.scheduled", data: [
+            "completed_steps": completedCount,
+            "remaining_steps": steps.count
+        ])
     }
 
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
@@ -1068,6 +1199,9 @@ final class AgenticEngine {
         parts.append(AgenticEngine.coreSystemPrompt)
         if !standingInstructions.isEmpty {
             parts.append(standingInstructions)
+        }
+        if let warning = nearCeilingWarningAddendum {
+            parts.append(warning)
         }
         return parts.joined(separator: "\n\n")
     }
