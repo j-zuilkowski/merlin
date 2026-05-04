@@ -566,15 +566,11 @@ final class AgenticEngine {
             }
 
             if !planSteps.isEmpty {
-                // Batch split: if the plan exceeds the per-turn step budget, execute the
-                // first batch now and schedule the remainder as a [CONTINUATION] inject.
-                // Budget = maxIterations / 10, minimum 1. The /10 divisor is deliberately
-                // conservative: each plan step can require many tool-call iterations, so
-                // we keep the batch small to avoid exhausting the loop ceiling mid-step.
-                // Hard cap at 2 steps per turn so that large projects (adaptive ceiling
-                // ~80) don't produce a batch size equal to the plan size, which would
-                // defeat the split entirely and exhaust the ceiling in a single turn.
-                let stepsPerTurn = max(1, min(2, maxIterations / 10))
+                // Batch split: always execute exactly ONE plan step per turn.
+                // Each step can require many tool-call iterations; putting more than one
+                // step in a turn risks exhausting the loop ceiling before the step batch
+                // completes. One step per turn is safe regardless of ceiling height.
+                let stepsPerTurn = 1
                 if planSteps.count > stepsPerTurn {
                     let thisBatch = Array(planSteps.prefix(stepsPerTurn))
                     let remaining = Array(planSteps.dropFirst(stepsPerTurn))
@@ -1018,10 +1014,9 @@ final class AgenticEngine {
         guard !pendingContinuationSteps.isEmpty else { return }
 
         // Use the same conservative budget as the initial split so each continuation
-        // turn stays well within the loop ceiling.
-        // Hard cap at 2 — mirrors the initial split cap so continuation turns
-        // are also protected against the ceiling-equals-plan-size failure mode.
-        let batchSize = max(1, min(2, effectiveLoopCeiling(for: .highStakes) / 10))
+        // Always send exactly one step per continuation turn, matching the
+        // initial batch split. This guarantees the ceiling applies per-step.
+        let batchSize = 1
 
         let thisBatch   = Array(pendingContinuationSteps.prefix(batchSize))
         let stillRemaining = Array(pendingContinuationSteps.dropFirst(batchSize))

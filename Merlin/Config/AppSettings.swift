@@ -93,7 +93,7 @@ final class AppSettings: ObservableObject {
     @Published var checkCommand: String = ""
     @Published var activeDomainID: String = "software"
     @Published var maxPlanRetries: Int = 2
-    @Published var maxLoopIterations: Int = 10
+    @Published var maxLoopIterations: Int = 100
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
