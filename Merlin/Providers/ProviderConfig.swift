@@ -432,8 +432,15 @@ final class ProviderRegistry: ObservableObject {
 
         switch config.kind {
         case .openAICompatible:
+            // Remote providers get a dedicated URLSession so each provider has its
+            // own HTTP/2 connection pool. Sharing URLSession.shared between the
+            // planner (orchestrate slot) and the execute slot causes connection-reuse
+            // conflicts on some servers (DeepSeek "governor" 401s).
+            let session: URLSession = config.isLocal
+                ? .shared
+                : URLSession(configuration: .ephemeral)
             return OpenAICompatibleProvider(id: config.id, baseURL: url, apiKey: apiKey,
-                                            modelID: config.model)
+                                            modelID: config.model, session: session)
         case .anthropic:
             return AnthropicProvider(apiKey: apiKey ?? "", modelID: config.model)
         }

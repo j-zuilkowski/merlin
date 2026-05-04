@@ -62,18 +62,28 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
 
         return AsyncThrowingStream { continuation in
             let task = Task { @Sendable [session] in
+                // Each retry uses a fresh URLSession so governor-blocked connections
+                // don't carry over. The initial attempt uses the provider's session
+                // (ephemeral per-provider for remote, .shared for local).
                 var attempt = 0
-                while attempt < 2 {
+                let maxAttempts = 4
+                var currentSession = session
+                while attempt < maxAttempts {
                     attempt += 1
                     if attempt > 1 {
+                        // On governor errors (HTTP 401 "governor") use a fresh session
+                        // and a longer delay to allow the server-side rate limiter to reset.
+                        currentSession = URLSession(configuration: .ephemeral)
+                        let delaySecs: Double = attempt == 2 ? 5 : (attempt == 3 ? 10 : 20)
                         TelemetryEmitter.shared.emit("request.retry", data: [
                             "provider": providerID,
-                            "attempt": attempt
+                            "attempt": attempt,
+                            "delay_s": delaySecs
                         ])
-                        try? await Task.sleep(for: .seconds(2))
+                        try? await Task.sleep(for: .seconds(delaySecs))
                     }
                     do {
-                        let (bytes, response) = try await session.bytes(for: urlRequest)
+                        let (bytes, response) = try await currentSession.bytes(for: urlRequest)
                         guard let http = response as? HTTPURLResponse,
                               (200...299).contains(http.statusCode) else {
                             var errorLines: [String] = []
@@ -112,7 +122,7 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                         continuation.finish()
                         return
                     } catch let urlError as URLError
-                        where urlError.code == .badServerResponse && attempt < 2 {
+                        where urlError.code == .badServerResponse && attempt < maxAttempts {
                         continue
                     } catch {
                         TelemetryEmitter.shared.emit("request.error", data: [
