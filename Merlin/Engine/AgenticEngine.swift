@@ -647,6 +647,24 @@ final class AgenticEngine {
                 request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
                 AppSettings.shared.applyInferenceDefaults(to: &request)
 
+                // Auto-resize the local model context if the request would overflow it.
+                // Estimate tokens as body bytes / 4 + 20% headroom.
+                let slotID = workingSlot == .reason
+                    ? (slotAssignments[.reason] ?? "")
+                    : (slotAssignments[workingSlot] ?? slotAssignments[.execute] ?? "")
+                let baseProviderID = slotID.contains(":")
+                    ? String(slotID.split(separator: ":", maxSplits: 1).first ?? Substring(slotID))
+                    : slotID
+                if let manager = localModelManagers[baseProviderID] {
+                    let bodyBytes = (try? encodeRequest(request, baseURL: provider.baseURL,
+                                                        model: provider.resolvedModelID))?.count ?? 0
+                    let estimatedTokens = Int(Double(bodyBytes) / 4.0 * 1.2) + 512
+                    try? await manager.ensureContextLength(
+                        modelID: provider.resolvedModelID,
+                        minimumTokens: estimatedTokens
+                    )
+                }
+
                 let stream = try await provider.complete(request: request)
                 var assembled: [Int: (id: String, name: String, args: String)] = [:]
                 var sawToolCall = false
