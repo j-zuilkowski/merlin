@@ -76,6 +76,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
     // MARK: - Private helpers
 
     private func unload(modelID: String) async throws {
+        // Try REST first; fall back to CLI if the endpoint is unavailable (e.g. older LM Studio).
         let url = baseURL.appendingPathComponent("api/v1/unload")
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -83,9 +84,19 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         applyAuth(&request)
         request.httpBody = try JSONSerialization.data(withJSONObject: ["identifier": modelID])
 
-        let (_, response) = try await session.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw ModelManagerError.reloadFailed("Unload failed for \(modelID)")
+        if let (_, response) = try? await session.data(for: request),
+           (response as? HTTPURLResponse)?.statusCode == 200 {
+            return
+        }
+
+        // REST failed — fall back to lms CLI.
+        let lmsBin: String = {
+            let candidate = (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.lmstudio/bin/lms"
+            return FileManager.default.fileExists(atPath: candidate) ? candidate : "lms"
+        }()
+        let result = await shell.run(command: "\(lmsBin) unload \"\(modelID)\"")
+        guard result.exitCode == 0 else {
+            throw ModelManagerError.reloadFailed("Unload failed for \(modelID): \(result.errorOutput)")
         }
     }
 
@@ -117,7 +128,12 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
     }
 
     private func loadViaCLI(modelID: String, config: LocalModelConfig) async throws {
-        var args = ["lms", "load", modelID]
+        // lms CLI path: prefer ~/.lmstudio/bin/lms, fall back to PATH
+        let lmsBin: String = {
+            let candidate = (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.lmstudio/bin/lms"
+            return FileManager.default.fileExists(atPath: candidate) ? candidate : "lms"
+        }()
+        var args = [lmsBin, "load", modelID]
         if let value = config.contextLength { args += ["--context-length", "\(value)"] }
         if let value = config.gpuLayers { args += ["--gpu-layers", "\(value)"] }
         if let value = config.cpuThreads { args += ["--cpu-threads", "\(value)"] }
