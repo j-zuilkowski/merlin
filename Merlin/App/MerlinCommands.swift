@@ -85,6 +85,15 @@ struct MerlinCommands: Commands {
                 .keyboardShortcut("m", modifiers: [.command, .shift])
         }
 
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Copy Conversation") {
+                copyConversation()
+            }
+            .keyboardShortcut("a", modifiers: [.command, .shift])
+            .disabled(sessionManager?.activeSession == nil)
+        }
+
         CommandGroup(replacing: .help) {
             Button("Merlin User Guide") {
                 openHelp(.userGuide)
@@ -95,6 +104,35 @@ struct MerlinCommands: Commands {
                 openHelp(.developerManual)
             }
         }
+    }
+
+    private func copyConversation() {
+        guard let session = sessionManager?.activeSession else { return }
+        let messages = session.appState.engine.contextManager.messages
+        let lines: [String] = messages.compactMap { msg in
+            let roleLabel: String
+            switch msg.role {
+            case .user:      roleLabel = "User"
+            case .assistant: roleLabel = "Assistant"
+            case .tool:      return nil   // skip raw tool results
+            case .system:    return nil   // skip system/injection notes
+            }
+            let body: String
+            switch msg.content {
+            case .text(let s):
+                body = s
+            case .parts(let parts):
+                body = parts.compactMap {
+                    if case .text(let s) = $0 { return s }
+                    return nil
+                }.joined(separator: "\n")
+            }
+            guard !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return "\(roleLabel): \(body)"
+        }
+        let full = lines.joined(separator: "\n\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(full, forType: .string)
     }
 
     private func openHelp(_ document: HelpDocument) {
