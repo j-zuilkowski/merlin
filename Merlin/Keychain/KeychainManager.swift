@@ -64,7 +64,15 @@ enum KeychainManager {
             kSecValueData as String:        data,
             kSecAttrAccessible as String:   kSecAttrAccessibleAfterFirstUnlock,
         ]
-        let addStatus = SecItemAdd(add as CFDictionary, nil)
+        var addStatus = SecItemAdd(add as CFDictionary, nil)
+
+        // If a duplicate exists (owned by a different process / old build), fall back to
+        // SecItemUpdate so the value is overwritten even when we can't delete the old item.
+        if addStatus == errSecDuplicateItem {
+            addStatus = SecItemUpdate(deleteQuery as CFDictionary,
+                                      [kSecValueData as String: data,
+                                       kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock] as CFDictionary)
+        }
         guard addStatus == errSecSuccess else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
         }
