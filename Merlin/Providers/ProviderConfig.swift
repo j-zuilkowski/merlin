@@ -407,7 +407,16 @@ final class ProviderRegistry: ObservableObject {
         if apiKeysOverride != nil {
             apiKeysOverride![id] = key
         } else {
-            try? KeychainManager.writeAPIKey(key, for: id)
+            do {
+                try KeychainManager.writeAPIKey(key, for: id)
+                TelemetryEmitter.shared.emit("keychain.write.ok", data: ["provider": id])
+            } catch {
+                let code = (error as NSError).code
+                TelemetryEmitter.shared.emit("keychain.write.error", data: [
+                    "provider": id,
+                    "osstatus": code,
+                ])
+            }
         }
         keyedProviderIDs.insert(id)
         // Notify any other ProviderRegistry instances (e.g. Settings vs main window)
