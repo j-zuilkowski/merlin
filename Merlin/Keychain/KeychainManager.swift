@@ -44,9 +44,9 @@ enum KeychainManager {
 
     /// Persist the API key for `providerID`.
     ///
-    /// Always deletes any existing item before adding, which resets the ACL to
-    /// the current build's identity. The new item is created with an unrestricted
-    /// `SecAccess` so any future Merlin build can read it without a macOS prompt.
+    /// Deletes any existing item before adding so the new item's ACL is owned by
+    /// the current build. Uses `kSecAttrAccessibleAfterFirstUnlock` so the key
+    /// survives sleep/wake without requiring an unlock prompt.
     static func writeAPIKey(_ key: String, for providerID: String) throws {
         let data = Data(key.utf8)
         let deleteQuery: [String: Any] = [
@@ -54,24 +54,16 @@ enum KeychainManager {
             kSecAttrService as String: apiKeyService,
             kSecAttrAccount as String: providerID,
         ]
-        // Delete unconditionally — resets the ACL; ignore errSecItemNotFound.
+        // Delete first — resets ACL ownership to the current build. Ignore errSecItemNotFound.
         SecItemDelete(deleteQuery as CFDictionary)
 
-        // Create an access object with an empty trusted-app list.
-        // On macOS this produces an item readable by any application without a prompt,
-        // equivalent to "Allow access by all applications" in Keychain Access.
-        var access: SecAccess?
-        SecAccessCreate(apiKeyService as CFString, [] as CFArray, &access)
-
-        var add: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: apiKeyService,
-            kSecAttrAccount as String: providerID,
-            kSecValueData as String:   data,
-            // kSecAttrAccessible must NOT be set when kSecAttrAccess is present.
+        let add: [String: Any] = [
+            kSecClass as String:            kSecClassGenericPassword,
+            kSecAttrService as String:      apiKeyService,
+            kSecAttrAccount as String:      providerID,
+            kSecValueData as String:        data,
+            kSecAttrAccessible as String:   kSecAttrAccessibleAfterFirstUnlock,
         ]
-        if let access { add[kSecAttrAccess as String] = access }
-
         let addStatus = SecItemAdd(add as CFDictionary, nil)
         guard addStatus == errSecSuccess else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
