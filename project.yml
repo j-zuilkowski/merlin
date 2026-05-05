@@ -11,7 +11,7 @@ settings:
     SWIFT_VERSION: "5.10"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
 
 targets:
@@ -31,8 +31,9 @@ targets:
         PRODUCT_NAME: Merlin
         INFOPLIST_FILE: Merlin/Info.plist
         CODE_SIGN_ENTITLEMENTS: Merlin/Merlin.entitlements
-        CODE_SIGNING_ALLOWED: NO
-        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGNING_ALLOWED: YES
+        CODE_SIGN_IDENTITY: Merlin Dev Signing
+        ENABLE_HARDENED_RUNTIME: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 
   TestTargetApp:
