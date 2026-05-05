@@ -407,28 +407,9 @@ final class ProviderRegistry: ObservableObject {
         if apiKeysOverride != nil {
             apiKeysOverride![id] = key
         } else {
-            do {
-                try KeychainManager.writeAPIKey(key, for: id)
-                TelemetryEmitter.shared.emit("keychain.write.ok", data: ["provider": id])
-            } catch {
-                let code = (error as NSError).code
-                TelemetryEmitter.shared.emit("keychain.write.error", data: [
-                    "provider": id,
-                    "osstatus": code,
-                ])
-            }
+            try? KeychainManager.writeAPIKey(key, for: id)
         }
         keyedProviderIDs.insert(id)
-        // Notify any other ProviderRegistry instances (e.g. Settings vs main window)
-        // so they re-read from Keychain and update their keyedProviderIDs.
-        NotificationCenter.default.post(name: .merlinProviderKeyDidChange, object: nil)
-    }
-
-    /// Re-reads all non-local providers from Keychain and refreshes keyedProviderIDs.
-    /// Called when another registry instance writes a key via merlinProviderKeyDidChange.
-    func refreshKeyedProviders() {
-        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
-            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
     }
 
     func readAPIKey(for id: String) -> String? {
