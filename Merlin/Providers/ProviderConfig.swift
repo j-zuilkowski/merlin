@@ -410,6 +410,16 @@ final class ProviderRegistry: ObservableObject {
             try? KeychainManager.writeAPIKey(key, for: id)
         }
         keyedProviderIDs.insert(id)
+        // Notify any other ProviderRegistry instances (e.g. Settings vs main window)
+        // so they re-read from Keychain and update their keyedProviderIDs.
+        NotificationCenter.default.post(name: .merlinProviderKeyDidChange, object: nil)
+    }
+
+    /// Re-reads all non-local providers from Keychain and refreshes keyedProviderIDs.
+    /// Called when another registry instance writes a key via merlinProviderKeyDidChange.
+    func refreshKeyedProviders() {
+        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
+            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
     }
 
     func readAPIKey(for id: String) -> String? {
