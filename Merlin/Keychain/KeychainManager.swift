@@ -9,6 +9,11 @@ enum KeychainManager {
     private static let apiKeyService = "com.merlin.api-keys"
 
     /// Read the stored API key for `providerID` (e.g. `"deepseek"`, `"anthropic"`).
+    ///
+    /// Returns nil if no key is stored. Logs a telemetry event (non-fatal) when
+    /// the Keychain returns any error other than errSecItemNotFound — this catches
+    /// ACL-mismatch failures from differently-signed builds that would otherwise
+    /// silently appear as "no key configured".
     static func readAPIKey(for providerID: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
@@ -16,37 +21,60 @@ enum KeychainManager {
             kSecAttrAccount as String: providerID,
             kSecReturnData as String:  true,
             kSecMatchLimit as String:  kSecMatchLimitOne,
+            // Allow the system to present an authentication dialog if the item's
+            // ACL requires it (older items written by a differently-signed build).
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIAllow,
         ]
         var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data,
-              let key = String(data: data, encoding: .utf8)
-        else { return nil }
-        return key
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecSuccess,
+           let data = result as? Data,
+           let key = String(data: data, encoding: .utf8) {
+            return key
+        }
+        if status != errSecItemNotFound {
+            // Emit non-fatal telemetry so the failure is visible in logs.
+            TelemetryEmitter.shared.emit("keychain.read.error", data: [
+                "provider": providerID,
+                "osstatus": Int(status),
+            ])
+        }
+        return nil
     }
 
-    /// Persist (or update) the API key for `providerID`.
+    /// Persist the API key for `providerID`.
+    ///
+    /// Always deletes any existing item before adding, which resets the ACL to
+    /// the current build's identity. The new item is created with an unrestricted
+    /// `SecAccess` so any future Merlin build can read it without a macOS prompt.
     static func writeAPIKey(_ key: String, for providerID: String) throws {
         let data = Data(key.utf8)
-        let query: [String: Any] = [
+        let deleteQuery: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: apiKeyService,
             kSecAttrAccount as String: providerID,
         ]
-        let status = SecItemUpdate(query as CFDictionary,
-                                   [kSecValueData as String: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            var add = query
-            add[kSecValueData as String] = data
-            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            let addStatus = SecItemAdd(add as CFDictionary, nil)
-            guard addStatus == errSecSuccess else {
-                throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
-            }
-            return
-        }
-        guard status == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
+        // Delete unconditionally — resets the ACL; ignore errSecItemNotFound.
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        // Create an access object with an empty trusted-app list.
+        // On macOS this produces an item readable by any application without a prompt,
+        // equivalent to "Allow access by all applications" in Keychain Access.
+        var access: SecAccess?
+        SecAccessCreate(apiKeyService as CFString, [] as CFArray, &access)
+
+        var add: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
+            kSecValueData as String:   data,
+            // kSecAttrAccessible must NOT be set when kSecAttrAccess is present.
+        ]
+        if let access { add[kSecAttrAccess as String] = access }
+
+        let addStatus = SecItemAdd(add as CFDictionary, nil)
+        guard addStatus == errSecSuccess else {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
         }
     }
 
