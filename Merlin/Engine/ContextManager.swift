@@ -42,6 +42,20 @@ class ContextManager: ObservableObject {
         compact(force: true)
     }
 
+    /// Token count above which `compactIfNeededBeforeRun` fires automatically.
+    /// Kept well below a typical 32 K model context so the model has ample
+    /// output space even in long sessions.
+    let preRunCompactionThreshold = 10_000
+
+    /// Called by `AgenticEngine.runLoop` before appending the user message.
+    /// Compacts when the session has grown past `preRunCompactionThreshold` tokens
+    /// and the turn is not a continuation (continuations must preserve recent
+    /// tool results so the model can finish multi-step work).
+    func compactIfNeededBeforeRun(isContinuation: Bool) {
+        guard !isContinuation, estimatedTokens > preRunCompactionThreshold else { return }
+        compact(force: true)
+    }
+
     func recordSkillInvocation(_ skill: Skill) {
         recentlyInvokedSkills.removeAll { $0.name == skill.name }
         recentlyInvokedSkills.insert(skill, at: 0)
@@ -80,16 +94,22 @@ class ContextManager: ObservableObject {
 
         let recentStart = max(0, messages.count - compactionKeepRecentTurns)
         let oldToolIndices = toolIndices.filter { $0 < recentStart }
-        guard force || !oldToolIndices.isEmpty else { return }
+        let indicesToCompact: [Int]
+        if force {
+            indicesToCompact = oldToolIndices.isEmpty ? toolIndices : oldToolIndices
+        } else {
+            indicesToCompact = oldToolIndices
+        }
+        guard force || !indicesToCompact.isEmpty else { return }
 
-        if oldToolIndices.isEmpty && force {
+        if indicesToCompact.isEmpty && force {
             messages.append(Message(
                 role: .system,
                 content: .text("[context compacted]"),
                 timestamp: Date()
             ))
         } else {
-            let digest = oldToolIndices.map { idx in
+            let digest = indicesToCompact.map { idx in
                 let message = messages[idx]
                 let preview: String
                 switch message.content {
@@ -108,13 +128,13 @@ class ContextManager: ObservableObject {
 
             let summary = Message(
                 role: .system,
-                content: .text("[context compacted — \(oldToolIndices.count) tool results summarised] \(digest)"),
+                content: .text("[context compacted — \(indicesToCompact.count) tool results summarised] \(digest)"),
                 timestamp: Date()
             )
 
             var rebuilt: [Message] = []
             for (index, message) in messages.enumerated() {
-                if oldToolIndices.contains(index) {
+                if indicesToCompact.contains(index) {
                     continue
                 }
                 rebuilt.append(message)

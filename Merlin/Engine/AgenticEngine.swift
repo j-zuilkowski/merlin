@@ -36,6 +36,12 @@ enum AgentEvent {
     case error(Error)
 }
 
+extension CompletionChunk {
+    static func assistant(_ text: String) -> CompletionChunk {
+        CompletionChunk(delta: .init(content: text), finishReason: "stop")
+    }
+}
+
 private final class CancellationState: @unchecked Sendable {
     var finished = false
 }
@@ -408,6 +414,10 @@ final class AgenticEngine {
         }
     }
 
+    func execute(userMessage: String) -> AsyncStream<AgentEvent> {
+        send(userMessage: userMessage)
+    }
+
     private func runFork(prompt: String) -> AsyncStream<AgentEvent> {
         AsyncStream { continuation in
             let forkContext = ContextManager()
@@ -544,6 +554,9 @@ final class AgenticEngine {
             didEmitCompactionNote = true
             continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
         }
+        // Phase 151b — compact before appending if session has grown large.
+        // Skip for continuations: they depend on recent tool results staying intact.
+        context.compactIfNeededBeforeRun(isContinuation: isContinuation)
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
         emitCompactionNoteIfNeeded()
 

@@ -33,6 +33,14 @@ struct MerlinCommands: Commands {
             }
             .keyboardShortcut(".", modifiers: .command)
             .disabled(isEngineRunning != true)
+
+            Divider()
+
+            Button("Compact Context") {
+                appState?.engine.contextManager.forceCompaction()
+            }
+            .keyboardShortcut("k", modifiers: [.command, .shift])
+            .disabled(sessionManager?.activeSession == nil)
         }
 
         CommandMenu("Window") {
