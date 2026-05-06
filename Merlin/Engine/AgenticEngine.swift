@@ -648,6 +648,8 @@ final class AgenticEngine {
         // Paths written via write_file during this turn — passed to CriticEngine for
         // cross-referencing so the critic can verify document content against the assistant text.
         var writtenFilePaths: [String] = []
+        var criticRetryCount = 0
+        var finalCriticResult: CriticResult? = nil
         var nearCeilingEmitted = false
         do {
             while true {
@@ -760,12 +762,18 @@ final class AgenticEngine {
                     let shouldRunCritic = !writtenFilePaths.isEmpty || isSubstantialOutput ||
                         (classification.complexity != .routine &&
                          (classifierOverride != nil || classification.complexity == .highStakes))
-                    if shouldRunCritic {
-                        if let reasonProvider = self.provider(for: .reason),
-                           !(reasonProvider is NullProvider) {
+                    if shouldRunCritic && AppSettings.shared.criticEnabled {
+                        // criticOverride bypasses the reason-provider guard (test injection).
+                        // Without an override, require a real reason provider.
+                        let hasAvailableCritic = criticOverride != nil || {
+                            if let p = self.provider(for: .reason), !(p is NullProvider) { return true }
+                            return false
+                        }()
+                        if hasAvailableCritic {
                             let critic = makeCritic(domain: domain)
                             let taskType = domain.taskTypes.first
                                 ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+                            let maxRetries = AppSettings.shared.maxCriticRetries
                             let verdict = await critic.evaluate(
                                 taskType: taskType,
                                 output: fullText,
@@ -773,6 +781,7 @@ final class AgenticEngine {
                                 writtenFiles: writtenFilePaths
                             )
                             lastCriticVerdict = verdict
+                            finalCriticResult = verdict
                             switch verdict {
                             case .pass, .skipped:
                                 consecutiveCriticFailures = 0
@@ -783,7 +792,21 @@ final class AgenticEngine {
                             case .pass:
                                 break
                             case .fail(let reason):
-                                continuation.yield(.systemNote("[Critic: \(reason)]"))
+                                if criticRetryCount < maxRetries {
+                                    criticRetryCount += 1
+                                    context.append(Message(
+                                        role: .user,
+                                        content: .text(
+                                            "[Critic correction (\(criticRetryCount)/\(maxRetries)): \(reason). Please address this issue and provide a corrected response.]"
+                                        ),
+                                        timestamp: Date()
+                                    ))
+                                    continue
+                                } else {
+                                    continuation.yield(.systemNote(
+                                        "[Critic: max retries (\(maxRetries)) exhausted — \(reason)]"
+                                    ))
+                                }
                             case .skipped:
                                 continuation.yield(.systemNote("[unverified — critic unavailable]"))
                             }
@@ -951,12 +974,24 @@ final class AgenticEngine {
             stagingRejected = 0
             stagingEdited = 0
         }
+        // Derive stage1Passed from the final critic verdict:
+        //   .pass    → true  (verification succeeded)
+        //   .fail    → false (retries exhausted with no pass)
+        //   .skipped → nil   (no verification backend or critic disabled)
+        //   nil (critic never ran) → nil
+        let stage1PassedSignal: Bool? = {
+            switch finalCriticResult {
+            case .pass:             return true
+            case .fail:             return false
+            case .skipped, nil:     return nil
+            }
+        }()
         let signals = OutcomeSignals(
-            stage1Passed: nil,
+            stage1Passed: stage1PassedSignal,
             stage2Score: nil,
             diffAccepted: stagingRejected == 0 || stagingAccepted > 0,
             diffEditedOnAccept: stagingEdited > 0,
-            criticRetryCount: 0,
+            criticRetryCount: criticRetryCount,
             userCorrectedNextTurn: false,
             sessionCompleted: true,
             addendumHash: await currentAddendumHash(for: workingSlot),

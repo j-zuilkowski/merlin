@@ -1,5 +1,11 @@
 # Phase 46b — AppSettings Implementation
 
+> ⚠️ **OUTDATED** — This phase documents the original v1 AppSettings only (~10 properties).
+> The current `AppSettings.swift` has 50+ properties added across phases 60–165.
+> **Read `phase-46c-appsettings-v5-addendum.md` alongside this document** for the complete
+> current property set, nested types, and TOML serialization.
+> `phase-46c` is the authoritative spec for the live code.
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.

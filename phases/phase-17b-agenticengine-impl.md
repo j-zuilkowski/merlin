@@ -1,5 +1,11 @@
 # Phase 17b — AgenticEngine Implementation
 
+> ⚠️ **SEVERELY OUTDATED** — This phase documents the original single-provider loop only.
+> The current `AgenticEngine.swift` is 1340 lines with 50+ methods added across phases 18–151.
+> **Do not use this document alone to rebuild AgenticEngine.**
+> Read `phase-17c-agenticengine-v5-addendum.md` which documents the complete v5+ surface.
+> `phase-17c` is the authoritative spec for all current behaviour.
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).

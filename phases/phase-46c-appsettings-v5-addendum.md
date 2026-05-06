@@ -5,13 +5,12 @@ Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-**Addendum to phase-46b.** Phase 46b documented the original AppSettings
-(basic settings: provider, model, hooks, appearance; TOML load/save; FSEvents
-watching). This document records all properties, nested types, and methods
-added in phases 60–151, covering LoRA, inference defaults, memory backend,
-circuit breaker, RAG, domain/slot config, and the proposal system.
-
-The current source is `Merlin/Config/AppSettings.swift` (864 lines).
+**Authoritative current spec.** Phase 46b is outdated — read this document for all
+properties, nested types, and methods in the current `AppSettings`. Phase 46b covered
+only the original ~10 properties; the current class has 50+ `@Published` properties
+added across phases 60–165. A rebuilder should use phase-46b for the file skeleton
+(class declaration, `load/save`, FSEvents watcher) and this document for all property
+additions. The current source is `Merlin/Config/AppSettings.swift`.
 
 ---
 

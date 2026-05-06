@@ -94,6 +94,10 @@ final class AppSettings: ObservableObject {
     @Published var activeDomainID: String = "software"
     @Published var maxPlanRetries: Int = 2
     @Published var maxLoopIterations: Int = 100
+    /// TOML key `critic_enabled`. Default: `true`. Set to false to disable critic entirely.
+    @Published var criticEnabled: Bool = true
+    /// TOML key `max_critic_retries`. Default: `2`. Max times engine retries after critic fail.
+    @Published var maxCriticRetries: Int = 2
     /// TOML key `dpo_enabled`. Default: `true`. Set to false to disable DPO pair collection.
     @Published var dpoEnabled: Bool = true
 
@@ -170,7 +174,18 @@ final class AppSettings: ObservableObject {
         var checkCommand: String?
         var activeDomainID: String?
         var planner: PlannerConfig?
+        var critic: CriticConfig?
         var dpoEnabled: Bool?
+
+        struct CriticConfig: Codable, Sendable {
+            var criticEnabled: Bool?
+            var maxCriticRetries: Int?
+
+            enum CodingKeys: String, CodingKey {
+                case criticEnabled = "critic_enabled"
+                case maxCriticRetries = "max_critic_retries"
+            }
+        }
 
         struct PlannerConfig: Codable, Sendable {
             var maxPlanRetries: Int?
@@ -278,6 +293,7 @@ final class AppSettings: ObservableObject {
             case checkCommand = "check_command"
             case activeDomainID = "active_domain"
             case planner
+            case critic
             case dpoEnabled = "dpo_enabled"
         }
     }
@@ -457,6 +473,16 @@ final class AppSettings: ObservableObject {
             lines.append("[planner]")
             lines.append("max_plan_retries = \(maxPlanRetries)")
             lines.append("max_loop_iterations = \(maxLoopIterations)")
+        }
+        if !criticEnabled || maxCriticRetries != 2 {
+            lines.append("")
+            lines.append("[critic]")
+            if !criticEnabled {
+                lines.append("critic_enabled = false")
+            }
+            if maxCriticRetries != 2 {
+                lines.append("max_critic_retries = \(maxCriticRetries)")
+            }
         }
         if !dpoEnabled {
             lines.append("dpo_enabled = false")
@@ -773,6 +799,14 @@ final class AppSettings: ObservableObject {
             }
             if let value = planner.maxLoopIterations {
                 maxLoopIterations = value
+            }
+        }
+        if let critic = config.critic {
+            if let value = critic.criticEnabled {
+                criticEnabled = value
+            }
+            if let value = critic.maxCriticRetries {
+                maxCriticRetries = value
             }
         }
         if let value = config.dpoEnabled {

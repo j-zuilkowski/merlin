@@ -5,15 +5,11 @@ Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-**Addendum to phase-17b.** Phase 17b documented the original AgenticEngine:
-single provider, basic tool-call loop, `send()` + `cancel()`. This document
-records all additions made in phases 18–151 covering: subagent spawning,
-critic evaluation, slot system, planning/classification, RAG integration,
-LoRA routing, local model managers, loop continuation, near-ceiling warning,
-circuit breaker enforcement, parameter advisories, FSEvents injection, and
-memory writes.
-
-The current source is `Merlin/Engine/AgenticEngine.swift` (1340 lines).
+**Authoritative current spec.** Phase 17b is severely outdated — use this document to
+rebuild `AgenticEngine`. Phase 17b covered only the original single-provider loop;
+the current engine has 1340 lines with 50+ methods added across phases 18–165.
+This document is complete: a rebuilder needs only this document (not phase-17b) to
+implement the full engine. The current source is `Merlin/Engine/AgenticEngine.swift`.
 
 ---
 

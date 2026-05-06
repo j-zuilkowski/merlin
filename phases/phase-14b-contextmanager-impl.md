@@ -1,5 +1,10 @@
 # Phase 14b — ContextManager Implementation
 
+> ⚠️ **OUTDATED** — This phase documents the original v1 implementation only.
+> The current `ContextManager.swift` includes significant v5 additions.
+> **Read `phase-14c-contextmanager-v5-addendum.md` alongside this document** to get the
+> complete current implementation. `phase-14c` is the authoritative spec for the live code.
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).

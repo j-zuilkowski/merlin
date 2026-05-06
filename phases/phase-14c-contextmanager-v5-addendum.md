@@ -5,11 +5,11 @@ Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-**Addendum to phase-14b.** Phase 14b documented the original ContextManager
-(compaction of old tool results, `forceCompaction()` test hook). This document
-records all additions made in phases 60b (skill reinjection) and 151b
-(pre-run auto-compaction). The current source in
-`Merlin/Engine/ContextManager.swift` is the definitive implementation.
+**Authoritative current spec.** Phase 14b is outdated — read this document for the
+complete current `ContextManager`. Phase 14b documented the original v1 implementation
+(basic compaction, `forceCompaction()` test hook). This document adds all v5 additions:
+skill reinjection after compaction (phase 60b) and pre-run auto-compaction (phase 151b).
+The current source in `Merlin/Engine/ContextManager.swift` is the definitive implementation.
 
 ---
 
