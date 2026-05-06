@@ -86,3 +86,19 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Keychain/KeychainManager.swift MerlinTests/Unit/KeychainTests.swift
 git commit -m "Phase 05 — KeychainManager + tests"
 ```
+
+---
+
+## Fixes (2026-05-06)
+
+Removed `SecAccessCreate` / `kSecAttrAccess` from `writeAPIKey`. These deprecated APIs
+(deprecated macOS 10.10) bound keychain items to the writing process's code-signing
+identity (cdhash). Every ad-hoc rebuild produced a new identity, making subsequent reads
+fail with an ACL mismatch that appeared as "no API key configured".
+
+Fix: store keys with only `kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock` and
+no `kSecAttrAccess`. Any process running as the user can now read the item regardless of
+how the app was signed — keys survive rebuilds permanently.
+
+Also removed `kSecUseAuthenticationUISkip` from `readAPIKey` (no longer needed without
+an app-specific ACL).
