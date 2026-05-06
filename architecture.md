@@ -13,6 +13,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
 **[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (parallel local + reference provider dispatch with critic scoring), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
+**[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -511,6 +512,137 @@ Merlin's v9 reliability features were designed against the failure taxonomy in:
 | Semantic fault injection | Simulate stale retrieval, truncation, empty tools, and context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (phase 142) |
 | Safe halt conditions | Stop cleanly when confidence cannot be maintained | `agentCircuitBreakerMode = "halt"` (default) halts after repeated critic failures and surfaces the failure to the user |
 | Shared ownership | Each reliability signal has one owner | `CriticEngine` owns per-turn quality, `ModelParameterAdvisor` owns trend detection, `GroundingReport` owns retrieval confidence, and the circuit breaker owns halt decisions |
+
+---
+
+## KAG — Knowledge-Augmented Generation [v10]
+
+### Motivation
+
+The RAG memory store (v9) retrieves semantic chunks based on similarity — "what was said about X." What's missing is retrieval of *structural relationships* — "what entities exist, how they relate, and how they changed across sessions." KAG adds a graph layer alongside the vector layer so the engine can traverse relationships, not just rank chunks.
+
+KAG is especially valuable for non-software domains where entities have rich relational structure: PCB components sharing power nets, building structural members in a load path, recipe ingredients with substitution graphs, or codebase symbols in a call graph. For software-only tasks grep and shell tools cover structural queries adequately. For PCB, construction, culinary, and other domains those tools don't exist — there is no grep for "which components share a power net" or "which structural members are in the load path of this column."
+
+### What goes where
+
+| Concern | Owner | Reason |
+|---|---|---|
+| Triple extraction from sessions | Merlin (post-turn LLM call) | LLM access; session content is here |
+| Triple extraction from books | xcalibre-server (ingestion pipeline) | Books are here; one-time extraction at ingest |
+| Graph storage + traversal | xcalibre-server (preferred) / `LocalKAGPlugin` (fallback) | Rust/SQLite performance; cross-session persistence; book+session graph fusion |
+| Graph query at retrieval | xcalibre-server `GET /api/v1/graph/traverse` or `LocalKAGPlugin` | Fused result: book knowledge triples + session working triples in one traversal |
+| Domain-specific live graph tools | Domain MCP servers | PCB domain knows KiCad format; construction knows IFC; neither Merlin core nor xcalibre needs to understand these |
+
+### Architecture
+
+```text
+Turn end — post-turn triple extraction
+        │
+        ▼
+KAGEngine.extractTriples(sessionContent:)
+        │
+        ├──▶ LocalKAGPlugin  ─── ~/.merlin/kag/graph.sqlite  (fallback, no xcalibre)
+        │
+        └──▶ XcalibreKAGPlugin ─ POST /api/v1/graph/triples  (preferred — fuses with book graph)
+
+Turn start — enriched retrieval
+        │
+        ▼
+RAGTools.buildEnrichedMessage()
+        ├── vector search (existing) ──▶ semantic chunks
+        └── graph traversal ──────────▶ KAG subgraph (anchor: entities in user message, hops: 2)
+                │
+                ▼
+        Combined context: chunks + graph triples injected before user message
+```
+
+### Triple extraction
+
+After each turn (same idle timer as memory generation), a background LLM call extracts `(subject, predicate, object)` triples from the session content:
+
+```
+turn ends → idle timer fires
+  → MemoryEngine.generate()       (existing — semantic chunk write)
+  → KAGEngine.extractTriples()    (new — structured triple write)
+      system prompt: "Extract entity relationships as (subject, predicate, object) triples.
+                     Entities: files, functions, components, symbols, rooms, ingredients, etc.
+                     Predicates: calls, imports, inherits, depends_on, shares_net, supports,
+                     contains, substitutes_for, complements, defined_in, etc.
+                     Return JSON array only."
+      → writes triples to active KAGBackendPlugin
+```
+
+Extraction is domain-agnostic: the model extracts whatever entity types appear in the session. The domain MCP server's `systemPromptAddendum` shapes what the model focuses on — a PCB session naturally surfaces net and component relationships; a culinary session surfaces ingredient and technique relationships.
+
+### Plugin protocol
+
+`KAGBackendPlugin` mirrors `MemoryBackendPlugin`:
+
+```swift
+protocol KAGBackendPlugin: Actor {
+    func write(triples: [KAGTriple]) async throws
+    func traverse(anchor: String, hops: Int, domainID: String?) async -> [KAGTriple]
+    func deleteSession(_ sessionID: String) async throws
+}
+
+struct KAGTriple: Codable, Sendable {
+    var subject: String
+    var predicate: String
+    var object: String
+    var domainID: String
+    var sessionID: String
+    var confidence: Double          // 0.0–1.0; extracted triples default to 0.8
+    var source: KAGTripleSource     // .session | .book | .domain
+    var timestamp: Date
+}
+
+enum KAGTripleSource: String, Codable, Sendable {
+    case session   // extracted from a Merlin turn
+    case book      // extracted by xcalibre-server from book content at ingestion
+    case domain    // asserted by a domain MCP server tool
+}
+```
+
+| Plugin | Backend | When to use |
+|---|---|---|
+| `NullKAGPlugin` | No-op | Default; KAG disabled |
+| `LocalKAGPlugin` | `~/.merlin/kag/graph.sqlite` | xcalibre-server not available |
+| `XcalibreKAGPlugin` | xcalibre-server REST API | Preferred; fuses session graph with book knowledge graph |
+
+### The fusion advantage (XcalibreKAGPlugin)
+
+When xcalibre-server is active, a single graph traversal spans *both* the session graph (what you built) and the book knowledge graph (what the reference material says):
+
+**PCB example** — anchor "U4", hops=2:
+- From session: `(U4) –[shares_net]→ (VCC)`, `(U4) –[had_thermal_issue]→ (session:2026-04-10)`
+- From books: `(high_current_IC) –[requires]→ (thermal_relief_via)`, `(VCC) –[connects]→ (C12, C15)`
+
+**Culinary example** — anchor "turmeric", hops=2:
+- From session: `(our_curry) –[uses]→ (turmeric)`, `(our_curry) –[outcome]→ (too_bitter)`
+- From books: `(turmeric) –[flavor_profile]→ (earthy, bitter)`, `(saffron) –[substitutes_for]→ (turmeric)`, `(saffron) –[milder_than]→ (turmeric)`
+
+The LLM receives working knowledge and reference knowledge fused — without the user needing to ask separately.
+
+### File layout
+
+```text
+Merlin/KAG/
+  KAGBackendPlugin.swift    — protocol, NullKAGPlugin, KAGTriple, KAGTripleSource
+  KAGEngine.swift           — post-turn triple extraction (async, background)
+  LocalKAGPlugin.swift      — SQLite actor: ~/.merlin/kag/graph.sqlite
+  XcalibreKAGPlugin.swift   — HTTP client wrapping XcalibreClient graph endpoints
+TestHelpers/
+  CapturingKAGBackend.swift — records writes for assertions
+```
+
+### AppSettings additions
+
+```swift
+/// TOML key `kag_enabled`. Default: `false` until LocalKAGPlugin ships.
+@Published var kagEnabled: Bool = false
+/// TOML key `kag_hops`. Traversal depth at retrieval time.
+@Published var kagHops: Int = 2
+```
 
 ---
 
