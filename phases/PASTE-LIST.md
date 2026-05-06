@@ -1396,6 +1396,17 @@ Read phases/phase-150b-loop-continuation.md and execute.
 # Verify: BUILD SUCCEEDED; all 6 LoopContinuationTests pass; zero warnings
 # Commit: Phase 150b — loop continuation and near-ceiling warning
 
+# ── PHASE 166a — WKWebView Chat Renderer Tests ───────────────────────────────
+Read phases/phase-166a-wkwebview-chat-tests.md and execute.
+# Verify: BUILD FAILED — ConversationHTMLRenderer type missing (expected)
+# Commit: Phase 166a — ConversationHTMLRendererTests (failing)
+
+# ── PHASE 166b — WKWebView Chat Renderer Implementation ──────────────────────
+Read phases/phase-166b-wkwebview-chat.md and execute.
+# Verify: BUILD SUCCEEDED; all ConversationHTMLRendererTests pass
+# Manual: drag-select text across multiple messages works
+# Commit: Phase 166b — WKWebView conversation renderer (cross-message selection)
+
 # ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
 # Phases 143–150 close two categories of silent failure:
 #
