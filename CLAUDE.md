@@ -150,6 +150,34 @@ Never skip the commit. Never amend a prior phase commit when adding the next pha
 
 ---
 
+## Versioning
+
+**Single source of truth: `project.yml`**
+
+```yaml
+settings:
+  base:
+    MARKETING_VERSION: "X.Y"        # shown in About Merlin
+    CURRENT_PROJECT_VERSION: N      # integer build number, increment each release
+```
+
+`Merlin/Info.plist` uses `$(MARKETING_VERSION)` and `$(CURRENT_PROJECT_VERSION)` — never hardcode version strings there.
+
+**To release a new version:**
+1. Edit `MARKETING_VERSION` (and optionally `CURRENT_PROJECT_VERSION`) in `project.yml`
+2. Run `xcodegen generate`
+3. Build and verify "About Merlin" shows the new version
+4. Commit: `git commit -m "Bump version to X.Y"`
+5. Tag: `git tag vX.Y.Z` (tag must match `MARKETING_VERSION`)
+6. Push: `git push && git push --tags`
+
+**Never** hardcode a version string anywhere except `project.yml`.
+**Never** tag a release without first bumping `MARKETING_VERSION` in `project.yml`.
+
+**Current version: 1.0** (`v1.0.1` tag = versioning infrastructure commit; next release will be `v1.1.0`)
+
+---
+
 ## Project File Generation
 
 After any change to `project.yml`:
@@ -160,6 +188,20 @@ xcodegen generate
 ```
 
 Then re-verify with `xcodebuild`.
+
+---
+
+## Git State Checks
+
+At the start of any session, check for in-progress git operations before doing any work:
+
+```bash
+git status   # look for "revert in progress", "rebase in progress", "merge in progress"
+git log --oneline -5
+git tag --list | sort -V | tail -5
+```
+
+If an in-progress operation exists, surface it to the user and ask whether to abort or continue before proceeding. Never commit or tag over an unresolved git state.
 
 ---
 
