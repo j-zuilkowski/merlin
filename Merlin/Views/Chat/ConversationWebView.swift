@@ -1,0 +1,153 @@
+import SwiftUI
+import WebKit
+
+/// A `WKWebView`-backed conversation renderer that replaces the SwiftUI
+/// `Text`-per-message list. A single WebView = one contiguous selection
+/// surface; native macOS drag selection spans all messages freely.
+///
+/// Rendering strategy:
+/// - **Initial load:** `loadHTMLString` with the full document from
+///   `ConversationHTMLRenderer.render(entries)`.
+/// - **New messages:** `evaluateJavaScript("merlin.addMessage(html)")` — appends
+///   without reloading the page.
+/// - **Streaming:** `evaluateJavaScript("merlin.appendChunk(id, html)")` — replaces
+///   the last assistant bubble in place as tokens arrive.
+/// - **Interactive events** (thinking toggle, tool toggle): JavaScript posts to
+///   `merlinBridge`; the `Coordinator: WKScriptMessageHandler` relays to Swift callbacks.
+struct ConversationWebView: NSViewRepresentable {
+    let entries: [ChatEntry]
+    var onToggleThinking: (UUID) -> Void
+    var onToggleTool: (UUID) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onToggleThinking: onToggleThinking, onToggleTool: onToggleTool)
+    }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(context.coordinator, name: "merlinBridge")
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.setValue(false, forKey: "drawsBackground")  // transparent — SwiftUI bg shows through
+        webView.allowsMagnification = false
+
+        // Disable navigation so links in message text don't navigate away
+        webView.navigationDelegate = context.coordinator
+
+        let html = ConversationHTMLRenderer.render(entries)
+        let baseURL = FileManager.default.homeDirectoryForCurrentUser
+        webView.loadHTMLString(html, baseURL: baseURL)
+
+        context.coordinator.webView = webView
+        context.coordinator.renderedCount = entries.count
+
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        let coord = context.coordinator
+        let old = coord.renderedCount
+        let new = entries.count
+
+        guard new >= old else {
+            // Entries were cleared (new session) — full reload
+            let html = ConversationHTMLRenderer.render(entries)
+            webView.loadHTMLString(html,
+                                   baseURL: FileManager.default.homeDirectoryForCurrentUser)
+            coord.renderedCount = new
+            coord.lastStreamingID = nil
+            return
+        }
+
+        if new > old {
+            // Append brand-new entries that weren't rendered yet
+            let newEntries = Array(entries[old..<new])
+            for entry in newEntries {
+                let fragment = ConversationHTMLRenderer.messageHTML(for: entry)
+                let escaped = jsStringEscape(fragment)
+                webView.evaluateJavaScript("merlin.addMessage('\(escaped)')", completionHandler: nil)
+            }
+            coord.renderedCount = new
+        }
+
+        // Streaming: update the last assistant entry if its text changed
+        if let last = entries.last, last.role == .assistant {
+            let currentID = last.id
+            if coord.lastStreamingID == currentID {
+                // Same streaming message — update in place
+                let chunk = ConversationHTMLRenderer.chunkHTML(for: last)
+                let escaped = jsStringEscape(chunk)
+                webView.evaluateJavaScript(
+                    "merlin.appendChunk('\(currentID.uuidString)', '\(escaped)')",
+                    completionHandler: nil
+                )
+            } else if new == old {
+                // Last entry existed before but its text changed (streaming started)
+                coord.lastStreamingID = currentID
+                let chunk = ConversationHTMLRenderer.chunkHTML(for: last)
+                let escaped = jsStringEscape(chunk)
+                webView.evaluateJavaScript(
+                    "merlin.appendChunk('\(currentID.uuidString)', '\(escaped)')",
+                    completionHandler: nil
+                )
+            }
+        } else {
+            coord.lastStreamingID = nil
+        }
+    }
+
+    // MARK: – JS string escaping
+
+    /// Escapes a Swift string for safe embedding inside a JS single-quoted string literal.
+    private func jsStringEscape(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'",  with: "\\'")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+    }
+
+    // MARK: – Coordinator
+
+    final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+        var onToggleThinking: (UUID) -> Void
+        var onToggleTool: (UUID) -> Void
+        weak var webView: WKWebView?
+        var renderedCount: Int = 0
+        var lastStreamingID: UUID? = nil
+
+        init(onToggleThinking: @escaping (UUID) -> Void,
+             onToggleTool: @escaping (UUID) -> Void) {
+            self.onToggleThinking = onToggleThinking
+            self.onToggleTool = onToggleTool
+        }
+
+        // WKScriptMessageHandler — receives JS merlinBridge.postMessage calls
+        func userContentController(_ controller: WKUserContentController,
+                                   didReceive message: WKScriptMessage) {
+            guard message.name == "merlinBridge",
+                  let body = message.body as? [String: String],
+                  let type = body["type"],
+                  let idString = body["id"],
+                  let id = UUID(uuidString: idString) else { return }
+
+            DispatchQueue.main.async {
+                switch type {
+                case "toggleThinking": self.onToggleThinking(id)
+                case "toggleTool":     self.onToggleTool(id)
+                default: break
+                }
+            }
+        }
+
+        // WKNavigationDelegate — block external navigation; allow initial load
+        func webView(_ webView: WKWebView,
+                     decidePolicyFor action: WKNavigationAction,
+                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            switch action.navigationType {
+            case .other: decisionHandler(.allow)   // loadHTMLString
+            default:     decisionHandler(.cancel)   // link clicks, form submits, etc.
+            }
+        }
+    }
+}

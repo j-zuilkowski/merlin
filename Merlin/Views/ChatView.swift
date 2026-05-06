@@ -23,15 +23,7 @@ struct ChatView: View {
 
             Divider()
 
-            ScrollViewReader { proxy in
-                VStack(spacing: 0) {
-                    scrollContent(proxy: proxy)
-
-                    if scrollLockVisible {
-                        scrollLockBanner(proxy: proxy)
-                    }
-                }
-            }
+            messageList
 
             if toolbarActionsList.isEmpty == false {
                 toolbarActionsBar
@@ -225,81 +217,26 @@ struct ChatView: View {
         }
     }
 
-    @ViewBuilder
     private func scrollContent(proxy: ScrollViewProxy) -> some View {
-        if #available(macOS 15.0, *) {
-            ScrollView {
-                messageList
-            }
-            .onScrollPhaseChange { _, newPhase in
-                // Disable auto-scroll the instant the user touches the scroll view.
-                // Waiting for the geometry change is racy: onChange(of: revision) can
-                // fire a programmatic scrollTo("bottom") between the phase change and
-                // the geometry callback, snapping the view back before the lock lands.
-                if newPhase == .interacting {
-                    autoScrollEnabled = false
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrollLockVisible = true
-                    }
-                }
-                scrollPhaseIsUser = (newPhase == .interacting || newPhase == .decelerating)
-            }
-            .onScrollGeometryChange(for: Bool.self) { geo in
-                (geo.contentSize.height - geo.containerSize.height - geo.contentOffset.y) < 40
-            } action: { _, isAtBottom in
-                // Re-enable auto-scroll only when the user has scrolled back to the bottom.
-                guard scrollPhaseIsUser, isAtBottom, !autoScrollEnabled else { return }
-                autoScrollEnabled = true
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    scrollLockVisible = false
-                }
-            }
-            .onChange(of: model.revision) { _, _ in
-                guard autoScrollEnabled else { return }
-                proxy.scrollTo("bottom", anchor: .bottom)
-            }
-        } else {
-            ScrollView {
-                messageList
-            }
-            .onChange(of: model.revision) { _, _ in
-                guard autoScrollEnabled else { return }
-                proxy.scrollTo("bottom", anchor: .bottom)
-            }
-        }
+        messageList
     }
 
     @ViewBuilder
     private var messageList: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
-                if let subagentID = item.subagentID,
-                   let subagentVM = model.subagentVMs[subagentID] {
-                    SubagentBlockView(vm: subagentVM)
-                        .id(item.id)
-                } else {
-                    ChatEntryRow(
-                        item: item,
-                        onToggleThinking: item.role == .assistant ? {
-                            model.toggleThinkingExpansion(at: index)
-                        } : nil,
-                        onToggleTool: item.role == .tool ? {
-                            model.toggleToolExpansion(at: index)
-                        } : nil
-                    )
-                    .id(item.id)
+        ConversationWebView(
+            entries: model.items,
+            onToggleThinking: { id in
+                if let index = model.items.firstIndex(where: { $0.id == id }) {
+                    model.toggleThinkingExpansion(at: index)
+                }
+            },
+            onToggleTool: { id in
+                if let index = model.items.firstIndex(where: { $0.id == id }) {
+                    model.toggleToolExpansion(at: index)
                 }
             }
-
-            Color.clear
-                .frame(height: 1)
-                .id("bottom")
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // Single unified selection context for the entire message list so the
-        // user can drag-select text across multiple message bubbles.
-        .textSelection(.enabled)
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func sendMessage() {
