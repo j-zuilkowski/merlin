@@ -1,0 +1,331 @@
+# Merlin — Rebuild Guide
+
+This document is the definitive reference for reconstructing Merlin from scratch using the
+phase files in this directory. Follow it sequentially. Each phase builds on the last.
+
+---
+
+## Prerequisites
+
+- macOS 14+, Xcode 15.4+, Swift 5.10
+- `xcodegen` installed (`brew install xcodegen`)
+- No third-party Swift packages in production targets
+- `SWIFT_STRICT_CONCURRENCY=complete` — zero warnings required
+
+```bash
+# Confirm tooling
+xcodegen --version
+swift --version
+```
+
+---
+
+## How to Use This Guide
+
+1. Read `architecture.md` first — understand the layered design before writing any code.
+2. Run each phase's **Verify** command. If it says "BUILD FAILED", that is expected for `a`
+   phases (tests-first). If it says "BUILD SUCCEEDED" with passing tests, move on.
+3. Run each phase's **Commit** command exactly as written.
+4. Never batch commits across phases.
+5. After any `project.yml` change, run `xcodegen generate` before building.
+
+---
+
+## Layer Map
+
+Merlin is built in 9 vertical layers. Phases in lower layers must be complete before
+starting higher ones.
+
+```
+Layer 9 — Self-Improvement (LoRA, DPO, Calibration)    phases 116–131, 165
+Layer 8 — Reliability & Observability (v9)              phases 133, 140–150
+Layer 7 — Local Model Management (v7)                   phases 125–132
+Layer 6 — Memory Backend Plugins (v6 / v9)              phases 113–115, 134–138
+Layer 5 — Agent Reliability Framework (v5)              phases 95–115, 116–128
+Layer 4 — Subagents & Multi-Agent (v4)                  phases 54–80
+Layer 3 — Skills, RAG, Memory (v3)                      phases 38–53
+Layer 2 — Core Engine & Providers (v2)                  phases 25–37
+Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
+```
+
+---
+
+## Phase Reference
+
+### Layer 1 — Foundation
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 00 | `phase-00-preflight.sh` | Repo scaffold, project.yml, xcodegen |
+| 01 | `phase-01-scaffold.md` | MerlinApp, AppState, ContentView skeleton |
+| 02a/b | `phase-02a/b-shared-types` | Message, CompletionRequest, AgentEvent, ChunkDelta |
+| 03a/b | `phase-03a/b-provider-tests / phase-03b-deepseek-provider` | LLMProvider protocol, DeepSeekProvider |
+| 04 | `phase-04-lmstudio-provider.md` | LMStudioProvider + SSEParser |
+| 05 | `phase-05-keychain.md` | KeychainManager — API key storage |
+| 06 | `phase-06-tool-definitions.md` | ToolDefinitions static catalog |
+| 07a/b | `phase-07a/b-filesystem-shell` | FileSystemTools, ShellTool |
+| 08a/b | `phase-08a/b-xcode-tools` | XcodeTools (build, test, run) |
+| 09a/b | `phase-09a/b-ax-screencapture` | AXInspectorTool, ScreenCaptureTool |
+| 10 | `phase-10-cgevent-vision.md` | CGEventTool, VisionQueryTool |
+| 11 | `phase-11-appcontrol-discovery.md` | AppControlTools, ToolDiscovery |
+| 12a/b | `phase-12a/b-auth` | AuthMemory, PatternMatcher |
+| 13a/b | `phase-13a/b-authgate` | AuthGate — per-tool permission gating |
+| 14a/b | `phase-14a/b-contextmanager` | ContextManager (basic append/compact/digest) |
+| 15 | `phase-15-toolrouter.md` | ToolRouter — routes tool calls through AuthGate |
+| 16 | `phase-16-thinking-detector.md` | ThinkingModeDetector |
+| 17a/b | `phase-17a/b-agenticengine` | AgenticEngine v1 (basic loop, tool dispatch) |
+| 18 | `phase-18-sessions.md` | Session, SessionManager, SessionStore |
+| 19 / 19b | `phase-19-appstate-entrypoint.md` / `phase-19b-tool-registration.md` | AppState wiring, ToolRegistration |
+| 20 | `phase-20-chatview.md` | ChatView v1 |
+| 21 | `phase-21-secondary-views.md` | DiffPane, FilePane, TerminalPane |
+| 22 | `phase-22-authpopup.md` | AuthPopupView |
+| 23 | `phase-23-test-fixture-app.md` | TestTargetApp, NullAuthPresenter |
+| 24 | `phase-24-live-e2e.md` | E2E test harness |
+
+> **See also:** `phase-14c-contextmanager-v5-addendum.md` and
+> `phase-17c-agenticengine-v5-addendum.md` for all extensions made to these
+> files in later phases.
+
+---
+
+### Layer 2 — Core Engine & Providers
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 25a/b | `phase-25a/b-rag` | XcalibreClient, RAGTools (basic search) |
+| 26a/b | `phase-26a/b-provider` | OpenAICompatibleProvider, AnthropicProvider, SSEParser |
+| 27a/b | `phase-27a/b-model-picker` | ProviderRegistry, model picker UI |
+| 28a/b | `phase-28a/b-menu` | MerlinCommands, keyboard shortcuts |
+| 29 | `phase-29-project-picker.md` | ProjectPickerView, RecentProjectsStore |
+| 30a/b | `phase-30a/b-session-manager` | SessionManager v2, SessionSidebar |
+| 31a/b | `phase-31a/b-permission-mode` | PermissionMode, AuthGate integration |
+| 32a/b | `phase-32a/b-staging-buffer` | StagingBuffer (write_file batching) |
+| 33a/b | `phase-33a/b-diff-engine` | DiffEngine, DiffPane v2 |
+| 34 | `phase-34-chatview-v2.md` | ChatView v2 (markdown rendering, code blocks) |
+| 35a/b | `phase-35a/b-diff-comment` | DiffComment, diff review flow |
+| 36a/b | `phase-36a/b-claude-md` | CLAUDEMDLoader — reads CLAUDE.md into system prompt |
+| 37a/b | `phase-37a/b-context-injection` | ContextInjector, project-path injection |
+
+---
+
+### Layer 3 — Skills, RAG, Memory
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 38a/b | `phase-38a/b-skills-registry` | SkillsRegistry, Skill, skill loading from ~/.merlin/skills/ |
+| 39a/b | `phase-39a/b-skill-invocation` | AgenticEngine.invokeSkill(), SkillsPicker |
+| 40a/b | `phase-40a/b-...` | *(see phase file for detail)* |
+| … | … | … |
+| 46a/b | `phase-46a/b-appsettings` | AppSettings v1 (TOML load/save, basic settings) |
+| 47a/b | `phase-47a/b-...` | Memory generation |
+| … | … | … |
+| 53 | *(see phase file)* | End of Layer 3 |
+
+> **See also:** `phase-46c-appsettings-v5-addendum.md` for all properties added
+> to AppSettings in phases 46–165.
+
+> **Note:** Phases 40–53 should be followed in file-sort order. Use
+> `ls phases/ | sort -V | grep "phase-[34][0-9]"` to get the precise list.
+
+---
+
+### Layer 4 — Subagents & Multi-Agent (v4)
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 54a/b | Subagent engine | SubagentEngine, SubagentEvent, SubagentBlockView |
+| 55a/b | Worker subagent | WorkerSubagentEngine, worktree isolation |
+| 56–58 | Agent registry, spawn tool, worktree | AgentRegistry, SpawnAgentTool, WorktreeManager |
+| 60a/b | Skill compaction | ContextManager skill-reinjection after compaction |
+| 61–80 | *(see phase files)* | Connectors (GitHub, Linear, Slack), PRMonitor, ThreadAutomation, SchedulerEngine, HookEngine, WebSearch, AtMentionPicker |
+
+---
+
+### Layer 5 — Agent Reliability Framework (v5)
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 95–106 | *(see phase files)* | DomainRegistry, SoftwareDomain, AgentSlot, PlannerEngine, CriticEngine, slot-based system prompt addendum, V5 Settings UI |
+| 107a/b | `phase-107a/b-skill-frontmatter-v5` | SkillFrontmatter v5 (context, slot, domain annotations) |
+| 108a/b | RAG source attribution | RAGSourceAttributionTests, RAGSourcesView |
+| 109a/b | Project path | AppSettings.projectPath, project-aware prompt injection |
+| 110a/b | Memory browser | MemoryBrowserView |
+| 111a/b | RAG search tool | RAGSearchTool wired into ToolRouter |
+| 112a/b | RAG settings | RAG settings section in SettingsWindowView |
+| 113a/b | OutcomeRecord persistence | OutcomeRecord, ModelPerformanceTracker |
+| 114a/b | StagingBuffer signals | OutcomeSignals in StagingBuffer |
+| 115a/b | Critic-gated memory | Memory write suppressed on critic failure |
+
+---
+
+### Layer 6 — Self-Training Data (v6 partial)
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 116a/b | LoRA AppSettings | loraEnabled, loraAutoTrain, etc. in AppSettings |
+| 117a/b | OutcomeRecord training fields | prompt/response capture in OutcomeRecord |
+| 118a/b | LoRATrainer | LoRATrainer actor — triggers llama.cpp fine-tune |
+| 119a/b | LoRACoordinator | LoRACoordinator — gates training on sample count |
+| 120a/b | LoRA provider routing | ProviderRegistry routes to LoRA adapter when loaded |
+| 121a/b | LoRA settings UI | LoRASettingsSection in SettingsWindowView |
+| 122a/b | Memory xcalibre index | xcalibre-server memory chunk index |
+
+---
+
+### Layer 7 — Inference Defaults & Model Management
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 123a/b | Sampling params | InferenceDefaults in AppSettings, CompletionRequest fields |
+| 124a/b | Parameter advisor | ModelParameterAdvisor, ParameterAdvisory, AdvisoryRow |
+| 125a/b | LocalModelManagerProtocol | Protocol, capabilities, LocalModelConfig |
+| 126a/b | Extended managers | OllamaModelManager, JanModelManager, LMStudioModelManager, MistralRSModelManager, LocalAIModelManager, VLLMModelManager |
+| 126c | NullModelManager, LocalModelManagerSupport | Fallback manager + URL/shell-quote helpers |
+| 127a/b | Model manager wiring | AgenticEngine wires LocalModelManager per slot |
+| 128a/b | ModelControlView | ModelControlView, CalibrationFlowView |
+| 129a/b | CalibrationRunner | CalibrationRunner, CalibrationSuite, CalibrationTypes |
+| 130a/b | CalibrationAdvisor | CalibrationAdvisor — converts run results to advisories |
+| 131a/b | CalibrationSkill | Skill that triggers calibration from chat |
+| 132 | `phase-132-v7-docs.md` | v7 architecture notes |
+
+---
+
+### Layer 8 — Reliability & Observability (v8/v9)
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 133 | `phase-133-v8-docs.md` | v8 architecture notes |
+| 134a/b | MemoryBackendPlugin | MemoryBackendPlugin protocol, NullMemoryPlugin |
+| 135a/b | LocalVectorPlugin | LocalVectorPlugin — sqlite-vec embeddings |
+| 136a/b | Memory engine backend wiring | MemoryEngine uses MemoryBackendPlugin |
+| 137a/b | AgenticEngine memory plugin | AgenticEngine.setMemoryBackend() |
+| 138a/b | Memory backend AppSettings | AppSettings.memoryBackendID, AppState wires at launch |
+| 139 | `phase-139-v9-docs.md` | v9 architecture notes |
+| 140a/b | Circuit breaker | consecutiveCriticFailures → halt/warn mode |
+| 141a/b | Grounding confidence | GroundingReport, ragMinGroundingScore |
+| 142a/b | Semantic fault injection | SemanticFaultInjection test doubles |
+| 143a/b | Dynamic model fetch | ProviderRegistry live model list from API |
+| 144a/b | Virtual provider ID | Virtual provider ID normalization |
+| 145a/b | Provider routing cleanup | Slot-to-provider resolution refactor |
+| 146a/b | Provider settings UI | ProviderSettingsView, ProviderHUD |
+| 147a/b | Adaptive loop ceiling | effectiveLoopCeiling() per project size |
+| 148a/b | Document verification | CriticEngine cross-references written file content |
+| 149a/b | LMStudio context auto-resize | LMStudioModelManager.ensureContextLength() |
+| 150a/b | Loop continuation | Batch-split + continuation injection for long tasks |
+
+**Diagnostic phases** (can be applied after Layer 8 or interleaved):
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| diag-01a/b | TelemetryEmitter | TelemetryEmitter, TelemetryEvent, TelemetrySpan |
+| diag-02a/b | Provider telemetry | TTFT/TPS metrics emitted per provider |
+| diag-03a/b | Engine telemetry | Tool call, loop, turn events |
+| diag-04a/b | Memory telemetry | Memory read/write/hit events |
+| diag-05a/b | Context/planner/critic telemetry | Compaction, critic verdict, planner events |
+| diag-06a/b | Infra telemetry | Process memory, GUI actions |
+| diag-07a/b | Accessibility IDs | AccessibilityID constants, test identifiers |
+| diag-08a/b | Voice dictation | VoiceDictationEngine (speech-to-text input) |
+
+---
+
+### Layer 9 — Xcalibre Integration & Context Management
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 151a/b (Merlin) | Context pre-run compaction | ContextManager.compactIfNeededBeforeRun() |
+| 151a/b (xcalibre) | CHM extraction | xcalibre-processing CHM support |
+| 152–163 | *(xcalibre processing phases)* | LIT, SNB, PDB, TCR, LRF, DjVu, AZW4, TXT, CBZ, PDB metadata |
+
+---
+
+### Layer 9b — Self-Improvement (continued)
+
+| Phase | File | Delivers |
+|-------|------|----------|
+| 164a/b | Critic retry loop | AgenticEngine retries on critic failure up to maxCriticRetries |
+| 165a/b | DPO pair collection | DPOQueue, DPOPendingEntry, correction-triggered pair capture |
+
+---
+
+## Supplementary Files (No Dedicated Phase)
+
+These source files exist in the codebase but are not the primary deliverable of a numbered
+phase. They were introduced as support code within other phases or as later additions.
+A rebuild must include them — see the linked phase for context.
+
+| File | Where Introduced | Notes |
+|------|-----------------|-------|
+| `App/AppFocusedValues.swift` | Phase 20 / v5 | `FocusedValues` keys for `isEngineRunning`, `activeProviderID` |
+| `Support/AppIntentsSupport.swift` | Phase 19 | `MerlinMetadataIntent` — minimal App Intents registration |
+| `Engine/ContextUsageTracker.swift` | Phase 14 / diag | `@Published usedTokens`, `percentUsed`, `statusString` |
+| `Engine/Protocols/CriticEngineProtocol.swift` | Phase 95–102 | Protocol + default impl; `CriticEngine` conforms |
+| `Engine/Protocols/ModelPerformanceTrackerProtocol.swift` | Phase 113 | Protocol; `ModelPerformanceTracker` conforms |
+| `Engine/Protocols/PlannerEngineProtocol.swift` | Phase 95 | Protocol; `PlannerEngine` conforms |
+| `Engine/Protocols/XcalibreClientProtocol.swift` | Phase 25 | Protocol; `XcalibreClient` conforms |
+| `Providers/ProviderRegistry+ReasoningEffort.swift` | Phase 109 | `reasoningEffortSupported(for:overrides:)` static helper |
+| `Providers/LocalModelManager/NullModelManager.swift` | Phase 126c | No-op manager for unknown provider IDs |
+| `Providers/LocalModelManager/LocalModelManagerSupport.swift` | Phase 126c | `normalizedOpenAICompatibleBaseURL()`, `shellQuote()` |
+| `Views/Shared/AdvisoryRow.swift` | Phase 124 | Single-advisory row view used by ModelControlView |
+| `UI/Sidebar/WorkerDiffView.swift` | Phase 55 | Diff review panel for worker subagent output |
+| `Views/Calibration/CalibrationFlowView.swift` | Phase 128/129 | Sheet coordinator driving the 3-step calibration flow |
+| `Windows/FloatingWindowManager.swift` | Phase 72 | Pop-out session windows (always-on-top NSWindow) |
+| `Windows/HelpWindowManager.swift` | Phase 28 / v5 | Retains NSWindow references to prevent ARC dealloc |
+| `Windows/HelpWindowView.swift` | Phase 28 / v5 | WKWebView-based Markdown documentation viewer |
+| `Toolbar/ToolbarAction.swift` | Phase 80+ | `ToolbarAction` model — label, command, shortcut |
+| `Toolbar/ToolbarActionStore.swift` | Phase 80+ | Actor managing ordered toolbar action persistence |
+
+---
+
+## Key Architectural Decisions
+
+Before writing any code, understand these or you will build the wrong thing:
+
+1. **TDD always.** The `a` phase writes failing tests; the `b` phase makes them pass.
+   Never write production code in an `a` phase.
+
+2. **AgenticEngine grows across many phases.** Phase 17b is version 1. By phase 165 it has
+   ~1400 lines. The addendum docs (`phase-17c`, `phase-17d`) describe the key extensions.
+   Read them before modifying AgenticEngine.
+
+3. **AppSettings is the single source of truth.** No feature reads `UserDefaults` or config
+   files directly. Everything goes through `AppSettings.shared`. The addendum
+   `phase-46c-appsettings-v5-addendum.md` documents all properties added after phase 46b.
+
+4. **ContextManager.compactIfNeededBeforeRun() and skill reinjection.** Phase 14b implements
+   basic compaction. Phase 60b adds skill reinjection after compaction — critical for
+   maintaining skill context in long sessions. The addendum `phase-14c` documents this.
+
+5. **Slot-based provider routing.** From v5 onward, `AgentSlot` (.execute, .reason, .vision,
+   .embed) routes requests to different providers. `AppSettings.slotAssignments` maps slots
+   to provider IDs. Always resolve slot → provider rather than using a single "active" provider.
+
+6. **ToolRegistry is dynamic.** Built-in tools register at launch via
+   `ToolRegistry.shared.registerBuiltins()`. MCP tools register at runtime. Never hardcode
+   tool counts or assume a static list.
+
+7. **SWIFT_STRICT_CONCURRENCY=complete.** All types that cross actor boundaries must be
+   `Sendable`. Use `@MainActor` on all `ObservableObject` subclasses and their views.
+
+8. **No force-unwraps, no `try!`, no `fatalError` in production.** Tests use `XCTUnwrap`.
+
+---
+
+## Quick-Start Checklist
+
+To verify a fresh rebuild is complete:
+
+```bash
+# 1. Build + run all unit tests
+xcodebuild -scheme MerlinTests test \
+    -destination 'platform=macOS' \
+    -derivedDataPath /tmp/merlin-rebuild-derived 2>&1 \
+    | grep -E 'Test.*passed|Test.*failed|BUILD'
+
+# 2. Launch the app
+open build/Debug/Merlin.app
+
+# 3. Verify version
+# "About Merlin" should show the MARKETING_VERSION from project.yml
+```
+
+All unit tests should pass. Zero warnings, zero errors.
