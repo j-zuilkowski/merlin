@@ -122,6 +122,17 @@ final class AgenticEngine {
     private var pendingContinuationOriginalTask: String = ""
     private var pendingContinuationCompletedCount: Int = 0
 
+    // MARK: - Ceiling continuation
+
+    /// How many times the engine has auto-continued after hitting the loop ceiling
+    /// within the current user-initiated task. Prevents infinite ceiling bouncing.
+    /// Resets when a fresh (non-continuation) user message starts a new turn.
+    private var ceilingContinuationCount = 0
+
+    /// Maximum number of auto-continuations triggered by ceiling hits before the
+    /// engine gives up and stops. Each continuation gets its own full loop budget.
+    private let maxCeilingContinuations = 10
+
     // MARK: - Near-ceiling warning (Fix 2)
 
     /// Non-nil while the engine is within nearCeilingThreshold iterations of the ceiling.
@@ -515,6 +526,12 @@ final class AgenticEngine {
         // Skip re-classification and re-planning: treat as high-stakes so the ceiling is
         // generous, but needsPlanning=false to avoid re-decomposing the already-split task.
         let isContinuation = userMessage.hasPrefix("[CONTINUATION]")
+
+        // Reset the ceiling-continuation counter whenever a genuine new user message
+        // starts so the budget applies per task, not per session.
+        if !isContinuation {
+            ceilingContinuationCount = 0
+        }
         let classification: ClassifierResult
         if isContinuation {
             classification = ClassifierResult(needsPlanning: false, complexity: .highStakes, reason: "continuation turn")
@@ -655,7 +672,24 @@ final class AgenticEngine {
             while true {
                 await pauseForReload()
                 guard loopCount < maxIterations else {
-                    continuation.yield(.systemNote("[Loop ceiling reached — stopping]"))
+                    if ceilingContinuationCount < maxCeilingContinuations {
+                        ceilingContinuationCount += 1
+                        let remaining = maxCeilingContinuations - ceilingContinuationCount
+                        continuation.yield(.systemNote(
+                            "[Loop ceiling reached — scheduling continuation \(ceilingContinuationCount)/\(maxCeilingContinuations)]"
+                        ))
+                        let resumeMsg = """
+                        [CONTINUATION] The previous turn reached its loop iteration limit mid-task. \
+                        Resume from where you left off: run `git status` to check pending changes, \
+                        review recent edits, then continue and complete any unfinished work. \
+                        (\(remaining) ceiling continuation(s) remain if needed.)
+                        """
+                        try? resumeMsg.write(to: continuationInjectURL, atomically: true, encoding: .utf8)
+                    } else {
+                        continuation.yield(.systemNote(
+                            "[Loop ceiling reached — max continuations (\(maxCeilingContinuations)) exhausted, stopping]"
+                        ))
+                    }
                     break
                 }
                 loopCount += 1

@@ -297,6 +297,9 @@ struct ChatView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Single unified selection context for the entire message list so the
+        // user can drag-select text across multiple message bubbles.
+        .textSelection(.enabled)
     }
 
     private func sendMessage() {
