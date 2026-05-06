@@ -1037,6 +1037,7 @@ private struct ChatEntryRow: View {
                                         .font(.system(size: 12, design: .monospaced))
                                         .fixedSize(horizontal: true, vertical: true)
                                         .padding(8)
+                                        .textSelection(.enabled)
                                 }
                                 .background(Color(nsColor: .windowBackgroundColor))
                                 .cornerRadius(6)
@@ -1048,6 +1049,7 @@ private struct ChatEntryRow: View {
                             } else if !seg.content.isEmpty {
                                 Text(seg.rendered ?? AttributedString(seg.content))
                                     .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
                             }
                         }
                     }
