@@ -867,7 +867,6 @@ private struct ChatEntryRow: View {
                                 Text(renderMarkdown(item.thinkingText))
                                     .font(.callout.italic())
                                     .foregroundStyle(.secondary)
-                                    .textSelection(.enabled)
                             } else {
                                 Text(item.thinkingTextPreview)
                                     .font(.callout.italic())
@@ -915,7 +914,6 @@ private struct ChatEntryRow: View {
                                 .foregroundStyle(.secondary)
                             Text(arguments)
                                 .font(.system(size: 11, design: .monospaced))
-                                .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -934,7 +932,6 @@ private struct ChatEntryRow: View {
                             Text(displayResult)
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(item.toolIsError ? .orange : .primary)
-                                .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -1002,7 +999,6 @@ private struct ChatEntryRow: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(border, lineWidth: 1)
             )
-            .textSelection(.enabled)
     }
 
     // MARK: – Markdown rendering
@@ -1030,7 +1026,6 @@ private struct ChatEntryRow: View {
                 if rm.segments.count == 1, !rm.segments[0].isCode {
                     Text(rm.segments[0].rendered ?? AttributedString(visibleText))
                         .fixedSize(horizontal: false, vertical: true)
-                        .textSelection(.enabled)
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         ForEach(Array(rm.segments.enumerated()), id: \.offset) { _, seg in
@@ -1040,7 +1035,6 @@ private struct ChatEntryRow: View {
                                         .font(.system(size: 12, design: .monospaced))
                                         .fixedSize(horizontal: true, vertical: true)
                                         .padding(8)
-                                        .textSelection(.enabled)
                                 }
                                 .background(Color(nsColor: .windowBackgroundColor))
                                 .cornerRadius(6)
@@ -1052,17 +1046,14 @@ private struct ChatEntryRow: View {
                             } else if !seg.content.isEmpty {
                                 Text(seg.rendered ?? AttributedString(seg.content))
                                     .fixedSize(horizontal: false, vertical: true)
-                                    .textSelection(.enabled)
                             }
                         }
                     }
-                    .textSelection(.enabled)
                 }
             } else {
                 // Pending render — show plain text immediately (no layout stall).
                 Text(visibleText)
                     .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
             }
 
             if isCapped {

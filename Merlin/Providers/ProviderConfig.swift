@@ -31,6 +31,12 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
     var supportsVision: Bool
     var kind: ProviderKind
     var systemPromptAddendum: String = ""
+    /// Per-provider output token cap sent as `max_tokens` in every request.
+    /// When nil, falls back to the global `AppSettings.inferenceMaxTokens` or
+    /// the UI-level `AppSettings.maxTokens` default (8 192).
+    /// Set this to the model's documented maximum for long agentic tasks
+    /// (e.g. 131_072 for DeepSeek V4, 16_384 for GPT-4o).
+    var maxOutputTokens: Int?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -44,6 +50,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         case supportsVision
         case kind
         case systemPromptAddendum = "system_prompt_addendum"
+        case maxOutputTokens = "max_output_tokens"
     }
 
     init(
@@ -57,7 +64,8 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         supportsThinking: Bool,
         supportsVision: Bool,
         kind: ProviderKind,
-        systemPromptAddendum: String = ""
+        systemPromptAddendum: String = "",
+        maxOutputTokens: Int? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -70,6 +78,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         self.supportsVision = supportsVision
         self.kind = kind
         self.systemPromptAddendum = systemPromptAddendum
+        self.maxOutputTokens = maxOutputTokens
     }
 
     init(from decoder: Decoder) throws {
@@ -85,6 +94,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         supportsVision = try container.decode(Bool.self, forKey: .supportsVision)
         kind = try container.decode(ProviderKind.self, forKey: .kind)
         systemPromptAddendum = try container.decodeIfPresent(String.self, forKey: .systemPromptAddendum) ?? ""
+        maxOutputTokens = try container.decodeIfPresent(Int.self, forKey: .maxOutputTokens)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -103,6 +113,9 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         try container.encode(kind, forKey: .kind)
         if systemPromptAddendum.isEmpty == false {
             try container.encode(systemPromptAddendum, forKey: .systemPromptAddendum)
+        }
+        if let maxOutputTokens {
+            try container.encode(maxOutputTokens, forKey: .maxOutputTokens)
         }
     }
 }
@@ -166,7 +179,8 @@ final class ProviderRegistry: ObservableObject {
                        isLocal: false,
                        supportsThinking: true,
                        supportsVision: false,
-                       kind: .openAICompatible),
+                       kind: .openAICompatible,
+                       maxOutputTokens: 131_072),   // V4 supports 384K; 128K is a practical agentic cap
         ProviderConfig(id: "openai",
                        displayName: "OpenAI",
                        baseURL: "https://api.openai.com/v1",
@@ -175,7 +189,8 @@ final class ProviderRegistry: ObservableObject {
                        isLocal: false,
                        supportsThinking: false,
                        supportsVision: true,
-                       kind: .openAICompatible),
+                       kind: .openAICompatible,
+                       maxOutputTokens: 16_384),    // gpt-4o max output
         ProviderConfig(id: "anthropic",
                        displayName: "Anthropic",
                        baseURL: "https://api.anthropic.com/v1",
@@ -184,7 +199,8 @@ final class ProviderRegistry: ObservableObject {
                        isLocal: false,
                        supportsThinking: true,
                        supportsVision: true,
-                       kind: .anthropic),
+                       kind: .anthropic,
+                       maxOutputTokens: 32_000),    // claude-opus-4 max output
         ProviderConfig(id: "qwen",
                        displayName: "Qwen",
                        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -193,7 +209,8 @@ final class ProviderRegistry: ObservableObject {
                        isLocal: false,
                        supportsThinking: false,
                        supportsVision: true,
-                       kind: .openAICompatible),
+                       kind: .openAICompatible,
+                       maxOutputTokens: 8_192),     // qwen2.5 standard output
         ProviderConfig(id: "openrouter",
                        displayName: "OpenRouter",
                        baseURL: "https://openrouter.ai/api/v1",
@@ -202,7 +219,7 @@ final class ProviderRegistry: ObservableObject {
                        isLocal: false,
                        supportsThinking: false,
                        supportsVision: false,
-                       kind: .openAICompatible),
+                       kind: .openAICompatible),    // nil — varies by routed model
         ProviderConfig(id: "ollama",
                        displayName: "Ollama",
                        baseURL: "http://localhost:11434/v1",
@@ -314,6 +331,12 @@ final class ProviderRegistry: ObservableObject {
         liveProviders[provider.id] = provider
     }
 
+    /// Returns the `ProviderConfig` for a plain provider ID (not a virtual `"backend:model"` ID).
+    func config(for id: String) -> ProviderConfig? {
+        let baseID = id.contains(":") ? String(id.split(separator: ":", maxSplits: 1)[0]) : id
+        return providers.first { $0.id == baseID }
+    }
+
     func provider(for id: String) -> (any LLMProvider)? {
         if let live = liveProviders[id] { return live }
 
@@ -371,6 +394,12 @@ final class ProviderRegistry: ObservableObject {
     func updateModel(_ model: String, for id: String) {
         guard let index = providers.firstIndex(where: { $0.id == id }) else { return }
         providers[index].model = model
+        persist()
+    }
+
+    func updateMaxOutputTokens(_ tokens: Int?, for id: String) {
+        guard let index = providers.firstIndex(where: { $0.id == id }) else { return }
+        providers[index].maxOutputTokens = tokens
         persist()
     }
 

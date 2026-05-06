@@ -25,7 +25,8 @@ struct ProviderSettingsView: View {
                                 editingKeyFor = EditingKeyTarget(id: config.id)
                                 keyDraft = ""
                             },
-                            onModelChange: { registry.updateModel($0, for: config.id) }
+                            onModelChange: { registry.updateModel($0, for: config.id) },
+                            onMaxOutputTokensChange: { registry.updateMaxOutputTokens($0, for: config.id) }
                         )
 
                         if config.isLocal, let manager = appState.manager(for: config.id) {
@@ -90,8 +91,10 @@ private struct ProviderRow: View {
     let onToggle: () -> Void
     let onEditKey: () -> Void
     let onModelChange: (String) -> Void
+    let onMaxOutputTokensChange: (Int?) -> Void
 
     @State private var modelDraft: String = ""
+    @State private var maxTokensDraft: String = ""
 
     var body: some View {
         HStack {
@@ -118,6 +121,23 @@ private struct ProviderRow: View {
                     .labelsHidden()
                     .frame(width: 200)
                     .accessibilityIdentifier(AccessibilityID.providerSelector)
+                }
+
+                HStack(spacing: 4) {
+                    Text("Max output tokens:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("default", text: $maxTokensDraft)
+                        .font(.caption)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 90)
+                        .onAppear {
+                            maxTokensDraft = config.maxOutputTokens.map { "\($0)" } ?? ""
+                        }
+                        .onSubmit {
+                            let parsed = Int(maxTokensDraft.trimmingCharacters(in: .whitespaces))
+                            onMaxOutputTokensChange(maxTokensDraft.isEmpty ? nil : parsed)
+                        }
                 }
             }
 

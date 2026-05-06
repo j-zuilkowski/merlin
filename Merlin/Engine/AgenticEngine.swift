@@ -724,6 +724,12 @@ final class AgenticEngine {
                 )
                 request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
                 AppSettings.shared.applyInferenceDefaults(to: &request)
+                // Per-provider max_tokens override: takes precedence over the global default.
+                // Allows each provider to use its documented output limit (e.g. 131 072 for
+                // DeepSeek V4) without affecting local or other remote providers.
+                if let providerMaxOutput = registry?.config(for: provider.id)?.maxOutputTokens {
+                    request.maxTokens = providerMaxOutput
+                }
 
                 // Auto-resize the local model context if the request would overflow it.
                 // Estimate tokens as body bytes / 4 + 20% headroom.
