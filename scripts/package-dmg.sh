@@ -1,7 +1,11 @@
 #!/bin/bash
 # package-dmg.sh — build Merlin.app and wrap it in a DMG for distribution
-# Usage: bash scripts/package-dmg.sh [version]
-# Example: bash scripts/package-dmg.sh 4.0
+#
+# Version numbers are read from project.yml (single source of truth).
+# Do NOT pass a version argument — bump MARKETING_VERSION / CURRENT_PROJECT_VERSION
+# in project.yml instead.
+#
+# Usage: bash scripts/package-dmg.sh
 
 set -euo pipefail
 
@@ -12,17 +16,27 @@ BUILD_DIR="$PROJECT_DIR/build/Release"
 DIST_DIR="$PROJECT_DIR/dist"
 APP_NAME="Merlin"
 APP_PATH="$BUILD_DIR/$APP_NAME.app"
+PROJECT_YML="$PROJECT_DIR/project.yml"
 
-VERSION="${1:-$(date +%Y%m%d)}"
-DMG_NAME="${APP_NAME}-${VERSION}.dmg"
+# ── Read version from project.yml ────────────────────────────
+MARKETING_VERSION="$(grep 'MARKETING_VERSION:' "$PROJECT_YML" | head -1 | awk '{print $2}' | tr -d '"')"
+BUILD_NUMBER="$(grep 'CURRENT_PROJECT_VERSION:' "$PROJECT_YML" | head -1 | awk '{print $2}' | tr -d '"')"
+
+if [[ -z "$MARKETING_VERSION" || -z "$BUILD_NUMBER" ]]; then
+    echo "✗ Could not parse MARKETING_VERSION or CURRENT_PROJECT_VERSION from project.yml"
+    exit 1
+fi
+
+DMG_NAME="${APP_NAME}-${MARKETING_VERSION}.dmg"
 DMG_PATH="$DIST_DIR/$DMG_NAME"
 STAGING_DIR="$DIST_DIR/.dmg-staging"
 TMP_DMG="$DIST_DIR/.tmp-${APP_NAME}.dmg"
 
 echo "── Merlin DMG Packager ──────────────────────────────────"
-echo "  Version:  $VERSION"
-echo "  App:      $APP_PATH"
-echo "  Output:   $DMG_PATH"
+echo "  Version:    $MARKETING_VERSION"
+echo "  Build:      $BUILD_NUMBER"
+echo "  App:        $APP_PATH"
+echo "  Output:     $DMG_PATH"
 echo ""
 
 # ── 1. Build ─────────────────────────────────────────────────
@@ -33,6 +47,8 @@ xcodebuild \
     -configuration "$CONFIGURATION" \
     -derivedDataPath "$PROJECT_DIR/build/DerivedData" \
     SYMROOT="$PROJECT_DIR/build" \
+    MARKETING_VERSION="$MARKETING_VERSION" \
+    CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
     CODE_SIGN_IDENTITY="-" \
     CODE_SIGNING_REQUIRED=NO \
     CODE_SIGNING_ALLOWED=YES \
@@ -46,12 +62,14 @@ fi
 echo "✓ Build succeeded: $APP_PATH"
 
 # ── 2. Stamp version into Info.plist ─────────────────────────
+# Belt-and-suspenders: xcodebuild already sets these from the build settings above,
+# but PlistBuddy guarantees the final binary matches project.yml exactly.
 
 /usr/libexec/PlistBuddy \
-    -c "Set :CFBundleShortVersionString $VERSION" \
-    -c "Set :CFBundleVersion $VERSION" \
+    -c "Set :CFBundleShortVersionString $MARKETING_VERSION" \
+    -c "Set :CFBundleVersion $BUILD_NUMBER" \
     "$APP_PATH/Contents/Info.plist" 2>/dev/null || true
-echo "✓ Version stamped: $VERSION"
+echo "✓ Version stamped: $MARKETING_VERSION ($BUILD_NUMBER)"
 
 # ── 3. Prepare dist dir ──────────────────────────────────────
 
