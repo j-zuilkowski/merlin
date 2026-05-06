@@ -329,8 +329,18 @@ enum ConversationHTMLRenderer {
         \(body)
         </div>
         <script>
+        // Scroll-lock: true when user has manually scrolled up >50px from bottom.
+        // Auto-scroll is suppressed while locked; addMessage (new turn) always resets it.
+        let _userScrolled = false;
+        document.addEventListener('scroll', function() {
+            const root = document.documentElement;
+            const distFromBottom = root.scrollHeight - root.scrollTop - root.clientHeight;
+            _userScrolled = distFromBottom > 50;
+        }, { passive: true });
+
         const merlin = {
             addMessage: function(html) {
+                _userScrolled = false;   // new turn always snaps to bottom
                 document.getElementById('messages').insertAdjacentHTML('beforeend', html);
                 merlin.scrollToBottom();
             },
@@ -341,10 +351,12 @@ enum ConversationHTMLRenderer {
             appendChunk: function(id, html) {
                 const el = document.querySelector('[data-id="' + id + '"]');
                 if (el) { el.outerHTML = html; } else { merlin.addMessage(html); }
-                merlin.scrollToBottom();
+                if (!_userScrolled) { merlin.scrollToBottom(); }
             },
             scrollToBottom: function() {
-                window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+                // Use documentElement — WKWebView on macOS scrolls the <html> root, not body.
+                const root = document.documentElement;
+                root.scrollTop = root.scrollHeight;
             },
             toggleThinking: function(id) {
                 window.webkit.messageHandlers.merlinBridge.postMessage(

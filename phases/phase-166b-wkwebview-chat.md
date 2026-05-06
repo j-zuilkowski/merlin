@@ -692,3 +692,55 @@ git add Merlin/Views/Chat/ConversationHTMLRenderer.swift \
         phases/phase-166b-wkwebview-chat.md
 git commit -m "Phase 166b — WKWebView conversation renderer (cross-message selection)"
 ```
+
+---
+
+## Fixes
+
+### Scroll-lock broken after WKWebView migration (2026-05-06)
+
+**Symptom:** Auto-scroll to bottom stopped working; scrollback lock not present.
+
+**Root causes (two):**
+
+1. `scrollToBottom` called `window.scrollTo({ top: document.body.scrollHeight })`.
+   On macOS WKWebView the scroll container is `document.documentElement`, not `body`.
+   `document.body.scrollHeight` is correct for measuring content height, but
+   `window.scrollTo` does not move the webView's scroll position reliably —
+   `document.documentElement.scrollTop = root.scrollHeight` must be used instead.
+
+2. No scroll-lock existed. Every `appendChunk` called `scrollToBottom()` unconditionally,
+   which would fight user scrollback during streaming. And `addMessage` (new turn) did not
+   reset a lock flag.
+
+**Fix in `ConversationHTMLRenderer.swift` (`htmlDocument` script block):**
+
+```javascript
+// Added above the merlin object:
+let _userScrolled = false;
+document.addEventListener('scroll', function() {
+    const root = document.documentElement;
+    const distFromBottom = root.scrollHeight - root.scrollTop - root.clientHeight;
+    _userScrolled = distFromBottom > 50;
+}, { passive: true });
+
+// addMessage: always resets lock, always scrolls (new turn)
+addMessage: function(html) {
+    _userScrolled = false;
+    document.getElementById('messages').insertAdjacentHTML('beforeend', html);
+    merlin.scrollToBottom();
+},
+
+// appendChunk: respects lock — only scrolls if user hasn't scrolled up
+appendChunk: function(id, html) {
+    const el = document.querySelector('[data-id="' + id + '"]');
+    if (el) { el.outerHTML = html; } else { merlin.addMessage(html); }
+    if (!_userScrolled) { merlin.scrollToBottom(); }
+},
+
+// scrollToBottom: uses documentElement, not body/window
+scrollToBottom: function() {
+    const root = document.documentElement;
+    root.scrollTop = root.scrollHeight;
+},
+```
