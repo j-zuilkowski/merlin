@@ -12,11 +12,21 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     private var responses: [MockLLMResponse]
     private var responseIndex = 0
 
+    /// Optional error sequence consumed in order by `complete`. A `nil` entry means
+    /// "succeed normally". Entries beyond the array length always succeed normally.
+    var stubbedErrors: [Error?] = []
+    private var errorIndex = 0
+
     init() { self.chunks = []; self.responses = [] }
     init(chunks: [CompletionChunk]) { self.chunks = chunks; self.responses = [] }
     init(responses: [MockLLMResponse]) { self.chunks = []; self.responses = responses }
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        if errorIndex < stubbedErrors.count {
+            let maybeError = stubbedErrors[errorIndex]
+            errorIndex += 1
+            if let error = maybeError { throw error }
+        }
         wasUsed = true
         let toSend: [CompletionChunk]
         if let stubbedResponse {

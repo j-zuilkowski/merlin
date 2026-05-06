@@ -95,8 +95,11 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                                 "error_code": statusCode,
                                 "error_detail": String(body)
                             ])
-                            throw URLError(.badServerResponse,
-                                userInfo: [NSLocalizedDescriptionKey: "HTTP \(statusCode): \(body)"])
+                            throw ProviderError.httpError(
+                                statusCode: statusCode,
+                                body: String(body),
+                                providerID: providerID
+                            )
                         }
 
                         var firstToken = true
@@ -121,8 +124,16 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                         ])
                         continuation.finish()
                         return
-                    } catch let urlError as URLError
-                        where urlError.code == .badServerResponse && attempt < maxAttempts {
+                    } catch let pe as ProviderError where pe.isRetriable && attempt < maxAttempts {
+                        let delaySecs = pe.retryDelay
+                        TelemetryEmitter.shared.emit("request.retry", data: [
+                            "provider": providerID,
+                            "attempt": attempt,
+                            "delay_s": delaySecs,
+                            "status_code": pe.statusCode ?? -1
+                        ])
+                        currentSession = URLSession(configuration: .ephemeral)
+                        try? await Task.sleep(for: .seconds(delaySecs))
                         continue
                     } catch {
                         TelemetryEmitter.shared.emit("request.error", data: [

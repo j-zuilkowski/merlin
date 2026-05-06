@@ -749,7 +749,19 @@ final class AgenticEngine {
                     )
                 }
 
-                let stream = try await provider.complete(request: request)
+                // Engine-level retry for transient provider errors (429, 5xx, network drops).
+                // 3 attempts total; provider already has its own internal retry loop for
+                // governor-style throttling. This outer loop handles mid-run outages.
+                let stream = try await Self.completeWithRetry(
+                    provider: provider,
+                    request: request,
+                    maxAttempts: 3,
+                    onRetry: { attempt, maxAttempts in
+                        continuation.yield(.systemNote(
+                            "Provider unavailable — retrying (\(attempt)/\(maxAttempts - 1))…"
+                        ))
+                    }
+                )
                 var assembled: [Int: (id: String, name: String, args: String)] = [:]
                 var sawToolCall = false
                 var fullText = ""
@@ -1468,5 +1480,35 @@ final class AgenticEngine {
                 }
             }
         }
+    }
+
+    // MARK: - Provider retry
+
+    /// Calls `provider.complete` up to `maxAttempts` times, retrying on retriable
+    /// `ProviderError`s with back-off. On each retry `onRetry(attempt, maxAttempts)`
+    /// is called so the caller can surface a status note to the UI.
+    /// Non-retriable errors are re-thrown immediately without retry.
+    private static func completeWithRetry(
+        provider: any LLMProvider,
+        request: CompletionRequest,
+        maxAttempts: Int,
+        onRetry: @Sendable (Int, Int) -> Void
+    ) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        var attempt = 0
+        var lastError: Error = URLError(.unknown)
+        while attempt < maxAttempts {
+            attempt += 1
+            do {
+                return try await provider.complete(request: request)
+            } catch let pe as ProviderError where pe.isRetriable && attempt < maxAttempts {
+                lastError = pe
+                onRetry(attempt, maxAttempts)
+                try await Task.sleep(for: .seconds(pe.retryDelay))
+            } catch {
+                // Non-retriable ProviderError, exhausted retries, or non-ProviderError — throw.
+                throw error
+            }
+        }
+        throw lastError
     }
 }

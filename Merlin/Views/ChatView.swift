@@ -588,6 +588,27 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func appendError(_ error: Error) {
+        // ProviderError carries structured HTTP info — map to actionable messages.
+        if let pe = error as? ProviderError {
+            let message: String
+            switch pe {
+            case .httpError(let code, _, let pid):
+                switch code {
+                case 401, 403:
+                    message = "API key rejected by \(pid) (HTTP \(code)). Check your key in Settings → Providers."
+                case 429:
+                    message = "Rate limited by \(pid). The request was retried but the limit persisted. Try again in a moment."
+                default:
+                    message = "\(pid) returned HTTP \(code) after retries. The provider may be temporarily unavailable."
+                }
+            case .networkError(_, let pid):
+                message = "Network error connecting to \(pid). Check your connection and try again."
+            }
+            items.append(ChatEntry(role: .error, text: message))
+            bumpRevision()
+            return
+        }
+
         // String(describing:) on a system URLError often produces
         // "Error Domain=NSURLErrorDomain Code=-1011 "(null)"" because the
         // NSError has no NSLocalizedDescriptionKey. Use localizedDescription
