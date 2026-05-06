@@ -144,12 +144,7 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
-        // Populate keyedProviderIDs from Keychain — any non-local provider with a stored key.
-        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
-            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
-        // Migrate any legacy keys from ~/.merlin/api-keys.json into Keychain, then delete the file.
-        Self.migrateFileKeysToKeychain(knownProviderIDs: Set(providers.map(\.id)))
-        // Re-check after migration
+        // Populate keyedProviderIDs — any non-local provider with a stored key.
         keyedProviderIDs = Set(providers.filter { !$0.isLocal }
             .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
         // Auto-enable any non-local provider that already has a key
@@ -383,22 +378,6 @@ final class ProviderRegistry: ObservableObject {
 
     /// One-time migration: if `~/.merlin/api-keys.json` exists, copy each entry into
     /// the Keychain (skipping any that already have a Keychain entry), then delete the file.
-    private static func migrateFileKeysToKeychain(knownProviderIDs: Set<String>) {
-        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
-        let url = URL(fileURLWithPath: "\(home)/.merlin/api-keys.json")
-        guard let data = try? Data(contentsOf: url),
-              let dict = try? JSONDecoder().decode([String: String].self, from: data)
-        else { return }
-        for (id, key) in dict where !key.isEmpty {
-            // Only migrate keys for known providers; skip placeholder test values.
-            guard knownProviderIDs.contains(id) || id == "deepseek" || id == "anthropic" else { continue }
-            if KeychainManager.readAPIKey(for: id) == nil {
-                try? KeychainManager.writeAPIKey(key, for: id)
-            }
-        }
-        try? FileManager.default.removeItem(at: url)
-    }
-
     /// When non-nil, key reads and writes use this in-memory dict instead of the
     /// Keychain. Set this in test setUp to prevent tests from touching the Keychain.
     var apiKeysOverride: [String: String]? = nil
