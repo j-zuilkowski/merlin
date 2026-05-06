@@ -192,3 +192,26 @@ git add Merlin/Engine/AgenticEngine.swift \
         MerlinTests/Unit/LoopContinuationTests.swift
 git commit -m "Phase 150b — loop continuation and near-ceiling warning"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-06 — Ceiling auto-continuation (commit 03ed65c)
+
+**Problem:** When `loopCount >= maxIterations` the engine emitted `[Loop ceiling reached — stopping]` and broke out of the run loop, abandoning mid-task work. The only continuation path was the plan batch-split mechanism (`pendingContinuationSteps`), which only fires when the planner has pre-split a task. Unplanned long runs had no recovery.
+
+**Fix:** Added ceiling auto-continuation with a per-task cap:
+
+New properties on `AgenticEngine`:
+```swift
+private var ceilingContinuationCount = 0
+private let maxCeilingContinuations = 10
+```
+
+When `loopCount >= maxIterations`:
+- If `ceilingContinuationCount < maxCeilingContinuations`: increment counter, emit a system note showing the continuation index, write a `[CONTINUATION]` message to `continuationInjectURL` instructing the model to `git status`, review recent edits, and resume
+- Otherwise: emit `[Loop ceiling reached — max continuations exhausted, stopping]` and stop
+
+Counter reset: `ceilingContinuationCount = 0` is set at the top of `executeImpl` whenever `!isContinuation`, so the budget applies per user-initiated task rather than per session.
+```

@@ -113,3 +113,13 @@ in the Data Protection Keychain are tied to the user account, not the signing id
 so they survive rebuilds. At that point, add a one-time migration that reads from
 `~/.merlin/api-keys.json` and writes each key into the Data Protection Keychain, then
 deletes the file.
+
+---
+
+## Fixes
+
+### 2026-05-06 — Remove self-destructing migration in ProviderConfig (commit de82690)
+
+**Problem:** `ProviderRegistry.init` called a private static method `migrateFileKeysToKeychain(knownProviderIDs:)`. This method read `~/.merlin/api-keys.json`, checked if each key already existed via `KeychainManager.readAPIKey(for:)` (which now reads from the file), found the key present, skipped the write, then called `FileManager.removeItem(at:)` on the file — deleting the API key on every launch.
+
+**Fix:** Removed the `migrateFileKeysToKeychain` call and the function entirely from `ProviderConfig.swift`. `KeychainManager` is the file store; no migration path is needed. `ProviderRegistry.init` now does a single `readAPIKey` pass to populate `keyedProviderIDs` without any secondary migration step.

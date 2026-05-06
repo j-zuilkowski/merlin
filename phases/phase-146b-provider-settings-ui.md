@@ -177,3 +177,29 @@ git add Merlin/Providers/ProviderConfig.swift \
         Merlin/Views/Settings/RoleSlotSettingsView.swift
 git commit -m "Phase 146b — Provider settings UI with dynamic model picker"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-06 — Per-provider max output tokens (commit 14a1072)
+
+**Problem:** `AppSettings.maxTokens` defaulted to 8 192 globally. DeepSeek V4 supports 384 000 output tokens; capping at 8 192 forced many unnecessary loop iterations on long agentic tasks. There was no per-provider override.
+
+**Changes to `ProviderConfig`:**
+- Added `var maxOutputTokens: Int?` (CodingKey: `max_output_tokens`)
+- Added to memberwise init with default `nil`, decoder (`decodeIfPresent`), and encoder (omitted when nil)
+- Default values on built-in providers: DeepSeek 131 072, OpenAI 16 384, Anthropic 32 000; local providers leave nil
+- Added `func config(for id: String) -> ProviderConfig?` — resolves virtual `"backend:model"` IDs to their base config
+- Added `func updateMaxOutputTokens(_ tokens: Int?, for id: String)` — persists via `persist()`
+
+**Changes to `AgenticEngine`:**
+- After `applyInferenceDefaults`, looks up `registry?.config(for: provider.id)?.maxOutputTokens` and sets `request.maxTokens` if non-nil — takes precedence over the global default
+
+**Changes to `ProviderSettingsView` / `ProviderRow`:**
+- Added `onMaxOutputTokensChange: (Int?) -> Void` closure to `ProviderRow`
+- Added `@State private var maxTokensDraft: String` initialised from `config.maxOutputTokens`
+- Added "Max output tokens:" label + `TextField("default", ...)` (width 90) below the model picker
+- Empty field submits `nil` (revert to global default); any integer string submits the parsed value
+- Call site passes `{ registry.updateMaxOutputTokens($0, for: config.id) }`
+```

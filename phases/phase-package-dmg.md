@@ -168,3 +168,19 @@ cd ~/Documents/localProject/merlin
 git add scripts/package-dmg.sh phases/phase-package-dmg.md
 git commit -m "Add DMG packaging script (scripts/package-dmg.sh)"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-06 — Single source of truth for version (commit 8ec7812)
+
+**Problem:** The script accepted a positional `[version]` CLI argument with a `$(date +%Y%m%d)` fallback. Calling `bash scripts/package-dmg.sh 2026-05-06` stamped the date string into `Info.plist`, causing the About screen to display `Version 2026-05-06 (2026-05-06)` instead of the semver from `project.yml`.
+
+**Fix:** Removed the positional argument and date fallback entirely. The script now parses `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` directly from `project.yml` using `grep`/`awk`. Both values are passed explicitly to `xcodebuild` as build settings and to `PlistBuddy` for belt-and-suspenders stamping. Usage is now simply:
+
+```bash
+bash scripts/package-dmg.sh
+```
+
+To release a new version: bump `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml`, then run the script.

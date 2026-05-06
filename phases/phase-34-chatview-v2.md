@@ -189,3 +189,18 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/ChatView.swift
 git commit -m "Phase 34 — ChatView v2: stop button + scroll lock"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-06 — Unified text selection context (commit 03ed65c)
+
+**Problem:** `.textSelection(.enabled)` was applied to 9 individual views inside `ChatView`: once on the `bubble()` helper wrapper (applied to every message bubble), and once each on individual `Text` views inside `markdownText`, thinking blocks, and tool argument/result rows. Each inner modifier created an isolated AppKit selection island. Dragging a selection from one bubble into another was impossible — the selection stopped at the bubble boundary regardless of the outer container modifier.
+
+**Root cause:** SwiftUI's `.textSelection` on macOS creates an independent selection context at each application site. Inner modifiers override outer ones; a container-level modifier does not merge the children into a shared context when children also carry the modifier.
+
+**Fix:** Removed all 9 inner `.textSelection(.enabled)` calls. A single `.textSelection(.enabled)` is applied to the outer `VStack` in `messageList` (the view that holds every `ChatEntryRow`). With no inner contexts competing, macOS uses one selection surface for the entire conversation and drag-selection across messages works correctly.
+
+**Note:** This is a partial fix. `.textSelection(.enabled)` on a SwiftUI container still does not produce true browser-like drag selection across all message content. Full cross-message selection requires migrating to a `WKWebView`-based renderer — see architecture.md `[v3] ChatView — WKWebView message renderer`.
+```
