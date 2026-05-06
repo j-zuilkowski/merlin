@@ -112,6 +112,11 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
 @MainActor
 final class ProviderRegistry: ObservableObject {
 
+    /// App-wide singleton — all workspaces and Settings share one registry so
+    /// that saving an API key in Settings is immediately reflected in every window.
+    @MainActor static let shared = ProviderRegistry()
+
+
     @Published private(set) var providers: [ProviderConfig]
     @Published var activeProviderID: String {
         didSet { if oldValue != activeProviderID { persist() } }

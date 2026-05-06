@@ -3,8 +3,7 @@ import SwiftUI
 
 struct SettingsWindowView: View {
     @StateObject private var settings = AppSettings.shared
-    @StateObject private var registry = ProviderRegistry()
-    @StateObject private var appState = AppState(projectPath: "")
+    @StateObject private var registry = ProviderRegistry.shared
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
@@ -18,8 +17,7 @@ struct SettingsWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .navigationTitle(selectedSection.label)
         }
-        .environmentObject(appState)
-        .environment(\.merlinAppState, appState)
+        .environmentObject(registry)
         .frame(minWidth: 640, minHeight: 480)
     }
 

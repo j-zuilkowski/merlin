@@ -43,7 +43,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 @MainActor
 final class AppState: ObservableObject {
     let projectPath: String
-    let registry = ProviderRegistry()
+    let registry = ProviderRegistry.shared
     let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
     @Published var sessionStore: SessionStore!
