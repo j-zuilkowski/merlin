@@ -112,11 +112,6 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
 @MainActor
 final class ProviderRegistry: ObservableObject {
 
-    /// App-wide singleton — all workspaces and Settings share one registry so
-    /// that saving an API key in Settings is immediately reflected in every window.
-    @MainActor static let shared = ProviderRegistry()
-
-
     @Published private(set) var providers: [ProviderConfig]
     @Published var activeProviderID: String {
         didSet { if oldValue != activeProviderID { persist() } }
@@ -150,6 +145,11 @@ final class ProviderRegistry: ObservableObject {
             activeProviderID = "deepseek"
         }
         // Populate keyedProviderIDs from Keychain — any non-local provider with a stored key.
+        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
+            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
+        // Migrate any legacy keys from ~/.merlin/api-keys.json into Keychain, then delete the file.
+        Self.migrateFileKeysToKeychain(knownProviderIDs: Set(providers.map(\.id)))
+        // Re-check after migration
         keyedProviderIDs = Set(providers.filter { !$0.isLocal }
             .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
         // Auto-enable any non-local provider that already has a key
@@ -383,6 +383,22 @@ final class ProviderRegistry: ObservableObject {
 
     /// One-time migration: if `~/.merlin/api-keys.json` exists, copy each entry into
     /// the Keychain (skipping any that already have a Keychain entry), then delete the file.
+    private static func migrateFileKeysToKeychain(knownProviderIDs: Set<String>) {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        let url = URL(fileURLWithPath: "\(home)/.merlin/api-keys.json")
+        guard let data = try? Data(contentsOf: url),
+              let dict = try? JSONDecoder().decode([String: String].self, from: data)
+        else { return }
+        for (id, key) in dict where !key.isEmpty {
+            // Only migrate keys for known providers; skip placeholder test values.
+            guard knownProviderIDs.contains(id) || id == "deepseek" || id == "anthropic" else { continue }
+            if KeychainManager.readAPIKey(for: id) == nil {
+                try? KeychainManager.writeAPIKey(key, for: id)
+            }
+        }
+        try? FileManager.default.removeItem(at: url)
+    }
+
     /// When non-nil, key reads and writes use this in-memory dict instead of the
     /// Keychain. Set this in test setUp to prevent tests from touching the Keychain.
     var apiKeysOverride: [String: String]? = nil
@@ -394,6 +410,16 @@ final class ProviderRegistry: ObservableObject {
             try? KeychainManager.writeAPIKey(key, for: id)
         }
         keyedProviderIDs.insert(id)
+        // Notify any other ProviderRegistry instances (e.g. Settings vs main window)
+        // so they re-read from Keychain and update their keyedProviderIDs.
+        NotificationCenter.default.post(name: .merlinProviderKeyDidChange, object: nil)
+    }
+
+    /// Re-reads all non-local providers from Keychain and refreshes keyedProviderIDs.
+    /// Called when another registry instance writes a key via merlinProviderKeyDidChange.
+    func refreshKeyedProviders() {
+        keyedProviderIDs = Set(providers.filter { !$0.isLocal }
+            .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
     }
 
     func readAPIKey(for id: String) -> String? {

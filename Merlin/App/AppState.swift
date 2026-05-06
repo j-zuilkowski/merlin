@@ -43,7 +43,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 @MainActor
 final class AppState: ObservableObject {
     let projectPath: String
-    let registry = ProviderRegistry.shared
+    let registry = ProviderRegistry()
     let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
     @Published var sessionStore: SessionStore!
@@ -234,6 +234,18 @@ final class AppState: ObservableObject {
         registryCancellable = registry.objectWillChange.sink { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncEngineProviders()
+            }
+        }
+
+        // When Settings writes an API key its registry posts this; refresh our own
+        // keyedProviderIDs from Keychain so the HUD updates without a restart.
+        NotificationCenter.default.addObserver(
+            forName: .merlinProviderKeyDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.registry.refreshKeyedProviders()
             }
         }
 
@@ -609,6 +621,8 @@ extension Notification.Name {
     // Posted by the inject-file watcher when ~/.merlin/inject.txt is written.
     // userInfo["message"] contains the message string to submit to the active chat.
     static let merlinInjectMessage = Notification.Name("com.merlin.injectMessage")
+    // Posted by ProviderRegistry.setAPIKey so other registry instances refresh from Keychain.
+    static let merlinProviderKeyDidChange = Notification.Name("com.merlin.providerKeyDidChange")
 }
 
 extension AppState: AuthPresenter {
