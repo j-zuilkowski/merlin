@@ -121,6 +121,9 @@ struct RoleSlotSettingsView: View {
         .onChange(of: settings.activeDomainID) { _, _ in
             Task { await applyActiveDomain() }
         }
+        .onChange(of: settings.slotAssignments) { _, _ in
+            Task { await saveSlots() }
+        }
     }
 
     @ViewBuilder
@@ -179,5 +182,11 @@ struct RoleSlotSettingsView: View {
 
     private func applyActiveDomain() async {
         await DomainRegistry.shared.setActiveDomain(id: settings.activeDomainID)
+    }
+
+    private func saveSlots() async {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let url = home.appendingPathComponent(".merlin/config.toml")
+        try? await AppSettings.shared.save(to: url)
     }
 }
