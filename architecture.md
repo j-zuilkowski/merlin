@@ -1363,6 +1363,21 @@ Sessions saved to `~/Library/Application Support/Merlin/sessions/` as JSON. Writ
 
 **[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, permission mode badge, model picker dropdown, scroll-lock: manual upward scroll pauses auto-scroll-to-bottom while streaming continues off-screen; auto-scroll resumes when user scrolls back within 40pt of the bottom.
 
+**[v3] ChatView — WKWebView message renderer (planned)**
+
+The conversation message list will be migrated from SwiftUI `Text`-per-message to a single `WKWebView` (`NSViewRepresentable`) rendering the entire thread as HTML. SwiftUI's `Text` views are isolated selection units at the AppKit level; dragging a selection across message boundaries is architecturally impossible regardless of `.textSelection(.enabled)` placement. This mirrors the approach used by the Claude desktop app and OpenAI Codex, both of which are Electron (Chromium) apps and get cross-message selection for free from the browser's DOM selection model.
+
+Design:
+- `ConversationWebView: NSViewRepresentable` wraps a `WKWebView` in non-editable, non-navigable mode
+- All messages rendered as a single HTML document via `WKWebView.loadHTMLString(_:baseURL:)`; baseURL set to `~/.merlin/` so `file://` image references resolve
+- Streaming: new content appended via `WKWebView.evaluateJavaScript("appendChunk(...)")` — no full reload
+- Markdown: rendered server-side (Swift → HTML) before passing to the web view; fenced code blocks get syntax-highlighted `<pre><code>` blocks
+- Images: PNG/JPEG/WebP/SVG embedded as `data:image/...;base64,...` URIs for in-memory content (screenshots, vision outputs); `file://` URIs for on-disk assets
+- Interactive elements (thinking toggle, tool expand/collapse, copy button) bridged via `WKScriptMessageHandler` — JavaScript posts events, Swift handles them
+- Theme: CSS custom properties (`--bg`, `--fg`, `--bubble-user`, `--bubble-assistant`, etc.) injected at load time and updated via `evaluateJavaScript` on theme change; respects `prefers-color-scheme`
+- Selection and copy: fully native — browser selection, system copy menu, Cmd+A, Cmd+C all work across the entire thread
+- Find (Cmd+F): `WKFindConfiguration` on macOS 13+ gives in-page find for free
+
 **[v1] ToolLogView** — live stdout/stderr stream from running tools. Colour-coded by source.
 
 **[v1] ScreenPreviewView** — last screenshot from `ui_screenshot`. On-demand only.
@@ -1659,7 +1674,7 @@ No third-party Swift packages in the production target.
 | `AppKit` | NSWorkspace app launch/control | v1 |
 | `Security` | Keychain read/write | v1 |
 | `PDFKit` | PDF text extraction for attachments | v2 |
-| `WebKit` | WKWebView for preview pane | v2 |
+| `WebKit` | WKWebView for preview pane (v2); WKWebView for conversation message renderer (v3 planned) | v2 |
 | `BackgroundTasks` | Scheduled task wake-ups | v2 |
 | `XCTest` | All test layers (test targets only) | v1 |
 
