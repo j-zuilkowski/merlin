@@ -94,6 +94,8 @@ final class AppSettings: ObservableObject {
     @Published var activeDomainID: String = "software"
     @Published var maxPlanRetries: Int = 2
     @Published var maxLoopIterations: Int = 100
+    /// TOML key `dpo_enabled`. Default: `true`. Set to false to disable DPO pair collection.
+    @Published var dpoEnabled: Bool = true
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
 
@@ -168,6 +170,7 @@ final class AppSettings: ObservableObject {
         var checkCommand: String?
         var activeDomainID: String?
         var planner: PlannerConfig?
+        var dpoEnabled: Bool?
 
         struct PlannerConfig: Codable, Sendable {
             var maxPlanRetries: Int?
@@ -275,6 +278,7 @@ final class AppSettings: ObservableObject {
             case checkCommand = "check_command"
             case activeDomainID = "active_domain"
             case planner
+            case dpoEnabled = "dpo_enabled"
         }
     }
 
@@ -453,6 +457,9 @@ final class AppSettings: ObservableObject {
             lines.append("[planner]")
             lines.append("max_plan_retries = \(maxPlanRetries)")
             lines.append("max_loop_iterations = \(maxLoopIterations)")
+        }
+        if !dpoEnabled {
+            lines.append("dpo_enabled = false")
         }
 
         lines.append("")
@@ -767,6 +774,9 @@ final class AppSettings: ObservableObject {
             if let value = planner.maxLoopIterations {
                 maxLoopIterations = value
             }
+        }
+        if let value = config.dpoEnabled {
+            dpoEnabled = value
         }
     }
 

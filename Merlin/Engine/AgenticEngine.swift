@@ -92,6 +92,19 @@ final class AgenticEngine {
     var consecutiveCriticFailures: Int = 0
     var classifierOverride: (any PlannerEngineProtocol)?
 
+    /// DPO queue for proposing training pairs. Injected in tests; defaults to the
+    /// shared `~/.merlin/lora/pending/` queue in production.
+    var dpoQueue: DPOQueue = DPOQueue()
+
+    // MARK: - DPO capture state
+
+    /// Stores the user prompt from the most recent completed turn (for DPO pairing).
+    private var lastUserPrompt: String = ""
+    /// Stores the model response from the most recent completed turn (for DPO pairing).
+    private var lastModelResponse: String = ""
+    /// Stores the model ID used in the most recent completed turn (for DPO pairing).
+    private var lastModelID: String = ""
+
     /// Test-only override for the loop ceiling. When set, bypasses the adaptive calculation
     /// so tests can exercise near-ceiling and batch-split behaviour with a small iteration count.
     var maxIterationsOverride: Int?
@@ -480,6 +493,23 @@ final class AgenticEngine {
     ) async throws {
         let context = contextOverride ?? contextManager
         let domain = await DomainRegistry.shared.activeDomain()
+
+        // DPO pair proposal: if this turn looks like a correction of the previous turn,
+        // capture the previous prompt+response as a rejected pair awaiting user review.
+        // Skipped for [CONTINUATION] injections and when dpoEnabled is off.
+        if AppSettings.shared.dpoEnabled,
+           !lastModelResponse.isEmpty,
+           !userMessage.hasPrefix("[CONTINUATION]"),
+           isCorrectionMessage(userMessage) {
+            let entry = DPOPendingEntry(
+                prompt: lastUserPrompt,
+                chosen: "",          // user fills this in via the pending review queue
+                rejected: lastModelResponse,
+                modelID: lastModelID,
+                timestamp: Date()
+            )
+            try? await dpoQueue.propose(entry: entry)
+        }
 
         // [CONTINUATION] messages are produced by the engine's own plan-batching logic.
         // Skip re-classification and re-planning: treat as high-stakes so the ceiling is
@@ -936,6 +966,12 @@ final class AgenticEngine {
         // An empty string causes all records to accumulate in a single "records-.json"
         // file that bloats unboundedly and causes a multi-minute save on every turn.
         let trackerModelID = slotAssignments[workingSlot] ?? resolvedProvider(for: workingSlot).id
+
+        // Capture for potential DPO pairing on the next turn.
+        lastUserPrompt = userMessage
+        lastModelResponse = lastResponseText
+        lastModelID = trackerModelID
+
         await performanceTracker.record(
             modelID: trackerModelID,
             taskType: taskType,
@@ -1061,6 +1097,27 @@ final class AgenticEngine {
             "batch_steps": thisBatch.count,
             "remaining_steps": stillRemaining.count
         ])
+    }
+
+    /// Returns true when `message` starts with a phrase that signals the user
+    /// is correcting a previous response. Heuristic — false positives are harmless
+    /// (DPO items go into a pending queue awaiting user review anyway).
+    private func isCorrectionMessage(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let keywords = [
+            "that's wrong", "thats wrong",
+            "that is wrong", "that is incorrect",
+            "that's incorrect", "thats incorrect",
+            "no, ", "no that", "not quite",
+            "actually,", "actually that",
+            "you're wrong", "youre wrong",
+            "wrong,", "wrong.", "incorrect,", "incorrect.",
+            "please fix", "fix this", "fix the",
+            "that doesn't", "that doesnt",
+            "that isn't", "that isnt",
+            "that won't", "that wont",
+        ]
+        return keywords.contains { lower.hasPrefix($0) || lower.contains(": \($0)") }
     }
 
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
