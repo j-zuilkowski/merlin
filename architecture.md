@@ -2804,7 +2804,7 @@ max_dpo_examples = 200
 
 | Field | Key | Example | Audience |
 |---|---|---|---|
-| Marketing version | `MARKETING_VERSION` | `1.0.1` | Users — shown in About Merlin, release notes |
+| Marketing version | `MARKETING_VERSION` | `1.2.0` | Users — shown in About Merlin, release notes |
 | Build number | `CURRENT_PROJECT_VERSION` | `2` | Tooling — Xcode, notarization, archive comparison |
 
 `MARKETING_VERSION` maps to `CFBundleShortVersionString`; `CURRENT_PROJECT_VERSION` maps to
