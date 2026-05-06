@@ -10,30 +10,20 @@ enum KeychainManager {
 
     /// Read the stored API key for `providerID` (e.g. `"deepseek"`, `"anthropic"`).
     ///
-    /// Tries the Data Protection Keychain first (modern, user-scoped, rebuild-safe).
-    /// Falls back to the legacy file-based keychain for items written by older builds,
-    /// and migrates them to the Data Protection Keychain on first read.
+    /// Returns nil if no key is stored. Logs a telemetry event (non-fatal) when
+    /// the Keychain returns any error other than errSecItemNotFound — this catches
+    /// ACL-mismatch failures from differently-signed builds that would otherwise
+    /// silently appear as "no key configured".
     static func readAPIKey(for providerID: String) -> String? {
-        // 1. Try modern Data Protection Keychain
-        if let key = readRaw(providerID: providerID, dataProtection: true) {
-            return key
-        }
-        // 2. Fall back to legacy file-based keychain and migrate if found
-        if let key = readRaw(providerID: providerID, dataProtection: false) {
-            try? writeAPIKey(key, for: providerID) // migrate to Data Protection Keychain
-            return key
-        }
-        return nil
-    }
-
-    private static func readRaw(providerID: String, dataProtection: Bool) -> String? {
-        var query: [String: Any] = [
-            kSecClass as String:                  kSecClassGenericPassword,
-            kSecAttrService as String:            apiKeyService,
-            kSecAttrAccount as String:            providerID,
-            kSecReturnData as String:             true,
-            kSecMatchLimit as String:             kSecMatchLimitOne,
-            kSecUseDataProtectionKeychain as String: dataProtection,
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne,
+            // Allow the system to present an authentication dialog if the item's
+            // ACL requires it (older items written by a differently-signed build).
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIAllow,
         ]
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -42,10 +32,9 @@ enum KeychainManager {
            let key = String(data: data, encoding: .utf8) {
             return key
         }
-        if status != errSecItemNotFound && status != errSecUserCanceled {
+        if status != errSecItemNotFound {
             TelemetryEmitter.shared.emit("keychain.read.error", data: [
                 "provider": providerID,
-                "dataProtection": dataProtection,
                 "osstatus": Int(status),
             ])
         }
@@ -54,52 +43,48 @@ enum KeychainManager {
 
     /// Persist the API key for `providerID`.
     ///
-    /// Writes exclusively to the Data Protection Keychain with
-    /// `kSecAttrAccessibleAfterFirstUnlock`. Items in the Data Protection Keychain
-    /// are user-scoped, not app-signing-identity-scoped — they survive rebuilds,
-    /// ad-hoc re-signing, and reinstalls without requiring the user to re-enter keys.
+    /// Deletes any existing item before adding so the new item's ACL is owned by
+    /// the current build. Uses `kSecAttrAccessibleAfterFirstUnlock` so the key
+    /// survives sleep/wake without requiring an unlock prompt.
     static func writeAPIKey(_ key: String, for providerID: String) throws {
         let data = Data(key.utf8)
-
-        // Delete from both keychains so no stale legacy item blocks a future read.
-        for dataProtection in [true, false] {
-            let deleteQuery: [String: Any] = [
-                kSecClass as String:                     kSecClassGenericPassword,
-                kSecAttrService as String:               apiKeyService,
-                kSecAttrAccount as String:               providerID,
-                kSecUseDataProtectionKeychain as String: dataProtection,
-            ]
-            SecItemDelete(deleteQuery as CFDictionary)
-        }
+        let deleteQuery: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
+        ]
+        // Delete first — resets ACL ownership to the current build. Ignore errSecItemNotFound.
+        SecItemDelete(deleteQuery as CFDictionary)
 
         let add: [String: Any] = [
-            kSecClass as String:                     kSecClassGenericPassword,
-            kSecAttrService as String:               apiKeyService,
-            kSecAttrAccount as String:               providerID,
-            kSecValueData as String:                 data,
-            kSecAttrAccessible as String:            kSecAttrAccessibleAfterFirstUnlock,
-            kSecUseDataProtectionKeychain as String: true,
+            kSecClass as String:            kSecClassGenericPassword,
+            kSecAttrService as String:      apiKeyService,
+            kSecAttrAccount as String:      providerID,
+            kSecValueData as String:        data,
+            kSecAttrAccessible as String:   kSecAttrAccessibleAfterFirstUnlock,
         ]
+        var addStatus = SecItemAdd(add as CFDictionary, nil)
 
-        let addStatus = SecItemAdd(add as CFDictionary, nil)
+        if addStatus == errSecDuplicateItem {
+            addStatus = SecItemUpdate(deleteQuery as CFDictionary,
+                                      [kSecValueData as String: data,
+                                       kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock] as CFDictionary)
+        }
         guard addStatus == errSecSuccess else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
         }
     }
 
-    /// Remove the API key for `providerID` from both keychains. Silent no-op if not found.
+    /// Remove the API key for `providerID`. Silent no-op if not found.
     static func deleteAPIKey(for providerID: String) throws {
-        for dataProtection in [true, false] {
-            let query: [String: Any] = [
-                kSecClass as String:                     kSecClassGenericPassword,
-                kSecAttrService as String:               apiKeyService,
-                kSecAttrAccount as String:               providerID,
-                kSecUseDataProtectionKeychain as String: dataProtection,
-            ]
-            let status = SecItemDelete(query as CFDictionary)
-            guard status == errSecSuccess || status == errSecItemNotFound else {
-                throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
-            }
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: apiKeyService,
+            kSecAttrAccount as String: providerID,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
         }
     }
 
