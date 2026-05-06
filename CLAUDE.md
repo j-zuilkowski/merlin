@@ -22,6 +22,11 @@ macOS SwiftUI agentic chat app. Non-sandboxed. Connects to multiple LLM provider
 - **No third-party Swift packages** in production targets (`Merlin`, `TestTargetApp`). Test targets may not add packages either — all helpers go in `TestHelpers/`.
 - **Non-sandboxed.** The app entitlement `com.apple.security.app-sandbox` is `false`. Do not add sandbox-only APIs.
 - **OpenAI function calling wire format** for all tool definitions. No translation layer except inside `AnthropicProvider`.
+- **Phase files must stay in sync with the code.** Any code change — bug fix, refactor, new feature, or addendum — must also update or create the relevant phase file(s) before the git commit:
+  - **New feature:** write a failing `NNa` tests phase, commit it, implement in `NNb`, update `REBUILD-GUIDE.md` and `PASTE-LIST.md`.
+  - **Change to an existing file:** update the file's primary phase doc (the `b` implementation phase) to reflect the new behaviour. If the change is large, create a `c` addendum phase (e.g. `phase-17c`) and add a superseded banner to the old `b` phase.
+  - **Bug fix with no new surface area:** add a `## Fixes` section to the relevant `b` phase doc noting what changed and why.
+  - **Never commit code whose phase doc still describes the old behaviour.** Phase files are the rebuild source of truth — if they are wrong, a future rebuild produces broken code.
 
 ---
 
