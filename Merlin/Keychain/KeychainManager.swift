@@ -1,91 +1,94 @@
 import Foundation
 import Security
 
+/// Stores API keys in `~/.merlin/api-keys.json` (chmod 0600).
+///
+/// File-based storage is intentionally chosen over macOS Keychain for keys managed
+/// by this app. Ad-hoc rebuilt binaries get a new code-signing identity on every
+/// build, which causes Keychain ACL mismatches — the exact problem that `~/.aws/credentials`,
+/// `~/.config/gh/hosts.yml`, and similar tools solve by using protected files instead.
+/// The file is only readable by the owning user (mode 0600) and lives in `~/.merlin/`
+/// which is already the app's config home.
 enum KeychainManager {
+
+    // MARK: - File-based storage
+
+    private static var keysFileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".merlin/api-keys.json")
+    }
+
+    private static func loadKeys() -> [String: String] {
+        guard let data = try? Data(contentsOf: keysFileURL),
+              let dict = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return [:]
+        }
+        return dict
+    }
+
+    private static func saveKeys(_ keys: [String: String]) throws {
+        let dir = keysFileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let data = try JSONEncoder().encode(keys)
+        try data.write(to: keysFileURL, options: .atomic)
+        // chmod 0600 — owner read/write only
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: keysFileURL.path)
+    }
 
     // MARK: - Per-provider API keys
 
-    /// Keychain service used for all provider API keys.
+    static func readAPIKey(for providerID: String) -> String? {
+        // Primary: file store
+        if let key = loadKeys()[providerID], !key.isEmpty {
+            return key
+        }
+        // Migration fallback: legacy Keychain (one-time read, then re-save to file)
+        if let key = readFromKeychain(for: providerID) {
+            try? writeAPIKey(key, for: providerID)   // migrate to file
+            deleteFromKeychain(for: providerID)       // clean up legacy item
+            return key
+        }
+        return nil
+    }
+
+    static func writeAPIKey(_ key: String, for providerID: String) throws {
+        var keys = loadKeys()
+        keys[providerID] = key
+        try saveKeys(keys)
+    }
+
+    static func deleteAPIKey(for providerID: String) throws {
+        var keys = loadKeys()
+        keys.removeValue(forKey: providerID)
+        try saveKeys(keys)
+    }
+
+    // MARK: - Legacy Keychain read (migration only)
+
     private static let apiKeyService = "com.merlin.api-keys"
 
-    /// Read the stored API key for `providerID` (e.g. `"deepseek"`, `"anthropic"`).
-    ///
-    /// Returns nil if no key is stored. Logs a telemetry event (non-fatal) when
-    /// the Keychain returns any error other than errSecItemNotFound — this catches
-    /// ACL-mismatch failures from differently-signed builds that would otherwise
-    /// silently appear as "no key configured".
-    static func readAPIKey(for providerID: String) -> String? {
+    private static func readFromKeychain(for providerID: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: apiKeyService,
             kSecAttrAccount as String: providerID,
             kSecReturnData as String:  true,
             kSecMatchLimit as String:  kSecMatchLimitOne,
-            // Allow the system to present an authentication dialog if the item's
-            // ACL requires it (older items written by a differently-signed build).
-            kSecUseAuthenticationUI as String: kSecUseAuthenticationUIAllow,
+            kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip,
         ]
         var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecSuccess,
-           let data = result as? Data,
-           let key = String(data: data, encoding: .utf8) {
-            return key
-        }
-        if status != errSecItemNotFound {
-            TelemetryEmitter.shared.emit("keychain.read.error", data: [
-                "provider": providerID,
-                "osstatus": Int(status),
-            ])
-        }
-        return nil
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
-    /// Persist the API key for `providerID`.
-    ///
-    /// Deletes any existing item before adding so the new item's ACL is owned by
-    /// the current build. Uses `kSecAttrAccessibleAfterFirstUnlock` so the key
-    /// survives sleep/wake without requiring an unlock prompt.
-    static func writeAPIKey(_ key: String, for providerID: String) throws {
-        let data = Data(key.utf8)
-        let deleteQuery: [String: Any] = [
-            kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: apiKeyService,
-            kSecAttrAccount as String: providerID,
-        ]
-        // Delete first — resets ACL ownership to the current build. Ignore errSecItemNotFound.
-        SecItemDelete(deleteQuery as CFDictionary)
-
-        let add: [String: Any] = [
-            kSecClass as String:            kSecClassGenericPassword,
-            kSecAttrService as String:      apiKeyService,
-            kSecAttrAccount as String:      providerID,
-            kSecValueData as String:        data,
-            kSecAttrAccessible as String:   kSecAttrAccessibleAfterFirstUnlock,
-        ]
-        var addStatus = SecItemAdd(add as CFDictionary, nil)
-
-        if addStatus == errSecDuplicateItem {
-            addStatus = SecItemUpdate(deleteQuery as CFDictionary,
-                                      [kSecValueData as String: data,
-                                       kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock] as CFDictionary)
-        }
-        guard addStatus == errSecSuccess else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(addStatus))
-        }
-    }
-
-    /// Remove the API key for `providerID`. Silent no-op if not found.
-    static func deleteAPIKey(for providerID: String) throws {
+    private static func deleteFromKeychain(for providerID: String) {
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: apiKeyService,
             kSecAttrAccount as String: providerID,
         ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw NSError(domain: NSOSStatusErrorDomain, code: Int(status))
-        }
+        SecItemDelete(query as CFDictionary)
     }
 
     // MARK: - Legacy single-key shims (used by KeychainTests)
