@@ -1378,6 +1378,19 @@ Design:
 - Selection and copy: fully native — browser selection, system copy menu, Cmd+A, Cmd+C all work across the entire thread
 - Find (Cmd+F): `WKFindConfiguration` on macOS 13+ gives in-page find for free
 
+**LLM-generated image display (planned, depends on WKWebView renderer):**
+
+WKWebView is a prerequisite for inline image display but is not sufficient alone. Two layers must both be in place:
+
+1. **Rendering (unlocked by WKWebView):** `<img src="data:image/png;base64,...">` or `<img src="https://...">` in the message HTML displays generated images inline. SwiftUI `Text` cannot do this at all.
+
+2. **Parsing (separate work required):** The streaming response parser currently reads only text deltas. To surface generated images it must also detect image payloads in API responses and produce a `ChatItem` with an image kind rather than plain text. Each provider returns images differently:
+   - OpenAI image generation (`gpt-image-1`, DALL-E 3): `data[]` array with `b64_json` or `url` fields — separate endpoint, not in the chat stream
+   - GPT-4o multimodal output: image content block in the chat completion response
+   - DeepSeek, Anthropic, local models: do not generate images
+
+Once the WKWebView renderer exists, adding image kinds to the parser and passing them as base64 data URIs or remote URLs becomes straightforward. Without the renderer it is architecturally blocked regardless of parser support.
+
 **[v1] ToolLogView** — live stdout/stderr stream from running tools. Colour-coded by source.
 
 **[v1] ScreenPreviewView** — last screenshot from `ui_screenshot`. On-demand only.
