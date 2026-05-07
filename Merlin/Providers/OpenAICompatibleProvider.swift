@@ -70,18 +70,6 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                 var currentSession = session
                 while attempt < maxAttempts {
                     attempt += 1
-                    if attempt > 1 {
-                        // On governor errors (HTTP 401 "governor") use a fresh session
-                        // and a longer delay to allow the server-side rate limiter to reset.
-                        currentSession = URLSession(configuration: .ephemeral)
-                        let delaySecs: Double = attempt == 2 ? 5 : (attempt == 3 ? 10 : 20)
-                        TelemetryEmitter.shared.emit("request.retry", data: [
-                            "provider": providerID,
-                            "attempt": attempt,
-                            "delay_s": delaySecs
-                        ])
-                        try? await Task.sleep(for: .seconds(delaySecs))
-                    }
                     do {
                         let (bytes, response) = try await currentSession.bytes(for: urlRequest)
                         guard let http = response as? HTTPURLResponse,
@@ -128,12 +116,21 @@ final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
                         let delaySecs = pe.retryDelay
                         TelemetryEmitter.shared.emit("request.retry", data: [
                             "provider": providerID,
-                            "attempt": attempt,
+                            "attempt": attempt + 1,
                             "delay_s": delaySecs,
                             "status_code": pe.statusCode ?? -1
                         ])
                         currentSession = URLSession(configuration: .ephemeral)
                         try? await Task.sleep(for: .seconds(delaySecs))
+                        continue
+                    } catch let urlErr as URLError where attempt < maxAttempts {
+                        TelemetryEmitter.shared.emit("request.retry", data: [
+                            "provider": providerID,
+                            "attempt": attempt + 1,
+                            "delay_s": 1.0,
+                            "error_code": urlErr.errorCode
+                        ])
+                        try? await Task.sleep(for: .milliseconds(100))
                         continue
                     } catch {
                         TelemetryEmitter.shared.emit("request.error", data: [
