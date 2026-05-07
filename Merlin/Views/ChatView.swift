@@ -594,12 +594,16 @@ final class ChatViewModel: ObservableObject {
             switch pe {
             case .httpError(let code, _, let pid):
                 switch code {
+                case 400:
+                    message = "\(pid) rejected the request (HTTP 400 — bad request). The context may be too large. Try compacting (Session → Compact Context) and retrying."
                 case 401, 403:
                     message = "API key rejected by \(pid) (HTTP \(code)). Check your key in Settings → Providers."
                 case 429:
-                    message = "Rate limited by \(pid). The request was retried but the limit persisted. Try again in a moment."
-                default:
+                    message = "Rate limited by \(pid). Retried but limit persisted. Try again in a moment."
+                case 500...599:
                     message = "\(pid) returned HTTP \(code) after retries. The provider may be temporarily unavailable."
+                default:
+                    message = "\(pid) returned HTTP \(code). Try again or check the provider status."
                 }
             case .networkError(_, let pid):
                 message = "Network error connecting to \(pid). Check your connection and try again."

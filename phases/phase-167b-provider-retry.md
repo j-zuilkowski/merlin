@@ -392,3 +392,19 @@ git add Merlin/Providers/ProviderError.swift \
         phases/phase-167b-provider-retry.md
 git commit -m "Phase 167b — Provider retry policy (ProviderError + engine-level retry)"
 ```
+
+---
+
+## Fixes
+
+### Error message copy for 400 / non-5xx codes (2026-05-07)
+
+**Symptom:** HTTP 400 displayed as "returned HTTP 400 after retries. The provider may be
+temporarily unavailable." — misleading because 400 is non-retriable and was not retried.
+
+**Fix in `ChatView.appendError`:** Split the `default` case into:
+- `400` — actionable message suggesting context compaction (most common cause).
+- `401/403` — credential message (unchanged).
+- `429` — rate-limit message (unchanged).
+- `500...599` — transient server message (was the original `default`).
+- `default` — generic fallback for any other code.
