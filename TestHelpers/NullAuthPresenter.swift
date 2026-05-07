@@ -5,6 +5,7 @@ final class NullAuthPresenter: AuthPresenter {
     func requestDecision(tool: String, argument: String, suggestedPattern: String) async -> AuthDecision { .deny }
 }
 
+@MainActor
 final class CapturingAuthPresenter: AuthPresenter {
     let response: AuthDecision
     var wasPrompted = false

@@ -101,7 +101,7 @@ final class PermissionModeTests: XCTestCase {
             slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
             registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
-                memory: AuthMemory(storePath: "/tmp/auth-perm-test.json"),
+                memory: AuthMemory(storePath: "/tmp/auth-perm-\(UUID().uuidString).json"),
                 presenter: NullAuthPresenter()
             )),
             contextManager: ContextManager()
@@ -118,7 +118,7 @@ final class PermissionModeTests: XCTestCase {
             id: "tc1",
             name: "write_file",
             args: #"{"path":"/tmp/test.txt","content":"hello"}"#
-        ).chunks + MockLLMResponse.text("done").chunks
+        ).chunks
 
         let config = ProviderConfig(
             id: provider.id,
@@ -142,7 +142,7 @@ final class PermissionModeTests: XCTestCase {
             slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
             registry: registry,
             toolRouter: ToolRouter(authGate: AuthGate(
-                memory: AuthMemory(storePath: "/tmp/auth-perm-test2.json"),
+                memory: AuthMemory(storePath: "/tmp/auth-perm2-\(UUID().uuidString).json"),
                 presenter: presenter
             )),
             contextManager: ContextManager()
