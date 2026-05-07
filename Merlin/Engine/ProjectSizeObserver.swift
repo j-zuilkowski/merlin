@@ -12,21 +12,22 @@ struct ProjectSizeMetrics: Sendable, Equatable {
 
     /// Computes an adaptive loop iteration ceiling for the given complexity tier.
     ///
-    /// Formula: `max(50, 10 + floor(log2(sourceFileCount + 1)) × 10)` × tier multiplier.
-    /// No upper cap — large projects get proportionally higher ceilings.
+    /// Formula: `min(10 + floor(log2(sourceFileCount + 1)) × 4, 80)` × tier multiplier.
+    /// Base = 10, multiplier = 4, cap = 80, minimum for all tiers = 10.
+    /// Returns 10 for all tiers when sourceFileCount == 0 (default/empty project).
     func adaptiveCeiling(for tier: ComplexityTier) -> Int {
-        let base = 50
-        let sizeScore = sourceFileCount > 0
-            ? Int(log2(Double(sourceFileCount + 1))) * 10
-            : 0
-        let raw = base + sizeScore
+        let base = 10
+        let cap = 80
+        guard sourceFileCount > 0 else { return base }
+        let sizeScore = Int(log2(Double(sourceFileCount + 1))) * 4
+        let raw = min(base + sizeScore, cap)
         switch tier {
         case .routine:
-            return max(Int(Double(raw) * 0.5), 20)
+            return max(Int(Double(raw) * 0.5), base)
         case .standard:
             return raw
         case .highStakes:
-            return Int(Double(raw) * 2.0)
+            return min(Int(Double(raw) * 2.0), cap)
         }
     }
 }
