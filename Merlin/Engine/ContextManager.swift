@@ -141,11 +141,26 @@ class ContextManager: ObservableObject {
         guard force || !groupsToRemove.isEmpty else { return }
 
         if groupsToRemove.isEmpty && force {
-            messages.append(Message(
-                role: .system,
-                content: .text("[context compacted]"),
-                timestamp: Date()
-            ))
+            let toolIndices = messages.indices.filter { messages[$0].role == .tool }
+            if toolIndices.isEmpty {
+                messages.append(Message(
+                    role: .system,
+                    content: .text("[context compacted]"),
+                    timestamp: Date()
+                ))
+            } else {
+                let removeCount = max(1, toolIndices.count / 2)
+                let indicesToRemove = Set(toolIndices.prefix(removeCount))
+                let summary = Message(
+                    role: .system,
+                    content: .text("[context compacted — \(removeCount) standalone tool message(s) removed]"),
+                    timestamp: Date()
+                )
+                messages = messages.enumerated()
+                    .filter { !indicesToRemove.contains($0.offset) }
+                    .map { $0.element }
+                messages.insert(summary, at: 0)
+            }
         } else {
             // Build the removal set: both assistant and tool result indices.
             let allIndices = Set(groupsToRemove.flatMap { [$0.assistantIdx] + $0.toolIndices })
