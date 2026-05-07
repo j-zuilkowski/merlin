@@ -724,21 +724,18 @@ final class AgenticEngine {
                 let useThinking = (workingSlot == .reason || workingSlot == .orchestrate)
                     && providerSupportsThinking
                     && thinkingDetector.shouldEnableThinking(for: userMessage)
-                // Strip reasoning_content from history when the target provider does not
-                // support thinking. DeepSeek-chat (Flash) returns HTTP 400 if any message
-                // in the context carries a `reasoning_content` field — even though
-                // deepseek-reasoner requires it to be echoed back. Filter at the call site
-                // so each provider only sees the fields it accepts.
+                // Always pass reasoning_content back in history messages regardless of the
+                // target provider. DeepSeek's API rule: if any prior assistant message was
+                // generated with reasoning_content, ALL subsequent requests (including to
+                // deepseek-chat/Flash) must include that reasoning_content in the history.
+                // Stripping it causes HTTP 400 "reasoning_content must be passed back".
+                // The `thinking` parameter in the request body is separately gated by
+                // `useThinking` — so Flash never gets thinking: enabled, but it does need
+                // to see reasoning_content from prior Pro turns in the history.
                 let rawMessages = messagesForProvider()
-                let filteredMessages: [Message] = providerSupportsThinking ? rawMessages : rawMessages.map { msg in
-                    guard msg.thinkingContent != nil else { return msg }
-                    var stripped = msg
-                    stripped.thinkingContent = nil
-                    return stripped
-                }
                 var request = CompletionRequest(
                     model: requestModel,
-                    messages: filteredMessages,
+                    messages: rawMessages,
                     thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
                 )
                 request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
