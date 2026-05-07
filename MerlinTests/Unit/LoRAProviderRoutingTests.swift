@@ -4,6 +4,47 @@ import XCTest
 @MainActor
 final class LoRAProviderRoutingTests: XCTestCase {
 
+    // MARK: - Helpers
+
+    @MainActor
+    private func makeEngine(
+        proProvider: MockProvider? = nil,
+        flashProvider: MockProvider? = nil
+    ) -> AgenticEngine {
+        let pro = proProvider ?? MockProvider()
+        let flash = flashProvider ?? MockProvider()
+
+        let proConfig = ProviderConfig(
+            id: pro.id, displayName: pro.id,
+            baseURL: pro.baseURL.absoluteString,
+            model: "", isEnabled: true, isLocal: true,
+            supportsThinking: false, supportsVision: false, kind: .openAICompatible
+        )
+        let flashConfig = ProviderConfig(
+            id: flash.id, displayName: flash.id,
+            baseURL: flash.baseURL.absoluteString,
+            model: "", isEnabled: true, isLocal: true,
+            supportsThinking: false, supportsVision: false, kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-lora-\(UUID().uuidString).json"),
+            initialProviders: [proConfig, flashConfig]
+        )
+        registry.add(pro)
+        registry.add(flash)
+        registry.activeProviderID = pro.id
+
+        let memory = AuthMemory(storePath: "/tmp/auth-lora-\(UUID().uuidString).json")
+        let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
+
+        return AgenticEngine(
+            slotAssignments: [.execute: pro.id, .reason: flash.id],
+            registry: registry,
+            toolRouter: ToolRouter(authGate: gate),
+            contextManager: ContextManager()
+        )
+    }
+
     // MARK: - Execute slot returns loraProvider when set
 
     func testExecuteSlotReturnsLoRAProviderWhenSet() {
