@@ -57,7 +57,7 @@ final class PermissionModeTests: XCTestCase {
         let engine = makeEngineWithFileWriteResponse(provider: capturing, presenter: presenter)
         engine.permissionMode = .autoAccept
 
-        for await _ in engine.send(userMessage: "write a file") {}
+        for await _ in engine.send(userMessage: "run tool") {}
 
         XCTAssertFalse(presenter.wasPrompted,
                        "autoAccept mode must not prompt AuthGate for file write tools")
@@ -70,7 +70,7 @@ final class PermissionModeTests: XCTestCase {
         let engine = makeEngineWithFileWriteResponse(provider: capturing, presenter: presenter)
         engine.permissionMode = .ask
 
-        for await _ in engine.send(userMessage: "write a file") {}
+        for await _ in engine.send(userMessage: "run tool") {}
 
         XCTAssertTrue(presenter.wasPrompted,
                       "ask mode must show AuthGate popup for file write tools")
