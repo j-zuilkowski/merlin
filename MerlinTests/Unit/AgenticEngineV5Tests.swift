@@ -118,7 +118,7 @@ private func makeEngineWithCriticSpy(
     let reason: (any LLMProvider)? = reasonProviderAvailable
         ? ScriptedProvider(id: "reason", response: "PASS: looks good") : nil
     let engine = makeV5Engine(reasonProvider: reason)
-    engine.criticOverride = spy
+    engine.criticOverride = reasonProviderAvailable ? spy : nil
     engine.classifierOverride = FixedClassifier(tier: classifierTier)
     return (engine, spy)
 }
