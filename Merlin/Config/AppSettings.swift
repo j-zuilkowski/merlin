@@ -361,9 +361,7 @@ final class AppSettings: ObservableObject {
         if standingInstructions.isEmpty == false {
             lines.append("standing_instructions = \(quoted(standingInstructions))")
         }
-        lines.append("")
-        lines.append("[memory]")
-        lines.append("backend_id = \(quoted(memoryBackendID))")
+        // Top-level ConfigFile fields (must appear before any [section] header)
         if projectPath.isEmpty == false {
             lines.append("project_path = \(quoted(projectPath))")
         }
@@ -385,6 +383,9 @@ final class AppSettings: ObservableObject {
         if agentCircuitBreakerMode != "halt" {
             lines.append("agent_circuit_breaker_mode = \(quoted(agentCircuitBreakerMode))")
         }
+        lines.append("")
+        lines.append("[memory]")
+        lines.append("backend_id = \(quoted(memoryBackendID))")
         if loraEnabled {
             lines.append("")
             lines.append("[lora]")
