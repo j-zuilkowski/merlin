@@ -82,9 +82,11 @@ continuationAborted = false
 ```swift
 // Continuation abort: if the model signals the step is already done, clear
 // the pending queue so no further continuation turns are scheduled.
+// Also delete the inject file so no stale [CONTINUATION] can fire from disk.
 if isContinuation && fullText.contains("[STEP_ALREADY_DONE]") {
     continuationAborted = true
     pendingContinuationSteps.removeAll()
+    try? FileManager.default.removeItem(at: continuationInjectURL)
     continuation.yield(.systemNote(
         "↩︎ Continuation step already done — remaining steps cancelled."
     ))

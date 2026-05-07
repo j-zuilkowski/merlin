@@ -61,7 +61,7 @@ final class ContinuationAbortTests: XCTestCase {
         let injectURL = dir.appendingPathComponent("inject.txt")
 
         let engine = makeEngine(injectURL: injectURL)
-        let mock = MockProvider(responses: ["[STEP_ALREADY_DONE] The commit already exists."])
+        let mock = MockProvider(responses: [.text("[STEP_ALREADY_DONE] The commit already exists.")])
         engine.setRegistryForTesting(provider: mock)
 
         // Write 3-step continuation inject (step 1 already done, steps 2-4 pending)
@@ -78,15 +78,11 @@ final class ContinuationAbortTests: XCTestCase {
             events.append(event)
         }
 
-        // inject file should not have been rewritten (or should be empty / absent)
-        let injectExists = FileManager.default.fileExists(atPath: injectURL.path)
-        if injectExists {
-            let content = (try? String(contentsOf: injectURL, encoding: .utf8)) ?? ""
-            XCTAssertTrue(
-                content.isEmpty || !content.hasPrefix("[CONTINUATION]"),
-                "inject.txt must not contain a new [CONTINUATION] after abort: \(content)"
-            )
-        }
+        // Engine must delete inject.txt on abort so no stale continuation can fire.
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: injectURL.path),
+            "inject.txt must be deleted after [STEP_ALREADY_DONE]"
+        )
         // Engine emitted at least one event (systemNote or text)
         XCTAssertFalse(events.isEmpty)
     }
@@ -104,7 +100,7 @@ final class ContinuationAbortTests: XCTestCase {
         docs/phase-22c-fix-user-token-regression.md and the commit 573ae7b is present. \
         [STEP_ALREADY_DONE] No further action required.
         """
-        let mock = MockProvider(responses: [longResponse])
+        let mock = MockProvider(responses: [.text(longResponse)])
         engine.setRegistryForTesting(provider: mock)
 
         writeContinuationInject(
@@ -116,14 +112,10 @@ final class ContinuationAbortTests: XCTestCase {
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
         for await _ in engine.send(userMessage: msg) {}
 
-        let injectExists = FileManager.default.fileExists(atPath: injectURL.path)
-        if injectExists {
-            let content = (try? String(contentsOf: injectURL, encoding: .utf8)) ?? ""
-            XCTAssertFalse(
-                content.hasPrefix("[CONTINUATION]"),
-                "Buried abort signal must still suppress next continuation"
-            )
-        }
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: injectURL.path),
+            "inject.txt must be deleted after buried [STEP_ALREADY_DONE]"
+        )
     }
 
     /// [STEP_ALREADY_DONE] in a NON-continuation turn must not affect pending steps.
@@ -136,7 +128,7 @@ final class ContinuationAbortTests: XCTestCase {
         let engine = makeEngine(injectURL: injectURL)
         // Response contains the literal string but this is NOT a continuation turn
         let mock = MockProvider(responses: [
-            "Here is the status: [STEP_ALREADY_DONE] is a signal used by continuations."
+            .text("Here is the status: [STEP_ALREADY_DONE] is a signal used by continuations.")
         ])
         engine.setRegistryForTesting(provider: mock)
 
@@ -158,7 +150,7 @@ final class ContinuationAbortTests: XCTestCase {
         let injectURL = dir.appendingPathComponent("inject.txt")
 
         let engine = makeEngine(injectURL: injectURL)
-        let mock = MockProvider(responses: ["Step complete. Ran cargo test — 0 failures."])
+        let mock = MockProvider(responses: [.text("Step complete. Ran cargo test — 0 failures.")])
         engine.setRegistryForTesting(provider: mock)
 
         writeContinuationInject(
@@ -194,7 +186,7 @@ final class ContinuationAbortTests: XCTestCase {
         let injectURL = dir.appendingPathComponent("inject.txt")
 
         let engine = makeEngine(injectURL: injectURL)
-        let mock = MockProvider(responses: ["Done with step 1."])
+        let mock = MockProvider(responses: [.text("Done with step 1.")])
         engine.setRegistryForTesting(provider: mock)
 
         writeContinuationInject(
@@ -223,8 +215,8 @@ final class ContinuationAbortTests: XCTestCase {
         let engine = makeEngine(injectURL: injectURL)
         // Two sequential responses — neither contains the abort signal
         let mock = MockProvider(responses: [
-            "Step A done.",
-            "Step B done."
+            .text("Step A done."),
+            .text("Step B done.")
         ])
         engine.setRegistryForTesting(provider: mock)
 

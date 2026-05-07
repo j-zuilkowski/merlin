@@ -354,6 +354,7 @@
 		F629ECD07008FFF728C8A75B /* ThreadAutomationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29A2FA4C5F8A661E1E26A625 /* ThreadAutomationStore.swift */; };
 		F7452F08502303B72D2DA06B /* ContextCompactionTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40220B40161B71B66FAA3FD9 /* ContextCompactionTelemetryTests.swift */; };
 		F7D7DFC7E2D2A89C4E5A53E7 /* PlannerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2DC940A662EE8A948649A3 /* PlannerEngine.swift */; };
+		F941B1D0C82B2D53B37BEB97 /* ContinuationAbortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821DF989CCC4DE14489DCD8B /* ContinuationAbortTests.swift */; };
 		F95A20FFB8769C0D49BAB224 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB30D8DFDDE23D92A41241C /* SSEParser.swift */; };
 		FB7F5C506B103EF80063FA4B /* GUIActionTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCDBF2ACA000098F1F6D01F /* GUIActionTelemetryTests.swift */; };
 		FC3761C0CB22D2D8BC90AACC /* AppearanceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A887F2D46BBF1DB9DA57A104 /* AppearanceSettings.swift */; };
@@ -553,6 +554,7 @@
 		814E0637CF12937447292FA1 /* RAGSourceAttributionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGSourceAttributionTests.swift; sourceTree = "<group>"; };
 		81DD9BA4AA3CF59BD836137B /* AppIntentsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentsSupport.swift; sourceTree = "<group>"; };
 		821C53246D5E3AB28225851D /* TOMLDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TOMLDecoder.swift; sourceTree = "<group>"; };
+		821DF989CCC4DE14489DCD8B /* ContinuationAbortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContinuationAbortTests.swift; sourceTree = "<group>"; };
 		83376AE73E0A86AF538F5881 /* MerlinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MerlinApp.swift; sourceTree = "<group>"; };
 		8342FAD802DCE4DF18053002 /* ProjectPathSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPathSettingsTests.swift; sourceTree = "<group>"; };
 		83BFBCCEA4E8C81C8805F611 /* LoRASettingsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRASettingsSection.swift; sourceTree = "<group>"; };
@@ -1025,6 +1027,7 @@
 				8BA229D76BE446602D1792C1 /* ContextInjectorVisionTests.swift */,
 				D70896CAA2B15470C27B1C84 /* ContextManagerTests.swift */,
 				D4D53D4A600E40DB07E60AF6 /* ContextPreRunCompactionTests.swift */,
+				821DF989CCC4DE14489DCD8B /* ContinuationAbortTests.swift */,
 				4A2DA50505FE4B1C7D0322CD /* ConversationHTMLRendererTests.swift */,
 				0CE98B74ED0E8E45BAA52E7C /* CriticDocumentVerificationTests.swift */,
 				935037135636A211E60F8B0E /* CriticEngineContextAutoResizeTests.swift */,
@@ -1717,6 +1720,7 @@
 				49423F862E06BF829B1FEA3B /* ContextInjectorVisionTests.swift in Sources */,
 				86876F632F330BA6BBDC603B /* ContextManagerTests.swift in Sources */,
 				2E11B9B36666896C7F0AA9CF /* ContextPreRunCompactionTests.swift in Sources */,
+				F941B1D0C82B2D53B37BEB97 /* ContinuationAbortTests.swift in Sources */,
 				A5F1A67A9B4C64122EEF2457 /* ConversationHTMLRendererTests.swift in Sources */,
 				30398C094FACED1F93BF5443 /* CriticDocumentVerificationTests.swift in Sources */,
 				B19F22565FF2D0274967D8E7 /* CriticEngineContextAutoResizeTests.swift in Sources */,

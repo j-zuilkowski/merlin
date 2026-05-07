@@ -126,7 +126,7 @@ final class ContinuationAbortTests: XCTestCase {
         let injectURL = dir.appendingPathComponent("inject.txt")
 
         let engine = makeEngine(injectURL: injectURL)
-        let mock = MockProvider(responses: ["[STEP_ALREADY_DONE] The commit already exists."])
+        let mock = MockProvider(responses: [.text("[STEP_ALREADY_DONE] The commit already exists.")])
         engine.setRegistryForTesting(provider: mock)
 
         // Write 3-step continuation inject (step 1 already done, steps 2-4 pending)
