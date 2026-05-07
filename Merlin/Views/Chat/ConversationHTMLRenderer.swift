@@ -86,14 +86,8 @@ enum ConversationHTMLRenderer {
     static func markdownToHTML(_ escaped: String) -> String {
         var result = escaped
 
-        // Fenced code blocks — must run before inline patterns to avoid mangling backticks
-        result = fencedCodeBlockPattern.stringByReplacingMatches(
-            in: result,
-            range: NSRange(result.startIndex..., in: result),
-            withTemplate: "$1"   // replaced by the transform closure below
-        )
-        // NSRegularExpression template replacement doesn't support closures;
-        // use manual iteration instead.
+        // Fenced code blocks must be transformed with manual iteration:
+        // template replacement cannot generate the final `<pre><code...>` HTML safely.
         result = replaceFencedCodeBlocks(in: result)
 
         // Inline image: ![alt](url) — before bold/italic so * inside alt isn't mangled
