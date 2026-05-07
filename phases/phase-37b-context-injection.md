@@ -307,3 +307,27 @@ git add Merlin/Engine/ContextInjector.swift \
         project.yml
 git commit -m "Phase 37b — ContextInjector (@mention, attachment, drag-drop)"
 ```
+
+---
+
+## Fixes
+
+### Paste freeze (5–10 s) on long prompts (2026-05-07)
+
+**Symptom:** Pasting a multi-paragraph prompt into the chat input caused a 5–10 second
+UI freeze. The text field was unresponsive until `findFiles` completed.
+
+**Root cause:** `updateAtSuggestions` called `findFiles` synchronously on the main thread
+inside `onChange(of: draft)`. `findFiles` used `FileManager.enumerator` which walked the
+entire project tree — including Rust `target/` directories with tens of thousands of files.
+
+**Fix in `ChatView.updateAtSuggestions`:**
+
+1. Require ≥ 2 characters before scanning (bare `@` alone does nothing).
+2. Track `@State private var atSuggestionTask: Task<Void, Never>?`; cancel it before starting a new scan.
+3. Run `findFiles` on `Task.detached` — main thread is never blocked.
+4. Skip known large directories in `findFiles`:
+   `["target", ".build", "DerivedData", "node_modules", ".git", ".svn",
+     "Pods", ".hg", "vendor", "dist", "build", ".gradle",
+     "cmake-build-debug", "cmake-build-release"]`
+5. Call `enumerator.skipDescendants()` when a skipped directory is encountered.

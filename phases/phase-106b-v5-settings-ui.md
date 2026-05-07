@@ -249,3 +249,34 @@ git add Merlin/Views/Settings/RoleSlotSettingsView.swift \
         project.yml
 git commit -m "Phase 106b — V5 Settings UI (role slot assignment + domain selector + performance dashboard)"
 ```
+
+---
+
+## Fixes
+
+### Slot assignments not persisting to config.toml (2026-05-06)
+
+**Symptom:** Changing a slot in Settings > Providers saved the value in-memory but the
+selection was lost after relaunch. `~/.merlin/config.toml` was never written.
+
+**Root cause:** `RoleSlotSettingsView` mutated `settings.slotAssignments` (an
+`@EnvironmentObject` `AppSettings` property) directly but never called `save(to:)`.
+Every other settings change path (hooks, connectors, reset) called `save(to:)`, so only
+slot changes were silently dropped.
+
+**Fix in `RoleSlotSettingsView`:** added `.onChange(of: settings.slotAssignments)` that
+calls a `saveSlots()` helper:
+
+```swift
+.onChange(of: settings.slotAssignments) { _, _ in
+    Task { await saveSlots() }
+}
+
+private func saveSlots() async {
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let url = home.appendingPathComponent(".merlin/config.toml")
+    try? await AppSettings.shared.save(to: url)
+}
+```
+
+Every picker change now writes through to `~/.merlin/config.toml` immediately.

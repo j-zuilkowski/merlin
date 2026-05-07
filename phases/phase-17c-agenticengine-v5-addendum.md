@@ -292,3 +292,58 @@ cd ~/Documents/localProject/merlin
 git add phases/phase-17c-agenticengine-v5-addendum.md
 git commit -m "Phase 17c — AgenticEngine v5+ addendum (subagents + critic + slots + planning + RAG + LoRA + loop continuation)"
 ```
+
+---
+
+## Fixes
+
+### Thinking gate checked wrong provider — thinking never activated (2026-05-07)
+
+**Symptom:** Thinking was never enabled for the reason/orchestrate slots even when the
+provider (DeepSeek Pro) supports it. Every run used `useThinking = false`.
+
+**Root cause:** `shouldUseThinking()` (and the inline `useThinking` computation) read
+`registry.activeConfig`, which returns the config for `activeProviderID`. The active
+provider is set by the primary-provider picker — in the user's setup this was
+`deepseek-flash` (`supportsThinking: false`). So even when the reason slot resolved to
+DeepSeek Pro (`supportsThinking: true`), the thinking gate evaluated the wrong config.
+
+**Fix in `AgenticEngine.runLoop`:** compute `providerSupportsThinking` from the *actual
+provider being called* (`registry?.config(for: provider.id)?.supportsThinking ?? false`),
+declared before `useThinking` so the compiler sees it in scope:
+
+```swift
+let providerSupportsThinking = registry?.config(for: provider.id)?.supportsThinking ?? false
+let useThinking = (workingSlot == .reason || workingSlot == .orchestrate)
+    && providerSupportsThinking
+    && thinkingDetector.shouldEnableThinking(for: userMessage)
+```
+
+---
+
+### HTTP 400 from non-thinking providers receiving `reasoning_content` (2026-05-07)
+
+**Symptom:** After a continuation turn ran on the reason slot (Pro, thinking enabled),
+subsequent requests to Flash returned HTTP 400: "param extra reasoning_content is not
+expected" (DeepSeek Flash rejects assistant messages that carry `reasoning_content`).
+
+**Root cause:** When Pro generated thinking content, the assistant message was stored in
+`ContextManager` with `thinkingContent` set.  The next iteration read those messages from
+context and sent them verbatim to Flash, which does not accept `reasoning_content` in the
+conversation history.
+
+**Fix in `AgenticEngine.runLoop`:** strip `thinkingContent` from all messages in the
+`filteredMessages` array when the target provider has `supportsThinking: false`:
+
+```swift
+let filteredMessages: [Message] = providerSupportsThinking ? rawMessages : rawMessages.map { msg in
+    guard msg.thinkingContent != nil else { return msg }
+    var stripped = msg
+    stripped.thinkingContent = nil
+    return stripped
+}
+```
+
+`filteredMessages` (not `rawMessages`) is then passed to `CompletionRequest`. The
+`ContextManager` still stores the original messages with thinking content intact so that
+Pro can echo them back correctly on its own turns.
