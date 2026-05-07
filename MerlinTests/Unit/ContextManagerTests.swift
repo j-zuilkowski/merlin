@@ -21,15 +21,19 @@ final class ContextManagerTests: XCTestCase {
     }
 
     func testCompactionFiresAt800k() {
+        // Use proper exchange pairs (assistant tool_call + tool result) so the
+        // new compact logic can find and remove them as complete groups.
         let cm = ContextManager()
-        for _ in 0..<100 {
-            let toolMsg = Message(
-                role: .tool,
-                content: .text(String(repeating: "x", count: 28_000)),
-                toolCallId: "tc1",
-                timestamp: Date()
-            )
-            cm.append(toolMsg)
+        for i in 0..<100 {
+            let call = ToolCall(id: "tc\(i)", type: "function",
+                                function: FunctionCall(name: "f", arguments: "{}"))
+            let asst = Message(role: .assistant, content: .text(""),
+                               toolCalls: [call], timestamp: Date())
+            let tool = Message(role: .tool,
+                               content: .text(String(repeating: "x", count: 28_000)),
+                               toolCallId: "tc\(i)", timestamp: Date())
+            cm.append(asst)
+            cm.append(tool)
         }
         XCTAssertLessThan(cm.estimatedTokens, 800_000)
     }
@@ -40,16 +44,20 @@ final class ContextManagerTests: XCTestCase {
         let asst = Message(role: .assistant, content: .text("important answer"), timestamp: Date())
         cm.append(user)
         cm.append(asst)
-        for _ in 0..<100 {
-            cm.append(Message(
-                role: .tool,
-                content: .text(String(repeating: "y", count: 28_000)),
-                toolCallId: "t",
-                timestamp: Date()
-            ))
+        // Use exchange pairs so the new compact logic can remove them.
+        for i in 0..<100 {
+            let call = ToolCall(id: "tc\(i)", type: "function",
+                                function: FunctionCall(name: "f", arguments: "{}"))
+            let asstTool = Message(role: .assistant, content: .text(""),
+                                   toolCalls: [call], timestamp: Date())
+            let toolResult = Message(role: .tool,
+                                     content: .text(String(repeating: "y", count: 28_000)),
+                                     toolCallId: "tc\(i)", timestamp: Date())
+            cm.append(asstTool)
+            cm.append(toolResult)
         }
         XCTAssertTrue(cm.messages.contains { $0.role == .user })
-        XCTAssertTrue(cm.messages.contains { $0.role == .assistant })
+        XCTAssertTrue(cm.messages.contains { $0.role == .assistant && $0.toolCalls == nil })
     }
 
     func testClearResetsState() {

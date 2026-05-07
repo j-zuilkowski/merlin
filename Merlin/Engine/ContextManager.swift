@@ -89,27 +89,68 @@ class ContextManager: ObservableObject {
     private func compact(force: Bool) {
         let countBefore = messages.count
         let tokensBefore = estimatedTokens
-        let toolIndices = messages.indices.filter { messages[$0].role == .tool }
-        guard force || !toolIndices.isEmpty else { return }
+
+        // Build exchange groups: one assistant message with toolCalls followed
+        // immediately by one or more tool result messages.
+        //
+        // We MUST remove complete groups rather than lone tool results so the
+        // context never contains an assistant message with `tool_calls` that
+        // lacks its corresponding tool result messages.  Providers (DeepSeek,
+        // OpenAI-compatible) reject such contexts with HTTP 400:
+        // "An assistant message with 'tool_calls' must be followed by tool
+        // messages responding to each 'tool_call_id'."
+        struct ExchangeGroup {
+            var assistantIdx: Int
+            var toolIndices: [Int]
+        }
+
+        var groups: [ExchangeGroup] = []
+        var i = 0
+        while i < messages.count {
+            let msg = messages[i]
+            guard msg.role == .assistant,
+                  let calls = msg.toolCalls,
+                  !calls.isEmpty else {
+                i += 1
+                continue
+            }
+            // Collect all consecutive tool results that follow this assistant message.
+            var toolIndices: [Int] = []
+            var j = i + 1
+            while j < messages.count && messages[j].role == .tool {
+                toolIndices.append(j)
+                j += 1
+            }
+            if !toolIndices.isEmpty {
+                groups.append(ExchangeGroup(assistantIdx: i, toolIndices: toolIndices))
+            }
+            i = j
+        }
+
+        guard force || !groups.isEmpty else { return }
 
         let recentStart = max(0, messages.count - compactionKeepRecentTurns)
-        let oldToolIndices = toolIndices.filter { $0 < recentStart }
-        let indicesToCompact: [Int]
+        let oldGroups = groups.filter { $0.assistantIdx < recentStart }
+        let groupsToRemove: [ExchangeGroup]
         if force {
-            indicesToCompact = oldToolIndices.isEmpty ? toolIndices : oldToolIndices
+            groupsToRemove = oldGroups.isEmpty ? groups : oldGroups
         } else {
-            indicesToCompact = oldToolIndices
+            groupsToRemove = oldGroups
         }
-        guard force || !indicesToCompact.isEmpty else { return }
 
-        if indicesToCompact.isEmpty && force {
+        guard force || !groupsToRemove.isEmpty else { return }
+
+        if groupsToRemove.isEmpty && force {
             messages.append(Message(
                 role: .system,
                 content: .text("[context compacted]"),
                 timestamp: Date()
             ))
         } else {
-            let digest = indicesToCompact.map { idx in
+            // Build the removal set: both assistant and tool result indices.
+            let allIndices = Set(groupsToRemove.flatMap { [$0.assistantIdx] + $0.toolIndices })
+
+            let digest = allIndices.sorted().map { idx -> String in
                 let message = messages[idx]
                 let preview: String
                 switch message.content {
@@ -128,15 +169,15 @@ class ContextManager: ObservableObject {
 
             let summary = Message(
                 role: .system,
-                content: .text("[context compacted — \(indicesToCompact.count) tool results summarised] \(digest)"),
+                content: .text(
+                    "[context compacted — \(groupsToRemove.count) tool exchange(s) summarised] \(digest)"
+                ),
                 timestamp: Date()
             )
 
             var rebuilt: [Message] = []
             for (index, message) in messages.enumerated() {
-                if indicesToCompact.contains(index) {
-                    continue
-                }
+                if allIndices.contains(index) { continue }
                 rebuilt.append(message)
             }
             rebuilt.insert(summary, at: min(recentStart, rebuilt.count))
