@@ -867,7 +867,7 @@ final class AgenticEngine {
                             case .pass, .skipped:
                                 consecutiveCriticFailures = 0
                             case .fail:
-                                consecutiveCriticFailures += 1
+                                break
                             }
                             switch verdict {
                             case .pass:
@@ -884,6 +884,7 @@ final class AgenticEngine {
                                     ))
                                     continue
                                 } else {
+                                    consecutiveCriticFailures += 1
                                     continuation.yield(.systemNote(
                                         "[Critic: max retries (\(maxRetries)) exhausted — \(reason)]"
                                     ))
