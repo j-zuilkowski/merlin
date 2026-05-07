@@ -293,11 +293,10 @@ final class AgenticEngine {
             return resolved
         }
 
-        // No slot assignment — only the execute slot falls back to the registry primary provider.
-        // Reason, vision, and orchestrate return nil when not explicitly configured so callers
-        // can distinguish "no provider assigned" from "active primary provider".
-        guard effectiveSlot == .execute else { return nil }
-        return registry?.primaryProvider
+        if effectiveSlot == .execute || effectiveSlot == .vision {
+            return registry?.primaryProvider ?? NullProvider()
+        }
+        return nil
     }
 
     /// Determines which slot should handle this message.
