@@ -121,6 +121,7 @@ final class AgenticEngine {
     private var pendingContinuationSteps: [PlanStep] = []
     private var pendingContinuationOriginalTask: String = ""
     private var pendingContinuationCompletedCount: Int = 0
+    private var continuationAborted: Bool = false
 
     // MARK: - Ceiling continuation
 
@@ -526,6 +527,7 @@ final class AgenticEngine {
         // Skip re-classification and re-planning: treat as high-stakes so the ceiling is
         // generous, but needsPlanning=false to avoid re-decomposing the already-split task.
         let isContinuation = userMessage.hasPrefix("[CONTINUATION]")
+        continuationAborted = false
 
         // Reset the ceiling-continuation counter whenever a genuine new user message
         // starts so the budget applies per task, not per session.
@@ -820,6 +822,15 @@ final class AgenticEngine {
                             thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
                             timestamp: Date()
                         ))
+                        // Continuation abort: if the model signals the step is already done, clear
+                        // the pending queue so no further continuation turns are scheduled.
+                        if isContinuation && fullText.contains("[STEP_ALREADY_DONE]") {
+                            continuationAborted = true
+                            pendingContinuationSteps.removeAll()
+                            continuation.yield(.systemNote(
+                                "↩︎ Continuation step already done — remaining steps cancelled."
+                            ))
+                        }
                     }
                     // Fire critic when any of:
                     //   • write_file was called — written file contents fed to critic
@@ -1151,7 +1162,9 @@ final class AgenticEngine {
 
         // Fix 1: If this turn processed a batch-split plan, write the remaining steps
         // as a [CONTINUATION] inject so the engine picks them up automatically.
-        if !pendingContinuationSteps.isEmpty {
+        // Abort guard: if the model signalled [STEP_ALREADY_DONE], skip scheduling
+        // so no further continuation turns fire for already-completed work.
+        if !pendingContinuationSteps.isEmpty && !continuationAborted {
             schedulePendingContinuation()
         }
     }
@@ -1191,6 +1204,7 @@ final class AgenticEngine {
         \(stepList)
 
         Original task: \(originalTask)
+        If this step is already complete, respond with [STEP_ALREADY_DONE] and take no further action.
         """
 
         try? message.write(to: continuationInjectURL, atomically: true, encoding: .utf8)

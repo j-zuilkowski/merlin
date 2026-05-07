@@ -56,6 +56,7 @@ var currentProjectPath: String?                              // triggers Project
 var projectSizeMetrics: ProjectSizeMetrics = .default        // adaptive ceiling input
 var maxIterationsOverride: Int?                              // test-only loop ceiling
 var continuationInjectURL: URL                               // override in tests
+private var continuationAborted: Bool = false                // suppresses schedulePendingContinuation() after [STEP_ALREADY_DONE]
 var nearCeilingWarningAddendum: String?                      // injected into system prompt
 var nearCeilingThreshold: Int = 8                            // iterations from ceiling to warn
 ```
@@ -240,6 +241,20 @@ message to `continuationInjectURL` (~/.merlin/inject.txt).
 6. `standingInstructions`
 7. Combined provider addendum + domain addendum (via `combinedAddendum(for:)`)
 8. `nearCeilingWarningAddendum` (appended when near loop ceiling)
+
+### 19. Continuation abort detection
+
+When `isContinuation == true` and `fullText.contains("[STEP_ALREADY_DONE]")`:
+- Sets `continuationAborted = true`
+- Calls `pendingContinuationSteps.removeAll()`
+- Emits `.systemNote("↩︎ Continuation step already done — remaining steps cancelled.")`
+- Post-turn hook skips `schedulePendingContinuation()` when `continuationAborted` is set
+
+`continuationAborted` is reset to `false` at the start of every turn so it is not
+sticky across independent messages.
+
+`schedulePendingContinuation()` always appends the abort instruction to the injected
+message so the model knows it may emit `[STEP_ALREADY_DONE]`.
 
 ---
 
