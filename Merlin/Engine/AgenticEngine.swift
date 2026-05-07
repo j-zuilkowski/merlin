@@ -716,8 +716,14 @@ final class AgenticEngine {
                     provider = selectProvider(for: userMessage)
                 }
                 let requestModel = modelID(for: provider)
-                let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
+                // Check thinking support against the actual slot provider, not activeConfig.
+                // activeConfig reflects activeProviderID (often the execute/Flash provider)
+                // which may have supportsThinking=false even though the reason/orchestrate
+                // slot provider (Pro) supports it.
                 let providerSupportsThinking = registry?.config(for: provider.id)?.supportsThinking ?? false
+                let useThinking = (workingSlot == .reason || workingSlot == .orchestrate)
+                    && providerSupportsThinking
+                    && thinkingDetector.shouldEnableThinking(for: userMessage)
                 // Strip reasoning_content from history when the target provider does not
                 // support thinking. DeepSeek-chat (Flash) returns HTTP 400 if any message
                 // in the context carries a `reasoning_content` field — even though
