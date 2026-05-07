@@ -68,7 +68,7 @@ actor ThreadAutomationEngine {
                 }
                 await self.checkAndFire()
                 do {
-                    try await Task.sleep(for: .milliseconds(1000))
+                    try await Task.sleep(for: .milliseconds(50))
                 } catch {
                     return
                 }
