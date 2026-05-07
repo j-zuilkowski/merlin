@@ -12,6 +12,7 @@ struct ChatView: View {
     @State private var showAtPicker: Bool = false
     @State private var skillQuery: String = ""
     @State private var showSkillsPicker: Bool = false
+    @State private var atSuggestionTask: Task<Void, Never>? = nil
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
@@ -290,14 +291,23 @@ struct ChatView: View {
         let query = String(draft[draft.index(after: atIdx)...])
             .components(separatedBy: .whitespaces)
             .first ?? ""
-        guard !query.isEmpty else {
+        guard query.count >= 2 else {   // require at least 2 chars before scanning
             showAtPicker = false
             atSuggestions = []
             return
         }
 
-        atSuggestions = findFiles(matching: query, in: appState.projectPath)
-        showAtPicker = !atSuggestions.isEmpty
+        // Cancel any in-flight search and run the new one off the main thread.
+        atSuggestionTask?.cancel()
+        let projectPath = appState.projectPath
+        atSuggestionTask = Task {
+            let results = await Task.detached(priority: .userInitiated) {
+                findFiles(matching: query, in: projectPath)
+            }.value
+            guard !Task.isCancelled else { return }
+            atSuggestions = results
+            showAtPicker = !results.isEmpty
+        }
     }
 
     private func updateSkillSuggestions(for draft: String) {
@@ -312,16 +322,31 @@ struct ChatView: View {
         showSkillsPicker = true
     }
 
+    /// Directories to skip during @-mention file search. These are build artifact and
+    /// dependency directories that are large and never contain source files the user
+    /// would want to @-mention.
+    private static let findFilesSkippedDirs: Set<String> = [
+        "target", ".build", "DerivedData", "node_modules", ".git",
+        ".svn", "__pycache__", ".tox", "venv", ".venv", "dist", "build",
+    ]
+
     private func findFiles(matching query: String, in projectPath: String) -> [String] {
         guard !projectPath.isEmpty, let enumerator = FileManager.default.enumerator(
             at: URL(fileURLWithPath: projectPath),
-            includingPropertiesForKeys: [.isRegularFileKey],
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
             options: [.skipsPackageDescendants]
         ) else { return [] }
 
         let lowerQuery = query.lowercased()
         var results: [String] = []
         for case let url as URL in enumerator {
+            // Skip known large artifact directories entirely.
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+                if Self.findFilesSkippedDirs.contains(url.lastPathComponent) {
+                    enumerator.skipDescendants()
+                }
+                continue
+            }
             let relative = url.path.replacingOccurrences(of: projectPath + "/", with: "")
             let name = url.lastPathComponent.lowercased()
             if name.contains(lowerQuery) || relative.lowercased().contains(lowerQuery) {

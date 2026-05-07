@@ -717,9 +717,22 @@ final class AgenticEngine {
                 }
                 let requestModel = modelID(for: provider)
                 let useThinking = (workingSlot == .reason || workingSlot == .orchestrate) && shouldUseThinking(for: userMessage)
+                let providerSupportsThinking = registry?.config(for: provider.id)?.supportsThinking ?? false
+                // Strip reasoning_content from history when the target provider does not
+                // support thinking. DeepSeek-chat (Flash) returns HTTP 400 if any message
+                // in the context carries a `reasoning_content` field — even though
+                // deepseek-reasoner requires it to be echoed back. Filter at the call site
+                // so each provider only sees the fields it accepts.
+                let rawMessages = messagesForProvider()
+                let filteredMessages: [Message] = providerSupportsThinking ? rawMessages : rawMessages.map { msg in
+                    guard msg.thinkingContent != nil else { return msg }
+                    var stripped = msg
+                    stripped.thinkingContent = nil
+                    return stripped
+                }
                 var request = CompletionRequest(
                     model: requestModel,
-                    messages: messagesForProvider(),
+                    messages: filteredMessages,
                     thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
                 )
                 request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
