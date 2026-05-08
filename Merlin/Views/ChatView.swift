@@ -6,7 +6,7 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var skillsRegistry: SkillsRegistry
-    @EnvironmentObject private var sessionManager: SessionManager
+    @FocusedObject private var sessionManager: SessionManager?
     @StateObject private var model = ChatViewModel()
     @State private var atSuggestions: [String] = []
     @State private var showAtPicker: Bool = false
@@ -76,7 +76,7 @@ struct ChatView: View {
             }
 
             Button {
-                if let session = sessionManager.activeSession {
+                if let session = sessionManager?.activeSession {
                     session.permissionMode = session.permissionMode.next
                 }
             } label: {
@@ -101,7 +101,7 @@ struct ChatView: View {
     }
 
     private var currentMode: PermissionMode {
-        sessionManager.activeSession?.permissionMode ?? .ask
+        sessionManager?.activeSession?.permissionMode ?? appState.engine.permissionMode
     }
 
     private var toolbarActionsList: [ToolbarAction] {

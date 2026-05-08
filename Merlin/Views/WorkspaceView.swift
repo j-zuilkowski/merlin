@@ -65,6 +65,7 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private func sessionContent(session: LiveSession) -> some View {
+        let activeManager = coordinator.activeProjectManager
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ContentView()
@@ -72,6 +73,7 @@ struct WorkspaceView: View {
                     .environmentObject(session.appState)
                     .environmentObject(session.appState.registry)
                     .focusedObject(coordinator)
+                    .focusedObject(activeManager)
                     .focusedObject(session.appState)
                     .focusedObject(session.appState.registry)
                     .environment(\.openURL, OpenURLAction { url in
