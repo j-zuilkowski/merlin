@@ -1461,6 +1461,41 @@ Read phases/phase-184-version-bump-v1-5.md and execute.
 #   timestamps, archived collapse, context menus (Resume/Archive/Recall/Delete)
 # - 184: Marketing version 1.5.0, build 4, tag v1.5.0
 
+# ── V1.6 — Multi-Project Workspace ───────────────────────────────────────────
+
+# ── PHASE 185a — WorkspaceCoordinator Tests ───────────────────────────────────
+Read phases/phase-185a-workspace-coordinator-tests.md and execute.
+# Verify: BUILD FAILED — WorkspaceCoordinator not found (expected)
+# Commit: Phase 185a — WorkspaceCoordinatorTests (failing)
+
+# ── PHASE 185b — WorkspaceCoordinator Implementation ─────────────────────────
+Read phases/phase-185b-workspace-coordinator.md and execute.
+# Verify: BUILD SUCCEEDED; all WorkspaceCoordinatorTests pass
+# Commit: Phase 185b — WorkspaceCoordinator multi-project state manager
+
+# ── PHASE 186b — Multi-Project UI ────────────────────────────────────────────
+Read phases/phase-186b-multiproject-ui.md and execute.
+# Verify: BUILD SUCCEEDED, zero warnings
+# Manual: project sections in sidebar, project header popover with New Session /
+#         Close Project, "+ New Project Workspace" bottom button opens picker sheet,
+#         Cmd+N opens picker sheet, second project adds section below first
+# Commit: Phase 186b — Multi-project sidebar: project sections, header popover, picker sheet
+
+# ── PHASE 187 — Version Bump to v1.6.0 ───────────────────────────────────────
+Read phases/phase-187-version-bump-v1-6.md and execute.
+# Verify: BUILD SUCCEEDED; About Merlin shows 1.6.0
+# Commit: Bump version to 1.6.0 (build 5)
+# Tag: v1.6.0
+
+# ── DONE (v1.6 Multi-Project Workspace) ───────────────────────────────────────
+# Phases 185–187 add multi-project workspace support:
+# - 185: WorkspaceCoordinator owns [SessionManager] + globally active LiveSession
+# - 186: SessionSidebar rewritten with per-project sections; project name label
+#   opens popover (New Session / Close Project); bottom button → New Project Workspace
+#   opens picker sheet; WorkspaceView uses coordinator; MerlinCommands updated;
+#   Cmd+N opens project picker sheet
+# - 187: Marketing version 1.6.0, build 5, tag v1.6.0
+
 # ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
 # Phases 143–150 close two categories of silent failure:
 #

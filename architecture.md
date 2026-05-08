@@ -2933,6 +2933,128 @@ None — no new user-configurable settings. Archive/recall is purely structural.
 
 ---
 
+## V1.6 — Multi-Project Workspace
+
+### Motivation
+
+V1.5 added session history per project, but each project still lives in its own window. V1.6 collapses all open projects into a single workspace window, matching Codex's UX: a left sidebar lists all open projects, sessions stack under each project header, and a single content area shows the active session.
+
+### Goals
+
+- Multiple projects visible simultaneously in one sidebar, each with their sessions listed below
+- Clicking a project's name label opens a popover with a "New Session" option (and "Close Project")
+- The bottom "+ New Session" button is replaced with "+ New Project Workspace" — opens the project picker as a sheet and adds the selected project to the current window's sidebar
+- Cmd+N opens the project picker sheet (same as clicking "+ New Project Workspace")
+- Sessions across all open projects share one content area; clicking any session makes it active
+- No multi-window complexity — one workspace window, multiple projects inside it
+
+### WorkspaceCoordinator
+
+A new `WorkspaceCoordinator` replaces the single `SessionManager` in `WorkspaceView`. It owns the list of open project managers and tracks the globally active session:
+
+```swift
+@MainActor
+final class WorkspaceCoordinator: ObservableObject {
+    @Published private(set) var projectManagers: [SessionManager]
+    @Published private(set) var activeSession: LiveSession?
+    @Published var showingProjectPicker: Bool = false
+
+    init(initialRef: ProjectRef)
+    func addProject(_ ref: ProjectRef) async        // no-op if already open
+    func removeProject(_ ref: ProjectRef)           // drops SessionManager; updates activeSession
+    func setActiveSession(_ session: LiveSession)   // called on sidebar row tap
+}
+```
+
+`WorkspaceCoordinator` is exposed as a `@FocusedObject` so `MerlinCommands` can drive `showingProjectPicker = true` from Cmd+N.
+
+### WorkspaceView changes
+
+`WorkspaceView` replaces `@StateObject var sessionManager: SessionManager` with `@StateObject var coordinator: WorkspaceCoordinator`. The content area renders `coordinator.activeSession?.appState` instead of the single session manager's active session. A sheet is presented when `coordinator.showingProjectPicker` is true.
+
+```
+WorkspaceView
+  ├── coordinator: WorkspaceCoordinator          (replaces sessionManager)
+  ├── SessionSidebar(coordinator:)               (new multi-project sidebar)
+  ├── ContentView(appState: activeSession.appState)
+  └── .sheet(isPresented: coordinator.showingProjectPicker) {
+          ProjectPickerView(onSelect: { ref in
+              Task { await coordinator.addProject(ref) }
+          })
+      }
+```
+
+### Sidebar layout
+
+```
+┌──────────────────────────────┐
+│ ● xcalibre-server      [···] │  ← tappable label → popover
+│                              │
+│  Sessions                    │
+│   ▸ Refactor parser    2h    │
+│   ▸ New Session              │
+│                              │
+│  Prior Sessions              │
+│   ▸ Add CHM support    3d    │
+│   ▸ Stage 6 cleanup    1w    │
+│   Show archived…             │
+├──────────────────────────────┤
+│ ● merlin               [···] │  ← second project
+│                              │
+│  Sessions                    │
+│   ▸ Fix circuit breaker 19h  │
+├──────────────────────────────┤
+│ + New Project Workspace      │  ← replaced bottom button
+└──────────────────────────────┘
+```
+
+**Project header popover** (shown when project label is tapped):
+```
+┌──────────────────┐
+│ ＋ New Session   │
+│ ✕ Close Project  │
+└──────────────────┘
+```
+
+### ProjectPickerView changes
+
+`ProjectPickerView` gains an optional `onSelect: ((ProjectRef) -> Void)?` parameter. When provided (sheet mode), selecting a project calls `onSelect` instead of `openWindow`. The existing standalone window mode (no `onSelect`) is unchanged for initial launch.
+
+### MerlinCommands changes
+
+`@FocusedObject var sessionManager: SessionManager?` is replaced with `@FocusedObject var coordinator: WorkspaceCoordinator?`. The "New Session" `CommandGroup` becomes:
+
+```swift
+CommandGroup(replacing: .newItem) {
+    Button("New Project Workspace") {
+        coordinator?.showingProjectPicker = true
+    }
+    .keyboardShortcut("n", modifiers: .command)
+    .disabled(coordinator == nil)
+}
+```
+
+### File Layout
+
+| File | Change |
+|---|---|
+| `Sessions/WorkspaceCoordinator.swift` | New — multi-project state manager |
+| `Views/WorkspaceView.swift` | Replace `SessionManager` with `WorkspaceCoordinator`; add picker sheet |
+| `Views/SessionSidebar.swift` | Rewrite — iterate `coordinator.projectManagers`; project header popover; replace bottom button |
+| `Views/ProjectPickerView.swift` | Add `onSelect: ((ProjectRef) -> Void)?` parameter |
+| `App/MerlinCommands.swift` | `@FocusedObject WorkspaceCoordinator`; Cmd+N → picker sheet |
+| `App/AppFocusedValues.swift` | Update focused value types if needed |
+
+### Implementation Order
+
+| Phase | Description |
+|---|---|
+| 185a/b | `WorkspaceCoordinator` — multi-project state, add/remove project, active session tracking |
+| 186a/b | `WorkspaceView` + `SessionSidebar` multi-project UI — project sections, header popover, bottom button, picker sheet, `MerlinCommands` update |
+| 187 | Version bump to 1.6.0 |
+
+---
+
 ## Versioning Policy
 
 ### Two version fields
