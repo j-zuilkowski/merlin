@@ -1,3 +1,51 @@
+# Phase 182b — Session Restore Implementation
+
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 182a complete: SessionRestoreTests committed (failing).
+
+---
+
+## Edit: Merlin/Engine/ContextManager.swift
+
+Add `load(_ messages: [Message])` after the `clear()` method.
+
+**Find:**
+```swift
+    func clear() {
+        messages.removeAll()
+        estimatedTokens = 0
+    }
+```
+
+**Replace with:**
+```swift
+    func clear() {
+        messages.removeAll()
+        estimatedTokens = 0
+    }
+
+    /// Bulk-loads historical messages (e.g. from a restored Session) and
+    /// compacts immediately if the injected history exceeds the pre-run threshold.
+    func load(_ messages: [Message]) {
+        guard !messages.isEmpty else { return }
+        for message in messages {
+            self.messages.append(message)
+        }
+        estimatedTokens = recomputeEstimatedTokens()
+        compactIfNeededBeforeRun(isContinuation: false)
+    }
+```
+
+---
+
+## Edit: Merlin/Sessions/LiveSession.swift
+
+Add `initialMessages` and `sessionStore` parameters to `init`. Full replacement:
+
+```swift
 // LiveSession — wires all per-session subsystems around an AppState.
 //
 // Created by SessionManager for each project window session. Responsibilities:
@@ -136,3 +184,92 @@ final class LiveSession: ObservableObject, Identifiable {
         appState.engine.toolRouter.stagingBuffer ?? stagingBufferStorage
     }
 }
+```
+
+---
+
+## Edit: Merlin/Sessions/SessionManager.swift
+
+Add `sessionStore` property, pass it to `LiveSession`, add `restore(session:)`. Full replacement:
+
+```swift
+import Foundation
+import SwiftUI
+
+@MainActor
+final class SessionManager: ObservableObject {
+    let projectRef: ProjectRef
+    let sessionStore: SessionStore
+    @Published private(set) var liveSessions: [LiveSession] = []
+    @Published private(set) var activeSessionID: UUID?
+
+    var activeSession: LiveSession? {
+        liveSessions.first { $0.id == activeSessionID }
+    }
+
+    init(projectRef: ProjectRef) {
+        self.projectRef = projectRef
+        self.sessionStore = SessionStore(projectPath: projectRef.path)
+    }
+
+    @discardableResult
+    func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
+        let session = LiveSession(projectRef: projectRef, sessionStore: sessionStore)
+        session.permissionMode = mode
+        liveSessions.append(session)
+        activeSessionID = session.id
+        return session
+    }
+
+    /// Restores a persisted Session as a new LiveSession.
+    /// The session's message history is injected into the ContextManager and
+    /// compacted if it exceeds the pre-run threshold.
+    /// The restored LiveSession gets a fresh UUID — the original Session record
+    /// on disk is not modified until the user sends a new message.
+    @discardableResult
+    func restore(session: Session) async -> LiveSession {
+        let live = LiveSession(
+            projectRef: projectRef,
+            initialMessages: session.messages,
+            sessionStore: sessionStore
+        )
+        live.title = session.title
+        liveSessions.append(live)
+        activeSessionID = live.id
+        return live
+    }
+
+    func switchSession(to id: UUID) {
+        guard liveSessions.contains(where: { $0.id == id }) else { return }
+        activeSessionID = id
+    }
+
+    func closeSession(_ id: UUID) async {
+        liveSessions.removeAll { $0.id == id }
+        if activeSessionID == id {
+            activeSessionID = liveSessions.last?.id
+        }
+    }
+}
+```
+
+---
+
+## Verify
+```bash
+xcodebuild -scheme MerlinTests test \
+    -destination 'platform=macOS' \
+    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    | grep -E 'SessionRestore.*passed|SessionRestore.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+Expected: BUILD SUCCEEDED; all SessionRestoreTests pass.
+
+## Commit
+```bash
+cd ~/Documents/localProject/merlin
+git add phases/phase-182b-session-restore.md \
+        Merlin/Engine/ContextManager.swift \
+        Merlin/Sessions/LiveSession.swift \
+        Merlin/Sessions/SessionManager.swift
+git commit -m "Phase 182b — ContextManager.load + LiveSession initial messages + SessionManager.restore"
+```

@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 final class SessionManager: ObservableObject {
     let projectRef: ProjectRef
+    let sessionStore: SessionStore
     @Published private(set) var liveSessions: [LiveSession] = []
     @Published private(set) var activeSessionID: UUID?
 
@@ -13,15 +14,34 @@ final class SessionManager: ObservableObject {
 
     init(projectRef: ProjectRef) {
         self.projectRef = projectRef
+        self.sessionStore = SessionStore(projectPath: projectRef.path)
     }
 
     @discardableResult
     func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
-        let session = LiveSession(projectRef: projectRef)
+        let session = LiveSession(projectRef: projectRef, sessionStore: sessionStore)
         session.permissionMode = mode
         liveSessions.append(session)
         activeSessionID = session.id
         return session
+    }
+
+    /// Restores a persisted Session as a new LiveSession.
+    /// The session's message history is injected into the ContextManager and
+    /// compacted if it exceeds the pre-run threshold.
+    /// The restored LiveSession gets a fresh UUID — the original Session record
+    /// on disk is not modified until the user sends a new message.
+    @discardableResult
+    func restore(session: Session) async -> LiveSession {
+        let live = LiveSession(
+            projectRef: projectRef,
+            initialMessages: session.messages,
+            sessionStore: sessionStore
+        )
+        live.title = session.title
+        liveSessions.append(live)
+        activeSessionID = live.id
+        return live
     }
 
     func switchSession(to id: UUID) {

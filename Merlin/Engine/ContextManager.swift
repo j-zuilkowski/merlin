@@ -34,6 +34,17 @@ class ContextManager: ObservableObject {
         estimatedTokens = 0
     }
 
+    /// Bulk-loads historical messages (e.g. from a restored Session) and
+    /// compacts immediately if the injected history exceeds the pre-run threshold.
+    func load(_ messages: [Message]) {
+        guard !messages.isEmpty else { return }
+        for message in messages {
+            self.messages.append(message)
+        }
+        estimatedTokens = recomputeEstimatedTokens()
+        compactIfNeededBeforeRun(isContinuation: false)
+    }
+
     func messagesForProvider() -> [Message] {
         messages
     }
