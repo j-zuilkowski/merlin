@@ -1,114 +1,17 @@
 import SwiftUI
 
 struct SessionSidebar: View {
-    @EnvironmentObject private var mgr: SessionManager
-
-    @State private var showArchived = false
+    @EnvironmentObject private var coordinator: WorkspaceCoordinator
 
     var body: some View {
         VStack(spacing: 0) {
-            // Project header
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(.purple)
-                    .frame(width: 8, height: 8)
-                Text(mgr.projectRef.displayName)
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(1)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.bar)
-
-            Divider()
-
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-
-                    // MARK: Active live sessions
-                    SectionLabel("Sessions")
-
-                    ForEach(mgr.liveSessions) { session in
-                        SessionRowView(session: session,
-                                       isActive: session.id == mgr.activeSessionID)
-                            .onTapGesture { mgr.switchSession(to: session.id) }
-                            .contextMenu {
-                                Button("Close Session", role: .destructive) {
-                                    Task { await mgr.closeSession(session.id) }
-                                }
-                            }
-                    }
-
-                    // MARK: Prior sessions (disk, not currently live)
-                    let liveIDs = Set(mgr.liveSessions.map(\.id))
-                    let prior = mgr.sessionStore.activeSessions
-                        .filter { !liveIDs.contains($0.id) }
-
-                    if !prior.isEmpty {
-                        SectionLabel("Prior Sessions")
-                            .padding(.top, 8)
-
-                        ForEach(prior) { session in
-                            PriorSessionRowView(session: session)
-                                .onTapGesture {
-                                    Task { await mgr.restore(session: session) }
-                                }
-                                .contextMenu {
-                                    Button("Resume") {
-                                        Task { await mgr.restore(session: session) }
-                                    }
-                                    Divider()
-                                    Button("Archive") {
-                                        try? mgr.sessionStore.archive(session.id)
-                                    }
-                                    Button("Delete", role: .destructive) {
-                                        try? mgr.sessionStore.delete(session.id)
-                                    }
-                                }
-                        }
-                    }
-
-                    // MARK: Archived sessions (collapsible)
-                    let archived = mgr.sessionStore.archivedSessions
-                    if !archived.isEmpty {
-                        Button {
-                            showArchived.toggle()
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: showArchived
-                                      ? "chevron.down" : "chevron.right")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .foregroundStyle(.secondary)
-                                Text("Show archived")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.top, 8)
-                            .padding(.bottom, 2)
-                        }
-                        .buttonStyle(.plain)
-
-                        if showArchived {
-                            ForEach(archived) { session in
-                                PriorSessionRowView(session: session, dimmed: true)
-                                    .contextMenu {
-                                        Button("Recall") {
-                                            try? mgr.sessionStore.unarchive(session.id)
-                                        }
-                                        Divider()
-                                        Button("Delete", role: .destructive) {
-                                            try? mgr.sessionStore.delete(session.id)
-                                        }
-                                    }
-                            }
-                        }
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(coordinator.projectManagers, id: \.projectRef.path) { mgr in
+                        ProjectSection(mgr: mgr, coordinator: coordinator)
+                        Divider()
                     }
                 }
-                .padding(.horizontal, 6)
-                .padding(.bottom, 8)
             }
             .accessibilityIdentifier(AccessibilityID.sessionList)
 
@@ -117,9 +20,9 @@ struct SessionSidebar: View {
             Button {
                 TelemetryEmitter.shared.emitGUIAction("tap",
                     identifier: AccessibilityID.newSessionButton)
-                Task { await mgr.newSession() }
+                coordinator.showingProjectPicker = true
             } label: {
-                Label("New Session", systemImage: "plus")
+                Label("New Project Workspace", systemImage: "plus.square.on.square")
                     .font(.caption.weight(.medium))
                     .frame(maxWidth: .infinity)
             }
@@ -131,9 +34,179 @@ struct SessionSidebar: View {
     }
 }
 
-// MARK: - Live session row (existing behaviour)
+// MARK: - Project section
 
-private struct SessionRowView: View {
+private struct ProjectSection: View {
+    @ObservedObject var mgr: SessionManager
+    let coordinator: WorkspaceCoordinator
+
+    @State private var showHeaderPopover = false
+    @State private var showArchived = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Tappable project header
+            Button {
+                showHeaderPopover = true
+            } label: {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(.purple)
+                        .frame(width: 8, height: 8)
+                    Text(mgr.projectRef.displayName)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.bar)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showHeaderPopover, arrowEdge: .trailing) {
+                ProjectHeaderPopover(mgr: mgr, coordinator: coordinator,
+                                     isPresented: $showHeaderPopover)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                SectionLabel("Sessions")
+
+                ForEach(mgr.liveSessions) { session in
+                    LiveSessionRow(session: session,
+                                   isActive: session.id == coordinator.activeSession?.id)
+                        .onTapGesture { coordinator.setActiveSession(session) }
+                        .contextMenu {
+                            Button("Close Session", role: .destructive) {
+                                Task { await mgr.closeSession(session.id) }
+                            }
+                        }
+                }
+
+                // Prior sessions (disk records not currently live)
+                let liveIDs = Set(mgr.liveSessions.map(\.id))
+                let prior = mgr.sessionStore.activeSessions.filter { !liveIDs.contains($0.id) }
+
+                if !prior.isEmpty {
+                    SectionLabel("Prior Sessions").padding(.top, 6)
+
+                    ForEach(prior) { session in
+                        PriorSessionRow(session: session)
+                            .onTapGesture {
+                                Task {
+                                    let live = await mgr.restore(session: session)
+                                    coordinator.setActiveSession(live)
+                                }
+                            }
+                            .contextMenu {
+                                Button("Resume") {
+                                    Task {
+                                        let live = await mgr.restore(session: session)
+                                        coordinator.setActiveSession(live)
+                                    }
+                                }
+                                Divider()
+                                Button("Archive") {
+                                    try? mgr.sessionStore.archive(session.id)
+                                }
+                                Button("Delete", role: .destructive) {
+                                    try? mgr.sessionStore.delete(session.id)
+                                }
+                            }
+                    }
+                }
+
+                // Archived sessions (collapsible)
+                let archived = mgr.sessionStore.archivedSessions
+                if !archived.isEmpty {
+                    Button {
+                        showArchived.toggle()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: showArchived ? "chevron.down" : "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                            Text("Show archived")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                        .padding(.bottom, 2)
+                    }
+                    .buttonStyle(.plain)
+
+                    if showArchived {
+                        ForEach(archived) { session in
+                            PriorSessionRow(session: session, dimmed: true)
+                                .contextMenu {
+                                    Button("Recall") {
+                                        try? mgr.sessionStore.unarchive(session.id)
+                                    }
+                                    Divider()
+                                    Button("Delete", role: .destructive) {
+                                        try? mgr.sessionStore.delete(session.id)
+                                    }
+                                }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 8)
+        }
+    }
+}
+
+// MARK: - Project header popover
+
+private struct ProjectHeaderPopover: View {
+    let mgr: SessionManager
+    let coordinator: WorkspaceCoordinator
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Button {
+                isPresented = false
+                Task {
+                    let session = await mgr.newSession()
+                    coordinator.setActiveSession(session)
+                }
+            } label: {
+                Label("New Session", systemImage: "plus")
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+
+            Button(role: .destructive) {
+                isPresented = false
+                coordinator.removeProject(mgr.projectRef)
+            } label: {
+                Label("Close Project", systemImage: "xmark")
+                    .font(.callout)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.vertical, 4)
+        .frame(minWidth: 180)
+    }
+}
+
+// MARK: - Row views
+
+private struct LiveSessionRow: View {
     @ObservedObject var session: LiveSession
     let isActive: Bool
 
@@ -165,9 +238,7 @@ private struct SessionRowView: View {
     }
 }
 
-// MARK: - Disk session row (prior / archived)
-
-private struct PriorSessionRowView: View {
+private struct PriorSessionRow: View {
     let session: Session
     var dimmed: Bool = false
 
@@ -184,20 +255,14 @@ private struct PriorSessionRowView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 5)
-                .fill(Color.clear)
-        )
+        .background(RoundedRectangle(cornerRadius: 5).fill(Color.clear))
         .contentShape(Rectangle())
     }
 }
 
-// MARK: - Section label
-
 private struct SectionLabel: View {
     let title: String
     init(_ title: String) { self.title = title }
-
     var body: some View {
         Text(title)
             .font(.caption2.weight(.semibold))
@@ -208,11 +273,8 @@ private struct SectionLabel: View {
     }
 }
 
-// MARK: - Permission mode badge
-
 private struct PermissionModeBadge: View {
     let mode: PermissionMode
-
     var body: some View {
         Text(mode.label)
             .font(.system(size: 9, weight: .semibold))

@@ -1,11 +1,9 @@
 import SwiftUI
 
 struct WorkspaceView: View {
-    let projectRef: ProjectRef
     @EnvironmentObject private var recents: RecentProjectsStore
     @ObservedObject private var settings = AppSettings.shared
-    @StateObject private var sessionManager: SessionManager
-    @Environment(\.openWindow) private var openWindow
+    @StateObject private var coordinator = WorkspaceCoordinator()
 
     @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
     @State private var selectedFileURL: URL? = nil
@@ -14,80 +12,70 @@ struct WorkspaceView: View {
 
     private var layoutManager: WorkspaceLayoutManager {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let layoutURL = home.appendingPathComponent(".merlin/layout-\(projectRef.id).json")
-        return WorkspaceLayoutManager(url: layoutURL)
-    }
-
-    init(projectRef: ProjectRef) {
-        self.projectRef = projectRef
-        _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: projectRef))
+        let url = home.appendingPathComponent(".merlin/layout-workspace.json")
+        return WorkspaceLayoutManager(url: url)
     }
 
     var body: some View {
-        Group {
-            if let session = sessionManager.activeSession {
-                mainLayout(session: session)
-                    .focusedObject(session.appState)
-                    .focusedObject(session.appState.registry)
+        HStack(spacing: 0) {
+            SessionSidebar()
+                .environmentObject(coordinator)
+                .frame(width: layout.sidebarWidth)
+
+            Divider()
+
+            if let session = coordinator.activeSession {
+                sessionContent(session: session)
             } else {
-                noSessionView
+                placeholderContent
             }
         }
         .task {
-            // Load and watch ~/.merlin/config.toml so slot assignments and other
-            // TOML settings take effect without requiring a Settings UI save.
             let home = FileManager.default.homeDirectoryForCurrentUser
             let configURL = home.appendingPathComponent(".merlin/config.toml")
             try? await AppSettings.shared.load(from: configURL)
             AppSettings.shared.startWatching(url: configURL)
-
-            if sessionManager.liveSessions.isEmpty {
-                await sessionManager.newSession()
-            }
             layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
             didLoadLayout = true
-            recents.touch(projectRef)
         }
-        .navigationTitle(projectRef.displayName)
+        .navigationTitle(
+            coordinator.activeSession?.title
+            ?? coordinator.activeProjectManager?.projectRef.displayName
+            ?? "Merlin"
+        )
         .toolbar { toolbarContent }
-        .onChange(of: layout.showDiffPane) { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showFilePane) { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showDiffPane)     { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showFilePane)     { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showPreviewPane) { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showSideChat) { _, _ in saveLayoutIfLoaded() }
-        .onReceive(NotificationCenter.default.publisher(for: .merlinOpenPicker)) { _ in
-            openWindow(id: "picker")
-        }
+        .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
         .preferredColorScheme(settings.appearance.theme.colorScheme)
+        .sheet(isPresented: $coordinator.showingProjectPicker) {
+            ProjectPickerView(onSelect: { ref in
+                Task { await coordinator.addProject(ref) }
+            })
+            .environmentObject(recents)
+        }
         .sheet(isPresented: $showMemoriesWindow) {
             MemoryReviewView()
-                .environment(\.merlinAppState, sessionManager.activeSession?.appState)
+                .environment(\.merlinAppState, coordinator.activeSession?.appState)
                 .frame(minWidth: 600, minHeight: 400)
         }
     }
 
     @ViewBuilder
-    private func mainLayout(session: LiveSession) -> some View {
+    private func sessionContent(session: LiveSession) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                SessionSidebar()
-                    .environmentObject(sessionManager)
-                    .frame(width: layout.sidebarWidth)
-
-                Divider()
-
                 ContentView()
-                    .environmentObject(sessionManager)
                     .environmentObject(session.skillsRegistry)
                     .environmentObject(session.appState)
                     .environmentObject(session.appState.registry)
-                    .focusedObject(sessionManager)
+                    .focusedObject(coordinator)
                     .focusedObject(session.appState)
                     .focusedObject(session.appState.registry)
                     .environment(\.openURL, OpenURLAction { url in
-                        guard url.isFileURL else {
-                            return .systemAction
-                        }
+                        guard url.isFileURL else { return .systemAction }
                         selectedFileURL = url
                         return .handled
                     })
@@ -117,27 +105,35 @@ struct WorkspaceView: View {
 
                 if layout.showSideChat {
                     Divider()
-                    SideChatPane(isVisible: $layout.showSideChat)
-                        .frame(minWidth: 260, idealWidth: layout.chatWidth, maxWidth: 400)
+                    SideChatPane(
+                        isVisible: $layout.showSideChat,
+                        projectPath: coordinator.activeProjectManager?.projectRef.path ?? ""
+                    )
+                    .frame(minWidth: 260, idealWidth: layout.chatWidth, maxWidth: 400)
                 }
             }
 
             if layout.showTerminalPane {
                 Divider()
-                TerminalPane(workingDirectory: projectRef.path)
-                    .frame(height: 220)
+                TerminalPane(
+                    workingDirectory: coordinator.activeProjectManager?.projectRef.path ?? ""
+                )
+                .frame(height: 220)
             }
         }
+        .focusedObject(session.appState)
+        .focusedObject(session.appState.registry)
     }
 
-    private var noSessionView: some View {
+    private var placeholderContent: some View {
         VStack(spacing: 16) {
-            Text("No sessions open")
+            Image(systemName: "pawprint")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text(coordinator.projectManagers.isEmpty
+                 ? "Add a project to get started"
+                 : "Select a session from the sidebar")
                 .foregroundStyle(.secondary)
-            Button("New Session") {
-                Task { await sessionManager.newSession() }
-            }
-            .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -145,59 +141,42 @@ struct WorkspaceView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Button {
-                layout.showDiffPane.toggle()
-                saveLayoutIfLoaded()
-            } label: {
+            Button { layout.showDiffPane.toggle() } label: {
                 Label("Staged Changes", systemImage: "arrow.triangle.branch")
             }
             .buttonStyle(.bordered)
             .tint(layout.showDiffPane ? .accentColor : .secondary)
             .help("Toggle staged changes")
 
-            Button {
-                layout.showFilePane.toggle()
-                saveLayoutIfLoaded()
-            } label: {
+            Button { layout.showFilePane.toggle() } label: {
                 Label("File Viewer", systemImage: "doc.text")
             }
             .buttonStyle(.bordered)
             .tint(layout.showFilePane ? .accentColor : .secondary)
             .help("Toggle file viewer")
 
-            Button {
-                layout.showTerminalPane.toggle()
-                saveLayoutIfLoaded()
-            } label: {
+            Button { layout.showTerminalPane.toggle() } label: {
                 Label("Terminal", systemImage: "terminal")
             }
             .buttonStyle(.bordered)
             .tint(layout.showTerminalPane ? .accentColor : .secondary)
             .help("Toggle terminal")
 
-            Button {
-                layout.showPreviewPane.toggle()
-                saveLayoutIfLoaded()
-            } label: {
+            Button { layout.showPreviewPane.toggle() } label: {
                 Label("Preview", systemImage: "eye")
             }
             .buttonStyle(.bordered)
             .tint(layout.showPreviewPane ? .accentColor : .secondary)
             .help("Toggle preview")
 
-            Button {
-                layout.showSideChat.toggle()
-                saveLayoutIfLoaded()
-            } label: {
+            Button { layout.showSideChat.toggle() } label: {
                 Label("Side Chat", systemImage: "bubble.right")
             }
             .buttonStyle(.bordered)
             .tint(layout.showSideChat ? .accentColor : .secondary)
             .help("Toggle side chat")
 
-            Button {
-                showMemoriesWindow = true
-            } label: {
+            Button { showMemoriesWindow = true } label: {
                 Label("Memories", systemImage: "brain")
             }
             .buttonStyle(.bordered)

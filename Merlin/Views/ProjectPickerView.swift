@@ -5,6 +5,11 @@ import UniformTypeIdentifiers
 struct ProjectPickerView: View {
     @EnvironmentObject private var recents: RecentProjectsStore
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismiss
+
+    /// When provided the picker runs as a sheet: selecting a project calls this
+    /// closure and dismisses instead of opening a new window.
+    var onSelect: ((ProjectRef) -> Void)? = nil
 
     @State private var selected: ProjectRef?
     @State private var isShowingFilePicker = false
@@ -18,7 +23,9 @@ struct ProjectPickerView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Merlin")
                         .font(.title2.bold())
-                    Text("Open a project to start a session")
+                    Text(onSelect == nil
+                         ? "Open a project to start a session"
+                         : "Choose a project to add to this workspace")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -73,10 +80,15 @@ struct ProjectPickerView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
+                if onSelect != nil {
+                    Button("Cancel") { dismiss() }
+                }
                 Button("Open Folder…") { isShowingFilePicker = true }
-                Button("Open") { if let s = selected { open(s) } }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(selected == nil)
+                Button(onSelect == nil ? "Open" : "Add to Workspace") {
+                    if let s = selected { open(s) }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selected == nil)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -94,10 +106,13 @@ struct ProjectPickerView: View {
 
     private func open(_ ref: ProjectRef) {
         recents.touch(ref)
-        // Close the picker before the workspace window opens so it doesn't
-        // linger behind the new window. keyWindow is the picker at this point.
-        NSApp.keyWindow?.close()
-        openWindow(value: ref)
+        if let onSelect {
+            onSelect(ref)
+            dismiss()
+        } else {
+            NSApp.keyWindow?.close()
+            openWindow(value: ref)
+        }
     }
 }
 

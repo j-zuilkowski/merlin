@@ -1,6 +1,6 @@
 // MerlinCommands — application-level menu commands.
 //
-// Uses @FocusedObject for reference-type state (AppState, SessionManager)
+// Uses @FocusedObject for reference-type state (AppState, WorkspaceCoordinator)
 // and @FocusedBinding for value-type state (isEngineRunning, activeProviderID).
 // Both are wired in ContentView via .focusedObject() and .focusedValue().
 //
@@ -10,7 +10,7 @@ import SwiftUI
 struct MerlinCommands: Commands {
     @FocusedObject var appState: AppState?
     @FocusedObject var registry: ProviderRegistry?
-    @FocusedObject var sessionManager: SessionManager?
+    @FocusedObject var coordinator: WorkspaceCoordinator?
     @FocusedBinding(\.isEngineRunning) var isEngineRunning: Bool?
     @FocusedBinding(\.activeProviderID) var activeProviderID: String?
     var body: some Commands {
@@ -21,11 +21,11 @@ struct MerlinCommands: Commands {
         }
 
         CommandGroup(replacing: .newItem) {
-            Button("New Session") {
-                Task { await sessionManager?.newSession() }
+            Button("New Project Workspace") {
+                coordinator?.showingProjectPicker = true
             }
             .keyboardShortcut("n", modifiers: .command)
-            .disabled(sessionManager == nil)
+            .disabled(coordinator == nil)
         }
 
         CommandMenu("Session") {
@@ -41,12 +41,12 @@ struct MerlinCommands: Commands {
                 appState?.engine.contextManager.forceCompaction()
             }
             .keyboardShortcut("k", modifiers: [.command, .shift])
-            .disabled(sessionManager?.activeSession == nil)
+            .disabled(coordinator?.activeSession == nil)
         }
 
         CommandMenu("Window") {
             Button("Pop Out Session") {
-                guard let activeSession = sessionManager?.activeSession else { return }
+                guard let activeSession = coordinator?.activeSession else { return }
                 let session = Session(
                     id: activeSession.id,
                     title: activeSession.title,
@@ -56,7 +56,7 @@ struct MerlinCommands: Commands {
                 FloatingWindowManager.shared.open(session: session, alwaysOnTop: true)
             }
             .keyboardShortcut("p", modifiers: [.command, .shift])
-            .disabled(sessionManager?.activeSession == nil)
+            .disabled(coordinator?.activeSession == nil)
         }
 
         CommandMenu("Provider") {
@@ -100,7 +100,7 @@ struct MerlinCommands: Commands {
                 copyConversation()
             }
             .keyboardShortcut("a", modifiers: [.command, .shift])
-            .disabled(sessionManager?.activeSession == nil)
+            .disabled(coordinator?.activeSession == nil)
         }
 
         CommandGroup(replacing: .help) {
@@ -116,7 +116,7 @@ struct MerlinCommands: Commands {
     }
 
     private func copyConversation() {
-        guard let session = sessionManager?.activeSession else { return }
+        guard let session = coordinator?.activeSession else { return }
         let messages = session.appState.engine.contextManager.messages
         let lines: [String] = messages.compactMap { msg in
             let roleLabel: String

@@ -2,13 +2,16 @@ import SwiftUI
 
 struct SideChatPane: View {
     @Binding var isVisible: Bool
-    @StateObject private var appState = AppState(projectPath: "")
-    @StateObject private var skillsRegistry = SkillsRegistry(projectPath: "")
+    @StateObject private var appState: AppState
+    @StateObject private var skillsRegistry: SkillsRegistry
     @StateObject private var sessionManager: SessionManager
 
-    init(isVisible: Binding<Bool>) {
+    init(isVisible: Binding<Bool>, projectPath: String) {
         _isVisible = isVisible
-        let ref = ProjectRef(path: "", displayName: "Side Chat", lastOpenedAt: Date())
+        let appState = AppState(projectPath: projectPath)
+        _appState = StateObject(wrappedValue: appState)
+        _skillsRegistry = StateObject(wrappedValue: SkillsRegistry(projectPath: projectPath))
+        let ref = ProjectRef(path: projectPath, displayName: "Side Chat", lastOpenedAt: Date())
         _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: ref))
     }
 
