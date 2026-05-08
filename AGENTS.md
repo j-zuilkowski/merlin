@@ -150,6 +150,25 @@ Never skip the commit. Never amend a prior phase commit when adding the next pha
 
 ---
 
+## GitHub Release Protocol
+
+After every `git push && git push --tags`, immediately create a GitHub release for the new tag:
+
+```bash
+gh release create vX.Y.Z \
+    --repo j-zuilkowski/merlin \
+    --title "vX.Y.Z — <Short description>" \
+    --notes "<Release notes summarising what changed>" \
+    --latest
+```
+
+- Use `--latest` on the newest release.
+- Omit `--latest` only when creating a release for an older tag retroactively.
+- Tags pushed without a corresponding `gh release create` will **not** appear as releases on GitHub and will **not** update the "Latest" badge.
+- This step is mandatory — do not skip it after any version bump phase.
+
+---
+
 ## Project File Generation
 
 After any change to `project.yml`:

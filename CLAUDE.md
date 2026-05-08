@@ -162,6 +162,16 @@ Never skip the commit. Never amend a prior phase commit when adding the next pha
 Full versioning policy (increment rules, release steps, tag conventions) is defined in
 `architecture.md` → **Versioning Policy** section. Follow that document exactly.
 
+After every `git push --tags`, immediately create a GitHub release:
+```bash
+gh release create vX.Y.Z \
+    --repo j-zuilkowski/merlin \
+    --title "vX.Y.Z — <Short description>" \
+    --notes "<Release notes>" \
+    --latest
+```
+Tags alone do not update the "Latest" release on GitHub — the `gh release create` step is mandatory.
+
 **Current version: 1.6.1** (build 6, tag `v1.6.1`)
 
 ---

@@ -3179,9 +3179,19 @@ decrease between releases.
 4. Commit: `git commit -m "Bump version to X.Y.Z"`.
 5. Tag: `git tag vX.Y.Z` — tag must exactly match `MARKETING_VERSION` with a `v` prefix.
 6. Push: `git push && git push --tags`.
+7. Create a GitHub release for the new tag:
+```bash
+gh release create vX.Y.Z \
+    --repo j-zuilkowski/merlin \
+    --title "vX.Y.Z — <Short description>" \
+    --notes "<Release notes>" \
+    --latest
+```
+Use `--latest` on the newest release. Omit it for older patch releases created retroactively.
 
 **Never** hardcode a version string anywhere except `project.yml`.
 **Never** tag a release without first bumping `MARKETING_VERSION` in `project.yml` — the tag
 and the in-app string must agree.
 **Never** reuse or move a tag that has already been pushed to a remote.
+**Always** create a GitHub release immediately after pushing a tag — tags alone do not update the "Latest" release shown on GitHub.
 | Bad data prevention | Auto-filtering rejects aborted/error sessions; Accept+Edit lets user clean partial errors; Decline+correction converts errors to DPO signal |
