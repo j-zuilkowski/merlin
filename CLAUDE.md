@@ -162,7 +162,7 @@ Never skip the commit. Never amend a prior phase commit when adding the next pha
 Full versioning policy (increment rules, release steps, tag conventions) is defined in
 `architecture.md` → **Versioning Policy** section. Follow that document exactly.
 
-**Current version: 1.5.0** (build 4, tag `v1.5.0`)
+**Current version: 1.6.0** (build 5, tag `v1.6.0`)
 
 ---
 
