@@ -1,3 +1,40 @@
+# Phase 183b — Session Sidebar Implementation
+
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 183a complete: SessionSidebarHelpersTests committed (failing).
+
+---
+
+## Write to: Merlin/Support/RelativeTimestampFormatter.swift
+
+```swift
+import Foundation
+
+enum RelativeTimestampFormatter {
+    static func string(from date: Date, now: Date = Date()) -> String {
+        let interval = max(0, now.timeIntervalSince(date))
+        switch interval {
+        case ..<60:      return "now"
+        case ..<3600:    return "\(Int(interval / 60))m"
+        case ..<86400:   return "\(Int(interval / 3600))h"
+        case ..<604800:  return "\(Int(interval / 86400))d"
+        default:         return "\(Int(interval / 604800))w"
+        }
+    }
+}
+```
+
+---
+
+## Edit: Merlin/Views/SessionSidebar.swift
+
+Full replacement — adds "Prior Sessions" section with timestamps, archived collapse,
+and context menus for resume / archive / recall / delete:
+
+```swift
 import SwiftUI
 
 struct SessionSidebar: View {
@@ -223,3 +260,37 @@ private struct PermissionModeBadge: View {
             .clipShape(RoundedRectangle(cornerRadius: 3))
     }
 }
+```
+
+---
+
+## Verify
+```bash
+xcodebuild -scheme MerlinTests test \
+    -destination 'platform=macOS' \
+    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    | grep -E 'SessionSidebarHelpers.*passed|SessionSidebarHelpers.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+Expected: BUILD SUCCEEDED; all SessionSidebarHelpersTests pass.
+
+## Manual verification
+```bash
+pkill -x Merlin 2>/dev/null; sleep 1
+open ~/Documents/localProject/merlin/build/Debug/Merlin.app
+```
+1. Open any project — confirm sidebar shows "Sessions" and "Prior Sessions" sections.
+2. Create two sessions, close one — verify closed session appears under "Prior Sessions".
+3. Right-click a prior session → Archive → confirm it disappears from Prior Sessions.
+4. Click "Show archived" → verify it reappears.
+5. Right-click archived → Recall → confirm it moves back to Prior Sessions.
+6. Right-click prior session → Resume — confirm a new live session opens with history.
+7. Timestamps should display in "Xh / Xd / Xw" format next to each prior session title.
+
+## Commit
+```bash
+cd ~/Documents/localProject/merlin
+git add phases/phase-183b-session-sidebar.md \
+        Merlin/Support/RelativeTimestampFormatter.swift \
+        Merlin/Views/SessionSidebar.swift
+git commit -m "Phase 183b — SessionSidebar Prior Sessions + archive/recall + timestamps"
+```
