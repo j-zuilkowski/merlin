@@ -162,7 +162,7 @@ final class AppState: ObservableObject {
         }
 
         let ctx = ContextManager()
-        sessionStore = SessionStore()
+        sessionStore = SessionStore(projectPath: projectPath)
 
         engine = AgenticEngine(
             slotAssignments: AppSettings.shared.slotAssignments,

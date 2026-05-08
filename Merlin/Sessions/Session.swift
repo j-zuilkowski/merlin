@@ -8,6 +8,7 @@ struct Session: Codable, Identifiable, Sendable {
     var providerDefault: String = "deepseek-v4-pro"
     var messages: [Message]
     var authPatternsUsed: [String] = []
+    var archived: Bool = false
 
     static func generateTitle(from messages: [Message]) -> String {
         guard let firstUser = messages.first(where: { $0.role == .user }) else {

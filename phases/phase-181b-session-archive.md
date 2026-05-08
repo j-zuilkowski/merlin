@@ -1,3 +1,60 @@
+# Phase 181b — Session Archive Implementation
+
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 181a complete: SessionArchiveTests committed (failing).
+
+---
+
+## Edit: Merlin/Sessions/Session.swift
+
+Add `archived: Bool = false` field. Full replacement:
+
+```swift
+import Foundation
+
+struct Session: Codable, Identifiable, Sendable {
+    var id: UUID = UUID()
+    var title: String
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+    var providerDefault: String = "deepseek-v4-pro"
+    var messages: [Message]
+    var authPatternsUsed: [String] = []
+    var archived: Bool = false
+
+    static func generateTitle(from messages: [Message]) -> String {
+        guard let firstUser = messages.first(where: { $0.role == .user }) else {
+            return "New Session"
+        }
+        let text: String
+        switch firstUser.content {
+        case .text(let s):
+            text = s
+        case .parts(let parts):
+            text = parts.map { part in
+                switch part {
+                case .text(let s): return s
+                case .imageURL(let s): return s
+                }
+            }.joined(separator: " ")
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "New Session" : String(trimmed.prefix(50))
+    }
+}
+```
+
+---
+
+## Edit: Merlin/Sessions/SessionStore.swift
+
+Full replacement — adds project-scoped path, `archive`, `unarchive`,
+`activeSessions`, `archivedSessions`, and `migrateLegacyIfNeeded`:
+
+```swift
 import Foundation
 
 @MainActor
@@ -160,3 +217,43 @@ final class SessionStore: ObservableObject {
         activeSessionID = sessions.first?.id
     }
 }
+```
+
+---
+
+## Edit: Merlin/App/AppState.swift
+
+Change the `SessionStore()` construction to pass the project path.
+
+**Find:**
+```swift
+        let ctx = ContextManager()
+        sessionStore = SessionStore()
+```
+
+**Replace with:**
+```swift
+        let ctx = ContextManager()
+        sessionStore = SessionStore(projectPath: projectPath)
+```
+
+---
+
+## Verify
+```bash
+xcodebuild -scheme MerlinTests test \
+    -destination 'platform=macOS' \
+    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    | grep -E 'SessionArchive.*passed|SessionArchive.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -20
+```
+Expected: BUILD SUCCEEDED; all SessionArchiveTests pass.
+
+## Commit
+```bash
+cd ~/Documents/localProject/merlin
+git add phases/phase-181b-session-archive.md \
+        Merlin/Sessions/Session.swift \
+        Merlin/Sessions/SessionStore.swift \
+        Merlin/App/AppState.swift
+git commit -m "Phase 181b — Session.archived + SessionStore project-scoped path + archive/unarchive"
+```
