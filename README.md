@@ -4,13 +4,17 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 1.0** — 867 tests passing.
+**Version 1.6.0** (build 5, tag `v1.6.0`)
 
 ---
 
 ## What it does
 
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
+
+**Multi-project workspace** — a single window holds multiple open projects simultaneously. Each project has its own session list in the sidebar; the content area shows whichever session is active. Workspace state (open projects, active session) persists across relaunches.
+
+**Session history** — every session is saved to disk after each turn, scoped per project. Prior sessions appear in the sidebar with relative timestamps. Sessions can be archived (hidden) or recalled to active status. Session titles are auto-generated from the first user message, matching Claude app and Codex behaviour.
 
 **Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
 
@@ -80,8 +84,11 @@ scripts/            DMG packaging script
 | `~/.merlin/skills/` | Personal slash-command skills |
 | `~/.merlin/agents/` | Custom subagent definitions |
 | `~/.merlin/memories/` | Accepted AI-generated memories |
+| `~/.merlin/workspace.json` | Open projects and active session (persisted across relaunches) |
+| `~/.merlin/layout-workspace.json` | Pane layout (sidebar width, visible panes) |
 | `~/Library/Application Support/Merlin/providers.json` | Provider configuration |
 | `~/Library/Application Support/Merlin/auth.json` | Auth gate allow/deny patterns |
+| `~/Library/Application Support/Merlin/sessions/<project-id>/` | Per-project session history |
 
 ---
 
@@ -105,8 +112,20 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh 1.0
-# → dist/Merlin-1.0.dmg
+bash scripts/package-dmg.sh 1.6.0
+# → dist/Merlin-1.6.0.dmg
+```
+
+Or build a release DMG directly:
+
+```bash
+xcodebuild -scheme Merlin -configuration Release \
+    -derivedDataPath /tmp/merlin-release \
+    -destination 'platform=macOS' build
+
+hdiutil create -volname "Merlin 1.6.0" \
+    -srcfolder /tmp/merlin-release/Build/Products/Release/Merlin.app \
+    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v1.6.0.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.

@@ -87,21 +87,26 @@ On first launch, a setup wizard lets you pick and configure any provider. You ca
 
 ---
 
-## Projects & Windows
+## Projects & Workspace
 
-- **Project-scoped windows** — each window is bound to one project root. Open multiple projects simultaneously in separate windows.
-- **Project picker** — launch screen lists recent projects with last-opened timestamps. One click to reopen.
-- **Window state restoration** — macOS restores all open workspace windows on relaunch.
+- **Multi-project workspace** — a single window holds multiple open projects simultaneously. Each project occupies its own section in the sidebar; the content area shows the active session from any project.
+- **Project picker** — lists recent projects with last-opened timestamps. One click to add a project to the workspace. Accessible from ⌘N or the "+ New Project Workspace" button.
+- **Workspace persistence** — open projects and the active session are saved to `~/.merlin/workspace.json` and restored automatically on relaunch. No manual reopening required.
+- **Close project** — tap the project header to open a popover with "New Session" and "Close Project" actions.
+- **Pane layout persistence** — sidebar width, visible panes, and chat panel state are saved to `~/.merlin/layout-workspace.json`.
 
 ---
 
 ## Sessions
 
-- **Parallel sessions per project** — run multiple independent agent threads in the same window, each with its own context, provider, and permission mode.
-- **Session sidebar** — lists open sessions with title, model badge, activity indicator, and permission mode. Switch instantly.
+- **Sessions per project** — each project has its own list of sessions in the sidebar, each with its own context, provider, and permission mode.
+- **Session sidebar** — lists active sessions with title, activity indicator, and relative timestamp. Switch instantly by clicking any row.
+- **Session history** — all past sessions are stored per project (`~/Library/Application Support/Merlin/sessions/<project-id>/`). Prior sessions (not currently live) are listed under "Prior Sessions" in the sidebar with relative timestamps (2h, 3d, 1w).
+- **Auto-title** — after the first turn completes, the session title is automatically generated from the first 50 characters of the user's message, matching Claude app and Codex behaviour. No manual rename required.
+- **Archive & recall** — sessions can be archived (hidden from the main list) via right-click context menu. Archived sessions are revealed under "Show archived…" and can be recalled to active status at any time.
+- **Session restore** — clicking a prior session restores it as a live session with its full message history. If the restored history exceeds 10 000 estimated tokens, context compaction runs automatically before the next prompt.
 - **Git worktree isolation** — each session works in its own git worktree so parallel sessions never conflict on disk.
-- **Session persistence** — sessions are saved to disk after each turn and reloaded on relaunch.
-- **New Session shortcut** — ⌘N opens the project picker / new session.
+- **New Session shortcut** — ⌘N opens the project picker to add a new project workspace.
 
 ---
 
@@ -471,18 +476,19 @@ python -m mlx_lm.server --model Qwen2.5-Coder-32B-Instruct \
 
 ## Workspace Layout
 
-Five resizable, collapsible panes arranged in the window:
+Six panes in a single window, all collapsible via the toolbar:
 
 | Pane | Purpose |
 |---|---|
-| Session Sidebar | Open sessions list, new session button |
-| Chat | Primary conversation thread |
+| Session Sidebar | All open projects and their sessions; switch projects and sessions instantly |
+| Chat | Primary conversation thread for the active session |
 | Diff | Staged file changes, Accept/Reject/Comment |
-| Terminal | Persistent user-controlled shell (Ctrl+`) |
+| Terminal | Persistent user-controlled shell (Ctrl+\`); working directory follows the active project |
 | File Viewer | Read-only syntax-highlighted file view |
 | Preview | WKWebView for local HTML/dev server output |
+| Side Chat | Slide-over ephemeral chat panel (⌘⇧/); scoped to the active project |
 
-Layout is draggable and persisted per project. Toggle panes from the View menu.
+Pane visibility is persisted to `~/.merlin/layout-workspace.json`. Toggle from the View menu or toolbar buttons.
 
 ---
 
@@ -494,7 +500,7 @@ Pop any session out into a floating window that stays on top of other apps (⌘�
 
 ## Side Chat
 
-A slide-over ephemeral chat panel (⌘⇧/) — independent context, not persisted. Useful for quick one-off questions without polluting the main session.
+A slide-over ephemeral chat panel (⌘⇧/) — independent context, not persisted. Scoped to the active project's working directory. Useful for quick one-off questions without polluting the main session.
 
 ---
 

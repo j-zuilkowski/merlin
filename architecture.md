@@ -14,6 +14,8 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (parallel local + reference provider dispatch with critic scoring), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
+**[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. (phases 181–184)
+**[v1.6]** Multi-project workspace: single `WindowGroup("Merlin", id: "workspace")` replaces per-project windows; `WorkspaceCoordinator` (testable `init(workspaceURL:)`, workspace persistence to `~/.merlin/workspace.json`, `activeProjectManager`); `SessionSidebar` iterates all open projects; Terminal and SideChat panes follow active project; `ProjectPickerView` sheet mode; session auto-title via `AgenticEngine.onTitleUpdate` + `applyTitleUpdateIfNeeded`. (phases 185–188, tag v1.6.0)
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -756,11 +758,15 @@ The pro/execute split is retired. One active provider per session. A skill's `mo
 
 ---
 
-## Session Manager [v2]
+## Session Manager [v2] / WorkspaceCoordinator [v1.6]
 
-### Multi-Window Model
+### Single-Window Multi-Project Model [v1.6]
 
-Each app window is scoped to exactly one project root. Windows are independent — they do not share session state, `SessionManager` instances, or layout. Opening a second project opens a second window.
+As of v1.6, Merlin uses a single `WindowGroup("Merlin", id: "workspace")`. Multiple projects are held simultaneously inside one window by `WorkspaceCoordinator` — see the **V1.6** section for full details. The multi-window model described below was superseded; it is preserved here for historical context.
+
+### Multi-Window Model [v2, superseded by v1.6]
+
+Each app window was scoped to exactly one project root. Opening a second project opened a second window.
 
 ```
 File > Open Project…  (or drag a folder onto the Dock icon)
@@ -768,7 +774,7 @@ File > Open Project…  (or drag a folder onto the Dock icon)
 →  new NSWindow with its own SessionManager + WorkspaceView
 ```
 
-The entry point uses `WindowGroup(for: ProjectRef.self)` so macOS handles window restoration automatically. `ProjectRef` is a `Codable`, `Hashable` struct wrapping a resolved absolute path.
+The entry point used `WindowGroup(for: ProjectRef.self)`. `ProjectRef` is a `Codable`, `Hashable` struct wrapping a resolved absolute path:
 
 ```swift
 struct ProjectRef: Codable, Hashable, Transferable {
@@ -777,7 +783,7 @@ struct ProjectRef: Codable, Hashable, Transferable {
 }
 ```
 
-On launch with no existing windows, a `ProjectPickerView` is shown (recent projects list + Open button). Once a project is chosen, the workspace window opens and the picker closes.
+On launch with no existing windows, `ProjectPickerView` was shown. In v1.6 this is replaced by `WorkspaceCoordinator.showingProjectPicker` which presents the picker as a sheet inside the workspace window.
 
 ### Parallel Sessions
 
@@ -2926,10 +2932,10 @@ None — no new user-configurable settings. Archive/recall is purely structural.
 
 | Phase | Description |
 |---|---|
-| 155a/b | `Session.archived` field + `SessionStore` project-scoped path + `archive`/`unarchive`/`activeSessions`/`archivedSessions` |
-| 156a/b | `SessionManager.restore(session:)` + message injection into `ContextManager` |
-| 157a/b | `SessionSidebar` Prior Sessions section + archived section + timestamps + context menus |
-| 158a/b | Migration: detect flat legacy sessions directory, move to `__legacy__/` subdirectory |
+| 181a/b | `Session.archived` field + `SessionStore` project-scoped path + `archive`/`unarchive`/`activeSessions`/`archivedSessions` |
+| 182a/b | `SessionManager.restore(session:)` + message injection into `ContextManager` |
+| 183a/b | `SessionSidebar` Prior Sessions section + archived section + timestamps + context menus |
+| 184 | Supporting changes: `RelativeTimestampFormatter`, `ContextManager.load(_:)`, version bump to 1.5.0 |
 
 ---
 
@@ -2937,20 +2943,22 @@ None — no new user-configurable settings. Archive/recall is purely structural.
 
 ### Motivation
 
-V1.5 added session history per project, but each project still lives in its own window. V1.6 collapses all open projects into a single workspace window, matching Codex's UX: a left sidebar lists all open projects, sessions stack under each project header, and a single content area shows the active session.
+V1.5 added session history per project, but each project still lived in its own window. V1.6 collapses all open projects into a single workspace window, matching Codex's UX: a left sidebar lists all open projects, sessions stack under each project header, and a single content area shows the active session.
 
 ### Goals
 
 - Multiple projects visible simultaneously in one sidebar, each with their sessions listed below
 - Clicking a project's name label opens a popover with a "New Session" option (and "Close Project")
-- The bottom "+ New Session" button is replaced with "+ New Project Workspace" — opens the project picker as a sheet and adds the selected project to the current window's sidebar
-- Cmd+N opens the project picker sheet (same as clicking "+ New Project Workspace")
+- The bottom button replaced with "+ New Project Workspace" — opens the project picker as a sheet and adds the selected project to the sidebar
+- ⌘N opens the project picker sheet (same as clicking "+ New Project Workspace")
 - Sessions across all open projects share one content area; clicking any session makes it active
-- No multi-window complexity — one workspace window, multiple projects inside it
+- Single-window only — `WindowGroup(for: ProjectRef.self)` removed; one `WindowGroup("Merlin", id: "workspace")` contains everything
+- Open projects and active session persisted to `~/.merlin/workspace.json` — workspace is fully restored on relaunch
+- Terminal and SideChat panes follow the active project's working directory
 
 ### WorkspaceCoordinator
 
-A new `WorkspaceCoordinator` replaces the single `SessionManager` in `WorkspaceView`. It owns the list of open project managers and tracks the globally active session:
+A new `WorkspaceCoordinator` replaces the single `SessionManager` in `WorkspaceView`. It owns the list of open project managers, tracks the globally active session, and persists workspace state:
 
 ```swift
 @MainActor
@@ -2959,28 +2967,61 @@ final class WorkspaceCoordinator: ObservableObject {
     @Published private(set) var activeSession: LiveSession?
     @Published var showingProjectPicker: Bool = false
 
-    init(initialRef: ProjectRef)
-    func addProject(_ ref: ProjectRef) async        // no-op if already open
-    func removeProject(_ ref: ProjectRef)           // drops SessionManager; updates activeSession
-    func setActiveSession(_ session: LiveSession)   // called on sidebar row tap
+    // Designated init — workspaceURL is testable (tests point at a tmp file)
+    init(workspaceURL: URL)
+    convenience init()   // uses ~/.merlin/workspace.json
+
+    func addProject(_ ref: ProjectRef) async    // no-op if already open; persists
+    func removeProject(_ ref: ProjectRef)       // drops SessionManager; updates activeSession; persists
+    func setActiveSession(_ session: LiveSession)
+
+    // Derived — finds the SessionManager that owns coordinator.activeSession
+    var activeProjectManager: SessionManager? { get }
 }
 ```
 
-`WorkspaceCoordinator` is exposed as a `@FocusedObject` so `MerlinCommands` can drive `showingProjectPicker = true` from Cmd+N.
+On `init`, persisted project refs are loaded from `workspaceURL` and their `SessionManager` instances reconstructed. Live sessions are not automatically resumed — users see Prior Sessions in the sidebar and can resume selectively. If no projects are persisted (first launch or empty workspace), `showingProjectPicker` is set to `true` automatically.
 
-### WorkspaceView changes
+`WorkspaceCoordinator` is exposed as a `@FocusedObject` so `MerlinCommands` can drive `showingProjectPicker = true` from ⌘N.
 
-`WorkspaceView` replaces `@StateObject var sessionManager: SessionManager` with `@StateObject var coordinator: WorkspaceCoordinator`. The content area renders `coordinator.activeSession?.appState` instead of the single session manager's active session. A sheet is presented when `coordinator.showingProjectPicker` is true.
+### Workspace persistence
+
+`~/.merlin/workspace.json` stores the ordered list of open `ProjectRef` values:
+
+```json
+[
+  { "path": "/Users/jon/Documents/localProject/xcalibre-server", "displayName": "xcalibre-server" },
+  { "path": "/Users/jon/Documents/localProject/merlin", "displayName": "merlin" }
+]
+```
+
+`persistOpenProjects()` is called after every `addProject` / `removeProject`. `loadPersistedProjects(from:)` is called in `init` — it reads the file, creates a `SessionManager` per ref, and calls `coordinator.addProject` for each.
+
+### Single-window enforcement
+
+`MerlinApp.swift` uses a single entry point:
+
+```swift
+WindowGroup("Merlin", id: "workspace") {
+    WorkspaceView()
+}
+```
+
+The previous `WindowGroup(for: ProjectRef.self)` (per-project windows) and `WindowGroup("Merlin", id: "picker")` (standalone picker) are removed. `AppDelegate` handles `applicationShouldHandleReopen` to bring the workspace window to front when the Dock icon is clicked.
+
+### WorkspaceView
+
+`WorkspaceView` owns `@StateObject private var coordinator = WorkspaceCoordinator()` (no-args convenience init). The content area renders `coordinator.activeSession` or a placeholder. All panes receive `coordinator.activeProjectManager?.projectRef.path ?? ""` for the active project:
 
 ```
 WorkspaceView
-  ├── coordinator: WorkspaceCoordinator          (replaces sessionManager)
-  ├── SessionSidebar(coordinator:)               (new multi-project sidebar)
-  ├── ContentView(appState: activeSession.appState)
-  └── .sheet(isPresented: coordinator.showingProjectPicker) {
-          ProjectPickerView(onSelect: { ref in
-              Task { await coordinator.addProject(ref) }
-          })
+  ├── coordinator: WorkspaceCoordinator
+  ├── SessionSidebar()                        (environmentObject: coordinator)
+  ├── ContentView()                           (focusedObject: coordinator)
+  ├── TerminalPane(workingDirectory: coordinator.activeProjectManager?.projectRef.path ?? "")
+  ├── SideChatPane(isVisible:, projectPath: coordinator.activeProjectManager?.projectRef.path ?? "")
+  └── .sheet(isPresented: $coordinator.showingProjectPicker) {
+          ProjectPickerView(onSelect: { ref in Task { await coordinator.addProject(ref) } })
       }
 ```
 
@@ -3016,9 +3057,52 @@ WorkspaceView
 └──────────────────┘
 ```
 
+### SideChatPane changes
+
+`SideChatPane` gains a `projectPath: String` parameter. It constructs its own `AppState(projectPath: projectPath)` and `SkillsRegistry(projectPath: projectPath)` so it operates in the active project's context rather than an empty root.
+
+### Session auto-titling
+
+After the first turn completes, the engine generates a title from the first 50 characters of the first user message and fires a callback if the session still holds the default "New Session" title. This matches Claude app and Codex behaviour.
+
+`AgenticEngine`:
+
+```swift
+var onTitleUpdate: ((String) -> Void)?
+
+func applyTitleUpdateIfNeeded(to session: inout Session) {
+    guard session.title == "New Session" || session.title.isEmpty else { return }
+    let generated = Session.generateTitle(from: session.messages)
+    guard generated != "New Session" else { return }
+    session.title = generated
+    onTitleUpdate?(generated)
+}
+```
+
+Called inside the save block after every turn. `LiveSession` wires `onTitleUpdate` to update `self.title` on the main actor, which triggers an immediate sidebar refresh via `@Published`.
+
+### RelativeTimestampFormatter
+
+A pure stateless helper used by the sidebar to display session ages:
+
+```swift
+enum RelativeTimestampFormatter {
+    static func string(from date: Date, now: Date = Date()) -> String {
+        let interval = max(0, now.timeIntervalSince(date))
+        switch interval {
+        case ..<60:     return "now"
+        case ..<3600:   return "\(Int(interval / 60))m"
+        case ..<86400:  return "\(Int(interval / 3600))h"
+        case ..<604800: return "\(Int(interval / 86400))d"
+        default:        return "\(Int(interval / 604800))w"
+        }
+    }
+}
+```
+
 ### ProjectPickerView changes
 
-`ProjectPickerView` gains an optional `onSelect: ((ProjectRef) -> Void)?` parameter. When provided (sheet mode), selecting a project calls `onSelect` instead of `openWindow`. The existing standalone window mode (no `onSelect`) is unchanged for initial launch.
+`ProjectPickerView` gains an optional `onSelect: ((ProjectRef) -> Void)?` parameter. When provided (sheet mode), selecting a project calls `onSelect` instead of `openWindow`. The standalone window mode (no `onSelect`) is removed — the picker is always presented as a sheet from `WorkspaceView`.
 
 ### MerlinCommands changes
 
@@ -3038,20 +3122,26 @@ CommandGroup(replacing: .newItem) {
 
 | File | Change |
 |---|---|
-| `Sessions/WorkspaceCoordinator.swift` | New — multi-project state manager |
-| `Views/WorkspaceView.swift` | Replace `SessionManager` with `WorkspaceCoordinator`; add picker sheet |
+| `Sessions/WorkspaceCoordinator.swift` | New — multi-project state manager, workspace persistence |
+| `App/MerlinApp.swift` | Single `WindowGroup("Merlin", id: "workspace")`; removed per-project and picker windows |
+| `Views/WorkspaceView.swift` | Replace `SessionManager` with `WorkspaceCoordinator`; no-args init; picker sheet; active-project pane wiring |
 | `Views/SessionSidebar.swift` | Rewrite — iterate `coordinator.projectManagers`; project header popover; replace bottom button |
-| `Views/ProjectPickerView.swift` | Add `onSelect: ((ProjectRef) -> Void)?` parameter |
-| `App/MerlinCommands.swift` | `@FocusedObject WorkspaceCoordinator`; Cmd+N → picker sheet |
-| `App/AppFocusedValues.swift` | Update focused value types if needed |
+| `Views/SideChatPane.swift` | Add `projectPath: String` parameter; own AppState scoped to active project |
+| `Views/ProjectPickerView.swift` | `onSelect: ((ProjectRef) -> Void)?` parameter; sheet-mode only |
+| `App/MerlinCommands.swift` | `@FocusedObject WorkspaceCoordinator`; ⌘N → picker sheet |
+| `Support/RelativeTimestampFormatter.swift` | New — pure relative-date helper |
+| `Engine/AgenticEngine.swift` | `onTitleUpdate` callback + `applyTitleUpdateIfNeeded` |
+| `Sessions/LiveSession.swift` | Wire `onTitleUpdate` → `self.title` on main actor |
+| `TestHelpers/EngineFactory.swift` | `make(sessionStore:)` overload |
 
-### Implementation Order
+### Implementation Order (completed)
 
 | Phase | Description |
 |---|---|
-| 185a/b | `WorkspaceCoordinator` — multi-project state, add/remove project, active session tracking |
-| 186a/b | `WorkspaceView` + `SessionSidebar` multi-project UI — project sections, header popover, bottom button, picker sheet, `MerlinCommands` update |
-| 187 | Version bump to 1.6.0 |
+| 185a/b | `WorkspaceCoordinator` — multi-project state, persistence, `activeProjectManager`, testable init |
+| 186b | `WorkspaceView`, `SessionSidebar`, `SideChatPane`, `MerlinCommands`, `MerlinApp` — single-window, coordinator-driven UI, picker sheet, pane wiring |
+| 187a/b | Session auto-titling — `AgenticEngine.onTitleUpdate`, `applyTitleUpdateIfNeeded`, `LiveSession` wiring |
+| 188 | Version bump to 1.6.0 (build 5), DMG `dist/Merlin-2026-05-08-v1.6.0.dmg` |
 
 ---
 
