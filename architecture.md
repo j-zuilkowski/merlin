@@ -2796,6 +2796,143 @@ max_dpo_examples = 200
 
 ---
 
+## V1.5 — Session History & Archive
+
+### Motivation
+
+Live sessions in Merlin are ephemeral: closing a session discards it. `SessionStore` already persists each session's messages to disk after every turn, but those records are never surfaced back to the user. V1.5 makes the full session history visible in the sidebar, adds an archive/recall workflow, and scopes session storage per project.
+
+### Goals
+
+- Show all past sessions for the current project in the sidebar, not just live ones
+- Let users archive sessions they're done with (hide without deleting)
+- Let users recall an archived session back to active status
+- Persist session records scoped per project, not in a shared global directory
+
+### Data Model Changes
+
+**`Session` struct** — one new field:
+
+```swift
+struct Session: Codable, Identifiable, Sendable {
+    var id: UUID
+    var title: String
+    var createdAt: Date
+    var updatedAt: Date
+    var providerDefault: String
+    var messages: [Message]
+    var authPatternsUsed: [String]
+    var archived: Bool = false        // NEW — default false; backward-compatible via Codable
+}
+```
+
+**`SessionStore` — project-scoped path**
+
+Previously all sessions were written to a single flat directory:
+
+```
+~/Library/Application Support/Merlin/sessions/<uuid>.json
+```
+
+V1.5 scopes storage per project using the `ProjectRef.id` hash:
+
+```
+~/Library/Application Support/Merlin/sessions/<project-id>/<uuid>.json
+```
+
+`SessionStore` is initialised with the project path; it derives the scoped subdirectory automatically. Migration: on first launch after upgrade, existing sessions in the flat directory are moved to a `__legacy__/` subdirectory — not deleted, not automatically assigned to a project.
+
+**New `SessionStore` methods:**
+
+```swift
+func archive(_ id: UUID) throws          // sets archived = true, saves to disk
+func unarchive(_ id: UUID) throws        // sets archived = false, saves to disk
+var activeSessions: [Session]            // sessions where archived == false, sorted by updatedAt desc
+var archivedSessions: [Session]          // sessions where archived == true, sorted by updatedAt desc
+```
+
+### Session Manager Changes
+
+`SessionManager` gains a `restore(session:)` path for loading a past session back into an active `LiveSession`:
+
+```swift
+@discardableResult
+func restore(session: Session) async -> LiveSession
+```
+
+Behaviour:
+1. Create a new `LiveSession` for the project.
+2. Inject `session.messages` into the live session's `ContextManager`.
+3. Call `compactIfNeededBeforeRun(isContinuation: false)` — if the restored history exceeds 10 000 estimated tokens, auto-compact before the user's next prompt.
+4. Set `liveSession.title` to the restored session's title.
+5. Set `activeSessionID` to the new live session's id.
+6. The restored `Session` record on disk is left unchanged (its id is not reused — the live session gets a new UUID so history is never overwritten by the resumed conversation until the user sends a new message, at which point a new session record is created).
+
+The prior session transcript is shown in the chat view as read-only history — visually identical to a normal conversation. No "prior context" greying is applied in V1.5; that is a V1.6 polish item.
+
+### Sidebar Changes
+
+`SessionSidebar` gains two sections:
+
+```
+┌─────────────────────────┐
+│ ● xcalibre-server       │
+├─────────────────────────┤
+│ Sessions                │
+│  ▸ Refactor parser   2h │  ← active LiveSession (existing)
+│  ▸ Fix OPDS feed     4h │
+│  ▸ New Session          │  ← placeholder if title not yet set
+├─────────────────────────┤
+│ Prior Sessions          │
+│  ▸ Add CHM support   3d │  ← disk-only Session (not live)
+│  ▸ Stage 6 cleanup   1w │
+│    Show archived…       │  ← collapsed by default
+├─────────────────────────┤
+│ + New Session           │
+└─────────────────────────┘
+```
+
+**"Prior Sessions"** lists disk sessions that are not currently live (`activeSessions` minus any whose `id` matches a live session). Clicking one calls `sessionManager.restore(session:)`.
+
+**Context menu on a prior session row:**
+- **Resume** — same as clicking (calls `restore`)
+- **Archive** — calls `sessionStore.archive(_:)`, moves row to archived section
+- **Delete** — destructive, calls `sessionStore.delete(_:)` after confirmation
+
+**Context menu on an archived session row (shown when "Show archived" is expanded):**
+- **Recall** — calls `sessionStore.unarchive(_:)`, moves row back to prior sessions
+- **Delete** — destructive, same as above
+
+**Timestamps** — both sections show relative timestamps (`2h`, `3d`, `1w`) based on `session.updatedAt`. Live sessions show a purple activity dot when running (existing behaviour).
+
+### File Layout
+
+No new files. Changes are confined to:
+
+| File | Change |
+|---|---|
+| `Sessions/Session.swift` | Add `archived: Bool = false` |
+| `Sessions/SessionStore.swift` | Project-scoped path, `archive()`, `unarchive()`, `activeSessions`, `archivedSessions`, migration |
+| `Sessions/SessionManager.swift` | Add `restore(session:)` |
+| `Views/SessionSidebar.swift` | Prior Sessions section, archived section, timestamps, context menus |
+| `App/AppState.swift` | Pass project path to `SessionStore` init |
+| `Sessions/LiveSession.swift` | Accept optional initial messages for restore path |
+
+### AppSettings Additions (v1.5)
+
+None — no new user-configurable settings. Archive/recall is purely structural.
+
+### Implementation Order
+
+| Phase | Description |
+|---|---|
+| 155a/b | `Session.archived` field + `SessionStore` project-scoped path + `archive`/`unarchive`/`activeSessions`/`archivedSessions` |
+| 156a/b | `SessionManager.restore(session:)` + message injection into `ContextManager` |
+| 157a/b | `SessionSidebar` Prior Sessions section + archived section + timestamps + context menus |
+| 158a/b | Migration: detect flat legacy sessions directory, move to `__legacy__/` subdirectory |
+
+---
+
 ## Versioning Policy
 
 ### Two version fields

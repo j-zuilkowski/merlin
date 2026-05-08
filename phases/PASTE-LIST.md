@@ -1407,6 +1407,60 @@ Read phases/phase-166b-wkwebview-chat.md and execute.
 # Manual: drag-select text across multiple messages works
 # Commit: Phase 166b — WKWebView conversation renderer (cross-message selection)
 
+# ── V1.5 — Session History & Archive ─────────────────────────────────────────
+
+# ── PHASE 181a — Session Archive Tests ───────────────────────────────────────
+Read phases/phase-181a-session-archive-tests.md and execute.
+# Verify: BUILD FAILED — Session.archived, SessionStore.scopedDirectoryName,
+#         archive/unarchive, activeSessions, archivedSessions,
+#         migrateLegacyIfNeeded not found (expected)
+# Commit: Phase 181a — SessionArchiveTests (failing)
+
+# ── PHASE 181b — Session Archive Implementation ───────────────────────────────
+Read phases/phase-181b-session-archive.md and execute.
+# Verify: BUILD SUCCEEDED; all SessionArchiveTests pass
+# Commit: Phase 181b — Session.archived + SessionStore project-scoped path + archive/unarchive
+
+# ── PHASE 182a — Session Restore Tests ───────────────────────────────────────
+Read phases/phase-182a-session-restore-tests.md and execute.
+# Verify: BUILD FAILED — ContextManager.load, SessionManager.restore,
+#         SessionManager.sessionStore not found (expected)
+# Commit: Phase 182a — SessionRestoreTests (failing)
+
+# ── PHASE 182b — Session Restore Implementation ───────────────────────────────
+Read phases/phase-182b-session-restore.md and execute.
+# Verify: BUILD SUCCEEDED; all SessionRestoreTests pass
+# Commit: Phase 182b — ContextManager.load + LiveSession initial messages + SessionManager.restore
+
+# ── PHASE 183a — Session Sidebar Helper Tests ─────────────────────────────────
+Read phases/phase-183a-session-sidebar-tests.md and execute.
+# Verify: BUILD FAILED — RelativeTimestampFormatter not found (expected)
+# Commit: Phase 183a — SessionSidebarHelpersTests (failing)
+
+# ── PHASE 183b — Session Sidebar Implementation ───────────────────────────────
+Read phases/phase-183b-session-sidebar.md and execute.
+# Verify: BUILD SUCCEEDED; all SessionSidebarHelpersTests pass
+# Manual: Prior Sessions section visible, archive/recall context menus work,
+#         timestamps display correctly, Resume opens live session with history
+# Commit: Phase 183b — SessionSidebar Prior Sessions + archive/recall + timestamps
+
+# ── PHASE 184 — Version Bump to v1.5.0 ───────────────────────────────────────
+Read phases/phase-184-version-bump-v1-5.md and execute.
+# Verify: BUILD SUCCEEDED; About Merlin shows 1.5.0
+# Commit: Bump version to 1.5.0 (build 4)
+# Tag: v1.5.0
+
+# ── DONE (v1.5 Session History & Archive) ─────────────────────────────────────
+# Phases 181–184 add session history and archive/recall to the sidebar:
+# - 181: Session.archived field; SessionStore scoped per-project directory;
+#   archive/unarchive/activeSessions/archivedSessions; legacy migration
+# - 182: ContextManager.load for bulk message injection; LiveSession accepts
+#   initialMessages + shared sessionStore; SessionManager.restore cold-restores
+#   a persisted session as a new LiveSession with auto-compaction
+# - 183: RelativeTimestampFormatter; SessionSidebar Prior Sessions section with
+#   timestamps, archived collapse, context menus (Resume/Archive/Recall/Delete)
+# - 184: Marketing version 1.5.0, build 4, tag v1.5.0
+
 # ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
 # Phases 143–150 close two categories of silent failure:
 #
