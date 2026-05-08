@@ -15,7 +15,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
 **[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. (phases 181–184)
-**[v1.6]** Multi-project workspace: single `WindowGroup("Merlin", id: "workspace")` replaces per-project windows; `WorkspaceCoordinator` (testable `init(workspaceURL:)`, workspace persistence to `~/.merlin/workspace.json`, `activeProjectManager`); `SessionSidebar` iterates all open projects; Terminal and SideChat panes follow active project; `ProjectPickerView` sheet mode; session auto-title via `AgenticEngine.onTitleUpdate` + `applyTitleUpdateIfNeeded`. (phases 185–188, tag v1.6.0)
+**[v1.6]** Multi-project workspace: single `WindowGroup("Merlin", id: "workspace")` replaces per-project windows; `WorkspaceCoordinator` (testable `init(workspaceURL:)`, workspace persistence to `~/.merlin/workspace.json`, `activeProjectManager`); `SessionSidebar` iterates all open projects; Terminal and SideChat panes follow active project; `ProjectPickerView` sheet mode; session auto-title via `AgenticEngine.onTitleUpdate` + `applyTitleUpdateIfNeeded`. (phases 185–188, tag v1.6.0) — **v1.6.1** patch: `ChatView` `@EnvironmentObject SessionManager` → `@FocusedObject SessionManager?`; `WorkspaceView` exposes `activeProjectManager` as `.focusedObject()` — fixes `EXC_BREAKPOINT` crash on session activation. (phase 189, tag v1.6.1)
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -3140,8 +3140,10 @@ CommandGroup(replacing: .newItem) {
 |---|---|
 | 185a/b | `WorkspaceCoordinator` — multi-project state, persistence, `activeProjectManager`, testable init |
 | 186b | `WorkspaceView`, `SessionSidebar`, `SideChatPane`, `MerlinCommands`, `MerlinApp` — single-window, coordinator-driven UI, picker sheet, pane wiring |
+| 186b addendum | `ChatView` `@FocusedObject SessionManager?`; `WorkspaceView` exposes `activeProjectManager` as `.focusedObject()` — crash fix for v1.6.0 |
 | 187a/b | Session auto-titling — `AgenticEngine.onTitleUpdate`, `applyTitleUpdateIfNeeded`, `LiveSession` wiring |
 | 188 | Version bump to 1.6.0 (build 5), DMG `dist/Merlin-2026-05-08-v1.6.0.dmg` |
+| 189 | Crash fix: `ChatView` `EnvironmentObject.error()` — version bump to 1.6.1 (build 6), DMG `dist/Merlin-2026-05-08-v1.6.1.dmg` |
 
 ---
 

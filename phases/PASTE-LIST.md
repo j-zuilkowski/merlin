@@ -1499,8 +1499,15 @@ Read phases/phase-188-version-bump-v1-6.md and execute.
 # Commit: Bump version to 1.6.0 (build 5)
 # Tag: v1.6.0
 
+# ── PHASE 189 — Crash Fix: ChatView + Version Bump to v1.6.1 ─────────────────
+Read phases/phase-189-crash-fix-chatview-v1-6-1.md and execute.
+# Fix: ChatView @EnvironmentObject SessionManager → @FocusedObject; WorkspaceView exposes activeManager
+# Verify: BUILD SUCCEEDED; CFBundleShortVersionString == 1.6.1; app launches without trapping
+# Commit: Bump version to 1.6.1 (build 6) — patch fix for ChatView crash
+# Tag: v1.6.1
+
 # ── DONE (v1.6 Multi-Project Workspace) ───────────────────────────────────────
-# Phases 185–188:
+# Phases 185–189:
 # - 185: WorkspaceCoordinator — [SessionManager], activeProjectManager, persistence
 #   to ~/.merlin/workspace.json; first-launch auto-opens picker; relaunch restores
 #   all previous projects (no auto live sessions — resume from Prior Sessions)
@@ -1509,9 +1516,11 @@ Read phases/phase-188-version-bump-v1-6.md and execute.
 #   bottom button → New Project Workspace picker sheet; SideChatPane uses active
 #   project path; TerminalPane follows active project; MerlinApp simplified;
 #   MerlinCommands uses WorkspaceCoordinator
+#   ADDENDUM (2fddbac): ChatView @FocusedObject crash fix + WorkspaceView activeManager
 # - 187: AgenticEngine.onTitleUpdate + applyTitleUpdateIfNeeded; LiveSession wires
 #   callback; sessions auto-titled from first user message (50 chars, like Claude/Codex)
 # - 188: Marketing version 1.6.0, build 5, tag v1.6.0
+# - 189: Crash fix — ChatView EnvironmentObject → FocusedObject; version 1.6.1, build 6, tag v1.6.1
 
 # ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
 # Phases 143–150 close two categories of silent failure:

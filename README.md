@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 1.6.0** (build 5, tag `v1.6.0`)
+**Version 1.6.1** (build 6, tag `v1.6.1`)
 
 ---
 
@@ -123,9 +123,9 @@ xcodebuild -scheme Merlin -configuration Release \
     -derivedDataPath /tmp/merlin-release \
     -destination 'platform=macOS' build
 
-hdiutil create -volname "Merlin 1.6.0" \
+hdiutil create -volname "Merlin 1.6.1" \
     -srcfolder /tmp/merlin-release/Build/Products/Release/Merlin.app \
-    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v1.6.0.dmg
+    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v1.6.1.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.

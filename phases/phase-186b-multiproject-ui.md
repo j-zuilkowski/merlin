@@ -843,3 +843,89 @@ git add phases/phase-186b-multiproject-ui.md \
         Merlin/App/MerlinCommands.swift
 git commit -m "Phase 186b — Single-window multi-project: coordinator-driven UI, picker sheet, persistence"
 ```
+
+---
+
+## Fixes (addendum — committed separately as `2fddbac`)
+
+**Bug:** `ChatView` declared `@EnvironmentObject private var sessionManager: SessionManager`.
+After the v1.6 refactor `SessionManager` is no longer injected as an `@EnvironmentObject`
+(replaced by `WorkspaceCoordinator`). This caused a hard `EnvironmentObject.error()` trap
+the moment `currentMode` was evaluated — crashing on launch as soon as any session became active.
+
+**Root cause in production:** The crash first appeared in the v1.6.0 release build.
+The fix was committed in the same session and released as v1.6.1 (build 6).
+
+### Edit: Merlin/Views/ChatView.swift
+
+**Find:**
+```swift
+    @EnvironmentObject private var sessionManager: SessionManager
+```
+**Replace with:**
+```swift
+    @FocusedObject private var sessionManager: SessionManager?
+```
+
+**Find:**
+```swift
+            if let session = sessionManager.activeSession {
+```
+**Replace with:**
+```swift
+            if let session = sessionManager?.activeSession {
+```
+
+**Find:**
+```swift
+    private var currentMode: PermissionMode {
+        sessionManager.activeSession?.permissionMode ?? .ask
+    }
+```
+**Replace with:**
+```swift
+    private var currentMode: PermissionMode {
+        sessionManager?.activeSession?.permissionMode ?? appState.engine.permissionMode
+    }
+```
+
+### Edit: Merlin/Views/WorkspaceView.swift
+
+Inside `sessionContent(session:)`, expose the active `SessionManager` as a focused object
+so `ChatView`'s `@FocusedObject` resolves correctly.
+
+**Find** (inside `sessionContent`):
+```swift
+    @ViewBuilder
+    private func sessionContent(session: LiveSession) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ContentView()
+                    .environmentObject(session.skillsRegistry)
+                    .environmentObject(session.appState)
+                    .environmentObject(session.appState.registry)
+                    .focusedObject(coordinator)
+                    .focusedObject(session.appState)
+```
+**Replace with:**
+```swift
+    @ViewBuilder
+    private func sessionContent(session: LiveSession) -> some View {
+        let activeManager = coordinator.activeProjectManager
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ContentView()
+                    .environmentObject(session.skillsRegistry)
+                    .environmentObject(session.appState)
+                    .environmentObject(session.appState.registry)
+                    .focusedObject(coordinator)
+                    .focusedObject(activeManager)
+                    .focusedObject(session.appState)
+```
+
+### Addendum commit
+```bash
+cd ~/Documents/localProject/merlin
+git add Merlin/Views/ChatView.swift Merlin/Views/WorkspaceView.swift
+git commit -m "Phase 186b addendum — ChatView @FocusedObject, WorkspaceView activeManager focusedObject"
+```
