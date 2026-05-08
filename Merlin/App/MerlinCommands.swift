@@ -22,9 +22,10 @@ struct MerlinCommands: Commands {
 
         CommandGroup(replacing: .newItem) {
             Button("New Session") {
-                NotificationCenter.default.post(name: .merlinOpenPicker, object: nil)
+                Task { await sessionManager?.newSession() }
             }
             .keyboardShortcut("n", modifiers: .command)
+            .disabled(sessionManager == nil)
         }
 
         CommandMenu("Session") {
