@@ -74,6 +74,7 @@ final class AgenticEngine {
     var memoriesContent: String = ""
     var standingInstructions: String = ""
     var onUsageUpdate: ((Int) -> Void)?
+    var onTitleUpdate: ((String) -> Void)?
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
@@ -113,6 +114,17 @@ final class AgenticEngine {
     /// the live ~/.merlin/inject.txt while Merlin is running.
     var continuationInjectURL: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".merlin/inject.txt")
+
+    /// Checks whether the session still has the default title and, if so,
+    /// generates one from the first user message and fires `onTitleUpdate`.
+    /// Mutates `session.title` in place so the caller can persist it.
+    func applyTitleUpdateIfNeeded(to session: inout Session) {
+        guard session.title == "New Session" || session.title.isEmpty else { return }
+        let generated = Session.generateTitle(from: session.messages)
+        guard generated != "New Session" else { return }
+        session.title = generated
+        onTitleUpdate?(generated)
+    }
 
     // MARK: - Loop continuation state (Fix 1)
 
@@ -1036,6 +1048,7 @@ final class AgenticEngine {
             var updated = session
             updated.messages = context.messages
             updated.updatedAt = Date()
+            applyTitleUpdateIfNeeded(to: &updated)
             try? sessionStore?.save(updated)
         }
 

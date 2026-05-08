@@ -56,6 +56,11 @@ final class LiveSession: ObservableObject, Identifiable {
                 appState?.updateContextUsage(tokens)
             }
         }
+        appState.engine.onTitleUpdate = { [weak self] newTitle in
+            Task { @MainActor in
+                self?.title = newTitle
+            }
+        }
 
         // Replace per-AppState store with the shared project-level store if provided.
         if let sessionStore {

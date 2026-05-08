@@ -64,4 +64,11 @@ enum EngineFactory {
             xcalibreClient: xcalibreClient
         )
     }
+
+    @MainActor
+    static func make(sessionStore: SessionStore) -> AgenticEngine {
+        let engine = make()
+        engine.sessionStore = sessionStore
+        return engine
+    }
 }
