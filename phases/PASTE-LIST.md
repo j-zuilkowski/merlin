@@ -1461,7 +1461,7 @@ Read phases/phase-184-version-bump-v1-5.md and execute.
 #   timestamps, archived collapse, context menus (Resume/Archive/Recall/Delete)
 # - 184: Marketing version 1.5.0, build 4, tag v1.5.0
 
-# ── V1.6 — Multi-Project Workspace ───────────────────────────────────────────
+# ── V1.6 — Multi-Project Workspace + Session Auto-Labeling ───────────────────
 
 # ── PHASE 185a — WorkspaceCoordinator Tests ───────────────────────────────────
 Read phases/phase-185a-workspace-coordinator-tests.md and execute.
@@ -1471,30 +1471,47 @@ Read phases/phase-185a-workspace-coordinator-tests.md and execute.
 # ── PHASE 185b — WorkspaceCoordinator Implementation ─────────────────────────
 Read phases/phase-185b-workspace-coordinator.md and execute.
 # Verify: BUILD SUCCEEDED; all WorkspaceCoordinatorTests pass
-# Commit: Phase 185b — WorkspaceCoordinator multi-project state manager
+# Commit: Phase 185b — WorkspaceCoordinator: multi-project state, persistence, activeProjectManager
 
 # ── PHASE 186b — Multi-Project UI ────────────────────────────────────────────
 Read phases/phase-186b-multiproject-ui.md and execute.
 # Verify: BUILD SUCCEEDED, zero warnings
-# Manual: project sections in sidebar, project header popover with New Session /
-#         Close Project, "+ New Project Workspace" bottom button opens picker sheet,
-#         Cmd+N opens picker sheet, second project adds section below first
-# Commit: Phase 186b — Multi-project sidebar: project sections, header popover, picker sheet
+# Manual: single workspace window; picker sheet on first launch; project sections
+#   in sidebar; project header popover (New Session / Close Project); terminal
+#   and side chat follow active project; relaunch restores all open projects;
+#   Cmd+N opens picker sheet
+# Commit: Phase 186b — Single-window multi-project: coordinator-driven UI, picker sheet, persistence
 
-# ── PHASE 187 — Version Bump to v1.6.0 ───────────────────────────────────────
-Read phases/phase-187-version-bump-v1-6.md and execute.
-# Verify: BUILD SUCCEEDED; About Merlin shows 1.6.0
+# ── PHASE 187a — Session Title Tests ─────────────────────────────────────────
+Read phases/phase-187a-session-title-tests.md and execute.
+# Verify: BUILD FAILED — AgenticEngine.onTitleUpdate / applyTitleUpdateIfNeeded not found (expected)
+# Commit: Phase 187a — SessionTitleTests (failing)
+
+# ── PHASE 187b — Session Title Auto-Labeling ──────────────────────────────────
+Read phases/phase-187b-session-title.md and execute.
+# Verify: BUILD SUCCEEDED; all SessionTitleTests pass
+# Manual: send first message in new session → sidebar label updates to message text
+# Commit: Phase 187b — Session title auto-labeling from first user message
+
+# ── PHASE 188 — Version Bump to v1.6.0 ───────────────────────────────────────
+Read phases/phase-188-version-bump-v1-6.md and execute.
+# Verify: BUILD SUCCEEDED; CFBundleShortVersionString == 1.6.0
 # Commit: Bump version to 1.6.0 (build 5)
 # Tag: v1.6.0
 
 # ── DONE (v1.6 Multi-Project Workspace) ───────────────────────────────────────
-# Phases 185–187 add multi-project workspace support:
-# - 185: WorkspaceCoordinator owns [SessionManager] + globally active LiveSession
-# - 186: SessionSidebar rewritten with per-project sections; project name label
-#   opens popover (New Session / Close Project); bottom button → New Project Workspace
-#   opens picker sheet; WorkspaceView uses coordinator; MerlinCommands updated;
-#   Cmd+N opens project picker sheet
-# - 187: Marketing version 1.6.0, build 5, tag v1.6.0
+# Phases 185–188:
+# - 185: WorkspaceCoordinator — [SessionManager], activeProjectManager, persistence
+#   to ~/.merlin/workspace.json; first-launch auto-opens picker; relaunch restores
+#   all previous projects (no auto live sessions — resume from Prior Sessions)
+# - 186: Single workspace window (WindowGroup id:"workspace", no per-project WindowGroup);
+#   SessionSidebar per-project sections; project label → popover (New Session / Close Project);
+#   bottom button → New Project Workspace picker sheet; SideChatPane uses active
+#   project path; TerminalPane follows active project; MerlinApp simplified;
+#   MerlinCommands uses WorkspaceCoordinator
+# - 187: AgenticEngine.onTitleUpdate + applyTitleUpdateIfNeeded; LiveSession wires
+#   callback; sessions auto-titled from first user message (50 chars, like Claude/Codex)
+# - 188: Marketing version 1.6.0, build 5, tag v1.6.0
 
 # ── DONE (v10 Reliability & Orchestration) ────────────────────────────────────
 # Phases 143–150 close two categories of silent failure:

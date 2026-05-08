@@ -4,18 +4,71 @@
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 185b complete: WorkspaceCoordinator in place.
+Phase 185b complete: WorkspaceCoordinator with persistence and activeProjectManager.
 
-No 186a test phase: all new surface in this phase is SwiftUI view composition.
-Correctness is verified by build success + manual E2E steps below.
+No 186a test phase — all new surface is SwiftUI view composition.
+Correctness verified by build success + manual E2E steps below.
+
+This phase enforces a single workspace window (removes WindowGroup(for: ProjectRef.self)),
+fixes SideChatPane to use the active project's path, fixes TerminalPane to follow the
+active project, and wires all views through WorkspaceCoordinator.
+
+---
+
+## Edit: Merlin/App/MerlinApp.swift
+
+Remove the picker WindowGroup and the per-project WindowGroup. Replace with a single
+workspace WindowGroup. Full replacement:
+
+```swift
+import SwiftUI
+import AppKit
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldHandleReopen(_ sender: NSApplication,
+                                       hasVisibleWindows flag: Bool) -> Bool {
+        // Bring the workspace window to front if the user clicks the Dock icon
+        // while the app is already running with no visible windows.
+        if !flag {
+            NSApp.windows.first { $0.identifier?.rawValue == "workspace" }?
+                .makeKeyAndOrderFront(nil)
+        }
+        return true
+    }
+}
+
+@main
+struct MerlinApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var recents = RecentProjectsStore()
+    @StateObject private var scheduler = SchedulerEngine()
+    @StateObject private var settings = AppSettings.shared
+
+    var body: some Scene {
+        WindowGroup("Merlin", id: "workspace") {
+            WorkspaceView()
+                .environmentObject(recents)
+                .frame(minWidth: 900, minHeight: 600)
+        }
+        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified)
+        .commands { MerlinCommands() }
+        .defaultSize(width: 1200, height: 800)
+
+        Settings {
+            SettingsWindowView()
+                .environmentObject(scheduler)
+        }
+        .windowResizability(.contentMinSize)
+    }
+}
+```
 
 ---
 
 ## Edit: Merlin/Views/ProjectPickerView.swift
 
-Add optional `onSelect` parameter. When provided the picker runs in sheet mode —
-selecting a project calls `onSelect` and dismisses instead of opening a new window.
-
+Add `onSelect: ((ProjectRef) -> Void)?` parameter for sheet mode.
 Full replacement:
 
 ```swift
@@ -28,8 +81,8 @@ struct ProjectPickerView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
 
-    /// When set the picker runs in sheet mode: selecting a project calls this
-    /// closure instead of opening a new window.
+    /// When provided the picker runs as a sheet: selecting a project calls this
+    /// closure and dismisses instead of opening a new window.
     var onSelect: ((ProjectRef) -> Void)? = nil
 
     @State private var selected: ProjectRef?
@@ -173,10 +226,248 @@ private struct ProjectRowView: View {
 
 ---
 
+## Edit: Merlin/Views/WorkspaceView.swift
+
+Remove `projectRef` parameter. Drive layout from `WorkspaceCoordinator`.
+Sidebar always visible. Terminal and SideChatPane follow active project.
+Full replacement:
+
+```swift
+import SwiftUI
+
+struct WorkspaceView: View {
+    @EnvironmentObject private var recents: RecentProjectsStore
+    @ObservedObject private var settings = AppSettings.shared
+    @StateObject private var coordinator = WorkspaceCoordinator()
+
+    @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
+    @State private var selectedFileURL: URL? = nil
+    @State private var showMemoriesWindow = false
+    @State private var didLoadLayout = false
+
+    private var layoutManager: WorkspaceLayoutManager {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let url = home.appendingPathComponent(".merlin/layout-workspace.json")
+        return WorkspaceLayoutManager(url: url)
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            SessionSidebar()
+                .environmentObject(coordinator)
+                .frame(width: layout.sidebarWidth)
+
+            Divider()
+
+            if let session = coordinator.activeSession {
+                sessionContent(session: session)
+            } else {
+                placeholderContent
+            }
+        }
+        .task {
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            let configURL = home.appendingPathComponent(".merlin/config.toml")
+            try? await AppSettings.shared.load(from: configURL)
+            AppSettings.shared.startWatching(url: configURL)
+            layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
+            didLoadLayout = true
+        }
+        .navigationTitle(
+            coordinator.activeSession?.title
+            ?? coordinator.activeProjectManager?.projectRef.displayName
+            ?? "Merlin"
+        )
+        .toolbar { toolbarContent }
+        .onChange(of: layout.showDiffPane)     { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showFilePane)     { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
+        .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
+        .preferredColorScheme(settings.appearance.theme.colorScheme)
+        .sheet(isPresented: $coordinator.showingProjectPicker) {
+            ProjectPickerView(onSelect: { ref in
+                Task { await coordinator.addProject(ref) }
+            })
+            .environmentObject(recents)
+        }
+        .sheet(isPresented: $showMemoriesWindow) {
+            MemoryReviewView()
+                .environment(\.merlinAppState, coordinator.activeSession?.appState)
+                .frame(minWidth: 600, minHeight: 400)
+        }
+    }
+
+    @ViewBuilder
+    private func sessionContent(session: LiveSession) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ContentView()
+                    .environmentObject(session.skillsRegistry)
+                    .environmentObject(session.appState)
+                    .environmentObject(session.appState.registry)
+                    .focusedObject(coordinator)
+                    .focusedObject(session.appState)
+                    .focusedObject(session.appState.registry)
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard url.isFileURL else { return .systemAction }
+                        selectedFileURL = url
+                        return .handled
+                    })
+                    .frame(minWidth: 400, maxWidth: .infinity)
+
+                if layout.showDiffPane {
+                    Divider()
+                    DiffPane(
+                        buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
+                        engine: session.appState.engine,
+                        onCommit: {}
+                    )
+                    .frame(width: 260)
+                }
+
+                if layout.showFilePane {
+                    Divider()
+                    FilePane(fileURL: $selectedFileURL)
+                        .frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
+                }
+
+                if layout.showPreviewPane {
+                    Divider()
+                    PreviewPane(url: $selectedFileURL)
+                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 420)
+                }
+
+                if layout.showSideChat {
+                    Divider()
+                    SideChatPane(
+                        isVisible: $layout.showSideChat,
+                        projectPath: coordinator.activeProjectManager?.projectRef.path ?? ""
+                    )
+                    .frame(minWidth: 260, idealWidth: layout.chatWidth, maxWidth: 400)
+                }
+            }
+
+            if layout.showTerminalPane {
+                Divider()
+                TerminalPane(
+                    workingDirectory: coordinator.activeProjectManager?.projectRef.path ?? ""
+                )
+                .frame(height: 220)
+            }
+        }
+        .focusedObject(session.appState)
+        .focusedObject(session.appState.registry)
+    }
+
+    private var placeholderContent: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "pawprint")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text(coordinator.projectManagers.isEmpty
+                 ? "Add a project to get started"
+                 : "Select a session from the sidebar")
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+            Button { layout.showDiffPane.toggle() } label: {
+                Label("Staged Changes", systemImage: "arrow.triangle.branch")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showDiffPane ? .accentColor : .secondary)
+            .help("Toggle staged changes")
+
+            Button { layout.showFilePane.toggle() } label: {
+                Label("File Viewer", systemImage: "doc.text")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showFilePane ? .accentColor : .secondary)
+            .help("Toggle file viewer")
+
+            Button { layout.showTerminalPane.toggle() } label: {
+                Label("Terminal", systemImage: "terminal")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showTerminalPane ? .accentColor : .secondary)
+            .help("Toggle terminal")
+
+            Button { layout.showPreviewPane.toggle() } label: {
+                Label("Preview", systemImage: "eye")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showPreviewPane ? .accentColor : .secondary)
+            .help("Toggle preview")
+
+            Button { layout.showSideChat.toggle() } label: {
+                Label("Side Chat", systemImage: "bubble.right")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showSideChat ? .accentColor : .secondary)
+            .help("Toggle side chat")
+
+            Button { showMemoriesWindow = true } label: {
+                Label("Memories", systemImage: "brain")
+            }
+            .buttonStyle(.bordered)
+            .help("Review memories")
+        }
+    }
+
+    private func saveLayoutIfLoaded() {
+        guard didLoadLayout else { return }
+        try? layoutManager.save(layout)
+    }
+}
+```
+
+---
+
+## Edit: Merlin/Views/SideChatPane.swift
+
+Accept `projectPath` so the side chat uses the active project's path.
+
+**Find:**
+```swift
+    @StateObject private var appState = AppState(projectPath: "")
+    @StateObject private var skillsRegistry = SkillsRegistry(projectPath: "")
+    @StateObject private var sessionManager: SessionManager
+
+    init(isVisible: Binding<Bool>) {
+        _isVisible = isVisible
+        let ref = ProjectRef(path: "", displayName: "Side Chat", lastOpenedAt: Date())
+        _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: ref))
+    }
+```
+
+**Replace with:**
+```swift
+    @StateObject private var appState: AppState
+    @StateObject private var skillsRegistry: SkillsRegistry
+    @StateObject private var sessionManager: SessionManager
+
+    init(isVisible: Binding<Bool>, projectPath: String) {
+        _isVisible = isVisible
+        let appState = AppState(projectPath: projectPath)
+        _appState = StateObject(wrappedValue: appState)
+        _skillsRegistry = StateObject(wrappedValue: SkillsRegistry(projectPath: projectPath))
+        let ref = ProjectRef(path: projectPath, displayName: "Side Chat", lastOpenedAt: Date())
+        _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: ref))
+    }
+```
+
+---
+
 ## Edit: Merlin/Views/SessionSidebar.swift
 
-Full replacement — multi-project layout: one section per project manager,
-project header popover, "+ New Project Workspace" bottom button:
+Full replacement — multi-project layout. One `ProjectSection` per manager.
+Project header is a tappable label that opens a popover.
+Bottom button → "New Project Workspace":
 
 ```swift
 import SwiftUI
@@ -226,7 +517,7 @@ private struct ProjectSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Project header — tappable to open popover
+            // Tappable project header
             Button {
                 showHeaderPopover = true
             } label: {
@@ -247,11 +538,10 @@ private struct ProjectSection: View {
             .buttonStyle(.plain)
             .popover(isPresented: $showHeaderPopover, arrowEdge: .trailing) {
                 ProjectHeaderPopover(mgr: mgr, coordinator: coordinator,
-                                     dismiss: { showHeaderPopover = false })
+                                     isPresented: $showHeaderPopover)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                // Live sessions
                 SectionLabel("Sessions")
 
                 ForEach(mgr.liveSessions) { session in
@@ -265,21 +555,32 @@ private struct ProjectSection: View {
                         }
                 }
 
-                // Prior sessions (on disk, not currently live)
+                // Prior sessions (disk records not currently live)
                 let liveIDs = Set(mgr.liveSessions.map(\.id))
                 let prior = mgr.sessionStore.activeSessions.filter { !liveIDs.contains($0.id) }
 
                 if !prior.isEmpty {
-                    SectionLabel("Prior Sessions")
-                        .padding(.top, 6)
+                    SectionLabel("Prior Sessions").padding(.top, 6)
 
                     ForEach(prior) { session in
                         PriorSessionRow(session: session)
-                            .onTapGesture { Task { await mgr.restore(session: session) } }
+                            .onTapGesture {
+                                Task {
+                                    let live = await mgr.restore(session: session)
+                                    coordinator.setActiveSession(live)
+                                }
+                            }
                             .contextMenu {
-                                Button("Resume") { Task { await mgr.restore(session: session) } }
+                                Button("Resume") {
+                                    Task {
+                                        let live = await mgr.restore(session: session)
+                                        coordinator.setActiveSession(live)
+                                    }
+                                }
                                 Divider()
-                                Button("Archive") { try? mgr.sessionStore.archive(session.id) }
+                                Button("Archive") {
+                                    try? mgr.sessionStore.archive(session.id)
+                                }
                                 Button("Delete", role: .destructive) {
                                     try? mgr.sessionStore.delete(session.id)
                                 }
@@ -312,7 +613,9 @@ private struct ProjectSection: View {
                         ForEach(archived) { session in
                             PriorSessionRow(session: session, dimmed: true)
                                 .contextMenu {
-                                    Button("Recall") { try? mgr.sessionStore.unarchive(session.id) }
+                                    Button("Recall") {
+                                        try? mgr.sessionStore.unarchive(session.id)
+                                    }
                                     Divider()
                                     Button("Delete", role: .destructive) {
                                         try? mgr.sessionStore.delete(session.id)
@@ -333,12 +636,12 @@ private struct ProjectSection: View {
 private struct ProjectHeaderPopover: View {
     let mgr: SessionManager
     let coordinator: WorkspaceCoordinator
-    let dismiss: () -> Void
+    @Binding var isPresented: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Button {
-                dismiss()
+                isPresented = false
                 Task {
                     let session = await mgr.newSession()
                     coordinator.setActiveSession(session)
@@ -347,26 +650,26 @@ private struct ProjectHeaderPopover: View {
                 Label("New Session", systemImage: "plus")
                     .font(.callout)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
 
             Divider()
 
             Button(role: .destructive) {
-                dismiss()
+                isPresented = false
                 coordinator.removeProject(mgr.projectRef)
             } label: {
                 Label("Close Project", systemImage: "xmark")
                     .font(.callout)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
         }
         .padding(.vertical, 4)
         .frame(minWidth: 180)
@@ -458,227 +761,14 @@ private struct PermissionModeBadge: View {
 
 ---
 
-## Edit: Merlin/Views/WorkspaceView.swift
-
-Replace single `SessionManager` with `WorkspaceCoordinator`. Full replacement:
-
-```swift
-import SwiftUI
-
-struct WorkspaceView: View {
-    let initialRef: ProjectRef
-    @EnvironmentObject private var recents: RecentProjectsStore
-    @ObservedObject private var settings = AppSettings.shared
-    @StateObject private var coordinator: WorkspaceCoordinator
-
-    @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
-    @State private var selectedFileURL: URL? = nil
-    @State private var showMemoriesWindow = false
-    @State private var didLoadLayout = false
-
-    private var layoutManager: WorkspaceLayoutManager {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let layoutURL = home.appendingPathComponent(".merlin/layout-\(initialRef.id).json")
-        return WorkspaceLayoutManager(url: layoutURL)
-    }
-
-    init(projectRef: ProjectRef) {
-        self.initialRef = projectRef
-        _coordinator = StateObject(wrappedValue: WorkspaceCoordinator(initialRef: projectRef))
-    }
-
-    var body: some View {
-        Group {
-            if let session = coordinator.activeSession {
-                mainLayout(session: session)
-                    .focusedObject(session.appState)
-                    .focusedObject(session.appState.registry)
-            } else {
-                noSessionView
-            }
-        }
-        .task {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let configURL = home.appendingPathComponent(".merlin/config.toml")
-            try? await AppSettings.shared.load(from: configURL)
-            AppSettings.shared.startWatching(url: configURL)
-
-            layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
-            didLoadLayout = true
-            recents.touch(initialRef)
-        }
-        .navigationTitle(coordinator.activeSession?.title ?? initialRef.displayName)
-        .toolbar { toolbarContent }
-        .onChange(of: layout.showDiffPane)     { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showFilePane)     { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
-        .preferredColorScheme(settings.appearance.theme.colorScheme)
-        .sheet(isPresented: $coordinator.showingProjectPicker) {
-            ProjectPickerView(onSelect: { ref in
-                Task { await coordinator.addProject(ref) }
-            })
-            .environmentObject(recents)
-        }
-        .sheet(isPresented: $showMemoriesWindow) {
-            MemoryReviewView()
-                .environment(\.merlinAppState, coordinator.activeSession?.appState)
-                .frame(minWidth: 600, minHeight: 400)
-        }
-    }
-
-    @ViewBuilder
-    private func mainLayout(session: LiveSession) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                SessionSidebar()
-                    .environmentObject(coordinator)
-                    .frame(width: layout.sidebarWidth)
-
-                Divider()
-
-                ContentView()
-                    .environmentObject(session.skillsRegistry)
-                    .environmentObject(session.appState)
-                    .environmentObject(session.appState.registry)
-                    .focusedObject(coordinator)
-                    .focusedObject(session.appState)
-                    .focusedObject(session.appState.registry)
-                    .environment(\.openURL, OpenURLAction { url in
-                        guard url.isFileURL else { return .systemAction }
-                        selectedFileURL = url
-                        return .handled
-                    })
-                    .frame(minWidth: 400, maxWidth: .infinity)
-
-                if layout.showDiffPane {
-                    Divider()
-                    DiffPane(
-                        buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
-                        engine: session.appState.engine,
-                        onCommit: {}
-                    )
-                    .frame(width: 260)
-                }
-
-                if layout.showFilePane {
-                    Divider()
-                    FilePane(fileURL: $selectedFileURL)
-                        .frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
-                }
-
-                if layout.showPreviewPane {
-                    Divider()
-                    PreviewPane(url: $selectedFileURL)
-                        .frame(minWidth: 280, idealWidth: 340, maxWidth: 420)
-                }
-
-                if layout.showSideChat {
-                    Divider()
-                    SideChatPane(isVisible: $layout.showSideChat)
-                        .frame(minWidth: 260, idealWidth: layout.chatWidth, maxWidth: 400)
-                }
-            }
-
-            if layout.showTerminalPane {
-                Divider()
-                TerminalPane(workingDirectory: initialRef.path)
-                    .frame(height: 220)
-            }
-        }
-    }
-
-    private var noSessionView: some View {
-        VStack(spacing: 16) {
-            Text("No projects open")
-                .foregroundStyle(.secondary)
-            Button("Add Project") { coordinator.showingProjectPicker = true }
-                .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItemGroup(placement: .primaryAction) {
-            Button { layout.showDiffPane.toggle() } label: {
-                Label("Staged Changes", systemImage: "arrow.triangle.branch")
-            }
-            .buttonStyle(.bordered)
-            .tint(layout.showDiffPane ? .accentColor : .secondary)
-            .help("Toggle staged changes")
-
-            Button { layout.showFilePane.toggle() } label: {
-                Label("File Viewer", systemImage: "doc.text")
-            }
-            .buttonStyle(.bordered)
-            .tint(layout.showFilePane ? .accentColor : .secondary)
-            .help("Toggle file viewer")
-
-            Button { layout.showTerminalPane.toggle() } label: {
-                Label("Terminal", systemImage: "terminal")
-            }
-            .buttonStyle(.bordered)
-            .tint(layout.showTerminalPane ? .accentColor : .secondary)
-            .help("Toggle terminal")
-
-            Button { layout.showPreviewPane.toggle() } label: {
-                Label("Preview", systemImage: "eye")
-            }
-            .buttonStyle(.bordered)
-            .tint(layout.showPreviewPane ? .accentColor : .secondary)
-            .help("Toggle preview")
-
-            Button { layout.showSideChat.toggle() } label: {
-                Label("Side Chat", systemImage: "bubble.right")
-            }
-            .buttonStyle(.bordered)
-            .tint(layout.showSideChat ? .accentColor : .secondary)
-            .help("Toggle side chat")
-
-            Button { showMemoriesWindow = true } label: {
-                Label("Memories", systemImage: "brain")
-            }
-            .buttonStyle(.bordered)
-            .help("Review memories")
-        }
-    }
-
-    private func saveLayoutIfLoaded() {
-        guard didLoadLayout else { return }
-        try? layoutManager.save(layout)
-    }
-}
-```
-
----
-
 ## Edit: Merlin/App/MerlinCommands.swift
 
-Replace `@FocusedObject var sessionManager` with `@FocusedObject var coordinator`.
-Update "New Session" command to show the project picker instead.
+Replace `sessionManager` references with `coordinator`. Full find/replace:
+
+**Find:** `@FocusedObject var sessionManager: SessionManager?`
+**Replace:** `@FocusedObject var coordinator: WorkspaceCoordinator?`
 
 **Find:**
-```swift
-    @FocusedObject var sessionManager: SessionManager?
-```
-**Replace with:**
-```swift
-    @FocusedObject var coordinator: WorkspaceCoordinator?
-```
-
-**Find:**
-```swift
-        CommandGroup(replacing: .newItem) {
-            Button("New Session") {
-                Task { await sessionManager?.newSession() }
-            }
-            .keyboardShortcut("n", modifiers: .command)
-            .disabled(sessionManager == nil)
-        }
-```
-**Replace with:**
 ```swift
         CommandGroup(replacing: .newItem) {
             Button("New Project Workspace") {
@@ -688,54 +778,29 @@ Update "New Session" command to show the project picker instead.
             .disabled(coordinator == nil)
         }
 ```
+(Already correct from the previous fix — verify it reads this way, otherwise apply it.)
 
-**Find (in Session menu):**
+**Find every remaining** `sessionManager?.activeSession` → replace with `coordinator?.activeSession`
+
+**Find:** `guard let session = sessionManager?.activeSession else { return }`
+**Replace:** `guard let session = coordinator?.activeSession else { return }`
+
+**Find (Compact Context disabled check):**
 ```swift
             .disabled(sessionManager?.activeSession == nil)
 ```
-**Replace with:**
+**Replace all occurrences** with:
 ```swift
             .disabled(coordinator?.activeSession == nil)
 ```
 
-**Find (in Window menu):**
+**Find (Pop Out Session):**
 ```swift
-            Button("Pop Out Session") {
                 guard let activeSession = sessionManager?.activeSession else { return }
 ```
-**Replace with:**
+**Replace:**
 ```swift
-            Button("Pop Out Session") {
                 guard let activeSession = coordinator?.activeSession else { return }
-```
-
-**Find:**
-```swift
-            .disabled(sessionManager?.activeSession == nil)
-```
-**Replace with (second occurrence — Window menu):**
-```swift
-            .disabled(coordinator?.activeSession == nil)
-```
-
-**Find:**
-```swift
-    private func copyConversation() {
-        guard let session = sessionManager?.activeSession else { return }
-```
-**Replace with:**
-```swift
-    private func copyConversation() {
-        guard let session = coordinator?.activeSession else { return }
-```
-
-**Find:**
-```swift
-            .disabled(sessionManager?.activeSession == nil)
-```
-**Replace with (third occurrence — Edit menu Copy Conversation):**
-```swift
-            .disabled(coordinator?.activeSession == nil)
 ```
 
 ---
@@ -754,22 +819,27 @@ Expected: BUILD SUCCEEDED, zero errors, zero warnings.
 pkill -x Merlin 2>/dev/null; sleep 1
 open ~/Documents/localProject/merlin/build/Debug/Merlin.app
 ```
-1. Open any project — sidebar shows one project section with "Sessions" and a "New Project Workspace" button at the bottom.
-2. Click the project name label (e.g., "xcalibre-server") → popover shows "New Session" and "Close Project".
-3. Click "New Session" in popover → new session appears under the project's Sessions section.
-4. Click "New Project Workspace" at bottom → project picker sheet appears with subtitle "Choose a project to add to this workspace".
-5. Select a different project → new project section appears in sidebar below the first, with its own header and initial session.
-6. Click sessions in each project → content area switches between them.
-7. Cmd+N → project picker sheet opens.
-8. Click project label → "Close Project" → that project's section disappears.
+1. First launch (or delete ~/.merlin/workspace.json first) → project picker sheet appears automatically.
+2. Select a project → it appears in the sidebar with its sessions.
+3. Click the project name label → popover shows "New Session" and "Close Project".
+4. "New Session" → new live session added; becomes active in content area.
+5. Click "+ New Project Workspace" → picker sheet with "Add to Workspace" button.
+6. Add a second project → second project section appears below first.
+7. Click sessions in each project — content area switches; terminal follows active project.
+8. Open Side Chat — it uses the active project's path (check CLAUDE.md is loaded from active project).
+9. Quit and relaunch → both projects reopen with their prior sessions listed.
+10. Cmd+N → project picker sheet (not a new window).
+11. Close Project via popover → section disappears; active switches to remaining project.
 
 ## Commit
 ```bash
 cd ~/Documents/localProject/merlin
 git add phases/phase-186b-multiproject-ui.md \
+        Merlin/App/MerlinApp.swift \
         Merlin/Views/ProjectPickerView.swift \
-        Merlin/Views/SessionSidebar.swift \
         Merlin/Views/WorkspaceView.swift \
+        Merlin/Views/SideChatPane.swift \
+        Merlin/Views/SessionSidebar.swift \
         Merlin/App/MerlinCommands.swift
-git commit -m "Phase 186b — Multi-project sidebar: project sections, header popover, picker sheet"
+git commit -m "Phase 186b — Single-window multi-project: coordinator-driven UI, picker sheet, persistence"
 ```
