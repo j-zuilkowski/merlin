@@ -24,6 +24,9 @@ targets:
       - path: Merlin/
         excludes:
           - Skills/Builtin/**
+          - KAG/**
+      - path: Merlin/KAG
+        type: group
     dependencies:
       - sdk: AppIntents.framework
     settings:
