@@ -618,11 +618,23 @@ final class AppState: ObservableObject {
                 let token = AppSettings.shared.xcalibreToken
                 let plugin = XcalibreKAGPlugin(baseURL: url, token: token)
                 KAGBackendRegistry.shared.register(plugin)
-                return
+            } else if let plugin = try? LocalKAGPlugin() {
+                KAGBackendRegistry.shared.register(plugin)
             }
         }
-        if let plugin = try? LocalKAGPlugin() {
-            KAGBackendRegistry.shared.register(plugin)
+
+        // Wire LLM provider access for post-turn triple extraction.
+        KAGEngine.shared.providerFactory = { [weak self] in
+            guard let self else { return nil }
+            guard let provider = self.registry.provider(for: self.activeProviderID) else { return nil }
+            let model: String
+            if self.activeProviderID.contains(":") {
+                model = String(self.activeProviderID.split(separator: ":", maxSplits: 1).last ?? "")
+            } else {
+                model = self.registry.providers
+                    .first(where: { $0.id == self.activeProviderID })?.model ?? ""
+            }
+            return (provider, model)
         }
     }
 }

@@ -1,8 +1,11 @@
 //  KAGEngine.swift — post-turn idle-timer triple extraction.
 //
 //  After each assistant turn, the engine waits 2 seconds (idle timer) then calls
-//  extractTriples(text:domain:). In phase 190b the extractor is stubbed to return [].
-//  Phase 191b replaces the stub with a real LLM call.
+//  extractTriplesAsync(text:domain:), which calls the active LLM provider to produce
+//  a JSON triple array and writes the results to the registered KAGBackendPlugin.
+//
+//  providerFactory is wired by AppState.configureKAGBackend() at startup.
+//  Returns (provider, modelID). If nil, extraction is silently skipped.
 
 import Foundation
 
@@ -14,6 +17,10 @@ public final class KAGEngine {
 
     private let registry: KAGBackendRegistry
     private var pendingTask: Task<Void, Never>?
+
+    /// Set by AppState at startup. Returns the active LLM provider and its model ID.
+    /// When nil, extraction is a no-op (no LLM configured or KAG disabled).
+    var providerFactory: (() -> (any LLMProvider, String)?)?
 
     public init(registry: KAGBackendRegistry) {
         self.registry = registry
@@ -47,20 +54,44 @@ public final class KAGEngine {
         }
     }
 
-    /// Stub in 190b: returns []. Replaced by LLM extraction in 191b.
-    func extractTriples(text: String, domain: String) -> [KAGTriple] {
-        return []
-    }
-
-    /// Async extraction hook. Uses the synchronous stub for now, then normalizes via JSON parsing.
+    /// Calls the active LLM provider with a compact extraction prompt.
+    /// Streams the response, collects text, then parses the JSON triple array.
+    /// Returns [] silently on any failure (no provider, timeout, bad JSON).
     func extractTriplesAsync(text: String, domain: String) async -> [KAGTriple] {
-        let json = extractTriples(text: text, domain: domain)
-        guard !json.isEmpty else { return [] }
-        guard let data = try? JSONEncoder().encode(json),
-              let string = String(data: data, encoding: .utf8) else {
+        guard let (provider, model) = providerFactory?() else { return [] }
+
+        let systemPrompt = "You extract entity-relationship triples from text. " +
+            "Respond ONLY with a JSON array: " +
+            "[{\"subject\":\"...\",\"predicate\":\"...\",\"object\":\"...\"}]. " +
+            "If no clear triples exist, respond with []."
+
+        let request = CompletionRequest(
+            model: model,
+            messages: [
+                Message(role: .system,
+                        content: .text(systemPrompt),
+                        timestamp: Date()),
+                Message(role: .user,
+                        content: .text("Domain: \(domain)\n\nText: \(text.prefix(1000))"),
+                        timestamp: Date()),
+            ],
+            maxTokens: 256,
+            temperature: 0.0
+        )
+
+        do {
+            let stream = try await provider.complete(request: request)
+            var collected = ""
+            for try await chunk in stream {
+                collected += chunk.delta?.content ?? ""
+            }
+            return parseExtractedTriples(
+                json: collected.trimmingCharacters(in: .whitespacesAndNewlines),
+                domain: domain
+            )
+        } catch {
             return []
         }
-        return parseExtractedTriples(json: string, domain: domain)
     }
 
     /// Parse a JSON string like `[{"subject":"A","predicate":"b","object":"C"}]`
