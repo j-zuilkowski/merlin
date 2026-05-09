@@ -103,6 +103,7 @@ final class AppState: ObservableObject {
 
         authMemory = AuthMemory(storePath: authStorePath)
         xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
+        configureKAGBackend()
         // 1. Register the built-in local backend.
         let vectorPlugin = LocalVectorPlugin(
             databasePath: FileManager.default.homeDirectoryForCurrentUser
@@ -607,6 +608,21 @@ final class AppState: ObservableObject {
             pendingRestartInstructions = instructions
         } catch {
             // Advisory application is best-effort. Other errors are intentionally ignored here.
+        }
+    }
+
+    private func configureKAGBackend() {
+        if AppSettings.shared.kagEnabled {
+            let xcalibreURL = AppSettings.shared.kagXcalibreURL
+            if !xcalibreURL.isEmpty, let url = URL(string: xcalibreURL) {
+                let token = AppSettings.shared.xcalibreToken
+                let plugin = XcalibreKAGPlugin(baseURL: url, token: token)
+                KAGBackendRegistry.shared.register(plugin)
+                return
+            }
+        }
+        if let plugin = try? LocalKAGPlugin() {
+            KAGBackendRegistry.shared.register(plugin)
         }
     }
 }

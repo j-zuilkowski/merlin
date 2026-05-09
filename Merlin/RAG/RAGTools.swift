@@ -9,6 +9,38 @@ enum RAGTools {
         return formatContextInjection(chunks) + "\n\n---\n\n" + userMessage
     }
 
+    @MainActor
+    static func buildEnrichedMessage(
+        query: String,
+        chunks: [RAGChunk],
+        registry: KAGBackendRegistry,
+        hops: Int,
+        domainId: String?
+    ) async -> String {
+        var parts: [String] = []
+
+        if !chunks.isEmpty {
+            parts.append("## Retrieved Passages")
+            for chunk in chunks {
+                let location = [chunk.bookTitle, chunk.headingPath]
+                    .compactMap { $0 }
+                    .joined(separator: " › ")
+                let label = location.isEmpty ? chunk.chunkID : location
+                parts.append("- [\(label)] \(chunk.text)")
+            }
+        }
+
+        let triples = (try? await registry.current.traverse(anchor: query, hops: hops, domainId: domainId)) ?? []
+        if !triples.isEmpty {
+            parts.append("## Knowledge Graph")
+            for t in triples {
+                parts.append("- \(t.subject) \(t.predicate) \(t.object) [\(t.domainId)]")
+            }
+        }
+
+        return parts.joined(separator: "\n")
+    }
+
     // MARK: - Tool handlers
 
     static func search(

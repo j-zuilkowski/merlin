@@ -146,7 +146,7 @@ extension URLSession {
 // MockURLProtocol must be accessible from test target — add to TestHelpers/ if needed.
 // For now declare it here:
 final class MockURLProtocol: URLProtocol {
-    static var handler: ((URLRequest) throws -> (Data, URLResponse))?
+    nonisolated(unsafe) static var handler: ((URLRequest) throws -> (Data, URLResponse))?
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -155,7 +155,28 @@ final class MockURLProtocol: URLProtocol {
             return
         }
         do {
-            let (data, response) = try handler(request)
+            var effectiveRequest = request
+            if effectiveRequest.httpBody == nil,
+               let stream = effectiveRequest.httpBodyStream {
+                stream.open()
+                defer { stream.close() }
+                let bufferSize = 1024
+                var data = Data()
+                let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+                defer { buffer.deallocate() }
+                while stream.hasBytesAvailable {
+                    let bytesRead = stream.read(buffer, maxLength: bufferSize)
+                    if bytesRead > 0 {
+                        data.append(buffer, count: bytesRead)
+                    } else {
+                        break
+                    }
+                }
+                if !data.isEmpty {
+                    effectiveRequest.httpBody = data
+                }
+            }
+            let (data, response) = try handler(effectiveRequest)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)

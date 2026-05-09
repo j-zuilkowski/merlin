@@ -38,7 +38,7 @@ public final class KAGEngine {
     // MARK: - Private
 
     private func runExtraction(turn: String, domain: String) async {
-        let triples = extractTriples(text: turn, domain: domain)
+        let triples = await extractTriplesAsync(text: turn, domain: domain)
         guard !triples.isEmpty else { return }
         do {
             try await registry.current.writeTriples(triples)
@@ -50,5 +50,34 @@ public final class KAGEngine {
     /// Stub in 190b: returns []. Replaced by LLM extraction in 191b.
     func extractTriples(text: String, domain: String) -> [KAGTriple] {
         return []
+    }
+
+    /// Async extraction hook. Uses the synchronous stub for now, then normalizes via JSON parsing.
+    func extractTriplesAsync(text: String, domain: String) async -> [KAGTriple] {
+        let json = extractTriples(text: text, domain: domain)
+        guard !json.isEmpty else { return [] }
+        guard let data = try? JSONEncoder().encode(json),
+              let string = String(data: data, encoding: .utf8) else {
+            return []
+        }
+        return parseExtractedTriples(json: string, domain: domain)
+    }
+
+    /// Parse a JSON string like `[{"subject":"A","predicate":"b","object":"C"}]`
+    /// into KAGTriple array. Returns [] on any parse failure.
+    func parseExtractedTriples(json: String, domain: String) -> [KAGTriple] {
+        guard !json.isEmpty,
+              let data = json.data(using: .utf8),
+              let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
+        else { return [] }
+
+        return array.compactMap { dict in
+            guard let subject   = dict["subject"],   !subject.isEmpty,
+                  let predicate = dict["predicate"], !predicate.isEmpty,
+                  let object    = dict["object"],    !object.isEmpty
+            else { return nil }
+            return KAGTriple(subject: subject, predicate: predicate, object: object,
+                             domainId: domain, source: .session, confidence: 1.0)
+        }
     }
 }

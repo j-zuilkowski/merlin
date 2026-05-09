@@ -24,6 +24,10 @@ extension MessageDensity {
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
+    static var defaultConfigURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".merlin/config.toml")
+    }
 
     @Published var autoCompact: Bool = false
     @Published var maxTokens: Int = 8_192
@@ -48,6 +52,9 @@ final class AppSettings: ObservableObject {
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
     @Published var ragChunkLimit: Int = 3
+    @Published var kagEnabled: Bool = false
+    @Published var kagHops: Int = 2
+    @Published var kagXcalibreURL: String = ""
     /// TOML key `rag_freshness_threshold_days`. Memory chunks older than this many days are flagged as stale in GroundingReport.
     @Published var ragFreshnessThresholdDays: Int = 90
     /// TOML key `rag_min_grounding_score`. Average RAG score below this threshold makes GroundingReport.isWellGrounded false.
@@ -102,9 +109,18 @@ final class AppSettings: ObservableObject {
     @Published var dpoEnabled: Bool = true
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
+    private(set) var configURL: URL
 
     private var fsStream: FSEventStreamRef?
     private var watchedURL: URL?
+
+    init(configURL: URL = AppSettings.defaultConfigURL) {
+        self.configURL = configURL
+        if configURL != AppSettings.defaultConfigURL,
+           let source = try? String(contentsOf: configURL, encoding: .utf8) {
+            applyTOML(source)
+        }
+    }
 
     struct InferenceDefaults: Sendable {
         var temperature: Double?
@@ -155,6 +171,7 @@ final class AppSettings: ObservableObject {
         var projectPath: String?
         var ragRerank: Bool?
         var ragChunkLimit: Int?
+        var kag: KAGConfig?
         var ragFreshnessThresholdDays: Int?
         var ragMinGroundingScore: Double?
         var agentCircuitBreakerThreshold: Int?
@@ -225,6 +242,18 @@ final class AppSettings: ObservableObject {
             }
         }
 
+        struct KAGConfig: Codable, Sendable {
+            var enabled: Bool?
+            var hops: Int?
+            var xcalibreURL: String?
+
+            enum CodingKeys: String, CodingKey {
+                case enabled
+                case hops
+                case xcalibreURL = "xcalibre_url"
+            }
+        }
+
         struct InferenceConfig: Codable, Sendable {
             var temperature: Double?
             var maxTokens: Int?
@@ -274,6 +303,7 @@ final class AppSettings: ObservableObject {
             case projectPath = "project_path"
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
+            case kag
             case ragFreshnessThresholdDays = "rag_freshness_threshold_days"
             case ragMinGroundingScore = "rag_min_grounding_score"
             case agentCircuitBreakerThreshold = "agent_circuit_breaker_threshold"
@@ -312,6 +342,11 @@ final class AppSettings: ObservableObject {
     func save(to url: URL) async throws {
         let content = serializedTOML()
         try content.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    func save() throws {
+        let content = serializedTOML()
+        try content.write(to: configURL, atomically: true, encoding: .utf8)
     }
 
     /// Applies stored inference defaults to a request, filling only nil fields.
@@ -370,6 +405,19 @@ final class AppSettings: ObservableObject {
         }
         if ragChunkLimit != 3 {
             lines.append("rag_chunk_limit = \(ragChunkLimit)")
+        }
+        if kagEnabled || kagHops != 2 || !kagXcalibreURL.isEmpty {
+            lines.append("")
+            lines.append("[kag]")
+            if kagEnabled {
+                lines.append("enabled = true")
+            }
+            if kagHops != 2 {
+                lines.append("hops = \(kagHops)")
+            }
+            if !kagXcalibreURL.isEmpty {
+                lines.append("xcalibre_url = \(quoted(kagXcalibreURL))")
+            }
         }
         if ragFreshnessThresholdDays != 90 {
             lines.append("rag_freshness_threshold_days = \(ragFreshnessThresholdDays)")
@@ -707,6 +755,17 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.ragChunkLimit {
             ragChunkLimit = value
+        }
+        if let kag = config.kag {
+            if let value = kag.enabled {
+                kagEnabled = value
+            }
+            if let value = kag.hops {
+                kagHops = value
+            }
+            if let value = kag.xcalibreURL {
+                kagXcalibreURL = value
+            }
         }
         if let value = config.ragFreshnessThresholdDays {
             ragFreshnessThresholdDays = value
