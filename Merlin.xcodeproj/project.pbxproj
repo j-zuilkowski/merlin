@@ -214,6 +214,7 @@
 		77B626CB125C52FF1B27EAFC /* CapturingMemoryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6321DE6C7E3238ECEB274017 /* CapturingMemoryBackend.swift */; };
 		77B9783E7BFB51802D46C588 /* RAGSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E1851AC83396B7F03551B7 /* RAGSettingsTests.swift */; };
 		7819FBAECD6B3BD3C8666FBD /* AgenticEngineProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0311508A5D8A5706DC29D5E8 /* AgenticEngineProviderTests.swift */; };
+		783AFC126F7FCD32E33D0491 /* SessionBugFixTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A04368A5EC23FFEEFE076A7 /* SessionBugFixTests.swift */; };
 		78F450B25A80042202A3E586 /* AuthMemoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2988D5A14565391542674258 /* AuthMemoryTests.swift */; };
 		7AC49C29D0A3961B65FDB381 /* RAGSourceAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 814E0637CF12937447292FA1 /* RAGSourceAttributionTests.swift */; };
 		7C12EEF1D5A2507CF4FF2034 /* GroundingReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C82F6062102607DF26D4BAA /* GroundingReport.swift */; };
@@ -602,6 +603,7 @@
 		893A184BB5D5B2E31CB6A951 /* SkillInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillInvocationTests.swift; sourceTree = "<group>"; };
 		897DE88791F6ABE15DD10D51 /* ThreadAutomationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadAutomationEngine.swift; sourceTree = "<group>"; };
 		89CE17703C9BACF21688DF51 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		8A04368A5EC23FFEEFE076A7 /* SessionBugFixTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionBugFixTests.swift; sourceTree = "<group>"; };
 		8A7A0C0926301EAAAC3B27E2 /* CriticGatedMemoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticGatedMemoryTests.swift; sourceTree = "<group>"; };
 		8BA229D76BE446602D1792C1 /* ContextInjectorVisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextInjectorVisionTests.swift; sourceTree = "<group>"; };
 		8C3D806AA4833BFECA8ADE52 /* LoRACoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRACoordinatorTests.swift; sourceTree = "<group>"; };
@@ -1169,6 +1171,7 @@
 				7D2D077E373F74AF6AD556F6 /* SchedulerEngineTests.swift */,
 				F8E637AA607AA5850675764E /* SemanticFaultInjectionTests.swift */,
 				4E3776C74475285AB5627B87 /* SessionArchiveTests.swift */,
+				8A04368A5EC23FFEEFE076A7 /* SessionBugFixTests.swift */,
 				B8207E6A8C51267F37E0E48D /* SessionManagerTests.swift */,
 				CC2155AD0ACD7189C36DD06F /* SessionRestoreTests.swift */,
 				10837B219D957A914ABD59F0 /* SessionSerializationTests.swift */,
@@ -1885,6 +1888,7 @@
 				C0555F5014066213306EDC83 /* ScreenCaptureTests.swift in Sources */,
 				281A7D49F99A4E8CCAE03A23 /* SemanticFaultInjectionTests.swift in Sources */,
 				E0A1FFE0F6952FAF64B1FDE1 /* SessionArchiveTests.swift in Sources */,
+				783AFC126F7FCD32E33D0491 /* SessionBugFixTests.swift in Sources */,
 				17EBB4BF41E603DDE1E5345C /* SessionManagerTests.swift in Sources */,
 				80CAD12A3B3E6512011D51BD /* SessionRestoreTests.swift in Sources */,
 				2CBAE324A9D0AF1CA8503BCB /* SessionSerializationTests.swift in Sources */,
@@ -2202,7 +2206,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -2216,7 +2220,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.8.0;
+				MARKETING_VERSION = 1.8.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -2316,7 +2320,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -2336,7 +2340,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.8.0;
+				MARKETING_VERSION = 1.8.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
