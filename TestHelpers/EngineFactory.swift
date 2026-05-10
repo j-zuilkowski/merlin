@@ -5,6 +5,7 @@ import Foundation
 func makeEngine(provider: MockProvider? = nil,
                 proProvider: MockProvider? = nil,
                 flashProvider: MockProvider? = nil,
+                kagEngine: KAGEngine = .shared,
                 xcalibreClient: (any XcalibreClientProtocol)? = nil) -> AgenticEngine {
     let memory = AuthMemory(storePath: "/dev/null")
     memory.addAllowPattern(tool: "*", pattern: "*")
@@ -47,7 +48,8 @@ func makeEngine(provider: MockProvider? = nil,
         registry: registry,
         toolRouter: router,
         contextManager: ctx,
-        xcalibreClient: xcalibreClient
+        xcalibreClient: xcalibreClient,
+        kagEngine: kagEngine
     )
 }
 

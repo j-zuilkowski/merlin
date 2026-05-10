@@ -16,7 +16,7 @@ public final class KAGEngine {
     public static let shared = KAGEngine(registry: .shared)
 
     private let registry: KAGBackendRegistry
-    private var pendingTask: Task<Void, Never>?
+    private(set) var pendingTask: Task<Void, Never>?
 
     /// Set by AppState at startup. Returns the active LLM provider and its model ID.
     /// When nil, extraction is a no-op (no LLM configured or KAG disabled).

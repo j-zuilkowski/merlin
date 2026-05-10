@@ -60,6 +60,9 @@ final class AgenticEngine {
     let contextManager: ContextManager
     private let thinkingDetector = ThinkingModeDetector.self
     let toolRouter: ToolRouter
+    /// KAGEngine used for triple extraction after each turn. Defaults to the
+    /// process-wide singleton; injectable for testing.
+    private let kagEngine: KAGEngine
     var xcalibreClient: (any XcalibreClientProtocol)?
     /// Local memory backend plugin for episodic writes and local memory RAG.
     /// This is separate from `xcalibreClient`, which remains book-content only.
@@ -193,12 +196,14 @@ final class AgenticEngine {
          toolRouter: ToolRouter,
          contextManager: ContextManager,
          xcalibreClient: (any XcalibreClientProtocol)? = nil,
+         kagEngine: KAGEngine = .shared,
          memoryBackend: (any MemoryBackendPlugin)? = nil) {
         self.slotAssignments = slotAssignments
         self.registry = registry
         self.toolRouter = toolRouter
         self.contextManager = contextManager
         self.xcalibreClient = xcalibreClient
+        self.kagEngine = kagEngine
         if let memoryBackend {
             self.memoryBackend = memoryBackend
         }
@@ -1171,6 +1176,11 @@ final class AgenticEngine {
             "tool_call_count": totalToolCallCount,
             "loop_count": loopCount
         ])
+
+        // KAG: schedule triple extraction from the completed assistant response.
+        if AppSettings.shared.kagEnabled, !lastResponseText.isEmpty {
+            kagEngine.scheduleExtraction(from: lastResponseText, domain: domain.id)
+        }
 
         // Fix 2: Reset near-ceiling addendum so it doesn't bleed into the next turn.
         nearCeilingWarningAddendum = nil
