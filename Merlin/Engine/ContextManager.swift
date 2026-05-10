@@ -152,26 +152,18 @@ class ContextManager: ObservableObject {
         guard force || !groupsToRemove.isEmpty else { return }
 
         if groupsToRemove.isEmpty && force {
-            let toolIndices = messages.indices.filter { messages[$0].role == .tool }
-            if toolIndices.isEmpty {
-                messages.append(Message(
-                    role: .system,
-                    content: .text("[context compacted]"),
-                    timestamp: Date()
-                ))
-            } else {
-                let removeCount = max(1, toolIndices.count / 2)
-                let indicesToRemove = Set(toolIndices.prefix(removeCount))
-                let summary = Message(
-                    role: .system,
-                    content: .text("[context compacted — \(removeCount) standalone tool message(s) removed]"),
-                    timestamp: Date()
-                )
-                messages = messages.enumerated()
-                    .filter { !indicesToRemove.contains($0.offset) }
-                    .map { $0.element }
-                messages.insert(summary, at: 0)
-            }
+            // No tool-exchange groups to remove. Hard-truncate to the most recent
+            // `compactionKeepRecentTurns` messages so the context actually shrinks
+            // even when it consists entirely of user/assistant text (no tool calls).
+            // Without this, the old code just appended a sentinel string and left
+            // the full context intact — causing HTTP 400s on the next LLM request.
+            let kept = Array(messages.suffix(compactionKeepRecentTurns))
+            let summary = Message(
+                role: .system,
+                content: .text("[context compacted — history truncated to last \(kept.count) messages]"),
+                timestamp: Date()
+            )
+            messages = [summary] + kept
         } else {
             // Build the removal set: both assistant and tool result indices.
             let allIndices = Set(groupsToRemove.flatMap { [$0.assistantIdx] + $0.toolIndices })

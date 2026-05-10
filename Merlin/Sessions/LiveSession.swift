@@ -68,6 +68,12 @@ final class LiveSession: ObservableObject, Identifiable {
             appState.engine.sessionStore = sessionStore
         }
 
+        // Register this LiveSession as an active record in the store so the engine's
+        // session-save and title-generation paths (which use sessionStore.activeSession)
+        // operate on the correct session from the first turn onward.
+        let initialRecord = Session(id: self.id, title: "New Session", messages: [])
+        try? appState.sessionStore?.save(initialRecord)
+
         // Inject historical messages from a restored session.
         if !initialMessages.isEmpty {
             appState.engine.contextManager.load(initialMessages)

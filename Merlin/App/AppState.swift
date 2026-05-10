@@ -94,6 +94,7 @@ final class AppState: ObservableObject {
     private var loraProviderCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
+    private var cancellables: Set<AnyCancellable> = []
 
     init(projectPath: String = "") {
         self.projectPath = projectPath
@@ -174,6 +175,16 @@ final class AppState: ObservableObject {
             // 3. Inject the active backend into the engine at init.
             memoryBackend: memoryRegistry.activePlugin
         )
+        // Reset toolActivityState whenever the engine stops running so the sidebar
+        // dot clears even if ChatView was torn down before its send loop completed.
+        engine.$isRunning
+            .filter { !$0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, self.toolActivityState != .idle else { return }
+                self.toolActivityState = .idle
+            }
+            .store(in: &cancellables)
         // Prefer the open project's path; fall back to the global config.toml setting.
         let resolvedPath = projectPath.isEmpty ? AppSettings.shared.projectPath : projectPath
         engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath

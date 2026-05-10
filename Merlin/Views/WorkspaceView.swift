@@ -69,6 +69,7 @@ struct WorkspaceView: View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ContentView()
+                    .id(session.id)
                     .environmentObject(session.skillsRegistry)
                     .environmentObject(session.appState)
                     .environmentObject(session.appState.registry)
