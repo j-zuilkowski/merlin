@@ -102,7 +102,10 @@ On first launch, a setup wizard lets you pick and configure any provider. You ca
 - **Sessions per project** — each project has its own list of sessions in the sidebar, each with its own context, provider, and permission mode.
 - **Session sidebar** — lists active sessions with title, activity indicator, and relative timestamp. Switch instantly by clicking any row.
 - **Session history** — all past sessions are stored per project (`~/Library/Application Support/Merlin/sessions/<project-id>/`). Prior sessions (not currently live) are listed under "Prior Sessions" in the sidebar with relative timestamps (2h, 3d, 1w).
-- **Auto-title** — after the first turn completes, the session title is automatically generated from the first 50 characters of the user's message, matching Claude app and Codex behaviour. No manual rename required.
+- **Auto-title** — after the first turn completes, the session title is automatically generated from the first 50 characters of the user's message, matching Claude app and Codex behaviour. No manual rename required. (v1.8.1: each new session is registered in `SessionStore` on init so title generation works from the very first turn.)
+- **Session isolation** — each new session gets its own `ContextManager`, message history, and `AppState`. Switching sessions switches the entire view tree; no state bleeds between sessions. (v1.8.1: `.id(session.id)` on `ContentView` forces SwiftUI to fully recreate the view when the active session changes.)
+- **Activity indicator** — a small dot in the sidebar row shows when a session's engine is running. Clears automatically when the engine finishes, even if the session is not the active view. (v1.8.1: `AppState` observes `engine.isRunning` via Combine and resets `toolActivityState` directly, so the dot always clears.)
+- **Context compaction** — at 800,000 tokens, old tool-result groups are removed automatically. Session → Compact Context (⌘⇧K) forces immediate compaction. (v1.8.1: when the context has no tool-exchange groups — only user/assistant messages — compaction hard-truncates to the last 20 messages instead of appending a no-op sentinel.)
 - **Archive & recall** — sessions can be archived (hidden from the main list) via right-click context menu. Archived sessions are revealed under "Show archived…" and can be recalled to active status at any time.
 - **Session restore** — clicking a prior session restores it as a live session with its full message history. If the restored history exceeds 10 000 estimated tokens, context compaction runs automatically before the next prompt.
 - **Git worktree isolation** — each session works in its own git worktree so parallel sessions never conflict on disk.
@@ -429,6 +432,42 @@ Connects to Merlin's local memory store and, when configured, an optional xcalib
 - **Critic-gated writes** — when the critic returns `.fail`, the episodic memory write is suppressed for that session. This keeps low-quality outputs out of the memory store.
 
 **xcalibre-server hardware** — when present, it runs on a Windows 11 machine with RTX 2070, serving phi-3-mini-4k-instruct (library maintenance tasks) and nomic-embed-text-v1.5 (vector embeddings) via LM Studio. `ragRerank` is off by default because the RTX 2070 benefits from the reduced load; the code requires no changes for an RTX 5080 upgrade.
+
+---
+
+## KAG — Knowledge-Augmented Generation
+
+KAG adds a structured knowledge graph layer alongside the RAG vector store. Where RAG retrieves semantically similar chunks ("what was said about X"), KAG retrieves *relationships* ("which entities relate to X and how"). Available from v1.8.0.
+
+**Why KAG?** For non-software domains — PCB design, construction, cooking, finance — there is no `grep` equivalent for "which components share a power net" or "which structural members carry this load." KAG provides graph traversal for any domain where entities have relational structure.
+
+**How it works**
+
+After every assistant turn (when `kagEnabled = true` in Settings → Agent):
+
+1. `KAGEngine.scheduleExtraction(from:domain:)` fires after a 2-second idle delay to avoid blocking the UI.
+2. A background LLM call extracts `(subject, predicate, object)` triples from the assistant's response text.
+3. Triples are written to the active KAG backend — either `LocalKAGPlugin` (SQLite at `~/.merlin/kag/graph.sqlite`) or `XcalibreKAGPlugin` (preferred when xcalibre-server is configured).
+4. At retrieval time, `RAGTools.buildEnrichedMessage` injects a graph subgraph (traversal up to `kagHops` hops) alongside the vector chunks.
+
+**KAG backends**
+
+| Backend | Storage | Use case |
+|---|---|---|
+| `LocalKAGPlugin` (default fallback) | `~/.merlin/kag/graph.sqlite` | Fully local; no xcalibre-server required |
+| `XcalibreKAGPlugin` (preferred) | xcalibre-server via REST | Fuses session triples with book knowledge triples in a single traversal; cross-session persistence |
+
+**xcalibre-server integration** — `XcalibreKAGPlugin` writes session triples to `POST /api/v1/graph/triples` and queries via `GET /api/v1/graph/traverse`. Book-level triples are extracted at ingestion time on the xcalibre side. The query response merges book knowledge with session working triples transparently.
+
+**Settings**
+
+| Key | Default | Description |
+|---|---|---|
+| `kagEnabled` | `false` | Master toggle in Settings → Agent |
+| `kagHops` | `2` | Graph traversal depth at retrieval time |
+| `kagXcalibreURL` | `""` | URL of xcalibre-server instance; empty = use LocalKAGPlugin |
+
+**Test injection** — `KAGEngine` accepts a `kagEngine` parameter in `AgenticEngine.init` (default `.shared`) so unit tests inject a mock `KAGEngine` without affecting the singleton. `KAGEngine.pendingTask` is `private(set)` so tests can assert extraction was scheduled.
 
 ---
 
