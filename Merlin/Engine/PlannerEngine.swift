@@ -23,6 +23,7 @@ struct PlanStep: Sendable {
     var description: String
     var successCriteria: String
     var complexity: ComplexityTier
+    var parallelSafe: Bool = false
 }
 
 // MARK: - PlannerEngine
@@ -120,9 +121,21 @@ actor PlannerEngine {
         Respond with JSON only - no prose before or after:
         {
           "steps": [
-            { "description": "...", "successCriteria": "...", "complexity": "routine|standard|high-stakes" }
+            {
+              "step": "...",
+              "success_criteria": "...",
+              "complexity": "routine|standard|high_stakes",
+              "parallel_safe": true
+            }
           ]
         }
+
+        Each step must be a JSON object with keys:
+          "step"             — concise imperative description
+          "success_criteria" — how to verify the step is done
+          "complexity"       — "routine", "standard", or "high_stakes"
+          "parallel_safe"    — true if this step has no dependency on sibling output and
+                               touches different files; false otherwise (default false when unsure)
 
         Task: \(task)
         """
@@ -229,29 +242,70 @@ actor PlannerEngine {
         return ClassifierResult(needsPlanning: needsPlanning, complexity: complexity, reason: reason)
     }
 
-    private func parseSteps(from raw: String) -> [PlanStep] {
-        let jsonString = extractJSON(from: raw)
-        guard let data = jsonString.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let stepsArray = obj["steps"] as? [[String: Any]]
-        else { return [] }
+    nonisolated func parseStepsForTesting(from raw: String) -> [PlanStep] {
+        parseSteps(from: raw)
+    }
 
-        return stepsArray.compactMap { step -> PlanStep? in
-            guard let desc = step["description"] as? String else { return nil }
-            let criteria = step["successCriteria"] as? String ?? ""
-            let complexityStr = step["complexity"] as? String ?? "standard"
-            let complexity = ComplexityTier(rawValue: complexityStr) ?? .standard
-            return PlanStep(description: desc, successCriteria: criteria, complexity: complexity)
+    private struct RawStep: Decodable {
+        var step: String?
+        var description: String?
+        var success_criteria: String?
+        var successCriteria: String?
+        var complexity: String?
+        var parallel_safe: Bool?
+    }
+
+    private struct RawStepsEnvelope: Decodable {
+        var steps: [RawStep]
+    }
+
+    private nonisolated func parseSteps(from raw: String) -> [PlanStep] {
+        let jsonString = extractJSON(from: raw)
+        guard let data = jsonString.data(using: .utf8) else { return [] }
+
+        let decoder = JSONDecoder()
+        if let envelope = try? decoder.decode(RawStepsEnvelope.self, from: data) {
+            return envelope.steps.compactMap(planStep(from:))
+        }
+        if let bare = try? decoder.decode([RawStep].self, from: data) {
+            return bare.compactMap(planStep(from:))
+        }
+        return []
+    }
+
+    private nonisolated func planStep(from raw: RawStep) -> PlanStep? {
+        guard let desc = raw.step ?? raw.description else { return nil }
+        return PlanStep(
+            description: desc,
+            successCriteria: raw.success_criteria ?? raw.successCriteria ?? "",
+            complexity: tier(from: raw.complexity),
+            parallelSafe: raw.parallel_safe ?? false
+        )
+    }
+
+    private nonisolated func tier(from raw: String?) -> ComplexityTier {
+        switch raw?.lowercased() {
+        case "routine":
+            return .routine
+        case "high_stakes", "high-stakes":
+            return .highStakes
+        default:
+            return .standard
         }
     }
 
-    private func extractJSON(from text: String) -> String {
+    private nonisolated func extractJSON(from text: String) -> String {
         var s = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("```") {
             let lines = s.components(separatedBy: "\n")
             if lines.count >= 2 {
                 s = lines.dropFirst().dropLast().joined(separator: "\n")
             }
+        }
+        if s.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("["),
+           let start = s.firstIndex(of: "["),
+           let end = s.lastIndex(of: "]") {
+            return String(s[start...end])
         }
         if let start = s.firstIndex(of: "{"), let end = s.lastIndex(of: "}") {
             return String(s[start...end])

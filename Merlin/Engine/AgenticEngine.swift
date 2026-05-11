@@ -638,11 +638,7 @@ final class AgenticEngine {
             didEmitCompactionNote = true
             continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
         }
-        // Phase 151b — compact before appending if session has grown large.
-        // Skip for continuations: they depend on recent tool results staying intact.
-        context.compactIfNeededBeforeRun(isContinuation: isContinuation)
-        context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
-        emitCompactionNoteIfNeeded()
+        var batchPrompt = effectiveMessage
 
         // Compute the loop ceiling early so the planner batch-split logic can reference it.
         let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
@@ -663,32 +659,43 @@ final class AgenticEngine {
             }
 
             if !planSteps.isEmpty {
-                // Batch split: always execute exactly ONE plan step per turn.
-                // Each step can require many tool-call iterations; putting more than one
-                // step in a turn risks exhausting the loop ceiling before the step batch
-                // completes. One step per turn is safe regardless of ceiling height.
-                let stepsPerTurn = 1
-                if planSteps.count > stepsPerTurn {
-                    let thisBatch = Array(planSteps.prefix(stepsPerTurn))
-                    let remaining = Array(planSteps.dropFirst(stepsPerTurn))
-                    let totalBatches = Int(ceil(Double(planSteps.count) / Double(stepsPerTurn)))
+                let batches = groupParallelSteps(planSteps)
+                let thisBatch = batches[0]
+                let remainingBatches = Array(batches.dropFirst())
+                pendingContinuationSteps = remainingBatches.flatMap { $0 }
+                pendingContinuationOriginalTask = userMessage
+                pendingContinuationCompletedCount = thisBatch.count
 
-                    // Store deferred steps for post-turn inject.
-                    pendingContinuationSteps = remaining
-                    pendingContinuationOriginalTask = userMessage
-                    pendingContinuationCompletedCount = thisBatch.count
+                let totalBatches = batches.count
+                let stepList = thisBatch.enumerated()
+                    .map { "  \($0.offset + 1). \($0.element.description)" }
+                    .joined(separator: "\n")
+                let batchLabel = thisBatch.count > 1
+                    ? "[Plan: executing \(thisBatch.count) parallel steps]\n\(stepList)"
+                    : "[Plan batch 1/\(totalBatches): executing step 1/\(planSteps.count)]\n\(stepList)"
+                continuation.yield(.systemNote(batchLabel))
 
-                    let stepList = thisBatch.enumerated()
-                        .map { "  \($0.offset + 1). \($0.element.description)" }
+                if thisBatch.count > 1 {
+                    let stepDescriptions = thisBatch.enumerated()
+                        .map { "Task \($0.offset + 1): \($0.element.description)" }
                         .joined(separator: "\n")
-                    continuation.yield(.systemNote(
-                        "[Plan batch 1/\(totalBatches): executing steps 1–\(thisBatch.count) of \(planSteps.count) — remaining steps will run in subsequent turns]\n\(stepList)"
-                    ))
-                } else {
-                    continuation.yield(.systemNote("[Plan: \(planSteps.count) steps]"))
+                    batchPrompt = """
+                    \(effectiveMessage)
+
+                    Execute the following independent tasks in parallel using spawn_agent for each:
+                    \(stepDescriptions)
+                    """
+                } else if let onlyStep = thisBatch.first {
+                    batchPrompt = effectiveMessage + "\n\nTask: " + onlyStep.description
                 }
             }
         }
+
+        // Phase 151b — compact before appending if session has grown large.
+        // Skip for continuations: they depend on recent tool results staying intact.
+        context.compactIfNeededBeforeRun(isContinuation: isContinuation)
+        context.append(Message(role: .user, content: .text(batchPrompt), timestamp: Date()))
+        emitCompactionNoteIfNeeded()
 
         lastCriticVerdict = nil
         let loopStart = Date()
@@ -971,14 +978,16 @@ final class AgenticEngine {
                 ))
 
                 toolRouter.permissionMode = permissionMode
+                var spawnCalls: [ToolCall] = []
                 var regularCalls: [ToolCall] = []
                 for call in calls {
                     if call.function.name == "spawn_agent" {
-                        await handleSpawnAgent(call: call, depth: depth, continuation: continuation)
-                        continue
+                        spawnCalls.append(call)
+                    } else {
+                        regularCalls.append(call)
                     }
-                    regularCalls.append(call)
                 }
+                await handleSpawnAgents(spawnCalls, depth: depth, continuation: continuation)
                 await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
@@ -1148,6 +1157,31 @@ final class AgenticEngine {
         }
     }
 
+    /// Groups plan steps into execution batches.
+    /// Adjacent parallel-safe steps are merged into one batch (up to maxParallelSteps).
+    /// Sequential steps (parallelSafe == false) are always their own batch.
+    /// Internal for test access.
+    func groupParallelSteps(_ steps: [PlanStep], maxParallelSteps: Int = 4) -> [[PlanStep]] {
+        var batches: [[PlanStep]] = []
+        var currentBatch: [PlanStep] = []
+
+        for step in steps {
+            if step.parallelSafe && currentBatch.allSatisfy(\.parallelSafe) && currentBatch.count < maxParallelSteps {
+                currentBatch.append(step)
+            } else {
+                if !currentBatch.isEmpty {
+                    batches.append(currentBatch)
+                }
+                currentBatch = [step]
+            }
+        }
+
+        if !currentBatch.isEmpty {
+            batches.append(currentBatch)
+        }
+        return batches
+    }
+
     // MARK: - Plan continuation
 
     /// Writes the next batch of deferred plan steps to the inject URL as a [CONTINUATION]
@@ -1157,13 +1191,9 @@ final class AgenticEngine {
     private func schedulePendingContinuation() {
         guard !pendingContinuationSteps.isEmpty else { return }
 
-        // Use the same conservative budget as the initial split so each continuation
-        // Always send exactly one step per continuation turn, matching the
-        // initial batch split. This guarantees the ceiling applies per-step.
-        let batchSize = 1
-
-        let thisBatch   = Array(pendingContinuationSteps.prefix(batchSize))
-        let stillRemaining = Array(pendingContinuationSteps.dropFirst(batchSize))
+        let batches = groupParallelSteps(pendingContinuationSteps)
+        guard let thisBatch = batches.first else { return }
+        let stillRemaining = Array(batches.dropFirst()).flatMap { $0 }
 
         let completedCount   = pendingContinuationCompletedCount
         let originalTask     = pendingContinuationOriginalTask
@@ -1177,12 +1207,26 @@ final class AgenticEngine {
             .map { "  \(completedCount + $0.offset + 1). \($0.element.description)" }
             .joined(separator: "\n")
 
+        let executionInstruction: String
+        if thisBatch.count > 1 {
+            let taskList = thisBatch.enumerated()
+                .map { "Task \($0.offset + 1): \($0.element.description)" }
+                .joined(separator: "\n")
+            executionInstruction = """
+            Execute the following independent tasks in parallel using spawn_agent for each:
+            \(taskList)
+            """
+        } else {
+            executionInstruction = "Task: \(thisBatch[0].description)"
+        }
+
         let message = """
         [CONTINUATION] Steps 1–\(completedCount) of the following task are complete. \
         Execute the next \(thisBatch.count) step(s) now:
         \(stepList)
 
         Original task: \(originalTask)
+        \(executionInstruction)
         If this step is already complete, respond with [STEP_ALREADY_DONE] and take no further action.
         """
 
@@ -1412,41 +1456,58 @@ final class AgenticEngine {
         }
     }
 
-    private func handleSpawnAgent(
-        call: ToolCall,
+    /// Launches all spawn_agent calls concurrently and forwards their events to the shared
+    /// continuation. All subagents run in parallel; this returns after every stream ends.
+    func handleSpawnAgents(
+        _ calls: [ToolCall],
         depth: Int,
         continuation: AsyncStream<AgentEvent>.Continuation
     ) async {
+        guard !calls.isEmpty else { return }
+
         struct SpawnArgs: Decodable {
             var agent: String
             var prompt: String
         }
 
-        guard let args = try? JSONDecoder().decode(SpawnArgs.self, from: Data(call.function.arguments.utf8)),
-              depth < AppSettings.shared.maxSubagentDepth else {
-            return
+        struct SubagentPlan: Sendable {
+            let agentID: UUID
+            let subagent: SubagentEngine
         }
 
-        let requestedDefinition = await AgentRegistry.shared.definition(named: args.agent)
-        let fallbackDefinition = await AgentRegistry.shared.definition(named: "explorer")
-        let definition = requestedDefinition ?? fallbackDefinition ?? AgentDefinition.defaultDefinition
-        let agentID = UUID()
-        continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
+        var plans: [SubagentPlan] = []
+        for call in calls {
+            guard let args = try? JSONDecoder().decode(SpawnArgs.self, from: Data(call.function.arguments.utf8)),
+                  depth < AppSettings.shared.maxSubagentDepth else {
+                continue
+            }
 
-        let provider = resolvedProvider(for: .orchestrate)
-        let hookEngine = HookEngine(hooks: AppSettings.shared.hooks)
-        let subagent = SubagentEngine(
-            definition: definition,
-            prompt: args.prompt,
-            provider: provider,
-            hookEngine: hookEngine,
-            depth: depth + 1
-        )
+            let requestedDefinition = await AgentRegistry.shared.definition(named: args.agent)
+            let fallbackDefinition = await AgentRegistry.shared.definition(named: "explorer")
+            let definition = requestedDefinition ?? fallbackDefinition ?? AgentDefinition.defaultDefinition
+            let agentID = UUID()
+            continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
 
-        let stream = subagent.events
-        await subagent.start()
-        for await event in stream {
-            continuation.yield(.subagentUpdate(id: agentID, event: event))
+            let subagent = SubagentEngine(
+                definition: definition,
+                prompt: args.prompt,
+                provider: resolvedProvider(for: .orchestrate),
+                hookEngine: HookEngine(hooks: AppSettings.shared.hooks),
+                depth: depth + 1
+            )
+            plans.append(SubagentPlan(agentID: agentID, subagent: subagent))
+        }
+
+        await withTaskGroup(of: Void.self) { group in
+            for plan in plans {
+                group.addTask {
+                    let stream = plan.subagent.events
+                    await plan.subagent.start()
+                    for await event in stream {
+                        continuation.yield(.subagentUpdate(id: plan.agentID, event: event))
+                    }
+                }
+            }
         }
     }
 
