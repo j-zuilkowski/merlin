@@ -979,83 +979,15 @@ final class AgenticEngine {
                     }
                     regularCalls.append(call)
                 }
-
-                for call in regularCalls {
-                    let input = inputDictionary(from: call.function.arguments)
-
-                    let hookDecision = await hookEngine.runPreToolUse(
-                        toolName: call.function.name,
-                        input: input
-                    )
-                    switch hookDecision {
-                    case .deny(let reason):
-                        let denied = ToolResult(
-                            toolCallId: call.id,
-                            content: "Blocked by hook: \(reason)",
-                            isError: true
-                        )
-                        continuation.yield(.toolCallResult(denied))
-                        context.append(Message(
-                            role: .tool,
-                            content: .text(denied.content),
-                            toolCallId: denied.toolCallId,
-                            timestamp: Date()
-                        ))
-                        continue
-                    case .allow:
-                        break
-                    }
-
-                    TelemetryEmitter.shared.emit("engine.tool.dispatched", data: [
-                        "turn": turn,
-                        "tool_name": call.function.name,
-                        "loop": loopCount
-                    ])
-                    // Track write_file paths so the critic can read the written content.
-                    if call.function.name == "write_file" {
-                        let args = inputDictionary(from: call.function.arguments)
-                        if let path = args["path"], !path.isEmpty {
-                            writtenFilePaths.append(path)
-                        }
-                    }
-                    let toolStart = Date()
-                    let results = await toolRouter.dispatch([call])
-                    guard let result = results.first else { continue }
-                    let toolMs = Date().timeIntervalSince(toolStart) * 1000
-                    if result.isError {
-                        TelemetryEmitter.shared.emit("engine.tool.error", durationMs: toolMs, data: [
-                            "turn": turn,
-                            "tool_name": call.function.name,
-                            "loop": loopCount,
-                            "error_domain": "tool_dispatch"
-                        ])
-                    } else {
-                        TelemetryEmitter.shared.emit("engine.tool.complete", durationMs: toolMs, data: [
-                            "turn": turn,
-                            "tool_name": call.function.name,
-                            "loop": loopCount,
-                            "duration_ms": toolMs,
-                            "result_bytes": result.content.utf8.count
-                        ])
-                    }
-                    continuation.yield(.toolCallResult(result))
-                    context.append(Message(
-                        role: .tool,
-                        content: .text(result.content),
-                        toolCallId: result.toolCallId,
-                        timestamp: Date()
-                    ))
-                    emitCompactionNoteIfNeeded()
-
-                    if let note = await hookEngine.runPostToolUse(
-                        toolName: call.function.name,
-                        result: result.content
-                    ) {
-                        continuation.yield(.systemNote(note))
-                        context.append(Message(role: .system, content: .text(note), timestamp: Date()))
-                        emitCompactionNoteIfNeeded()
-                    }
-                }
+                await dispatchRegularCalls(
+                    regularCalls,
+                    turn: turn,
+                    loopCount: loopCount,
+                    writtenFilePaths: &writtenFilePaths,
+                    continuation: continuation,
+                    context: context,
+                    emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
+                )
             }
         } catch {
             TelemetryEmitter.shared.emit("engine.turn.error", data: [
@@ -1363,6 +1295,120 @@ final class AgenticEngine {
 
         return dictionary.reduce(into: [:]) { result, pair in
             result[pair.key] = String(describing: pair.value)
+        }
+    }
+
+    /// Dispatches all regular (non-spawn_agent) tool calls for one loop iteration.
+    ///
+    /// Three-phase approach:
+    ///   1. Sequential pre-hooks  — preserves hook side-effect ordering
+    ///   2. Batch parallel dispatch — passes all allowed calls to ToolRouter at once
+    ///   3. Sequential context updates — preserves OpenAI wire-format message ordering
+    func dispatchRegularCalls(
+        _ calls: [ToolCall],
+        turn: Int,
+        loopCount: Int,
+        writtenFilePaths: inout [String],
+        continuation: AsyncStream<AgentEvent>.Continuation,
+        context: ContextManager? = nil,
+        emitCompactionNoteIfNeeded: (() -> Void)? = nil
+    ) async {
+        guard !calls.isEmpty else { return }
+
+        struct PrehookOutcome {
+            let call: ToolCall
+            let denied: ToolResult?
+            let writtenPath: String?
+        }
+
+        // Phase 1 — sequential pre-hooks
+        var prehookOutcomes: [PrehookOutcome] = []
+        prehookOutcomes.reserveCapacity(calls.count)
+        for call in calls {
+            let input = inputDictionary(from: call.function.arguments)
+            let decision = await hookEngine.runPreToolUse(toolName: call.function.name, input: input)
+            switch decision {
+            case .deny(let reason):
+                let denied = ToolResult(
+                    toolCallId: call.id,
+                    content: "Blocked by hook: \(reason)",
+                    isError: true
+                )
+                prehookOutcomes.append(PrehookOutcome(call: call, denied: denied, writtenPath: nil))
+            case .allow:
+                let path: String? = call.function.name == "write_file" ? input["path"] : nil
+                prehookOutcomes.append(PrehookOutcome(call: call, denied: nil, writtenPath: path))
+            }
+        }
+
+        // Phase 2 — batch parallel dispatch
+        let allowedCalls = prehookOutcomes.compactMap { $0.denied == nil ? $0.call : nil }
+        let batchStart = Date()
+        let batchResults: [ToolResult]
+        if allowedCalls.isEmpty {
+            batchResults = []
+        } else {
+            for call in allowedCalls {
+                TelemetryEmitter.shared.emit("engine.tool.dispatched", data: [
+                    "turn": turn,
+                    "tool_name": call.function.name,
+                    "loop": loopCount
+                ])
+            }
+            batchResults = await toolRouter.dispatch(allowedCalls)
+        }
+        let batchMs = Date().timeIntervalSince(batchStart) * 1000
+        let resultByID = Dictionary(uniqueKeysWithValues: batchResults.map { ($0.toolCallId, $0) })
+
+        // Phase 3 — sequential context updates (original call order)
+        let targetContext = context ?? contextManager
+        for outcome in prehookOutcomes {
+            let result: ToolResult
+            if let denied = outcome.denied {
+                result = denied
+            } else if let matched = resultByID[outcome.call.id] {
+                result = matched
+                if result.isError {
+                    TelemetryEmitter.shared.emit("engine.tool.error", durationMs: batchMs, data: [
+                        "turn": turn,
+                        "tool_name": outcome.call.function.name,
+                        "loop": loopCount,
+                        "error_domain": "tool_dispatch"
+                    ])
+                } else {
+                    TelemetryEmitter.shared.emit("engine.tool.complete", durationMs: batchMs, data: [
+                        "turn": turn,
+                        "tool_name": outcome.call.function.name,
+                        "loop": loopCount,
+                        "duration_ms": batchMs,
+                        "result_bytes": result.content.utf8.count
+                    ])
+                }
+            } else {
+                continue
+            }
+
+            if let path = outcome.writtenPath, !path.isEmpty {
+                writtenFilePaths.append(path)
+            }
+
+            continuation.yield(.toolCallResult(result))
+            targetContext.append(Message(
+                role: .tool,
+                content: .text(result.content),
+                toolCallId: result.toolCallId,
+                timestamp: Date()
+            ))
+            emitCompactionNoteIfNeeded?()
+
+            if let note = await hookEngine.runPostToolUse(
+                toolName: outcome.call.function.name,
+                result: result.content
+            ) {
+                continuation.yield(.systemNote(note))
+                targetContext.append(Message(role: .system, content: .text(note), timestamp: Date()))
+                emitCompactionNoteIfNeeded?()
+            }
         }
     }
 
