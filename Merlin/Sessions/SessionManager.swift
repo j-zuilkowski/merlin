@@ -41,6 +41,7 @@ final class SessionManager: ObservableObject {
         )
         live.title = session.title
         live.appState.engine.sessionID = live.id
+        live.originalSessionID = session.id
         liveSessions.append(live)
         activeSessionID = live.id
         return live

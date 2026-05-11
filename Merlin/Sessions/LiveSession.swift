@@ -24,6 +24,9 @@ final class LiveSession: ObservableObject, Identifiable {
     let appState: AppState
     let skillsRegistry: SkillsRegistry
     let chatViewModel = ChatViewModel()
+    /// Set by SessionManager.restore() to record which store Session this live session
+    /// was created from. Used by the sidebar to avoid restoring the same session twice.
+    var originalSessionID: UUID?
     private let mcpBridge = MCPBridge()
     private let stagingBufferStorage = StagingBuffer()
     private let memoryEngine = MemoryEngine()
@@ -78,6 +81,7 @@ final class LiveSession: ObservableObject, Identifiable {
         // Inject historical messages from a restored session.
         if !initialMessages.isEmpty {
             appState.engine.contextManager.load(initialMessages)
+            chatViewModel.load(from: initialMessages)
         }
 
         Task { @MainActor [mcpBridge, projectPath = projectRef.path] in

@@ -502,6 +502,52 @@ final class ChatViewModel: ObservableObject {
         bumpRevision()
     }
 
+    /// Populates items from a stored message history (e.g. after restoring a session).
+    /// System messages are skipped. Tool results are matched to their call entries.
+    func load(from messages: [Message]) {
+        items = []
+        var toolEntryByCallID: [String: Int] = [:]
+
+        for message in messages {
+            switch message.role {
+            case .system:
+                break
+
+            case .user:
+                let text = message.content.plainText
+                guard !text.isEmpty else { continue }
+                items.append(ChatEntry(role: .user, text: text))
+
+            case .assistant:
+                if let calls = message.toolCalls, !calls.isEmpty {
+                    for call in calls {
+                        var entry = ChatEntry(role: .tool, text: "")
+                        entry.toolCallID = call.id
+                        entry.toolName = call.function.name
+                        entry.toolArguments = call.function.arguments
+                        let idx = items.count
+                        items.append(entry)
+                        toolEntryByCallID[call.id] = idx
+                    }
+                } else {
+                    let text = message.content.plainText
+                    guard !text.isEmpty else { continue }
+                    var entry = ChatEntry(role: .assistant, text: text)
+                    entry.thinkingText = message.thinkingContent ?? ""
+                    items.append(entry)
+                }
+
+            case .tool:
+                if let callID = message.toolCallId,
+                   let idx = toolEntryByCallID[callID],
+                   items.indices.contains(idx) {
+                    items[idx].toolResult = message.content.plainText
+                }
+            }
+        }
+        bumpRevision()
+    }
+
     func toggleThinkingExpansion(at index: Int) {
         guard items.indices.contains(index) else { return }
         items[index].thinkingExpanded.toggle()

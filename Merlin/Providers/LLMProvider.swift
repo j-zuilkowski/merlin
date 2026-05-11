@@ -44,6 +44,21 @@ enum MessageContent: Codable, Sendable {
     }
 }
 
+extension MessageContent {
+    /// Returns the plain-text string from this content value.
+    var plainText: String {
+        switch self {
+        case .text(let s):
+            return s
+        case .parts(let parts):
+            return parts.compactMap { part -> String? in
+                if case .text(let t) = part { return t }
+                return nil
+            }.joined()
+        }
+    }
+}
+
 enum ContentPart: Codable, Sendable {
     case text(String)
     case imageURL(String)

@@ -93,6 +93,12 @@ private struct ProjectSection: View {
                     ForEach(prior) { session in
                         PriorSessionRow(session: session)
                             .onTapGesture {
+                                if let existing = mgr.liveSessions.first(where: {
+                                    $0.originalSessionID == session.id
+                                }) {
+                                    coordinator.setActiveSession(existing)
+                                    return
+                                }
                                 Task {
                                     let live = await mgr.restore(session: session)
                                     coordinator.setActiveSession(live)
@@ -100,6 +106,12 @@ private struct ProjectSection: View {
                             }
                             .contextMenu {
                                 Button("Resume") {
+                                    if let existing = mgr.liveSessions.first(where: {
+                                        $0.originalSessionID == session.id
+                                    }) {
+                                        coordinator.setActiveSession(existing)
+                                        return
+                                    }
                                     Task {
                                         let live = await mgr.restore(session: session)
                                         coordinator.setActiveSession(live)
