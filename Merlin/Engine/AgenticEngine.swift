@@ -78,6 +78,11 @@ final class AgenticEngine {
     var standingInstructions: String = ""
     var onUsageUpdate: ((Int) -> Void)?
     var onTitleUpdate: ((String) -> Void)?
+    /// The UUID of the session record this engine saves into.
+    /// Set by SessionManager immediately after creating the LiveSession.
+    /// Used to look up the correct store record at turn-end, independent of
+    /// SessionStore.activeSessionID which may be clobbered by concurrent saves.
+    var sessionID: UUID?
     var onParameterAdvisoriesUpdate: ((String) -> Void)?
     var performanceTracker: any ModelPerformanceTrackerProtocol = ModelPerformanceTracker.shared
     var criticOverride: (any CriticEngineProtocol)?
@@ -1049,12 +1054,15 @@ final class AgenticEngine {
             throw error
         }
 
-        if contextOverride == nil, let session = sessionStore?.activeSession {
+        if contextOverride == nil,
+           let id = sessionID,
+           let store = sessionStore,
+           let session = store.sessions.first(where: { $0.id == id }) {
             var updated = session
             updated.messages = context.messages
             updated.updatedAt = Date()
             applyTitleUpdateIfNeeded(to: &updated)
-            try? sessionStore?.save(updated)
+            try? store.save(updated)
         }
 
         let taskType = domain.taskTypes.first

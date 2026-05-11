@@ -208,7 +208,14 @@ private struct ProjectHeaderPopover: View {
 
 private struct LiveSessionRow: View {
     @ObservedObject var session: LiveSession
+    @ObservedObject var appState: AppState
     let isActive: Bool
+
+    init(session: LiveSession, isActive: Bool) {
+        self.session = session
+        self.appState = session.appState
+        self.isActive = isActive
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -219,7 +226,7 @@ private struct LiveSessionRow: View {
                     .lineLimit(1)
                 HStack(spacing: 4) {
                     PermissionModeBadge(mode: session.permissionMode)
-                    if session.appState.toolActivityState != .idle {
+                    if appState.toolActivityState != .idle {
                         Circle()
                             .fill(.purple)
                             .frame(width: 5, height: 5)

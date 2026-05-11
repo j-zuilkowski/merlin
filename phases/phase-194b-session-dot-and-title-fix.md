@@ -212,3 +212,15 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/SessionSidebar.swift
 git commit -m "Phase 194b — Fix session dot (observe appState directly) and auto-title (sessionID lookup)"
 ```
+
+## Incidental Fixes
+
+- `Merlin/Views/Chat/ConversationWebView.swift`: renamed the `WKNavigationDelegate`
+  parameter from `action` to `navigationAction` in
+  `webView(_:decidePolicyFor:decisionHandler:)` so the method exactly matches the
+  protocol requirement selector and removes the "nearly matches optional requirement"
+  warning.
+- `Merlin/Views/ChatView.swift`: changed detached-file-search call from
+  `findFiles(...)` to `Self.findFiles(...)` and made `findFiles` a `static` helper.
+  This removes the main-actor isolation warning caused by calling an actor-isolated
+  instance method from a detached task.

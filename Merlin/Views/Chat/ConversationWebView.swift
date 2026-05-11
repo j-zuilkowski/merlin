@@ -142,9 +142,9 @@ struct ConversationWebView: NSViewRepresentable {
 
         // WKNavigationDelegate — block external navigation; allow initial load
         func webView(_ webView: WKWebView,
-                     decidePolicyFor action: WKNavigationAction,
+                     decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            switch action.navigationType {
+            switch navigationAction.navigationType {
             case .other: decisionHandler(.allow)   // loadHTMLString
             default:     decisionHandler(.cancel)   // link clicks, form submits, etc.
             }

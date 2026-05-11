@@ -72,7 +72,7 @@ final class SessionDotAndTitleFixTests: XCTestCase {
     /// LiveSession's id so the engine always saves to its own record.
     /// FAILS TO COMPILE before 194b — `engine.sessionID` does not exist.
     func test_newSession_sets_engine_sessionID() async {
-        let ref = ProjectRef(path: "/tmp/194a-new-\(UUID().uuidString)")
+        let ref = ProjectRef(path: "/tmp/194a-new-\(UUID().uuidString)", displayName: "test")
         let mgr = SessionManager(projectRef: ref)
         let session = await mgr.newSession()
         XCTAssertEqual(session.appState.engine.sessionID, session.id)
@@ -81,7 +81,7 @@ final class SessionDotAndTitleFixTests: XCTestCase {
     /// SessionManager.restore() must also pin the engine's sessionID.
     /// FAILS TO COMPILE before 194b.
     func test_restore_sets_engine_sessionID() async {
-        let ref = ProjectRef(path: "/tmp/194a-restore-\(UUID().uuidString)")
+        let ref = ProjectRef(path: "/tmp/194a-restore-\(UUID().uuidString)", displayName: "test")
         let mgr = SessionManager(projectRef: ref)
 
         let stored = Session(id: UUID(), title: "Old Work", messages: [

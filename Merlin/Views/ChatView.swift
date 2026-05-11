@@ -302,7 +302,7 @@ struct ChatView: View {
         let projectPath = appState.projectPath
         atSuggestionTask = Task {
             let results = await Task.detached(priority: .userInitiated) {
-                findFiles(matching: query, in: projectPath)
+                Self.findFiles(matching: query, in: projectPath)
             }.value
             guard !Task.isCancelled else { return }
             atSuggestions = results
@@ -330,7 +330,7 @@ struct ChatView: View {
         ".svn", "__pycache__", ".tox", "venv", ".venv", "dist", "build",
     ]
 
-    private func findFiles(matching query: String, in projectPath: String) -> [String] {
+    private static func findFiles(matching query: String, in projectPath: String) -> [String] {
         guard !projectPath.isEmpty, let enumerator = FileManager.default.enumerator(
             at: URL(fileURLWithPath: projectPath),
             includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],

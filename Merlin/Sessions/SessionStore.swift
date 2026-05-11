@@ -84,7 +84,6 @@ final class SessionStore: ObservableObject {
         } else {
             sessions.append(session)
         }
-        activeSessionID = session.id
 
         let ms = Date().timeIntervalSince(saveStart) * 1000
         TelemetryEmitter.shared.emit("session.save", durationMs: ms, data: [
