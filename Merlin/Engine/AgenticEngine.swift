@@ -72,10 +72,18 @@ final class AgenticEngine {
     var loraProvider: (any LLMProvider)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
-    var permissionMode: PermissionMode = .ask
-    var claudeMDContent: String = ""
-    var memoriesContent: String = ""
-    var standingInstructions: String = ""
+    var permissionMode: PermissionMode = .ask {
+        didSet { _stablePrefixDirty = true }
+    }
+    var claudeMDContent: String = "" {
+        didSet { _stablePrefixDirty = true }
+    }
+    var memoriesContent: String = "" {
+        didSet { _stablePrefixDirty = true }
+    }
+    var standingInstructions: String = "" {
+        didSet { _stablePrefixDirty = true }
+    }
     var onUsageUpdate: ((Int) -> Void)?
     var onTitleUpdate: ((String) -> Void)?
     /// The UUID of the session record this engine saves into.
@@ -166,9 +174,15 @@ final class AgenticEngine {
     /// Default is 8 — gives the LLM enough runway to commit and wrap up complex tasks.
     var nearCeilingThreshold = 8
 
+    // Prefix cache — rebuilt only when source properties change.
+    // nearCeilingWarningAddendum is excluded because it changes per loop iteration.
+    var _stablePrefixDirty = true
+    private var _stablePrefixCached = ""
+
     var currentProjectPath: String? {
         didSet {
             guard currentProjectPath != oldValue else { return }
+            _stablePrefixDirty = true
             let path = currentProjectPath ?? ""
             Task { [weak self] in
                 guard let self else { return }
@@ -1435,6 +1449,20 @@ final class AgenticEngine {
     }
 
     private func buildSystemPrompt() -> String {
+        var result = buildStablePrefix()
+        if let warning = nearCeilingWarningAddendum {
+            result += "\n\n" + warning
+        }
+        return result
+    }
+
+    /// Returns the stable (cacheable) portion of the system prompt.
+    /// Excludes nearCeilingWarningAddendum, which varies per loop iteration.
+    /// Internal for test access.
+    func buildStablePrefix() -> String {
+        if !_stablePrefixDirty {
+            return _stablePrefixCached
+        }
         var parts: [String] = []
         if !claudeMDContent.isEmpty {
             parts.append(claudeMDContent)
@@ -1452,10 +1480,14 @@ final class AgenticEngine {
         if !standingInstructions.isEmpty {
             parts.append(standingInstructions)
         }
-        if let warning = nearCeilingWarningAddendum {
-            parts.append(warning)
-        }
-        return parts.joined(separator: "\n\n")
+        _stablePrefixCached = parts.joined(separator: "\n\n")
+        _stablePrefixDirty = false
+        return _stablePrefixCached
+    }
+
+    /// Exposed for testing — returns the full system prompt including dynamic suffix.
+    func buildSystemPromptForTesting() -> String {
+        buildSystemPrompt()
     }
 
     private static var coreSystemPrompt: String {
@@ -1477,30 +1509,15 @@ final class AgenticEngine {
     }
 
     private func buildSystemPrompt(for slot: AgentSlot) async -> String {
-        var parts: [String] = []
-        if !claudeMDContent.isEmpty {
-            parts.append(claudeMDContent)
+        var result = buildStablePrefix()
+        if let warning = nearCeilingWarningAddendum {
+            result += "\n\n" + warning
         }
-        if !memoriesContent.isEmpty {
-            parts.append(memoriesContent)
-        }
-        if permissionMode == .plan {
-            parts.append(PermissionMode.planSystemPrompt)
-        }
-        if let path = currentProjectPath {
-            parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
-        }
-        parts.append(AgenticEngine.coreSystemPrompt)
-        if !standingInstructions.isEmpty {
-            parts.append(standingInstructions)
-        }
-
         let addendum = await combinedAddendum(for: slot)
         if !addendum.isEmpty {
-            parts.append(addendum)
+            result += "\n\n" + addendum
         }
-
-        return parts.joined(separator: "\n\n")
+        return result
     }
 
     private func buildAddendum(for slot: AgentSlot) -> String {
