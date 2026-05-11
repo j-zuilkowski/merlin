@@ -7,7 +7,7 @@ struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var skillsRegistry: SkillsRegistry
     @FocusedObject private var sessionManager: SessionManager?
-    @StateObject private var model = ChatViewModel()
+    @EnvironmentObject private var model: ChatViewModel
     @State private var atSuggestions: [String] = []
     @State private var showAtPicker: Bool = false
     @State private var skillQuery: String = ""

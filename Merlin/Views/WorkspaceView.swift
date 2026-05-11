@@ -72,6 +72,7 @@ struct WorkspaceView: View {
                     .id(session.id)
                     .environmentObject(session.skillsRegistry)
                     .environmentObject(session.appState)
+                    .environmentObject(session.chatViewModel)
                     .environmentObject(session.appState.registry)
                     .focusedObject(coordinator)
                     .focusedObject(activeManager)

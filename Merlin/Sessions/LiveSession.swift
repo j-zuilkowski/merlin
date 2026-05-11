@@ -23,6 +23,7 @@ final class LiveSession: ObservableObject, Identifiable {
     @Published var title: String
     let appState: AppState
     let skillsRegistry: SkillsRegistry
+    let chatViewModel = ChatViewModel()
     private let mcpBridge = MCPBridge()
     private let stagingBufferStorage = StagingBuffer()
     private let memoryEngine = MemoryEngine()
