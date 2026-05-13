@@ -1472,7 +1472,22 @@ final class AgenticEngine {
 
         struct SubagentPlan: Sendable {
             let agentID: UUID
+            let agentName: String
             let subagent: SubagentEngine
+        }
+
+        func forwardSubagentEvents(
+            _ plan: SubagentPlan,
+            continuation: AsyncStream<AgentEvent>.Continuation
+        ) async throws {
+            let stream = plan.subagent.events
+            await plan.subagent.start()
+            for await event in stream {
+                if case .failed(let error) = event {
+                    throw error
+                }
+                continuation.yield(.subagentUpdate(id: plan.agentID, event: event))
+            }
         }
 
         var plans: [SubagentPlan] = []
@@ -1482,7 +1497,15 @@ final class AgenticEngine {
                 continue
             }
 
+            let knownNames = await AgentRegistry.shared.knownNames()
             let requestedDefinition = await AgentRegistry.shared.definition(named: args.agent)
+            if requestedDefinition == nil {
+                let known = knownNames.sorted().joined(separator: ", ")
+                continuation.yield(.systemNote(
+                    "[spawn_agent warning] unknown agent '\(args.agent)' — falling back to 'explorer'. " +
+                    "Known agents: \(known.isEmpty ? "(none registered)" : known)"
+                ))
+            }
             let fallbackDefinition = await AgentRegistry.shared.definition(named: "explorer")
             let definition = requestedDefinition ?? fallbackDefinition ?? AgentDefinition.defaultDefinition
             let agentID = UUID()
@@ -1495,16 +1518,18 @@ final class AgenticEngine {
                 hookEngine: HookEngine(hooks: AppSettings.shared.hooks),
                 depth: depth + 1
             )
-            plans.append(SubagentPlan(agentID: agentID, subagent: subagent))
+            plans.append(SubagentPlan(agentID: agentID, agentName: args.agent, subagent: subagent))
         }
 
         await withTaskGroup(of: Void.self) { group in
             for plan in plans {
-                group.addTask {
-                    let stream = plan.subagent.events
-                    await plan.subagent.start()
-                    for await event in stream {
-                        continuation.yield(.subagentUpdate(id: plan.agentID, event: event))
+                group.addTask { [continuation] in
+                    do {
+                        try await forwardSubagentEvents(plan, continuation: continuation)
+                    } catch {
+                        continuation.yield(.systemNote(
+                            "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)"
+                        ))
                     }
                 }
             }

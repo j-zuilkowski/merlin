@@ -55,6 +55,19 @@ func makeEngine(provider: MockProvider? = nil,
 
 enum EngineFactory {
     @MainActor
+    static func makeEngine(provider: MockProvider? = nil,
+                           proProvider: MockProvider? = nil,
+                           flashProvider: MockProvider? = nil,
+                           xcalibreClient: (any XcalibreClientProtocol)? = nil) -> AgenticEngine {
+        make(
+            provider: provider,
+            proProvider: proProvider,
+            flashProvider: flashProvider,
+            xcalibreClient: xcalibreClient
+        )
+    }
+
+    @MainActor
     static func make(provider: MockProvider? = nil,
                      proProvider: MockProvider? = nil,
                      flashProvider: MockProvider? = nil,

@@ -16,12 +16,36 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     /// "succeed normally". Entries beyond the array length always succeed normally.
     var stubbedErrors: [Error?] = []
     private var errorIndex = 0
+    private let shouldFail: Bool
 
-    init() { self.chunks = []; self.responses = [] }
-    init(chunks: [CompletionChunk]) { self.chunks = chunks; self.responses = [] }
-    init(responses: [MockLLMResponse]) { self.chunks = []; self.responses = responses }
+    init() {
+        self.chunks = []
+        self.responses = []
+        self.shouldFail = false
+    }
+
+    init(shouldFail: Bool = false) {
+        self.chunks = []
+        self.responses = []
+        self.shouldFail = shouldFail
+    }
+
+    init(chunks: [CompletionChunk]) {
+        self.chunks = chunks
+        self.responses = []
+        self.shouldFail = false
+    }
+
+    init(responses: [MockLLMResponse]) {
+        self.chunks = []
+        self.responses = responses
+        self.shouldFail = false
+    }
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        if shouldFail {
+            throw ProviderError.httpError(statusCode: 400, body: "mock failure", providerID: id)
+        }
         if errorIndex < stubbedErrors.count {
             let maybeError = stubbedErrors[errorIndex]
             errorIndex += 1

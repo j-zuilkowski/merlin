@@ -49,6 +49,10 @@ actor AgentRegistry {
         order.compactMap { definitions[$0] }
     }
 
+    func knownNames() -> Set<String> {
+        Set(definitions.keys)
+    }
+
     func definition(named name: String) -> AgentDefinition? {
         definitions[name]
     }
