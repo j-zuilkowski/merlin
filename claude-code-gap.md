@@ -30,6 +30,10 @@ Merlin version: v9
 | **Domain registry** | Pluggable `DomainPlugin` system; injects domain-specific verification commands and system prompt addenda per slot (e.g. Swift/Xcode conventions for the execute slot) |
 | **Voice dictation** | Ctrl+M to start/stop; transcribed via SFSpeechRecognizer and appended to prompt. Not available in Claude Code |
 | **Toolbar Actions** | Custom one-click prompt buttons above the chat input, configured per project. No equivalent in Claude Code |
+| **Scroll lock** | Scrolling up during streaming pauses auto-scroll and shows a resume banner. Claude Code (CLI) scrolls in the terminal; the web app has no equivalent pause/resume gesture |
+| **Checkpoint restoration (`/rewind`)** | `/rewind` or `/rewind N` restores the conversation and context to any of the last 50 user-turn snapshots. Claude Code has no in-session conversation rollback |
+| **Side questions (`/btw`)** | `/btw <question>` opens a floating overlay that queries the provider without touching conversation history. Claude Code has no equivalent isolated query surface |
+| **Context-length auto-recovery** | HTTP 400 "context_length_exceeded" errors trigger automatic compaction + retry rather than stopping the run. Claude Code stops when the context window is exceeded |
 | **macOS-native, non-sandboxed** | Deep integration with AX API, ScreenCaptureKit, CGEvent, SFSpeechRecognizer, macOS Keychain; all three GUI automation strategies auto-selected per target app. Claude Code is a CLI tool with no native GUI layer |
 
 ---
@@ -60,11 +64,13 @@ Merlin version: v9
 
 ### Minor
 
-| Gap | Claude Code capability | Effort |
-|---|---|---|
-| **Scroll lock** | Manual scroll pauses auto-scroll to bottom while streaming; resumes at bottom | Low |
-| **Checkpoint restoration (/rewind)** | Restores conversation, code state, or both to any prior checkpoint; checkpoints persist across sessions; distinct from git history | Low |
-| **/btw (side questions)** | Quick question in a dismissible overlay that never enters conversation history, keeping the main context clean | Low |
+> All three minor gaps are now closed (Phases 202b, 203b, 204b).
+
+| Gap | Status |
+|---|---|
+| **Scroll lock** | ✅ Implemented — Phase 202b |
+| **Checkpoint restoration (/rewind)** | ✅ Implemented — Phase 203b |
+| **/btw (side questions)** | ✅ Implemented — Phase 204b |
 
 ---
 
@@ -72,7 +78,9 @@ Merlin version: v9
 
 **The biggest structural gap from the original (2026-04-26) analysis is now closed.** The original document identified the lack of sessions-as-worktrees and a diff review layer as the core deficit. Merlin now has full git worktree isolation per session, a staged diff review layer with inline commenting and agent revision, parallel sessions, and subagents. All five "most impactful daily use" gaps from the original doc (diff pane, stop button, @filename, CLAUDE.md, MCP) are implemented.
 
-**Remaining gaps are almost entirely cloud-side:**
+**All local feature gaps are now closed.** Phases 200–204 addressed the three open bugs (spawn_agent crash, missing /compact, context-overflow fatal stop) and all three previously-listed minor local gaps (scroll lock, /rewind, /btw).
+
+**Remaining gaps are exclusively cloud-side:**
 1. **Cloud Routines** — tasks that must run overnight, on a schedule, or on GitHub events without the machine being on
 2. **Remote sessions** — execution on Anthropic infrastructure when away from the local Mac
 3. **SSH sessions** — access to remote machines

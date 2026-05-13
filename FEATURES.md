@@ -33,9 +33,13 @@ All providers share a single configuration surface (Settings → Providers). API
 - **Parallel tool calls** — multiple tools dispatched concurrently via Swift structured concurrency.
 - **Interrupt at any time** — Stop button cancels the active turn cleanly; the session remains in a valid state.
 - **Error retry** — first failure retries silently; second failure surfaces to the user with Retry / Skip / Abort options.
-- **Context compaction** — at 800,000 tokens, old tool results are summarised automatically. Conversation and code context are preserved verbatim.
+- **Context compaction** — at 800,000 tokens, old tool results are summarised automatically. Conversation and code context are preserved verbatim. Type `/compact` in the chat bar to compact on demand at any time.
+- **Context-length recovery** — when the provider rejects a prompt as too long (HTTP 400 "context_length_exceeded"), Merlin compacts automatically and retries the failed turn once rather than stopping.
 - **Thinking mode** — automatically enabled for reasoning-heavy prompts (architecture, debugging, analysis) when the active provider supports it. Suppressed for simple operations.
 - **Reasoning effort** — configurable per provider; overridable per session.
+- **Scroll lock** — scrolling up during a streaming response pauses auto-scroll and shows a "Resume auto-scroll" banner. Clicking the banner or sending a new message snaps back to the bottom.
+- **Checkpoint restoration (`/rewind`)** — Merlin saves a snapshot before each user turn. Type `/rewind` to restore to the previous checkpoint, or `/rewind N` to go back N steps. Restores both the context window and the visible conversation. Up to 50 checkpoints are retained per session.
+- **Side questions (`/btw`)** — type `/btw <question>` to open a floating overlay that sends a one-shot question directly to the active provider. The response appears in the overlay without touching the conversation history or context window. Dismiss with Esc or a click outside.
 
 ---
 

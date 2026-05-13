@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 1.0**
+**Version 1.9**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -15,23 +15,24 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 5. [Sessions](#sessions)
 6. [Providers](#providers)
 7. [Skills](#skills)
-8. [@-Mentions and File Attachments](#-mentions-and-file-attachments)
-9. [Staged Changes](#staged-changes)
-10. [File Viewer](#file-viewer)
-11. [Terminal Pane](#terminal-pane)
-12. [Preview Pane](#preview-pane)
-13. [Side Chat](#side-chat)
-14. [Subagents](#subagents)
-15. [Multi-LLM Roles](#multi-llm-roles)
-16. [Performance Dashboard](#performance-dashboard)
-17. [Memories](#memories)
-18. [RAG Memory Browser](#rag-memory-browser)
-19. [Hooks](#hooks)
-20. [Connectors](#connectors)
-21. [Scheduled Automations](#scheduled-automations)
-22. [LoRA Self-Training](#lora-self-training)
-23. [Settings](#settings)
-24. [Keyboard Shortcuts](#keyboard-shortcuts)
+8. [Slash Commands](#slash-commands)
+9. [@-Mentions and File Attachments](#-mentions-and-file-attachments)
+10. [Staged Changes](#staged-changes)
+11. [File Viewer](#file-viewer)
+12. [Terminal Pane](#terminal-pane)
+13. [Preview Pane](#preview-pane)
+14. [Side Chat](#side-chat)
+15. [Subagents](#subagents)
+16. [Multi-LLM Roles](#multi-llm-roles)
+17. [Performance Dashboard](#performance-dashboard)
+18. [Memories](#memories)
+19. [RAG Memory Browser](#rag-memory-browser)
+20. [Hooks](#hooks)
+21. [Connectors](#connectors)
+22. [Scheduled Automations](#scheduled-automations)
+23. [LoRA Self-Training](#lora-self-training)
+24. [Settings](#settings)
+25. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -97,6 +98,10 @@ Press **⌘.** or click the **stop button** (the send button turns red while the
 ### Thinking Mode
 
 Merlin automatically detects when your message requires deep reasoning (words like "think through", "analyse", "architecture", "design") and enables the provider's extended thinking mode for that turn. You can see the thinking steps in collapsed blocks in the conversation.
+
+### Scroll Lock
+
+When the AI is streaming a long response, scrolling up pauses automatic scrolling and reveals a **"Resume auto-scroll"** banner at the bottom of the conversation. Click the banner to snap back to the bottom and resume. Sending a new message also resumes auto-scroll automatically.
 
 ---
 
@@ -164,6 +169,14 @@ Press **⌘N** or choose **File → New Session**.
 
 Press **⌘⇧P** or choose **Window → Pop Out Session** to open the current session in a floating window that can stay on top of other apps.
 
+### Context Compaction
+
+When the conversation grows large, Merlin automatically summarises old tool-result groups to free up context space. The conversation and code context are preserved verbatim; only intermediate tool output is condensed. A **[context compacted]** note appears in the conversation when this happens.
+
+You can also trigger compaction on demand at any time by typing `/compact` in the chat bar (see [Slash Commands](#slash-commands)).
+
+**Automatic recovery:** if the active provider rejects a prompt because it exceeds its context window (HTTP 400 "context_length_exceeded"), Merlin compacts automatically and retries the failed turn rather than stopping. This means long agentic runs can continue uninterrupted even when a single payload is unusually large.
+
 ---
 
 ## Providers
@@ -219,6 +232,39 @@ Please summarise the following, highlighting the most important behaviour:
 ```
 
 Merlin watches the skills directories and reloads automatically when files change.
+
+---
+
+## Slash Commands
+
+Several built-in commands are available directly from the chat input. Type `/` followed by the command name and press **Return**.
+
+| Command | What it does |
+|---|---|
+| `/calibrate` | Benchmark the active local model against a remote reference provider and surface parameter advisories |
+| `/compact` | Compact the context window immediately, summarising old tool results to free up space |
+| `/rewind` | Restore the conversation to the snapshot taken before your most recent message |
+| `/rewind N` | Restore the conversation N turns back (e.g. `/rewind 3` goes back three user turns) |
+| `/btw <question>` | Open a floating side-question overlay and ask something without affecting the conversation history |
+| `/btw` | Open the side-question overlay with an empty input field |
+
+### /compact
+
+Triggers context compaction immediately regardless of how full the context window is. Useful before sending a large prompt or spawning a subagent when you know the current context is bloated with old tool output. A **[context compacted on demand]** note appears in the conversation to confirm.
+
+### /rewind
+
+Merlin saves a checkpoint of the conversation before each of your messages. `/rewind` restores to the most recent checkpoint — effectively undoing your last message and the AI's response. `/rewind N` goes back N checkpoints.
+
+Checkpoints are kept for the lifetime of the session (up to 50). They are cleared when you start a new session. Rewind restores both the context window (what the AI can see) and the visible conversation.
+
+> **Note:** `/rewind` does not undo file changes the AI made to disk. If the AI wrote or deleted files, those changes remain on disk after rewinding the conversation. Use git to revert file changes.
+
+### /btw
+
+Opens a small floating overlay anchored to the chat area. Type a question, press **Return** — the answer streams in from the active provider without touching your conversation history or the AI's context window. Press **Esc** or click anywhere outside the overlay to dismiss it.
+
+This is useful for quick look-ups ("what does this function signature mean?", "what's the regex for email addresses?") that you don't want polluting the conversation your agent is in the middle of.
 
 ---
 
@@ -488,7 +534,7 @@ Access via **Merlin → Settings…** (⌘,).
 
 | Section | What you configure |
 |---|---|
-| **General** | Default permission mode, auto-compaction toggle, max context tokens, keep-awake toggle |
+| **General** | Default permission mode, auto-compaction toggle, max context tokens, keep-awake toggle, checkpoint store size |
 | **Appearance** | Theme (light/dark/system), font size, accent colour, line spacing |
 | **Providers** | Enable/disable providers, set API keys, base URLs, and model names |
 | **Role Slots** | Assign LLM providers to execute / reason / orchestrate / vision slots |
@@ -509,10 +555,13 @@ Access via **Merlin → Settings…** (⌘,).
 | ⌘. | Stop the current agent turn |
 | ⌘⇧P | Pop out current session as floating window |
 | ⌘, | Open Settings |
+| ⌘⇧K | Compact context window immediately |
+| ⌘⇧A | Copy full conversation to clipboard |
 | Return | Send message |
 | Shift+Return | New line in input |
-| / (in input) | Open skills picker |
+| / (in input) | Open skills picker (also starts a slash command) |
 | @ (in input) | Open file @-mention picker |
 | Ctrl+` | Toggle Terminal pane |
 | ⌘⇧/ | Toggle Side Chat |
 | ⌘⇧M | Review Memories |
+| Esc (in /btw overlay) | Dismiss the side-question overlay |
