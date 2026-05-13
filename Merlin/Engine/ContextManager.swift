@@ -58,12 +58,26 @@ class ContextManager: ObservableObject {
     /// output space even in long sessions.
     let preRunCompactionThreshold = 10_000
 
+    /// Token threshold that triggers compaction mid-loop, inside the `while true` execute loop.
+    /// A `var` so tests can lower it without mocking. Default: 40 000 tokens —
+    /// well below a typical 32 K model context, giving the next LLM call ample output headroom.
+    var midLoopCompactionThreshold: Int = 40_000
+
     /// Called by `AgenticEngine.runLoop` before appending the user message.
     /// Compacts when the session has grown past `preRunCompactionThreshold` tokens
     /// and the turn is not a continuation (continuations must preserve recent
     /// tool results so the model can finish multi-step work).
     func compactIfNeededBeforeRun(isContinuation: Bool) {
         guard !isContinuation, estimatedTokens > preRunCompactionThreshold else { return }
+        compact(force: true)
+    }
+
+    /// Called inside the `while true` execute loop after every tool-dispatch round.
+    /// Compacts when accumulated tool results push the context past `midLoopCompactionThreshold`,
+    /// keeping per-turn token cost linear regardless of how many tool iterations the loop takes.
+    /// Skipped when at or below threshold — no-op cost.
+    func compactIfNeededMidLoop() {
+        guard estimatedTokens > midLoopCompactionThreshold else { return }
         compact(force: true)
     }
 

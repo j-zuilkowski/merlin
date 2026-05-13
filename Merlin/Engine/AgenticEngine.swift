@@ -1015,6 +1015,10 @@ final class AgenticEngine {
                     context: context,
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
+                // Prompt compression: compact if tool results have pushed tokens past the mid-loop threshold.
+                // Phase 206 will replace this with an async LLM-summarisation call.
+                context.compactIfNeededMidLoop()
+                emitCompactionNoteIfNeeded()
             }
         } catch let pe as ProviderError where pe.isContextLengthExceeded && contextLengthRetryCount == 0 {
             contextLengthRetryCount += 1
