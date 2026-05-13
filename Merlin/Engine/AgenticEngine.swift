@@ -157,6 +157,8 @@ final class AgenticEngine {
     /// within the current user-initiated task. Prevents infinite ceiling bouncing.
     /// Resets when a fresh (non-continuation) user message starts a new turn.
     private var ceilingContinuationCount = 0
+    private var contextLengthRetryCount = 0
+    private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
 
     /// Maximum number of auto-continuations triggered by ceiling hits before the
     /// engine gives up and stops. Each continuation gets its own full loop budget.
@@ -437,6 +439,9 @@ final class AgenticEngine {
         AsyncStream { continuation in
             let task = Task { @MainActor in
                 let state = CancellationState()
+                self.contextLengthRetryCount = 0
+                self.ceilingContinuationCount = 0
+                self.activeContinuation = continuation
                 await withTaskCancellationHandler(operation: {
                     do {
                         let turnNumber = self.contextManager.messages.filter { $0.role == .user }.count + 1
@@ -476,6 +481,11 @@ final class AgenticEngine {
 
     func execute(userMessage: String) -> AsyncStream<AgentEvent> {
         send(userMessage: userMessage)
+    }
+
+    /// Appends a system note to the active stream if a run is in progress; otherwise no-op.
+    func emitSystemNote(_ text: String) {
+        activeContinuation?.yield(.systemNote(text))
     }
 
     private func runFork(prompt: String) -> AsyncStream<AgentEvent> {
@@ -521,6 +531,7 @@ final class AgenticEngine {
             continuation.yield(.systemNote("[Interrupted]"))
         }
         continuation.finish()
+        activeContinuation = nil
         currentTask = nil
         isRunning = false
     }
@@ -998,6 +1009,18 @@ final class AgenticEngine {
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
             }
+        } catch let pe as ProviderError where pe.isContextLengthExceeded && contextLengthRetryCount == 0 {
+            contextLengthRetryCount += 1
+            continuation.yield(.systemNote(
+                "[context too large — compacting and retrying…]"
+            ))
+            context.forceCompaction()
+            try await runLoop(
+                userMessage: userMessage,
+                continuation: continuation,
+                contextOverride: contextOverride,
+                depth: depth
+            )
         } catch {
             TelemetryEmitter.shared.emit("engine.turn.error", data: [
                 "turn": turn,

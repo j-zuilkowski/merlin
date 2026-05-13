@@ -257,28 +257,39 @@ struct ChatView: View {
 
     private func handleSlashCommandIfNeeded(_ message: String) -> Bool {
         guard message.hasPrefix("/") else { return false }
-        let command = message.dropFirst().split(whereSeparator: \.isWhitespace).first.map(String.init) ?? ""
-        guard command.lowercased() == "calibrate" else { return false }
+        let parts = message.dropFirst().split(whereSeparator: \.isWhitespace)
+        let command = parts.first.map(String.init)?.lowercased() ?? ""
 
-        // When slot assignments are configured, calibrate the execute-slot provider
-        // (typically a local model) against a remote reference. This lets /calibrate
-        // compare LM Studio models even when deepseek is the primary provider.
-        let localProviderID: String
-        let localModelID: String
-        if let executeID = appState.engine.slotAssignments[.execute], !executeID.isEmpty {
-            localProviderID = executeID
-            localModelID = executeID.contains(":") ?
-                String(executeID.split(separator: ":", maxSplits: 1).last ?? Substring(executeID)) :
-                appState.activeModelID
-        } else {
-            localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
-            localModelID = appState.activeModelID
+        switch command {
+        case "calibrate":
+            // When slot assignments are configured, calibrate the execute-slot provider
+            // (typically a local model) against a remote reference. This lets /calibrate
+            // compare LM Studio models even when deepseek is the primary provider.
+            let localProviderID: String
+            let localModelID: String
+            if let executeID = appState.engine.slotAssignments[.execute], !executeID.isEmpty {
+                localProviderID = executeID
+                localModelID = executeID.contains(":") ?
+                    String(executeID.split(separator: ":", maxSplits: 1).last ?? Substring(executeID)) :
+                    appState.activeModelID
+            } else {
+                localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
+                localModelID = appState.activeModelID
+            }
+            appState.calibrationCoordinator.begin(
+                localProviderID: localProviderID,
+                localModelID: localModelID
+            )
+            return true
+
+        case "compact":
+            appState.engine.contextManager.forceCompaction()
+            appState.engine.emitSystemNote("[context compacted on demand]")
+            return true
+
+        default:
+            return false
         }
-        appState.calibrationCoordinator.begin(
-            localProviderID: localProviderID,
-            localModelID: localModelID
-        )
-        return true
     }
 
     private func updateAtSuggestions(for draft: String) {

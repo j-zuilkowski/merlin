@@ -16,36 +16,47 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     /// "succeed normally". Entries beyond the array length always succeed normally.
     var stubbedErrors: [Error?] = []
     private var errorIndex = 0
-    private let shouldFail: Bool
+    private(set) var callCount: Int = 0
+    private let firstCallError: ProviderError?
+    private let allCallsError: ProviderError?
 
     init() {
         self.chunks = []
         self.responses = []
-        self.shouldFail = false
+        self.firstCallError = nil
+        self.allCallsError = nil
     }
 
-    init(shouldFail: Bool = false) {
+    init(shouldFail: Bool = false,
+         failFirstCallWith firstError: ProviderError? = nil,
+         failAllCallsWith allError: ProviderError? = nil) {
         self.chunks = []
         self.responses = []
-        self.shouldFail = shouldFail
+        self.firstCallError = firstError
+        let genericError: ProviderError? = shouldFail
+            ? .httpError(statusCode: 400, body: "mock failure", providerID: "mock")
+            : nil
+        self.allCallsError = allError ?? genericError
     }
 
     init(chunks: [CompletionChunk]) {
         self.chunks = chunks
         self.responses = []
-        self.shouldFail = false
+        self.firstCallError = nil
+        self.allCallsError = nil
     }
 
     init(responses: [MockLLMResponse]) {
         self.chunks = []
         self.responses = responses
-        self.shouldFail = false
+        self.firstCallError = nil
+        self.allCallsError = nil
     }
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
-        if shouldFail {
-            throw ProviderError.httpError(statusCode: 400, body: "mock failure", providerID: id)
-        }
+        callCount += 1
+        if let error = allCallsError { throw error }
+        if callCount == 1, let error = firstCallError { throw error }
         if errorIndex < stubbedErrors.count {
             let maybeError = stubbedErrors[errorIndex]
             errorIndex += 1

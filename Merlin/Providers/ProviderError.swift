@@ -40,6 +40,18 @@ enum ProviderError: Error, Sendable {
         }
     }
 
+    /// True when the provider rejected the request because the prompt exceeded its context window.
+    /// These errors should trigger compaction + one retry rather than surfacing to the user.
+    var isContextLengthExceeded: Bool {
+        guard case .httpError(let code, let body, _) = self, code == 400 else { return false }
+        let lower = body.lowercased()
+        return lower.contains("context_length_exceeded")
+            || lower.contains("maximum context length")
+            || lower.contains("input too long")
+            || lower.contains("prompt is too long")
+            || lower.contains("context window")
+    }
+
     // MARK: - Back-off
 
     /// Recommended delay before the next retry attempt.
