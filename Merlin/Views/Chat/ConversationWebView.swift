@@ -52,6 +52,15 @@ struct ConversationWebView: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         let coord = context.coordinator
+
+        // Dispatch a JS resize event when the frame changes so web content reflows correctly.
+        let currentFrame = webView.frame
+        if currentFrame != coord.lastFrame && !currentFrame.isEmpty {
+            coord.lastFrame = currentFrame
+            webView.evaluateJavaScript(
+                "window.dispatchEvent(new Event('resize'))", completionHandler: nil)
+        }
+
         let old = coord.renderedCount
         let new = entries.count
 
@@ -129,6 +138,7 @@ struct ConversationWebView: NSViewRepresentable {
         weak var webView: WKWebView?
         var renderedCount: Int = 0
         var lastStreamingID: UUID? = nil
+        var lastFrame: CGRect = .zero
 
         init(onToggleThinking: @escaping (UUID) -> Void,
              onToggleTool: @escaping (String) -> Void,

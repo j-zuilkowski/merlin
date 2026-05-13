@@ -163,15 +163,15 @@ enum ConversationHTMLRenderer {
             """
         }
         return """
-        <div class="tool-row\(errorClass)" data-tool-id="\(htmlEscape(call.id))">
-          <div class="tool-header" onclick="merlin.toggleTool('\(htmlEscape(call.id))')">
+        <details class="tool-row\(errorClass)" data-tool-id="\(htmlEscape(call.id))">
+          <summary class="tool-header">
             <span class="tool-icon">⚙</span>
             <span class="tool-name">\(htmlEscape(call.name))</span>
             \(statusLabel)
-            <button class="tool-toggle" onclick="event.stopPropagation();merlin.toggleTool('\(htmlEscape(call.id))')">▸</button>
-          </div>
+            <span class="tool-toggle"></span>
+          </summary>
           <div class="tool-body">\(inner)</div>
-        </div>
+        </details>
         """
     }
 
@@ -257,6 +257,7 @@ enum ConversationHTMLRenderer {
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
+            width: 100%;
             background: var(--bg);
             color: var(--fg);
             font-family: var(--font);
@@ -295,15 +296,19 @@ enum ConversationHTMLRenderer {
             font-size: 12px;
         }
         .tool-row.tool-error { border-color: rgba(255,100,100,0.4); }
-        .tool-header { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+        .tool-header {
+            list-style: none;
+            display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+        }
+        .tool-header::-webkit-details-marker { display: none; }
         .tool-icon { color: var(--fg-secondary); font-size: 11px; }
         .tool-name { font-family: var(--mono); font-weight: 600; flex: 1; }
         .tool-status { font-size: 11px; color: var(--fg-secondary); }
         .tool-status.error { color: #ff8c69; }
-        .tool-toggle { background: none; border: none; cursor: pointer;
-                       color: var(--fg-secondary); font-size: 11px; padding: 0; }
-        .tool-body { margin-top: 6px; display: none; }
-        .tool-body.open { display: block; }
+        .tool-toggle { color: var(--fg-secondary); font-size: 11px; }
+        .tool-toggle::before { content: '▸'; }
+        details[open] .tool-toggle::before { content: '▾'; }
+        .tool-body { margin-top: 6px; }
         .tool-args, .tool-result { margin-top: 4px; }
         pre {
             background: var(--code-bg);
@@ -340,12 +345,6 @@ enum ConversationHTMLRenderer {
             margin-bottom: 4px; display: block;
         }
         .thinking-body { white-space: pre-wrap; }
-        .tool-header { display: flex; justify-content: space-between; align-items: center; }
-        .tool-name   { font-family: var(--mono); font-weight: 600; }
-        .tool-toggle { background: none; border: none; cursor: pointer;
-                       color: var(--fg-secondary); font-size: 11px; }
-        .tool-body   { margin-top: 6px; }
-        .tool-args, .tool-result { margin-top: 4px; }
         </style>
         </head>
         <body>
@@ -380,23 +379,18 @@ enum ConversationHTMLRenderer {
             },
             appendChunk: function(id, html) {
                 const el = document.querySelector('[data-id="' + id + '"]');
-                if (!el) { merlin.addMessage(html); return; }
+                if (!el) return;
                 // Preserve which tool rows are currently expanded before replacing HTML.
                 const openTools = {};
                 el.querySelectorAll('[data-tool-id]').forEach(function(row) {
-                    const body = row.querySelector('.tool-body');
-                    openTools[row.getAttribute('data-tool-id')] = body && body.classList.contains('open');
+                    openTools[row.getAttribute('data-tool-id')] = row.open;
                 });
                 el.outerHTML = html;
                 // Re-open any tool rows that were open before the replace.
                 Object.keys(openTools).forEach(function(toolId) {
                     if (!openTools[toolId]) return;
                     const row = document.querySelector('[data-tool-id="' + toolId + '"]');
-                    if (!row) return;
-                    const body = row.querySelector('.tool-body');
-                    const btn = row.querySelector('.tool-toggle');
-                    if (body) body.classList.add('open');
-                    if (btn) btn.textContent = '▾';
+                    if (row) row.open = true;
                 });
                 if (!_userScrolled) { merlin.scrollToBottom(); }
             },
@@ -415,18 +409,7 @@ enum ConversationHTMLRenderer {
             },
             toggleTool: function(id) {
                 const row = document.querySelector('[data-tool-id="' + id + '"]');
-                if (!row) return;
-                const body = row.querySelector('.tool-body');
-                const btn = row.querySelector('.tool-toggle');
-                if (!body) return;
-                const isOpen = body.classList.contains('open');
-                if (isOpen) {
-                    body.classList.remove('open');
-                    if (btn) btn.textContent = '▸';
-                } else {
-                    body.classList.add('open');
-                    if (btn) btn.textContent = '▾';
-                }
+                if (row) row.open = !row.open;
             },
             setTheme: function(vars) {
                 const root = document.documentElement;
