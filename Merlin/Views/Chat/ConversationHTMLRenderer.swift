@@ -326,7 +326,7 @@ enum ConversationHTMLRenderer {
         // Scroll-lock: true when user has manually scrolled up >50px from bottom.
         // Auto-scroll is suppressed while locked; addMessage (new turn) always resets it.
         let _userScrolled = false;
-        document.addEventListener('scroll', function() {
+        window.addEventListener('scroll', function() {
             const root = document.documentElement;
             const distFromBottom = root.scrollHeight - root.scrollTop - root.clientHeight;
             const nowLocked = distFromBottom > 50;
