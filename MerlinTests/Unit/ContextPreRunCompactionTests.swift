@@ -62,7 +62,8 @@ final class ContextPreRunCompactionTests: XCTestCase {
 
     func testTokensReducedAfterPreRunCompaction() {
         let cm = ContextManager()
-        for i in 0..<12 {
+        // Use 25 messages so that hard-truncation (keeps last 20) actually removes some.
+        for i in 0..<25 {
             cm.append(Message(
                 role: .tool,
                 content: .text(String(repeating: "x", count: 3_500)),

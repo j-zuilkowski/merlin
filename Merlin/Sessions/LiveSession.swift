@@ -77,6 +77,7 @@ final class LiveSession: ObservableObject, Identifiable {
         // operate on the correct session from the first turn onward.
         let initialRecord = Session(id: self.id, title: "New Session", messages: [])
         try? appState.sessionStore?.save(initialRecord)
+        appState.sessionStore?.activeSessionID = self.id
 
         // Inject historical messages from a restored session.
         if !initialMessages.isEmpty {

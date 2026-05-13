@@ -33,12 +33,14 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
         let provider = MockProvider()
         let engine = EngineFactory.makeEngine(provider: provider)
 
+        // Use a name that is never registered as a builtin ("worker", "default", "explorer" are).
+        let unknownName = "custom-unregistered-agent-xyz"
         let call = ToolCall(
             id: UUID().uuidString,
             type: "function",
             function: .init(
                 name: "spawn_agent",
-                arguments: #"{"agent":"worker","prompt":"do the thing"}"#
+                arguments: "{\"agent\":\"\(unknownName)\",\"prompt\":\"do the thing\"}"
             )
         )
 
@@ -53,7 +55,7 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
 
         let notes = events.compactMap { if case .systemNote(let s) = $0 { return s } else { return nil } }
         XCTAssertTrue(
-            notes.contains(where: { $0.lowercased().contains("unknown") || $0.contains("worker") }),
+            notes.contains(where: { $0.lowercased().contains("unknown") || $0.contains(unknownName) }),
             "must emit a systemNote when agent name is not in registry; got: \(notes)"
         )
     }
