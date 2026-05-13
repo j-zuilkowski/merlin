@@ -33,13 +33,50 @@ All providers share a single configuration surface (Settings → Providers). API
 - **Parallel tool calls** — multiple tools dispatched concurrently via Swift structured concurrency.
 - **Interrupt at any time** — Stop button cancels the active turn cleanly; the session remains in a valid state.
 - **Error retry** — first failure retries silently; second failure surfaces to the user with Retry / Skip / Abort options.
-- **Context compaction** — at 800,000 tokens, old tool results are summarised automatically. Conversation and code context are preserved verbatim. Type `/compact` in the chat bar to compact on demand at any time.
+- **Context compaction** — old tool results are summarised automatically at three trigger points: (1) pre-run when estimated tokens exceed 10,000, (2) mid-loop every time tool results push past 40,000 tokens within a single turn, and (3) emergency overflow at 800,000 tokens. Mid-loop summarisation uses the active LLM to produce a narrative digest of removed exchanges rather than a static truncation marker, so the model retains a meaningful summary of what it already did. Type `/compact` in the chat bar or use Session → Compact Context (⌘⇧K) to compact on demand.
 - **Context-length recovery** — when the provider rejects a prompt as too long (HTTP 400 "context_length_exceeded"), Merlin compacts automatically and retries the failed turn once rather than stopping.
 - **Thinking mode** — automatically enabled for reasoning-heavy prompts (architecture, debugging, analysis) when the active provider supports it. Suppressed for simple operations.
 - **Reasoning effort** — configurable per provider; overridable per session.
 - **Scroll lock** — scrolling up during a streaming response pauses auto-scroll and shows a "Resume auto-scroll" banner. Clicking the banner or sending a new message snaps back to the bottom.
 - **Checkpoint restoration (`/rewind`)** — Merlin saves a snapshot before each user turn. Type `/rewind` to restore to the previous checkpoint, or `/rewind N` to go back N steps. Restores both the context window and the visible conversation. Up to 50 checkpoints are retained per session.
 - **Side questions (`/btw`)** — type `/btw <question>` to open a floating overlay that sends a one-shot question directly to the active provider. The response appears in the overlay without touching the conversation history or context window. Dismiss with Esc or a click outside.
+
+---
+
+## Prompt Compression
+
+Agentic loops accumulate context quadratically — every step sends the full history to the model, so a 100-step run with a 5 K-token history costs 500 K tokens in total. Merlin applies three complementary compression strategies to keep per-turn cost linear regardless of session length. The approach is informed by ["Implementing Prompt Compression to Reduce Agentic Loop Costs"](https://machinelearningmastery.com/implementing-prompt-compression-to-reduce-agentic-loop-costs/) (MachineLearningMastery.com).
+
+### Mid-loop compaction
+
+`ContextManager` tracks estimated tokens after every tool result is appended to the context. When tokens exceed the **mid-loop threshold** (40,000 by default), compaction fires immediately — inside the `while true` execute loop, before the next LLM request is built. This prevents a long tool chain from silently growing the context window across dozens of iterations without the model (or the user) realising.
+
+The threshold is intentionally well below the provider's context window so there is always ample headroom for the next LLM response. Compaction removes the oldest complete tool-exchange groups (an assistant message with `tool_calls` together with all its `tool` result messages) so the context never violates the OpenAI wire format.
+
+### LLM summarisation (recursive summarisation)
+
+When mid-loop compaction fires, the removed tool exchanges are passed to the active LLM provider as a compact one-shot summarisation request (no tools, temperature 0). The model produces a short narrative digest — "read `Engine.swift`, found the run loop at line 550, patched lines 711–715, ran tests: 3 passed" — which is inserted as a `system` message in place of the raw exchanges.
+
+This contrasts with the overflow path (800 K tokens) and the pre-run path (10 K tokens), which both use a static truncation marker rather than an LLM call. The mid-loop path spends one cheap summarisation call to preserve task continuity across hundreds of tool steps.
+
+### Instruction distillation
+
+The core system prompt and the user's `CLAUDE.md` file are sent verbatim on every single LLM request. In a 100-step loop, a 2 K-token system prompt costs 200 K tokens in overhead before any work is done.
+
+Merlin addresses this in two layers:
+
+- **Static distillation** — the built-in `coreSystemPrompt` is expressed in a compact, symbol-dense form (~6 lines) that conveys the same constraints as the original 18-line prose version at a fraction of the token count.
+- **Dynamic distillation** — when `promptCompressionEnabled` is `true` (Settings → Agent → Prompt Compression), Merlin calls the reason-slot provider once to compress the project's `CLAUDE.md` into a shorthand equivalent. The distilled version is cached against a hash of the original; it is only re-distilled when the source file changes. `buildStablePrefix()` uses the distilled variant for every subsequent request in the session.
+
+Enable dynamic distillation in **Settings → Agent → Prompt Compression** or via `prompt_compression_enabled = true` in `~/.merlin/config.toml`. The distillation call is made once per changed `CLAUDE.md`, not per turn.
+
+**Token savings summary**
+
+| Technique | Trigger | Savings mechanism |
+|---|---|---|
+| Mid-loop compaction | 40,000 tokens within a turn | Removes old tool exchanges; keeps context linear |
+| LLM summarisation | Mid-loop compaction path | Preserves task continuity with a narrative digest |
+| Instruction distillation | Per session (dynamic) or static | Shrinks system prompt sent on every request |
 
 ---
 
@@ -109,7 +146,7 @@ On first launch, a setup wizard lets you pick and configure any provider. You ca
 - **Auto-title** — after the first turn completes, the session title is automatically generated from the first 50 characters of the user's message, matching Claude app and Codex behaviour. No manual rename required. (v1.8.1: each new session is registered in `SessionStore` on init so title generation works from the very first turn.)
 - **Session isolation** — each new session gets its own `ContextManager`, message history, and `AppState`. Switching sessions switches the entire view tree; no state bleeds between sessions. (v1.8.1: `.id(session.id)` on `ContentView` forces SwiftUI to fully recreate the view when the active session changes.)
 - **Activity indicator** — a small dot in the sidebar row shows when a session's engine is running. Clears automatically when the engine finishes, even if the session is not the active view. (v1.8.1: `AppState` observes `engine.isRunning` via Combine and resets `toolActivityState` directly, so the dot always clears.)
-- **Context compaction** — at 800,000 tokens, old tool-result groups are removed automatically. Session → Compact Context (⌘⇧K) forces immediate compaction. (v1.8.1: when the context has no tool-exchange groups — only user/assistant messages — compaction hard-truncates to the last 20 messages instead of appending a no-op sentinel.)
+- **Context compaction** — old tool-result groups are removed automatically at three points: pre-run (10,000 tokens), mid-loop (40,000 tokens, with LLM summarisation), and overflow (800,000 tokens). Session → Compact Context (⌘⇧K) forces immediate compaction. When the context has no tool-exchange groups, compaction hard-truncates to the last 20 messages instead of appending a no-op sentinel.
 - **Archive & recall** — sessions can be archived (hidden from the main list) via right-click context menu. Archived sessions are revealed under "Show archived…" and can be recalled to active status at any time.
 - **Session restore** — clicking a prior session restores it as a live session with its full message history. If the restored history exceeds 10 000 estimated tokens, context compaction runs automatically before the next prompt.
 - **Git worktree isolation** — each session works in its own git worktree so parallel sessions never conflict on disk.
@@ -626,6 +663,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 | **Vision / GUI automation** | AX tree + ScreenCaptureKit + CGEvent (3 strategies, auto-selected) | Computer use (desktop control) | Computer use (added March 2026) |
 | **Xcode integration** | Deep — build, test, clean, xcresult parsing, open-at-line, simulator control | IDE plugin only | IDE plugin only |
 | **RAG / persistent memory** | Yes — local SQLite memory store (vector search, project-scoped, critic-gated per-turn writes + accepted memories indexed as factual chunks); optional xcalibre-server for book content only | No | No (uses agentic grep/search instead) |
+| **Prompt compression** | Yes — mid-loop LLM summarisation + instruction distillation; context cost stays linear across long tool chains | No | No |
 | **LoRA self-training** | Yes — MLX-LM on M4 Mac; adapts execute slot to your own sessions | No | No |
 | **Diff review layer** | Yes — all writes staged; accept/reject per change; inline comments | No (direct writes) | No (direct writes) |
 | **Auth gate** | Yes — glob-pattern permission gate on every tool call, per session mode | No | No |
@@ -655,6 +693,8 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 **Supervisor-worker multi-LLM routing.** Merlin classifies each task by complexity tier and routes it to the most appropriate LLM slot. Routine file operations go to the execute slot (fast/cheap); architecture decisions go to the reason slot (most capable). Neither Codex nor Claude Code do this — they use a single model for all task types.
 
 **LoRA self-training.** Merlin is unique in being able to fine-tune a local model on your own accepted session data using MLX-LM on an M4 Mac. Over time, the execute slot adapts to your coding patterns and project conventions. This is not a feature Codex or Claude Code offer.
+
+**Prompt compression.** Agentic loops accumulate context quadratically — without intervention, a 100-step run costs far more than 100× the cost of a single step. Merlin applies mid-loop LLM summarisation (replacing old tool exchanges with a narrative digest before the next request) and instruction distillation (caching a token-efficient version of `CLAUDE.md` and the core system prompt). The result is linear cost growth regardless of session length. Neither Codex nor Claude Code have an equivalent compression pipeline.
 
 **Persistent RAG memory.** Merlin stores project knowledge in a local SQLite-backed vector store and injects relevant context into every prompt. Memory writes are critic-gated — only outputs that passed the quality check enter the memory store. xcalibre-server remains available for book content, but it no longer stores Merlin session memory. Claude Code explicitly chose not to do RAG, relying on agentic grep/search instead. Codex has no RAG layer.
 
