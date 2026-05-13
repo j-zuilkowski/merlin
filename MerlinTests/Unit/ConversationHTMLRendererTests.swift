@@ -88,52 +88,49 @@ final class ConversationHTMLRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("toggleThinking"), "must emit toggleThinking JS call in button")
     }
 
-    // MARK: – Tool calls
+    // MARK: – Tool calls (nested inside assistant entries)
 
-    func testToolCallHasCorrectClass() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "read_file"
+    func testToolCallRenderedInsideAssistantBubble() {
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "read_file")]
         let html = ConversationHTMLRenderer.render([entry])
-        XCTAssertTrue(html.contains("class=\"message tool\""))
+        XCTAssertTrue(html.contains("class=\"message assistant\""), "tool calls must be inside assistant bubble")
+        XCTAssertFalse(html.contains("class=\"message tool\""), "no standalone tool bubble should be emitted")
     }
 
     func testToolNameAppears() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "shell_exec"
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "shell_exec")]
         let html = ConversationHTMLRenderer.render([entry])
         XCTAssertTrue(html.contains("shell_exec"))
     }
 
     func testToolResultAppears() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "read_file"
-        entry.toolResult = "file contents here"
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "read_file", result: "file contents here")]
         let html = ConversationHTMLRenderer.render([entry])
         XCTAssertTrue(html.contains("file contents here"))
     }
 
     func testToolArgumentsAppear() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "write_file"
-        entry.toolArguments = "{\"path\": \"/tmp/out.txt\"}"
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "write_file", arguments: "{\"path\": \"/tmp/out.txt\"}")]
         let html = ConversationHTMLRenderer.render([entry])
         XCTAssertTrue(html.contains("/tmp/out.txt"))
     }
 
     func testToolErrorClassApplied() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "bad_tool"
-        entry.toolIsError = true
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "bad_tool", isError: true)]
         let html = ConversationHTMLRenderer.render([entry])
         XCTAssertTrue(html.contains("tool-error"), "error tool calls must have tool-error class")
     }
 
     func testToolToggleButtonPresent() {
-        var entry = ChatEntry(role: .tool, text: "")
-        entry.toolName = "list_dir"
-        entry.toolResult = "a, b, c"
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "list_dir", result: "a, b, c")]
         let html = ConversationHTMLRenderer.render([entry])
-        XCTAssertTrue(html.contains("toggleTool"), "must emit toggleTool JS call in button")
+        XCTAssertTrue(html.contains("toggleTool"), "must emit toggleTool JS call")
     }
 
     // MARK: – System / error notes

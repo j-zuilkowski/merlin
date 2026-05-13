@@ -17,7 +17,7 @@ import WebKit
 struct ConversationWebView: NSViewRepresentable {
     let entries: [ChatEntry]
     var onToggleThinking: (UUID) -> Void
-    var onToggleTool: (UUID) -> Void
+    var onToggleTool: (String) -> Void
     var onScrollLockChange: (Bool) -> Void = { _ in }
     @Binding var shouldResumeScroll: Bool
 
@@ -124,14 +124,14 @@ struct ConversationWebView: NSViewRepresentable {
 
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var onToggleThinking: (UUID) -> Void
-        var onToggleTool: (UUID) -> Void
+        var onToggleTool: (String) -> Void
         var onScrollLockChange: (Bool) -> Void
         weak var webView: WKWebView?
         var renderedCount: Int = 0
         var lastStreamingID: UUID? = nil
 
         init(onToggleThinking: @escaping (UUID) -> Void,
-             onToggleTool: @escaping (UUID) -> Void,
+             onToggleTool: @escaping (String) -> Void,
              onScrollLockChange: @escaping (Bool) -> Void) {
             self.onToggleThinking = onToggleThinking
             self.onToggleTool = onToggleTool
@@ -157,7 +157,7 @@ struct ConversationWebView: NSViewRepresentable {
                 guard let id = body["id"].flatMap(UUID.init) else { return }
                 onToggleThinking(id)
             case "toggleTool":
-                guard let id = body["id"].flatMap(UUID.init) else { return }
+                guard let id = body["id"], !id.isEmpty else { return }
                 onToggleTool(id)
             case "scrollLock":
                 guard let lockedStr = body["locked"] else { return }

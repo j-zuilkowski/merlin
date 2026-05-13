@@ -26,14 +26,7 @@ enum ConversationHTMLRenderer {
             \(markdownToHTML(htmlEscape(entry.text)))</div>
             """
         case .assistant:
-            let content = markdownToHTML(htmlEscape(entry.text))
-            let thinking = entry.thinkingText.isEmpty ? "" : thinkingHTML(entry)
-            return """
-            <div class="message assistant" data-id="\(id)">\
-            \(thinking)\(content)</div>
-            """
-        case .tool:
-            return toolHTML(entry)
+            return assistantHTML(entry)
         case .system:
             return """
             <div class="message system" data-id="\(id)">\
@@ -47,16 +40,11 @@ enum ConversationHTMLRenderer {
         }
     }
 
-    /// Minimal HTML fragment for the streaming assistant message. Contains only
-    /// the entry UUID and current text — no thinking block or tool rows. The
-    /// JS `merlin.appendChunk(id, html)` call replaces the inner content of the
-    /// in-progress bubble without a full re-render.
+    /// HTML fragment for an in-progress assistant message. Replaces the full entry
+    /// bubble in place via `merlin.appendChunk`. Includes tool call rows so they
+    /// remain visible while text streams in. The JS preserves any open tool rows.
     static func chunkHTML(for entry: ChatEntry) -> String {
-        let id = entry.id.uuidString
-        let content = markdownToHTML(htmlEscape(entry.text))
-        return """
-        <div class="message assistant streaming" data-id="\(id)">\(content)</div>
-        """
+        assistantHTML(entry)
     }
 
     // MARK: - HTML escaping
@@ -138,27 +126,49 @@ enum ConversationHTMLRenderer {
         """
     }
 
-    private static func toolHTML(_ entry: ChatEntry) -> String {
+    private static func assistantHTML(_ entry: ChatEntry) -> String {
         let id = entry.id.uuidString
-        let name = htmlEscape(entry.toolName ?? "tool")
-        let errorClass = entry.toolIsError ? " tool-error" : ""
+        let thinking = entry.thinkingText.isEmpty ? "" : thinkingHTML(entry)
+        let toolGroup = entry.toolCalls.isEmpty ? "" : """
+        <div class="tool-group">\(entry.toolCalls.map { toolCallHTML($0) }.joined())</div>
+        """
+        let content = markdownToHTML(htmlEscape(entry.text))
+        let textDiv = """
+        <div class="assistant-text">\(thinking)\(content)</div>
+        """
+        return """
+        <div class="message assistant" data-id="\(id)">\(toolGroup)\(textDiv)</div>
+        """
+    }
+
+    private static func toolCallHTML(_ call: ToolCallEntry) -> String {
+        let errorClass = call.isError ? " tool-error" : ""
+        let statusLabel: String
+        if call.result == nil {
+            statusLabel = "<span class=\"tool-status\">running…</span>"
+        } else if call.isError {
+            statusLabel = "<span class=\"tool-status error\">error</span>"
+        } else {
+            statusLabel = "<span class=\"tool-status\">done</span>"
+        }
         var inner = ""
-        if let args = entry.toolArguments, !args.isEmpty {
+        if !call.arguments.isEmpty {
             inner += """
-            <div class="tool-args"><pre><code>\(htmlEscape(args))</code></pre></div>
+            <div class="tool-args"><pre><code>\(htmlEscape(call.arguments))</code></pre></div>
             """
         }
-        if let result = entry.toolResult {
+        if let result = call.result {
             inner += """
             <div class="tool-result"><pre><code>\(htmlEscape(result))</code></pre></div>
             """
         }
         return """
-        <div class="message tool\(errorClass)" data-id="\(id)">
-          <div class="tool-header">
-            <span class="tool-name">\(name)</span>
-            <button class="tool-toggle" \
-        onclick="merlin.toggleTool('\(id)')">▾</button>
+        <div class="tool-row\(errorClass)" data-tool-id="\(htmlEscape(call.id))">
+          <div class="tool-header" onclick="merlin.toggleTool('\(htmlEscape(call.id))')">
+            <span class="tool-icon">⚙</span>
+            <span class="tool-name">\(htmlEscape(call.name))</span>
+            \(statusLabel)
+            <button class="tool-toggle" onclick="event.stopPropagation();merlin.toggleTool('\(htmlEscape(call.id))')">▸</button>
           </div>
           <div class="tool-body">\(inner)</div>
         </div>
@@ -273,8 +283,28 @@ enum ConversationHTMLRenderer {
         .message.system    { background: var(--bubble-system); border-color: transparent;
                              color: var(--fg-secondary); font-size: 12px; text-align: center; }
         .message.error     { background: var(--bubble-error); color: #ff6b6b; }
-        .message.tool      { background: var(--bubble-tool); font-size: 12px; }
-        .message.tool-error { border-color: rgba(255,100,100,0.4); }
+        /* Tool calls are rendered inside the assistant bubble, not as separate items */
+        .tool-group { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+        .tool-group:empty { display: none; }
+        .assistant-text:empty { display: none; }
+        .tool-row {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .tool-row.tool-error { border-color: rgba(255,100,100,0.4); }
+        .tool-header { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+        .tool-icon { color: var(--fg-secondary); font-size: 11px; }
+        .tool-name { font-family: var(--mono); font-weight: 600; flex: 1; }
+        .tool-status { font-size: 11px; color: var(--fg-secondary); }
+        .tool-status.error { color: #ff8c69; }
+        .tool-toggle { background: none; border: none; cursor: pointer;
+                       color: var(--fg-secondary); font-size: 11px; padding: 0; }
+        .tool-body { margin-top: 6px; display: none; }
+        .tool-body.open { display: block; }
+        .tool-args, .tool-result { margin-top: 4px; }
         pre {
             background: var(--code-bg);
             border-radius: 6px;
@@ -350,7 +380,24 @@ enum ConversationHTMLRenderer {
             },
             appendChunk: function(id, html) {
                 const el = document.querySelector('[data-id="' + id + '"]');
-                if (el) { el.outerHTML = html; } else { merlin.addMessage(html); }
+                if (!el) { merlin.addMessage(html); return; }
+                // Preserve which tool rows are currently expanded before replacing HTML.
+                const openTools = {};
+                el.querySelectorAll('[data-tool-id]').forEach(function(row) {
+                    const body = row.querySelector('.tool-body');
+                    openTools[row.getAttribute('data-tool-id')] = body && body.classList.contains('open');
+                });
+                el.outerHTML = html;
+                // Re-open any tool rows that were open before the replace.
+                Object.keys(openTools).forEach(function(toolId) {
+                    if (!openTools[toolId]) return;
+                    const row = document.querySelector('[data-tool-id="' + toolId + '"]');
+                    if (!row) return;
+                    const body = row.querySelector('.tool-body');
+                    const btn = row.querySelector('.tool-toggle');
+                    if (body) body.classList.add('open');
+                    if (btn) btn.textContent = '▾';
+                });
                 if (!_userScrolled) { merlin.scrollToBottom(); }
             },
             scrollToBottom: function() {
@@ -367,8 +414,19 @@ enum ConversationHTMLRenderer {
                     { type: 'toggleThinking', id: id });
             },
             toggleTool: function(id) {
-                window.webkit.messageHandlers.merlinBridge.postMessage(
-                    { type: 'toggleTool', id: id });
+                const row = document.querySelector('[data-tool-id="' + id + '"]');
+                if (!row) return;
+                const body = row.querySelector('.tool-body');
+                const btn = row.querySelector('.tool-toggle');
+                if (!body) return;
+                const isOpen = body.classList.contains('open');
+                if (isOpen) {
+                    body.classList.remove('open');
+                    if (btn) btn.textContent = '▸';
+                } else {
+                    body.classList.add('open');
+                    if (btn) btn.textContent = '▾';
+                }
             },
             setTheme: function(vars) {
                 const root = document.documentElement;

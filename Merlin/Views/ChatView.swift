@@ -251,10 +251,8 @@ struct ChatView: View {
                     model.toggleThinkingExpansion(at: index)
                 }
             },
-            onToggleTool: { id in
-                if let index = model.items.firstIndex(where: { $0.id == id }) {
-                    model.toggleToolExpansion(at: index)
-                }
+            onToggleTool: { toolCallID in
+                model.toggleToolExpansion(toolCallID: toolCallID)
             },
             onScrollLockChange: { locked in
                 autoScrollEnabled = !locked
@@ -510,7 +508,6 @@ final class ChatViewModel: ObservableObject {
 
     var subagentVMs: [UUID: SubagentBlockViewModel] = [:]
     private var assistantIndex: Int?
-    private var toolIndexByCallID: [String: Int] = [:]
     private(set) var lastRAGSources: [RAGChunk] = []
 
     func submit(appState: AppState) async {
@@ -522,7 +519,6 @@ final class ChatViewModel: ObservableObject {
         draft = ""
         isSending = true
         assistantIndex = nil
-        toolIndexByCallID.removeAll()
         lastRAGSources = []
         appState.toolActivityState = .streaming
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
@@ -571,17 +567,27 @@ final class ChatViewModel: ObservableObject {
         isSending = false
         draft = ""
         assistantIndex = nil
-        toolIndexByCallID.removeAll()
         lastRAGSources = []
         subagentVMs.removeAll()
         bumpRevision()
     }
 
     /// Populates items from a stored message history (e.g. after restoring a session).
-    /// System messages are skipped. Tool results are matched to their call entries.
+    /// Tool calls from assistant messages are nested as ToolCallEntry values on the
+    /// assistant ChatEntry rather than appearing as separate items.
     func load(from messages: [Message]) {
         items = []
-        var toolEntryByCallID: [String: Int] = [:]
+        // Accumulates tool calls from the most recent assistant-with-tools message;
+        // flushed to a ChatEntry when the next assistant text or user message arrives.
+        var pendingToolCalls: [ToolCallEntry] = []
+
+        func flushPending() {
+            guard !pendingToolCalls.isEmpty else { return }
+            var entry = ChatEntry(role: .assistant, text: "")
+            entry.toolCalls = pendingToolCalls
+            items.append(entry)
+            pendingToolCalls = []
+        }
 
         for message in messages {
             switch message.role {
@@ -589,22 +595,23 @@ final class ChatViewModel: ObservableObject {
                 break
 
             case .user:
+                flushPending()
                 let text = message.content.plainText
                 guard !text.isEmpty else { continue }
                 items.append(ChatEntry(role: .user, text: text))
 
             case .assistant:
                 if let calls = message.toolCalls, !calls.isEmpty {
+                    flushPending()
                     for call in calls {
-                        var entry = ChatEntry(role: .tool, text: "")
-                        entry.toolCallID = call.id
-                        entry.toolName = call.function.name
-                        entry.toolArguments = call.function.arguments
-                        let idx = items.count
-                        items.append(entry)
-                        toolEntryByCallID[call.id] = idx
+                        pendingToolCalls.append(ToolCallEntry(
+                            id: call.id,
+                            name: call.function.name,
+                            arguments: call.function.arguments
+                        ))
                     }
                 } else {
+                    flushPending()
                     let text = message.content.plainText
                     guard !text.isEmpty else { continue }
                     var entry = ChatEntry(role: .assistant, text: text)
@@ -614,12 +621,12 @@ final class ChatViewModel: ObservableObject {
 
             case .tool:
                 if let callID = message.toolCallId,
-                   let idx = toolEntryByCallID[callID],
-                   items.indices.contains(idx) {
-                    items[idx].toolResult = message.content.plainText
+                   let j = pendingToolCalls.firstIndex(where: { $0.id == callID }) {
+                    pendingToolCalls[j].result = message.content.plainText
                 }
             }
         }
+        flushPending()
         bumpRevision()
     }
 
@@ -629,10 +636,14 @@ final class ChatViewModel: ObservableObject {
         bumpRevision()
     }
 
-    func toggleToolExpansion(at index: Int) {
-        guard items.indices.contains(index) else { return }
-        items[index].toolExpanded.toggle()
-        bumpRevision()
+    func toggleToolExpansion(toolCallID: String) {
+        for i in items.indices {
+            if let j = items[i].toolCalls.firstIndex(where: { $0.id == toolCallID }) {
+                // expansion state is managed purely in JS DOM; nothing to update in model
+                _ = (i, j)
+                return
+            }
+        }
     }
 
     func applyEngineEvent(_ event: AgentEvent) {
@@ -694,37 +705,28 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func appendToolCall(_ call: ToolCall) {
-        // Reset assistantIndex so that any text response that arrives after this
-        // tool-call sequence creates a fresh assistant entry at the bottom of the
-        // chat, rather than being silently appended to an earlier assistant entry
-        // from a previous loop iteration (which would be invisible, above all the
-        // tool results).
-        assistantIndex = nil
-        let entry = ChatEntry(
-            role: .tool,
-            text: "",
-            toolCallID: call.id,
-            toolName: call.function.name,
-            toolArguments: call.function.arguments,
-            toolExpanded: false   // collapsed by default — large results block CoreText layout
-        )
-        items.append(entry)
-        toolIndexByCallID[call.id] = items.count - 1
+        let toolCall = ToolCallEntry(id: call.id, name: call.function.name, arguments: call.function.arguments)
+        if let index = assistantIndex, items.indices.contains(index) {
+            items[index].toolCalls.append(toolCall)
+        } else {
+            var entry = ChatEntry(role: .assistant, text: "")
+            entry.toolCalls.append(toolCall)
+            items.append(entry)
+            assistantIndex = items.count - 1
+        }
         bumpRevision()
     }
 
     private func updateToolResult(_ result: ToolResult) {
-        guard let index = toolIndexByCallID[result.toolCallId], items.indices.contains(index) else {
-            items.append(ChatEntry(
-                role: .system,
-                text: "Tool result for \(result.toolCallId): \(result.content)"
-            ))
-            bumpRevision()
-            return
+        for i in items.indices {
+            if let j = items[i].toolCalls.firstIndex(where: { $0.id == result.toolCallId }) {
+                items[i].toolCalls[j].result = result.content
+                items[i].toolCalls[j].isError = result.isError
+                bumpRevision()
+                return
+            }
         }
-
-        items[index].toolResult = result.content
-        items[index].toolIsError = result.isError
+        items.append(ChatEntry(role: .system, text: "Tool result for \(result.toolCallId): \(result.content)"))
         bumpRevision()
     }
 
@@ -820,11 +822,19 @@ private struct VoiceDictationButton: View {
     }
 }
 
+/// A single tool call nested inside an assistant ChatEntry.
+struct ToolCallEntry: Identifiable, Sendable {
+    var id: String          // API tool call ID
+    var name: String        // function name
+    var arguments: String = ""
+    var result: String?
+    var isError: Bool = false
+}
+
 struct ChatEntry: Identifiable, Sendable {
     enum Role: String, Sendable {
         case user
         case assistant
-        case tool
         case system
         case error
     }
@@ -834,19 +844,12 @@ struct ChatEntry: Identifiable, Sendable {
     var text: String
     var thinkingText: String = ""
     var thinkingExpanded: Bool = false
-    var toolCallID: String?
-    var toolName: String?
-    var toolArguments: String?
-    var toolResult: String?
-    var toolIsError: Bool = false
-    var toolExpanded: Bool = true
+    var toolCalls: [ToolCallEntry] = []   // nested tool calls for assistant entries
     var subagentID: UUID? = nil
     var ragSources: [RAGChunk] = []
 }
 
-/// Pre-computed markdown segments for one chat message.
-/// Stored as `@State` so it is computed once per row and not re-derived
-/// on every SwiftUI layout pass.
+// MARK: - Dead ChatEntryRow removed; rendering is via ConversationWebView + ConversationHTMLRenderer
 private struct RenderedMessage: Equatable {
     struct Segment: Equatable {
         let content: String
@@ -856,411 +859,3 @@ private struct RenderedMessage: Equatable {
     let segments: [Segment]
 }
 
-/// Characters displayed before "Show full response" is tapped.
-/// SwiftUI must call boundingRectWithSize() on every visible Text to lay it out;
-/// for responses longer than this the measurement cost blocks the main actor for
-/// minutes. Keeping visible text small caps that cost to milliseconds.
-private let kMessageDisplayCap = 6_000
-
-private struct ChatEntryRow: View {
-    let item: ChatEntry
-    let onToggleThinking: (() -> Void)?
-    let onToggleTool: (() -> Void)?
-    @ObservedObject private var settings = AppSettings.shared
-    /// Lazily computed off the main thread. Nil while pending, populated by .task.
-    @State private var renderedMessage: RenderedMessage? = nil
-    /// Whether the user has expanded a capped message to show the full text.
-    @State private var showFullText = false
-
-    var body: some View {
-        content
-            .padding(.vertical, settings.messageDensity.verticalPadding)
-            .task(id: item.text) {
-                let text = item.text
-                let rendered = await Task.detached(priority: .userInitiated) {
-                    Self.buildRenderedMessage(text)
-                }.value
-                renderedMessage = rendered
-            }
-    }
-
-    /// Builds the pre-rendered message. Runs off the main thread.
-    ///
-    /// Long segments skip AttributedString entirely — SwiftUI must call
-    /// boundingRectWithSize() on the main thread to measure any Text(AttributedString),
-    /// which calls CTLineCreateWithAttributedString for every line. For a 2 000+ character
-    /// segment that blocks the main actor for minutes. Plain Text(String) avoids this.
-    private nonisolated static func buildRenderedMessage(_ text: String) -> RenderedMessage {
-        let segs = buildCodeSegments(from: text)
-        let segments: [RenderedMessage.Segment] = segs.map { seg in
-            if seg.isCode {
-                return .init(content: seg.content, isCode: true, rendered: nil)
-            }
-            // Skip AttributedString for long segments — layout measurement cost is O(lines).
-            guard seg.content.count <= 2_000 else {
-                return .init(content: seg.content, isCode: false, rendered: nil)
-            }
-            let attributed = (try? AttributedString(markdown: seg.content,
-                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-                ?? AttributedString(seg.content)
-            return .init(content: seg.content, isCode: false, rendered: attributed)
-        }
-        return RenderedMessage(segments: segments)
-    }
-
-    /// Synchronous version of `buildRenderedMessage` for capped-text rebuilds on the main actor.
-    /// Identical logic — named separately so call-sites are self-documenting.
-    private nonisolated static func buildRenderedMessageSync(_ text: String) -> RenderedMessage {
-        buildRenderedMessage(text)
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        switch item.role {
-        case .user:
-            userBubble
-        case .assistant:
-            assistantBubble
-        case .tool:
-            toolCard
-        case .system:
-            systemNote
-        case .error:
-            errorNote
-        }
-    }
-
-    private var userBubble: some View {
-        HStack {
-            Spacer(minLength: 40)
-            bubble(
-                background: Color.accentColor.opacity(0.18),
-                border: Color.accentColor.opacity(0.35),
-                foreground: .primary,
-                alignment: .trailing
-            ) {
-                markdownText(item.text)
-            }
-            .frame(maxWidth: 600, alignment: .trailing)
-        }
-        .padding(.trailing, 4)
-    }
-
-    private var assistantBubble: some View {
-        HStack {
-            bubble(
-                background: Color(nsColor: .controlBackgroundColor),
-                border: Color(nsColor: .separatorColor).opacity(0.35),
-                foreground: .primary,
-                alignment: .leading
-            ) {
-                VStack(alignment: .leading, spacing: 10) {
-                    if item.text.isEmpty == false {
-                        markdownText(item.text)
-                    }
-
-                    if item.thinkingText.isEmpty == false {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Button(action: { onToggleThinking?() }) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: item.thinkingExpanded ? "chevron.down" : "chevron.right")
-                                    Text("Thinking")
-                                }
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            }
-                            .buttonStyle(.plain)
-
-                            if item.thinkingExpanded {
-                                Text(renderMarkdown(item.thinkingText))
-                                    .font(.callout.italic())
-                                    .foregroundStyle(.secondary)
-                            } else {
-                                Text(item.thinkingTextPreview)
-                                    .font(.callout.italic())
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
-                        }
-                        .padding(.top, 4)
-                    }
-
-                    if item.ragSources.isEmpty == false {
-                        RAGSourcesView(chunks: item.ragSources)
-                            .padding(.top, 4)
-                    }
-                }
-            }
-            .frame(maxWidth: 680, alignment: .leading)
-            Spacer(minLength: 80)
-        }
-    }
-
-    private var toolCard: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 10) {
-                Button(action: { onToggleTool?() }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: item.toolExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Text(item.toolName ?? "tool")
-                            .font(.subheadline.weight(.semibold))
-                        Spacer(minLength: 12)
-                        Text(item.toolResult == nil ? "running" : (item.toolIsError ? "error" : "done"))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(item.toolIsError ? .orange : .secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                if item.toolExpanded {
-                    if let arguments = item.toolArguments, arguments.isEmpty == false {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Arguments")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text(arguments)
-                                .font(.system(size: 11, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-
-                    if let result = item.toolResult {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Result")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            // Truncate large results — CoreText typesetting of tens of kilobytes
-                            // of plain text blocks the main thread and starves the engine actor.
-                            let truncated = result.count > 4000
-                            let displayResult = truncated
-                                ? String(result.prefix(4000)) + "\n… (\(result.count - 4000) more chars)"
-                                : result
-                            Text(displayResult)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(item.toolIsError ? .orange : .primary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                } else {
-                    Text(item.toolSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color(nsColor: .separatorColor).opacity(0.3), lineWidth: 1)
-            )
-        }
-    }
-
-    private var systemNote: some View {
-        HStack {
-            Spacer(minLength: 40)
-            Text(renderMarkdown(item.text))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 640)
-            Spacer(minLength: 40)
-        }
-    }
-
-    private var errorNote: some View {
-        HStack {
-            Spacer(minLength: 40)
-            Text(renderMarkdown(item.text))
-                .font(.footnote)
-                .foregroundStyle(.orange)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 640)
-            Spacer(minLength: 40)
-        }
-    }
-
-    private func bubble<Content: View>(
-        background: Color,
-        border: Color,
-        foreground: Color,
-        alignment: Alignment,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        content()
-            .font(.body)
-            .foregroundStyle(foreground)
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: alignment)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(background)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .strokeBorder(border, lineWidth: 1)
-            )
-    }
-
-    // MARK: – Markdown rendering
-
-    /// Renders `text` as a view, splitting fenced code blocks (``` … ```) out so
-    /// they get a monospace font and a horizontal scroll view. Prose segments use
-    /// AttributedString markdown inline rendering which preserves every \n.
-    /// Uses the async-precomputed `renderedMessage` when available so that
-    /// `AttributedString(markdown:)` is never called on the main thread during layout.
-    ///
-    /// Long messages are capped at `kMessageDisplayCap` characters to bound the
-    /// CoreText layout cost; a "Show full response" button reveals the rest.
-    @ViewBuilder
-    private func markdownText(_ text: String) -> some View {
-        // Cap the visible text to avoid blocking the main actor during SwiftUI layout.
-        let isCapped = !showFullText && text.count > kMessageDisplayCap
-        let visibleText = isCapped ? String(text.prefix(kMessageDisplayCap)) : text
-        let useRM = renderedMessage.map { rm in
-            // Rebuild a capped RenderedMessage from the full one when needed.
-            isCapped ? Self.buildRenderedMessageSync(visibleText) : rm
-        }
-
-        VStack(alignment: .leading, spacing: 6) {
-            if let rm = useRM {
-                if rm.segments.count == 1, !rm.segments[0].isCode {
-                    Text(rm.segments[0].rendered ?? AttributedString(visibleText))
-                        .fixedSize(horizontal: false, vertical: true)
-                } else {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(rm.segments.enumerated()), id: \.offset) { _, seg in
-                            if seg.isCode {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    Text(seg.content)
-                                        .font(.system(size: 12, design: .monospaced))
-                                        .fixedSize(horizontal: true, vertical: true)
-                                        .padding(8)
-                                }
-                                .background(Color(nsColor: .windowBackgroundColor))
-                                .cornerRadius(6)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .strokeBorder(Color(nsColor: .separatorColor).opacity(0.4),
-                                                      lineWidth: 1)
-                                )
-                            } else if !seg.content.isEmpty {
-                                Text(seg.rendered ?? AttributedString(seg.content))
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Pending render — show plain text immediately (no layout stall).
-                Text(visibleText)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if isCapped {
-                Button("Show full response (\(text.count) chars)") {
-                    showFullText = true
-                }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
-            }
-        }
-    }
-
-    private struct CodeSegment: Identifiable {
-        let id: Int
-        let content: String
-        let isCode: Bool
-    }
-
-    /// Splits `text` on triple-backtick fences, returning alternating prose/code segments.
-    /// Static so it can be called from `buildRenderedMessage` off the main thread.
-    private nonisolated static func buildCodeSegments(from text: String) -> [CodeSegment] {
-        codeSegmentsImpl(text)
-    }
-
-    private func codeSegments(from text: String) -> [CodeSegment] {
-        Self.codeSegmentsImpl(text)
-    }
-
-    private nonisolated static func codeSegmentsImpl(_ text: String) -> [CodeSegment] {
-        var result: [CodeSegment] = []
-        var idx = 0
-        var remaining = text[...]
-        let fence = "```"
-
-        while !remaining.isEmpty {
-            guard let fenceRange = remaining.range(of: fence) else {
-                result.append(CodeSegment(id: idx, content: String(remaining), isCode: false))
-                break
-            }
-            // Prose before this fence
-            let before = String(remaining[..<fenceRange.lowerBound])
-            if !before.isEmpty {
-                result.append(CodeSegment(id: idx, content: before, isCode: false))
-                idx += 1
-            }
-            // Skip optional language tag on the same line as the opening fence
-            let afterOpening = remaining[fenceRange.upperBound...]
-            let codeBodyStart: String.Index
-            if let nl = afterOpening.firstIndex(of: "\n") {
-                codeBodyStart = afterOpening.index(after: nl)
-            } else {
-                codeBodyStart = afterOpening.startIndex
-            }
-            let codeBody = afterOpening[codeBodyStart...]
-
-            // Find the closing fence (must be on its own line)
-            if let closeRange = codeBody.range(of: "\n" + fence) {
-                result.append(CodeSegment(id: idx,
-                                          content: String(codeBody[..<closeRange.lowerBound]),
-                                          isCode: true))
-                idx += 1
-                remaining = codeBody[closeRange.upperBound...]
-                if remaining.first == "\n" { remaining = remaining.dropFirst() }
-            } else {
-                // Unclosed fence (still streaming) — treat the rest as code
-                result.append(CodeSegment(id: idx, content: String(codeBody), isCode: true))
-                break
-            }
-        }
-        return result.isEmpty ? [CodeSegment(id: 0, content: text, isCode: false)] : result
-    }
-
-    private func renderMarkdown(_ text: String) -> AttributedString {
-        // .inlineOnlyPreservingWhitespace preserves every \n as a real line break.
-        // (.full converts bare \n to a space, destroying tree / bullet alignment.)
-        return (try? AttributedString(markdown: text,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
-            ?? AttributedString(text)
-    }
-}
-
-private extension ChatEntry {
-    var thinkingTextPreview: String {
-        let preview = thinkingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if preview.count <= 140 {
-            return preview
-        }
-        return String(preview.prefix(140)) + "..."
-    }
-
-    var toolSummary: String {
-        if let result = toolResult, result.isEmpty == false {
-            return result.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        if let arguments = toolArguments, arguments.isEmpty == false {
-            return arguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return toolName ?? "Tool"
-    }
-}
