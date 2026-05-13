@@ -6,10 +6,21 @@ final class ContextManagerMidLoopCompactionTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Appends `count` large tool messages so estimatedTokens climbs quickly.
-    /// Each message is ~1 000 tokens (3 500 UTF-8 bytes / 3.5).
+    /// Appends `count` complete tool-exchange pairs (assistant with toolCall + tool result)
+    /// so compact() can remove them. Each pair is ~1 000 tokens (3 500 UTF-8 bytes / 3.5).
     private func appendLargeMessages(_ cm: ContextManager, count: Int) {
         for i in 0..<count {
+            let toolCall = ToolCall(
+                id: "tc\(i)",
+                type: "function",
+                function: FunctionCall(name: "read_file", arguments: "{}")
+            )
+            cm.append(Message(
+                role: .assistant,
+                content: .text(""),
+                toolCalls: [toolCall],
+                timestamp: Date()
+            ))
             cm.append(Message(
                 role: .tool,
                 content: .text(String(repeating: "x", count: 3_500)),

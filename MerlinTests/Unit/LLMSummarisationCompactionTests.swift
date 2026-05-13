@@ -6,9 +6,21 @@ final class LLMSummarisationCompactionTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Appends enough content to exceed `midLoopCompactionThreshold` (which we override to 2 000).
+    /// Appends `count` complete tool-exchange pairs (assistant with toolCall + tool result)
+    /// so compact() can remove them and exceed `midLoopCompactionThreshold` (overridden to 2 000).
     private func appendBulkContent(_ cm: ContextManager, count: Int = 4) {
         for i in 0..<count {
+            let toolCall = ToolCall(
+                id: "tc\(i)",
+                type: "function",
+                function: FunctionCall(name: "read_file", arguments: "{}")
+            )
+            cm.append(Message(
+                role: .assistant,
+                content: .text(""),
+                toolCalls: [toolCall],
+                timestamp: Date()
+            ))
             cm.append(Message(
                 role: .tool,
                 content: .text(String(repeating: "z", count: 3_500)),
