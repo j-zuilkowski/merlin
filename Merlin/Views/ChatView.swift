@@ -18,6 +18,8 @@ struct ChatView: View {
     @State private var scrollLockVisible: Bool = false
     @State private var scrollPhaseIsUser: Bool = false
     @State private var shouldResumeScroll: Bool = false
+    @State private var showBtwOverlay: Bool = false
+    @State private var btwPrefill: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -57,6 +59,23 @@ struct ChatView: View {
             // Route through sendMessage so slash commands like /calibrate are handled.
             sendMessage()
         }
+        .overlay {
+            if showBtwOverlay {
+                ZStack {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { showBtwOverlay = false }
+
+                    BtwOverlayView(
+                        prefill: btwPrefill,
+                        provider: appState.provider(for: appState.activeProviderID) ?? NullProvider(),
+                        onDismiss: { showBtwOverlay = false }
+                    )
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
+                }
+            }
+        }
+        .animation(.spring(duration: 0.18), value: showBtwOverlay)
     }
 
     private var header: some View {
@@ -324,6 +343,12 @@ struct ChatView: View {
             appState.engine.emitSystemNote(
                 "[rewound \(stepsBack) step(s) — \(messages.count) message(s) restored]"
             )
+            return true
+
+        case "btw":
+            let prefill = message.dropFirst(4).trimmingCharacters(in: .whitespaces)
+            btwPrefill = String(prefill)
+            showBtwOverlay = true
             return true
 
         default:

@@ -11,6 +11,7 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     private let chunks: [CompletionChunk]
     private var responses: [MockLLMResponse]
     private var responseIndex = 0
+    private let delay: TimeInterval
 
     /// Optional error sequence consumed in order by `complete`. A `nil` entry means
     /// "succeed normally". Entries beyond the array length always succeed normally.
@@ -23,15 +24,20 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     init() {
         self.chunks = []
         self.responses = []
+        self.delay = 0
         self.firstCallError = nil
         self.allCallsError = nil
     }
 
-    init(shouldFail: Bool = false,
+    init(response: String = "mock response",
+         delay: TimeInterval = 0,
+         shouldFail: Bool = false,
          failFirstCallWith firstError: ProviderError? = nil,
          failAllCallsWith allError: ProviderError? = nil) {
         self.chunks = []
         self.responses = []
+        self.delay = delay
+        self.stubbedResponse = response
         self.firstCallError = firstError
         let genericError: ProviderError? = shouldFail
             ? .httpError(statusCode: 400, body: "mock failure", providerID: "mock")
@@ -42,6 +48,7 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     init(chunks: [CompletionChunk]) {
         self.chunks = chunks
         self.responses = []
+        self.delay = 0
         self.firstCallError = nil
         self.allCallsError = nil
     }
@@ -49,6 +56,7 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     init(responses: [MockLLMResponse]) {
         self.chunks = []
         self.responses = responses
+        self.delay = 0
         self.firstCallError = nil
         self.allCallsError = nil
     }
@@ -61,6 +69,9 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
             let maybeError = stubbedErrors[errorIndex]
             errorIndex += 1
             if let error = maybeError { throw error }
+        }
+        if delay > 0 {
+            try await Task.sleep(for: .seconds(delay))
         }
         wasUsed = true
         let toSend: [CompletionChunk]
