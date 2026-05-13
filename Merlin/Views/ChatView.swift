@@ -17,6 +17,7 @@ struct ChatView: View {
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
     @State private var scrollPhaseIsUser: Bool = false
+    @State private var shouldResumeScroll: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -235,9 +236,22 @@ struct ChatView: View {
                 if let index = model.items.firstIndex(where: { $0.id == id }) {
                     model.toggleToolExpansion(at: index)
                 }
-            }
+            },
+            onScrollLockChange: { locked in
+                autoScrollEnabled = !locked
+                scrollLockVisible = locked
+            },
+            shouldResumeScroll: $shouldResumeScroll
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottom) {
+            if scrollLockVisible {
+                ScrollViewReader { proxy in
+                    scrollLockBanner(proxy: proxy)
+                        .padding(.bottom, 8)
+                }
+            }
+        }
     }
 
     private func sendMessage() {
@@ -250,6 +264,7 @@ struct ChatView: View {
         // previously locked view tracks the incoming response from the start.
         autoScrollEnabled = true
         scrollLockVisible = false
+        shouldResumeScroll = true
         Task { @MainActor in
             await model.submit(appState: appState)
         }
@@ -413,7 +428,7 @@ struct ChatView: View {
         }
     }
 
-    private func scrollLockBanner(proxy: ScrollViewProxy) -> some View {
+    private func scrollLockBanner(proxy _: ScrollViewProxy) -> some View {
         HStack {
             Label("Scrolled up — new output continuing below", systemImage: "arrow.up")
                 .font(.caption)
@@ -424,7 +439,7 @@ struct ChatView: View {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     scrollLockVisible = false
                 }
-                proxy.scrollTo("bottom", anchor: .bottom)
+                shouldResumeScroll = true
             }
             .font(.caption.weight(.medium))
             .buttonStyle(.plain)

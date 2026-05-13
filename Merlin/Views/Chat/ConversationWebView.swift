@@ -18,9 +18,15 @@ struct ConversationWebView: NSViewRepresentable {
     let entries: [ChatEntry]
     var onToggleThinking: (UUID) -> Void
     var onToggleTool: (UUID) -> Void
+    var onScrollLockChange: (Bool) -> Void = { _ in }
+    @Binding var shouldResumeScroll: Bool
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onToggleThinking: onToggleThinking, onToggleTool: onToggleTool)
+        Coordinator(
+            onToggleThinking: onToggleThinking,
+            onToggleTool: onToggleTool,
+            onScrollLockChange: onScrollLockChange
+        )
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -94,6 +100,13 @@ struct ConversationWebView: NSViewRepresentable {
         } else {
             coord.lastStreamingID = nil
         }
+
+        if shouldResumeScroll {
+            coord.webView?.evaluateJavaScript("merlin.resumeAutoScroll();", completionHandler: nil)
+            DispatchQueue.main.async {
+                shouldResumeScroll = false
+            }
+        }
     }
 
     // MARK: – JS string escaping
@@ -112,31 +125,45 @@ struct ConversationWebView: NSViewRepresentable {
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var onToggleThinking: (UUID) -> Void
         var onToggleTool: (UUID) -> Void
+        var onScrollLockChange: (Bool) -> Void
         weak var webView: WKWebView?
         var renderedCount: Int = 0
         var lastStreamingID: UUID? = nil
 
         init(onToggleThinking: @escaping (UUID) -> Void,
-             onToggleTool: @escaping (UUID) -> Void) {
+             onToggleTool: @escaping (UUID) -> Void,
+             onScrollLockChange: @escaping (Bool) -> Void) {
             self.onToggleThinking = onToggleThinking
             self.onToggleTool = onToggleTool
+            self.onScrollLockChange = onScrollLockChange
         }
 
         // WKScriptMessageHandler — receives JS merlinBridge.postMessage calls
         func userContentController(_ controller: WKUserContentController,
                                    didReceive message: WKScriptMessage) {
             guard message.name == "merlinBridge",
-                  let body = message.body as? [String: String],
-                  let type = body["type"],
-                  let idString = body["id"],
-                  let id = UUID(uuidString: idString) else { return }
+                  let body = message.body as? [String: String] else { return }
 
             DispatchQueue.main.async {
-                switch type {
-                case "toggleThinking": self.onToggleThinking(id)
-                case "toggleTool":     self.onToggleTool(id)
-                default: break
-                }
+                self.handleBridgeBody(body)
+            }
+        }
+
+        /// Processes a decoded bridge message body. Extracted for unit-test access.
+        func handleBridgeBody(_ body: [String: String]) {
+            guard let type = body["type"] else { return }
+            switch type {
+            case "toggleThinking":
+                guard let id = body["id"].flatMap(UUID.init) else { return }
+                onToggleThinking(id)
+            case "toggleTool":
+                guard let id = body["id"].flatMap(UUID.init) else { return }
+                onToggleTool(id)
+            case "scrollLock":
+                guard let lockedStr = body["locked"] else { return }
+                onScrollLockChange(lockedStr == "true")
+            default:
+                break
             }
         }
 

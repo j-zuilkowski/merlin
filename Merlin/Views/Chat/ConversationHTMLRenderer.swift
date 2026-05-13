@@ -329,7 +329,13 @@ enum ConversationHTMLRenderer {
         document.addEventListener('scroll', function() {
             const root = document.documentElement;
             const distFromBottom = root.scrollHeight - root.scrollTop - root.clientHeight;
-            _userScrolled = distFromBottom > 50;
+            const nowLocked = distFromBottom > 50;
+            if (nowLocked !== _userScrolled) {
+                _userScrolled = nowLocked;
+                window.webkit.messageHandlers.merlinBridge.postMessage(
+                    { type: 'scrollLock', locked: nowLocked ? 'true' : 'false' }
+                );
+            }
         }, { passive: true });
 
         const merlin = {
@@ -351,6 +357,10 @@ enum ConversationHTMLRenderer {
                 // Use documentElement — WKWebView on macOS scrolls the <html> root, not body.
                 const root = document.documentElement;
                 root.scrollTop = root.scrollHeight;
+            },
+            resumeAutoScroll: function() {
+                _userScrolled = false;
+                merlin.scrollToBottom();
             },
             toggleThinking: function(id) {
                 window.webkit.messageHandlers.merlinBridge.postMessage(
