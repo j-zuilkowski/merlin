@@ -1540,4 +1540,29 @@ Read phases/phase-189-crash-fix-chatview-v1-6-1.md and execute.
 #   continuation turns bypass re-planning and use the high-stakes loop ceiling
 # - Near-ceiling warning: ⚠️ system note + system prompt addendum when
 #   loopsRemaining ≤ nearCeilingThreshold; fires once per turn
+#
+# ── DONE (v1.9.1 Prompt Compression) ─────────────────────────────────────────
+# Phases 205–207 add three-layer prompt compression to keep per-turn cost linear:
+#
+# Mid-loop compaction (205):
+# - compactIfNeededMidLoop(): fires inside while-true execute loop when
+#   estimatedTokens > midLoopCompactionThreshold (default 40,000)
+# - Removes oldest complete tool-exchange groups; inserts static sentinel
+#
+# LLM summarisation (206):
+# - compactWithSummaryIfNeeded(provider:): async replacement for the sync call
+# - Extracts removable exchange text, calls provider for narrative digest
+# - customDigest replaces static sentinel in system message
+# - Falls back to exchangeText prefix on provider error
+#
+# Instruction distillation (207):
+# - distilledCoreSystemPrompt: compact 3-line version of 18-line coreSystemPrompt
+# - refreshDistilledClaudeMD(using:): one-shot provider call to compress CLAUDE.md;
+#   cached against SHA256 hash — re-distils only when content changes
+# - buildStablePrefix() branches on AppSettings.shared.promptCompressionEnabled
+# - AppSettings: promptCompressionEnabled @Published var, persisted as
+#   prompt_compression_enabled in config.toml
+# - Toggle: Settings → Agent → Prompt Compression
+#
+# v1.9.1, build 14
 ```
