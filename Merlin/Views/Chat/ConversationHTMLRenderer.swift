@@ -106,6 +106,8 @@ enum ConversationHTMLRenderer {
             withTemplate: "<em>$1</em>"
         )
 
+        if result.isEmpty { return "" }
+
         // Paragraph breaks: two or more newlines → </p><p>
         result = result.replacingOccurrences(of: "\n\n", with: "</p><p>")
 

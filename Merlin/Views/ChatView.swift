@@ -574,14 +574,17 @@ final class ChatViewModel: ObservableObject {
 
     /// Populates items from a stored message history (e.g. after restoring a session).
     /// Tool calls from assistant messages are nested as ToolCallEntry values on the
-    /// assistant ChatEntry rather than appearing as separate items.
+    /// assistant ChatEntry rather than appearing as separate items. Multiple rounds of
+    /// tool calls within a single LLM response are merged into ONE ChatEntry so the
+    /// UI shows one bubble (matching the streaming path behaviour).
     func load(from messages: [Message]) {
         items = []
-        // Accumulates tool calls from the most recent assistant-with-tools message;
-        // flushed to a ChatEntry when the next assistant text or user message arrives.
+        // Pending tool calls accumulate across back-to-back assistant+tool round-trips.
+        // They are merged into the first assistant message that carries text, producing
+        // one bubble per logical LLM response regardless of how many tool-call rounds occurred.
         var pendingToolCalls: [ToolCallEntry] = []
 
-        func flushPending() {
+        func flushOrphanedTools() {
             guard !pendingToolCalls.isEmpty else { return }
             var entry = ChatEntry(role: .assistant, text: "")
             entry.toolCalls = pendingToolCalls
@@ -595,14 +598,16 @@ final class ChatViewModel: ObservableObject {
                 break
 
             case .user:
-                flushPending()
+                // Flush any orphaned tool calls before the next user turn
+                flushOrphanedTools()
                 let text = message.content.plainText
                 guard !text.isEmpty else { continue }
                 items.append(ChatEntry(role: .user, text: text))
 
             case .assistant:
                 if let calls = message.toolCalls, !calls.isEmpty {
-                    flushPending()
+                    // Accumulate tool calls without flushing — they will be merged
+                    // into the subsequent text-bearing assistant message.
                     for call in calls {
                         pendingToolCalls.append(ToolCallEntry(
                             id: call.id,
@@ -611,12 +616,15 @@ final class ChatViewModel: ObservableObject {
                         ))
                     }
                 } else {
-                    flushPending()
+                    // Text response: merge pending tool calls into this ONE entry.
                     let text = message.content.plainText
-                    guard !text.isEmpty else { continue }
                     var entry = ChatEntry(role: .assistant, text: text)
                     entry.thinkingText = message.thinkingContent ?? ""
-                    items.append(entry)
+                    entry.toolCalls = pendingToolCalls
+                    pendingToolCalls = []
+                    if !text.isEmpty || !entry.toolCalls.isEmpty {
+                        items.append(entry)
+                    }
                 }
 
             case .tool:
@@ -626,7 +634,8 @@ final class ChatViewModel: ObservableObject {
                 }
             }
         }
-        flushPending()
+        // Flush any remaining tool calls if the conversation ended mid-loop
+        flushOrphanedTools()
         bumpRevision()
     }
 

@@ -85,8 +85,13 @@ struct ConversationWebView: NSViewRepresentable {
             coord.renderedCount = new
         }
 
-        // Streaming: update the last assistant entry if its text changed
-        if let last = entries.last, last.role == .assistant {
+        // Streaming: update the most-recent assistant entry when its content changes.
+        // Use last(where:) so system notes (compaction, near-ceiling warnings, etc.)
+        // at the tail of entries don't prevent tool-call DOM updates for the active
+        // assistant bubble — previously those trailing notes caused appendChunk to be
+        // skipped entirely, leaving the DOM stale and forcing later iterations to
+        // create separate bubbles via addMessage.
+        if let last = entries.last(where: { $0.role == .assistant }) {
             let currentID = last.id
             if coord.lastStreamingID == currentID {
                 // Same streaming message — update in place
@@ -97,7 +102,7 @@ struct ConversationWebView: NSViewRepresentable {
                     completionHandler: nil
                 )
             } else if new == old {
-                // Last entry existed before but its text changed (streaming started)
+                // Last entry existed before but its text/tool-calls changed (streaming started)
                 coord.lastStreamingID = currentID
                 let chunk = ConversationHTMLRenderer.chunkHTML(for: last)
                 let escaped = jsStringEscape(chunk)
