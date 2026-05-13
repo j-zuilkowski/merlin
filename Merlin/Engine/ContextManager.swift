@@ -81,6 +81,112 @@ class ContextManager: ObservableObject {
         compact(force: true)
     }
 
+    /// Mid-loop async compaction with LLM summarisation.
+    ///
+    /// When `estimatedTokens > midLoopCompactionThreshold`, collects the text of all removable
+    /// tool-exchange groups, calls `provider` for a one-shot narrative summary (no tools,
+    /// temperature 0), and compacts using that summary as the system-message digest.
+    /// Falls back to the static sentinel if the provider call throws.
+    /// Returns `true` when compaction fired, `false` when below threshold (no-op).
+    @discardableResult
+    func compactWithSummaryIfNeeded(provider: any LLMProvider) async -> Bool {
+        guard estimatedTokens > midLoopCompactionThreshold else { return false }
+
+        // Build exchange text from the same groups compact() would remove.
+        let exchangeText = buildRemovableExchangeText()
+        let digest: String?
+        if let text = exchangeText, !text.isEmpty {
+            digest = await summarise(text, using: provider)
+        } else {
+            digest = nil   // no removable groups → compact() will hard-truncate; digest unused
+        }
+
+        compact(force: true, customDigest: digest)
+        return true
+    }
+
+    /// Extracts the text content of tool-exchange groups that `compact(force: true)` would remove.
+    /// Returns nil when there are no such groups (context is pure text turns).
+    private func buildRemovableExchangeText() -> String? {
+        var groups: [(assistantIdx: Int, toolIndices: [Int])] = []
+        var i = 0
+        while i < messages.count {
+            let msg = messages[i]
+            guard msg.role == .assistant,
+                  let calls = msg.toolCalls, !calls.isEmpty else { i += 1; continue }
+            var toolIndices: [Int] = []
+            var j = i + 1
+            while j < messages.count && messages[j].role == .tool {
+                toolIndices.append(j)
+                j += 1
+            }
+            if !toolIndices.isEmpty {
+                groups.append((assistantIdx: i, toolIndices: toolIndices))
+            }
+            i = j
+        }
+        guard !groups.isEmpty else { return nil }
+
+        let recentStart = max(0, messages.count - compactionKeepRecentTurns)
+        let toRemove = groups.filter { $0.assistantIdx < recentStart }.isEmpty
+            ? groups
+            : groups.filter { $0.assistantIdx < recentStart }
+
+        let lines: [String] = toRemove.flatMap { group -> [String] in
+            var parts: [String] = []
+            // Tool names from assistant message
+            if let calls = messages[group.assistantIdx].toolCalls {
+                let names = calls.map { $0.function.name }.joined(separator: ", ")
+                parts.append("called: \(names)")
+            }
+            // First 200 chars of each tool result
+            for idx in group.toolIndices {
+                let content: String
+                switch messages[idx].content {
+                case .text(let t): content = String(t.prefix(200))
+                case .parts: content = "(binary)"
+                }
+                parts.append("result: \(content)")
+            }
+            return parts
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Calls `provider` once to produce a short narrative summary of `exchangeText`.
+    /// Returns the provider's response text, or the raw `exchangeText` prefix as a fallback.
+    private func summarise(_ exchangeText: String, using provider: any LLMProvider) async -> String {
+        let systemMsg = Message(
+            role: .system,
+            content: .text("Summarise the following tool-call exchanges in 2–3 concise sentences. Capture what tools were called and their key results. Be specific."),
+            timestamp: Date()
+        )
+        let userMsg = Message(
+            role: .user,
+            content: .text(exchangeText),
+            timestamp: Date()
+        )
+        var request = CompletionRequest(
+            model: provider.resolvedModelID,
+            messages: [systemMsg, userMsg]
+        )
+        request.tools = []
+        request.maxTokens = 256
+
+        do {
+            let stream = try await provider.complete(request: request)
+            var result = ""
+            for try await chunk in stream {
+                if let text = chunk.delta?.content { result += text }
+            }
+            return result.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? String(exchangeText.prefix(300))
+                : result.trimmingCharacters(in: .whitespacesAndNewlines)
+        } catch {
+            return String(exchangeText.prefix(300))
+        }
+    }
+
     func recordSkillInvocation(_ skill: Skill) {
         recentlyInvokedSkills.removeAll { $0.name == skill.name }
         recentlyInvokedSkills.insert(skill, at: 0)
@@ -111,7 +217,7 @@ class ContextManager: ObservableObject {
         return Int(Double(text.utf8.count) / 3.5)
     }
 
-    private func compact(force: Bool) {
+    private func compact(force: Bool, customDigest: String? = nil) {
         let countBefore = messages.count
         let tokensBefore = estimatedTokens
 
@@ -199,11 +305,11 @@ class ContextManager: ObservableObject {
                 return preview
             }.joined(separator: ", ")
 
+            let summaryText = customDigest
+                ?? "[context compacted — \(groupsToRemove.count) tool exchange(s) summarised] \(digest)"
             let summary = Message(
                 role: .system,
-                content: .text(
-                    "[context compacted — \(groupsToRemove.count) tool exchange(s) summarised] \(digest)"
-                ),
+                content: .text(summaryText),
                 timestamp: Date()
             )
 
