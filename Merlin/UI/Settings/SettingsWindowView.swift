@@ -258,6 +258,11 @@ struct AgentSettingsView: View {
                 )
             }
 
+            Section("Prompting") {
+                Toggle("Prompt Compression", isOn: $settings.promptCompressionEnabled)
+                    .help("When enabled: uses a compact distilled version of the core system prompt, and compresses your CLAUDE.md once per change. Reduces token cost of each LLM request.")
+            }
+
             Section("Standing Instructions") {
                 TextEditor(text: $settings.standingInstructions)
                     .frame(minHeight: 120)

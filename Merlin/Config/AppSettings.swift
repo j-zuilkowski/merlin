@@ -107,6 +107,7 @@ final class AppSettings: ObservableObject {
     @Published var maxCriticRetries: Int = 2
     /// TOML key `dpo_enabled`. Default: `true`. Set to false to disable DPO pair collection.
     @Published var dpoEnabled: Bool = true
+    @Published var promptCompressionEnabled: Bool = false
 
     var proposalApprover: ((SettingsProposal) async -> Bool)?
     private(set) var configURL: URL
@@ -193,6 +194,7 @@ final class AppSettings: ObservableObject {
         var planner: PlannerConfig?
         var critic: CriticConfig?
         var dpoEnabled: Bool?
+        var promptCompressionEnabled: Bool?
 
         struct CriticConfig: Codable, Sendable {
             var criticEnabled: Bool?
@@ -325,6 +327,7 @@ final class AppSettings: ObservableObject {
             case planner
             case critic
             case dpoEnabled = "dpo_enabled"
+            case promptCompressionEnabled = "prompt_compression_enabled"
         }
     }
 
@@ -535,6 +538,9 @@ final class AppSettings: ObservableObject {
         }
         if !dpoEnabled {
             lines.append("dpo_enabled = false")
+        }
+        if promptCompressionEnabled {
+            lines.append("prompt_compression_enabled = true")
         }
 
         lines.append("")
@@ -871,6 +877,9 @@ final class AppSettings: ObservableObject {
         }
         if let value = config.dpoEnabled {
             dpoEnabled = value
+        }
+        if let value = config.promptCompressionEnabled {
+            promptCompressionEnabled = value
         }
     }
 

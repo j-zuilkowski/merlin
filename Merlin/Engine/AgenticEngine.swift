@@ -20,6 +20,7 @@
 // See: Developer Manual § "Engine — The Agentic Loop" and
 //      § "Supervisor-Worker Engine" and § "LoRA Training Pipeline"
 import Foundation
+import CryptoKit
 
 enum AgentEvent {
     case text(String)
@@ -79,6 +80,13 @@ final class AgenticEngine {
     var claudeMDContent: String = "" {
         didSet { _stablePrefixDirty = true }
     }
+    /// SHA256 hex of the `claudeMDContent` that was most recently distilled.
+    /// Empty string when no distillation has been performed yet.
+    var claudeMDDistillHash: String = ""
+
+    /// Compressed equivalent of `claudeMDContent` produced by `refreshDistilledClaudeMD(using:)`.
+    /// Empty string until the first distillation completes.
+    var claudeMDDistilledContent: String = ""
     var memoriesContent: String = "" {
         didSet { _stablePrefixDirty = true }
     }
@@ -181,6 +189,7 @@ final class AgenticEngine {
     // nearCeilingWarningAddendum is excluded because it changes per loop iteration.
     var _stablePrefixDirty = true
     private var _stablePrefixCached = ""
+    private var _stablePrefixCompressionEnabled = AppSettings.shared.promptCompressionEnabled
 
     var currentProjectPath: String? {
         didSet {
@@ -1626,12 +1635,18 @@ final class AgenticEngine {
     /// Excludes nearCeilingWarningAddendum, which varies per loop iteration.
     /// Internal for test access.
     func buildStablePrefix() -> String {
-        if !_stablePrefixDirty {
+        let compressionEnabled = AppSettings.shared.promptCompressionEnabled
+        if !_stablePrefixDirty && _stablePrefixCompressionEnabled == compressionEnabled {
             return _stablePrefixCached
         }
         var parts: [String] = []
+
+        // CLAUDE.md: use distilled version when compression is on and distillation has run.
         if !claudeMDContent.isEmpty {
-            parts.append(claudeMDContent)
+            let mdToUse = compressionEnabled && !claudeMDDistilledContent.isEmpty
+                ? claudeMDDistilledContent
+                : claudeMDContent
+            parts.append(mdToUse)
         }
         if !memoriesContent.isEmpty {
             parts.append(memoriesContent)
@@ -1642,13 +1657,66 @@ final class AgenticEngine {
         if let path = currentProjectPath {
             parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
-        parts.append(AgenticEngine.coreSystemPrompt)
+
+        // Core system prompt: use distilled version when compression is on.
+        let corePrompt = compressionEnabled
+            ? AgenticEngine.distilledCoreSystemPrompt
+            : AgenticEngine.coreSystemPrompt
+        parts.append(corePrompt)
+
         if !standingInstructions.isEmpty {
             parts.append(standingInstructions)
         }
         _stablePrefixCached = parts.joined(separator: "\n\n")
+        _stablePrefixCompressionEnabled = compressionEnabled
         _stablePrefixDirty = false
         return _stablePrefixCached
+    }
+
+    /// Distils `claudeMDContent` using `provider` when the content has changed since the last
+    /// distillation. Uses a SHA256 hash of the content as a cache key — the provider is called
+    /// at most once per unique `claudeMDContent` value. No-op when content is empty or unchanged.
+    func refreshDistilledClaudeMD(using provider: any LLMProvider) async {
+        guard !claudeMDContent.isEmpty else { return }
+        let currentHash = sha256Hex(claudeMDContent)
+        guard currentHash != claudeMDDistillHash else { return }
+
+        let systemMsg = Message(
+            role: .system,
+            content: .text(
+                "Compress the following CLAUDE.md into a token-efficient shorthand that preserves all " +
+                "constraints, rules, and technical details. Use abbreviations, symbols, and dense phrasing. " +
+                "Output only the compressed text — no preamble."
+            ),
+            timestamp: Date()
+        )
+        let userMsg = Message(role: .user, content: .text(claudeMDContent), timestamp: Date())
+        var request = CompletionRequest(model: provider.resolvedModelID, messages: [systemMsg, userMsg])
+        request.tools = []
+        request.maxTokens = 1_024
+
+        do {
+            let stream = try await provider.complete(request: request)
+            var result = ""
+            for try await chunk in stream {
+                if let text = chunk.delta?.content { result += text }
+            }
+            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                claudeMDDistilledContent = trimmed
+                claudeMDDistillHash = currentHash
+            }
+        } catch {
+            // Distillation failed — keep previous distilled content (or empty); do not update hash.
+            // buildStablePrefix() will fall back to the original claudeMDContent.
+        }
+    }
+
+    /// Returns the lowercase hex SHA256 digest of `string`.
+    private func sha256Hex(_ string: String) -> String {
+        let data = Data(string.utf8)
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
     /// Exposed for testing — returns the full system prompt including dynamic suffix.
@@ -1673,6 +1741,23 @@ final class AgenticEngine {
         - For understanding project structure, `list_directory` with recursive=true gives the full tree without reading file contents.
         """
     }
+
+    /// Token-efficient distilled version of `coreSystemPrompt`.
+    /// Encodes the same constraints in ~6 compact lines (~80 tokens) vs 18 prose lines (~350 tokens).
+    /// Used by `buildStablePrefix()` when `AppSettings.shared.promptCompressionEnabled` is true.
+    static var distilledCoreSystemPrompt: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let today = formatter.string(from: Date())
+        return """
+        Merlin=macOS agentic coder. Date:\(today).
+        FILE: search_files/run_shell(grep/rg/find)→locate→read_file(targeted). list_directory(recursive)→structure.
+        PREFER: tools>prose. Responses concise. Avoid sequential bulk reads.
+        """
+    }
+
+    /// Exposed for test comparison against `distilledCoreSystemPrompt`. Identical to `coreSystemPrompt`.
+    static var coreSystemPromptForTesting: String { coreSystemPrompt }
 
     private func buildSystemPrompt(for slot: AgentSlot) async -> String {
         var result = buildStablePrefix()
