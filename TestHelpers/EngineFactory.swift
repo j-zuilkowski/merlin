@@ -86,4 +86,10 @@ enum EngineFactory {
         engine.sessionStore = sessionStore
         return engine
     }
+
+    /// Creates an engine with an injected ToolRouter for tool-dispatch tests.
+    @MainActor
+    static func make(toolRouter: ToolRouter) -> AgenticEngine {
+        AgenticEngine(toolRouter: toolRouter, contextManager: ContextManager())
+    }
 }

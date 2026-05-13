@@ -35,6 +35,7 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
 
         let call = ToolCall(
             id: UUID().uuidString,
+            type: "function",
             function: .init(
                 name: "spawn_agent",
                 arguments: #"{"agent":"worker","prompt":"do the thing"}"#
@@ -64,6 +65,7 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
 
         let call = ToolCall(
             id: UUID().uuidString,
+            type: "function",
             function: .init(
                 name: "spawn_agent",
                 arguments: #"{"agent":"nonexistent-agent-xyz","prompt":"test"}"#
@@ -87,6 +89,7 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
 
         let call = ToolCall(
             id: UUID().uuidString,
+            type: "function",
             function: .init(
                 name: "spawn_agent",
                 arguments: #"{"agent":"explorer","prompt":"search for files"}"#
