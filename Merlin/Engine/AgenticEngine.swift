@@ -58,6 +58,7 @@ private final class AllowAllAuthPresenter: AuthPresenter {
 @MainActor
 final class AgenticEngine {
     let contextManager: ContextManager
+    let checkpointStore = CheckpointStore()
     private let thinkingDetector = ThinkingModeDetector.self
     let toolRouter: ToolRouter
     /// KAGEngine used for triple extraction after each turn. Defaults to the
@@ -441,6 +442,9 @@ final class AgenticEngine {
                 let state = CancellationState()
                 self.contextLengthRetryCount = 0
                 self.ceilingContinuationCount = 0
+                if self.contextManager.messages.isEmpty {
+                    self.checkpointStore.clear()
+                }
                 self.activeContinuation = continuation
                 await withTaskCancellationHandler(operation: {
                     do {
@@ -705,6 +709,9 @@ final class AgenticEngine {
         // Phase 151b — compact before appending if session has grown large.
         // Skip for continuations: they depend on recent tool results staying intact.
         context.compactIfNeededBeforeRun(isContinuation: isContinuation)
+        if contextOverride == nil {
+            checkpointStore.save(messages: context.messages)
+        }
         context.append(Message(role: .user, content: .text(batchPrompt), timestamp: Date()))
         emitCompactionNoteIfNeeded()
 

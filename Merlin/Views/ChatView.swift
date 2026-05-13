@@ -302,6 +302,30 @@ struct ChatView: View {
             appState.engine.emitSystemNote("[context compacted on demand]")
             return true
 
+        case "rewind":
+            let (stepsBack, valid) = RewindCommand.parse(message)
+            guard valid else {
+                appState.engine.emitSystemNote("[/rewind] invalid argument — use /rewind or /rewind N (N ≥ 1)")
+                return true
+            }
+
+            guard let messages = appState.engine.checkpointStore.restore(stepsBack: stepsBack) else {
+                appState.engine.emitSystemNote(
+                    "[/rewind] no checkpoint at \(stepsBack) step(s) back — " +
+                    "\(appState.engine.checkpointStore.checkpoints.count) checkpoint(s) available"
+                )
+                return true
+            }
+
+            appState.engine.contextManager.clear()
+            appState.engine.contextManager.load(messages)
+            model.load(from: messages)
+            appState.engine.checkpointStore.clear()
+            appState.engine.emitSystemNote(
+                "[rewound \(stepsBack) step(s) — \(messages.count) message(s) restored]"
+            )
+            return true
+
         default:
             return false
         }
