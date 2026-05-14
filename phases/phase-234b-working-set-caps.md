@@ -15,6 +15,27 @@ aspirational.
 
 ---
 
+## Implementation caution — avoid unconditional compaction
+
+`applyWorkingSetCaps` must **guard** before calling `compact(force: true)`. If it always compacts
+unconditionally, two existing tests will regress:
+- `EnginePreRunCompactionIntegrationTests.testEngineDoesNotCompactWhenContextUnderThreshold`
+- `SkillInvocationTests.testForkContextDoesNotPolluteSesionHistory`
+
+Pattern to follow: only compact each component when that component's token count actually
+exceeds its cap. For example:
+
+```swift
+if toolBurstTokens > caps.toolBurstCap {
+    compact(force: true)
+}
+```
+
+Do **not** call `compact(force: true)` unconditionally at the start or end of
+`applyWorkingSetCaps`. The function should be a no-op when everything is already within budget.
+
+---
+
 ## Edit
 
 - `Merlin/Engine/WorkingSetBudget.swift` — new file. Allocator splits `usableInputTokens` as
@@ -44,12 +65,14 @@ aspirational.
 ```bash
 xcodebuild -scheme MerlinTests build-for-testing \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 
 xcodebuild -scheme MerlinTests test \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 

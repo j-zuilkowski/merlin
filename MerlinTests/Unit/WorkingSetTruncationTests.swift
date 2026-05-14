@@ -42,21 +42,27 @@ final class WorkingSetTruncationTests: XCTestCase {
         )
         await cm.applyWorkingSetCaps(caps)
 
-        let systemMsg = cm.messages.first { $0.role == .system }
-        guard let systemMsg else {
-            XCTFail("System message must remain after truncation")
-            return
+        // compact() may prepend a summary system message; search all system messages for the
+        // truncation marker rather than assuming the first system message is the truncated one.
+        let truncatedMsg = cm.messages.first { msg in
+            guard msg.role == .system,
+                  case .text(let t) = msg.content
+            else { return false }
+            return t.contains("[truncated")
         }
-        if case .text(let t) = systemMsg.content {
-            XCTAssertTrue(t.contains("[truncated"), "Truncated system prompt must contain '[truncated …]' marker")
-        } else {
-            XCTFail("System message content must be text")
-        }
+        XCTAssertNotNil(truncatedMsg, "A system message containing '[truncated' must exist after truncation")
     }
 
     func testTokensReducedAfterApplyingCaps() async {
         let cm = ContextManager()
+        // Use proper (assistant+tool) exchange pairs so compact() can form exchange groups.
+        // Orphaned tool messages without a preceding assistant toolCalls message don't form
+        // groups and cause hard-truncation to add a summary, increasing token count instead.
         for i in 0..<10 {
+            let call = ToolCall(id: "tc\(i)", type: "function",
+                                function: FunctionCall(name: "read_file", arguments: "{}"))
+            cm.append(Message(role: .assistant, content: .text(""),
+                              toolCalls: [call], timestamp: Date()))
             cm.append(Message(role: .tool,
                               content: .text(String(repeating: "T", count: 3_500)),
                               toolCallId: "tc\(i)",

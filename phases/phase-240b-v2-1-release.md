@@ -57,7 +57,8 @@ step-by-step. **Do not skip** the `xcodegen generate` step or the GitHub release
     xcodegen generate
     xcodebuild -scheme MerlinTests test \
         -destination 'platform=macOS' \
-        -derivedDataPath /tmp/merlin-derived 2>&1 | tail -20
+        -derivedDataPath /tmp/merlin-derived \
+        CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | tail -20
     ```
     Confirm tests pass, then proceed to commit/tag/release.
 
@@ -68,12 +69,14 @@ step-by-step. **Do not skip** the `xcodegen generate` step or the GitHub release
 ```bash
 xcodebuild -scheme MerlinTests build-for-testing \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 
 xcodebuild -scheme MerlinTests test \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 

@@ -59,12 +59,14 @@ divergence in your completion summary.
 ```bash
 xcodebuild -scheme MerlinTests build-for-testing \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 
 xcodebuild -scheme MerlinTests test \
     -destination 'platform=macOS' \
-    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    -derivedDataPath /tmp/merlin-derived \
+    CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 

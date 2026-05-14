@@ -67,15 +67,19 @@ verify command, and commit instructions.
    ```bash
    xcodebuild -scheme MerlinTests build-for-testing \
        -destination 'platform=macOS' \
-       -derivedDataPath /tmp/merlin-derived 2>&1 \
+       -derivedDataPath /tmp/merlin-derived \
+       CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
        | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 
    xcodebuild -scheme MerlinTests test \
        -destination 'platform=macOS' \
-       -derivedDataPath /tmp/merlin-derived 2>&1 \
+       -derivedDataPath /tmp/merlin-derived \
+       CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
        | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
    ```
-   Do not invent variants.
+   Do not invent variants. The three `CODE_SIGN_*` overrides are required in this sandbox because
+   the "Merlin Dev Signing" certificate is not available here. **Every** xcodebuild invocation in
+   every phase file already includes them; do not omit them.
 10. **Per-phase loop:**
     1. Open the phase file with `cat phases/phase-NN<x>-<name>.md`.
     2. Read its `## Context` block and confirm prerequisites are satisfied.
