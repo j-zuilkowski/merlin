@@ -279,6 +279,7 @@
 		8DCA5E2C9822732AF3875E94 /* ToolLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEE01E4A80957431EAA980F6 /* ToolLogView.swift */; };
 		909F39419F686E112B285FAE /* RAGSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E51D2639F089838EF94D15 /* RAGSourcesView.swift */; };
 		93963248993487D653B2FB2F /* PatternMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11F668D82D2CE9C0925BE74E /* PatternMatcher.swift */; };
+		94C1EAF1151F4ABBB362654F /* GroundingReportUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31F2FC60C3D0DCE5CD2401B0 /* GroundingReportUITests.swift */; };
 		96E9EC5BE292AA61EA28C059 /* CriticTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 037AA5CE654A8236DA197F08 /* CriticTelemetryTests.swift */; };
 		97093C484450FB4F5A6B1EE1 /* ShellTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC46E6E6A09E9D9D4E88C79 /* ShellTool.swift */; };
 		98F281EDA0972A2E66469B9D /* MCPConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91D5F272696DE3A8AFB9A327 /* MCPConfig.swift */; };
@@ -555,6 +556,7 @@
 		2F5EE82813F1FBB413237760 /* TelemetryEmitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryEmitterTests.swift; sourceTree = "<group>"; };
 		31774BBEB57796E41F092A0A /* KiCadSchematicParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadSchematicParserTests.swift; sourceTree = "<group>"; };
 		31885D17C1754C25CB7123B0 /* AuthGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGate.swift; sourceTree = "<group>"; };
+		31F2FC60C3D0DCE5CD2401B0 /* GroundingReportUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroundingReportUITests.swift; sourceTree = "<group>"; };
 		32B8246C3F38F256D8C783DB /* KAGTripleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KAGTripleTests.swift; sourceTree = "<group>"; };
 		32DF96F64A8B365EA76DED77 /* WorktreeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorktreeManager.swift; sourceTree = "<group>"; };
 		335BC7A48AEA390D361A1594 /* LoopContinuationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopContinuationTests.swift; sourceTree = "<group>"; };
@@ -1256,6 +1258,7 @@
 				17E91CB24512371A3FC1E1E2 /* EngineProviderRetryTests.swift */,
 				C5D6405DFE19D25D73F32754 /* EngineTelemetryTests.swift */,
 				3CE1EE6BFD0928A540C82786 /* GroundingConfidenceTests.swift */,
+				31F2FC60C3D0DCE5CD2401B0 /* GroundingReportUITests.swift */,
 				5CCDBF2ACA000098F1F6D01F /* GUIActionTelemetryTests.swift */,
 				C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */,
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
@@ -2010,6 +2013,7 @@
 				2ABC783900CC3C7EA34E5837 /* FileSystemToolTests.swift in Sources */,
 				FB7F5C506B103EF80063FA4B /* GUIActionTelemetryTests.swift in Sources */,
 				543ADBA8CF98BB566A498107 /* GroundingConfidenceTests.swift in Sources */,
+				94C1EAF1151F4ABBB362654F /* GroundingReportUITests.swift in Sources */,
 				4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */,
 				8B9C74F2159EF01FD12BAFF3 /* HookTelemetryTests.swift in Sources */,
 				B8F376E599A55B4489B225EF /* InstructionDistillationTests.swift in Sources */,
