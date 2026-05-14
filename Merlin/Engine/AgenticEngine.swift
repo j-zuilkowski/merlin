@@ -39,6 +39,7 @@ enum AgentEvent {
     case subagentStarted(id: UUID, agentName: String)
     case subagentUpdate(id: UUID, event: SubagentEvent)
     case systemNote(String)
+    case cleanStop(reason: String, summary: String)
     case ragSources([RAGChunk])
     /// Per-turn grounding confidence report. Emitted after RAG search even when
     /// `totalChunks == 0`, so callers can distinguish ungrounded from well-grounded turns.
@@ -186,9 +187,7 @@ final class AgenticEngine {
     /// within the current user-initiated task. Prevents infinite ceiling bouncing.
     /// Resets when a fresh (non-continuation) user message starts a new turn.
     private var ceilingContinuationCount = 0
-    private var contextLengthRetryCount = 0
     private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
-    private let maxContextOverrunRecoveryAttempts = 2
 
     /// Maximum number of auto-continuations triggered by ceiling hits before the
     /// engine gives up and stops. Each continuation gets its own full loop budget.
@@ -472,7 +471,6 @@ final class AgenticEngine {
         AsyncStream { continuation in
             let task = Task { @MainActor in
                 let state = CancellationState()
-                self.contextLengthRetryCount = 0
                 self.ceilingContinuationCount = 0
                 if self.contextManager.messages.isEmpty {
                     self.checkpointStore.clear()
@@ -715,6 +713,12 @@ final class AgenticEngine {
 
         // Compute the loop ceiling early so the planner batch-split logic can reference it.
         let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
+        let planner = PlannerEngine(
+            executeProvider: selectProvider(for: userMessage),
+            orchestrateProvider: provider(for: .orchestrate),
+            maxPlanRetries: AppSettings.shared.maxPlanRetries
+        )
+        let escalation = EscalationHandler(planner: planner)
 
         if classification.needsPlanning {
             // Use classifierOverride for decompose when available (enables test injection
@@ -723,11 +727,6 @@ final class AgenticEngine {
             if let override = classifierOverride {
                 planSteps = await override.decompose(task: userMessage, context: context.messages)
             } else {
-                let planner = PlannerEngine(
-                    executeProvider: selectProvider(for: userMessage),
-                    orchestrateProvider: provider(for: .orchestrate),
-                    maxPlanRetries: AppSettings.shared.maxPlanRetries
-                )
                 planSteps = await planner.decompose(task: userMessage, context: context.messages)
             }
 
@@ -788,8 +787,9 @@ final class AgenticEngine {
         var criticRetryCount = 0
         var finalCriticResult: CriticResult? = nil
         var nearCeilingEmitted = false
-        do {
-            while true {
+        var recentProgressFlags: [Bool] = []
+        var didAttemptContextOverrunRecovery = false
+        turnLoop: while true {
                 await pauseForReload()
                 guard loopCount < maxIterations else {
                     if ceilingContinuationCount < maxCeilingContinuations {
@@ -836,6 +836,32 @@ final class AgenticEngine {
                     provider = selectProvider(for: userMessage)
                 }
                 let requestModel = modelID(for: provider)
+                let currentEscalationStep = makeEscalationStep(
+                    task: batchPrompt,
+                    complexity: classification.complexity,
+                    budget: effectiveBudget(for: provider)
+                )
+                if loopsRemaining <= nearCeilingThreshold,
+                   recentProgressFlags.count >= 3,
+                   recentProgressFlags.suffix(3).allSatisfy({ $0 == false }) {
+                    let decision = await handleEscalation(
+                        currentStep: currentEscalationStep,
+                        reason: .iterationCap(
+                            loopCount: loopCount,
+                            lastObservation: "no new tool calls or text in the last 3 iterations"
+                        ),
+                        escalation: escalation,
+                        context: context,
+                        continuation: continuation,
+                        originalTask: userMessage
+                    )
+                    switch decision {
+                    case .continueWith:
+                        continue turnLoop
+                    case .stop:
+                        break turnLoop
+                    }
+                }
                 // Check thinking support against the actual slot provider, not activeConfig.
                 // activeConfig reflects activeProviderID (often the execute/Flash provider)
                 // which may have supportsThinking=false even though the reason/orchestrate
@@ -866,6 +892,7 @@ final class AgenticEngine {
                 if let providerMaxOutput = registry?.config(for: provider.id)?.maxOutputTokens {
                     request.maxTokens = providerMaxOutput
                 }
+                do {
 
                 // Auto-resize the local model context if the request would overflow it.
                 // Estimate tokens as body bytes / 4 + 20% headroom.
@@ -1079,62 +1106,86 @@ final class AgenticEngine {
                 )
                 // Prompt compression: mid-loop LLM summarisation (Phase 206b).
                 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
+                let turnHadProgress = !fullText.isEmpty || !fullThinking.isEmpty || !writtenFilePaths.isEmpty
+                recentProgressFlags.append(turnHadProgress)
+                if recentProgressFlags.count > 3 {
+                    recentProgressFlags.removeFirst(recentProgressFlags.count - 3)
+                }
                 context.compactAfterToolBurst()
                 emitCompactionNoteIfNeeded()
-            }
-        } catch let pe as ProviderError where pe.isContextLengthExceeded {
-            guard contextLengthRetryCount < maxContextOverrunRecoveryAttempts else {
-                var data: [String: TelemetryValue] = [
-                    "turn": .int(turn),
-                    "slot": .string(workingSlot.rawValue),
-                    "provider_id": .string(selectProvider(for: userMessage).id),
-                    "error_domain": .string((pe as NSError).domain),
-                    "error_code": .int((pe as NSError).code)
-                ]
-                if case .httpError(let statusCode, let body, _) = pe {
-                    data["error_status"] = .int(statusCode)
-                    data["error_body"] = .string(RedactedString.redacted(String(body.prefix(500))))
-                }
-                TelemetryEmitter.shared.emit("engine.turn.error", data: data)
-                throw pe
-            }
+                } catch {
+                if let pe = error as? ProviderError, pe.isContextLengthExceeded {
+                    if didAttemptContextOverrunRecovery {
+                        var data: [String: TelemetryValue] = [
+                            "turn": .int(turn),
+                            "slot": .string(workingSlot.rawValue),
+                            "provider_id": .string(selectProvider(for: userMessage).id),
+                            "error_domain": .string((pe as NSError).domain),
+                            "error_code": .int((pe as NSError).code)
+                        ]
+                        if case .httpError(let statusCode, let body, _) = pe {
+                            data["error_status"] = .int(statusCode)
+                            data["error_body"] = .string(RedactedString.redacted(String(body.prefix(500))))
+                        }
+                        TelemetryEmitter.shared.emit("engine.turn.error", data: data)
 
-            contextLengthRetryCount += 1
-            let attempt = contextLengthRetryCount
-            continuation.yield(.systemNote(
-                "[context overrun - compacting and restarting attempt \(attempt)/\(maxContextOverrunRecoveryAttempts)]"
-            ))
-            context.forceCompaction()
-            context.append(Message(
-                role: .user,
-                content: .text(contextOverrunRecoveryDirective(
-                    attempt: attempt,
-                    maxAttempts: maxContextOverrunRecoveryAttempts,
-                    userMessage: userMessage
-                )),
-                timestamp: Date()
-            ))
-            try await runLoop(
-                userMessage: userMessage,
-                continuation: continuation,
-                contextOverride: contextOverride,
-                depth: depth
-            )
-        } catch {
-            var data: [String: TelemetryValue] = [
-                "turn": .int(turn),
-                "slot": .string(workingSlot.rawValue),
-                "provider_id": .string(selectProvider(for: userMessage).id),
-                "error_domain": .string((error as NSError).domain),
-                "error_code": .int((error as NSError).code)
-            ]
-            if case let pe as ProviderError = error, case .httpError(let statusCode, let body, _) = pe {
-                data["error_status"] = .int(statusCode)
-                data["error_body"] = .string(RedactedString.redacted(String(body.prefix(500))))
+                        let decision = await handleEscalation(
+                            currentStep: currentEscalationStep,
+                            reason: .preflightOverflow(
+                                estimated: TokenEstimator.estimate(
+                                    request: request,
+                                    baseURL: provider.baseURL,
+                                    modelID: provider.resolvedModelID
+                                ),
+                                budget: effectiveBudget(for: provider).usableInputTokens
+                            ),
+                            escalation: escalation,
+                            context: context,
+                            continuation: continuation,
+                            originalTask: userMessage
+                        )
+                        switch decision {
+                        case .continueWith:
+                            continue turnLoop
+                        case .stop:
+                            break turnLoop
+                        }
+                    } else {
+                        continuation.yield(.systemNote("[context overrun — last-ditch compaction]"))
+                        context.forceCompaction()
+                        context.append(Message(
+                            role: .user,
+                            content: .text("""
+                            [CONTEXT_OVERRUN_RECOVERY] Continue from the interrupted task. \
+                            Do not restart completed work. Finish the task from the current compacted state.
+                            """),
+                            timestamp: Date()
+                        ))
+                        didAttemptContextOverrunRecovery = true
+                        continue turnLoop
+                    }
+                } else if let overflow = error as? EngineError {
+                    switch overflow {
+                    case .preflightOverflow(let estimated, let budget):
+                        let decision = await handleEscalation(
+                            currentStep: currentEscalationStep,
+                            reason: .preflightOverflow(estimated: estimated, budget: budget),
+                            escalation: escalation,
+                            context: context,
+                            continuation: continuation,
+                            originalTask: userMessage
+                        )
+                        switch decision {
+                        case .continueWith:
+                            continue turnLoop
+                        case .stop:
+                            break turnLoop
+                        }
+                    }
+                } else {
+                    throw error
+                }
             }
-            TelemetryEmitter.shared.emit("engine.turn.error", data: data)
-            throw error
-        }
 
         if contextOverride == nil,
            let id = sessionID,
@@ -1283,6 +1334,7 @@ final class AgenticEngine {
             schedulePendingContinuation()
         }
     }
+    }
 
     /// Groups plan steps into execution batches.
     /// Adjacent parallel-safe steps are merged into one batch (up to maxParallelSteps).
@@ -1401,6 +1453,111 @@ final class AgenticEngine {
             reasonProvider: provider(for: .reason),
             modelManager: manager
         )
+    }
+
+    private func makeEscalationStep(
+        task: String,
+        complexity: ComplexityTier,
+        budget: ProviderBudget
+    ) -> PlanStep {
+        let tokenBudget = max(PlanStep.defaultTokenBudget, budget.usableInputTokens)
+        return PlanStep(
+            description: task,
+            successCriteria: [.prose("complete the requested work")],
+            complexity: complexity,
+            parallelSafe: false,
+            tokenBudget: tokenBudget,
+            requiresCritic: .optional,
+            minContextRequired: tokenBudget
+        )
+    }
+
+    private func escalationReasonLabel(_ reason: EscalationReason) -> String {
+        switch reason {
+        case .iterationCap(let loopCount, let lastObservation):
+            return "iteration cap reached after \(loopCount) loop(s); last observation: \(lastObservation)"
+        case .preflightOverflow(let estimated, let budget):
+            return "preflight overflow (\(estimated) > \(budget))"
+        }
+    }
+
+    private func progressSummary(for messages: [Message]) -> String {
+        let recent = messages.suffix(3)
+        guard recent.isEmpty == false else {
+            return "- no progress recorded"
+        }
+        return recent.enumerated().map { index, message in
+            let text = message.content.plainText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let snippet = text.isEmpty ? "(empty)" : String(text.prefix(120))
+            return "- \(index + 1). \(message.role.rawValue): \(snippet)"
+        }.joined(separator: "\n")
+    }
+
+    private func appendEscalationSteps(
+        _ replacementSteps: [PlanStep],
+        originalTask: String,
+        context: ContextManager
+    ) {
+        let stepList = replacementSteps.enumerated()
+            .map { "  \($0.offset + 1). \($0.element.description)" }
+            .joined(separator: "\n")
+        let message = """
+        [ESCALATION] Continue with the following refined steps:
+        \(stepList)
+
+        Original task: \(originalTask)
+        Execute these steps in order and keep the work scoped to the refined plan.
+        """
+        context.append(Message(role: .user, content: .text(message), timestamp: Date()))
+    }
+
+    private func buildCleanStopNote(
+        reason: String,
+        suggestion: String,
+        progressSummary: String
+    ) -> String {
+        """
+        ⛔ Cannot continue: \(reason). Suggested: \(suggestion). Progress so far:
+        \(progressSummary)
+        """
+    }
+
+    private func handleEscalation(
+        currentStep: PlanStep,
+        reason: EscalationReason,
+        escalation: EscalationHandler,
+        context: ContextManager,
+        continuation: AsyncStream<AgentEvent>.Continuation,
+        originalTask: String
+    ) async -> EscalationDecision {
+        let data: [String: TelemetryValue] = [
+            "reason": .string(escalationReasonLabel(reason)),
+            "step": .string(currentStep.description),
+            "token_budget": .int(currentStep.tokenBudget)
+        ]
+        TelemetryEmitter.shared.emit("engine.escalation.start", data: data)
+        let decision = await escalation.escalateOrStop(
+            currentStep: currentStep,
+            reason: reason,
+            context: context.messages
+        )
+
+        switch decision {
+        case .continueWith(let replacementSteps):
+            continuation.yield(.systemNote(
+                "[Escalation] Refining into \(replacementSteps.count) substep(s)"
+            ))
+            appendEscalationSteps(replacementSteps, originalTask: originalTask, context: context)
+        case .stop(let message):
+            let label = escalationReasonLabel(reason)
+            let progress = progressSummary(for: context.messages)
+            continuation.yield(.cleanStop(reason: label, summary: message))
+            continuation.yield(.systemNote(
+                buildCleanStopNote(reason: label, suggestion: message, progressSummary: progress)
+            ))
+        }
+
+        return decision
     }
 
     private func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
@@ -1881,23 +2038,6 @@ final class AgenticEngine {
 
     private func activeDomain() async -> any DomainPlugin {
         await DomainRegistry.shared.activeDomain(ids: activeDomainIDs)
-    }
-
-    private func contextOverrunRecoveryDirective(
-        attempt: Int,
-        maxAttempts: Int,
-        userMessage: String
-    ) -> String {
-        """
-        CONTEXT_OVERRUN_RECOVERY attempt \(attempt)/\(maxAttempts)
-        The previous request body or context exceeded the provider limit while working on:
-        \(userMessage)
-
-        Continue from the interrupted task.
-        Do not restart completed work.
-        Summarize what was already done if needed.
-        Proceed from the next unresolved step.
-        """
     }
 
     private func approximateTokens(in context: ContextManager) -> Int {

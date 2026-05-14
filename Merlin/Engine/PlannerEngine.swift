@@ -466,7 +466,7 @@ actor PlannerEngine {
     // MARK: - JSON parsing
 
     private func parseClassifierResult(from raw: String) -> ClassifierResult {
-        let jsonString = extractJSON(from: raw)
+        let jsonString = normalizeJSONNumberLiterals(extractJSON(from: raw))
         guard let data = jsonString.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
@@ -490,7 +490,7 @@ actor PlannerEngine {
     }
 
     private nonisolated func parseSteps(from raw: String) -> [PlanStep] {
-        let jsonString = extractJSON(from: raw)
+        let jsonString = normalizeJSONNumberLiterals(extractJSON(from: raw))
         guard let data = jsonString.data(using: .utf8) else { return [] }
 
         let decoder = JSONDecoder()
@@ -500,6 +500,18 @@ actor PlannerEngine {
         if let bare = try? decoder.decode([PlanStep].self, from: data) {
             return normalizeSteps(bare)
         }
+        if let object = try? JSONSerialization.jsonObject(with: data),
+           let array = object as? [[String: Any]] {
+            let decoded = array.compactMap { element -> PlanStep? in
+                guard let elementData = try? JSONSerialization.data(withJSONObject: element) else {
+                    return nil
+                }
+                return try? decoder.decode(PlanStep.self, from: elementData)
+            }
+            if decoded.isEmpty == false {
+                return normalizeSteps(decoded)
+            }
+        }
         return []
     }
 
@@ -508,7 +520,7 @@ actor PlannerEngine {
     }
 
     private nonisolated func extractCannotDecomposeReason(from raw: String) -> String? {
-        let jsonString = extractJSON(from: raw)
+        let jsonString = normalizeJSONNumberLiterals(extractJSON(from: raw))
         guard let data = jsonString.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
@@ -547,5 +559,31 @@ actor PlannerEngine {
             return String(s[start...end])
         }
         return s
+    }
+
+    private nonisolated func normalizeJSONNumberLiterals(_ text: String) -> String {
+        let characters = Array(text)
+        guard characters.isEmpty == false else { return text }
+
+        var output = String()
+        output.reserveCapacity(text.count)
+
+        for index in characters.indices {
+            let character = characters[index]
+            if character == "_" {
+                if index != characters.startIndex {
+                    let previousIndex = characters.index(before: index)
+                    let nextIndex = characters.index(after: index)
+                    let previousIsDigit = characters[previousIndex].isNumber
+                    let nextIsDigit = nextIndex < characters.endIndex && characters[nextIndex].isNumber
+                    if previousIsDigit && nextIsDigit {
+                        continue
+                    }
+                }
+            }
+            output.append(character)
+        }
+
+        return output
     }
 }

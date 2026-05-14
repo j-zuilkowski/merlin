@@ -559,6 +559,8 @@ final class ChatViewModel: ObservableObject {
                 applyEngineEvent(event)
             case .systemNote(let note):
                 appendSystemNote(note)
+            case .cleanStop(let reason, let summary):
+                appendSystemNote("⛔ Cannot continue: \(reason). \(summary)")
             case .error(let error):
                 appendError(error)
             }
