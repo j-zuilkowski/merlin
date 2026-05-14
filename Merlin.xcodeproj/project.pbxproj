@@ -85,6 +85,7 @@
 		2484AD6AFDE2828CC4923C19 /* CalibrationTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26B899E94DE350B70B073A72 /* CalibrationTypes.swift */; };
 		25005FF801433EBF44E9A99B /* DomainRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0073D0140F07426FFFEADD35 /* DomainRegistryTests.swift */; };
 		252AEF6EF331B77941F54A48 /* DPOReviewQueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1D4EAD0B11660E147106CF /* DPOReviewQueueView.swift */; };
+		25C5F5CCE1C5C9F0A374E2F0 /* RAGSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA835ED6A2583140479B6F27 /* RAGSelector.swift */; };
 		2631D16DF9D7B4D88345DAAC /* EmptyToolResultRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9EAF68B20BAC7573123A02 /* EmptyToolResultRouter.swift */; };
 		26941688A4FC95363DB8EE5B /* KAGEngineExtractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EAE4C9CF41CBE9417F1491D /* KAGEngineExtractionTests.swift */; };
 		27394302AC89476792EED94B /* RoleSlotSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29EDE0CF4979E6BB1C024011 /* RoleSlotSettingsView.swift */; };
@@ -928,6 +929,7 @@
 		E89FC67312BC80A0275B9707 /* DeepSeekProviderLiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSeekProviderLiveTests.swift; sourceTree = "<group>"; };
 		E9735445A0F89D0DEE7CAAF1 /* ChatViewModelPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModelPersistenceTests.swift; sourceTree = "<group>"; };
 		E9E0B7C52D408B037D9DE440 /* PlannerEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerEngineProtocol.swift; sourceTree = "<group>"; };
+		EA835ED6A2583140479B6F27 /* RAGSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGSelector.swift; sourceTree = "<group>"; };
 		EA89F22A35AB2A3320F9F428 /* MemoryEngineBackendWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryEngineBackendWiringTests.swift; sourceTree = "<group>"; };
 		EA984C160727658DFC5F3BD0 /* LoRASettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRASettingsUITests.swift; sourceTree = "<group>"; };
 		EBB0BAB3ADA2C95F89E9E702 /* LiveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSession.swift; sourceTree = "<group>"; };
@@ -1139,6 +1141,7 @@
 				85C6DF69B2D78173D8A33A75 /* PermissionMode.swift */,
 				AB2DC940A662EE8A948649A3 /* PlannerEngine.swift */,
 				CFC2CED1BFD45B1E35C220B8 /* ProjectSizeObserver.swift */,
+				EA835ED6A2583140479B6F27 /* RAGSelector.swift */,
 				975097FE4BDDE42B128A4FD2 /* RedactedString.swift */,
 				DDA51BFAC63102AF61997974 /* StagingBuffer.swift */,
 				D817F3FD1F961E50D157C3EB /* ThinkingModeDetector.swift */,
@@ -2415,6 +2418,7 @@
 				B75A6C8211EBA0B2C4C5FDD1 /* ProviderHUD.swift in Sources */,
 				726241993E958F2079347E1F /* ProviderRegistry+ReasoningEffort.swift in Sources */,
 				D057B413BEA692AC5C3C4015 /* ProviderSettingsView.swift in Sources */,
+				25C5F5CCE1C5C9F0A374E2F0 /* RAGSelector.swift in Sources */,
 				909F39419F686E112B285FAE /* RAGSourcesView.swift in Sources */,
 				4EAC8F7D1CE8AC4D555D3843 /* RAGTools.swift in Sources */,
 				456CABC0851E73CA7F0D09FF /* ReasoningEffort.swift in Sources */,

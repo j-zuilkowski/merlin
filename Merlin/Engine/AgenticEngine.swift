@@ -639,11 +639,7 @@ final class AgenticEngine {
 
         var effectiveMessage = userMessage
         let preflightProvider = resolvedProvider(for: workingSlot)
-        TelemetryEmitter.shared.emit("engine.preflight.estimate", data: [
-            "estimated_tokens": max(1, approximateTokens(in: context)),
-            "provider_id": preflightProvider.id,
-            "slot": workingSlot.rawValue
-        ])
+        let basePreflightEstimate = approximateTokens(in: context)
         let memResults = (try? await memoryBackend.search(
             query: userMessage,
             topK: 5,
@@ -666,14 +662,35 @@ final class AgenticEngine {
         }
 
         let ragChunks = memChunks + bookChunks
+        let workingSet = WorkingSetBudget.derive(from: effectiveBudget(for: preflightProvider))
+        let selectedRAGChunks = RAGSelector.selectChunks(
+            candidates: ragChunks,
+            budget: workingSet.ragInjectionCap,
+            userCeiling: ragChunkLimit
+        )
+        let ragTokensUsed = selectedRAGChunks.reduce(0) { total, chunk in
+            total + TokenEstimator.estimateText(chunk.text)
+        }
+        TelemetryEmitter.shared.emit("engine.rag.selected", data: [
+            "candidate_count": ragChunks.count,
+            "selected_count": selectedRAGChunks.count,
+            "tokens_used": ragTokensUsed,
+            "budget_cap": workingSet.ragInjectionCap
+        ])
 
-        if !ragChunks.isEmpty {
-            effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: ragChunks)
-            continuation.yield(.ragSources(ragChunks))
+        if !selectedRAGChunks.isEmpty {
+            effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: selectedRAGChunks)
+            continuation.yield(.ragSources(selectedRAGChunks))
         }
 
+        TelemetryEmitter.shared.emit("engine.preflight.estimate", data: [
+            "estimated_tokens": max(1, basePreflightEstimate + TokenEstimator.estimateText(effectiveMessage)),
+            "provider_id": preflightProvider.id,
+            "slot": workingSlot.rawValue
+        ])
+
         let groundingReport = GroundingReport.build(
-            ragChunks: ragChunks,
+            ragChunks: selectedRAGChunks,
             memoryCreatedAts: memoryDates,
             freshnessThresholdDays: AppSettings.shared.ragFreshnessThresholdDays,
             minGroundingScore: AppSettings.shared.ragMinGroundingScore

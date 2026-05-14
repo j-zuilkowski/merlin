@@ -30,11 +30,11 @@ final class RAGSelectorTests: XCTestCase {
 
     func testNegativeBudgetReturnsEmpty() {
         let selected = RAGSelector.selectChunks(candidates: [], budget: -1, userCeiling: 5)
-        XCTAssertEqual(selected, [])
+        XCTAssertTrue(selected.isEmpty)
     }
 
     func testEmptyCandidatesReturnsEmpty() {
         let selected = RAGSelector.selectChunks(candidates: [], budget: 1_000, userCeiling: 5)
-        XCTAssertEqual(selected, [])
+        XCTAssertTrue(selected.isEmpty)
     }
 }

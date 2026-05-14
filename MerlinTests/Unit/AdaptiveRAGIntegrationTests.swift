@@ -97,7 +97,7 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
         let provider = MockProvider(chunks: [
             .init(delta: .init(content: "ok"), finishReason: "stop")
         ])
-        let xcalibre = StubXcalibreClient(chunks: makeChunks(count: 20, textLength: 400))
+        let xcalibre = StubXcalibreClient(chunks: makeChunks(count: 20, textLength: 1_200))
 
         let smallEngine = makeAdaptiveEngine(
             provider: provider,

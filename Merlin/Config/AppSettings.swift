@@ -51,6 +51,7 @@ final class AppSettings: ObservableObject {
     @Published var memoryBackendID: String = "local-vector"
     @Published var projectPath: String = ""
     @Published var ragRerank: Bool = false
+    /// Upper bound on retrieved chunks. Effective count is the smaller of this ceiling and what fits in the active provider's RAG budget.
     @Published var ragChunkLimit: Int = 3
     @Published var kagEnabled: Bool = false
     @Published var kagHops: Int = 2

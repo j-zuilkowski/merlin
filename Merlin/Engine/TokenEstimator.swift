@@ -9,4 +9,8 @@ enum TokenEstimator {
         let bytes = (try? encodeRequest(request, baseURL: baseURL, model: modelID))?.count ?? 0
         return Int(ceil(Double(bytes) / 4.0 * 1.2)) + 512
     }
+
+    static func estimateText(_ text: String) -> Int {
+        text.utf8.count / 4 + 16
+    }
 }
