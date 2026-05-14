@@ -55,6 +55,16 @@ class ToolRouter {
         }
     }
 
+    func registerKiCadTools(executor: any KiCadToolExecutor) {
+        for toolName in KiCadToolDefinitions.requiredToolNames {
+            register(name: toolName) { argumentsJSON in
+                let result = try await executor.execute(toolName: toolName, argumentsJSON: argumentsJSON)
+                let data = try JSONEncoder().encode(result)
+                return String(data: data, encoding: .utf8) ?? "{}"
+            }
+        }
+    }
+
     func mcpToolDefinitions() -> [ToolDefinition] {
         mcpDefinitions
     }
