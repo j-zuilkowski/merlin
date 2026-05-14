@@ -83,6 +83,11 @@ struct LoRASettingsSection: View {
                 LoRAStatusRow(appState: appState)
             }
             .disabled(!settings.loraEnabled)
+
+            Section("DPO Review Queue") {
+                DPOReviewQueueView()
+            }
+            .disabled(!settings.dpoEnabled)
         }
         .formStyle(.grouped)
         .navigationTitle("LoRA")
@@ -167,4 +172,3 @@ extension EnvironmentValues {
         set { self[MerlinAppStateKey.self] = newValue }
     }
 }
-
