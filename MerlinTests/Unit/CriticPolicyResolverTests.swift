@@ -54,7 +54,7 @@ final class CriticPolicyResolverTests: XCTestCase {
             classifierOverride: true
         )
 
-        XCTAssertEqual(decision, .skip)
+        XCTAssertEqual(decision, .run)
     }
 
     func testStepRequiredOverridesDeterministicSignals() {

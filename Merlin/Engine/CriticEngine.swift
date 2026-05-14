@@ -39,6 +39,112 @@ struct LiveShellRunner: ShellRunning {
     }
 }
 
+// MARK: - CriticPolicyResolver
+
+enum CriticDecision: Sendable, Equatable {
+    case run
+    case skip
+    case deterministicOnly
+}
+
+enum CriticPolicyResolver {
+    static func resolve(
+        skill: SkillFrontmatter?,
+        step: PlanStep?,
+        heuristic: (writtenFiles: Bool, substantial: Bool, complexity: ComplexityTier),
+        classifierOverride: Bool
+    ) -> CriticDecision {
+        if skill?.critic == .skip {
+            return .skip
+        }
+        if skill?.critic == .required {
+            return .run
+        }
+        if classifierOverride {
+            return .run
+        }
+        if step?.requiresCritic == .skip {
+            return .skip
+        }
+        if step?.requiresCritic == .required {
+            return .run
+        }
+
+        if let step, !step.successCriteria.isEmpty, step.successCriteria.allSatisfy(Self.isDeterministicCriterion) {
+            return .deterministicOnly
+        }
+
+        if heuristic.writtenFiles || heuristic.substantial || heuristic.complexity == .highStakes {
+            return .run
+        }
+
+        return .skip
+    }
+
+    private static func isDeterministicCriterion(_ criterion: StepCriterion) -> Bool {
+        switch criterion {
+        case .buildSucceeds,
+             .testsPass,
+             .fileExists,
+             .regexMatch,
+             .shellExitZero:
+            return true
+        case .prose:
+            return false
+        }
+    }
+}
+
+// MARK: - CriterionChecker
+
+actor CriterionChecker {
+
+    private let shellRunner: any ShellRunning
+
+    init(shellRunner: any ShellRunning) {
+        self.shellRunner = shellRunner
+    }
+
+    func check(_ criterion: StepCriterion) async -> Bool {
+        switch criterion {
+        case .prose:
+            return false
+        case .buildSucceeds:
+            let command = "xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+            let (exitCode, _) = await shellRunner.run(command)
+            return exitCode == 0
+        case .testsPass(let scheme):
+            let schemePart = scheme.map { "-scheme \($0)" } ?? ""
+            let command = "xcodebuild test \(schemePart) -destination 'platform=macOS' CODE_SIGN_IDENTITY=\"\" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO"
+            let (exitCode, _) = await shellRunner.run(command)
+            return exitCode == 0
+        case .fileExists(let path):
+            return FileManager.default.fileExists(atPath: path)
+        case .regexMatch(let pattern, let target):
+            let (_, output) = await shellRunner.run(target == .stdout ? "echo" : "pwd")
+            let subject: String
+            switch target {
+            case .stdout:
+                subject = output
+            case .file:
+                subject = (try? String(contentsOfFile: output, encoding: .utf8)) ?? ""
+            }
+            return matches(pattern: pattern, in: subject)
+        case .shellExitZero(let command):
+            let (exitCode, _) = await shellRunner.run(command)
+            return exitCode == 0
+        }
+    }
+
+    private func matches(pattern: String, in subject: String) -> Bool {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return false
+        }
+        let range = NSRange(subject.startIndex..<subject.endIndex, in: subject)
+        return regex.firstMatch(in: subject, options: [], range: range) != nil
+    }
+}
+
 // MARK: - CriticEngine
 
 /// Two-stage critic:
@@ -132,7 +238,7 @@ actor CriticEngine {
 
     // MARK: - Stage 1
 
-    private func runStage1(taskType: DomainTaskType) async -> CriticResult {
+    func runStage1(taskType: DomainTaskType) async -> CriticResult {
         let commands = await verificationBackend.verificationCommands(for: taskType)
         guard let commands, !commands.isEmpty else {
             return .skipped
@@ -153,6 +259,28 @@ actor CriticEngine {
                 return .fail(reason: "\(cmd.label) failed\(output.isEmpty ? "" : ": \(output.prefix(200))")")
             }
         }
+        return .pass
+    }
+
+    func runStage1(criteria: [StepCriterion]) async -> CriticResult {
+        guard criteria.isEmpty == false else {
+            return .skipped
+        }
+
+        guard criteria.allSatisfy(Self.isDeterministicCriterion) else {
+            return .skipped
+        }
+
+        let checker = CriterionChecker(shellRunner: shellRunner)
+        for criterion in criteria {
+            if await checker.check(criterion) == false {
+                return .fail(reason: "deterministic criterion failed: \(describeCriterion(criterion))")
+            }
+        }
+
+        TelemetryEmitter.shared.emit("critic.stage1.short_circuit", data: [
+            "criteria_passed": criteria.count
+        ])
         return .pass
     }
 
@@ -266,6 +394,36 @@ actor CriticEngine {
             return .pass
         } catch {
             return nil
+        }
+    }
+
+    private static func isDeterministicCriterion(_ criterion: StepCriterion) -> Bool {
+        switch criterion {
+        case .buildSucceeds,
+             .testsPass,
+             .fileExists,
+             .regexMatch,
+             .shellExitZero:
+            return true
+        case .prose:
+            return false
+        }
+    }
+
+    private func describeCriterion(_ criterion: StepCriterion) -> String {
+        switch criterion {
+        case .prose(let text):
+            return "prose(\(text))"
+        case .buildSucceeds:
+            return "buildSucceeds"
+        case .testsPass(let scheme):
+            return "testsPass(\(scheme ?? "nil"))"
+        case .fileExists(let path):
+            return "fileExists(\(path))"
+        case .regexMatch(let pattern, let target):
+            return "regexMatch(\(pattern), \(target.rawValue))"
+        case .shellExitZero(let command):
+            return "shellExitZero(\(command))"
         }
     }
 }

@@ -710,6 +710,7 @@ final class AgenticEngine {
             continuation.yield(.systemNote("[context compacted — old tool results summarised]"))
         }
         var batchPrompt = effectiveMessage
+        var currentPlanStep: PlanStep? = nil
 
         // Compute the loop ceiling early so the planner batch-split logic can reference it.
         let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
@@ -742,6 +743,7 @@ final class AgenticEngine {
                 let stepList = thisBatch.enumerated()
                     .map { "  \($0.offset + 1). \($0.element.description)" }
                     .joined(separator: "\n")
+                currentPlanStep = thisBatch.count == 1 ? thisBatch.first : nil
                 let batchLabel = thisBatch.count > 1
                     ? "[Plan: executing \(thisBatch.count) parallel steps]\n\(stepList)"
                     : "[Plan batch 1/\(totalBatches): executing step 1/\(planSteps.count)]\n\(stepList)"
@@ -983,16 +985,62 @@ final class AgenticEngine {
                             ))
                         }
                     }
-                    // Fire critic when any of:
-                    //   • write_file was called — written file contents fed to critic
-                    //   • fullText is a substantial response (> 1500 chars) — catches documents
-                    //     written via bash shell redirect, which bypass write_file tracking
-                    //   • non-routine highStakes turn or classifierOverride active
+                    // Fire critic when policy allows it. Resolver precedence is:
+                    // skill directive -> step directive -> deterministic checks -> heuristic.
                     let isSubstantialOutput = fullText.count > 1500
-                    let shouldRunCritic = !writtenFilePaths.isEmpty || isSubstantialOutput ||
-                        (classification.complexity != .routine &&
-                         (classifierOverride != nil || classification.complexity == .highStakes))
+                    let criticHeuristic = (
+                        writtenFiles: !writtenFilePaths.isEmpty,
+                        substantial: isSubstantialOutput,
+                        complexity: classification.complexity
+                    )
+                    let criticDecision = CriticPolicyResolver.resolve(
+                        skill: nil,
+                        step: currentPlanStep,
+                        heuristic: criticHeuristic,
+                        classifierOverride: classifierOverride != nil
+                    )
+                    var shouldRunCritic = false
+                    var criticSeedNote: String?
+                    switch criticDecision {
+                    case .skip:
+                        TelemetryEmitter.shared.emit("critic.skipped.policy", data: [
+                            "decision_source": criticSkipSource(
+                                skill: nil,
+                                step: currentPlanStep,
+                                heuristic: criticHeuristic,
+                                classifierOverride: classifierOverride != nil
+                            )
+                        ])
+                    case .run:
+                        shouldRunCritic = true
+                    case .deterministicOnly:
+                        if let currentPlanStep {
+                            let checker = CriterionChecker(shellRunner: LiveShellRunner())
+                            var allPassed = true
+                            for criterion in currentPlanStep.successCriteria {
+                                if await checker.check(criterion) == false {
+                                    allPassed = false
+                                    criticSeedNote = "Deterministic verification failed: \(describeCriticCriterion(criterion))"
+                                    break
+                                }
+                            }
+                            if allPassed {
+                                TelemetryEmitter.shared.emit("critic.stage1.short_circuit", data: [
+                                    "criteria_passed": currentPlanStep.successCriteria.count
+                                ])
+                            } else {
+                                shouldRunCritic = true
+                            }
+                        }
+                    }
                     if shouldRunCritic && AppSettings.shared.criticEnabled {
+                        if let criticSeedNote {
+                            context.append(Message(
+                                role: .system,
+                                content: .text(criticSeedNote),
+                                timestamp: Date()
+                            ))
+                        }
                         // criticOverride bypasses the reason-provider guard (test injection).
                         // Without an override, require a real reason provider.
                         let hasAvailableCritic = criticOverride != nil || {
@@ -1455,6 +1503,41 @@ final class AgenticEngine {
         )
     }
 
+    private func criticSkipSource(
+        skill: SkillFrontmatter?,
+        step: PlanStep?,
+        heuristic: (writtenFiles: Bool, substantial: Bool, complexity: ComplexityTier),
+        classifierOverride: Bool
+    ) -> String {
+        if skill?.critic == .skip {
+            return "skill"
+        }
+        if classifierOverride {
+            return "heuristic"
+        }
+        if step?.requiresCritic == .skip {
+            return "step"
+        }
+        return "heuristic"
+    }
+
+    private func describeCriticCriterion(_ criterion: StepCriterion) -> String {
+        switch criterion {
+        case .prose(let text):
+            return "prose(\(text))"
+        case .buildSucceeds:
+            return "buildSucceeds"
+        case .testsPass(let scheme):
+            return "testsPass(\(scheme ?? "nil"))"
+        case .fileExists(let path):
+            return "fileExists(\(path))"
+        case .regexMatch(let pattern, let target):
+            return "regexMatch(\(pattern), \(target.rawValue))"
+        case .shellExitZero(let command):
+            return "shellExitZero(\(command))"
+        }
+    }
+
     private func makeEscalationStep(
         task: String,
         complexity: ComplexityTier,
@@ -1814,10 +1897,10 @@ final class AgenticEngine {
                         continuation.yield(.systemNote(
                             "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)"
                         ))
+                                }
+                            }
+                        }
                     }
-                }
-            }
-        }
     }
 
     func shouldUseThinking(for message: String) -> Bool {

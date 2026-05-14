@@ -3,22 +3,22 @@ import XCTest
 
 final class CriterionCheckerTests: XCTestCase {
 
-    private final class ShellRunnerSpy: @unchecked Sendable, ShellRunning {
-        private let lock = NSLock()
+    private actor ShellRunnerSpy: ShellRunning {
+        var exitCode: Int
+        var output: String
         private var _commands: [String] = []
-        var exitCode: Int = 0
-        var output: String = ""
 
-        var commands: [String] {
-            lock.lock()
-            defer { lock.unlock() }
-            return _commands
+        init(exitCode: Int = 0, output: String = "") {
+            self.exitCode = exitCode
+            self.output = output
+        }
+
+        func commands() -> [String] {
+            _commands
         }
 
         func run(_ command: String) async -> (exitCode: Int, output: String) {
-            lock.lock()
             _commands.append(command)
-            lock.unlock()
             return (exitCode, output)
         }
     }
@@ -41,58 +41,58 @@ final class CriterionCheckerTests: XCTestCase {
         let spy = ShellRunnerSpy()
         let checker = CriterionChecker(shellRunner: spy)
         let result = await checker.check(.fileExists(path: fileURL.path))
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertTrue(spy.commands.isEmpty, "fileExists should not shell out")
+        XCTAssertTrue(commands.isEmpty, "fileExists should not shell out")
     }
 
     func testShellExitZeroUsesShellRunnerCommand() async {
-        let spy = ShellRunnerSpy()
-        spy.exitCode = 0
+        let spy = ShellRunnerSpy(exitCode: 0)
         let checker = CriterionChecker(shellRunner: spy)
 
         let result = await checker.check(.shellExitZero(command: "swift --version"))
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertEqual(spy.commands, ["swift --version"])
+        XCTAssertEqual(commands, ["swift --version"])
     }
 
     func testBuildSucceedsUsesXcodebuildInvocation() async {
-        let spy = ShellRunnerSpy()
-        spy.exitCode = 0
+        let spy = ShellRunnerSpy(exitCode: 0)
         let checker = CriterionChecker(shellRunner: spy)
 
         let result = await checker.check(.buildSucceeds)
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertEqual(spy.commands.count, 1)
-        XCTAssertTrue(spy.commands[0].contains("xcodebuild"))
+        XCTAssertEqual(commands.count, 1)
+        XCTAssertTrue(commands[0].contains("xcodebuild"))
     }
 
     func testTestsPassUsesXcodebuildTestInvocation() async {
-        let spy = ShellRunnerSpy()
-        spy.exitCode = 0
+        let spy = ShellRunnerSpy(exitCode: 0)
         let checker = CriterionChecker(shellRunner: spy)
 
         let result = await checker.check(.testsPass(scheme: "MerlinTests"))
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertEqual(spy.commands.count, 1)
-        XCTAssertTrue(spy.commands[0].contains("xcodebuild"))
-        XCTAssertTrue(spy.commands[0].contains("test"))
-        XCTAssertTrue(spy.commands[0].contains("MerlinTests"))
+        XCTAssertEqual(commands.count, 1)
+        XCTAssertTrue(commands[0].contains("xcodebuild"))
+        XCTAssertTrue(commands[0].contains("test"))
+        XCTAssertTrue(commands[0].contains("MerlinTests"))
     }
 
     func testRegexMatchAgainstStdoutUsesShellOutput() async {
-        let spy = ShellRunnerSpy()
-        spy.exitCode = 0
-        spy.output = "hello from stdout"
+        let spy = ShellRunnerSpy(exitCode: 0, output: "hello from stdout")
         let checker = CriterionChecker(shellRunner: spy)
 
         let result = await checker.check(.regexMatch(pattern: "hello", in: .stdout))
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertFalse(spy.commands.isEmpty)
+        XCTAssertFalse(commands.isEmpty)
     }
 
     func testRegexMatchAgainstFileUsesFileContent() async throws {
@@ -102,14 +102,13 @@ final class CriterionCheckerTests: XCTestCase {
         let fileURL = tempDir.appendingPathComponent("output.txt")
         try "needle in a haystack".write(to: fileURL, atomically: true, encoding: .utf8)
 
-        let spy = ShellRunnerSpy()
-        spy.exitCode = 0
-        spy.output = fileURL.path
+        let spy = ShellRunnerSpy(exitCode: 0, output: fileURL.path)
         let checker = CriterionChecker(shellRunner: spy)
 
         let result = await checker.check(.regexMatch(pattern: "needle", in: .file))
+        let commands = await spy.commands()
 
         XCTAssertTrue(result)
-        XCTAssertFalse(spy.commands.isEmpty)
+        XCTAssertFalse(commands.isEmpty)
     }
 }

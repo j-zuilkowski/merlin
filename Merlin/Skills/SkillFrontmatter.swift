@@ -11,6 +11,7 @@ struct SkillFrontmatter: Sendable {
     var context: String = ""
     var role: AgentSlot?
     var complexity: ComplexityTier?
+    var critic: CriticMode?
 
     static func parse(_ yaml: String) -> SkillFrontmatter {
         var frontmatter = SkillFrontmatter()
@@ -47,6 +48,17 @@ struct SkillFrontmatter: Sendable {
                 frontmatter.role = AgentSlot(rawValue: value)
             case "complexity":
                 frontmatter.complexity = ComplexityTier(rawValue: value)
+            case "critic":
+                if let critic = CriticMode(rawValue: value) {
+                    frontmatter.critic = critic
+                } else {
+                    TelemetryEmitter.shared.emit("skill.frontmatter.warning", data: [
+                        "skill_id": frontmatter.name,
+                        "key": key,
+                        "value": value
+                    ])
+                    frontmatter.critic = nil
+                }
             default:
                 break
             }

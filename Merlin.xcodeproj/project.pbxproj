@@ -35,6 +35,7 @@
 		08920FCFE5F91B9FB9426038 /* WorkerSubagentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF95301411673E85D524025F /* WorkerSubagentEngine.swift */; };
 		0990AC714B4FFBE4D6B09FC7 /* MockEmbeddingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E192416F9C07D3460F53E283 /* MockEmbeddingProvider.swift */; };
 		09C60B5AD678EC046B5DCD83 /* AgentRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4856A31F59A8254539A2923 /* AgentRegistry.swift */; };
+		D0D0D0D0D0D0D0D0D0D0D0D0 /* CriticPolicyResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C0C0C0C0C0C0C0C0C0C0C0 /* CriticPolicyResolver.swift */; };
 		0A6ECB5A520D7D890A8B5D6C /* AppSettingsAdditionsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085460D786AF42FCACB6A117 /* AppSettingsAdditionsTests.swift */; };
 		0B30F220D7E6B844D1D586F4 /* ProjectRef.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE91528B70860D12EC1079B /* ProjectRef.swift */; };
 		0B40DF85EA78B044C01AC2EF /* SubagentBlockViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780C9155D3371C4648AFD217 /* SubagentBlockViewModel.swift */; };
@@ -42,6 +43,7 @@
 		0C56C14039D9AEA8F411655A /* ProjectPathSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8342FAD802DCE4DF18053002 /* ProjectPathSettingsTests.swift */; };
 		0C9256FD64E162246A1FBB9F /* SubagentSidebarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EC8E2CE6897385D30C3C5E1 /* SubagentSidebarViewModelTests.swift */; };
 		0C964A1CFD54B4B44FE66118 /* RewindSlashCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1432C5EC65B9FB4490C7BC1 /* RewindSlashCommandTests.swift */; };
+		F0F0F0F0F0F0F0F0F0F0F0F0 /* CriterionChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E0E0E0E0E0E0E0E0E0E0E0 /* CriterionChecker.swift */; };
 		0CD3AAC5F4FD68108823FA64 /* AXInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407684584E51B6800F7E654D /* AXInspectorTests.swift */; };
 		0DE9DFB352F7C771FBAE8D7E /* DPOQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925A108CF1DDBE6B1620B6B4 /* DPOQueueTests.swift */; };
 		0E4AA16752228A2E50542380 /* RetryCounterDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5656F8B4E67B92EC713547BB /* RetryCounterDeletionTests.swift */; };
@@ -535,7 +537,9 @@
 		03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeTools.swift; sourceTree = "<group>"; };
 		0379555CA364B57228C7FD6E /* KiCadV2Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadV2Core.swift; sourceTree = "<group>"; };
 		037AA5CE654A8236DA197F08 /* CriticTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticTelemetryTests.swift; sourceTree = "<group>"; };
+		C0C0C0C0C0C0C0C0C0C0C0C0 /* CriticPolicyResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticPolicyResolver.swift; sourceTree = "<group>"; };
 		C333C333C333C333C333C333 /* CriticPolicyResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticPolicyResolverTests.swift; sourceTree = "<group>"; };
+		E0E0E0E0E0E0E0E0E0E0E0E0 /* CriterionChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriterionChecker.swift; sourceTree = "<group>"; };
 		E555E555E555E555E555E555 /* CriterionCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriterionCheckerTests.swift; sourceTree = "<group>"; };
 		A777A777A777A777A777A777 /* DeterministicVerificationShortCircuitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeterministicVerificationShortCircuitTests.swift; sourceTree = "<group>"; };
 		04DF9AAC218773D5197F27F2 /* CalibrationReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationReportView.swift; sourceTree = "<group>"; };
@@ -1160,7 +1164,9 @@
 				9893A2495D30F7BB69D2C739 /* ContextManager.swift */,
 				6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */,
 				AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */,
+				C0C0C0C0C0C0C0C0C0C0C0C0 /* CriticPolicyResolver.swift */,
 				EFA4A2797294F32B435B50D7 /* CriticMode.swift */,
+				E0E0E0E0E0E0E0E0E0E0E0E0 /* CriterionChecker.swift */,
 				CC3EDFAAE6C71A8DE7832A27 /* DiffComment.swift */,
 				7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */,
 				BB768B56E47C9E91B28BA1C6 /* DPOQueue.swift */,
@@ -2145,8 +2151,10 @@
 				F941B1D0C82B2D53B37BEB97 /* ContinuationAbortTests.swift in Sources */,
 				A5F1A67A9B4C64122EEF2457 /* ConversationHTMLRendererTests.swift in Sources */,
 				30398C094FACED1F93BF5443 /* CriticDocumentVerificationTests.swift in Sources */,
+				D0D0D0D0D0D0D0D0D0D0D0D0 /* CriticPolicyResolver.swift in Sources */,
 				B19F22565FF2D0274967D8E7 /* CriticEngineContextAutoResizeTests.swift in Sources */,
 				EDD614A2C56BA12B1573001E /* CriticEngineTests.swift in Sources */,
+				F0F0F0F0F0F0F0F0F0F0F0F0 /* CriterionChecker.swift in Sources */,
 				B222B222B222B222B222B222 /* CriticPolicyResolverTests.swift in Sources */,
 				F666F666F666F666F666F666 /* CriterionCheckerTests.swift in Sources */,
 				9F2FDB76BDC491E3471E04C7 /* CriticGatedMemoryTests.swift in Sources */,
@@ -2394,8 +2402,10 @@
 				B2ACB043D52FC2747201C9CF /* ConversationHTMLRenderer.swift in Sources */,
 				3BEF5C72FF31D6878A61D8FE /* ConversationWebView.swift in Sources */,
 				A14542D1DE4FFA0D57C960AF /* CriticEngine.swift in Sources */,
+				D0D0D0D0D0D0D0D0D0D0D0D0 /* CriticPolicyResolver.swift in Sources */,
 				887C57BB7D00106F457F20A9 /* CriticEngineProtocol.swift in Sources */,
 				F9F45E2A2EB41680DB923DD2 /* CriticMode.swift in Sources */,
+				F0F0F0F0F0F0F0F0F0F0F0F0 /* CriterionChecker.swift in Sources */,
 				54C9E28CD78C20D1ED453ED4 /* DPOQueue.swift in Sources */,
 				252AEF6EF331B77941F54A48 /* DPOReviewQueueView.swift in Sources */,
 				1BBD971FA698011135571AD8 /* DPOReviewStore.swift in Sources */,
