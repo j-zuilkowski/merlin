@@ -719,7 +719,15 @@ final class AgenticEngine {
             orchestrateProvider: provider(for: .orchestrate),
             maxPlanRetries: AppSettings.shared.maxPlanRetries
         )
-        let escalation = EscalationHandler(planner: planner)
+        let escalation = EscalationHandler(planner: planner, registry: registry)
+        let originalSlotAssignment = slotAssignments[workingSlot]
+        defer {
+            if let originalSlotAssignment {
+                slotAssignments[workingSlot] = originalSlotAssignment
+            } else {
+                slotAssignments.removeValue(forKey: workingSlot)
+            }
+        }
 
         if classification.needsPlanning {
             // Use classifierOverride for decompose when available (enables test injection
@@ -853,12 +861,13 @@ final class AgenticEngine {
                             lastObservation: "no new tool calls or text in the last 3 iterations"
                         ),
                         escalation: escalation,
+                        workingSlot: workingSlot,
                         context: context,
                         continuation: continuation,
                         originalTask: userMessage
                     )
                     switch decision {
-                    case .continueWith:
+                    case .continueWith, .routeToProvider:
                         continue turnLoop
                     case .stop:
                         break turnLoop
@@ -916,7 +925,11 @@ final class AgenticEngine {
 
                 // Pre-flight budget gate. Working-set caps are applied inside the
                 // preflight path before the request is estimated.
-                try await preflightCheck(request: request, provider: provider)
+                try await preflightPlanStep(
+                    step: currentEscalationStep,
+                    request: request,
+                    provider: provider
+                )
 
                 // Engine-level retry for transient provider errors (429, 5xx, network drops).
                 // 3 attempts total; provider already has its own internal retry loop for
@@ -1188,12 +1201,13 @@ final class AgenticEngine {
                                 budget: effectiveBudget(for: provider).usableInputTokens
                             ),
                             escalation: escalation,
+                            workingSlot: workingSlot,
                             context: context,
                             continuation: continuation,
                             originalTask: userMessage
                         )
                         switch decision {
-                        case .continueWith:
+                        case .continueWith, .routeToProvider:
                             continue turnLoop
                         case .stop:
                             break turnLoop
@@ -1219,12 +1233,13 @@ final class AgenticEngine {
                             currentStep: currentEscalationStep,
                             reason: .preflightOverflow(estimated: estimated, budget: budget),
                             escalation: escalation,
+                            workingSlot: workingSlot,
                             context: context,
                             continuation: continuation,
                             originalTask: userMessage
                         )
                         switch decision {
-                        case .continueWith:
+                        case .continueWith, .routeToProvider:
                             continue turnLoop
                         case .stop:
                             break turnLoop
@@ -1609,6 +1624,7 @@ final class AgenticEngine {
         currentStep: PlanStep,
         reason: EscalationReason,
         escalation: EscalationHandler,
+        workingSlot: AgentSlot,
         context: ContextManager,
         continuation: AsyncStream<AgentEvent>.Continuation,
         originalTask: String
@@ -1631,6 +1647,9 @@ final class AgenticEngine {
                 "[Escalation] Refining into \(replacementSteps.count) substep(s)"
             ))
             appendEscalationSteps(replacementSteps, originalTask: originalTask, context: context)
+        case .routeToProvider(let providerID, _):
+            slotAssignments[workingSlot] = providerID
+            continuation.yield(.systemNote("Step too large for current model; switching to \(providerID)"))
         case .stop(let message):
             let label = escalationReasonLabel(reason)
             let progress = progressSummary(for: context.messages)
@@ -2194,6 +2213,16 @@ final class AgenticEngine {
         let budget = effectiveBudget(for: provider)
         let caps = WorkingSetBudget.derive(from: budget)
         await contextManager.applyWorkingSetCaps(caps)
+    }
+
+    @discardableResult
+    func preflightPlanStep(
+        step: PlanStep,
+        request: CompletionRequest,
+        provider: any LLMProvider
+    ) async throws -> PreflightOutcome {
+        _ = step
+        return try await preflightCheck(request: request, provider: provider)
     }
 
     private func effectiveBudget(for provider: any LLMProvider) -> ProviderBudget {

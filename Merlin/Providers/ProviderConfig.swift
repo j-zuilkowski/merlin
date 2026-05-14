@@ -314,6 +314,23 @@ final class ProviderRegistry: ObservableObject {
         return makeLLMProvider(for: config)
     }
 
+    /// Providers ordered from largest usable input budget to smallest.
+    /// Unconfigured providers still rank using the conservative default budget.
+    func providersOrderedByBudget() -> [(id: String, budget: ProviderBudget)] {
+        providers
+            .map { config in
+                (id: config.id, budget: config.budget ?? .conservative)
+            }
+            .sorted { lhs, rhs in
+                let lhsUsable = lhs.budget.usableInputTokens
+                let rhsUsable = rhs.budget.usableInputTokens
+                if lhsUsable != rhsUsable {
+                    return lhsUsable > rhsUsable
+                }
+                return lhs.id.localizedCaseInsensitiveCompare(rhs.id) == .orderedAscending
+            }
+    }
+
     /// All entries that can be assigned to a role slot.
     /// Plain provider IDs come first (alphabetical by display name), followed by virtual
     /// entries grouped by backend and sorted by model name.

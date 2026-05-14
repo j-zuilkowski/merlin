@@ -8,7 +8,8 @@ final class ProviderRegistryOrderingTests: XCTestCase {
         id: String,
         maxInputTokens: Int,
         reservedOutputTokens: Int,
-        isEnabled: Bool = true
+        isEnabled: Bool = true,
+        budget: ProviderBudget? = nil
     ) -> ProviderConfig {
         ProviderConfig(
             id: id,
@@ -20,7 +21,7 @@ final class ProviderRegistryOrderingTests: XCTestCase {
             supportsThinking: false,
             supportsVision: false,
             kind: .openAICompatible,
-            budget: ProviderBudget(
+            budget: budget ?? ProviderBudget(
                 maxInputTokens: maxInputTokens,
                 reservedOutputTokens: reservedOutputTokens
             )
@@ -55,13 +56,18 @@ final class ProviderRegistryOrderingTests: XCTestCase {
         XCTAssertEqual(ordered.map { $0.id }, ["alpha", "zeta"])
     }
 
-    func testUnconfiguredProvidersAreExcluded() {
+    func testProvidersWithoutBudgetStillRankUsingConservativeDefault() {
         let registry = makeRegistry([
             makeProvider(id: "enabled", maxInputTokens: 64_000, reservedOutputTokens: 4_096),
-            makeProvider(id: "disabled", maxInputTokens: 128_000, reservedOutputTokens: 4_096, isEnabled: false)
+            makeProvider(
+                id: "defaulted",
+                maxInputTokens: 0,
+                reservedOutputTokens: 0,
+                budget: nil
+            )
         ])
 
         let ordered = registry.providersOrderedByBudget()
-        XCTAssertEqual(ordered.map { $0.id }, ["enabled"])
+        XCTAssertEqual(ordered.map { $0.id }, ["enabled", "defaulted"])
     }
 }

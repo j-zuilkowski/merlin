@@ -7,17 +7,24 @@ enum EscalationReason: Sendable {
 
 enum EscalationDecision: Sendable {
     case continueWith(replacementSteps: [PlanStep])
+    case routeToProvider(providerID: String, reason: String)
     case stop(message: String)
 }
 
 actor EscalationHandler {
 
     private let planner: PlannerEngine
+    private let registry: ProviderRegistry?
     private let maxRefinementsPerTurn: Int
     private var successfulRefinements = 0
 
-    init(planner: PlannerEngine, maxRefinementsPerTurn: Int = 2) {
+    init(
+        planner: PlannerEngine,
+        registry: ProviderRegistry? = nil,
+        maxRefinementsPerTurn: Int = 2
+    ) {
         self.planner = planner
+        self.registry = registry
         self.maxRefinementsPerTurn = max(0, maxRefinementsPerTurn)
     }
 
@@ -48,6 +55,13 @@ actor EscalationHandler {
             successfulRefinements += 1
             return .continueWith(replacementSteps: replacementSteps)
         case .cannotDecompose(let explanation):
+            if let registry {
+                let orderedProviders = await registry.providersOrderedByBudget()
+                if let provider = orderedProviders.reversed().first(where: { $0.budget.usableInputTokens >= currentStep.minContextRequired }) {
+                    return .routeToProvider(providerID: provider.id, reason: explanation)
+                }
+                return .stop(message: "step requires \(currentStep.minContextRequired) tokens; no configured provider supports that budget")
+            }
             let fallbackSteps = await planner.decompose(task: currentStep.description, context: context)
             if fallbackSteps.isEmpty == false {
                 successfulRefinements += 1

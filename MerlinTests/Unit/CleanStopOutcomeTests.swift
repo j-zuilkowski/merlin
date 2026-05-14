@@ -46,6 +46,8 @@ final class CleanStopOutcomeTests: XCTestCase {
             XCTAssertTrue(message.contains("Cannot continue"))
             XCTAssertTrue(message.contains("Suggested"))
             XCTAssertTrue(message.contains("Progress so far"))
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("Expected stop decision, got route to provider \(providerID): \(reason)")
         case .continueWith(let replacementSteps):
             XCTFail("Expected stop decision, got steps: \(replacementSteps)")
         }

@@ -50,6 +50,8 @@ final class EscalationHandlerTests: XCTestCase {
         case .continueWith(let replacementSteps):
             XCTAssertEqual(replacementSteps.count, 1)
             XCTAssertEqual(replacementSteps[0].description, "Substep 1")
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("Expected refinement to continue, got route to provider \(providerID): \(reason)")
         case .stop(let message):
             XCTFail("Expected refinement to continue, got stop: \(message)")
         }
@@ -68,6 +70,8 @@ final class EscalationHandlerTests: XCTestCase {
         switch decision {
         case .stop(let message):
             XCTAssertTrue(message.lowercased().contains("step is atomic"))
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("Expected a stop decision, got route to provider \(providerID): \(reason)")
         case .continueWith(let replacementSteps):
             XCTFail("Expected a stop decision, got steps: \(replacementSteps)")
         }
@@ -108,18 +112,24 @@ final class EscalationHandlerTests: XCTestCase {
         switch first {
         case .continueWith:
             break
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("First refinement should be allowed, got route to provider \(providerID): \(reason)")
         case .stop(let message):
             XCTFail("First refinement should be allowed, got stop: \(message)")
         }
         switch second {
         case .continueWith:
             break
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("Second refinement should be allowed, got route to provider \(providerID): \(reason)")
         case .stop(let message):
             XCTFail("Second refinement should be allowed, got stop: \(message)")
         }
         switch third {
         case .stop(let message):
             XCTAssertTrue(message.lowercased().contains("budget"))
+        case .routeToProvider(let providerID, let reason):
+            XCTFail("Expected refinement budget exhaustion, got route to provider \(providerID): \(reason)")
         case .continueWith(let replacementSteps):
             XCTFail("Expected refinement budget exhaustion, got steps: \(replacementSteps)")
         }

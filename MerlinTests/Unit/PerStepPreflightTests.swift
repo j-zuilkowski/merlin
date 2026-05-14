@@ -20,13 +20,13 @@ final class PerStepPreflightTests: XCTestCase {
         )
     }
 
-    func testPerStepPreflightRunsBeforeTheFirstProviderCall() async {
+    func testPerStepPreflightRunsBeforeTheFirstProviderCall() async throws {
         let engine = makeTestEngine()
         let provider = MockProvider(chunks: [])
         let request = CompletionRequest(model: provider.id, messages: [])
         let step = makeStep(description: "Step 2", tokenBudget: 96_000)
 
-        _ = await engine.preflightPlanStep(
+        _ = try await engine.preflightPlanStep(
             step: step,
             request: request,
             provider: provider

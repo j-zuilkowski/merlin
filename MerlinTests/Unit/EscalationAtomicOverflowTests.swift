@@ -8,6 +8,13 @@ final class EscalationAtomicOverflowTests: XCTestCase {
         PlannerEngine(orchestrateProvider: MockPlannerProvider(response: response))
     }
 
+    private func makeRegistry(providers: [ProviderConfig]) -> ProviderRegistry {
+        ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-escalation-atomic-\(UUID().uuidString).json"),
+            initialProviders: providers
+        )
+    }
+
     private func makeAtomicStep() -> PlanStep {
         PlanStep(
             description: "Publish the bundle",
@@ -22,7 +29,33 @@ final class EscalationAtomicOverflowTests: XCTestCase {
 
     func testAtomicOverflowRoutesToProviderWhenOneFits() async {
         let planner = makePlanner(response: #"{"cannot_decompose":"step is atomic"}"#)
-        let handler = EscalationHandler(planner: planner, maxRefinementsPerTurn: 2)
+        let registry = makeRegistry(providers: [
+            ProviderConfig(
+                id: "small-model",
+                displayName: "Small Model",
+                baseURL: "http://localhost",
+                model: "small",
+                isEnabled: true,
+                isLocal: true,
+                supportsThinking: false,
+                supportsVision: false,
+                kind: .openAICompatible,
+                budget: ProviderBudget(maxInputTokens: 28_000, reservedOutputTokens: 4_096)
+            ),
+            ProviderConfig(
+                id: "big-model",
+                displayName: "Big Model",
+                baseURL: "http://localhost",
+                model: "big",
+                isEnabled: true,
+                isLocal: true,
+                supportsThinking: false,
+                supportsVision: false,
+                kind: .openAICompatible,
+                budget: ProviderBudget(maxInputTokens: 128_000, reservedOutputTokens: 8_192)
+            )
+        ])
+        let handler = EscalationHandler(planner: planner, registry: registry, maxRefinementsPerTurn: 2)
 
         let decision = await handler.escalateOrStop(
             currentStep: makeAtomicStep(),
@@ -43,7 +76,21 @@ final class EscalationAtomicOverflowTests: XCTestCase {
 
     func testAtomicOverflowStopsWhenNoProviderFits() async {
         let planner = makePlanner(response: #"{"cannot_decompose":"step is atomic"}"#)
-        let handler = EscalationHandler(planner: planner, maxRefinementsPerTurn: 2)
+        let registry = makeRegistry(providers: [
+            ProviderConfig(
+                id: "small-model",
+                displayName: "Small Model",
+                baseURL: "http://localhost",
+                model: "small",
+                isEnabled: true,
+                isLocal: true,
+                supportsThinking: false,
+                supportsVision: false,
+                kind: .openAICompatible,
+                budget: ProviderBudget(maxInputTokens: 28_000, reservedOutputTokens: 4_096)
+            )
+        ])
+        let handler = EscalationHandler(planner: planner, registry: registry, maxRefinementsPerTurn: 2)
 
         let decision = await handler.escalateOrStop(
             currentStep: makeAtomicStep(),
@@ -53,7 +100,10 @@ final class EscalationAtomicOverflowTests: XCTestCase {
 
         switch decision {
         case .stop(let message):
-            XCTAssertTrue(message.lowercased().contains("atomic"))
+            XCTAssertEqual(
+                message,
+                "step requires 64000 tokens; no configured provider supports that budget"
+            )
         case .continueWith(let replacementSteps):
             XCTFail("Expected stop, got steps: \(replacementSteps)")
         case .routeToProvider(let providerID, let reason):

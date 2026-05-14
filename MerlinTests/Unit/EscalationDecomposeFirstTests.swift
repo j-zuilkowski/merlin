@@ -8,6 +8,26 @@ final class EscalationDecomposeFirstTests: XCTestCase {
         PlannerEngine(orchestrateProvider: MockPlannerProvider(response: response))
     }
 
+    private func makeRegistry() -> ProviderRegistry {
+        ProviderRegistry(
+            persistURL: URL(fileURLWithPath: "/tmp/merlin-escalation-decompose-\(UUID().uuidString).json"),
+            initialProviders: [
+                ProviderConfig(
+                    id: "fallback",
+                    displayName: "Fallback",
+                    baseURL: "http://localhost",
+                    model: "fallback",
+                    isEnabled: true,
+                    isLocal: true,
+                    supportsThinking: false,
+                    supportsVision: false,
+                    kind: .openAICompatible,
+                    budget: ProviderBudget(maxInputTokens: 48_000, reservedOutputTokens: 4_096)
+                )
+            ]
+        )
+    }
+
     private func makeStep() -> PlanStep {
         PlanStep(
             description: "Finish the task",
@@ -34,7 +54,7 @@ final class EscalationDecomposeFirstTests: XCTestCase {
           }
         ]
         """#)
-        let handler = EscalationHandler(planner: planner, maxRefinementsPerTurn: 2)
+        let handler = EscalationHandler(planner: planner, registry: makeRegistry(), maxRefinementsPerTurn: 2)
 
         let decision = await handler.escalateOrStop(
             currentStep: makeStep(),
