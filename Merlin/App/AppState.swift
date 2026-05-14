@@ -371,6 +371,8 @@ final class AppState: ObservableObject {
             showAuthPopup = true
             showFirstLaunchSetup = false
         }
+
+        MerlinAppIntentsSupport.install(appState: self)
     }
 
     func resolveAuth(_ decision: AuthDecision) {
@@ -388,6 +390,19 @@ final class AppState: ObservableObject {
         toolActivityState = .idle
         thinkingModeActive = false
         NotificationCenter.default.post(name: .merlinNewSession, object: nil)
+    }
+
+    func startSessionFromAppIntent() {
+        newSession()
+    }
+
+    func sendPromptFromAppIntent(_ prompt: String) async {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false else {
+            return
+        }
+
+        for await _ in engine.send(userMessage: trimmed) {}
     }
 
     func stopEngine() {
