@@ -1,6 +1,6 @@
 # Merlin — Developer Manual
 
-**Version 1.0**
+**Version 2.0**
 
 This manual covers the complete architecture, development workflow, and code organisation of Merlin. It is intended for contributors working on the codebase. Code references use the format `File.swift:ClassName.method()` matching the comments embedded throughout the source.
 
@@ -360,10 +360,12 @@ enum AgentSlot: String, CaseIterable, Codable, Sendable {
 
 **Files:** `Merlin/MCP/DomainRegistry.swift`, `Merlin/MCP/DomainPlugin.swift`, `Merlin/MCP/SoftwareDomain.swift`
 
-`DomainRegistry.shared.activeDomain()` returns the active `DomainPlugin` instance. Domains supply:
+`DomainRegistry.shared.activeDomain()` returns the active `DomainPlugin` instance — preferring the first non-software domain when one is registered. Domains supply:
 - `verificationBackend` — used by `CriticEngine` stage 1 (e.g. `xcodebuild` in `SoftwareDomain`)
 - `systemPromptAddendum` — injected per-slot into the system prompt
 - `taskTypes: [DomainTaskType]` — performance tracking buckets
+
+`taskTypes()` mirrors this preference: when a non-software domain is active it returns only that domain's task types. Software task types are returned only when software is the sole active domain. Use the stateless helpers `activeDomain(ids:)` and `taskTypes(ids:)` when resolving task types for a specific session rather than querying the shared registry's mutable state.
 
 The `addendumHash` (8-char SHA256 prefix of the addendum string) is stored on every `OutcomeRecord` to attribute performance to the specific addendum variant that produced it.
 
@@ -599,7 +601,7 @@ Called by `ToolRouter` before every tool execution. Logic:
 
 **File:** `Merlin/Auth/AuthMemory.swift`
 
-Stores `(tool, pattern, decision)` triples. Persists to a JSON file (path configured per-session to avoid test cross-contamination). Pattern matching is delegated to `PatternMatcher`.
+Stores `(tool, pattern, decision)` triples. Persists to a JSON file (path configured per-session to avoid test cross-contamination). The file is written atomically and immediately `chmod 0600` via `FileManager.setAttributes([.posixPermissions: 0o600])` — readable only by the owning user. Pattern matching is delegated to `PatternMatcher`.
 
 ### PatternMatcher
 
@@ -649,7 +651,16 @@ Wraps an `AppState` with all the per-session subsystems that don't belong on `Ap
 - `MemoryEngine` — idle-triggered memory generation
 - `ThreadAutomationStore` + `ThreadAutomationEngine` — cron-based automations
 
-`LiveSession.init()` wires all of these together, starts the MCP bridge, and begins the memory idle timer if memories are enabled in `AppSettings`.
+**Lifecycle** — `init` launches four background tasks collected in `lifecycleTasks: [Task<Void, Never>]`:
+
+1. `MCPBridge.start(config:toolRouter:)` — merges global + project MCP configs, launches servers
+2. `ThreadAutomationEngine.start(store:)` — cron-based automation polling
+3. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s, posts `merlinInjectMessage`
+4. `MemoryEngine.startIdleTimer(timeout:)` — idle-triggered memory generation
+
+`close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, then calls `appState.stopEngine()`, `mcpBridge.stop()`, `automationEngine.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks in case `close()` was not called (e.g. the session was force-deallocated).
+
+**Domain scoping** — `activeDomainIDs: [String]` is carried per `LiveSession` and applied directly to `appState.engine.activeDomainIDs`. `DomainRegistry` is queried via stateless helpers; no global mutable state changes when switching sessions.
 
 ### SessionManager
 
@@ -750,12 +761,14 @@ Session memory is stored locally in SQLite, replacing xcalibre-server as the mem
 
 | Symbol | Role |
 |---|---|
-| `MemoryBackendPlugin` | Actor protocol: `write(chunk:)`, `search(query:topK:)`, `delete(id:)` |
+| `MemoryBackendPlugin` | Actor protocol: `write(chunk:)`, `search(query:topK:)`, `search(query:topK:projectPath:)`, `delete(id:)` |
 | `MemoryBackendRegistry` | `@MainActor` registry owned by `AppState`; keyed by backend ID |
 | `NullMemoryPlugin` | Default no-op backend — use for ephemeral sessions |
 | `LocalVectorPlugin` | Production backend: SQLite + `NLContextualEmbedding` (512-dim, mean-pooled, on-device) |
 | `EmbeddingProviderProtocol` | Testable abstraction over the embedding model |
 | `NLContextualEmbeddingProvider` | Apple neural embeddings (macOS 14+, no network, no dependencies) |
+
+`MemoryBackendPlugin` has two `search` signatures. The project-scoped form adds a `WHERE project_path = ?` parameterised clause in `LocalVectorPlugin` so retrieval is confined to memories for the active project. Backends that do not implement the three-argument form inherit a default-extension post-filter. `AgenticEngine` always calls the project-scoped overload using `currentProjectPath`.
 
 **Write paths:**
 - Approved user memories → written as `factual` chunks by `MemoryEngine.approve()`
@@ -788,6 +801,76 @@ Designed against the failure taxonomy in ["Context Decay, Orchestration Drift, a
 | `TruncatingMockProvider` | Returns responses truncated mid-sentence with `finishReason: "length"` |
 | `EmptyToolResultRouter` | Returns empty strings for all tool calls |
 | `DroppingContextManager` | Silently drops messages above a configurable count |
+
+---
+
+## Electronics / KiCad Domain (v2.0)
+
+**Files:** `Merlin/Electronics/`
+
+The KiCad domain is Merlin's first non-software domain plugin. It adds a full PCB design workflow on top of the existing MCP and domain-plugin infrastructure.
+
+### Architecture
+
+The domain does not contain any KiCad logic itself. It defines the policy and contract layer; execution is delegated to `merlin-kicad-mcp`, an external MCP server process (not part of this repo) that wraps KiCad CLI and Python scripting.
+
+```
+AgenticEngine
+    │  calls tools via ToolRouter
+    ▼
+MCPBridge ──→ merlin-kicad-mcp (external process, stdio JSON-RPC)
+                    │
+                    ▼
+              KiCad CLI / Python API
+```
+
+### Tool Contract
+
+22 tools across 7 workflow stages. All use OpenAI function-calling wire format:
+
+| Stage | Tools |
+|---|---|
+| Ingestion | `kicad_ingest_schematic` |
+| Project generation | `kicad_create_project`, `kicad_write_schematic`, `kicad_assign_footprints` |
+| Board setup | `kicad_set_board_constraints`, `kicad_set_netclasses` |
+| Placement & routing | `kicad_place_components`, `kicad_route_pass`, `kicad_run_freerouting` |
+| Verification | `kicad_run_erc`, `kicad_run_drc`, `kicad_check_parity`, `kicad_run_spice` |
+| Visual QA | `kicad_capture_schematic_png`, `kicad_capture_pcb_png` |
+| Output | `kicad_export_bom`, `kicad_query_vendor`, `kicad_export_fab`, `kicad_run_cam_checks`, `kicad_submit_order_approval`, `kicad_release_approval` |
+
+### Hard Gates
+
+Seven verification results block forward progress until they return `PASS` or the operator explicitly overrides:
+
+1. `ERC_PASS` — no schematic errors
+2. `DRC_PASS` — no layout rule violations
+3. `PARITY_PASS` — netlist matches between schematic and layout
+4. `SPICE_PASS` — simulation converges with expected results
+5. `CAM_PASS` — Gerber/drill files are structurally valid
+6. `VENDOR_CONFIRMED` — BOM priced and in-stock from at least one vendor
+7. `RELEASE_APPROVED` — operator signoff before any manufacturing action
+
+### Domain Plugin Registration
+
+`KiCadDomain` conforms to `DomainPlugin` and is registered at app launch:
+
+```swift
+DomainRegistry.shared.register(KiCadDomain())
+```
+
+Electronics sessions set `activeDomainIDs = ["software", "kicad"]` so the software domain's tools remain available alongside the KiCad tools.
+
+### Key Schema Types
+
+All defined in `Merlin/Electronics/`:
+
+- `DesignIntent` — top-level requirements (function, power, connectivity, constraints)
+- `BoardProfile` — fabricator rules, stackup, copper weight, finish
+- `NetClassPolicy` — net categories and routing constraints
+- `PlacementCriteria` — component grouping and keep-out rules
+- `SchematicExtractionResult` — output of schematic ingestion
+- `BOMEntry` — component with MPN, quantity, vendor data
+- `FabricationOutput` — Gerber/drill file set with CAM validation result
 
 ---
 

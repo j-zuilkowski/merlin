@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 1.6.1** (build 6, tag `v1.6.1`)
+**Version 2.0.0** (build 15, tag `v2.0.0`)
 
 ---
 
@@ -17,6 +17,14 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 **Session history** — every session is saved to disk after each turn, scoped per project. Prior sessions appear in the sidebar with relative timestamps. Sessions can be archived (hidden) or recalled to active status. Session titles are auto-generated from the first user message, matching Claude app and Codex behaviour.
 
 **Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
+
+**Electronics / KiCad Domain** (v2.0) — a full electronics workflow built on `merlin-kicad-mcp`: raster/PDF schematic ingestion, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. High-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
+
+**Multi-Domain Sessions** — each session carries its own active domain IDs. Switching from a software session to an electronics session is instant; the engine, critic, and task-type routing all follow without touching other open sessions.
+
+**Local Memory Backend** — session memories are stored in an on-device SQLite vector store (`LocalVectorPlugin`, `NLContextualEmbedding`, 512-dim) scoped per project path. xcalibre-server is retained for book-content RAG only.
+
+**Behavioral Reliability** — a circuit breaker halts or warns after consecutive critic failures; a grounding confidence signal (`GroundingReport`) surfaces RAG chunk count, average cosine score, and staleness on every turn so you can see when the model is reasoning over thin or stale retrieval.
 
 **LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local model (via MLX-LM) on your own accepted sessions. The trained adapter is loaded into `mlx_lm.server` and Merlin routes the execute slot through it automatically.
 
@@ -112,8 +120,8 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh 1.6.0
-# → dist/Merlin-1.6.0.dmg
+bash scripts/package-dmg.sh 2.0.0
+# → dist/Merlin-2.0.0.dmg
 ```
 
 Or build a release DMG directly:
@@ -123,9 +131,9 @@ xcodebuild -scheme Merlin -configuration Release \
     -derivedDataPath /tmp/merlin-release \
     -destination 'platform=macOS' build
 
-hdiutil create -volname "Merlin 1.6.1" \
+hdiutil create -volname "Merlin 2.0.0" \
     -srcfolder /tmp/merlin-release/Build/Products/Release/Merlin.app \
-    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v1.6.1.dmg
+    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v2.0.0.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.

@@ -194,6 +194,50 @@ Use `temperature: 0.1` for coordinate/action responses — you want deterministi
 
 ---
 
+## Provider Reliability
+
+### URLSession isolation
+
+Each remote provider (`OpenAICompatibleProvider`, `AnthropicProvider`, `DeepSeekProvider`) uses a dedicated `URLSession(configuration: .ephemeral)` rather than `URLSession.shared`. This prevents connection-pool state — active keepalive sockets, cached credentials, TLS session state — from leaking between providers or affecting retries.
+
+### Retry policy
+
+On transient failure (`ProviderError.networkError`, HTTP 5xx, or HTTP 401 "governor" responses from DeepSeek under heavy load), providers retry up to **4 times** with exponential backoff and a fresh `URLSession` per attempt:
+
+| Attempt | Delay before retry |
+|---|---|
+| 1 → 2 | 5 s |
+| 2 → 3 | 10 s |
+| 3 → 4 | 20 s |
+
+A fresh session on each attempt avoids reusing a broken connection. After 4 failures the error is surfaced to the engine.
+
+### Context-length recovery
+
+When a provider returns HTTP 400 with a body matching known context/body-size phrases (`context_length_exceeded`, `request body too large`, `payload too large`, `maximum request body size exceeded`, `content length exceeded`, etc.), `AgenticEngine` automatically:
+
+1. Emits a `systemNote` — `"[context overrun - compacting and restarting attempt N/M]"`
+2. Calls `context.forceCompaction()`
+3. Appends a `CONTEXT_OVERRUN_RECOVERY` user message with instructions to continue the interrupted task
+4. Re-enters `runLoop` for the same original message
+
+Maximum recovery attempts: **2**. If the context overrun persists after both retries, the provider error is surfaced normally.
+
+### LM Studio CLI
+
+The local model manager communicates with LM Studio via two paths:
+
+- **REST** — `GET /api/v1/models`, `POST /api/v1/load`, `POST /api/v1/unload` on `localhost:1234`
+- **CLI fallback** — `~/.lmstudio/bin/lms` — used when the REST `/api/v1/unload` endpoint returns 404 (older LM Studio builds)
+
+To reload a model manually:
+```bash
+~/.lmstudio/bin/lms load "qwen/qwen3.6-27b" --context-length 32768
+~/.lmstudio/bin/lms unload
+```
+
+---
+
 ## Runtime Model Selection Logic
 
 ```

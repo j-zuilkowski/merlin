@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 1.9**
+**Version 2.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -419,6 +419,36 @@ Type in the search field to find memories by content. Results are scoped to the 
 ### Deleting memories
 
 Select a memory and click **Delete**. The chunk is immediately removed from the local store. Deletion is permanent.
+
+---
+
+## Electronics / KiCad Domain (v2.0)
+
+Merlin v2.0 adds a complete electronics workflow for designing PCBs with KiCad. The domain is powered by an external MCP server (`merlin-kicad-mcp`) that Merlin launches and communicates with automatically when an electronics session is active.
+
+### Starting an Electronics Session
+
+When you open a project that contains a KiCad project file (`.kicad_pro`), or when you tell Merlin you want to design a board, it activates the electronics domain for that session. The domain indicator in the session toolbar shows **Electronics** instead of **Software**.
+
+### What you can do
+
+| Capability | How to invoke |
+|---|---|
+| Import a hand-drawn or PDF schematic | Attach the image/PDF to your message and describe the design |
+| Generate a KiCad schematic from requirements | Describe the circuit in plain language |
+| Assign footprints and generate a PCB layout | Ask Merlin to assign footprints after schematic review |
+| Autoroute the board | Ask Merlin to route; FreeRouting runs automatically |
+| Run ERC / DRC verification | Ask Merlin to verify; results appear in the conversation |
+| Generate BOM and vendor quotes | Ask Merlin to prepare a BOM; Merlin checks Digi-Key and Mouser |
+| Export Gerbers for fabrication | Ask Merlin to export fab files |
+
+### High-Stakes Signoff
+
+Manufacturing actions (placing an order, uploading Gerbers to a board house) require your explicit approval. Merlin will always stop and ask before taking any irreversible action. This cannot be bypassed by permission mode settings — signoff is hardcoded for these operations.
+
+### Switching Between Software and Electronics Sessions
+
+Each session has its own domain. You can have a software session and an electronics session open simultaneously in the same workspace — they do not interfere with each other. Switch between them normally using the session sidebar.
 
 ---
 

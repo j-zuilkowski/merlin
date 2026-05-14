@@ -22,6 +22,8 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 
 **[v1.8.0]** Context compaction improvements + KAG promoted to default-on: `ContextManager.compactIfNeededBeforeRun(isContinuation:)` auto-compacts when `estimatedTokens > 10 000` at the start of non-continuation runs; Session > Compact Context (Cmd+Shift+K) for manual trigger; `stepsPerTurn = 1` (hardcoded), `batchSize = 1`; adaptive ceiling: base 50 + log₂(files)×10, no upper cap; `maxLoopIterations = 100`; near-ceiling warning at 8 remaining steps; loop continuation chain fixed. Phase files: `phases/phase-151a/151b` (compaction), `phases/phase-192a/192b` (KAG settings wiring). **Shipped v1.8.0.**
 
+**[v2.0.0]** Electronics/KiCad domain + session hardening: `merlin-kicad-mcp` 22-tool contract with 9 canonical schemas (raster ingestion, KiCad project/schematic/PCB generation, footprint assignment, board constraints, net-class policy, placement criteria, SPICE simulation, visual QA, BOM/vendor ordering, fabrication/acceptance); multi-domain session scoping (`activeDomainIDs` per `LiveSession`/`AgenticEngine`); `DomainRegistry` stateless lookup helpers (`activeDomain(ids:)`, `taskTypes(ids:)`); `SoftwareDomain.defaultID`/`defaultActiveDomainIDs` centralised; `LiveSession` lifecycle hardened: `lifecycleTasks: [Task<Void, Never>]` array tracks all startup tasks, `isClosed` guard prevents double-teardown, `close() async` cancels tasks and stops MCP/automation/memory/engine; `AuthMemory` atomic write sets `chmod 0600`; `MemoryBackendPlugin` gains project-scoped `search(query:topK:projectPath:)` overload; `LocalVectorPlugin` filters by `project_path` in SQL; `AppSettings` FSEvents debounced 250 ms; `CancellationState` converted from `@unchecked Sendable` class to `actor`. Phase files: `phases/phase-208` through `phases/phase-231`. **Shipped v2.0.0** (build 15, tag `v2.0.0`).
+
 **[v1.8.1]** Session isolation + activity indicator + auto-title fixes: `AppState` Combine subscriber on `engine.$isRunning` ensures status dot resets to idle when a run completes regardless of view lifecycle; `WorkspaceView.sessionContent(session:)` adds `.id(session.id)` so each session gets a fresh `ContentView` and stale `@State` is never carried across switches; `LiveSession.init` saves an initial `Session` record to `SessionStore` immediately so `applyTitleUpdateIfNeeded` can resolve `activeSession` and write auto-titles; `ContextManager.compact(force:)` hard-truncates to the last 20 messages (plus a sentinel) when no tool-exchange groups are present, eliminating the empty-compaction 400 error. Phase files: `phases/phase-193a/193b`. **Shipped v1.8.1.**
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
@@ -486,6 +488,15 @@ xcalibreClient is still available in `AgenticEngine` for optional book-content s
 | `EmbeddingProviderProtocol` | Testable embedding abstraction |
 | `NLContextualEmbeddingProvider` | Apple neural embeddings (macOS 14+, no dependencies) |
 
+`MemoryBackendPlugin` exposes two `search` signatures:
+
+```swift
+func search(query: String, topK: Int) async throws -> [MemorySearchResult]
+func search(query: String, topK: Int, projectPath: String) async throws -> [MemorySearchResult]
+```
+
+The project-scoped overload adds a `WHERE project_path = ?` clause in `LocalVectorPlugin` so retrieval is confined to memories written for the active project. Backends that do not implement the three-argument form inherit a default-extension post-filter that calls the two-argument form and filters in memory. `AgenticEngine` always calls the project-scoped overload, passing `currentProjectPath`.
+
 ### File layout
 
 ```text
@@ -792,6 +803,21 @@ struct ProjectRef: Codable, Hashable, Transferable {
 
 On launch with no existing windows, `ProjectPickerView` was shown. In v1.6 this is replaced by `WorkspaceCoordinator.showingProjectPicker` which presents the picker as a sheet inside the workspace window.
 
+### LiveSession Lifecycle [v2.0]
+
+`LiveSession` (`Sessions/LiveSession.swift`) wraps one `AppState` together with all per-session subsystems. It is created by `SessionManager` and torn down via `close() async`.
+
+**Startup sequence** — `init` wires four background tasks stored in `lifecycleTasks: [Task<Void, Never>]`:
+
+1. `MCPBridge.start(config:toolRouter:)` — merges global + project MCP configs and launches configured servers
+2. `ThreadAutomationEngine.start(store:)` — begins cron-based automation polling
+3. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s and posts `merlinInjectMessage` notifications
+4. `MemoryEngine.startIdleTimer(timeout:)` — starts the idle timer if `AppSettings.memoriesEnabled`
+
+**Shutdown** — `close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, calls `appState.stopEngine()`, `mcpBridge.stop()`, `automationEngine.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks if `close()` was not called.
+
+**Domain scoping** — `LiveSession.init` carries `activeDomainIDs: [String]` and assigns them directly to `appState.engine.activeDomainIDs`. The shared `DomainRegistry` is queried via stateless helpers (`activeDomain(ids:)`, `taskTypes(ids:)`) so no global mutable state is touched when switching sessions.
+
 ### Parallel Sessions
 
 Within a window, each session is an independent unit of work with its own:
@@ -963,7 +989,7 @@ AuthGate.check(toolCall)
 
 ### Auth Memory Storage [v1]
 
-Persisted to `~/Library/Application Support/Merlin/auth.json`.
+Persisted to `~/Library/Application Support/Merlin/auth.json`. The file is written atomically and immediately `chmod 0600` via `FileManager.setAttributes([.posixPermissions: 0o600])` — readable only by the owning user, never group or world.
 
 ```json
 {
