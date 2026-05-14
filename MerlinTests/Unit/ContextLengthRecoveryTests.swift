@@ -13,6 +13,12 @@ final class ContextLengthRecoveryTests: XCTestCase {
             "maximum context length exceeded",
             "input too long for context window",
             "prompt is too long: 9000 tokens, max is 8192",
+            "request body too large",
+            "payload too large",
+            "request entity too large",
+            "body size limit exceeded",
+            "maximum request body size exceeded",
+            "content length exceeded",
         ]
         for body in bodies {
             let error = ProviderError.httpError(statusCode: 400, body: body, providerID: "test")
@@ -55,7 +61,7 @@ final class ContextLengthRecoveryTests: XCTestCase {
     func test_engine_compacts_and_retries_on_contextLengthExceeded() async throws {
         // Provider fails with context_length_exceeded on first call, succeeds on second.
         let provider = MockProvider(failFirstCallWith:
-            ProviderError.httpError(statusCode: 400, body: "context_length_exceeded", providerID: "mock")
+            ProviderError.httpError(statusCode: 400, body: "request body too large", providerID: "mock")
         )
         let engine = EngineFactory.makeEngine(provider: provider)
 
@@ -73,16 +79,28 @@ final class ContextLengthRecoveryTests: XCTestCase {
             notes.contains(where: { $0.lowercased().contains("compact") }),
             "must emit compaction note before retry; notes: \(notes)"
         )
+        XCTAssertTrue(
+            notes.contains(where: { $0.contains("CONTEXT_OVERRUN_RECOVERY") }),
+            "must emit a restart directive note; notes: \(notes)"
+        )
+
+        let recoveryMessages = engine.contextManager.messages.filter {
+            $0.role == .user && $0.content.plainText.contains("CONTEXT_OVERRUN_RECOVERY")
+        }
+        XCTAssertFalse(recoveryMessages.isEmpty, "must append a recovery directive to context")
+        let recoveryText = recoveryMessages.map(\.content.plainText).joined(separator: "\n")
+        XCTAssertTrue(recoveryText.contains("continue from the interrupted task"))
+        XCTAssertTrue(recoveryText.contains("do not restart completed work"))
 
         // Must not surface an error event to the caller.
         let errorEvents = events.filter { if case .error = $0 { return true } else { return false } }
         XCTAssertTrue(errorEvents.isEmpty, "context-length retry must not surface error; got: \(errorEvents)")
     }
 
-    func test_engine_surfaces_error_if_retry_also_fails() async throws {
-        // Both calls fail with context_length_exceeded — engine must eventually surface error.
+    func test_engine_retries_twice_then_surfaces_error_for_repeated_body_size_failures() async throws {
+        // Continuous body-size failures must stop after the bounded recovery limit.
         let provider = MockProvider(failAllCallsWith:
-            ProviderError.httpError(statusCode: 400, body: "context_length_exceeded", providerID: "mock")
+            ProviderError.httpError(statusCode: 400, body: "maximum request body size exceeded", providerID: "mock")
         )
         let engine = EngineFactory.makeEngine(provider: provider)
 
@@ -91,8 +109,18 @@ final class ContextLengthRecoveryTests: XCTestCase {
             events.append(event)
         }
 
+        XCTAssertEqual(provider.callCount, 3, "must cap body-size recovery retries to a finite number")
+
         let errorEvents = events.filter { if case .error = $0 { return true } else { return false } }
         XCTAssertFalse(errorEvents.isEmpty,
             "when retry also fails, engine must surface an error event")
+
+        let recoveryNotes = events.compactMap { event -> String? in
+            if case .systemNote(let note) = event, note.contains("CONTEXT_OVERRUN_RECOVERY") {
+                return note
+            }
+            return nil
+        }
+        XCTAssertFalse(recoveryNotes.isEmpty, "must emit recovery notes during repeated failures")
     }
 }
