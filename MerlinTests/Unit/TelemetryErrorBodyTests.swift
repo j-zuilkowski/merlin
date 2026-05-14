@@ -9,7 +9,7 @@ final class TelemetryErrorBodyTests: XCTestCase {
         TelemetryEmitter.sink = recorder
         defer { TelemetryEmitter.sink = nil }
 
-        let provider = MockProvider(failFirstCallWith: .httpError(
+        let provider = MockProvider(failAllCallsWith: .httpError(
             statusCode: 400,
             body: "context_length_exceeded sk-test-secret pk-test-secret Bearer token-value",
             providerID: "mock"
@@ -18,7 +18,7 @@ final class TelemetryErrorBodyTests: XCTestCase {
 
         for await _ in engine.send(userMessage: "trigger context overflow") {}
 
-        let events = await recorder.events
+        let events = recorder.events
         let errorEvent = events.first { $0.event == "engine.turn.error" }
         XCTAssertNotNil(errorEvent)
         XCTAssertEqual(errorEvent?.data["error_status"]?.intValue, 400)

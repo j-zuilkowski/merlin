@@ -59,12 +59,10 @@ actor DomainRegistry {
         activeDomainIDs = normalizeActiveDomainIDs(ids)
     }
 
-    /// Returns task types for the active domain. When a non-software domain is active,
-    /// only its task types are returned — consistent with activeDomain()'s preference logic.
+    /// Returns task types for all active domains, preserving the registered order.
+    /// Software remains part of the merged set so the base `code_generation` task stays visible.
     func taskTypes() -> [DomainTaskType] {
-        let domains = activeDomains()
-        let nonSoftware = domains.filter { $0.id != SoftwareDomain.defaultID }
-        return (nonSoftware.isEmpty ? domains : nonSoftware).flatMap { $0.taskTypes }
+        activeDomains().flatMap { $0.taskTypes }
     }
 
     func plugin(for id: String) -> (any DomainPlugin)? {

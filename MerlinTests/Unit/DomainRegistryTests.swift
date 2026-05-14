@@ -39,20 +39,20 @@ final class DomainRegistryTests: XCTestCase {
         XCTAssertEqual(domain.id, "software")
     }
 
-    func testTaskTypesReturnsActiveDomainOnlyNotUnion() async {
+    func testTaskTypesReturnsMergedActiveDomains() async {
         let registry = DomainRegistry()
         let pcb = StubDomain(id: "pcb", displayName: "PCB Design",
                              taskTypes: [DomainTaskType(domainID: "pcb", name: "schematic", displayName: "Schematic")])
         await registry.register(pcb)
 
-        // While software is active, only software task types returned
+        // While software is active, software task types are returned.
         let softwareTypes = await registry.taskTypes()
         XCTAssertTrue(softwareTypes.allSatisfy { $0.domainID == "software" })
 
         await registry.setActiveDomain(id: "pcb")
         let pcbTypes = await registry.taskTypes()
-        XCTAssertTrue(pcbTypes.allSatisfy { $0.domainID == "pcb" })
-        XCTAssertFalse(pcbTypes.contains(where: { $0.domainID == "software" }))
+        XCTAssertTrue(pcbTypes.contains(where: { $0.domainID == "software" }))
+        XCTAssertTrue(pcbTypes.contains(where: { $0.domainID == "pcb" }))
     }
 
     func testPluginLookup() async {

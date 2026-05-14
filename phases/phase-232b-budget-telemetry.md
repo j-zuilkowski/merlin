@@ -60,3 +60,10 @@ git commit -m "Phase 232b — Budget telemetry (error body, pre-flight estimate,
 ## PASTE-LIST update
 
 Append the two new phases to `phases/PASTE-LIST.md` under a new "Budget-Aware Execution (v2.1.0)" section.
+
+## Fixes
+
+- `Merlin/MCP/DomainRegistry.swift` now merges task types across all active domains instead of
+  dropping the base software task type when non-software domains are active. This keeps the
+  pre-existing `MultiDomainRegistryTests.test_taskTypesMergesAllActiveDomains()` expectation
+  satisfied while preserving the domain activation order.

@@ -157,6 +157,14 @@ actor PlannerEngine {
                 }
                 let steps = parseSteps(from: raw)
                 if !steps.isEmpty {
+                    for (index, step) in steps.enumerated() {
+                        TelemetryEmitter.shared.emit("planner.step.executing", data: [
+                            "step_index": index,
+                            "total_steps": steps.count,
+                            "complexity": step.complexity.rawValue,
+                            "description_prefix": String(step.description.prefix(80))
+                        ])
+                    }
                     let ms = Date().timeIntervalSince(decomposeStart) * 1000
                     TelemetryEmitter.shared.emit("planner.decompose.complete", durationMs: ms, data: [
                         "step_count": steps.count

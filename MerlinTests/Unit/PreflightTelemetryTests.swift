@@ -16,7 +16,7 @@ final class PreflightTelemetryTests: XCTestCase {
 
         for await _ in engine.send(userMessage: "hello") {}
 
-        let events = await recorder.events.filter { $0.event == "engine.preflight.estimate" }
+        let events = recorder.events.filter { $0.event == "engine.preflight.estimate" }
         XCTAssertEqual(events.count, 1)
         XCTAssertGreaterThan(events[0].data["estimated_tokens"]?.intValue ?? 0, 0)
         XCTAssertEqual(events[0].data["provider_id"]?.stringValue, provider.id)

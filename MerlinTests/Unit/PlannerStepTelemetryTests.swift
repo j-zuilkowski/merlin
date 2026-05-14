@@ -25,7 +25,7 @@ final class PlannerStepTelemetryTests: XCTestCase {
 
         _ = await engine.decompose(task: "split work", context: [])
 
-        let events = await recorder.events.filter { $0.event == "planner.step.executing" }
+        let events = recorder.events.filter { $0.event == "planner.step.executing" }
         XCTAssertEqual(events.count, 2)
         XCTAssertEqual(events[0].data["step_index"]?.intValue, 0)
         XCTAssertEqual(events[1].data["step_index"]?.intValue, 1)

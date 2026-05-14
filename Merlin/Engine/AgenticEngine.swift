@@ -629,6 +629,12 @@ final class AgenticEngine {
         }
 
         var effectiveMessage = userMessage
+        let preflightProvider = resolvedProvider(for: workingSlot)
+        TelemetryEmitter.shared.emit("engine.preflight.estimate", data: [
+            "estimated_tokens": max(1, approximateTokens(in: context)),
+            "provider_id": preflightProvider.id,
+            "slot": workingSlot.rawValue
+        ])
         let memResults = (try? await memoryBackend.search(
             query: userMessage,
             topK: 5,
@@ -1048,13 +1054,18 @@ final class AgenticEngine {
             }
         } catch let pe as ProviderError where pe.isContextLengthExceeded {
             guard contextLengthRetryCount < maxContextOverrunRecoveryAttempts else {
-                TelemetryEmitter.shared.emit("engine.turn.error", data: [
-                    "turn": turn,
-                    "slot": workingSlot.rawValue,
-                    "provider_id": selectProvider(for: userMessage).id,
-                    "error_domain": (pe as NSError).domain,
-                    "error_code": (pe as NSError).code
-                ])
+                var data: [String: TelemetryValue] = [
+                    "turn": .int(turn),
+                    "slot": .string(workingSlot.rawValue),
+                    "provider_id": .string(selectProvider(for: userMessage).id),
+                    "error_domain": .string((pe as NSError).domain),
+                    "error_code": .int((pe as NSError).code)
+                ]
+                if case .httpError(let statusCode, let body, _) = pe {
+                    data["error_status"] = .int(statusCode)
+                    data["error_body"] = .string(RedactedString.redacted(String(body.prefix(500))))
+                }
+                TelemetryEmitter.shared.emit("engine.turn.error", data: data)
                 throw pe
             }
 
@@ -1080,13 +1091,18 @@ final class AgenticEngine {
                 depth: depth
             )
         } catch {
-            TelemetryEmitter.shared.emit("engine.turn.error", data: [
-                "turn": turn,
-                "slot": workingSlot.rawValue,
-                "provider_id": selectProvider(for: userMessage).id,
-                "error_domain": (error as NSError).domain,
-                "error_code": (error as NSError).code
-            ])
+            var data: [String: TelemetryValue] = [
+                "turn": .int(turn),
+                "slot": .string(workingSlot.rawValue),
+                "provider_id": .string(selectProvider(for: userMessage).id),
+                "error_domain": .string((error as NSError).domain),
+                "error_code": .int((error as NSError).code)
+            ]
+            if case let pe as ProviderError = error, case .httpError(let statusCode, let body, _) = pe {
+                data["error_status"] = .int(statusCode)
+                data["error_body"] = .string(RedactedString.redacted(String(body.prefix(500))))
+            }
+            TelemetryEmitter.shared.emit("engine.turn.error", data: data)
             throw error
         }
 

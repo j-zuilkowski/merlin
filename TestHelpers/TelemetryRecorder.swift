@@ -5,7 +5,7 @@ final class TelemetryRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private(set) var events: [TelemetryEvent] = []
 
-    func record(_ event: TelemetryEvent) {
+    func store(_ event: TelemetryEvent) {
         lock.lock()
         events.append(event)
         lock.unlock()
@@ -15,6 +15,12 @@ final class TelemetryRecorder: @unchecked Sendable {
         lock.lock()
         events.removeAll(keepingCapacity: true)
         lock.unlock()
+    }
+}
+
+extension TelemetryRecorder: TelemetrySink {
+    func record(_ event: TelemetryEvent) {
+        store(event)
     }
 }
 

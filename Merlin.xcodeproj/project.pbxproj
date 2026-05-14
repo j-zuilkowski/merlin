@@ -53,6 +53,7 @@
 		16EA72DC122F54D9E6C9D2E8 /* TOMLDecoderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE0976A84E6620B6525BC946 /* TOMLDecoderTests.swift */; };
 		16F62F0FD12C468FB9448954 /* RewindCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A824F1801806B74F6F7FE0 /* RewindCommand.swift */; };
 		174394DE8B17C3EBB5495E58 /* ContextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9893A2495D30F7BB69D2C739 /* ContextManager.swift */; };
+		B8C1D2E3F4A5061728394ABC /* RedactedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5061728394ABC01 /* RedactedString.swift */; };
 		17EBB4BF41E603DDE1E5345C /* SessionManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8207E6A8C51267F37E0E48D /* SessionManagerTests.swift */; };
 		18D3806C50792ACC2F95AF27 /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 590FC701B4094294AEB6BC0A /* WorkspaceView.swift */; };
 		1978829EFB49171EA494B584 /* ContextUsageTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */; };
@@ -739,6 +740,7 @@
 		942F9DBBE67AC6DC3CDEB693 /* AgenticEngineSlotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineSlotTests.swift; sourceTree = "<group>"; };
 		980BAFF0827A54C644832DF6 /* ContextCompactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextCompactionTests.swift; sourceTree = "<group>"; };
 		9893A2495D30F7BB69D2C739 /* ContextManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextManager.swift; sourceTree = "<group>"; };
+		C1D2E3F4A5061728394ABC01 /* RedactedString.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedactedString.swift; sourceTree = "<group>"; };
 		9948EDBBDCA3986DC2298C8F /* RedactedStringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedactedStringTests.swift; sourceTree = "<group>"; };
 		994E8E04190A4F68D04B0678 /* HookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookEngine.swift; sourceTree = "<group>"; };
 		9A6143C997B792E607040419 /* ProjectPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPickerView.swift; sourceTree = "<group>"; };
@@ -1092,6 +1094,7 @@
 				8DEAE4AFECE902973EADC31F /* CLAUDEMDLoader.swift */,
 				A65F30CE00DABF745DC5826D /* ContextInjector.swift */,
 				9893A2495D30F7BB69D2C739 /* ContextManager.swift */,
+				C1D2E3F4A5061728394ABC01 /* RedactedString.swift */,
 				6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */,
 				AB48B97CE3066D01D3F2C9AE /* CriticEngine.swift */,
 				CC3EDFAAE6C71A8DE7832A27 /* DiffComment.swift */,
@@ -2265,6 +2268,7 @@
 				2E6AC6AD832870A142F9B7D1 /* ContentView.swift in Sources */,
 				7CD14B6A0B8C6A6AD3D244C7 /* ContextInjector.swift in Sources */,
 				174394DE8B17C3EBB5495E58 /* ContextManager.swift in Sources */,
+				B8C1D2E3F4A5061728394ABC /* RedactedString.swift in Sources */,
 				1978829EFB49171EA494B584 /* ContextUsageTracker.swift in Sources */,
 				B2ACB043D52FC2747201C9CF /* ConversationHTMLRenderer.swift in Sources */,
 				3BEF5C72FF31D6878A61D8FE /* ConversationWebView.swift in Sources */,
@@ -2664,9 +2668,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_IDENTIFIER = com.merlin.app;
-				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = Merlin/Merlin.entitlements;
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = Merlin/Info.plist;
@@ -2685,9 +2689,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_IDENTIFIER = com.merlin.app;
-				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGN_ENTITLEMENTS = Merlin/Merlin.entitlements;
-				CODE_SIGN_IDENTITY = "";
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = Merlin/Info.plist;

@@ -80,6 +80,10 @@ public struct TelemetryEvent: Encodable, Sendable {
 
 // MARK: - TelemetrySpan
 
+public protocol TelemetrySink: Sendable {
+    func record(_ event: TelemetryEvent)
+}
+
 /// Tracks the start time of an operation; call `finish(data:)` to emit the event with duration.
 public final class TelemetrySpan: Sendable {
     private let event: String
@@ -108,6 +112,7 @@ public final class TelemetrySpan: Sendable {
 public final class TelemetryEmitter: @unchecked Sendable {
 
     public static let shared = TelemetryEmitter()
+    public nonisolated(unsafe) static var sink: (any TelemetrySink)?
 
     // Current context - written from @MainActor, read from background queue (best-effort).
     public private(set) var sessionID: String = UUID().uuidString
@@ -167,6 +172,7 @@ public final class TelemetryEmitter: @unchecked Sendable {
             durationMs: durationMs,
             data: data
         )
+        Self.sink?.record(e)
         queue.async { [weak self] in self?.write(e) }
     }
 
