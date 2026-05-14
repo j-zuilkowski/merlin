@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# NOTE: Developed locally with Xcode 26.5. GitHub runners ship Xcode 16.x (macos-15).
+# The workflow will flag any build breakage introduced on main; local builds remain
+# the authoritative check for Xcode-26-specific APIs until GitHub adds Xcode 26 runners.
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          # Use the latest Xcode available on the runner
+          sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)/Contents/Developer"
+          xcodebuild -version
+
+      - name: Build (Release)
+        run: |
+          xcodebuild \
+            -scheme Merlin \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            SYMROOT=build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            ENABLE_HARDENED_RUNTIME=NO \
+            build \
+            | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
+
+      - name: Run Unit Tests
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -scheme MerlinTests \
+            -configuration Debug \
+            -derivedDataPath build/DerivedData \
+            SYMROOT=build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            ENABLE_HARDENED_RUNTIME=NO \
+            test \
+            | grep -E 'error:|Test Suite|Test Case|passed|failed|BUILD SUCCEEDED|BUILD FAILED'
