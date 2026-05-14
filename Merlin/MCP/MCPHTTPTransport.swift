@@ -43,6 +43,30 @@ extension MCPTransportSession {
         return String(data: (try? JSONSerialization.data(withJSONObject: response)) ?? Data(),
                       encoding: .utf8) ?? ""
     }
+
+    func callTool(name: String, argumentsJSON: String) async throws -> String {
+        let arguments = Self.decodeArguments(from: argumentsJSON)
+        let response = try await call(method: "tools/call", params: [
+            "name": name,
+            "arguments": arguments
+        ])
+        if let content = response["content"] as? [[String: Any]],
+           let first = content.first,
+           let text = first["text"] as? String {
+            return text
+        }
+        return String(data: (try? JSONSerialization.data(withJSONObject: response)) ?? Data(),
+                      encoding: .utf8) ?? ""
+    }
+
+    private static func decodeArguments(from json: String) -> [String: Any] {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = object as? [String: Any] else {
+            return [:]
+        }
+        return dictionary
+    }
 }
 
 final class MCPHTTPTransport: MCPTransportSession, @unchecked Sendable {

@@ -69,6 +69,33 @@ actor MCPBridge {
                 "server": server,
                 "tool": tool,
                 "error_domain": (error as NSError).domain,
+            "error_code": (error as NSError).code
+            ])
+            throw error
+        }
+    }
+
+    func call(server: String, tool: String, argumentsJSON: String) async throws -> String {
+        TelemetryEmitter.shared.emit("mcp.call.start", data: [
+            "server": server,
+            "tool": tool
+        ])
+        let callStart = Date()
+        do {
+            let result = try await _call(server: server, tool: tool, argumentsJSON: argumentsJSON)
+            let ms = Date().timeIntervalSince(callStart) * 1000
+            TelemetryEmitter.shared.emit("mcp.call.complete", durationMs: ms, data: [
+                "server": server,
+                "tool": tool,
+                "result_bytes": result.utf8.count
+            ])
+            return result
+        } catch {
+            let ms = Date().timeIntervalSince(callStart) * 1000
+            TelemetryEmitter.shared.emit("mcp.call.error", durationMs: ms, data: [
+                "server": server,
+                "tool": tool,
+                "error_domain": (error as NSError).domain,
                 "error_code": (error as NSError).code
             ])
             throw error
@@ -76,10 +103,18 @@ actor MCPBridge {
     }
 
     private func _call(server: String, tool: String, arguments: [String: Any]) async throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: arguments, options: [.sortedKeys])
+        guard let argumentsJSON = String(data: data, encoding: .utf8) else {
+            throw MCPError.processError("Failed to encode MCP arguments")
+        }
+        return try await _call(server: server, tool: tool, argumentsJSON: argumentsJSON)
+    }
+
+    private func _call(server: String, tool: String, argumentsJSON: String) async throws -> String {
         guard let session = sessions[server] else {
             throw MCPError.serverNotFound(server)
         }
-        return try await session.callTool(name: tool, arguments: arguments)
+        return try await session.callTool(name: tool, argumentsJSON: argumentsJSON)
     }
 
     func stop() async {
@@ -187,7 +222,7 @@ private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
     private var stdinHandle: FileHandle?
     private var stdoutHandle: FileHandle?
     private var nextID: Int = 1
-    private var pending: [Int: CheckedContinuation<[String: Any], Error>] = [:]
+    private var pending: [Int: CheckedContinuation<MCPResponseEnvelope, Error>] = [:]
     private var buffer = Data()
     private let lock = NSLock()
 
@@ -287,7 +322,7 @@ private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
             throw MCPError.processError("Failed to encode request")
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
+        let response: MCPResponseEnvelope = try await withCheckedThrowingContinuation { continuation in
             lock.withLock {
                 pending[id] = continuation
             }
@@ -300,6 +335,7 @@ private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
             }
             stdinHandle?.write(bytes)
         }
+        return response.value as? [String: Any] ?? [:]
     }
 
     private func consume(data: Data) {
@@ -309,12 +345,12 @@ private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
             while let newline = buffer.firstIndex(of: UInt8(ascii: "\n")) {
                 let lineData = buffer[buffer.startIndex...newline]
                 buffer = buffer[buffer.index(after: newline)...]
-                guard let response = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                guard let response = try? JSONSerialization.jsonObject(with: lineData) as? NSDictionary,
                       let id = response["id"] as? Int,
                       let continuation = pending.removeValue(forKey: id) else {
                     continue
                 }
-                continuation.resume(returning: response)
+                continuation.resume(returning: MCPResponseEnvelope(value: response))
             }
         }
     }
@@ -339,6 +375,10 @@ private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
         }
         return URL(fileURLWithPath: path)
     }
+}
+
+private struct MCPResponseEnvelope: @unchecked Sendable {
+    let value: NSDictionary
 }
 
 private extension NSLock {

@@ -99,13 +99,16 @@ struct KiCadMCPToolExecutor: KiCadToolExecutor {
     var config: KiCadMCPServerConfig
     var probe: KiCadMCPToolingStatus
     var requiredMajorVersion: Int
+    private let client: any KiCadMCPClient
 
     init(config: KiCadMCPServerConfig,
          probe: KiCadMCPToolingStatus,
+         client: (any KiCadMCPClient)? = nil,
          requiredMajorVersion: Int = 10) {
         self.config = config
         self.probe = probe
         self.requiredMajorVersion = requiredMajorVersion
+        self.client = client ?? KiCadMCPBridgeClient(serverName: config.serverPath)
     }
 
     func execute(toolName: String, arguments: [String: Any]) async throws -> KiCadToolResult {
@@ -166,10 +169,63 @@ struct KiCadMCPToolExecutor: KiCadToolExecutor {
             )
         }
 
-        return KiCadToolResult(
-            status: .complete,
-            artifacts: [ArtifactRef(path: "/tmp/\(toolName).json", kind: "kicad_boundary_stub")],
-            metrics: ["detected_major": Double(version.detectedMajorVersion ?? requiredMajorVersion)]
+        do {
+            let payload = try await client.execute(toolName: toolName, arguments: arguments)
+            return decodeClientResult(payload, toolName: toolName, detectedMajor: version.detectedMajorVersion ?? requiredMajorVersion)
+        } catch {
+            return blockedToolingResult(
+                code: "KICAD_MCP_CLIENT_EXECUTION_FAILED",
+                message: "KiCad MCP client failed for \(toolName): \(error.localizedDescription)",
+                affectedRefs: [config.serverPath, toolName],
+                suggestedAction: "Check the KiCad MCP bridge and retry.",
+                metrics: ["detected_major": Double(version.detectedMajorVersion ?? requiredMajorVersion)]
+            )
+        }
+    }
+
+    private func decodeClientResult(_ payload: String, toolName: String, detectedMajor: Int) -> KiCadToolResult {
+        guard let data = payload.data(using: .utf8) else {
+            return blockedToolingResult(
+                code: "KICAD_MCP_RESULT_DECODE_FAILED",
+                message: "KiCad MCP client returned non-UTF8 payload for \(toolName).",
+                affectedRefs: [config.serverPath, toolName],
+                suggestedAction: "Ensure the KiCad MCP server returns JSON-encoded KiCadToolResult values.",
+                metrics: ["detected_major": Double(detectedMajor)]
+            )
+        }
+
+        do {
+            let result = try JSONDecoder().decode(KiCadToolResult.self, from: data)
+            return result
+        } catch {
+            return blockedToolingResult(
+                code: "KICAD_MCP_RESULT_DECODE_FAILED",
+                message: "KiCad MCP client returned an invalid payload for \(toolName): \(error.localizedDescription)",
+                affectedRefs: [config.serverPath, toolName],
+                suggestedAction: "Ensure the KiCad MCP server returns JSON-encoded KiCadToolResult values.",
+                metrics: ["detected_major": Double(detectedMajor)]
+            )
+        }
+    }
+
+    private func blockedToolingResult(
+        code: String,
+        message: String,
+        affectedRefs: [String],
+        suggestedAction: String,
+        metrics: [String: Double] = [:]
+    ) -> KiCadToolResult {
+        KiCadToolResult(
+            status: .blockedTooling,
+            warnings: [
+                KiCadWarning(
+                    code: code,
+                    message: message,
+                    affectedRefs: affectedRefs,
+                    suggestedAction: suggestedAction
+                )
+            ],
+            metrics: metrics
         )
     }
 }

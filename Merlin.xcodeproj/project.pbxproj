@@ -85,6 +85,7 @@
 		26941688A4FC95363DB8EE5B /* KAGEngineExtractionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EAE4C9CF41CBE9417F1491D /* KAGEngineExtractionTests.swift */; };
 		27394302AC89476792EED94B /* RoleSlotSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29EDE0CF4979E6BB1C024011 /* RoleSlotSettingsView.swift */; };
 		281A7D49F99A4E8CCAE03A23 /* SemanticFaultInjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E637AA607AA5850675764E /* SemanticFaultInjectionTests.swift */; };
+		28285A5E4BCC7A8ED1B93486 /* KiCadMCPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C230EB9D2DFA4F25CD9158FD /* KiCadMCPClient.swift */; };
 		28504285F92DAA1FE7FE8FA7 /* ToolRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2A2707D0E8F3D979BDADB0 /* ToolRouterTests.swift */; };
 		2A7676334673AF6FD9C7CDE8 /* RecentProjectsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76503B3D7F4E7B8578353601 /* RecentProjectsStore.swift */; };
 		2ABC783900CC3C7EA34E5837 /* FileSystemToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11210162FADED2E2E8052679 /* FileSystemToolTests.swift */; };
@@ -132,6 +133,7 @@
 		41CCED5D0B0366A6464FA88C /* SpawnAgentErrorIsolationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3C11D212A893C258048D15C /* SpawnAgentErrorIsolationTests.swift */; };
 		422ABD86572DBA0E0C36E179 /* JanModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC83EA95DBB8F0404670C33 /* JanModelManager.swift */; };
 		42371721FB81022262231868 /* SubagentBlockViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7B9BE28E7E41F1BAC4F667 /* SubagentBlockViewModelTests.swift */; };
+		4269FBBF894A40D1B266B2E3 /* KiCadMCPRealExecutorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72B608D6A7804B1753AC4C7F /* KiCadMCPRealExecutorTests.swift */; };
 		431702F121351568B8793A6A /* ConnectorCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803889700AE9486CD3A8A0D4 /* ConnectorCredentials.swift */; };
 		43B5A8FFB869C6E51D1803EC /* ProviderError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90AEC3E2C7FAA92F27DE93B6 /* ProviderError.swift */; };
 		440A501D387F62A7AD6FB128 /* StalenessInjectingMemoryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = C60B85F7960B8CD9E9106EFA /* StalenessInjectingMemoryBackend.swift */; };
@@ -657,6 +659,7 @@
 		71C1C016F54B6FA9F5520B08 /* SubagentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentEngine.swift; sourceTree = "<group>"; };
 		726EC263F6E4A33E9B6A62D0 /* ConversationHTMLRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationHTMLRenderer.swift; sourceTree = "<group>"; };
 		7288D50FB7BDB82A4950C059 /* ModelControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelControlView.swift; sourceTree = "<group>"; };
+		72B608D6A7804B1753AC4C7F /* KiCadMCPRealExecutorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadMCPRealExecutorTests.swift; sourceTree = "<group>"; };
 		72CF1E30C64A193CA4DCA585 /* RestoreDedupAndHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreDedupAndHistoryTests.swift; sourceTree = "<group>"; };
 		7306BD77A5F6F3910A0F5C5C /* AuthGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthGateTests.swift; sourceTree = "<group>"; };
 		748C0EACA020EEBA816A27E3 /* KeychainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainTests.swift; sourceTree = "<group>"; };
@@ -801,6 +804,7 @@
 		C1432C5EC65B9FB4490C7BC1 /* RewindSlashCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewindSlashCommandTests.swift; sourceTree = "<group>"; };
 		C1C2104BDF2AA60A7A53161A /* ModelParameterAdvisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelParameterAdvisorTests.swift; sourceTree = "<group>"; };
 		C2273E989695F531AF1A62AF /* AuthPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPopupView.swift; sourceTree = "<group>"; };
+		C230EB9D2DFA4F25CD9158FD /* KiCadMCPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadMCPClient.swift; sourceTree = "<group>"; };
 		C24588800547355945391851 /* KiCadArtifactSchemasTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadArtifactSchemasTests.swift; sourceTree = "<group>"; };
 		C325F9BF492C4FAE381739B1 /* DeveloperManual.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DeveloperManual.md; sourceTree = "<group>"; };
 		C4219AF1A6BFAF34B2084BFE /* ToolbarActionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarActionStore.swift; sourceTree = "<group>"; };
@@ -1185,6 +1189,7 @@
 				0FC5ECCAC5994FF68CE5B0A3 /* ComponentsFootprintsBOM.swift */,
 				2D9B7244ED6927FB1386B6AD /* KiCadArtifacts.swift */,
 				CC9000A883BB63C91A421DEA /* KiCadArtifactStore.swift */,
+				C230EB9D2DFA4F25CD9158FD /* KiCadMCPClient.swift */,
 				A2277D128F8ED0FE540E3A0F /* KiCadMCPTooling.swift */,
 				29D2BCFB3F81D5B828CDBCA4 /* KiCadSchematicParser.swift */,
 				53577D70935AB3A8612CAF2D /* KiCadToolDefinitions.swift */,
@@ -1283,6 +1288,7 @@
 				32B8246C3F38F256D8C783DB /* KAGTripleTests.swift */,
 				748C0EACA020EEBA816A27E3 /* KeychainTests.swift */,
 				C24588800547355945391851 /* KiCadArtifactSchemasTests.swift */,
+				72B608D6A7804B1753AC4C7F /* KiCadMCPRealExecutorTests.swift */,
 				B6AA54B3C1D1A4D904C33BAF /* KiCadMCPToolingTests.swift */,
 				31774BBEB57796E41F092A0A /* KiCadSchematicParserTests.swift */,
 				055C28F4CCE3273D88BDD2F2 /* KiCadV2CoreContractsTests.swift */,
@@ -2041,6 +2047,7 @@
 				48F58EA8142C7C4382C51DFE /* KAGTripleTests.swift in Sources */,
 				2315F44663B37EDF5BFED92E /* KeychainTests.swift in Sources */,
 				CA0B487BD8AA7EE446566865 /* KiCadArtifactSchemasTests.swift in Sources */,
+				4269FBBF894A40D1B266B2E3 /* KiCadMCPRealExecutorTests.swift in Sources */,
 				71D673C1A49CCD77F0C37F3D /* KiCadMCPToolingTests.swift in Sources */,
 				F8C3DC11C2666FB792C777C9 /* KiCadSchematicParserTests.swift in Sources */,
 				F604024A701BF2AD70735E6C /* KiCadV2CoreContractsTests.swift in Sources */,
@@ -2258,6 +2265,7 @@
 				D0E9F93738DE92EFFA66A401 /* KeychainManager.swift in Sources */,
 				664C6991A213D29E999174B6 /* KiCadArtifactStore.swift in Sources */,
 				6C138C19574B91260700CDCE /* KiCadArtifacts.swift in Sources */,
+				28285A5E4BCC7A8ED1B93486 /* KiCadMCPClient.swift in Sources */,
 				1D6CBF963DE89D13BBB52A25 /* KiCadMCPTooling.swift in Sources */,
 				B83C0B03B7203E56D306FB23 /* KiCadSchematicParser.swift in Sources */,
 				04A335C940C9288851BDAA45 /* KiCadToolDefinitions.swift in Sources */,
