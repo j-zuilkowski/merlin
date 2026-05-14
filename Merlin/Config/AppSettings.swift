@@ -119,6 +119,7 @@ final class AppSettings: ObservableObject {
 
     private var fsStream: FSEventStreamRef?
     private var watchedURL: URL?
+    private var configReloadTask: Task<Void, Never>?
     private var isSynchronizingActiveDomains = false
 
     init(configURL: URL = AppSettings.defaultConfigURL) {
@@ -657,7 +658,7 @@ final class AppSettings: ObservableObject {
                 guard let watchedURL = settings.watchedURL else {
                     return
                 }
-                try? await settings.load(from: watchedURL)
+                settings.scheduleWatchedConfigReload(for: watchedURL)
             }
         }
 
@@ -678,6 +679,8 @@ final class AppSettings: ObservableObject {
     }
 
     func stopWatching() {
+        configReloadTask?.cancel()
+        configReloadTask = nil
         guard let stream = fsStream else {
             return
         }
@@ -686,6 +689,25 @@ final class AppSettings: ObservableObject {
         FSEventStreamInvalidate(stream)
         FSEventStreamRelease(stream)
         fsStream = nil
+    }
+
+    func scheduleWatchedConfigReload(for url: URL? = nil, delay: Duration = .milliseconds(250)) {
+        let reloadURL = url ?? watchedURL
+        guard let reloadURL else {
+            return
+        }
+        configReloadTask?.cancel()
+        configReloadTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard Task.isCancelled == false else {
+                return
+            }
+            try? await self?.load(from: reloadURL)
+        }
     }
 
     private func apply(_ change: SettingsProposal) {

@@ -47,6 +47,10 @@ final class AuthMemory {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let data = try JSONEncoder().encode(Storage(allowPatterns: allowPatterns, denyPatterns: denyPatterns))
         try data.write(to: url, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: NSNumber(value: 0o600)],
+            ofItemAtPath: url.path
+        )
     }
 
     private func load() {

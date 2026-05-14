@@ -47,7 +47,7 @@ struct MemoryChunk: Sendable, Equatable {
 
 // MARK: - MemorySearchResult
 
-/// A search result returned by `MemoryBackendPlugin.search(query:topK:)`.
+/// A search result returned by a memory backend search.
 /// `score` is cosine similarity in `[0, 1]`, where higher values are more relevant.
 struct MemorySearchResult: Sendable {
     let chunk: MemoryChunk
@@ -99,8 +99,21 @@ protocol MemoryBackendPlugin: Actor {
     /// Return up to `topK` chunks most relevant to `query`, sorted descending by score.
     func search(query: String, topK: Int) async throws -> [MemorySearchResult]
 
+    /// Return results scoped to `projectPath` when provided.
+    func search(query: String, topK: Int, projectPath: String?) async throws -> [MemorySearchResult]
+
     /// Remove the chunk with `id`. Silent no-op if not found.
     func delete(id: String) async throws
+}
+
+extension MemoryBackendPlugin {
+    func search(query: String, topK: Int, projectPath: String?) async throws -> [MemorySearchResult] {
+        let results = try await search(query: query, topK: topK)
+        guard let projectPath, projectPath.isEmpty == false else {
+            return results
+        }
+        return results.filter { $0.chunk.projectPath == projectPath }
+    }
 }
 
 // MARK: - NullMemoryPlugin
@@ -115,6 +128,7 @@ actor NullMemoryPlugin: MemoryBackendPlugin {
 
     func write(_ chunk: MemoryChunk) async throws {}
     func search(query: String, topK: Int) async throws -> [MemorySearchResult] { [] }
+    func search(query: String, topK: Int, projectPath: String?) async throws -> [MemorySearchResult] { [] }
     func delete(id: String) async throws {}
 }
 

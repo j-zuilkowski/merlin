@@ -73,7 +73,10 @@ final class SessionManager: ObservableObject {
     }
 
     func closeSession(_ id: UUID) async {
-        liveSessions.removeAll { $0.id == id }
+        if let index = liveSessions.firstIndex(where: { $0.id == id }) {
+            let session = liveSessions.remove(at: index)
+            await session.close()
+        }
         if activeSessionID == id {
             activeSessionID = liveSessions.last?.id
         }

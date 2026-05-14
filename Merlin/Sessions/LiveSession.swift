@@ -25,6 +25,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let skillsRegistry: SkillsRegistry
     let chatViewModel = ChatViewModel()
     let activeDomainIDs: [String]
+    @Published private(set) var isClosed = false
     /// Set by SessionManager.restore() to record which store Session this live session
     /// was created from. Used by the sidebar to avoid restoring the same session twice.
     var originalSessionID: UUID?
@@ -33,6 +34,7 @@ final class LiveSession: ObservableObject, Identifiable {
     private let memoryEngine = MemoryEngine()
     private let automationStore = ThreadAutomationStore()
     private let automationEngine = ThreadAutomationEngine()
+    private var lifecycleTasks: [Task<Void, Never>] = []
     var permissionMode: PermissionMode = AppSettings.shared.defaultPermissionMode {
         didSet {
             appState.engine.permissionMode = permissionMode
@@ -93,13 +95,14 @@ final class LiveSession: ObservableObject, Identifiable {
             chatViewModel.load(from: initialMessages)
         }
 
-        Task { @MainActor [mcpBridge, projectPath = projectRef.path] in
+        let mcpToolRouter = appState.engine.toolRouter
+        lifecycleTasks.append(Task { @MainActor [mcpBridge, projectPath = projectRef.path, mcpToolRouter] in
             let config = MCPConfig.merged(projectPath: projectPath)
             try? await mcpBridge.start(config: config,
-                                       toolRouter: appState.engine.toolRouter)
-        }
+                                       toolRouter: mcpToolRouter)
+        })
 
-        Task {
+        lifecycleTasks.append(Task {
             let store = automationStore
             let engine = automationEngine
             let agenticEngine = appState.engine
@@ -110,15 +113,15 @@ final class LiveSession: ObservableObject, Identifiable {
                 }
             }
             await engine.start(store: store)
-        }
+        })
 
         // File-based message injection: poll ~/.merlin/inject.txt every 2 seconds.
         // When the file exists, post merlinInjectMessage so the active ChatView
         // submits it as a real user message (visible in the UI with full response).
         // Usage from shell: echo "your prompt" > ~/.merlin/inject.txt
-        Task { @MainActor in
+        lifecycleTasks.append(Task { @MainActor in
             let injectURL = URL(fileURLWithPath: (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.merlin/inject.txt")
-            while true {
+            while Task.isCancelled == false {
                 if let data = try? Data(contentsOf: injectURL),
                    let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !text.isEmpty {
@@ -129,11 +132,15 @@ final class LiveSession: ObservableObject, Identifiable {
                         userInfo: ["message": text]
                     )
                 }
-                try? await Task.sleep(for: .seconds(2))
+                do {
+                    try await Task.sleep(for: .seconds(2))
+                } catch {
+                    return
+                }
             }
-        }
+        })
 
-        Task {
+        lifecycleTasks.append(Task {
             let memoryProvider = appState.engine.provider(for: .reason) ?? NullProvider()
             await self.memoryEngine.setProvider(memoryProvider)
             if AppSettings.shared.memoriesEnabled {
@@ -154,10 +161,27 @@ final class LiveSession: ObservableObject, Identifiable {
                 }
                 await self.memoryEngine.startIdleTimer(timeout: timeout)
             }
-        }
+        })
     }
 
     var stagingBuffer: StagingBuffer {
         appState.engine.toolRouter.stagingBuffer ?? stagingBufferStorage
+    }
+
+    func close() async {
+        guard isClosed == false else {
+            return
+        }
+        isClosed = true
+        lifecycleTasks.forEach { $0.cancel() }
+        lifecycleTasks.removeAll()
+        appState.stopEngine()
+        await mcpBridge.stop()
+        await automationEngine.stop()
+        await memoryEngine.stopIdleTimer()
+    }
+
+    deinit {
+        lifecycleTasks.forEach { $0.cancel() }
     }
 }

@@ -43,8 +43,16 @@ extension CompletionChunk {
     }
 }
 
-private final class CancellationState: @unchecked Sendable {
-    var finished = false
+private actor CancellationState {
+    private var finished = false
+
+    func markFinished() -> Bool {
+        guard finished == false else {
+            return false
+        }
+        finished = true
+        return true
+    }
 }
 
 @MainActor
@@ -424,22 +432,22 @@ final class AgenticEngine {
                 await withTaskCancellationHandler(operation: {
                     let message = await buffer.commentsAsAgentMessage(changeIDs)
                     guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                         return
                     }
 
                     do {
                         try await self.runLoop(userMessage: message, continuation: continuation, depth: 0)
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     } catch {
                         continuation.yield(.error(error))
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     }
                 }, onCancel: {
                     Task { @MainActor in
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     }
                 })
             }
@@ -477,16 +485,16 @@ final class AgenticEngine {
                             "provider_id": provider.id
                         ])
                         try await self.runLoop(userMessage: userMessage, continuation: continuation, depth: 0)
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     } catch {
                         continuation.yield(.error(error))
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     }
                 }, onCancel: {
                     Task { @MainActor in
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     }
                 })
             }
@@ -520,16 +528,16 @@ final class AgenticEngine {
                             contextOverride: forkContext,
                             depth: 0
                         )
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     } catch is CancellationError {
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     } catch {
                         continuation.yield(.error(error))
-                        self.finishStream(continuation, interrupted: false, state: state)
+                        await self.finishStream(continuation, interrupted: false, state: state)
                     }
                 }, onCancel: {
                     Task { @MainActor in
-                        self.finishStream(continuation, interrupted: true, state: state)
+                        await self.finishStream(continuation, interrupted: true, state: state)
                     }
                 })
             }
@@ -543,9 +551,8 @@ final class AgenticEngine {
 
     private func finishStream(_ continuation: AsyncStream<AgentEvent>.Continuation,
                               interrupted: Bool,
-                              state: CancellationState) {
-        guard !state.finished else { return }
-        state.finished = true
+                              state: CancellationState) async {
+        guard await state.markFinished() else { return }
         if interrupted {
             continuation.yield(.systemNote("[Interrupted]"))
         }
@@ -622,7 +629,11 @@ final class AgenticEngine {
         }
 
         var effectiveMessage = userMessage
-        let memResults = (try? await memoryBackend.search(query: userMessage, topK: 5)) ?? []
+        let memResults = (try? await memoryBackend.search(
+            query: userMessage,
+            topK: 5,
+            projectPath: currentProjectPath
+        )) ?? []
         let memoryDates = memResults.map { $0.chunk.createdAt }
         let memChunks = memResults.map { $0.toRAGChunk() }
         var bookChunks: [RAGChunk] = []

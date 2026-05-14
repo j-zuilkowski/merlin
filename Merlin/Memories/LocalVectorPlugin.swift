@@ -53,6 +53,10 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
     }
 
     func search(query: String, topK: Int) async throws -> [MemorySearchResult] {
+        try await search(query: query, topK: topK, projectPath: nil)
+    }
+
+    func search(query: String, topK: Int, projectPath: String?) async throws -> [MemorySearchResult] {
         guard topK > 0 else { return [] }
         try ensureOpen()
 
@@ -60,7 +64,7 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
             return []
         }
 
-        let rows = try fetchAllEmbedded()
+        let rows = try fetchAllEmbedded(projectPath: projectPath)
         let scored = rows.map { row -> MemorySearchResult in
             MemorySearchResult(chunk: row.chunk, score: cosine(queryVector, row.embedding))
         }
@@ -177,22 +181,37 @@ actor LocalVectorPlugin: MemoryBackendPlugin {
         let embedding: [Float]
     }
 
-    private func fetchAllEmbedded() throws -> [EmbeddedRow] {
+    private func fetchAllEmbedded(projectPath: String? = nil) throws -> [EmbeddedRow] {
         guard let db else {
             return []
         }
 
-        let sql = """
+        let scopedProjectPath = projectPath?.isEmpty == false ? projectPath : nil
+        let sql = if scopedProjectPath != nil {
+            """
+            SELECT id, content, chunk_type, tags, session_id, project_path, created_at, embedding
+            FROM memory_chunks
+            WHERE embedding IS NOT NULL AND project_path = ?;
+            """
+        } else {
+            """
             SELECT id, content, chunk_type, tags, session_id, project_path, created_at, embedding
             FROM memory_chunks
             WHERE embedding IS NOT NULL;
             """
+        }
 
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let stmt else {
             throw LocalVectorError.cannotOpenDatabase(databasePath)
         }
         defer { sqlite3_finalize(stmt) }
+
+        if let scopedProjectPath {
+            scopedProjectPath.withCString { cString in
+                _ = sqlite3_bind_text(stmt, 1, cString, -1, Self.sqliteTransient)
+            }
+        }
 
         var rows: [EmbeddedRow] = []
         while sqlite3_step(stmt) == SQLITE_ROW {

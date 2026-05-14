@@ -7,7 +7,7 @@
 // the engine's provider instances via syncEngineProviders().
 //
 // See: Developer Manual § "Session & State Management → AppState"
-import Foundation
+@preconcurrency import Foundation
 import Combine
 import SwiftUI
 
@@ -96,6 +96,9 @@ final class AppState: ObservableObject {
     private var loraProviderCancellable: AnyCancellable?
     private var keepAwakeCancellable: AnyCancellable?
     private var githubTokenObserver: NSObjectProtocol?
+    private var providerKeyObserver: NSObjectProtocol?
+    private var selectProviderObserver: NSObjectProtocol?
+    private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
     private var cancellables: Set<AnyCancellable> = []
 
     init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
@@ -262,7 +265,7 @@ final class AppState: ObservableObject {
 
         // When Settings writes an API key its registry posts this; refresh our own
         // keyedProviderIDs from Keychain so the HUD updates without a restart.
-        NotificationCenter.default.addObserver(
+        providerKeyObserver = NotificationCenter.default.addObserver(
             forName: .merlinProviderKeyDidChange,
             object: nil,
             queue: .main
@@ -275,7 +278,7 @@ final class AppState: ObservableObject {
         // Receive provider selections posted by MerlinCommands.
         // NotificationCenter is used here because @FocusedBinding writes
         // inside CommandMenu are unreliable in the current SwiftUI/macOS runtime.
-        NotificationCenter.default.addObserver(
+        selectProviderObserver = NotificationCenter.default.addObserver(
             forName: .merlinSelectProvider,
             object: nil,
             queue: .main
@@ -293,7 +296,7 @@ final class AppState: ObservableObject {
             await self?.refreshParameterAdvisories()
         }
 
-        settingsCancellable = AppSettings.shared.objectWillChange.sink { [weak self] _ in
+        settingsCancellable = AppSettings.shared.objectWillChange.dropFirst().sink { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.syncEngineProviders()
                 await self?.syncMemoryBackend()
@@ -378,10 +381,26 @@ final class AppState: ObservableObject {
         MerlinAppIntentsSupport.install(appState: self)
     }
 
+    deinit {
+        if let githubTokenObserver {
+            NotificationCenter.default.removeObserver(githubTokenObserver)
+        }
+        if let providerKeyObserver {
+            NotificationCenter.default.removeObserver(providerKeyObserver)
+        }
+        if let selectProviderObserver {
+            NotificationCenter.default.removeObserver(selectProviderObserver)
+        }
+        pendingAuthContinuation?.resume(returning: .deny)
+        pendingAuthContinuation = nil
+    }
+
     func resolveAuth(_ decision: AuthDecision) {
-        pendingAuthRequest?.resolve(decision)
+        let continuation = pendingAuthContinuation
+        pendingAuthContinuation = nil
         pendingAuthRequest = nil
         showAuthPopup = false
+        continuation?.resume(returning: decision)
     }
 
     func newSession() {
@@ -695,15 +714,27 @@ extension Notification.Name {
 
 extension AppState: AuthPresenter {
     func requestDecision(tool: String, argument: String, suggestedPattern: String) async -> AuthDecision {
-        await withCheckedContinuation { continuation in
-            pendingAuthRequest = AuthRequest(
-                tool: tool,
-                argument: argument,
-                reasoningStep: "",
-                suggestedPattern: suggestedPattern,
-                resolve: { continuation.resume(returning: $0) }
-            )
-            showAuthPopup = true
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pendingAuthContinuation?.resume(returning: .deny)
+                pendingAuthContinuation = continuation
+                pendingAuthRequest = AuthRequest(
+                    tool: tool,
+                    argument: argument,
+                    reasoningStep: "",
+                    suggestedPattern: suggestedPattern,
+                    resolve: { [weak self] decision in
+                        Task { @MainActor in
+                            self?.resolveAuth(decision)
+                        }
+                    }
+                )
+                showAuthPopup = true
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.resolveAuth(.deny)
+            }
         }
     }
 }
