@@ -63,6 +63,7 @@ struct PRStatus: Decodable, Identifiable, Sendable {
     }
 }
 
+@MainActor
 final class PRMonitor: ObservableObject {
     @Published private(set) var monitoredPRs: [PRStatus] = []
     @Published var autoMergeEnabled: Bool = false
@@ -82,7 +83,10 @@ final class PRMonitor: ObservableObject {
         guard repoInfo != nil else { return }
         registerWorkspaceNotifications()
         schedulePolling(interval: activeInterval)
-        Task { await poll() }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.poll()
+        }
     }
 
     func stop() {
@@ -92,7 +96,7 @@ final class PRMonitor: ObservableObject {
         observationTokens.removeAll()
     }
 
-    static func detectRepoInfo(projectPath: String) -> RepoInfo? {
+    nonisolated static func detectRepoInfo(projectPath: String) -> RepoInfo? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
         process.arguments = ["-C", projectPath, "remote", "-v"]
@@ -109,7 +113,7 @@ final class PRMonitor: ObservableObject {
         return parseRepoInfo(from: output)
     }
 
-    static func parseRepoInfo(from remoteOutput: String) -> RepoInfo? {
+    nonisolated static func parseRepoInfo(from remoteOutput: String) -> RepoInfo? {
         for rawLine in remoteOutput.split(separator: "\n") {
             let line = String(rawLine)
             if let repo = parseGitHubRemote(line, marker: "https://github.com/") {
@@ -122,7 +126,7 @@ final class PRMonitor: ObservableObject {
         return nil
     }
 
-    private static func parseGitHubRemote(_ line: String, marker: String) -> RepoInfo? {
+    nonisolated private static func parseGitHubRemote(_ line: String, marker: String) -> RepoInfo? {
         guard let start = line.range(of: marker)?.upperBound else {
             return nil
         }
@@ -146,14 +150,20 @@ final class PRMonitor: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.schedulePolling(interval: self?.activeInterval ?? 60)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.schedulePolling(interval: self.activeInterval)
+            }
         }
         let deactivate = center.addObserver(
             forName: NSWorkspace.didDeactivateApplicationNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.schedulePolling(interval: self?.backgroundInterval ?? 300)
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.schedulePolling(interval: self.backgroundInterval)
+            }
         }
         observationTokens = [activate, deactivate]
     }
@@ -165,8 +175,9 @@ final class PRMonitor: ObservableObject {
         currentInterval = interval
         pollTimer?.invalidate()
         pollTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
-            Task { [weak self] in
-                await self?.poll()
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.poll()
             }
         }
     }

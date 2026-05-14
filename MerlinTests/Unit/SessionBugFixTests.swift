@@ -46,7 +46,7 @@ final class SessionBugFixTests: XCTestCase {
 
         let ref = ProjectRef(path: "/tmp/merlin-193a-\(UUID().uuidString)",
                              displayName: "test")
-        let live = LiveSession(projectRef: ref, sessionStore: store)
+        _ = LiveSession(projectRef: ref, sessionStore: store)
 
         // Allow any async init tasks to settle.
         await Task.yield()

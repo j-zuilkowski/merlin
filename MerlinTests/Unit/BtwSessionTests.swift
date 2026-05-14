@@ -8,7 +8,6 @@ final class BtwSessionTests: XCTestCase {
 
     func test_ask_calls_provider_once() async throws {
         let provider = MockProvider(response: "Paris is the capital of France.")
-        let contextManager = ContextManager()
         let session = BtwSession()
 
         await session.ask(question: "What is the capital of France?", provider: provider)

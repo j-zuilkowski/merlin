@@ -403,12 +403,12 @@ struct ChatView: View {
     /// Directories to skip during @-mention file search. These are build artifact and
     /// dependency directories that are large and never contain source files the user
     /// would want to @-mention.
-    private static let findFilesSkippedDirs: Set<String> = [
+    nonisolated private static let findFilesSkippedDirs: Set<String> = [
         "target", ".build", "DerivedData", "node_modules", ".git",
         ".svn", "__pycache__", ".tox", "venv", ".venv", "dist", "build",
     ]
 
-    private static func findFiles(matching query: String, in projectPath: String) -> [String] {
+    nonisolated private static func findFiles(matching query: String, in projectPath: String) -> [String] {
         guard !projectPath.isEmpty, let enumerator = FileManager.default.enumerator(
             at: URL(fileURLWithPath: projectPath),
             includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],

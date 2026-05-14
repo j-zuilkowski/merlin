@@ -1,12 +1,13 @@
 import XCTest
 @testable import Merlin
 
-@MainActor
 final class KiCadV2CoreContractsTests: XCTestCase {
 
-    override func tearDown() {
-        ToolRegistry.shared.reset()
-        super.tearDown()
+    override func tearDown() async throws {
+        await MainActor.run {
+            ToolRegistry.shared.reset()
+        }
+        try await super.tearDown()
     }
 
     func test_statusWireValues_matchArchitectureContract() {
@@ -137,11 +138,13 @@ final class KiCadV2CoreContractsTests: XCTestCase {
         XCTAssertNotNil(tool.function.parameters.properties?["extraction_profile"])
     }
 
-    func test_registerBuiltins_registersKiCadTools() {
-        ToolRegistry.shared.registerBuiltins()
+    func test_registerBuiltins_registersKiCadTools() async {
+        await MainActor.run {
+            ToolRegistry.shared.registerBuiltins()
 
-        for requiredName in KiCadToolDefinitions.requiredToolNames {
-            XCTAssertTrue(ToolRegistry.shared.contains(named: requiredName), "ToolRegistry missing: \(requiredName)")
+            for requiredName in KiCadToolDefinitions.requiredToolNames {
+                XCTAssertTrue(ToolRegistry.shared.contains(named: requiredName), "ToolRegistry missing: \(requiredName)")
+            }
         }
     }
 }

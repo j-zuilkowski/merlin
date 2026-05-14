@@ -54,7 +54,7 @@ enum FileSystemTools {
 
             var results: [String] = []
             let limit = 500
-            for case let fileURL as URL in enumerator {
+            while let fileURL = enumerator.nextObject() as? URL {
                 // Skip known huge directories entirely.
                 if skipDirs.contains(fileURL.lastPathComponent) {
                     enumerator.skipDescendants()

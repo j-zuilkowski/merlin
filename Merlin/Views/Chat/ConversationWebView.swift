@@ -136,6 +136,7 @@ struct ConversationWebView: NSViewRepresentable {
 
     // MARK: – Coordinator
 
+    @MainActor
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var onToggleThinking: (UUID) -> Void
         var onToggleTool: (String) -> Void
@@ -159,9 +160,7 @@ struct ConversationWebView: NSViewRepresentable {
             guard message.name == "merlinBridge",
                   let body = message.body as? [String: String] else { return }
 
-            DispatchQueue.main.async {
-                self.handleBridgeBody(body)
-            }
+            handleBridgeBody(body)
         }
 
         /// Processes a decoded bridge message body. Extracted for unit-test access.
@@ -185,7 +184,7 @@ struct ConversationWebView: NSViewRepresentable {
         // WKNavigationDelegate — block external navigation; allow initial load
         func webView(_ webView: WKWebView,
                      decidePolicyFor navigationAction: WKNavigationAction,
-                     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+                     decisionHandler: @escaping @MainActor (WKNavigationActionPolicy) -> Void) {
             switch navigationAction.navigationType {
             case .other: decisionHandler(.allow)   // loadHTMLString
             default:     decisionHandler(.cancel)   // link clicks, form submits, etc.

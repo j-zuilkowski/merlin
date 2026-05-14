@@ -221,7 +221,7 @@ private struct BOMLineMetadata: Sendable, Equatable {
 
 private enum BOMLineMetadataStore {
     private static let lock = NSLock()
-    private static var store: [String: BOMLineMetadata] = [:]
+    private nonisolated(unsafe) static var store: [String: BOMLineMetadata] = [:]
 
     static func set(_ metadata: BOMLineMetadata, for key: String) {
         lock.lock()

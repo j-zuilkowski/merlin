@@ -8,7 +8,6 @@ final class InstructionDistillationTests: XCTestCase {
     // MARK: - distilledCoreSystemPrompt
 
     func test_distilledCorePrompt_is_shorter_than_original() {
-        let engine = AgenticEngine()
         // Compare raw character counts as a proxy for token count.
         let distilledLen = AgenticEngine.distilledCoreSystemPrompt.count
         let originalLen  = AgenticEngine.coreSystemPromptForTesting.count
