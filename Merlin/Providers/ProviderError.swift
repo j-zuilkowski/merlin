@@ -50,6 +50,12 @@ enum ProviderError: Error, Sendable {
             || lower.contains("input too long")
             || lower.contains("prompt is too long")
             || lower.contains("context window")
+            || lower.contains("request body too large")
+            || lower.contains("payload too large")
+            || lower.contains("request entity too large")
+            || lower.contains("body size limit exceeded")
+            || lower.contains("maximum request body size")
+            || lower.contains("content length exceeded")
     }
 
     // MARK: - Back-off

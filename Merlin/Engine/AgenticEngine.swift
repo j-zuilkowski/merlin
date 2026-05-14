@@ -168,6 +168,7 @@ final class AgenticEngine {
     private var ceilingContinuationCount = 0
     private var contextLengthRetryCount = 0
     private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
+    private let maxContextOverrunRecoveryAttempts = 2
 
     /// Maximum number of auto-continuations triggered by ceiling hits before the
     /// engine gives up and stops. Each continuation gets its own full loop budget.
@@ -1029,12 +1030,33 @@ final class AgenticEngine {
                 _ = await context.compactWithSummaryIfNeeded(provider: provider)
                 emitCompactionNoteIfNeeded()
             }
-        } catch let pe as ProviderError where pe.isContextLengthExceeded && contextLengthRetryCount == 0 {
+        } catch let pe as ProviderError where pe.isContextLengthExceeded {
+            guard contextLengthRetryCount < maxContextOverrunRecoveryAttempts else {
+                TelemetryEmitter.shared.emit("engine.turn.error", data: [
+                    "turn": turn,
+                    "slot": workingSlot.rawValue,
+                    "provider_id": selectProvider(for: userMessage).id,
+                    "error_domain": (pe as NSError).domain,
+                    "error_code": (pe as NSError).code
+                ])
+                throw pe
+            }
+
             contextLengthRetryCount += 1
+            let attempt = contextLengthRetryCount
             continuation.yield(.systemNote(
-                "[context too large — compacting and retrying…]"
+                "[context overrun - compacting and restarting attempt \(attempt)/\(maxContextOverrunRecoveryAttempts)]"
             ))
             context.forceCompaction()
+            context.append(Message(
+                role: .user,
+                content: .text(contextOverrunRecoveryDirective(
+                    attempt: attempt,
+                    maxAttempts: maxContextOverrunRecoveryAttempts,
+                    userMessage: userMessage
+                )),
+                timestamp: Date()
+            ))
             try await runLoop(
                 userMessage: userMessage,
                 continuation: continuation,
@@ -1793,6 +1815,23 @@ final class AgenticEngine {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    private func contextOverrunRecoveryDirective(
+        attempt: Int,
+        maxAttempts: Int,
+        userMessage: String
+    ) -> String {
+        """
+        CONTEXT_OVERRUN_RECOVERY attempt \(attempt)/\(maxAttempts)
+        The previous request body or context exceeded the provider limit while working on:
+        \(userMessage)
+
+        Continue from the interrupted task.
+        Do not restart completed work.
+        Summarize what was already done if needed.
+        Proceed from the next unresolved step.
+        """
     }
 
     private func approximateTokens(in context: ContextManager) -> Int {
