@@ -15,8 +15,7 @@ final class MerlinV2VersionTests: XCTestCase {
     }
 
     func test_releaseNotesFile_exists() {
-        XCTAssertTrue(FileManager.default.fileExists(atPath: repositoryRootURL
-            .appendingPathComponent("RELEASE-v2.0.0.md").path))
+        XCTAssertNotNil(resolveFileURL("RELEASE-v2.0.0.md"))
     }
 
     func test_releaseNotes_mentionsV2ElectronicsScope() throws {
@@ -31,8 +30,28 @@ final class MerlinV2VersionTests: XCTestCase {
     }
 
     private func loadFile(_ path: String) throws -> String {
-        let fileURL = repositoryRootURL.appendingPathComponent(path)
+        let fileURL = try XCTUnwrap(resolveFileURL(path))
         return try String(contentsOf: fileURL, encoding: .utf8)
+    }
+
+    private func resolveFileURL(_ path: String) -> URL? {
+        // Prefer bundled resources so test runs do not depend on host filesystem permissions.
+        if path == "project.yml",
+           let bundled = Bundle(for: Self.self).url(forResource: "project", withExtension: "yml") {
+            return bundled
+        }
+
+        if path == "RELEASE-v2.0.0.md",
+           let bundled = Bundle(for: Self.self).url(forResource: "RELEASE-v2.0.0", withExtension: "md") {
+            return bundled
+        }
+
+        let repositoryURL = repositoryRootURL.appendingPathComponent(path)
+        if FileManager.default.fileExists(atPath: repositoryURL.path) {
+            return repositoryURL
+        }
+
+        return nil
     }
 
     private var repositoryRootURL: URL {
