@@ -19,7 +19,7 @@ final class MCPSSETransportTests: XCTestCase {
 
             """
         )
-        XCTAssertEqual(frames, [#"{"jsonrpc":"2.0",\n"id":1,\n"result":{"ok":true}}"#])
+        XCTAssertEqual(frames, ["{\"jsonrpc\":\"2.0\",\n\"id\":1,\n\"result\":{\"ok\":true}}"])
     }
 
     func test_parser_ignoresCommentsAndHeartbeats() {

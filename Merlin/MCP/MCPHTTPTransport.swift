@@ -109,7 +109,12 @@ final class MCPHTTPTransport: MCPTransportSession, @unchecked Sendable {
             throw MCPTransportError.httpStatus(http.statusCode, body)
         }
 
-        let raw = try JSONSerialization.jsonObject(with: data)
+        let raw: Any
+        do {
+            raw = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw MCPTransportError.decodeError(error.localizedDescription)
+        }
         guard let object = raw as? [String: Any] else {
             throw MCPTransportError.decodeError("Expected top-level JSON object")
         }
