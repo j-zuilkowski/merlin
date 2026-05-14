@@ -8,7 +8,7 @@ struct Session: Codable, Identifiable, Sendable {
     var providerDefault: String = "deepseek-v4-pro"
     var messages: [Message]
     var authPatternsUsed: [String] = []
-    var activeDomainIDs: [String] = ["software"]
+    var activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs
     var archived: Bool = false
 
     enum CodingKeys: String, CodingKey {
@@ -35,7 +35,7 @@ struct Session: Codable, Identifiable, Sendable {
         providerDefault: String = "deepseek-v4-pro",
         messages: [Message],
         authPatternsUsed: [String] = [],
-        activeDomainIDs: [String] = ["software"],
+        activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
         archived: Bool = false
     ) {
         self.id = id
@@ -45,7 +45,7 @@ struct Session: Codable, Identifiable, Sendable {
         self.providerDefault = providerDefault
         self.messages = messages
         self.authPatternsUsed = authPatternsUsed
-        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         self.archived = archived
     }
 
@@ -64,7 +64,7 @@ struct Session: Codable, Identifiable, Sendable {
         } else if let decodedDomain = try legacyContainer.decodeIfPresent(String.self, forKey: .activeDomainID) {
             activeDomainIDs = [decodedDomain]
         } else {
-            activeDomainIDs = ["software"]
+            activeDomainIDs = SoftwareDomain.defaultActiveDomainIDs
         }
         archived = try container.decodeIfPresent(Bool.self, forKey: .archived) ?? false
     }

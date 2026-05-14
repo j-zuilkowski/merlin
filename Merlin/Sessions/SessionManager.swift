@@ -1,8 +1,14 @@
 import Foundation
+import OSLog
 import SwiftUI
 
 @MainActor
 final class SessionManager: ObservableObject {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "Merlin",
+        category: "SessionManager"
+    )
+
     let projectRef: ProjectRef
     let sessionStore: SessionStore
     @Published private(set) var liveSessions: [LiveSession] = []
@@ -19,10 +25,13 @@ final class SessionManager: ObservableObject {
 
     @discardableResult
     func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
+        let activeDomainIDs = await DomainRegistry.shared.normalizedActiveDomainIDs(
+            ids: AppSettings.shared.activeDomainIDs
+        )
         let session = LiveSession(
             projectRef: projectRef,
             sessionStore: sessionStore,
-            activeDomainIDs: AppSettings.shared.activeDomainIDs
+            activeDomainIDs: activeDomainIDs
         )
         session.permissionMode = mode
         session.appState.engine.sessionID = session.id
@@ -38,11 +47,17 @@ final class SessionManager: ObservableObject {
     /// on disk is not modified until the user sends a new message.
     @discardableResult
     func restore(session: Session) async -> LiveSession {
+        let normalizedDomainIDs = await DomainRegistry.shared.normalizedActiveDomainIDs(ids: session.activeDomainIDs)
+        if normalizedDomainIDs != session.activeDomainIDs {
+            Self.logger.warning(
+                "Restoring session \(session.id.uuidString, privacy: .public) dropped stale active domains. Original=\(session.activeDomainIDs.joined(separator: ","), privacy: .public) Normalized=\(normalizedDomainIDs.joined(separator: ","), privacy: .public)"
+            )
+        }
         let live = LiveSession(
             projectRef: projectRef,
             initialMessages: session.messages,
             sessionStore: sessionStore,
-            activeDomainIDs: session.activeDomainIDs
+            activeDomainIDs: normalizedDomainIDs
         )
         live.title = session.title
         live.appState.engine.sessionID = live.id

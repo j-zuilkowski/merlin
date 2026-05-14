@@ -98,9 +98,9 @@ final class AppState: ObservableObject {
     private var githubTokenObserver: NSObjectProtocol?
     private var cancellables: Set<AnyCancellable> = []
 
-    init(projectPath: String = "", activeDomainIDs: [String] = ["software"]) {
+    init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.projectPath = projectPath
-        self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         self.activeDomainIDs = self.initialActiveDomainIDs
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
@@ -463,7 +463,7 @@ final class AppState: ObservableObject {
             activeLocalProviderID = nil
         }
         if let activeDomainIDs {
-            self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+            self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         }
         engine.activeDomainIDs = self.activeDomainIDs
         Task { [weak self] in await self?.refreshParameterAdvisories() }

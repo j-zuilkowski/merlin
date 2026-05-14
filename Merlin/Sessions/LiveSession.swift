@@ -44,11 +44,11 @@ final class LiveSession: ObservableObject, Identifiable {
     init(projectRef: ProjectRef,
          initialMessages: [Message] = [],
          sessionStore: SessionStore? = nil,
-         activeDomainIDs: [String] = ["software"]) {
+         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.id = UUID()
         self.title = "New Session"
         self.createdAt = Date()
-        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         self.appState = AppState(projectPath: projectRef.path, activeDomainIDs: self.activeDomainIDs)
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry

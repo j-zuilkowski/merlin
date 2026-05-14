@@ -98,10 +98,10 @@ final class AppSettings: ObservableObject {
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
     @Published var checkCommand: String = ""
-    @Published var activeDomainID: String = "software" {
+    @Published var activeDomainID: String = SoftwareDomain.defaultID {
         didSet { syncActiveDomainIDs(from: activeDomainID) }
     }
-    @Published var activeDomainIDs: [String] = ["software"] {
+    @Published var activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs {
         didSet { syncActiveDomainID(from: activeDomainIDs) }
     }
     @Published var maxPlanRetries: Int = 2
@@ -517,7 +517,7 @@ final class AppSettings: ObservableObject {
                 }
             }
         }
-        if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainIDs.count > 1 || activeDomainID != "software" {
+        if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainIDs.count > 1 || activeDomainID != SoftwareDomain.defaultID {
             lines.append("")
             lines.append("[domain]")
             if activeDomainIDs.count > 1 {
@@ -954,7 +954,7 @@ final class AppSettings: ObservableObject {
                 normalized.append(id)
             }
         }
-        return normalized.isEmpty ? ["software"] : normalized
+        return normalized.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : normalized
     }
 
     private func syncActiveDomainIDs(from id: String) {

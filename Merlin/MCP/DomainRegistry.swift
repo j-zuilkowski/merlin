@@ -7,7 +7,7 @@ actor DomainRegistry {
     static let shared = DomainRegistry()
 
     private var plugins: [String: any DomainPlugin] = [:]
-    private var activeDomainIDs: [String] = ["software"]
+    private var activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs
 
     init() {
         // SoftwareDomain is always registered and cannot be removed.
@@ -20,7 +20,7 @@ actor DomainRegistry {
     }
 
     func unregister(id: String) {
-        guard id != "software" else { return }
+        guard id != SoftwareDomain.defaultID else { return }
         plugins.removeValue(forKey: id)
         activeDomainIDs = normalizeActiveDomainIDs(activeDomainIDs.filter { $0 != id })
     }
@@ -31,7 +31,7 @@ actor DomainRegistry {
 
     func activeDomain() -> any DomainPlugin {
         let domains = activeDomains()
-        return domains.first(where: { $0.id != "software" }) ?? domains.first ?? SoftwareDomain()
+        return domains.first(where: { $0.id != SoftwareDomain.defaultID }) ?? domains.first ?? SoftwareDomain()
     }
 
     func activeDomains() -> [any DomainPlugin] {
@@ -42,9 +42,13 @@ actor DomainRegistry {
         normalizeActiveDomainIDs(ids).compactMap { plugins[$0] }
     }
 
+    func normalizedActiveDomainIDs(ids: [String]) -> [String] {
+        normalizeActiveDomainIDs(ids)
+    }
+
     func activeDomain(ids: [String]) -> any DomainPlugin {
         let domains = activeDomains(ids: ids)
-        return domains.first(where: { $0.id != "software" }) ?? domains.first ?? SoftwareDomain()
+        return domains.first(where: { $0.id != SoftwareDomain.defaultID }) ?? domains.first ?? SoftwareDomain()
     }
 
     func taskTypes(ids: [String]) -> [DomainTaskType] {
@@ -65,13 +69,13 @@ actor DomainRegistry {
     }
 
     private func normalizeActiveDomainIDs(_ ids: [String]) -> [String] {
-        var normalized: [String] = ["software"]
+        var normalized: [String] = SoftwareDomain.defaultActiveDomainIDs
         for id in ids {
-            guard id != "software", plugins[id] != nil else { continue }
+            guard id != SoftwareDomain.defaultID, plugins[id] != nil else { continue }
             if !normalized.contains(id) {
                 normalized.append(id)
             }
         }
-        return normalized.isEmpty ? ["software"] : normalized
+        return normalized.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : normalized
     }
 }

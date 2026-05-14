@@ -4,7 +4,10 @@ import Foundation
 /// Covers Swift/Xcode natively and any language/platform via SSH or MCP plugins.
 struct SoftwareDomain: DomainPlugin {
 
-    let id = "software"
+    static let defaultID = "software"
+    static let defaultActiveDomainIDs = [defaultID]
+
+    let id = Self.defaultID
     let displayName = "Software Development"
     let highStakesKeywords = [
         "authentication", "auth", "security", "migration", "schema migration",
@@ -15,13 +18,13 @@ struct SoftwareDomain: DomainPlugin {
     let mcpToolNames: [String] = []
 
     let taskTypes: [DomainTaskType] = [
-        DomainTaskType(domainID: "software", name: "code_generation",   displayName: "Code Generation"),
-        DomainTaskType(domainID: "software", name: "refactoring",        displayName: "Refactoring"),
-        DomainTaskType(domainID: "software", name: "test_writing",       displayName: "Test Writing"),
-        DomainTaskType(domainID: "software", name: "explanation",        displayName: "Explanation"),
-        DomainTaskType(domainID: "software", name: "debugging",          displayName: "Debugging"),
-        DomainTaskType(domainID: "software", name: "schema_migration",   displayName: "Schema Migration"),
-        DomainTaskType(domainID: "software", name: "security_logic",     displayName: "Security Logic"),
+        DomainTaskType(domainID: Self.defaultID, name: "code_generation",   displayName: "Code Generation"),
+        DomainTaskType(domainID: Self.defaultID, name: "refactoring",        displayName: "Refactoring"),
+        DomainTaskType(domainID: Self.defaultID, name: "test_writing",       displayName: "Test Writing"),
+        DomainTaskType(domainID: Self.defaultID, name: "explanation",        displayName: "Explanation"),
+        DomainTaskType(domainID: Self.defaultID, name: "debugging",          displayName: "Debugging"),
+        DomainTaskType(domainID: Self.defaultID, name: "schema_migration",   displayName: "Schema Migration"),
+        DomainTaskType(domainID: Self.defaultID, name: "security_logic",     displayName: "Security Logic"),
     ]
 
     var verificationBackend: any VerificationBackend {

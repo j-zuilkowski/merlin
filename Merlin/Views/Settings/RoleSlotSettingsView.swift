@@ -173,7 +173,7 @@ struct RoleSlotSettingsView: View {
                     set: { settings.activeDomainID = $0 }
                 )
             ) {
-                Text("Software Development").tag("software")
+                Text("Software Development").tag(SoftwareDomain.defaultID)
             }
             .labelsHidden()
             .frame(maxWidth: 260)

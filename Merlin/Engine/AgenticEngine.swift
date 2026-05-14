@@ -74,7 +74,7 @@ final class AgenticEngine {
     var loraProvider: (any LLMProvider)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
-    var activeDomainIDs: [String] = ["software"] {
+    var activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs {
         didSet { _stablePrefixDirty = true }
     }
     var permissionMode: PermissionMode = .ask {
@@ -227,7 +227,7 @@ final class AgenticEngine {
     @Published var isRunning: Bool = false
 
     init(slotAssignments: [AgentSlot: String] = [:],
-         activeDomainIDs: [String] = ["software"],
+         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
          registry: ProviderRegistry? = nil,
          toolRouter: ToolRouter,
          contextManager: ContextManager,
@@ -235,7 +235,7 @@ final class AgenticEngine {
          kagEngine: KAGEngine = .shared,
          memoryBackend: (any MemoryBackendPlugin)? = nil) {
         self.slotAssignments = slotAssignments
-        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         self.registry = registry
         self.toolRouter = toolRouter
         self.contextManager = contextManager

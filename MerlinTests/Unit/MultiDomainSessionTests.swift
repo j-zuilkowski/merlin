@@ -49,8 +49,8 @@ final class MultiDomainSessionTests: XCTestCase {
 
         XCTAssertEqual(software.activeDomainIDs, ["software"])
         XCTAssertEqual(software.appState.engine.activeDomainIDs, ["software"])
-        XCTAssertEqual(restored.activeDomainIDs, ["pcb"])
-        XCTAssertEqual(restored.appState.engine.activeDomainIDs, ["pcb"])
+        XCTAssertEqual(restored.activeDomainIDs, ["software", "pcb"])
+        XCTAssertEqual(restored.appState.engine.activeDomainIDs, ["software", "pcb"])
 
         let softwarePrompt = await software.appState.engine.buildSystemPromptForTesting(slot: .execute)
         let restoredPrompt = await restored.appState.engine.buildSystemPromptForTesting(slot: .execute)
