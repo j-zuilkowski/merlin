@@ -430,6 +430,7 @@
 		F1AE98BBCCE311B91074BBEE /* BtwSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3CDA79F36E4AF8736659AC /* BtwSession.swift */; };
 		F1D77A7787F9B481A8996CBE /* AgenticEngineV5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A866E3A6514CD973D0D095 /* AgenticEngineV5Tests.swift */; };
 		F1F44980187BBD00B7ED558B /* AgenticEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8375634B4D905BCCA581AED /* AgenticEngineTests.swift */; };
+		F20240071D605F11C5E0B419 /* AppIntentsSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECA44577366CDE26970DB3DE /* AppIntentsSupportTests.swift */; };
 		F216545B81184CABCDFE2292 /* SettingsWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 513B34F67D09BA6824D13F40 /* SettingsWindowView.swift */; };
 		F2782415BE26DBA76D3D9D0F /* CLAUDEMDLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEAE4AFECE902973EADC31F /* CLAUDEMDLoader.swift */; };
 		F2993FFAA81156F5AE7AAC9D /* SkillsPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618333C226998B947B39EA5 /* SkillsPicker.swift */; };
@@ -888,6 +889,7 @@
 		EA984C160727658DFC5F3BD0 /* LoRASettingsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRASettingsUITests.swift; sourceTree = "<group>"; };
 		EBB0BAB3ADA2C95F89E9E702 /* LiveSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSession.swift; sourceTree = "<group>"; };
 		EBDC149E8CC5B9C0F64D2EFD /* SessionDotAndTitleFixTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionDotAndTitleFixTests.swift; sourceTree = "<group>"; };
+		ECA44577366CDE26970DB3DE /* AppIntentsSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentsSupportTests.swift; sourceTree = "<group>"; };
 		ED586ABBF357535EF3A79D23 /* LocalVectorPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVectorPlugin.swift; sourceTree = "<group>"; };
 		EDDE08696C102B8285B1D5D4 /* SchedulerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerView.swift; sourceTree = "<group>"; };
 		EEC22BB6B8B2AFAEF502476E /* FileSystemTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemTools.swift; sourceTree = "<group>"; };
@@ -1231,6 +1233,7 @@
 				F9B5BF2FC12D8E3AB2A1A5D7 /* AgentRegistryTests.swift */,
 				638C033D3EC5A1E4DE859F84 /* AnthropicProviderTests.swift */,
 				E7753CF650D45A07ADD16E3B /* AppControlTests.swift */,
+				ECA44577366CDE26970DB3DE /* AppIntentsSupportTests.swift */,
 				085460D786AF42FCACB6A117 /* AppSettingsAdditionsTests.swift */,
 				DCFD70396141F3CD97D01D02 /* AppSettingsKAGTests.swift */,
 				9EA9D168EE03ED999D3C9E6E /* AppSettingsTests.swift */,
@@ -1986,6 +1989,7 @@
 				F1D77A7787F9B481A8996CBE /* AgenticEngineV5Tests.swift in Sources */,
 				30C57F43B8ABAF80F59A95CB /* AnthropicProviderTests.swift in Sources */,
 				CB42C139CB6167D751BDE742 /* AppControlTests.swift in Sources */,
+				F20240071D605F11C5E0B419 /* AppIntentsSupportTests.swift in Sources */,
 				0A6ECB5A520D7D890A8B5D6C /* AppSettingsAdditionsTests.swift in Sources */,
 				E837986D4ED48347E955ECE2 /* AppSettingsKAGTests.swift in Sources */,
 				3212EEE0FE3A78B6F379EBFA /* AppSettingsTests.swift in Sources */,
