@@ -868,10 +868,8 @@ final class AgenticEngine {
                     )
                 }
 
-                // Pre-flight budget gate. Throws EngineError.preflightOverflow when the
-                // request exceeds the provider budget even after compaction. Later phases
-                // (237b, 239b) intercept that error for escalation; for now it surfaces
-                // as an error event in the UI.
+                // Pre-flight budget gate. Working-set caps are applied inside the
+                // preflight path before the request is estimated.
                 try await preflightCheck(request: request, provider: provider)
 
                 // Engine-level retry for transient provider errors (429, 5xx, network drops).
@@ -1064,7 +1062,7 @@ final class AgenticEngine {
                 )
                 // Prompt compression: mid-loop LLM summarisation (Phase 206b).
                 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
-                _ = await context.compactWithSummaryIfNeeded(provider: provider)
+                context.compactAfterToolBurst()
                 emitCompactionNoteIfNeeded()
             }
         } catch let pe as ProviderError where pe.isContextLengthExceeded {
@@ -1914,6 +1912,7 @@ final class AgenticEngine {
         request: CompletionRequest,
         provider: any LLMProvider
     ) async throws -> PreflightOutcome {
+        await applyWorkingSetCapsBeforeSend(provider: provider)
         let budget = effectiveBudget(for: provider)
         let estimated = TokenEstimator.estimate(
             request: request,
@@ -1949,6 +1948,12 @@ final class AgenticEngine {
             "budget": budget.usableInputTokens
         ])
         throw EngineError.preflightOverflow(estimated: reEstimated, budget: budget.usableInputTokens)
+    }
+
+    func applyWorkingSetCapsBeforeSend(provider: any LLMProvider) async {
+        let budget = effectiveBudget(for: provider)
+        let caps = WorkingSetBudget.derive(from: budget)
+        await contextManager.applyWorkingSetCaps(caps)
     }
 
     private func effectiveBudget(for provider: any LLMProvider) -> ProviderBudget {

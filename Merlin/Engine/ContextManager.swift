@@ -15,6 +15,7 @@ class ContextManager: ObservableObject {
     private(set) var estimatedTokens: Int = 0
     private(set) var compactionCount: Int = 0
     private(set) var recentlyInvokedSkills: [Skill] = []
+    private(set) var workingSetBudget: WorkingSetBudget = .derive(from: .conservative)
 
     private let compactionThreshold = 800_000
     private let compactionKeepRecentTurns = 20
@@ -53,6 +54,29 @@ class ContextManager: ObservableObject {
         compact(force: true)
     }
 
+    /// Applies the active working-set ceilings in priority order.
+    func applyWorkingSetCaps(_ caps: WorkingSetBudget) async {
+        workingSetBudget = caps
+
+        if estimatedToolBurstTokens() > caps.toolBurstCap {
+            compactAfterToolBurst()
+        }
+
+        if estimatedRecentTurnTokens() > caps.recentTurnsCap {
+            trimOldestRecentTurns(to: caps.recentTurnsCap)
+        }
+
+        if estimatedRAGTokens() > caps.ragInjectionCap {
+            trimRAGInjection(to: caps.ragInjectionCap)
+        }
+
+        if estimatedSystemPromptTokens() > caps.systemPromptCap {
+            truncateSystemPrompt(to: caps.systemPromptCap)
+        }
+
+        estimatedTokens = recomputeEstimatedTokens()
+    }
+
     /// Token count above which `compactIfNeededBeforeRun` fires automatically.
     /// Kept well below a typical 32 K model context so the model has ample
     /// output space even in long sessions.
@@ -78,6 +102,15 @@ class ContextManager: ObservableObject {
     /// Skipped when at or below threshold — no-op cost.
     func compactIfNeededMidLoop() {
         guard estimatedTokens > midLoopCompactionThreshold else { return }
+        compact(force: true)
+    }
+
+    /// Collapses the current tool-burst window when it exceeds the active
+    /// working-set budget. This replaces the older global mid-loop compaction
+    /// call site with a component-specific check.
+    func compactAfterToolBurst() {
+        let cap = workingSetBudget.toolBurstCap
+        guard estimatedToolBurstTokens() > cap else { return }
         compact(force: true)
     }
 
@@ -199,6 +232,110 @@ class ContextManager: ObservableObject {
         messages.reduce(0) { total, message in
             total + tokenEstimate(for: message)
         }
+    }
+
+    private func estimatedSystemPromptTokens() -> Int {
+        guard let index = messages.firstIndex(where: { $0.role == .system }) else { return 0 }
+        return tokenEstimate(for: messages[index])
+    }
+
+    private func estimatedRAGTokens() -> Int {
+        guard let firstSystemIndex = messages.firstIndex(where: { $0.role == .system }) else { return 0 }
+        guard firstSystemIndex + 1 < messages.count else { return 0 }
+        return messages[(firstSystemIndex + 1)...].reduce(0) { total, message in
+            guard message.role == .system else { return total }
+            return total + tokenEstimate(for: message)
+        }
+    }
+
+    private func estimatedRecentTurnTokens() -> Int {
+        messages.reduce(0) { total, message in
+            switch message.role {
+            case .system:
+                return total
+            case .user, .assistant, .tool:
+                return total + tokenEstimate(for: message)
+            }
+        }
+    }
+
+    private func estimatedToolBurstTokens() -> Int {
+        let startIndex: Int
+        if let lastUserIndex = messages.lastIndex(where: { $0.role == .user }) {
+            startIndex = lastUserIndex + 1
+        } else {
+            startIndex = 0
+        }
+
+        guard startIndex < messages.count else { return 0 }
+        return messages[startIndex...].reduce(0) { total, message in
+            switch message.role {
+            case .assistant where (message.toolCalls?.isEmpty == false):
+                return total + tokenEstimate(for: message)
+            case .tool:
+                return total + tokenEstimate(for: message)
+            default:
+                return total
+            }
+        }
+    }
+
+    private func trimOldestRecentTurns(to cap: Int) {
+        guard cap >= 0 else { return }
+        while estimatedRecentTurnTokens() > cap {
+            guard let range = oldestRemovableRecentTurnRange() else { break }
+            messages.removeSubrange(range)
+        }
+    }
+
+    private func oldestRemovableRecentTurnRange() -> Range<Int>? {
+        guard let firstNonSystem = messages.firstIndex(where: { $0.role != .system }) else { return nil }
+        let message = messages[firstNonSystem]
+        if message.role == .assistant, let calls = message.toolCalls, !calls.isEmpty {
+            var end = firstNonSystem + 1
+            while end < messages.count, messages[end].role == .tool {
+                end += 1
+            }
+            return firstNonSystem..<end
+        }
+        return firstNonSystem..<(firstNonSystem + 1)
+    }
+
+    private func trimRAGInjection(to cap: Int) {
+        guard cap >= 0 else { return }
+        guard let firstSystemIndex = messages.firstIndex(where: { $0.role == .system }) else { return }
+
+        while estimatedRAGTokens() > cap {
+            guard let removalIndex = messages.indices.first(where: { $0 > firstSystemIndex && messages[$0].role == .system }) else {
+                break
+            }
+            messages.remove(at: removalIndex)
+        }
+    }
+
+    private func truncateSystemPrompt(to cap: Int) {
+        guard cap >= 0 else { return }
+        guard let index = messages.firstIndex(where: { $0.role == .system }) else { return }
+
+        let originalText: String
+        switch messages[index].content {
+        case .text(let text):
+            originalText = text
+        case .parts(let parts):
+            originalText = parts.map { part in
+                switch part {
+                case .text(let text): return text
+                case .imageURL(let url): return url
+                }
+            }.joined(separator: " ")
+        }
+
+        guard tokenEstimate(forText: originalText) > cap else { return }
+        let marker = "[truncated for budget]"
+        let keepCount = max(0, min(originalText.count, cap * 4))
+        let prefix = String(originalText.prefix(keepCount))
+        let truncated = prefix.isEmpty ? marker : "\(prefix) \(marker)"
+        messages[index].content = .text(truncated)
     }
 
     private func tokenEstimate(for message: Message) -> Int {
