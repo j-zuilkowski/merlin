@@ -10,6 +10,7 @@ struct ShellOutputLine: Sendable {
     enum Source: Sendable { case stdout, stderr }
     var text: String
     var source: Source
+    var exitStatus: Int32? = nil
 }
 
 enum ShellTool {
@@ -17,9 +18,10 @@ enum ShellTool {
         AsyncThrowingStream { continuation in
             let task = Task { @Sendable in
                 do {
-                    _ = try await execute(command: command, cwd: cwd, timeoutSeconds: timeoutSeconds) { line in
+                    let result = try await execute(command: command, cwd: cwd, timeoutSeconds: timeoutSeconds) { line in
                         continuation.yield(line)
                     }
+                    continuation.yield(ShellOutputLine(text: "", source: .stdout, exitStatus: result.exitCode))
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

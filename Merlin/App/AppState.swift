@@ -141,12 +141,18 @@ final class AppState: ObservableObject {
             let decoded = try JSONDecoder().decode(RunShellArgs.self, from: Data(args.utf8))
             var stdout = ""
             var stderr = ""
+            var exitCode: Int32 = 0
 
             for try await line in ShellTool.stream(
                 command: decoded.command,
                 cwd: decoded.cwd,
                 timeoutSeconds: decoded.timeout_seconds ?? 120
             ) {
+                if let status = line.exitStatus {
+                    exitCode = status
+                    continue
+                }
+
                 await MainActor.run {
                     self?.toolLogLines.append(ToolLogLine(
                         text: line.text,
@@ -162,7 +168,7 @@ final class AppState: ObservableObject {
                 }
             }
 
-            return "exit:0\nstdout:\(stdout)\nstderr:\(stderr)"
+            return "exit:\(exitCode)\nstdout:\(stdout)\nstderr:\(stderr)"
         }
 
         let ctx = ContextManager()

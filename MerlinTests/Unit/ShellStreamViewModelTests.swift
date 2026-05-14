@@ -97,7 +97,7 @@ final class ShellStreamViewModelTests: XCTestCase {
         return StreamHarness(stream: stream, continuation: continuation)
     }
 
-    private func waitUntil(timeout: TimeInterval, condition: @escaping @Sendable () -> Bool) async throws {
+    private func waitUntil(timeout: TimeInterval, condition: @escaping () -> Bool) async throws {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if condition() {
