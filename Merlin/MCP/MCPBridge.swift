@@ -7,11 +7,15 @@
 // tools are unregistered.
 //
 // See: Developer Manual § "MCP Integration → MCPBridge"
-import Foundation
+@preconcurrency import Foundation
 
 actor MCPBridge {
-    private var sessions: [String: MCPServerSession] = [:]
+    private var sessions: [String: any MCPTransportSession] = [:]
     private var registeredToolNames: Set<String> = []
+
+    static func resolvedTransportKind(for config: MCPServerConfig) -> MCPTransportKind {
+        config.transportKind
+    }
 
     static func prefixedToolName(server: String, tool: String) -> String {
         "mcp:\(server):\(tool)"
@@ -20,7 +24,7 @@ actor MCPBridge {
     func start(config: MCPConfig, toolRouter: ToolRouter) async throws {
         for (serverName, serverConfig) in config.mcpServers {
             let expandedConfig = expandEnvironment(in: serverConfig)
-            let session = MCPServerSession(name: serverName, config: expandedConfig)
+            let session = try makeSession(serverName: serverName, config: expandedConfig)
             try await session.launch()
             sessions[serverName] = session
 
@@ -96,6 +100,23 @@ actor MCPBridge {
         return copy
     }
 
+    private func makeSession(serverName: String, config: MCPServerConfig) throws -> MCPTransportSession {
+        switch Self.resolvedTransportKind(for: config) {
+        case .stdio:
+            return MCPServerSession(name: serverName, config: config)
+        case .http:
+            guard let endpoint = config.transportURL.flatMap(URL.init(string:)) else {
+                throw MCPError.processError("MCP server \(serverName) is missing a valid transport URL.")
+            }
+            return MCPHTTPTransport(endpoint: endpoint)
+        case .sse:
+            guard let endpoint = config.transportURL.flatMap(URL.init(string:)) else {
+                throw MCPError.processError("MCP server \(serverName) is missing a valid transport URL.")
+            }
+            return MCPSSETransport(endpoint: endpoint)
+        }
+    }
+
     private static func toolDefinition(serverName: String, tool: MCPToolDefinition) -> ToolDefinition {
         ToolDefinition(
             function: .init(
@@ -158,7 +179,7 @@ enum MCPError: Error {
     case processError(String)
 }
 
-private final class MCPServerSession: @unchecked Sendable {
+private final class MCPServerSession: MCPTransportSession, @unchecked Sendable {
     let name: String
     let config: MCPServerConfig
 
@@ -208,10 +229,21 @@ private final class MCPServerSession: @unchecked Sendable {
         _ = try? await sendRequest(method: "notifications/initialized", params: [:])
     }
 
+    func call(method: String, params: [String: Any]) async throws -> [String: Any] {
+        let response = try await sendRequest(method: method, params: params)
+        if let result = response["result"] as? [String: Any] {
+            return result
+        }
+        if let error = response["error"] as? [String: Any] {
+            let message = (error["message"] as? String) ?? "MCP error"
+            throw MCPError.invalidResponse(message)
+        }
+        return response
+    }
+
     func listTools() async throws -> [MCPToolDefinition] {
-        let response = try await sendRequest(method: "tools/list", params: [:])
-        guard let result = response["result"] as? [String: Any],
-              let toolsArray = result["tools"] as? [[String: Any]] else {
+        let response = try await call(method: "tools/list", params: [:])
+        guard let toolsArray = response["tools"] as? [[String: Any]] else {
             return []
         }
         let data = try JSONSerialization.data(withJSONObject: toolsArray)
@@ -219,21 +251,20 @@ private final class MCPServerSession: @unchecked Sendable {
     }
 
     func callTool(name: String, arguments: [String: Any]) async throws -> String {
-        let response = try await sendRequest(method: "tools/call", params: [
+        let result = try await call(method: "tools/call", params: [
             "name": name,
             "arguments": arguments
         ])
-        if let result = response["result"] as? [String: Any],
-           let content = result["content"] as? [[String: Any]],
+        if let content = result["content"] as? [[String: Any]],
            let first = content.first,
            let text = first["text"] as? String {
             return text
         }
-        return String(data: (try? JSONSerialization.data(withJSONObject: response)) ?? Data(),
+        return String(data: (try? JSONSerialization.data(withJSONObject: result)) ?? Data(),
                       encoding: .utf8) ?? ""
     }
 
-    func terminate() {
+    func terminate() async {
         stdoutHandle?.readabilityHandler = nil
         process?.terminate()
         process = nil
@@ -261,7 +292,7 @@ private final class MCPServerSession: @unchecked Sendable {
                 pending[id] = continuation
             }
             guard let bytes = (line + "\n").data(using: .utf8) else {
-                lock.withLock {
+                _ = lock.withLock {
                     pending.removeValue(forKey: id)
                 }
                 continuation.resume(throwing: MCPError.processError("Failed to encode request line"))

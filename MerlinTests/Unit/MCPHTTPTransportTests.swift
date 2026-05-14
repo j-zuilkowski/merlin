@@ -5,9 +5,8 @@ import XCTest
 final class MCPHTTPTransportTests: XCTestCase {
 
     func test_httpTransport_sendsJSONRPCPost_withApplicationJSON() async throws {
-        var capturedRequest: URLRequest?
         let session = makeSession { request in
-            capturedRequest = request
+            MCPHTTPMockURLProtocolState.shared.capturedRequest = request
             return okResponse(
                 url: request.url ?? URL(string: "http://example.test")!,
                 body: #"{"jsonrpc":"2.0","id":1,"result":{"ok":true}}"#
@@ -24,11 +23,12 @@ final class MCPHTTPTransportTests: XCTestCase {
             params: ["scope": "all"]
         )
 
-        XCTAssertEqual(capturedRequest?.httpMethod, "POST")
-        XCTAssertEqual(capturedRequest?.value(forHTTPHeaderField: "Content-Type"), "application/json")
-        XCTAssertEqual(capturedRequest?.url?.absoluteString, "http://example.test/rpc")
+        let capturedRequest = try XCTUnwrap(MCPHTTPMockURLProtocolState.shared.capturedRequest)
+        XCTAssertEqual(capturedRequest.httpMethod, "POST")
+        XCTAssertEqual(capturedRequest.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        XCTAssertEqual(capturedRequest.url?.absoluteString, "http://example.test/rpc")
 
-        let body = try XCTUnwrap(capturedRequest?.httpBody)
+        let body = try XCTUnwrap(capturedRequest.httpBody)
         let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
         XCTAssertEqual(json?["jsonrpc"] as? String, "2.0")
         XCTAssertEqual(json?["method"] as? String, "tools/list")
@@ -120,7 +120,7 @@ final class MCPHTTPTransportTests: XCTestCase {
 private func makeSession(
     handler: @escaping @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
 ) -> URLSession {
-    MCPHTTPMockURLProtocol.handler = handler
+    MCPHTTPMockURLProtocolState.shared.handler = handler
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MCPHTTPMockURLProtocol.self]
     return URLSession(configuration: config)
@@ -141,13 +141,11 @@ private func httpResponse(url: URL, statusCode: Int, body: String) -> (HTTPURLRe
 }
 
 final class MCPHTTPMockURLProtocol: URLProtocol, @unchecked Sendable {
-    static var handler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
-
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        guard let handler = MCPHTTPMockURLProtocol.handler else {
+        guard let handler = MCPHTTPMockURLProtocolState.shared.handler else {
             client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
             return
         }
@@ -166,6 +164,7 @@ final class MCPHTTPMockURLProtocol: URLProtocol, @unchecked Sendable {
                 stream.close()
                 hydrated.httpBody = bodyData
             }
+            MCPHTTPMockURLProtocolState.shared.capturedRequest = hydrated
             let (response, data) = try handler(hydrated)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
@@ -176,4 +175,10 @@ final class MCPHTTPMockURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+}
+
+final class MCPHTTPMockURLProtocolState: @unchecked Sendable {
+    static let shared = MCPHTTPMockURLProtocolState()
+    var handler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+    var capturedRequest: URLRequest?
 }

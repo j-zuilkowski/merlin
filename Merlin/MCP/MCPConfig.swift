@@ -1,18 +1,28 @@
-import Foundation
+@preconcurrency import Foundation
 
 struct MCPServerConfig: Codable, Sendable {
     var command: String
     var args: [String]
     var env: [String: String]
+    var transportKind: MCPTransportKind
+    var transportURL: String?
 
-    init(command: String, args: [String] = [], env: [String: String] = [:]) {
+    init(command: String,
+         args: [String] = [],
+         env: [String: String] = [:],
+         transportKind: MCPTransportKind = .stdio,
+         transportURL: String? = nil) {
         self.command = command
         self.args = args
         self.env = env
+        self.transportKind = transportKind
+        self.transportURL = transportURL
     }
 
     enum CodingKeys: String, CodingKey {
         case command, args, env
+        case transportKind = "transport"
+        case transportURL = "url"
     }
 
     init(from decoder: Decoder) throws {
@@ -20,6 +30,8 @@ struct MCPServerConfig: Codable, Sendable {
         command = try container.decode(String.self, forKey: .command)
         args = try container.decodeIfPresent([String].self, forKey: .args) ?? []
         env = try container.decodeIfPresent([String: String].self, forKey: .env) ?? [:]
+        transportKind = try container.decodeIfPresent(MCPTransportKind.self, forKey: .transportKind) ?? .stdio
+        transportURL = try container.decodeIfPresent(String.self, forKey: .transportURL)
     }
 
     static func expandEnv(_ env: inout [String: String], from processEnv: [String: String]) {
