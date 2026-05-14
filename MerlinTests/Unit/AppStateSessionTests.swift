@@ -63,4 +63,32 @@ final class AppStateSessionTests: XCTestCase {
         XCTAssertEqual(appState.toolActivityState, .idle)
         XCTAssertFalse(appState.thinkingModeActive)
     }
+
+    func testCancelledAuthRequestClearsPendingPopup() async throws {
+        let appState = AppState()
+        let task = Task { @MainActor in
+            await appState.requestDecision(
+                tool: "run_shell",
+                argument: "swift test",
+                suggestedPattern: "swift test"
+            )
+        }
+        defer {
+            task.cancel()
+            if appState.pendingAuthRequest != nil {
+                appState.resolveAuth(.deny)
+            }
+        }
+
+        for _ in 0..<20 where appState.pendingAuthRequest == nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertNotNil(appState.pendingAuthRequest)
+
+        task.cancel()
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertNil(appState.pendingAuthRequest)
+        XCTAssertFalse(appState.showAuthPopup)
+    }
 }

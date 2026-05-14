@@ -23,6 +23,16 @@ final class AuthMemoryTests: XCTestCase {
                                        argument: "\(NSHomeDirectory())/Projects/Foo/bar.swift"))
     }
 
+    func testSaveRestrictsAuthFilePermissionsToOwnerOnly() throws {
+        memory.addAllowPattern(tool: "run_shell", pattern: "swift test")
+        try memory.save()
+
+        let attrs = try FileManager.default.attributesOfItem(atPath: tmp.path)
+        let permissions = attrs[.posixPermissions] as? NSNumber
+
+        XCTAssertEqual(permissions?.intValue, 0o600)
+    }
+
     func testDenyPatternBlocksMatch() throws {
         memory.addDenyPattern(tool: "run_shell", pattern: "rm -rf /**")
         XCTAssertTrue(memory.isDenied(tool: "run_shell", argument: "rm -rf /"))

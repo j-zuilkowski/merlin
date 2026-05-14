@@ -105,6 +105,18 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(reloaded.standingInstructions, "Always reply in English.")
     }
 
+    func test_watchedConfigReloadDebouncesRapidEvents() async throws {
+        try "max_tokens = 111\n".write(to: tmpURL, atomically: true, encoding: .utf8)
+        settings.scheduleWatchedConfigReload(for: tmpURL, delay: .milliseconds(120))
+
+        try "max_tokens = 222\n".write(to: tmpURL, atomically: true, encoding: .utf8)
+        settings.scheduleWatchedConfigReload(for: tmpURL, delay: .milliseconds(120))
+
+        try await Task.sleep(for: .milliseconds(260))
+
+        XCTAssertEqual(settings.maxTokens, 222)
+    }
+
     // MARK: - SettingsProposal
 
     func test_propose_approvedByUser() async {

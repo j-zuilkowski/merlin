@@ -73,6 +73,15 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(mgr.liveSessions.first?.id, a.id)
     }
 
+    func testCloseSessionClosesLiveSessionResources() async {
+        let mgr = makeManager()
+        let session = await mgr.newSession()
+
+        await mgr.closeSession(session.id)
+
+        XCTAssertTrue(session.isClosed)
+    }
+
     func testCloseActiveSessionActivatesPrevious() async {
         let mgr = makeManager()
         let a = await mgr.newSession()

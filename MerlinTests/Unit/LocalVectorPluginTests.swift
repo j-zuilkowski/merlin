@@ -45,6 +45,33 @@ final class LocalVectorPluginTests: XCTestCase {
         XCTAssertLessThanOrEqual(results.count, 3)
     }
 
+    func testSearchWithProjectPathExcludesOtherProjects() async throws {
+        let plugin = makePlugin()
+        let projectA = MemoryChunk(
+            id: "project-a",
+            content: "shared regulator design note",
+            chunkType: "factual",
+            projectPath: "/tmp/merlin-project-a"
+        )
+        let projectB = MemoryChunk(
+            id: "project-b",
+            content: "shared regulator design note",
+            chunkType: "factual",
+            projectPath: "/tmp/merlin-project-b"
+        )
+
+        try await plugin.write(projectA)
+        try await plugin.write(projectB)
+
+        let results = try await plugin.search(
+            query: "shared regulator",
+            topK: 5,
+            projectPath: "/tmp/merlin-project-a"
+        )
+
+        XCTAssertEqual(results.map { $0.chunk.id }, ["project-a"])
+    }
+
     func testSearchOnEmptyStoreReturnsEmpty() async throws {
         let plugin = makePlugin()
         let results = try await plugin.search(query: "anything", topK: 5)
