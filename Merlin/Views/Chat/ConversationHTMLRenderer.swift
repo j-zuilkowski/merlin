@@ -134,13 +134,62 @@ enum ConversationHTMLRenderer {
         let toolGroup = entry.toolCalls.isEmpty ? "" : """
         <div class="tool-group">\(entry.toolCalls.map { toolCallHTML($0) }.joined())</div>
         """
+        let grounding = entry.groundingReport.map { groundingReportHTML($0) } ?? ""
         let content = markdownToHTML(htmlEscape(entry.text))
         let textDiv = """
         <div class="assistant-text">\(thinking)\(content)</div>
         """
         return """
-        <div class="message assistant" data-id="\(id)">\(toolGroup)\(textDiv)</div>
+        <div class="message assistant" data-id="\(id)">\(toolGroup)\(grounding)\(textDiv)</div>
         """
+    }
+
+    private static func groundingReportHTML(_ report: GroundingReport) -> String {
+        let statusClass: String
+        let statusLabel: String
+        let detailParts: [String]
+
+        if report.totalChunks == 0 {
+            statusClass = "ungrounded"
+            statusLabel = "Ungrounded"
+            detailParts = ["No retrieved context"]
+        } else if report.hasStaleMemory {
+            statusClass = "stale-memory"
+            statusLabel = "Stale memory"
+            detailParts = summaryParts(for: report)
+        } else if report.isWellGrounded {
+            statusClass = "grounded"
+            statusLabel = "Grounded"
+            detailParts = summaryParts(for: report)
+        } else {
+            statusClass = "weak-grounding"
+            statusLabel = "Weak grounding"
+            detailParts = summaryParts(for: report)
+        }
+
+        let details = htmlEscape(detailParts.joined(separator: " · "))
+        return """
+        <div class="grounding-report \(statusClass)">
+          <span class="grounding-status">\(htmlEscape(statusLabel))</span>
+          <span class="grounding-meta">\(details)</span>
+        </div>
+        """
+    }
+
+    private static func summaryParts(for report: GroundingReport) -> [String] {
+        var parts: [String] = [
+            "\(report.totalChunks) chunk\(report.totalChunks == 1 ? "" : "s")",
+            "\(report.memoryChunks) memory",
+            "\(report.bookChunks) book",
+            String(format: "avg %.2f", report.averageScore)
+        ]
+        if let oldest = report.oldestMemoryAgeDays {
+            parts.append("oldest \(oldest)d")
+        }
+        if report.hasStaleMemory {
+            parts.append("stale memory")
+        }
+        return parts
     }
 
     private static func toolCallHTML(_ call: ToolCallEntry) -> String {
@@ -298,6 +347,30 @@ enum ConversationHTMLRenderer {
             font-size: 12px;
         }
         .tool-row.tool-error { border-color: rgba(255,100,100,0.4); }
+        .grounding-report {
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: baseline;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .grounding-report.grounded { background: rgba(80, 160, 110, 0.08); }
+        .grounding-report.ungrounded { background: rgba(140, 140, 160, 0.08); }
+        .grounding-report.weak-grounding { background: rgba(200, 160, 70, 0.08); }
+        .grounding-report.stale-memory { background: rgba(220, 120, 70, 0.08); }
+        .grounding-status {
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .grounding-meta {
+            color: var(--fg-secondary);
+        }
         .tool-header {
             list-style: none;
             display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;

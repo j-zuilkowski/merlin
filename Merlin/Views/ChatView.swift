@@ -509,6 +509,7 @@ final class ChatViewModel: ObservableObject {
     var subagentVMs: [UUID: SubagentBlockViewModel] = [:]
     private var assistantIndex: Int?
     private(set) var lastRAGSources: [RAGChunk] = []
+    private(set) var lastGroundingReport: GroundingReport?
 
     func submit(appState: AppState) async {
         let message = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -520,6 +521,7 @@ final class ChatViewModel: ObservableObject {
         isSending = true
         assistantIndex = nil
         lastRAGSources = []
+        lastGroundingReport = nil
         appState.toolActivityState = .streaming
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
@@ -546,8 +548,8 @@ final class ChatViewModel: ObservableObject {
                     items[index].ragSources = chunks
                     bumpRevision()
                 }
-            case .groundingReport:
-                break
+            case .groundingReport(let report):
+                applyGroundingReport(report)
             case .subagentStarted, .subagentUpdate:
                 applyEngineEvent(event)
             case .systemNote(let note):
@@ -568,6 +570,7 @@ final class ChatViewModel: ObservableObject {
         draft = ""
         assistantIndex = nil
         lastRAGSources = []
+        lastGroundingReport = nil
         subagentVMs.removeAll()
         bumpRevision()
     }
@@ -579,6 +582,7 @@ final class ChatViewModel: ObservableObject {
     /// UI shows one bubble (matching the streaming path behaviour).
     func load(from messages: [Message]) {
         items = []
+        lastGroundingReport = nil
         // Pending tool calls accumulate across back-to-back assistant+tool round-trips.
         // They are merged into the first assistant message that carries text, producing
         // one bubble per logical LLM response regardless of how many tool-call rounds occurred.
@@ -667,14 +671,16 @@ final class ChatViewModel: ObservableObject {
         case .subagentUpdate(let id, let subagentEvent):
             subagentVMs[id]?.apply(subagentEvent)
             bumpRevision()
-        case .ragSources(let chunks):
-            lastRAGSources = chunks
-            if let index = assistantIndex, items.indices.contains(index) {
-                items[index].ragSources = chunks
-                bumpRevision()
-            }
-        default:
-            break
+            case .ragSources(let chunks):
+                lastRAGSources = chunks
+                if let index = assistantIndex, items.indices.contains(index) {
+                    items[index].ragSources = chunks
+                    bumpRevision()
+                }
+            case .groundingReport(let report):
+                applyGroundingReport(report)
+            default:
+                break
         }
     }
 
@@ -683,15 +689,19 @@ final class ChatViewModel: ObservableObject {
         bumpRevision()
     }
 
-    private func appendAssistantText(_ text: String) {
+    func appendAssistantText(_ text: String) {
         if let index = assistantIndex, items.indices.contains(index) {
             items[index].text += text
             if items[index].ragSources.isEmpty {
                 items[index].ragSources = lastRAGSources
             }
+            if items[index].groundingReport == nil {
+                items[index].groundingReport = lastGroundingReport
+            }
         } else {
             var entry = ChatEntry(role: .assistant, text: text)
             entry.ragSources = lastRAGSources
+            entry.groundingReport = lastGroundingReport
             items.append(entry)
             assistantIndex = items.count - 1
         }
@@ -704,9 +714,13 @@ final class ChatViewModel: ObservableObject {
             if items[index].ragSources.isEmpty {
                 items[index].ragSources = lastRAGSources
             }
+            if items[index].groundingReport == nil {
+                items[index].groundingReport = lastGroundingReport
+            }
         } else {
             var entry = ChatEntry(role: .assistant, text: "", thinkingText: text)
             entry.ragSources = lastRAGSources
+            entry.groundingReport = lastGroundingReport
             items.append(entry)
             assistantIndex = items.count - 1
         }
@@ -717,11 +731,23 @@ final class ChatViewModel: ObservableObject {
         let toolCall = ToolCallEntry(id: call.id, name: call.function.name, arguments: call.function.arguments)
         if let index = assistantIndex, items.indices.contains(index) {
             items[index].toolCalls.append(toolCall)
+            if items[index].groundingReport == nil {
+                items[index].groundingReport = lastGroundingReport
+            }
         } else {
             var entry = ChatEntry(role: .assistant, text: "")
             entry.toolCalls.append(toolCall)
+            entry.groundingReport = lastGroundingReport
             items.append(entry)
             assistantIndex = items.count - 1
+        }
+        bumpRevision()
+    }
+
+    private func applyGroundingReport(_ report: GroundingReport) {
+        lastGroundingReport = report
+        if let index = assistantIndex, items.indices.contains(index) {
+            items[index].groundingReport = report
         }
         bumpRevision()
     }
@@ -856,6 +882,7 @@ struct ChatEntry: Identifiable, Sendable {
     var toolCalls: [ToolCallEntry] = []   // nested tool calls for assistant entries
     var subagentID: UUID? = nil
     var ragSources: [RAGChunk] = []
+    var groundingReport: GroundingReport? = nil
 }
 
 // MARK: - Dead ChatEntryRow removed; rendering is via ConversationWebView + ConversationHTMLRenderer
@@ -867,4 +894,3 @@ private struct RenderedMessage: Equatable {
     }
     let segments: [Segment]
 }
-
