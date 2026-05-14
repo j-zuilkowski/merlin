@@ -7,8 +7,8 @@ final class EnrichedPlanStepTests: XCTestCase {
         let data = #"{ "description": "Ship it", "successCriteria": ["done"], "complexity": "standard" }"#.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(PlanStep.self, from: data)
 
-        XCTAssertEqual(decoded.tokenBudget, 0)
-        XCTAssertEqual(decoded.minContextRequired, 0)
+        XCTAssertGreaterThan(decoded.tokenBudget, 0)
+        XCTAssertEqual(decoded.minContextRequired, decoded.tokenBudget * 2)
         XCTAssertEqual(decoded.requiresCritic, .optional)
     }
 
