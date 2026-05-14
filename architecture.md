@@ -3756,6 +3756,1387 @@ CommandGroup(replacing: .newItem) {
 
 ---
 
+## V2.1 — Budget-Aware Execution
+
+### Motivation
+
+Merlin v2.0 has a working agentic loop, but it treats LLM context as an unbounded resource and
+recovers from overflow reactively. Two failure modes resulted in practice:
+
+1. **Recursive recovery loops.** When a provider returned a context-overrun 400, the engine
+   compacted and called `runLoop` again from inside the catch block. If the compacted context
+   still overflowed, the recursive call could repeat indefinitely. The retry counter
+   (`contextLengthRetryCount`) was supposed to bound this but did not in all observed cases.
+2. **Provider-coupled behaviour.** The engine assumed the active provider's context window
+   without enforcing it. A 65 K-input DeepSeek request and a 32 K-input local-model request
+   went through the same code path with no per-provider sizing.
+
+V2.1 reframes execution as **budget-aware by construction**. Every LLM call honours an
+explicit per-provider budget; overflows are decomposed into smaller substeps; cross-provider
+escalation is the last-resort fallback. The recursive recovery path is deleted. The infinite-
+loop bug class becomes structurally impossible.
+
+The design principle: **prevention by construction, bounded recovery, never recurse.**
+
+### Architecture overview
+
+```
+User message
+  │
+  ▼
+RAG retrieval ──► RAGSelector (budget-derived chunk count)
+  │
+  ▼
+PlannerEngine.classify ──► [optional] PlannerEngine.decompose → [PlanStep]
+  │
+  ▼
+For each PlanStep:
+  │
+  ▼
+WorkingSetBudget.derive(from: ProviderBudget) ──► ContextManager.applyWorkingSetCaps(...)
+  │
+  ▼
+TokenEstimator.estimate(request) ──► preflightCheck(...)
+  │                                       │
+  │                                       ├── .ok → provider.complete(...)
+  │                                       │
+  │                                       └── .wouldOverflow → compactWithSummaryIfNeeded
+  │                                                              │
+  │                                                              ├── fits → provider.complete(...)
+  │                                                              │
+  │                                                              └── still over → throw
+  │                                                                                EngineError.preflightOverflow
+  ▼
+provider.complete(...) ──► CriticPolicyResolver.resolve(...)
+                              │
+                              ├── .skip → done
+                              │
+                              ├── .deterministicOnly → CriterionChecker.check(each StepCriterion)
+                              │                          │
+                              │                          ├── all pass → done (Stage 2 skipped)
+                              │                          │
+                              │                          └── any fail → CriticEngine.evaluate(...)
+                              │
+                              └── .run → CriticEngine.evaluate(...)
+
+EngineError.preflightOverflow OR iteration ceiling reached
+  │
+  ▼
+EscalationHandler.escalateOrStop(reason:)
+  │
+  ├── PlannerEngine.refineStep(reason: .budget OR .iterationCap)
+  │     │
+  │     ├── .decomposed([substep, ...]) → continueWith(replacementSteps)
+  │     │
+  │     └── .cannotDecompose(reason) → try cross-provider routing
+  │           │
+  │           ├── ProviderRegistry.providersOrderedByBudget() ─► .routeToProvider(...)
+  │           │
+  │           └── no provider fits → .stop(message:)
+  │
+  └── never recurse, never re-enter runLoop
+```
+
+### ProviderBudget
+
+Each provider/model entry advertises its input window as configuration data, not assumption.
+
+```swift
+struct ProviderBudget: Sendable, Equatable, Codable {
+    let maxInputTokens: Int
+    let reservedOutputTokens: Int
+    var usableInputTokens: Int { maxInputTokens - reservedOutputTokens }
+}
+```
+
+Stored on `ProviderConfig.budget: ProviderBudget?`. Missing budget falls back to a conservative
+default of `(maxInputTokens: 32_000, reservedOutputTokens: 4_096)` so legacy configs continue
+to work.
+
+Built-in provider seeds:
+
+| Provider | maxInputTokens | reservedOutputTokens |
+|---|---|---|
+| DeepSeek V4 | 65 536 | 8 192 |
+| Anthropic Sonnet/Opus 4.7 | 200 000 | 16 384 |
+| Anthropic Haiku 4.5 | 200 000 | 8 192 |
+| OpenAI gpt-4-class | 128 000 | 8 192 |
+| LM Studio local | from `LocalModelManager.currentContextLength` − reservedOutputTokens |
+| (fallback) | 32 000 | 4 096 |
+
+Local-model budgets adapt to the currently-loaded context length. When `ensureContextLength`
+grows the local window, the budget grows with it.
+
+### TokenEstimator
+
+Pure function that estimates a `CompletionRequest`'s prompt size without sending it.
+
+```swift
+enum TokenEstimator {
+    static func estimate(request: CompletionRequest, baseURL: URL, modelID: String) -> Int
+    static func estimateText(_ text: String) -> Int
+}
+```
+
+Implementation: encodes the request via the same `encodeRequest` path the engine uses for the
+actual HTTP call, computes `body_bytes / 4 * 1.2 + 512`. The 1.2x factor and 512-token floor
+are intentional over-estimates — a wasted compaction is cheap; a 400 is expensive.
+
+`estimateText` is the companion used by `RAGSelector` and other per-component sizers.
+
+### Pre-flight gate
+
+Every `provider.complete(...)` call is preceded by `preflightCheck`.
+
+```swift
+enum PreflightOutcome: Sendable {
+    case ok
+    case wouldOverflow(estimated: Int, budget: Int)
+}
+
+enum EngineError: Error, Sendable {
+    case preflightOverflow(estimated: Int, budget: Int)
+}
+
+func preflightCheck(
+    request: CompletionRequest,
+    provider: any LLMProvider
+) async throws -> PreflightOutcome
+```
+
+Behaviour:
+
+1. Compute `estimated = TokenEstimator.estimate(request:, ...)`.
+2. Resolve `budget = provider.budget ?? defaultBudget`.
+3. If `estimated ≤ budget.usableInputTokens` → emit `engine.preflight.ok`, return `.ok`.
+4. Else → emit `engine.preflight.overflow`, apply working-set caps + summary compaction.
+5. Re-estimate. If now under → emit `engine.preflight.compacted`, return `.ok`.
+6. If still over → throw `EngineError.preflightOverflow(estimated:budget:)`.
+
+`EngineError.preflightOverflow` is the trigger for the escalation path. It is the *only* way
+context-overrun handling enters the system in v2.1.
+
+### Lowered compaction thresholds
+
+V2.0 thresholds were calibrated assuming a 32 K-ish context. V2.1 lowers them so compaction
+fires well before the cliff:
+
+| Threshold | V2.0 | V2.1 |
+|---|---|---|
+| `preRunCompactionThreshold` | 10 000 tokens | 6 000 tokens |
+| `midLoopCompactionThreshold` | 40 000 tokens | 20 000 tokens |
+
+Both remain `var` for test override. The change moves compaction from "fire when bloated" to
+"fire when growing."
+
+### Working-set caps
+
+The prompt context is decomposed into four components, each with its own ceiling derived from
+the active `ProviderBudget`.
+
+```swift
+struct WorkingSetBudget: Sendable {
+    let systemPromptCap: Int     // ~10% of usableInputTokens
+    let ragInjectionCap: Int     // ~25%
+    let recentTurnsCap: Int      // ~50%
+    let toolBurstCap: Int        // ~15%
+    var total: Int { systemPromptCap + ragInjectionCap + recentTurnsCap + toolBurstCap }
+    static func derive(from budget: ProviderBudget) -> WorkingSetBudget
+}
+```
+
+`total ≤ budget.usableInputTokens` always. Components carry a 256-token floor; when the budget
+is too small to satisfy all floors, the system emits `engine.workingset.budget_too_small` and
+falls back to proportional floors.
+
+`ContextManager.applyWorkingSetCaps(_:)` truncates each component to its cap, in this order
+when over:
+
+1. Compact tool exchanges via existing summary path.
+2. Drop oldest recent turns.
+3. Trim RAG chunks by count, then by length.
+4. Last resort: truncate system prompt with `[truncated for budget]` marker.
+
+`ContextManager.compactAfterToolBurst()` fires at the end of each tool-dispatch round when
+the tool-burst component is over its cap. This replaces the prior global `compactWithSummaryIfNeeded`
+invocation at the tool-dispatch site — compaction is now per-component, not per-turn.
+
+### Adaptive RAG
+
+V2.0 retrieved a static number of RAG chunks (`min(max(ragChunkLimit, 1), 20)`). V2.1 makes
+the count adaptive.
+
+```swift
+enum RAGSelector {
+    static func selectChunks(
+        candidates: [RAGChunk],
+        budget: Int,
+        userCeiling: Int
+    ) -> [RAGChunk]
+}
+```
+
+Greedy-by-token selection in retrieval order. Includes chunks until adding the next would
+exceed `budget`. Never exceeds `userCeiling`. `userCeiling` is the existing `ragChunkLimit`
+setting — now an upper bound, not the active value.
+
+Effect: a 200 K-context provider sees richer grounding; a 32 K provider sees minimal grounding;
+a 4 K toy model sees almost none. User setting unchanged across providers.
+
+Emits `engine.rag.selected` with `{candidate_count, selected_count, tokens_used, budget_cap}`.
+
+### Enriched PlanStep + structured success criteria
+
+`PlanStep` grows from a description+complexity record into a self-describing executable unit.
+
+```swift
+enum StepCriterion: Sendable, Equatable, Codable {
+    case prose(String)
+    case buildSucceeds
+    case testsPass(scheme: String?)
+    case fileExists(path: String)
+    case regexMatch(pattern: String, in: RegexTarget)
+    case shellExitZero(command: String)
+    enum RegexTarget: String, Codable, Sendable { case stdout, file }
+}
+
+enum CriticMode: String, Codable, Sendable {
+    case required, optional, skip
+}
+
+struct PlanStep: Sendable {
+    var description: String
+    var successCriteria: [StepCriterion]   // structured, not prose
+    var complexity: ComplexityTier
+    var parallelSafe: Bool = false
+    var tokenBudget: Int                   // expected size for this step's requests
+    var requiresCritic: CriticMode = .optional
+    var minContextRequired: Int            // floor on usableInputTokens for this step
+}
+```
+
+Backwards-compat: a legacy decode where `successCriteria` is a single string wraps it in
+`[.prose(s)]`. Missing `tokenBudget` defaults to `usableInputTokens / 4`. Missing
+`minContextRequired` defaults to `tokenBudget * 2`.
+
+Structured criteria enable the **deterministic short-circuit** in the critic (next subsection):
+when every criterion is non-`prose` and `CriterionChecker.check` returns true for all of them,
+the LLM critic is skipped entirely.
+
+### PlannerEngine.refineStep — single decomposition entry point
+
+V2.1 introduces one method the planner exposes for *all* mid-execution decomposition:
+
+```swift
+enum RefineReason: Sendable {
+    case iterationCap(loopCount: Int, lastObservation: String)
+    case budget(estimated: Int, budget: Int)
+    case explicit(String)
+}
+
+enum RefineOutcome: Sendable {
+    case decomposed([PlanStep])
+    case cannotDecompose(reason: String)
+}
+
+extension PlannerEngine {
+    func refineStep(
+        _ step: PlanStep,
+        reason: RefineReason,
+        context: [Message]
+    ) async -> RefineOutcome
+}
+```
+
+`refineStep` is called from two trigger sites:
+
+- **ReAct iteration ceiling.** When `loopCount` reaches `nearCeilingThreshold` *and* the
+  loop made no observable progress (no new tool calls, no new text, no new written files) in
+  the last 3 iterations, the engine calls `refineStep(reason: .iterationCap)`.
+- **Pre-flight budget overflow.** When `preflightCheck` throws
+  `EngineError.preflightOverflow`, the engine calls `refineStep(reason: .budget)`.
+
+The `reason` lets the planner bias decomposition. `.budget` asks for smaller-context substeps
+even at the cost of more steps. `.iterationCap` asks for more concretely-scoped substeps
+because the agent was thrashing on ambiguity.
+
+The planner returns `.cannotDecompose` when the step is genuinely atomic — a single oversized
+artifact (a 180 K-token file the user pasted, a huge stack trace, an intrinsically-large
+output target). This is the *only* case where cross-provider escalation is the correct
+response.
+
+### EscalationHandler — the single retry/escalation policy
+
+V2.0 had several independent retry counters (`contextLengthRetryCount`,
+`maxContextOverrunRecoveryAttempts`, `criticRetryCount`, the iteration-ceiling
+`[CONTINUATION]` mechanism). V2.1 consolidates them behind one bounded helper.
+
+```swift
+enum EscalationReason: Sendable {
+    case iterationCap(loopCount: Int, lastObservation: String)
+    case preflightOverflow(estimated: Int, budget: Int)
+}
+
+enum EscalationDecision: Sendable {
+    case continueWith(replacementSteps: [PlanStep])
+    case routeToProvider(providerID: String, reason: String)
+    case stop(message: String)
+}
+
+actor EscalationHandler {
+    init(planner: PlannerEngine, registry: ProviderRegistry, maxRefinementsPerTurn: Int = 2)
+
+    func escalateOrStop(
+        currentStep: PlanStep,
+        reason: EscalationReason,
+        context: [Message]
+    ) async -> EscalationDecision
+}
+```
+
+Behaviour ladder:
+
+1. Call `planner.refineStep(currentStep, reason: …, context: …)`.
+2. On `.decomposed(substeps)` → return `.continueWith(replacementSteps: substeps)`.
+3. On `.cannotDecompose(reason)`:
+   - Query `registry.providersOrderedByBudget()`.
+   - Find the smallest-budget provider whose `usableInputTokens ≥ step.minContextRequired`.
+   - If found → return `.routeToProvider(providerID:, reason:)`.
+   - If none → return `.stop(message: "...")`.
+4. Once `maxRefinementsPerTurn` is exceeded in a single user turn → return
+   `.stop(message: "refinement budget exhausted")` immediately, no further refinement
+   attempts.
+
+**Decompose-first, escalate as last resort.** Most overflows resolve via decomposition.
+Cross-provider routing fires only for genuinely atomic work. Graceful stop happens only when
+no configured provider supports the required context. The user never sees an infinite loop
+because no code path inside `escalateOrStop` recurses.
+
+### The no-recursion invariant
+
+V2.1 deletes the recursive `runLoop` self-call at the old `AgenticEngine.swift:1076`
+location. The catch block for `ProviderError.isContextLengthExceeded` is reduced to:
+
+1. Emit telemetry (with redacted error body — see Budget Telemetry).
+2. Attempt one summary compaction via `ContextManager.compactWithSummaryIfNeeded`.
+3. Re-estimate. If now fits → resume the current loop iteration.
+4. If still over → call `EscalationHandler.escalateOrStop(reason: .preflightOverflow)`.
+5. Act on the decision in-place. Never re-enter `runLoop`.
+
+Properties removed in v2.1:
+
+- `contextLengthRetryCount`
+- `maxContextOverrunRecoveryAttempts`
+- `contextOverrunRecoveryDirective(attempt:maxAttempts:userMessage:)`
+
+These were all internal members with no external consumers. A regression-guard test
+(`RetryCounterDeletionTests`) string-searches `AgenticEngine.swift` to assert the deleted
+symbols stay deleted.
+
+### Critic gating
+
+V2.0's critic invocation was a hard-coded heuristic at the dispatch site. V2.1 routes
+through one policy resolver consulting three inputs.
+
+```swift
+enum CriticDecision: Sendable {
+    case run, skip, deterministicOnly
+}
+
+enum CriticPolicyResolver {
+    static func resolve(
+        skill: SkillFrontmatter?,
+        step: PlanStep?,
+        heuristic: (writtenFiles: Bool, substantial: Bool, complexity: ComplexityTier),
+        classifierOverride: Bool
+    ) -> CriticDecision
+}
+```
+
+Precedence (high → low):
+
+1. Skill frontmatter `critic: skip` → `.skip`.
+2. Skill frontmatter `critic: required` → `.run`.
+3. `PlanStep.requiresCritic == .skip` → `.skip`.
+4. `PlanStep.requiresCritic == .required` → `.run`.
+5. If `step` has only non-`prose` criteria → `.deterministicOnly`.
+6. Heuristic (heavy diff / complexity tier / classifier override) → `.run` if any flag is true.
+7. Otherwise → `.skip`.
+
+`SkillFrontmatter` gains a `critic: CriticMode?` field, parsed from YAML `critic:`. Unknown
+values emit `skill.frontmatter.warning` telemetry and store `nil`.
+
+### CriterionChecker — deterministic verification
+
+When `CriticPolicyResolver` returns `.deterministicOnly`, the executor runs
+`CriterionChecker.check` for each `StepCriterion` on the step. If all pass, the LLM critic
+(Stage 2) is skipped entirely. If any fail, the engine falls through to
+`CriticEngine.evaluate(...)` with the failing criterion as the seed reason.
+
+```swift
+actor CriterionChecker {
+    init(shellRunner: any ShellRunning)
+    func check(_ criterion: StepCriterion) async -> Bool
+}
+```
+
+Mapping:
+
+| Criterion | Check |
+|---|---|
+| `buildSucceeds` | Existing `xcodebuild` invocation, exit code 0 |
+| `testsPass(scheme:)` | `xcodebuild test` for the given scheme, exit code 0 |
+| `fileExists(path:)` | `FileManager.fileExists(atPath:)` |
+| `regexMatch(pattern:, in: .stdout)` | Re-run a captured shell command; match output |
+| `regexMatch(pattern:, in: .file)` | Read file content; match |
+| `shellExitZero(command:)` | `ShellRunning.run`, exit code 0 |
+| `prose(_)` | Always returns false — falls through to LLM critic |
+
+This is the recursive application of the article's framework (article: *Choosing the Right
+Agentic Design Pattern*) at the verification layer: when a check is mechanically verifiable,
+no reasoning is needed; when it's prose, LLM reasoning is.
+
+### Budget telemetry
+
+V2.1 adds a comprehensive observability surface so threshold tuning, drift diagnosis, and
+overrun forensics are data-driven rather than guesswork.
+
+Events emitted from the engine:
+
+| Event | Payload |
+|---|---|
+| `engine.preflight.estimate` | `{estimated_tokens, provider_id, slot}` per turn |
+| `engine.preflight.ok` | `{estimated_tokens, budget}` |
+| `engine.preflight.overflow` | `{estimated_tokens, budget}` |
+| `engine.preflight.compacted` | `{before, after, provider_id}` |
+| `engine.workingset.budget_too_small` | `{usable, floors_total}` |
+| `engine.rag.selected` | `{candidate_count, selected_count, tokens_used, budget_cap}` |
+| `engine.escalation.start` | `{reason, step_description_prefix}` |
+| `engine.escalation.refined` | `{substep_count}` |
+| `engine.escalation.route_to_provider` | `{from, to, min_context_required}` |
+| `engine.escalation.stop` | `{message}` |
+| `engine.turn.error` | `{error_domain, error_code, error_status, error_body}` (body redacted) |
+| `critic.stage1.short_circuit` | `{criteria_passed}` |
+| `critic.skipped.policy` | `{decision_source: skill | step | heuristic}` |
+| `planner.classify` | (existing — unchanged) |
+| `planner.decompose.*` | (existing — unchanged) |
+| `planner.step.executing` | `{step_index, total_steps, complexity, description_prefix}` |
+| `planner.refine.start` | `{reason}` |
+| `planner.refine.success` | `{substep_count}` |
+| `planner.refine.cannot_decompose` | `{reason}` |
+| `skill.frontmatter.warning` | `{skill_id, key, value}` |
+
+`error_body` is redacted via `RedactedString.redacted(_:)` — strips `sk-…`, `pk-…`,
+`Bearer …` substrings, trims to 500 chars. The redaction is applied before the payload
+reaches `TelemetryEmitter`.
+
+### Migration notes
+
+What v2.1 changes that callers should know:
+
+- `PlanStep.successCriteria` changes type from `String` to `[StepCriterion]`. Decoder accepts
+  the legacy single-string form via `[.prose(s)]` wrapping. Existing serialized plans load
+  unchanged.
+- `AgenticEngine` removes `contextLengthRetryCount`, `maxContextOverrunRecoveryAttempts`,
+  `contextOverrunRecoveryDirective`. Internal-only — no external consumers.
+- `AgentEvent` gains `.cleanStop(reason: String, summary: String)`. UI consumers fall through
+  to `.systemNote` rendering until a distinct UI affordance ships in a later phase.
+- `SkillFrontmatter` gains `critic: CriticMode?`. Absent value preserves heuristic behaviour;
+  no skill needs updating to keep working.
+- `AppSettings.ragChunkLimit` semantics shift from "the number to retrieve" to "the maximum
+  allowed if budget permits." User-visible doc-comment is updated.
+- Compaction thresholds drop (10 K → 6 K pre-run, 40 K → 20 K mid-loop). More-frequent
+  compaction is the explicit goal.
+
+No user data migration required.
+
+### Implementation order
+
+Eight phase pairs plus a release phase, in dependency order:
+
+| Phases | Concern |
+|---|---|
+| 232a / 232b | Budget telemetry (observability only) |
+| 233a / 233b | `ProviderBudget` + `TokenEstimator` + pre-flight gate + lowered thresholds |
+| 234a / 234b | Working-set caps |
+| 235a / 235b | Adaptive RAG |
+| 236a / 236b | Enriched `PlanStep` + `PlannerEngine.refineStep` |
+| 237a / 237b | `EscalationHandler` + delete recursive recovery |
+| 238a / 238b | Critic gating |
+| 239a / 239b | Decompose-on-overflow + cross-provider fallback |
+| 240a / 240b | v2.1.0 release (project.yml bump, `RELEASE-v2.1.0.md`, tag, GitHub release) |
+
+Dependency graph:
+
+```
+232 ──► 233 ──► 234 ──► 235
+                  │
+                  └──► 236 ──┬──► 237 ──┬──► 238
+                             │          │
+                             │          └──► 239
+                             │
+                             └──► 240 (release)
+```
+
+Phases 235 and 238 are leaves and can defer if needed. Phases 232, 233, 234, 236, 237, 239
+are the critical path to budget-aware execution. 240 is the milestone release.
+
+### Honest trade-offs
+
+- **Conservative estimation wastes some context.** A 1.2× safety margin means a 65 K window
+  effectively becomes ~50 K usable. Worth it — a wasted compaction is cheap, a 400 is
+  expensive.
+- **Small-context providers lose features.** A 4 K-context local model cannot do RAG-heavy
+  tasks. The system *routes around* this (working-set caps shrink RAG share; cross-provider
+  escalation hands oversized steps to bigger models), but for users with only a tiny local
+  model configured, some operations will gracefully stop.
+- **Per-step pre-flight adds latency.** One `TokenEstimator.estimate` call per step is
+  inexpensive (microseconds) but non-zero. Net effect is positive because avoided 400s save
+  much more than the estimator costs.
+- **Planner becomes load-bearing.** `refineStep` runs every time decomposition fires. A
+  planner outage or slow planner provider can stall escalation. Mitigation: the `maxRefinementsPerTurn`
+  cap (default 2) prevents unbounded planner calls; the planner uses the orchestrate slot
+  which can be assigned a fast model.
+
+---
+
+## V2.2 — Project Discipline Subsystem
+
+### Motivation
+
+Merlin v2.0/v2.1 give the user an agentic loop strong enough to drive software construction.
+But construction discipline — TDD phase pairs, version bumps at the right moment, documentation
+that stays comprehensive, code comments where warranted, prose readability — is still enforced
+by *the user remembering to do it*. Memory is the wrong substrate for non-negotiables. The
+2026-05-13 article *Choosing the Right Agentic Design Pattern* names the equivalent failure
+mode in agents: *"Discipline that depends on remembering doesn't survive contact with a tired
+Friday afternoon."*
+
+V2.2 builds the discipline directly into Merlin. Skills handle *creation* (init a project,
+build a phase, propose a release). Hooks and a new `DisciplineEngine` handle *enforcement*
+(scan for drift, block bad commits, surface pending attention at session start). The user
+invokes the creation skills when they choose to; the enforcement layer runs whether the user
+remembers it or not.
+
+The two design principles:
+
+1. **Default-trust, trigger-detect, require-on-trigger.** Most code, most docs, most commits
+   are fine and no prompt fires. The system watches for *specific triggers* (a new public
+   symbol without a doc comment, a new user-facing surface without a manual section, a
+   substantive change without a doc touch) and only then demands action. The default position
+   is silence.
+2. **No recursion, no unbounded retry.** Every enforcement path is bounded and auditable, just
+   like v2.1's `EscalationHandler`. Overriding is allowed; overriding silently is not.
+
+### Architecture overview
+
+Three layers, only one of which the user invokes.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Layer 1 — Creation skills (manual invocation)                            │
+│   /project:init     — scaffold a new project                             │
+│   /project:phase    — build a TDD phase pair                             │
+│   /project:revise   — fix detected drift                                 │
+│   /project:release  — bump version, regenerate api.md, tag, publish      │
+│   /project:adopt    — apply discipline to an existing project            │
+└──────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  │ used occasionally, by the user
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Layer 2 — DisciplineEngine + Merlin hooks (soft surfacing, automatic)    │
+│   Stop hook         — after each turn: run scanners, update queue        │
+│   SessionStart hook — on session open: surface pending findings          │
+│   UserPromptSubmit  — flag mismatches before work starts                 │
+└──────────────────────────────────────────────────────────────────────────┘
+                                  │
+                                  │ runs whether the user remembers or not
+                                  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Layer 3 — Git hooks (hard enforcement, blocks bad commits)               │
+│   pre-commit        — block on uncommented WHY-triggers, missing docs,   │
+│                       missing manual coverage, TODO without reference    │
+│   pre-push          — block tag/version mismatch                         │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+The user invokes Layer 1 when they want to *do* something. Layers 2 and 3 invoke themselves.
+`/project:init` (or `/project:adopt`) installs Layers 2 and 3 once, after which the project
+self-polices.
+
+### DisciplineEngine
+
+A new `Merlin/Engine/DisciplineEngine.swift` actor, peer to `AgenticEngine`, `MemoryEngine`,
+`PlannerEngine`. Coordinates the scanners, owns the pending-attention queue, integrates with
+the hook engine.
+
+```swift
+actor DisciplineEngine {
+    init(
+        adapter: ProjectAdapter,
+        phaseScanner: PhaseScanner,
+        manualCoverageScanner: ManualCoverageScanner,
+        docReferenceGraph: DocReferenceGraph,
+        whyCommentScanner: WhyCommentScanner,
+        proseReadabilityChecker: ProseReadabilityChecker
+    )
+
+    func scan(projectPath: String) async -> ScanReport
+    func pendingAttention(projectPath: String) async -> [Finding]
+    func dismiss(findingID: UUID, rationale: String) async
+}
+```
+
+Invoked from the existing `hookEngine.runStop()` path after every user turn. Writes findings
+to `.merlin/pending.json`. Read by the new `SessionStart` hook on subsequent session open.
+
+Has its own circuit breaker (mirroring v2.1's `EscalationHandler` invariant): if scanning
+fails three times in a row, the engine disables itself for the session and emits
+`discipline.disabled` rather than blocking the user's work.
+
+### Adapter system
+
+Per-language/per-toolchain config that every component consumes. Single source of truth for
+project-specific commands and conventions.
+
+```toml
+# ~/.merlin/adapters/swift-xcode.toml
+language = "swift"
+swift_version = "5.10"
+versioning_file = "project.yml"
+versioning_field = "MARKETING_VERSION"
+build_version_field = "CURRENT_PROJECT_VERSION"
+build_command = "xcodebuild -scheme {scheme} build-for-testing -destination 'platform=macOS' -derivedDataPath /tmp/build"
+test_command = "xcodebuild -scheme {scheme} test -destination 'platform=macOS' -derivedDataPath /tmp/build"
+strict_mode = "SWIFT_STRICT_CONCURRENCY=complete"
+build_success_marker = "BUILD SUCCEEDED"
+build_failure_marker = "BUILD FAILED"
+release_command = "gh release create v{version} --notes-file RELEASE-v{version}.md --latest"
+api_doc_generator = "docc"
+doc_target_grade = { user_manual = 9, developer_guide = 9, architecture = 11 }
+
+[why_comment_triggers]
+# Patterns that demand a nearby explanatory comment
+patterns = [
+    { regex = "Task\\.sleep\\(", reason = "duration is judgment" },
+    { regex = "try\\?", reason = "discarded error needs rationale" },
+    { regex = "catch \\{ \\}", reason = "silenced error needs rationale" },
+    { regex = "nonisolated\\(unsafe\\)", reason = "concurrency assertion" },
+    { regex = "@unchecked Sendable", reason = "concurrency assertion" },
+    { regex = "if .+\\.id == \"", reason = "special-case ID compare" },
+]
+
+[manual_coverage]
+surface_patterns = [
+    { type = "menu_item", regex = "CommandGroup|CommandMenu" },
+    { type = "shortcut", regex = "\\.keyboardShortcut\\(" },
+    { type = "settings_field", regex = "AppSettings\\.[a-z][A-Za-z0-9]+" },
+    { type = "slash_command", regex = "SkillRegistry\\.register" },
+    { type = "hook_event", regex = "HookEvent\\.[a-z][A-Za-z0-9]+" },
+]
+```
+
+```toml
+# ~/.merlin/adapters/rust-cargo.toml
+language = "rust"
+edition = "2024"
+versioning_file = "Cargo.toml"
+versioning_field = "version"
+build_command = "cargo build --workspace"
+test_command = "cargo test --workspace"
+lint_command = "cargo clippy --all-targets -- -D warnings"
+format_command = "cargo fmt -- --check"
+strict_mode = "clippy_pedantic"
+build_success_marker = "Finished"
+build_failure_marker = "error\\["
+release_command = "cargo publish"
+api_doc_generator = "rustdoc"
+doc_target_grade = { user_manual = 9, developer_guide = 9, architecture = 11 }
+default_targets = [
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+]
+
+[why_comment_triggers]
+patterns = [
+    { regex = "unsafe \\{", reason = "Rust convention requires // Safety:" },
+    { regex = "\\.unwrap\\(\\)", reason = "panic point needs justification" },
+    { regex = "\\.expect\\(", reason = "panic point needs justification" },
+    { regex = "transmute\\(", reason = "always needs justification" },
+    { regex = "#\\[allow\\(", reason = "lint suppression needs rationale" },
+    { regex = "todo!\\(\\)", reason = "must reference issue/phase" },
+    { regex = "Duration::from_millis\\(", reason = "duration is judgment" },
+]
+```
+
+Adapter selection per project lives in `.merlin/project.toml`:
+
+```toml
+adapter = "swift-xcode"
+adapter_version = "1.0"
+discipline_layers = ["soft_prompt", "pre_commit"]
+manual_coverage_baseline = 0    # set by project:adopt; decays toward zero
+```
+
+Personal defaults live in `~/.merlin/conventions.toml`. Per-project overrides take precedence.
+
+Adapters carry a `version` field. `DisciplineEngine` warns when a project's adapter is older
+than the installed adapter; the user runs `/project:revise --update-adapter` to migrate.
+
+### Storage layout
+
+```
+~/.merlin/
+  conventions.toml              — personal defaults
+  adapters/                     — per-language adapter library
+    swift-xcode.toml
+    rust-cargo.toml
+    typescript-node.toml        — later
+    python-pytest.toml          — later
+  skills/
+    project-init/SKILL.md
+    project-phase/SKILL.md
+    project-revise/SKILL.md
+    project-release/SKILL.md
+    project-adopt/SKILL.md
+  templates/
+    docs/
+      README.md.template
+      architecture.md.template
+      api.md.template
+      developer-guide.md.template
+      user-manual.md.template
+      FEATURES.md.template
+      CHANGELOG.md.template
+    manual-sections/
+      toggle-setting.md.template
+      command.md.template
+      slash-command.md.template
+      major-feature.md.template
+    phase/
+      NNa-skeleton.md.template
+      NNb-skeleton.md.template
+    vale/
+      Merlin/                   — Vale style files for prose readability
+
+<project>/
+  .merlin/
+    project.toml                — adapter selection + per-project overrides
+    pending.json                — DisciplineEngine queue
+    override-log.jsonl          — audit trail of dismissed prompts
+    manual-coverage-baseline.json
+    drift-snapshot.json         — last full scan, for diff display
+  .git/hooks/
+    pre-commit                  — installed by /project:init
+    pre-push                    — installed by /project:init
+  phases/                       — Merlin's existing convention; not changed
+  docs/                         — optional alternative location for the doc set
+```
+
+### PhaseScanner
+
+Reads `phases/` directory, extracts declared surfaces from each NNb file, cross-checks against
+the current codebase. Builds a drift report classified into four colours.
+
+```swift
+enum DriftSeverity: Sendable {
+    case green       // surface present, shape unchanged
+    case yellow      // surface present, signature changed (likely refactor)
+    case red         // surface absent from code (deletion without addendum)
+    case orange      // code surface not declared in any phase (undocumented)
+}
+
+struct DriftFinding: Sendable, Identifiable {
+    let id: UUID
+    let phaseID: String?
+    let surface: String
+    let severity: DriftSeverity
+    let evidence: String
+    let suggestedAction: String
+}
+
+actor PhaseScanner {
+    func scan(projectPath: String) async -> [DriftFinding]
+}
+```
+
+The scanner parses each NNb's "New surface introduced in phase NNb:" block (the convention
+already used throughout `phases/`). It greps for each named symbol against the current source
+tree. Yellow/red findings produce a proposed patch (either updating the phase to match current
+code, or creating a `phase-NNc-supersedes-NNb.md` addendum per the existing CLAUDE.md
+convention).
+
+The scanner is the load-bearing component of v2.2 — it validates that the phase methodology
+remains rebuildable from its phase files, which CLAUDE.md already declares as the source of
+truth.
+
+### ManualCoverageScanner
+
+The hard constraint: every user-facing surface must be covered by a `user-manual.md` section.
+
+```swift
+struct ManualCoverageGap: Sendable {
+    let surface: String              // e.g., "AppSettings.activeProviderID"
+    let surfaceType: String          // "settings_field", "menu_item", etc.
+    let firstSeen: Date
+    let suggestedSection: String?    // generated from template
+}
+
+actor ManualCoverageScanner {
+    func scan(projectPath: String, adapter: ProjectAdapter) async -> [ManualCoverageGap]
+}
+```
+
+Surface enumeration uses the regex patterns declared in the adapter
+(`[manual_coverage] surface_patterns`). For Merlin, the v1 enumeration covers menu items,
+shortcuts, settings fields, slash commands, hook events. Each surface is normalized to a
+stable identifier (e.g., `AppSettings.activeProviderID`).
+
+Coverage declaration lives in manual sections via HTML comments:
+
+```markdown
+## How to set your active provider
+
+<!-- covers:
+     - AppSettings.activeProviderID
+     - SettingsView.ProviderPanel
+     - command:set-provider
+-->
+
+To pick the model Merlin uses, open Settings → Providers...
+```
+
+The scanner reads every `<!-- covers: ... -->` block, builds the coverage map, and flags:
+
+| Finding | Action |
+|---|---|
+| Surface exists, no section covers it | Gap — pending-attention; release blocked if not addressed |
+| Section covers a surface that no longer exists | Stale reference — pending-attention; release blocked |
+| Section covers a surface whose shape changed | Soft prompt — section may need rewrite |
+
+**Not-user-facing escape.** Some code-detected surfaces aren't actually user-facing (internal
+hook events, debug commands, telemetry channels). These declare an explicit marker:
+
+```swift
+// manual: not-user-facing — internal telemetry channel, no UI binding
+static let merlinTelemetryFlushed = Notification.Name("merlin.telemetry.flushed")
+```
+
+The marker:
+
+- Suppresses the coverage requirement for that surface.
+- Logs to `.merlin/override-log.jsonl` with the rationale string.
+- Periodic review (a Layer 2 weekly check) surfaces "N surfaces marked not-user-facing in the
+  last release — should any be exposed and documented?"
+
+### Comprehensive manual: enforcement layers
+
+The user manual is a hard constraint — not just synced, **comprehensive**. Four layers
+together make a release with uncovered surfaces structurally impossible.
+
+1. **Phase template extension.** Every NNb that adds user-facing surface includes a
+   `## Manual updates` section listing the manual sections to add or modify. Worker writes
+   both code and manual section in the same commit.
+2. **Critic Stage 2 check.** After NNb implementation, the critic prompt extension asks:
+   *"List user-facing surfaces added or changed in this diff. For each, name the manual
+   section that covers it."* Uncovered surfaces produce a critic `.fail`; worker rewrites.
+3. **Pre-commit hook.** `ManualCoverageScanner` runs against the diff. Block commit if any
+   new user-facing surface lacks coverage. Override allowed only with explicit
+   `// manual: not-user-facing` marker plus rationale.
+4. **Release gate.** `/project:release` runs the scanner across the entire codebase. Any
+   uncovered surface blocks the release.
+
+### Decaying coverage baseline
+
+When `/project:adopt` installs the discipline into an existing project, the scanner will find
+many uncovered surfaces. Three handling strategies were evaluated:
+
+| Strategy | Verdict |
+|---|---|
+| Block from day one | Halts forward work for weeks — rejected |
+| Snapshot and grandfather forever | Existing gaps never close — rejected |
+| **Snapshot baseline, decaying** | Forward path realistic, closes the gap over time — adopted |
+
+The adopted strategy: `/project:adopt` records the current uncovered-surface count as
+`manual_coverage_baseline` in `.merlin/project.toml`. From then on the release gate requires
+both:
+
+1. No *new* uncovered surfaces in the current release diff.
+2. The baseline reduces by at least `N` (default 10) each release until it reaches zero.
+
+Within ~30 releases the manual becomes comprehensive. Forward work proceeds in parallel.
+
+Override audit surfaces "you've shipped 5 releases at the same baseline — discipline is dead;
+restore it or relax it explicitly."
+
+### DocReferenceGraph
+
+Builds a map from doc files to the code symbols they reference, enabling cross-file drift
+detection.
+
+```swift
+struct DocReference: Sendable {
+    let docFile: String
+    let docSection: String?
+    let codeSymbol: String
+    let sourceFile: String?
+}
+
+actor DocReferenceGraph {
+    func build(projectPath: String) async -> [DocReference]
+    func staleReferences(against changedSymbols: [String]) async -> [DocReference]
+}
+```
+
+Two construction modes:
+
+- **Automatic** (default for v1) — greps doc files for symbol-shaped strings (camelCase,
+  PascalCase, snake_case), cross-checks against the code's symbol index. Heuristic but cheap.
+  False-positive rate is acceptable because findings are *soft prompts*, not hard blocks.
+- **Explicit** (later) — doc files include front-matter declaring covered symbols. More
+  robust; available when the automatic mode produces too much noise on a given project.
+
+When a code surface is renamed or removed, the graph flags every doc that mentions the old
+name. Goes to pending-attention.
+
+### WhyCommentScanner
+
+Enforces the conditional rule: *"Default to writing no comments. When a WHY-comment is
+warranted, it must be present."* No comment-density metric — just trigger detection.
+
+```swift
+struct WhyCommentTrigger: Sendable {
+    let pattern: String              // regex from adapter
+    let reason: String               // human-readable
+    let file: String
+    let line: Int
+    let context: String              // ±2 lines
+    let hasNearbyComment: Bool
+}
+
+actor WhyCommentScanner {
+    func scan(projectPath: String, adapter: ProjectAdapter) async -> [WhyCommentTrigger]
+}
+```
+
+For each match in the trigger list (adapter-defined; see Swift and Rust examples in the
+*Adapter system* subsection), the scanner checks for an explanatory comment within
+`N` lines (default 3) above or below. Missing comment → finding.
+
+Four enforcement layers, same shape as manual coverage:
+
+| Layer | What | Mode |
+|---|---|---|
+| Pattern scanner at pre-commit | Block on uncommented trigger | **Hard block** |
+| Critic Stage 2 prompt | "List code segments where WHY is non-obvious; suggest comments" | Soft prompt |
+| Override annotation | `// rationale-not-needed: <one-line reason>` suppresses | Logged |
+| Override audit | Periodic review surfaces high override rate | Logged |
+
+The mechanical layer (pattern scanner + pre-commit) carries the "non-negotiable" guarantee.
+The critic layer raises quality but isn't load-bearing.
+
+### ProseReadabilityChecker
+
+Enforces target-grade readability for the doc set.
+
+```swift
+struct ReadabilityFinding: Sendable {
+    let docFile: String
+    let measuredGrade: Double
+    let targetGrade: Double
+    let suggestions: [String]        // from Vale lint output
+}
+
+actor ProseReadabilityChecker {
+    func check(docFile: String, targetGrade: Double) async -> ReadabilityFinding
+}
+```
+
+Implementation calls `vale` (installed as a dev tool, not vendored) with a Merlin-specific
+style folder. The style folder contains:
+
+- `Merlin/readability.yml` — sets `Vale.Readability` rule, grade level per file pattern
+- `Merlin/accept.txt` — vocabulary that should not be flagged as jargon ("Merlin", "DeepSeek",
+  "API", "RAG", "tokenizer", etc.)
+- `Merlin/passive-voice.yml` — warns above 10% passive sentences
+- `Merlin/weasel.yml` — flags hedging words ("might", "perhaps", "possibly" overuse)
+
+Per-file grade targets from adapter `doc_target_grade`:
+
+| File | Target |
+|---|---|
+| `user-manual.md` | 9 |
+| `developer-guide.md` | 9 |
+| `README.md` (top section) | 9 |
+| `FEATURES.md` | 9 |
+| `RELEASE-vX.Y.Z.md` summary | 9 |
+| `architecture.md` | 11 |
+| `api.md` (intro prose) | 10 |
+| `CLAUDE.md`, `AGENTS.md`, phase files | no constraint |
+
+Two enforcement points:
+
+- **Critic during writing** — after a worker generates or edits a doc, critic Stage 2 runs
+  Vale on the changed file. Worker rewrites if grade exceeds target.
+- **Pre-commit gate** — Vale runs against changed `.md` files. Hard block if any exceeds its
+  declared grade.
+
+The constraint is for the *prose itself*, not the subject matter. Technical concepts (planner
+architecture, budget-aware execution) can be discussed in 8th-grade prose; the system enforces
+*how* you write, not *what* you write about.
+
+### Project skills
+
+Five conversational skills, namespaced under `project:`.
+
+#### project:init
+
+Scaffold a new project. Asks:
+
+- Project name + one-line description
+- Language (selects adapter)
+- Target architectures (adapter-specific defaults)
+- License
+- Doc-set choice (full / minimal)
+- Discipline layer opt-in (Layer 2 default yes; Layer 3 default yes)
+
+Produces:
+
+- Language-native scaffold (calls `cargo new` / equivalent under the hood; does not reinvent it)
+- `CLAUDE.md` from template, customised for chosen language and adapter
+- Doc set from templates (`README.md`, `architecture.md`, `api.md`, `developer-guide.md`,
+  `user-manual.md`, `FEATURES.md`, `CHANGELOG.md`)
+- `phases/` directory with `phase-00-scaffold.md` documenting the initial state
+- `.merlin/project.toml` with adapter selection
+- `.git/hooks/pre-commit` and `.git/hooks/pre-push`
+- `.claude/settings.json` with Stop, SessionStart, UserPromptSubmit hooks pointing at
+  `DisciplineEngine`
+- `.vale.ini` + Merlin style folder copy
+- Initial git commit
+
+#### project:phase
+
+Build an NNa/NNb phase pair. Asks structuring questions rather than auto-decomposing:
+
+- What is the one abstraction this phase introduces?
+- What prior phase state does it depend on?
+- What surfaces does NNb introduce?
+- What deletions does NNb perform? (regression-guard tests added automatically if any)
+- Is this version-bump-eligible? (no for substantive phases; yes only for release milestones)
+
+Calls `PlannerEngine.refineStep` internally to validate the decomposition (depends on v2.1).
+Critic Stage 2 verifies the resulting phase shape (single concern, tests precede impl,
+deletions guarded, manual sections planned for any user-facing surface).
+
+Writes both phase files plus a `PASTE-LIST.md` update plus an orchestrator-prompt snippet.
+
+#### project:revise
+
+Run `DisciplineEngine.scan`, present findings, propose patches. For each finding the user
+selects:
+
+- Accept proposed patch (skill applies it)
+- Modify (skill opens editor; user revises; skill validates and applies)
+- Dismiss with rationale (logged to override audit)
+- Defer (left in `pending.json` for later)
+
+Outputs a single commit per accepted batch, with structured commit message referencing each
+addressed finding.
+
+#### project:release
+
+The consolidated release gate. Runs:
+
+```
+□ All phase 232a–239b tests pass (or equivalent for the current milestone)
+□ api.md regenerated and committed (autogen from doc comments)
+□ developer-guide.md mechanical sections regenerated
+□ user-manual.md: zero new uncovered surfaces; baseline reduced by ≥ N
+□ DocReferenceGraph: no red findings (stale references)
+□ WhyCommentScanner: zero violations or all overridden with rationale
+□ ProseReadabilityChecker: all doc files at or under target grade
+□ RELEASE-vX.Y.Z.md present, references the changes
+□ CHANGELOG.md updated
+□ PhaseScanner reports clean (no red/orange drift)
+□ project.yml / Cargo.toml / equivalent version bumped per adapter
+□ Build version field incremented
+```
+
+Any failure blocks the release. Pass produces:
+
+- The version-bump commit
+- The git tag
+- A push to `origin` and `--tags`
+- `gh release create` (Swift) or `cargo publish` (Rust) or equivalent
+- An archive of the release-time pending-attention snapshot
+
+#### project:adopt
+
+Apply discipline to an existing project. Different from `init` because the project already
+exists with its own conventions. Adopt:
+
+1. Detects language + chooses adapter (or asks).
+2. Reads existing `CLAUDE.md` / `AGENTS.md` / `architecture.md` — preserves them, adds a
+   "Project Discipline" section if absent.
+3. Scans the codebase for current state: existing surfaces, existing doc coverage gaps,
+   existing phase files (if any).
+4. Writes `.merlin/project.toml` with `manual_coverage_baseline` set to the current uncovered
+   count.
+5. Installs hooks (with confirmation per layer).
+6. Produces a one-page report: *"Adopted. Baseline coverage gap: 314 surfaces. Default
+   decay: 10 per release → comprehensive in 32 releases. WHY-comment violations found: 47.
+   Prose readability fails in 6 docs. Phase drift: green except 3 yellow."*
+
+The user then runs `/project:revise` to start working through the backlog.
+
+### Hook integration
+
+The existing Merlin hook engine (`hookEngine.runStop`, `hookEngine.runUserPromptSubmit`)
+gains a `SessionStart` event and three new event types:
+
+| Event | Trigger | Default action |
+|---|---|---|
+| `SessionStart` | Session opens with a project loaded | Read `.merlin/pending.json`; inject top-N findings as system reminder |
+| `Stop` | After every Claude turn | Run `DisciplineEngine.scan(diff:)` against the turn's file changes |
+| `UserPromptSubmit` | Before user message processed | If prompt looks like a feature request, check that an appropriate phase file exists |
+| `PostCommit` (new) | After `git commit` succeeds | Run `PhaseScanner` if the commit touched source files |
+| `PrePush` (new) | Before `git push` | Verify version-tag consistency |
+
+Hooks can be overridden in `.merlin/config.toml` per project. Default config installed by
+`/project:init` is conservative.
+
+### PendingAttention queue
+
+A persisted queue of findings the user hasn't addressed yet.
+
+```swift
+struct Finding: Sendable, Identifiable, Codable {
+    let id: UUID
+    let category: FindingCategory
+    let severity: Severity
+    let summary: String                  // 1 line
+    let detail: String                   // full evidence
+    let suggestedAction: String?
+    let createdAt: Date
+    let lastSeenAt: Date
+}
+
+enum FindingCategory: String, Codable, Sendable {
+    case phaseDrift
+    case manualCoverageGap
+    case docStaleReference
+    case whyCommentMissing
+    case proseReadabilityFail
+    case versionBumpCandidate
+    case overrideAuditAccumulation
+}
+
+enum Severity: String, Codable, Sendable {
+    case block          // hard gate; commit/release refused
+    case nudge          // surfaced at session start
+    case silent         // logged only, available on request
+}
+```
+
+Persisted as `.merlin/pending.json`. Findings have an idempotency key so re-running the scanner
+doesn't duplicate them. The `SessionStart` hook surfaces the top 3 by severity (then by
+recency); a `"N more dismissed"` link lets the user pull the full list when they want it.
+
+### Override audit log
+
+Every override is appended to `.merlin/override-log.jsonl`:
+
+```json
+{
+  "timestamp": "2026-05-14T12:00:00Z",
+  "category": "why_comment_missing",
+  "file": "Merlin/Engine/AgenticEngine.swift",
+  "line": 137,
+  "rationale": "5-second sleep is the documented test fixture wait",
+  "user_dismissed": false,
+  "via_annotation": true,
+  "annotation_text": "// rationale-not-needed: test fixture"
+}
+```
+
+Periodic review fires weekly: `discipline.override-audit` event with counts per category.
+High counts trigger a `pending.json` finding: *"You've used `rationale-not-needed` 9 times
+this week. Is the trigger list too aggressive, or are you cutting corners?"*
+
+This is the *meta-discipline* — the system watches its own escape valves and surfaces erosion
+before it becomes routine bypass.
+
+### Critic Stage 2 extensions
+
+The existing `CriticEngine.runStage2` (v2.1) gains four new check categories. Each is a
+critic prompt extension, gated by the type of change in the diff:
+
+| Trigger | Stage 2 prompt extension |
+|---|---|
+| Diff contains added/changed source code | *"List code segments where the WHY is non-obvious from names alone. For each, suggest the comment to add."* |
+| Diff adds user-facing surface | *"For each new user-facing surface in this diff, name the manual section that covers it. Flag any without coverage."* |
+| Diff modifies code referenced in a doc file | *"List doc sections whose accuracy may be affected by this diff."* |
+| Diff modifies a doc file | *"Check this prose against the target reading grade. List sentences over 25 words or with passive voice."* |
+
+Each produces a `.fail` with structured reasons; the worker addresses and re-submits. The
+existing `criticRetryCount` bounds the loop.
+
+### Telemetry events
+
+V2.2 adds:
+
+| Event | Payload |
+|---|---|
+| `discipline.scan.start` | `{trigger: stop_hook | session_start | manual}` |
+| `discipline.scan.complete` | `{findings_count, duration_ms}` |
+| `discipline.scan.error` | `{error}` (circuit breaker counter) |
+| `discipline.disabled` | `{consecutive_failures}` |
+| `discipline.finding.added` | `{category, severity, file}` |
+| `discipline.finding.dismissed` | `{category, rationale}` |
+| `discipline.finding.resolved` | `{category, finding_id}` |
+| `discipline.override.recorded` | `{category, file, line, rationale}` |
+| `discipline.override-audit` | `{category, count, threshold}` (weekly) |
+| `discipline.release-gate.start` | `{version}` |
+| `discipline.release-gate.fail` | `{version, checks_failed: [string]}` |
+| `discipline.release-gate.pass` | `{version}` |
+| `discipline.manual-coverage.baseline` | `{baseline, delta_since_last_release}` |
+
+Tied into the existing `TelemetryEmitter` infrastructure from v2.1.
+
+### Portability to Claude Code
+
+Most of v2.2's content is *delivery-mechanism agnostic* by design. The Merlin-specific glue
+is the `DisciplineEngine` actor and the UI surfacing. The methodology (skills, adapters,
+templates, hook scripts) is portable.
+
+| Component | Merlin | Claude Code |
+|---|---|---|
+| Adapter `.toml` files | `~/.merlin/adapters/` | `~/.claude/adapters/` — identical format |
+| Skill SKILL.md files | `~/.merlin/skills/project-*/` | `~/.claude/skills/project-*/` — identical format |
+| Doc templates | `~/.merlin/templates/docs/` | `~/.claude/templates/docs/` — identical content |
+| `PhaseScanner` | Swift actor inside `DisciplineEngine` | `scan.sh` bash script |
+| `ManualCoverageScanner` | Swift actor | `manual-scan.sh` |
+| `WhyCommentScanner` | Swift actor | `why-comment.sh` |
+| Pending-attention surfacing | `.systemNote` at session start | `<system-reminder>` injection |
+| UI chip / panel | Native SwiftUI | Not applicable |
+| Pre-commit hook | Bash script (calls scanner CLI) | Same bash script |
+
+A separate `~/.claude/skills/project-init-claude/SKILL.md` can install the bash-script
+equivalent of `DisciplineEngine` into any project. Same methodology, lighter delivery.
+
+### Implementation order (v2.2.0)
+
+Approximately 24 phase pairs plus a release phase. Numbers are placeholders pending v2.1.0
+completion (phases 241+).
+
+| Phases | Concern |
+|---|---|
+| 241a/b | `AdapterRegistry` + adapter format + Swift+Rust seed adapters |
+| 242a/b | `.merlin/project.toml` schema + per-project config loader |
+| 243a/b | `PhaseScanner` + drift report (validate against Merlin's existing 230+ phases) |
+| 244a/b | `PendingAttention` queue persistence + dedupe |
+| 245a/b | `DisciplineEngine` actor + hook engine integration |
+| 246a/b | `SessionStart` hook event + system-reminder injection |
+| 247a/b | `UserPromptSubmit` hook check for unscoped feature requests |
+| 248a/b | `PostCommit` / `PrePush` git-hook installer + uninstaller |
+| 249a/b | `ManualCoverageScanner` + coverage-comment format |
+| 250a/b | Manual section templates + decaying baseline implementation |
+| 251a/b | `DocReferenceGraph` automatic mode |
+| 252a/b | `APIDocGenerator` (DocC for Swift, rustdoc for Rust) |
+| 253a/b | Developer-guide mechanical-section generator |
+| 254a/b | `WhyCommentScanner` + trigger lists per adapter |
+| 255a/b | WHY-comment pre-commit hook + override annotation parser |
+| 256a/b | `ProseReadabilityChecker` + Vale style folder |
+| 257a/b | Vale pre-commit gate + critic Stage 2 prose check |
+| 258a/b | Override audit log + weekly review event |
+| 259a/b | `project:init` skill |
+| 260a/b | `project:phase` skill |
+| 261a/b | `project:revise` skill |
+| 262a/b | `project:release` consolidated gate skill |
+| 263a/b | `project:adopt` skill — first target is Merlin itself |
+| 264a/b | UI: pending-attention chip + panel in chat view |
+| 265a/b | v2.2.0 release (project.yml bump, `RELEASE-v2.2.0.md`, tag, GitHub release) |
+
+Dependency graph:
+
+```
+241 ──► 242 ──► 243 ──► 244 ──► 245 ──┬──► 246
+                                       ├──► 247
+                                       └──► 248
+245 ──► 249 ──► 250
+245 ──► 251 ──► 252 ──► 253
+245 ──► 254 ──► 255
+245 ──► 256 ──► 257
+245 ──► 258
+246+247+248+249+250+251+252+253 ──► 259 (init)
+259+243 ──► 260 (phase)
+259+243+249+251+254+256+258 ──► 261 (revise)
+260+250+252+253+255+257 ──► 262 (release)
+259+all-scanners ──► 263 (adopt)
+245 ──► 264 (UI)
+all ──► 265 (release)
+```
+
+Phases 241–248 are the engine + storage foundation. 249–258 are the individual scanners and
+checkers. 259–263 are the user-facing skills. 264 is UI. 265 is the milestone release.
+
+Phases that can defer if scope pressure builds: 248 (git-hook installer can use a pre-existing
+hook framework), 264 (UI chip; system-reminder injection from 246 is enough for v1), 263 (adopt
+can be a follow-up since init covers greenfield).
+
+### Honest trade-offs
+
+- **Implementation surface is significant** (~24 phase pairs). Mitigation: each pair is small
+  and well-scoped; the order is incremental; nothing depends on everything.
+- **Methodology lock-in.** The discipline encodes specific opinions about software construction
+  (TDD, NNa/NNb, comprehensive manuals, version-bump policy). Anyone using Merlin v2.2 inherits
+  them. This is intentional and acceptable for the primary user (the codebase author); a
+  problem if Merlin acquires external contributors. Soft mitigation: every check is tunable
+  via `~/.merlin/conventions.toml`.
+- **False positives.** Heuristic scanners (`DocReferenceGraph` automatic mode,
+  `WhyCommentScanner` trigger patterns, `ProseReadabilityChecker` jargon detection) will
+  occasionally flag things that don't matter. Mitigation: every block has an override
+  annotation; every override is logged; periodic audit catches over-triggering before it
+  becomes bypass culture.
+- **Adapter rot.** Per-language conventions shift (Rust editions, Swift strict concurrency
+  flags, ESLint rules). Adapters need upkeep. Mitigation: adapter `version` field; staleness
+  warning at scan time; central upgrade via `/project:revise --update-adapter`.
+- **Bootstrap cost.** First `/project:adopt` run on Merlin will produce hundreds of findings.
+  Working through them is a real cost. Mitigation: decaying baseline strategy means forward
+  work proceeds in parallel; the baseline closes at a sustainable rate.
+- **Scanner outage breaks discipline.** If `DisciplineEngine` itself bugs, every session
+  opens with wrong nags. Mitigation: circuit breaker (three consecutive scan failures →
+  disable for session, emit `discipline.disabled`); never recurse; fail silent rather than
+  fail loud.
+
+### The pattern across non-negotiables
+
+V2.2 makes seven kinds of construction discipline mechanical:
+
+| Discipline | Trigger | Required action | Hard gate |
+|---|---|---|---|
+| Phase files stay in sync with code | Source changed | Phase updated or addendum written | Pre-commit on red drift |
+| Tests precede implementation | NNb commit | NNa exists, was committed first | Pre-commit on missing NNa |
+| Public API has doc comments | Public symbol added | Doc comment present | Lint at pre-commit |
+| Public API is documented | Public symbol added | api.md regenerated | Release gate |
+| WHY-comments where warranted | Trigger pattern matched | Nearby comment present or annotation | Pre-commit |
+| User-facing surface is documented | Surface added | Manual section covers it | Pre-commit + release gate |
+| Prose at target readability | Doc file modified | Grade ≤ target | Pre-commit + release gate |
+
+The architecture absorbs each new non-negotiable as one more entry in the catalog, not as
+fundamental redesign. New constraints (license headers, dependency audit, accessibility
+labels, …) plug into the same three-layer pattern: trigger → required action → bounded
+override with audit.
+
+This is the test for whether the abstraction is right: *new disciplines slot in without
+moving the load-bearing structure.* V2.2 builds the structure. Future milestones add entries
+to it.
+
+---
+
 ## Versioning Policy
 
 ### Two version fields
@@ -3803,4 +5184,3 @@ Use `--latest` on the newest release. Omit it for older patch releases created r
 and the in-app string must agree.
 **Never** reuse or move a tag that has already been pushed to a remote.
 **Always** create a GitHub release immediately after pushing a tag — tags alone do not update the "Latest" release shown on GitHub.
-| Bad data prevention | Auto-filtering rejects aborted/error sessions; Accept+Edit lets user clean partial errors; Decline+correction converts errors to DPO signal |

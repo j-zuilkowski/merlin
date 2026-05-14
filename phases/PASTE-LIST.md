@@ -1686,3 +1686,105 @@ Read phases/phase-218b-merlin-v2-version-release.md and execute.
 # Commit: Phase 218b — Merlin v2.0 version release
 # Tag: v2.0.0
 ```
+
+---
+
+## Budget-Aware Execution (v2.1.0)
+
+Run phases 232–240 in strict sequence. Each `a` is failing tests; each `b` is the implementation
+that satisfies them. Do not skip a commit. Do not batch commits across phases. Phase 240b tags
+and publishes the v2.1.0 release.
+
+```bash
+# ── PHASE 232a — Budget Telemetry Tests ────────────────────────────────────
+Read phases/phase-232a-budget-telemetry-tests.md and execute.
+# Verify: BUILD FAILED until telemetry surfaces land
+# Commit: Phase 232a — BudgetTelemetryTests (failing)
+
+# ── PHASE 232b — Budget Telemetry ──────────────────────────────────────────
+Read phases/phase-232b-budget-telemetry.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 232a tests pass
+# Commit: Phase 232b — Budget telemetry
+
+# ── PHASE 233a — ProviderBudget + Pre-Flight Tests ─────────────────────────
+Read phases/phase-233a-provider-budget-preflight-tests.md and execute.
+# Verify: BUILD FAILED until ProviderBudget/TokenEstimator/pre-flight land
+# Commit: Phase 233a — ProviderBudgetAndPreflightTests (failing)
+
+# ── PHASE 233b — ProviderBudget + Pre-Flight Gate ──────────────────────────
+Read phases/phase-233b-provider-budget-preflight.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 233a tests pass
+# Commit: Phase 233b — ProviderBudget and pre-flight gate
+
+# ── PHASE 234a — Working-Set Caps Tests ────────────────────────────────────
+Read phases/phase-234a-working-set-caps-tests.md and execute.
+# Verify: BUILD FAILED until per-component caps land
+# Commit: Phase 234a — WorkingSetCapsTests (failing)
+
+# ── PHASE 234b — Working-Set Caps ──────────────────────────────────────────
+Read phases/phase-234b-working-set-caps.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 234a tests pass
+# Commit: Phase 234b — Working-set caps
+
+# ── PHASE 235a — Adaptive RAG Tests ────────────────────────────────────────
+Read phases/phase-235a-adaptive-rag-tests.md and execute.
+# Verify: BUILD FAILED until RAGSelector lands
+# Commit: Phase 235a — AdaptiveRAGTests (failing)
+
+# ── PHASE 235b — Adaptive RAG ──────────────────────────────────────────────
+Read phases/phase-235b-adaptive-rag.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 235a tests pass
+# Commit: Phase 235b — Adaptive RAG
+
+# ── PHASE 236a — Enriched PlanStep + refineStep Tests ──────────────────────
+Read phases/phase-236a-planstep-enrichment-refine-tests.md and execute.
+# Verify: BUILD FAILED until enriched PlanStep and refineStep land
+# Commit: Phase 236a — EnrichedPlanStepAndRefineTests (failing)
+
+# ── PHASE 236b — Enriched PlanStep + refineStep ────────────────────────────
+Read phases/phase-236b-planstep-enrichment-refine.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 236a tests pass
+# Commit: Phase 236b — Enriched PlanStep and refineStep
+
+# ── PHASE 237a — Unified Executor Gate Tests ───────────────────────────────
+Read phases/phase-237a-executor-gate-tests.md and execute.
+# Verify: BUILD FAILED until EscalationHandler lands and recursive recovery is deleted
+# Commit: Phase 237a — UnifiedExecutorGateTests (failing)
+
+# ── PHASE 237b — Unified Executor Gate + Recovery Deletion ─────────────────
+Read phases/phase-237b-executor-gate.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 237a tests pass; no recursive runLoop self-call remains
+# Commit: Phase 237b — Unified executor gate, delete recursive recovery
+
+# ── PHASE 238a — Critic Gating Tests ───────────────────────────────────────
+Read phases/phase-238a-critic-gating-tests.md and execute.
+# Verify: BUILD FAILED until critic policy resolver and CriterionChecker land
+# Commit: Phase 238a — CriticGatingTests (failing)
+
+# ── PHASE 238b — Critic Gating ─────────────────────────────────────────────
+Read phases/phase-238b-critic-gating.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 238a tests pass
+# Commit: Phase 238b — Critic gating
+
+# ── PHASE 239a — Decompose-on-Overflow Tests ───────────────────────────────
+Read phases/phase-239a-decompose-on-overflow-tests.md and execute.
+# Verify: BUILD FAILED until decompose-first + cross-provider routing land
+# Commit: Phase 239a — DecomposeOnOverflowTests (failing)
+
+# ── PHASE 239b — Decompose-on-Overflow ─────────────────────────────────────
+Read phases/phase-239b-decompose-on-overflow.md and execute.
+# Verify: BUILD SUCCEEDED; all phase 239a tests pass
+# Commit: Phase 239b — Decompose-on-overflow
+
+# ── PHASE 240a — v2.1.0 Release Tests ──────────────────────────────────────
+Read phases/phase-240a-v2-1-release-tests.md and execute.
+# Verify: BUILD FAILED until project.yml bumped and RELEASE-v2.1.0.md added
+# Commit: Phase 240a — V2_1ReleaseTests (failing)
+
+# ── PHASE 240b — v2.1.0 Release ────────────────────────────────────────────
+Read phases/phase-240b-v2-1-release.md and execute.
+# Verify: BUILD SUCCEEDED; "About Merlin" shows 2.1.0 (16)
+# Commit: Phase 240b — Bump version to 2.1.0 (Budget-Aware Execution)
+# Tag: v2.1.0
+# Release: gh release create v2.1.0 --latest
+```
