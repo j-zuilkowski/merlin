@@ -446,6 +446,7 @@
 		F8C3DC11C2666FB792C777C9 /* KiCadSchematicParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31774BBEB57796E41F092A0A /* KiCadSchematicParserTests.swift */; };
 		F941B1D0C82B2D53B37BEB97 /* ContinuationAbortTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 821DF989CCC4DE14489DCD8B /* ContinuationAbortTests.swift */; };
 		F95A20FFB8769C0D49BAB224 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB30D8DFDDE23D92A41241C /* SSEParser.swift */; };
+		FAE84411CFF2FDBB9EF53168 /* SlashCommandHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18BA95141C99394B0E7873D4 /* SlashCommandHandler.swift */; };
 		FB7F5C506B103EF80063FA4B /* GUIActionTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCDBF2ACA000098F1F6D01F /* GUIActionTelemetryTests.swift */; };
 		FBBF4979B6DA3A57F37C1074 /* MCPHTTPTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D902510182AC3489EA44AB /* MCPHTTPTransportTests.swift */; };
 		FC3761C0CB22D2D8BC90AACC /* AppearanceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A887F2D46BBF1DB9DA57A104 /* AppearanceSettings.swift */; };
@@ -522,6 +523,7 @@
 		17FFC29E928FEE1EBC28CC6B /* MemoryTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryTelemetryTests.swift; sourceTree = "<group>"; };
 		180E234809EF7D06007B4720 /* KeepAwakeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeepAwakeManager.swift; sourceTree = "<group>"; };
 		186B1D053046C909C7FB62A8 /* VendorOrderApprovalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VendorOrderApprovalTests.swift; sourceTree = "<group>"; };
+		18BA95141C99394B0E7873D4 /* SlashCommandHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandHandler.swift; sourceTree = "<group>"; };
 		18DDEF48DF384E91C6252D7A /* SubagentSidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentSidebarRowView.swift; sourceTree = "<group>"; };
 		195DBB95FAE46D4D3360C223 /* AgenticEngineKAGWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineKAGWiringTests.swift; sourceTree = "<group>"; };
 		1AEAE21270C7E4046B66899D /* MerlinE2ETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MerlinE2ETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1724,6 +1726,7 @@
 				C521DD975EF12840B4051D21 /* ShellStreamViewModel.swift */,
 				DD3758F9E11891F59094224B /* SideChatPane.swift */,
 				D618333C226998B947B39EA5 /* SkillsPicker.swift */,
+				18BA95141C99394B0E7873D4 /* SlashCommandHandler.swift */,
 				5D431F5A6C3382C7EE8D9CE5 /* TerminalPane.swift */,
 				CEE01E4A80957431EAA980F6 /* ToolLogView.swift */,
 				590FC701B4094294AEB6BC0A /* WorkspaceView.swift */,
@@ -2353,6 +2356,7 @@
 				F2993FFAA81156F5AE7AAC9D /* SkillsPicker.swift in Sources */,
 				2F02D202C2A39994E3641873 /* SkillsRegistry.swift in Sources */,
 				4D9DC8D6994FB88ED9095BC2 /* SlackConnector.swift in Sources */,
+				FAE84411CFF2FDBB9EF53168 /* SlashCommandHandler.swift in Sources */,
 				EE4036171C3EC654F4DAF6F2 /* SoftwareDomain.swift in Sources */,
 				D730A15F97C392106774AD38 /* SpawnAgentTool.swift in Sources */,
 				83F2058461FE082EB609B027 /* StagingBuffer.swift in Sources */,

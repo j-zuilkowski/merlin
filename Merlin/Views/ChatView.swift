@@ -288,37 +288,42 @@ struct ChatView: View {
     }
 
     private func handleSlashCommandIfNeeded(_ message: String) -> Bool {
+        let handler = SlashCommandHandler(
+            onCompact: { [appState] in
+                appState.engine.contextManager.forceCompaction()
+                appState.engine.emitSystemNote("[context compacted on demand]")
+            },
+            onCalibrate: { [appState] in
+                // When slot assignments are configured, calibrate the execute-slot provider
+                // (typically a local model) against a remote reference. This lets /calibrate
+                // compare LM Studio models even when deepseek is the primary provider.
+                let localProviderID: String
+                let localModelID: String
+                if let executeID = appState.engine.slotAssignments[.execute], !executeID.isEmpty {
+                    localProviderID = executeID
+                    localModelID = executeID.contains(":") ?
+                        String(executeID.split(separator: ":", maxSplits: 1).last ?? Substring(executeID)) :
+                        appState.activeModelID
+                } else {
+                    localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
+                    localModelID = appState.activeModelID
+                }
+                appState.calibrationCoordinator.begin(
+                    localProviderID: localProviderID,
+                    localModelID: localModelID
+                )
+            }
+        )
+
+        if handler.handle(message) == .consumed {
+            return true
+        }
+
         guard message.hasPrefix("/") else { return false }
         let parts = message.dropFirst().split(whereSeparator: \.isWhitespace)
         let command = parts.first.map(String.init)?.lowercased() ?? ""
 
         switch command {
-        case "calibrate":
-            // When slot assignments are configured, calibrate the execute-slot provider
-            // (typically a local model) against a remote reference. This lets /calibrate
-            // compare LM Studio models even when deepseek is the primary provider.
-            let localProviderID: String
-            let localModelID: String
-            if let executeID = appState.engine.slotAssignments[.execute], !executeID.isEmpty {
-                localProviderID = executeID
-                localModelID = executeID.contains(":") ?
-                    String(executeID.split(separator: ":", maxSplits: 1).last ?? Substring(executeID)) :
-                    appState.activeModelID
-            } else {
-                localProviderID = appState.activeLocalProviderID ?? appState.registry.activeProviderID
-                localModelID = appState.activeModelID
-            }
-            appState.calibrationCoordinator.begin(
-                localProviderID: localProviderID,
-                localModelID: localModelID
-            )
-            return true
-
-        case "compact":
-            appState.engine.contextManager.forceCompaction()
-            appState.engine.emitSystemNote("[context compacted on demand]")
-            return true
-
         case "rewind":
             let (stepsBack, valid) = RewindCommand.parse(message)
             guard valid else {
