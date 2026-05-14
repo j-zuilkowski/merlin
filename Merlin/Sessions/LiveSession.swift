@@ -24,6 +24,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let appState: AppState
     let skillsRegistry: SkillsRegistry
     let chatViewModel = ChatViewModel()
+    let activeDomainIDs: [String]
     /// Set by SessionManager.restore() to record which store Session this live session
     /// was created from. Used by the sidebar to avoid restoring the same session twice.
     var originalSessionID: UUID?
@@ -42,11 +43,13 @@ final class LiveSession: ObservableObject, Identifiable {
 
     init(projectRef: ProjectRef,
          initialMessages: [Message] = [],
-         sessionStore: SessionStore? = nil) {
+         sessionStore: SessionStore? = nil,
+         activeDomainIDs: [String] = ["software"]) {
         self.id = UUID()
         self.title = "New Session"
         self.createdAt = Date()
-        self.appState = AppState(projectPath: projectRef.path)
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.appState = AppState(projectPath: projectRef.path, activeDomainIDs: self.activeDomainIDs)
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry
         self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
@@ -75,7 +78,12 @@ final class LiveSession: ObservableObject, Identifiable {
         // Register this LiveSession as an active record in the store so the engine's
         // session-save and title-generation paths (which use sessionStore.activeSession)
         // operate on the correct session from the first turn onward.
-        let initialRecord = Session(id: self.id, title: "New Session", messages: [])
+        let initialRecord = Session(
+            id: self.id,
+            title: "New Session",
+            messages: [],
+            activeDomainIDs: self.activeDomainIDs
+        )
         try? appState.sessionStore?.save(initialRecord)
         appState.sessionStore?.activeSessionID = self.id
 
@@ -151,5 +159,9 @@ final class LiveSession: ObservableObject, Identifiable {
 
     var stagingBuffer: StagingBuffer {
         appState.engine.toolRouter.stagingBuffer ?? stagingBufferStorage
+    }
+
+    func applyActiveDomains() async {
+        await DomainRegistry.shared.setActiveDomains(ids: activeDomainIDs)
     }
 }

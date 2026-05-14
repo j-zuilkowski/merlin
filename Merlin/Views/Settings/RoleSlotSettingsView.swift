@@ -181,7 +181,7 @@ struct RoleSlotSettingsView: View {
     }
 
     private func applyActiveDomain() async {
-        await DomainRegistry.shared.setActiveDomain(id: settings.activeDomainID)
+        await DomainRegistry.shared.setActiveDomains(ids: settings.activeDomainIDs)
     }
 
     private func saveSlots() async {

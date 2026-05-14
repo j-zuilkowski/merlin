@@ -7,7 +7,7 @@ actor DomainRegistry {
     static let shared = DomainRegistry()
 
     private var plugins: [String: any DomainPlugin] = [:]
-    private var activeDomainID: String = "software"
+    private var activeDomainIDs: [String] = ["software"]
 
     init() {
         // SoftwareDomain is always registered and cannot be removed.
@@ -22,26 +22,43 @@ actor DomainRegistry {
     func unregister(id: String) {
         guard id != "software" else { return }
         plugins.removeValue(forKey: id)
-        if activeDomainID == id {
-            activeDomainID = "software"
-        }
+        activeDomainIDs = normalizeActiveDomainIDs(activeDomainIDs.filter { $0 != id })
     }
 
     func setActiveDomain(id: String) {
-        guard plugins[id] != nil else { return }
-        activeDomainID = id
+        setActiveDomains(ids: [id])
     }
 
     func activeDomain() -> any DomainPlugin {
-        plugins[activeDomainID] ?? plugins["software"] ?? SoftwareDomain()
+        let domains = activeDomains()
+        return domains.first(where: { $0.id != "software" }) ?? domains.first ?? SoftwareDomain()
     }
 
-    /// Returns task types for the active domain only. Multi-domain is deferred.
+    func activeDomains() -> [any DomainPlugin] {
+        activeDomainIDs.compactMap { plugins[$0] }
+    }
+
+    func setActiveDomains(ids: [String]) {
+        activeDomainIDs = normalizeActiveDomainIDs(ids)
+    }
+
+    /// Returns task types for every active domain in order.
     func taskTypes() -> [DomainTaskType] {
-        activeDomain().taskTypes
+        activeDomains().flatMap { $0.taskTypes }
     }
 
     func plugin(for id: String) -> (any DomainPlugin)? {
         plugins[id]
+    }
+
+    private func normalizeActiveDomainIDs(_ ids: [String]) -> [String] {
+        var normalized: [String] = ["software"]
+        for id in ids {
+            guard id != "software", plugins[id] != nil else { continue }
+            if !normalized.contains(id) {
+                normalized.append(id)
+            }
+        }
+        return normalized.isEmpty ? ["software"] : normalized
     }
 }

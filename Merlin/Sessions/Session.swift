@@ -8,6 +8,7 @@ struct Session: Codable, Identifiable, Sendable {
     var providerDefault: String = "deepseek-v4-pro"
     var messages: [Message]
     var authPatternsUsed: [String] = []
+    var activeDomainIDs: [String] = ["software"]
     var archived: Bool = false
 
     enum CodingKeys: String, CodingKey {
@@ -18,7 +19,12 @@ struct Session: Codable, Identifiable, Sendable {
         case providerDefault
         case messages
         case authPatternsUsed
+        case activeDomainIDs
         case archived
+    }
+
+    private enum LegacyCodingKeys: String, CodingKey {
+        case activeDomainID
     }
 
     init(
@@ -29,6 +35,7 @@ struct Session: Codable, Identifiable, Sendable {
         providerDefault: String = "deepseek-v4-pro",
         messages: [Message],
         authPatternsUsed: [String] = [],
+        activeDomainIDs: [String] = ["software"],
         archived: Bool = false
     ) {
         self.id = id
@@ -38,11 +45,13 @@ struct Session: Codable, Identifiable, Sendable {
         self.providerDefault = providerDefault
         self.messages = messages
         self.authPatternsUsed = authPatternsUsed
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
         self.archived = archived
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try container.decode(String.self, forKey: .title)
         createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
@@ -50,6 +59,13 @@ struct Session: Codable, Identifiable, Sendable {
         providerDefault = try container.decodeIfPresent(String.self, forKey: .providerDefault) ?? "deepseek-v4-pro"
         messages = try container.decodeIfPresent([Message].self, forKey: .messages) ?? []
         authPatternsUsed = try container.decodeIfPresent([String].self, forKey: .authPatternsUsed) ?? []
+        if let decodedDomains = try container.decodeIfPresent([String].self, forKey: .activeDomainIDs), !decodedDomains.isEmpty {
+            activeDomainIDs = decodedDomains
+        } else if let decodedDomain = try legacyContainer.decodeIfPresent(String.self, forKey: .activeDomainID) {
+            activeDomainIDs = [decodedDomain]
+        } else {
+            activeDomainIDs = ["software"]
+        }
         archived = try container.decodeIfPresent(Bool.self, forKey: .archived) ?? false
     }
 

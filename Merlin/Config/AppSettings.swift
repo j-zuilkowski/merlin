@@ -98,7 +98,12 @@ final class AppSettings: ObservableObject {
     @Published var slotAssignments: [AgentSlot: String] = [:]
     @Published var verifyCommand: String = ""
     @Published var checkCommand: String = ""
-    @Published var activeDomainID: String = "software"
+    @Published var activeDomainID: String = "software" {
+        didSet { syncActiveDomainIDs(from: activeDomainID) }
+    }
+    @Published var activeDomainIDs: [String] = ["software"] {
+        didSet { syncActiveDomainID(from: activeDomainIDs) }
+    }
     @Published var maxPlanRetries: Int = 2
     @Published var maxLoopIterations: Int = 100
     /// TOML key `critic_enabled`. Default: `true`. Set to false to disable critic entirely.
@@ -114,6 +119,7 @@ final class AppSettings: ObservableObject {
 
     private var fsStream: FSEventStreamRef?
     private var watchedURL: URL?
+    private var isSynchronizingActiveDomains = false
 
     init(configURL: URL = AppSettings.defaultConfigURL) {
         self.configURL = configURL
@@ -191,6 +197,7 @@ final class AppSettings: ObservableObject {
         var verifyCommand: String?
         var checkCommand: String?
         var activeDomainID: String?
+        var activeDomainIDs: [String]?
         var planner: PlannerConfig?
         var critic: CriticConfig?
         var dpoEnabled: Bool?
@@ -324,6 +331,7 @@ final class AppSettings: ObservableObject {
             case verifyCommand = "verify_command"
             case checkCommand = "check_command"
             case activeDomainID = "active_domain"
+            case activeDomainIDs = "active_domains"
             case planner
             case critic
             case dpoEnabled = "dpo_enabled"
@@ -509,10 +517,14 @@ final class AppSettings: ObservableObject {
                 }
             }
         }
-        if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainID != "software" {
+        if !verifyCommand.isEmpty || !checkCommand.isEmpty || activeDomainIDs.count > 1 || activeDomainID != "software" {
             lines.append("")
             lines.append("[domain]")
-            lines.append("active_domain = \(quoted(activeDomainID))")
+            if activeDomainIDs.count > 1 {
+                let quotedDomains = activeDomainIDs.map { quoted($0) }.joined(separator: ", ")
+                lines.append("active_domains = [\(quotedDomains)]")
+            }
+            lines.append("active_domain = \(quoted(activeDomainIDs.first ?? activeDomainID))")
             if verifyCommand.isEmpty == false {
                 lines.append("verify_command = \(quoted(verifyCommand))")
             }
@@ -856,7 +868,9 @@ final class AppSettings: ObservableObject {
         if let value = config.checkCommand {
             checkCommand = value
         }
-        if let value = config.activeDomainID {
+        if let values = config.activeDomainIDs {
+            activeDomainIDs = values
+        } else if let value = config.activeDomainID {
             activeDomainID = value
         }
         if let planner = config.planner {
@@ -929,6 +943,44 @@ final class AppSettings: ObservableObject {
                 loraServerURL = value
             }
         }
+    }
+
+    private func normalizeConfiguredActiveDomainIDs(_ ids: [String]) -> [String] {
+        var normalized: [String] = []
+        for rawID in ids {
+            let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !id.isEmpty else { continue }
+            if !normalized.contains(id) {
+                normalized.append(id)
+            }
+        }
+        return normalized.isEmpty ? ["software"] : normalized
+    }
+
+    private func syncActiveDomainIDs(from id: String) {
+        guard !isSynchronizingActiveDomains else { return }
+        isSynchronizingActiveDomains = true
+        let normalized = normalizeConfiguredActiveDomainIDs([id])
+        if activeDomainIDs != normalized {
+            activeDomainIDs = normalized
+        }
+        if let primary = normalized.first, activeDomainID != primary {
+            activeDomainID = primary
+        }
+        isSynchronizingActiveDomains = false
+    }
+
+    private func syncActiveDomainID(from ids: [String]) {
+        guard !isSynchronizingActiveDomains else { return }
+        isSynchronizingActiveDomains = true
+        let normalized = normalizeConfiguredActiveDomainIDs(ids)
+        if activeDomainIDs != normalized {
+            activeDomainIDs = normalized
+        }
+        if let primary = normalized.first, activeDomainID != primary {
+            activeDomainID = primary
+        }
+        isSynchronizingActiveDomains = false
     }
 
     private func parsedBoolValue(from line: String, key: String) -> Bool? {

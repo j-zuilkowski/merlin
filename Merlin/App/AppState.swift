@@ -43,6 +43,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 @MainActor
 final class AppState: ObservableObject {
     let projectPath: String
+    private let initialActiveDomainIDs: [String]
     let registry = ProviderRegistry()
     let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
@@ -96,8 +97,9 @@ final class AppState: ObservableObject {
     private var githubTokenObserver: NSObjectProtocol?
     private var cancellables: Set<AnyCancellable> = []
 
-    init(projectPath: String = "") {
+    init(projectPath: String = "", activeDomainIDs: [String] = ["software"]) {
         self.projectPath = projectPath
+        self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
             .path
@@ -214,7 +216,7 @@ final class AppState: ObservableObject {
             serverURL: AppSettings.shared.loraServerURL,
             adapterPath: AppSettings.shared.loraAdapterPath
         )
-        syncEngineProviders()
+        syncEngineProviders(activeDomainIDs: initialActiveDomainIDs)
         if let token = ConnectorCredentials.retrieve(service: "github"), !token.isEmpty {
             prMonitor.start(projectPath: projectPath, token: token)
         }
@@ -426,7 +428,7 @@ final class AppState: ObservableObject {
             .appendingPathComponent("Skills/Builtin")
     }
 
-    private func syncEngineProviders() {
+    private func syncEngineProviders(activeDomainIDs: [String]? = nil) {
         rebuildLocalModelManagers()
         engine.registry = registry
         engine.slotAssignments = AppSettings.shared.slotAssignments
@@ -436,7 +438,8 @@ final class AppState: ObservableObject {
         } else {
             activeLocalProviderID = nil
         }
-        Task { await DomainRegistry.shared.setActiveDomain(id: AppSettings.shared.activeDomainID) }
+        let resolvedDomainIDs = activeDomainIDs ?? AppSettings.shared.activeDomainIDs
+        Task { await DomainRegistry.shared.setActiveDomains(ids: resolvedDomainIDs) }
         Task { [weak self] in await self?.refreshParameterAdvisories() }
     }
 
