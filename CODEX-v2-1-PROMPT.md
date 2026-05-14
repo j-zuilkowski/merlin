@@ -42,16 +42,24 @@ verify command, and commit instructions.
 7. **Pre-flight before phase 232a:**
    ```bash
    cd ~/Documents/localProject/merlin
-   git status                                                                # confirm clean working tree
-   git log --oneline -5                                                      # confirm HEAD is at or after phase 231b
-   git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -3                # latest semver tags
+   git status --short                                                        # only modified-tracked lines block
+   git diff --quiet && git diff --cached --quiet && echo "clean" || echo "dirty"
+   git log --oneline -5                                                      # confirm HEAD is at or after the v2.1.0 scaffolding commit (or 231b)
+   git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -3                # latest semver tags — should end with v2.0.0
    git tag --list v2.0.0                                                     # explicit: v2.0.0 must exist
    ```
-   The semver-filtered tag list should end with `v2.0.0`. The repo also carries older
-   bare-number tags (`v2`, `v3`, …, `v8`) from the pre-semver era — those are expected and
-   not relevant here. If the working tree is dirty *and you did not just commit a v2.1.0
-   bootstrap*, or if HEAD is not at/after 231b, or if `v2.0.0` is absent, **stop and report**
-   before modifying anything.
+   **Blocking conditions** (stop and report if any are true):
+   - The `git diff` check above prints `dirty` (any modified or staged tracked files).
+   - HEAD is not at or after `f667ce5` (Phase 231b) — should be at the v2.1.0 scaffolding
+     commit `137c726` or later.
+   - `v2.0.0` is missing from the tag list.
+
+   **Non-blocking** (proceed normally):
+   - Untracked files in `git status --short` (lines beginning with `??`). The repo carries
+     `memory/` as an untracked working directory; ignore it.
+   - The semver tag list contains intermediate tags after `v2.0.0` (any patch releases that
+     landed between the scaffolding and your run). The repo also carries older bare-number
+     tags (`v2`, `v3`, …, `v8`) from the pre-semver era — expected, not relevant here.
 8. **Versioning:** Only phase 240b bumps `project.yml`. Never edit `MARKETING_VERSION` or
    `CURRENT_PROJECT_VERSION` in any other phase. After phase 240b, run `xcodegen generate`
    exactly as instructed, then tag `v2.1.0` and create the GitHub release via the `gh` CLI.
