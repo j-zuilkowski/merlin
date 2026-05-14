@@ -17,24 +17,25 @@ This manual covers the complete architecture, development workflow, and code org
 7. [Engine — The Agentic Loop](#engine--the-agentic-loop)
 8. [Supervisor-Worker Engine](#supervisor-worker-engine)
 9. [LoRA Training Pipeline](#lora-training-pipeline)
-10. [Tool System](#tool-system)
-11. [Provider System](#provider-system)
-12. [Auth & Permission System](#auth--permission-system)
-13. [Session & State Management](#session--state-management)
-14. [Hook System](#hook-system)
-15. [Skill System](#skill-system)
-16. [Memory System](#memory-system)
-17. [MCP Integration](#mcp-integration)
-18. [Subagent System](#subagent-system)
-19. [UI Architecture](#ui-architecture)
-20. [Configuration System](#configuration-system)
-21. [Connectors](#connectors)
-22. [Testing Strategy](#testing-strategy)
-23. [Code Map](#code-map)
-24. [Adding a New Tool](#adding-a-new-tool)
-25. [Adding a New Provider](#adding-a-new-provider)
-26. [Writing a Skill](#writing-a-skill)
-27. [Non-Negotiable Rules](#non-negotiable-rules)
+10. [DisciplineEngine (v2.2)](#disciplineengine-v22)
+11. [Tool System](#tool-system)
+12. [Provider System](#provider-system)
+13. [Auth & Permission System](#auth--permission-system)
+14. [Session & State Management](#session--state-management)
+15. [Hook System](#hook-system)
+16. [Skill System](#skill-system)
+17. [Memory System](#memory-system)
+18. [MCP Integration](#mcp-integration)
+19. [Subagent System](#subagent-system)
+20. [UI Architecture](#ui-architecture)
+21. [Configuration System](#configuration-system)
+22. [Connectors](#connectors)
+23. [Testing Strategy](#testing-strategy)
+24. [Code Map](#code-map)
+25. [Adding a New Tool](#adding-a-new-tool)
+26. [Adding a New Provider](#adding-a-new-provider)
+27. [Writing a Skill](#writing-a-skill)
+28. [Non-Negotiable Rules](#non-negotiable-rules)
 
 ---
 
@@ -462,6 +463,107 @@ Called from `AgenticEngine.runLoop()` after `performanceTracker.record()` when b
 **File:** `Merlin/Views/Settings/LoRASettingsSection.swift`
 
 Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train options (hidden when master is off), base model field, adapter path field with Browse button, auto-load toggle, server URL field, status row showing `loraCoordinator.isTraining` and `loraCoordinator.lastResult`.
+
+---
+
+## DisciplineEngine (v2.2)
+
+**Files:** `Merlin/Engine/DisciplineEngine.swift` and associated scanner actors in `Merlin/Engine/`.
+
+### Overview
+
+`DisciplineEngine` is a top-level `actor`, peer to `AgenticEngine`, `MemoryEngine`, and `PlannerEngine`. It coordinates five scanners, owns the pending-attention queue, and integrates with the hook engine. It runs after every turn (`Stop` hook) and injects findings at session start (`SessionStart` hook).
+
+```swift
+actor DisciplineEngine {
+    init(
+        adapter: ProjectAdapter,
+        phaseScanner: PhaseScanner,
+        manualCoverageScanner: ManualCoverageScanner,
+        docReferenceGraph: DocReferenceGraph,
+        whyCommentScanner: WhyCommentScanner,
+        proseReadabilityChecker: ProseReadabilityChecker
+    )
+    func scan(projectPath: String) async -> ScanReport
+    func pendingAttention(projectPath: String) async -> [Finding]
+    func dismiss(findingID: UUID, rationale: String) async
+}
+```
+
+Circuit breaker: three consecutive scan failures disable the engine for the session and emit `discipline.disabled` rather than blocking the user.
+
+### Adapter system
+
+Per-language config consumed by all scanners. Declared in `~/.merlin/adapters/<name>.toml`. Key fields: `build_command`, `test_command`, `versioning_file`, `versioning_field`, `[why_comment_triggers]` patterns, `[manual_coverage] surface_patterns`. Seed adapters: `swift-xcode.toml`, `rust-cargo.toml`.
+
+Per-project config lives in `<project>/.merlin/project.toml`: adapter selection, active discipline layers, `manual_coverage_baseline`.
+
+### Scanners
+
+**`PhaseScanner`** — reads `phases/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration).
+
+**`ManualCoverageScanner`** — enumerates user-facing surfaces via adapter regex patterns, cross-checks against `<!-- covers: ... -->` markers in doc files. Gaps and stale references become findings. Surfaces escape the requirement via `// manual: not-user-facing — <rationale>` (logged to override audit).
+
+**`DocReferenceGraph`** — greps doc files for symbol-shaped strings (camelCase, PascalCase, snake_case), cross-checks against the code symbol index. Renamed or removed symbols trigger findings on every doc that still references the old name.
+
+**`WhyCommentScanner`** — for each adapter-declared trigger pattern (e.g. `try?`, `@unchecked Sendable`, `.unwrap()`), checks for an explanatory comment within 3 lines. Missing → finding. Override: `// rationale-not-needed: <reason>` (logged).
+
+**`ProseReadabilityChecker`** — calls `vale` with the Merlin style folder. Per-file grade targets from the adapter `doc_target_grade` table. Default targets: `user-manual.md` grade 9, `developer-guide.md` grade 9, `architecture.md` grade 11.
+
+### PendingAttention queue
+
+Persisted at `<project>/.merlin/pending.json`. Idempotency key prevents duplicates on re-scan.
+
+```swift
+struct Finding: Sendable, Identifiable, Codable {
+    let id: UUID
+    let category: FindingCategory   // phaseDrift | manualCoverageGap | docStaleReference
+                                    // | whyCommentMissing | proseReadabilityFail
+                                    // | versionBumpCandidate | overrideAuditAccumulation
+    let severity: Severity          // block | nudge | silent
+    let summary: String
+    let detail: String
+    let suggestedAction: String?
+    let createdAt: Date
+    let lastSeenAt: Date
+}
+```
+
+`SessionStart` hook injects the top 3 findings by severity as a system reminder.
+
+### Override audit
+
+Every override appended to `<project>/.merlin/override-log.jsonl`. Weekly review fires `discipline.override-audit` telemetry with per-category counts. High counts surface a nudge finding — the engine watches its own escape valves for erosion.
+
+### Hook integration
+
+| Hook | Trigger | Action |
+|---|---|---|
+| `SessionStart` | Session opens | Inject top-N findings from `pending.json` as system reminder |
+| `Stop` | After every Claude turn | `DisciplineEngine.scan(diff:)` against changed files |
+| `UserPromptSubmit` | Before user message | Flag if prompt looks like a feature request without a phase file |
+| `PostCommit` | After git commit | Run `PhaseScanner` if commit touched source files |
+| `PrePush` | Before git push | Verify version-tag consistency |
+
+### Project skills
+
+Five `~/.merlin/skills/project-*/SKILL.md` files implement the user-facing layer.
+
+| Skill | Phases | Concern |
+|---|---|---|
+| `project:init` | 259a/b | Scaffold new project; install hooks |
+| `project:phase` | 260a/b | Build NNa/NNb phase pair |
+| `project:revise` | 261a/b | Interactive finding review |
+| `project:release` | 262a/b | Consolidated release gate |
+| `project:adopt` | 263a/b | Adopt existing project; record baseline |
+
+### Decaying coverage baseline
+
+`/project:adopt` records the gap count at adoption as `manual_coverage_baseline`. The release gate then requires: (a) no new uncovered surfaces in the current release diff, and (b) the baseline decreases by at least N (default 10) per release. The gap closes within approximately `baseline / 10` releases while forward work continues in parallel.
+
+### Telemetry events
+
+`discipline.scan.start`, `discipline.scan.complete`, `discipline.scan.error`, `discipline.disabled`, `discipline.finding.added`, `discipline.finding.dismissed`, `discipline.finding.resolved`, `discipline.override.recorded`, `discipline.override-audit`, `discipline.release-gate.start`, `discipline.release-gate.fail`, `discipline.release-gate.pass`, `discipline.manual-coverage.baseline`. All go through the existing `TelemetryEmitter`.
 
 ---
 

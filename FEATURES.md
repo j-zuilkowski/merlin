@@ -758,6 +758,40 @@ All appearance settings apply live with a preview pane in Settings.
 
 ---
 
+## Project Discipline (v2.2)
+
+Merlin can enforce construction discipline automatically — running scanners after every turn, surfacing findings at session start, and blocking bad commits via git hooks. Five skills give you deliberate control over the creation side.
+
+### The five project skills
+
+| Skill | What it does |
+|---|---|
+| `/project:init` | Scaffold a new project with CLAUDE.md, doc set, phase structure, and git hooks |
+| `/project:phase` | Build a TDD phase pair (NNa failing tests + NNb implementation) for one new surface |
+| `/project:revise` | Run the discipline scanner, review findings, and accept or dismiss each one |
+| `/project:release` | Consolidated release gate — verifies tests, docs, version bump, then tags and publishes |
+| `/project:adopt` | Apply discipline to an existing project without rewriting its history |
+
+### Enforcement layers
+
+Three layers enforce discipline. Only the first requires you to act.
+
+**Layer 1 — Creation skills (manual).** The five skills above. Use them when you want to create something.
+
+**Layer 2 — DisciplineEngine + hooks (automatic).** After every turn, the engine scans the project for drift and queues findings in `.merlin/pending.json`. At session start, the top findings appear as a system reminder. Silent when everything is healthy.
+
+**Layer 3 — Git hooks (hard gates).** Installed by `/project:init` or `/project:adopt`. Block commits when violations are present: missing WHY-comments, user-facing surfaces with no manual coverage, phase files that no longer match the code.
+
+### Adopting an existing project
+
+`/project:adopt` applies discipline to a codebase that wasn't built with Merlin. It detects the language, reads existing documentation, runs a full scan, and installs the enforcement layers. Because existing projects always have coverage gaps, it records the current gap count as a baseline and requires the gap to shrink by a configurable amount with each release — forward work continues in parallel while the backlog closes incrementally.
+
+### Adapters
+
+Discipline rules are language-aware. Adapters (TOML files in `~/.merlin/adapters/`) declare the build command, test command, version file, WHY-comment trigger patterns, and manual-coverage surface patterns for each language. Seed adapters ship for Swift/Xcode and Rust/Cargo.
+
+---
+
 ## Comparison: Merlin vs. Codex vs. Claude Code
 
 Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools with autonomous loop execution, file operations, and shell access. They diverge significantly in architecture, provider strategy, and target use case.
@@ -782,6 +816,7 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 | **Parallel sessions** | Yes — each in its own git worktree, independent context | Yes — background agents in cloud | Yes — up to 10 subagents |
 | **Subagents** | Yes — up to 4 concurrent, 2 nesting levels | Yes — multiple parallel agents | Yes — up to 10 parallel |
 | **Skills / slash commands** | Yes — Markdown files, personal + project-scoped, auto-reload | No | Yes — built-in and custom |
+| **Project discipline enforcement** | Yes — TDD gating, manual coverage, WHY-comment scanner, prose readability, phase drift detection (v2.2) | No | No |
 | **Hooks** | Yes — PreToolUse, PostToolUse, UserPromptSubmit, Stop | No | Yes — PreToolUse, PostToolUse |
 | **MCP support** | Yes | No | Yes |
 | **Scheduling** | Local scheduler (cron-like, macOS notifications) | Cloud-managed (runs when computer is off) | Cloud-managed routines |
@@ -814,6 +849,8 @@ Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools wit
 **Auth gate.** Merlin intercepts every tool call — including MCP tools — through a pattern-matching permission gate before execution. You can allow or deny by glob pattern, and decisions persist. This gives fine-grained, auditable control over what the agent can touch. Neither Codex nor Claude Code have an equivalent mechanism.
 
 **Deep Xcode integration.** Merlin parses `.xcresult` bundles, extracts structured errors and coverage, controls simulators, and can jump Xcode to an exact file and line via AppleScript. IDE plugins (the approach both Codex and Claude Code take) are shallower — they don't parse build artifacts or own the build loop.
+
+**Project discipline enforcement.** Merlin is the only tool in this group that mechanically enforces construction discipline — TDD phase pairs, comprehensive manual coverage, WHY-comments where warranted, prose readability, and phase-file/code sync — through a combination of automatic scanners, session-start reminders, and hard git-hook gates. Neither Codex nor Claude Code have an enforcement layer; discipline is left to the user's memory.
 
 **macOS-native, non-sandboxed.** As a native SwiftUI app, Merlin integrates with the macOS Accessibility tree, ScreenCaptureKit, CGEvent, SFSpeechRecognizer, and macOS Keychain in ways a CLI or Electron app cannot. GUI automation uses three complementary strategies and auto-selects the best one per target app.
 

@@ -27,12 +27,13 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 17. [Performance Dashboard](#performance-dashboard)
 18. [Memories](#memories)
 19. [RAG Memory Browser](#rag-memory-browser)
-20. [Hooks](#hooks)
-21. [Connectors](#connectors)
-22. [Scheduled Automations](#scheduled-automations)
-23. [LoRA Self-Training](#lora-self-training)
-24. [Settings](#settings)
-25. [Keyboard Shortcuts](#keyboard-shortcuts)
+20. [Project Discipline](#project-discipline)
+21. [Hooks](#hooks)
+22. [Connectors](#connectors)
+23. [Scheduled Automations](#scheduled-automations)
+24. [LoRA Self-Training](#lora-self-training)
+25. [Settings](#settings)
+26. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -481,6 +482,87 @@ Every turn, Merlin emits a `GroundingReport` describing how well the model's res
 These signals are visible in the Tool Log. Configure thresholds via `rag_freshness_threshold_days` / `rag_min_grounding_score` in `~/.merlin/config.toml`.
 
 This addresses the *context degradation* pattern — the model reasoning confidently over stale or sparse retrieval without any visible signal to the user.
+
+---
+
+## Project Discipline
+
+Merlin can enforce construction discipline on any project through a `DisciplineEngine` that runs automatically after every turn, plus five skills for deliberate creation tasks.
+
+### /project:init
+
+Scaffolds a new project. Asks for project name, language, doc-set preference, and which enforcement layers to install. Produces:
+
+- Language-native scaffold (`cargo new`, `xcodegen`, etc.)
+- `CLAUDE.md` customised to the chosen language and adapter
+- Full doc set (`README.md`, `architecture.md`, `api.md`, `developer-guide.md`, `user-manual.md`, `FEATURES.md`, `CHANGELOG.md`)
+- `phases/` directory with a `phase-00` documenting the initial state
+- `.merlin/project.toml` with adapter selection
+- Git hooks (`pre-commit`, `pre-push`)
+- Initial git commit
+
+### /project:phase
+
+Builds a TDD phase pair for one new surface. Asks structuring questions — what the abstraction is, what prior phase it depends on, what surfaces NNb introduces — and produces both the NNa (failing tests) and NNb (implementation) phase files, plus a `PASTE-LIST.md` update.
+
+### /project:revise
+
+Runs the discipline scanner and walks you through every finding. For each one you choose:
+
+- **Accept** — the skill applies the proposed fix
+- **Modify** — you edit the fix; the skill validates and applies it
+- **Dismiss** — logged to `.merlin/override-log.jsonl` with your rationale
+- **Defer** — stays in the pending queue for later
+
+Produces a single commit per accepted batch with a structured commit message.
+
+### /project:release
+
+The consolidated release gate. Checks before releasing:
+
+- All tests pass
+- API docs regenerated and committed
+- Manual coverage: no new gaps; baseline reduced since last release
+- Phase files in sync with code (no red drift)
+- WHY-comment violations clear or all overridden with rationale
+- Prose readability at target grade for all doc files
+- `RELEASE-vX.Y.Z.md` present with required sections
+- `CHANGELOG.md` updated
+- Version bumped in the project file
+
+On a clean pass: commits the version bump, creates the git tag, pushes, and creates the GitHub release.
+
+### /project:adopt
+
+Applies discipline to an existing project without rewriting its history.
+
+1. Detects language and selects an adapter (or asks).
+2. Reads existing `CLAUDE.md` / `architecture.md` — preserves them, adds a "Project Discipline" section if absent.
+3. Scans the codebase: surfaces, doc coverage gaps, WHY-comment violations, prose readability failures, phase drift.
+4. Records the current coverage gap count as the baseline in `.merlin/project.toml`.
+5. Installs git hooks (with per-layer confirmation).
+6. Prints a one-page adoption report: baseline count, releases needed to close it at default decay, violations by category.
+
+After adoption, run `/project:revise` to start working through the backlog. New surfaces must be covered from the moment of adoption; the pre-existing gap closes at a configurable rate.
+
+### Automatic enforcement
+
+The `DisciplineEngine` runs without you doing anything:
+
+- **After every turn** (`Stop` hook) — scans the diff for new violations, updates the pending queue.
+- **At session start** (`SessionStart` hook) — injects the top findings into context as a system reminder.
+- **Before each message** (`UserPromptSubmit` hook) — flags if a feature request has no corresponding phase file.
+- **Git hooks** — block commits on hard violations; block pushes on version-tag mismatches.
+
+Findings have three severity levels:
+
+| Severity | Effect |
+|---|---|
+| **block** | Commit or release refused until resolved or explicitly overridden |
+| **nudge** | Surfaced at session start; doesn't block work |
+| **silent** | Logged only; visible in `/project:revise` |
+
+The engine disables itself gracefully after three consecutive scan failures rather than blocking your session.
 
 ---
 
