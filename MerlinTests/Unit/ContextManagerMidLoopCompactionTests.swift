@@ -32,8 +32,8 @@ final class ContextManagerMidLoopCompactionTests: XCTestCase {
 
     // MARK: - Default threshold
 
-    func test_midLoopThreshold_default_is_40000() {
-        XCTAssertEqual(ContextManager().midLoopCompactionThreshold, 40_000)
+    func test_midLoopThreshold_default_is_20000() {
+        XCTAssertEqual(ContextManager().midLoopCompactionThreshold, 20_000)
     }
 
     func test_midLoopThreshold_exceeds_preRunThreshold() {

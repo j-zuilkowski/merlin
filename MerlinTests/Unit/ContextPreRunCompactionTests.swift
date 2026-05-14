@@ -6,9 +6,9 @@ final class ContextPreRunCompactionTests: XCTestCase {
 
     // MARK: - preRunCompactionThreshold
 
-    func testDefaultThresholdIs10000() {
+    func testDefaultThresholdIs6000() {
         let cm = ContextManager()
-        XCTAssertEqual(cm.preRunCompactionThreshold, 10_000)
+        XCTAssertEqual(cm.preRunCompactionThreshold, 6_000)
     }
 
     // MARK: - compactIfNeededBeforeRun

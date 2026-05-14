@@ -22,6 +22,15 @@
 import Foundation
 import CryptoKit
 
+enum EngineError: Error, Sendable {
+    case preflightOverflow(estimated: Int, budget: Int)
+}
+
+enum PreflightOutcome: Equatable {
+    case ok
+    case wouldOverflow(estimated: Int, budget: Int)
+}
+
 enum AgentEvent {
     case text(String)
     case thinking(String)
@@ -858,6 +867,12 @@ final class AgenticEngine {
                         minimumTokens: estimatedTokens
                     )
                 }
+
+                // Pre-flight budget gate. Throws EngineError.preflightOverflow when the
+                // request exceeds the provider budget even after compaction. Later phases
+                // (237b, 239b) intercept that error for escalation; for now it surfaces
+                // as an error event in the UI.
+                try await preflightCheck(request: request, provider: provider)
 
                 // Engine-level retry for transient provider errors (429, 5xx, network drops).
                 // 3 attempts total; provider already has its own internal retry loop for
@@ -1886,6 +1901,58 @@ final class AgenticEngine {
                 }
             }
         }
+    }
+
+    // MARK: - Pre-flight gate
+
+    /// Estimates the token cost of `request` against the provider's configured budget.
+    /// When the estimate exceeds the budget, triggers `compactWithSummaryIfNeeded` and
+    /// re-estimates. If still over, throws `EngineError.preflightOverflow`.
+    /// Emits `engine.preflight.ok`, `engine.preflight.compacted`, or `engine.preflight.overflow`.
+    @discardableResult
+    func preflightCheck(
+        request: CompletionRequest,
+        provider: any LLMProvider
+    ) async throws -> PreflightOutcome {
+        let budget = effectiveBudget(for: provider)
+        let estimated = TokenEstimator.estimate(
+            request: request,
+            baseURL: provider.baseURL,
+            modelID: provider.resolvedModelID
+        )
+
+        if estimated <= budget.usableInputTokens {
+            TelemetryEmitter.shared.emit("engine.preflight.ok", data: [
+                "estimated": estimated,
+                "budget": budget.usableInputTokens
+            ])
+            return .ok
+        }
+
+        await contextManager.compactWithSummaryIfNeeded(provider: provider)
+        let reEstimated = TokenEstimator.estimate(
+            request: request,
+            baseURL: provider.baseURL,
+            modelID: provider.resolvedModelID
+        )
+
+        if reEstimated <= budget.usableInputTokens {
+            TelemetryEmitter.shared.emit("engine.preflight.compacted", data: [
+                "estimated": reEstimated,
+                "budget": budget.usableInputTokens
+            ])
+            return .ok
+        }
+
+        TelemetryEmitter.shared.emit("engine.preflight.overflow", data: [
+            "estimated": reEstimated,
+            "budget": budget.usableInputTokens
+        ])
+        throw EngineError.preflightOverflow(estimated: reEstimated, budget: budget.usableInputTokens)
+    }
+
+    private func effectiveBudget(for provider: any LLMProvider) -> ProviderBudget {
+        registry?.config(for: provider.id)?.budget ?? .conservative
     }
 
     // MARK: - Provider retry

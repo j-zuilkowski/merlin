@@ -37,6 +37,9 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
     /// Set this to the model's documented maximum for long agentic tasks
     /// (e.g. 131_072 for DeepSeek V4, 16_384 for GPT-4o).
     var maxOutputTokens: Int?
+    /// Input-token budget for the provider. When nil, the engine falls back to
+    /// `ProviderBudget.conservative` (32 000 input / 4 096 reserved output).
+    var budget: ProviderBudget?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -51,6 +54,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         case kind
         case systemPromptAddendum = "system_prompt_addendum"
         case maxOutputTokens = "max_output_tokens"
+        case budget
     }
 
     init(
@@ -65,7 +69,8 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         supportsVision: Bool,
         kind: ProviderKind,
         systemPromptAddendum: String = "",
-        maxOutputTokens: Int? = nil
+        maxOutputTokens: Int? = nil,
+        budget: ProviderBudget? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -79,6 +84,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         self.kind = kind
         self.systemPromptAddendum = systemPromptAddendum
         self.maxOutputTokens = maxOutputTokens
+        self.budget = budget
     }
 
     init(from decoder: Decoder) throws {
@@ -95,6 +101,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         kind = try container.decode(ProviderKind.self, forKey: .kind)
         systemPromptAddendum = try container.decodeIfPresent(String.self, forKey: .systemPromptAddendum) ?? ""
         maxOutputTokens = try container.decodeIfPresent(Int.self, forKey: .maxOutputTokens)
+        budget = try container.decodeIfPresent(ProviderBudget.self, forKey: .budget)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -116,6 +123,9 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
         }
         if let maxOutputTokens {
             try container.encode(maxOutputTokens, forKey: .maxOutputTokens)
+        }
+        if let budget {
+            try container.encode(budget, forKey: .budget)
         }
     }
 }
@@ -180,7 +190,8 @@ final class ProviderRegistry: ObservableObject {
                        supportsThinking: true,
                        supportsVision: false,
                        kind: .openAICompatible,
-                       maxOutputTokens: 131_072),   // V4 supports 384K; 128K is a practical agentic cap
+                       maxOutputTokens: 131_072,    // V4 supports 384K; 128K is a practical agentic cap
+                       budget: ProviderBudget(maxInputTokens: 65_536, reservedOutputTokens: 8_192)),
         ProviderConfig(id: "openai",
                        displayName: "OpenAI",
                        baseURL: "https://api.openai.com/v1",
@@ -190,7 +201,8 @@ final class ProviderRegistry: ObservableObject {
                        supportsThinking: false,
                        supportsVision: true,
                        kind: .openAICompatible,
-                       maxOutputTokens: 16_384),    // gpt-4o max output
+                       maxOutputTokens: 16_384,     // gpt-4o max output
+                       budget: ProviderBudget(maxInputTokens: 128_000, reservedOutputTokens: 8_192)),
         ProviderConfig(id: "anthropic",
                        displayName: "Anthropic",
                        baseURL: "https://api.anthropic.com/v1",
@@ -200,7 +212,8 @@ final class ProviderRegistry: ObservableObject {
                        supportsThinking: true,
                        supportsVision: true,
                        kind: .anthropic,
-                       maxOutputTokens: 32_000),    // claude-opus-4 max output
+                       maxOutputTokens: 32_000,     // claude-opus-4 max output
+                       budget: ProviderBudget(maxInputTokens: 200_000, reservedOutputTokens: 16_384)),
         ProviderConfig(id: "qwen",
                        displayName: "Qwen",
                        baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",

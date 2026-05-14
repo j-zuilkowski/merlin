@@ -56,12 +56,12 @@ class ContextManager: ObservableObject {
     /// Token count above which `compactIfNeededBeforeRun` fires automatically.
     /// Kept well below a typical 32 K model context so the model has ample
     /// output space even in long sessions.
-    let preRunCompactionThreshold = 10_000
+    let preRunCompactionThreshold = 6_000
 
     /// Token threshold that triggers compaction mid-loop, inside the `while true` execute loop.
     /// A `var` so tests can lower it without mocking. Default: 40 000 tokens —
     /// well below a typical 32 K model context, giving the next LLM call ample output headroom.
-    var midLoopCompactionThreshold: Int = 40_000
+    var midLoopCompactionThreshold: Int = 20_000
 
     /// Called by `AgenticEngine.runLoop` before appending the user message.
     /// Compacts when the session has grown past `preRunCompactionThreshold` tokens

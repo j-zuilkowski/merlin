@@ -69,10 +69,9 @@ final class PreflightGateTests: XCTestCase {
             _ = try await engine.preflightCheck(request: request, provider: provider)
             XCTFail("Expected preflight to overflow")
         } catch let error as EngineError {
-            switch error {
-            case .preflightOverflow(let estimated, let budget):
+            if case .preflightOverflow(let estimated, let budget) = error {
                 XCTAssertGreaterThan(estimated, budget)
-            default:
+            } else {
                 XCTFail("Expected preflightOverflow, got \(error)")
             }
         }
