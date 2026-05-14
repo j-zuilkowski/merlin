@@ -1,0 +1,40 @@
+# Phase 227b - Chat Renderer Dead-Code Cleanup
+
+## Context
+Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
+SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
+Working dir: ~/Documents/localProject/merlin
+Phase 227a complete: failing chat renderer cleanup tests exist.
+
+---
+
+## Edit: Merlin/Views/ChatView.swift
+
+Remove unused legacy renderer code:
+
+1. `RenderedMessage`
+2. Any remaining `ChatEntryRow`
+3. Any remaining `markdownText` helper
+
+Do not change `ConversationWebView`, `ConversationHTMLRenderer`, `ChatEntry`, or tool-call behavior except where needed to remove dead code.
+
+---
+
+## Verify
+
+```bash
+xcodebuild -scheme MerlinTests test \
+    -destination 'platform=macOS' \
+    -derivedDataPath /tmp/merlin-derived 2>&1 \
+    | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
+```
+
+Expected: **BUILD SUCCEEDED**. Chat renderer cleanup tests pass.
+
+## Commit
+
+```bash
+git add Merlin/Views/ChatView.swift MerlinTests/Unit/ChatRendererCleanupTests.swift
+git commit -m "Phase 227b - remove dead chat renderer helpers"
+```
+

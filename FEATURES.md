@@ -416,6 +416,117 @@ Tasks are classified by complexity and routed to the most appropriate LLM slot. 
 
 **Domain System** — `DomainRegistry` holds pluggable `DomainPlugin` instances that supply domain-specific verification commands and task types. The built-in `SoftwareDomain` covers Swift/Xcode workflows. Domains inject a `systemPromptAddendum` into the system prompt for the active slot.
 
+### V2.0 Electronics Domain (KiCad)
+
+KiCad integration is defined as a first-class domain extension with deterministic completion gates.
+
+**Locked v2.0 decisions**
+- Raster/PDF schematic ingestion is in scope.
+- Merlin owns the `merlin-kicad-mcp` server.
+- Extraction confidence is measured from geometry, OCR, library, net-graph, and cross-pass agreement.
+- Ambiguity resolution uses targeted user clarification.
+- First MVP board profile is `jlcpcb_2layer_default`, followed by `pcbway_2layer`, `oshpark_2layer`, and `custom`.
+- Ethernet/control designs may use IoT/component modules to reduce custom high-speed layout risk.
+- Vendor integration includes BOM export, pricing/availability lookup, order preparation, and order submission.
+- Layer-count and fabrication-profile changes require user approval.
+- Routing uses FreeRouting first through `merlin-kicad-mcp` and KiCad DSN/SES interchange.
+- Schematic mutation uses a Merlin-owned `.kicad_sch` parser/writer with round-trip tests.
+
+**Supported intents**
+- "Draw me a PCB from this schematic (`.pdf` / `.png` / native KiCad input)."
+- "Design a control circuit from requirements and produce schematic + PCB + fab package."
+
+**Execution model (hybrid)**
+- KiCad CLI (`>= 10.0.0`) is the primary authority for pass/fail gates.
+- Merlin-owned `merlin-kicad-mcp` tools provide structured schematic, board, placement, routing, library, and simulation operations.
+- GUI automation + screenshot vision are fallback/QA only and cannot be sole success criteria.
+
+**Schematic extraction**
+- PDF/raster extraction uses image preprocessing, geometry tracing, symbol recognition, OCR, junction detection, net graph construction, power-symbol inference, and off-sheet/hierarchical label handling.
+- Confidence is computed from weighted geometry, OCR, library matches, net graph plausibility, and cross-pass agreement rather than LLM self-report; contradictions force ambiguity instead of being averaged away.
+- Ambiguous nets/components trigger targeted clarification before PCB synthesis.
+- Hand-drawn, whiteboard, and paper sketches are treated as conceptual requirements input unless they meet the same extraction thresholds as machine-drawn schematics.
+
+**Footprints and libraries**
+- Every schematic symbol must resolve to a footprint before board synthesis.
+- Footprints are assigned from existing KiCad fields, exact MPN/vendor metadata, package constraints, project defaults, or user clarification.
+- Missing symbols/footprints are handled through project-local library creation/import with pin, pad, package, and field verification.
+
+**Board rules and net classes**
+- Routing requires an explicit board profile: outline, fabricator, layer count, stackup, copper weight, trace/space, vias, edge clearance, silkscreen/mask rules, and impedance constraints when needed.
+- Net classes are generated before routing for power, ground, Ethernet differential pairs, clocks/reset, control nets, and isolation-boundary nets.
+- Board-house profiles are required immediately, starting with JLCPCB, PCBWay, OSHPark, and custom.
+- Default Ethernet rules include 100BASE-TX intra-pair skew <= 10 mm and 1000BASE-T intra-pair skew <= 5 mm, overridden by cited vendor/module layout guidance.
+
+**Placement and routing recovery**
+- Placement is a required optimization stage before routing: mechanical items, safety regions, power, Ethernet, controller, I/O, then DFT/silkscreen.
+- Router failure triggers congestion analysis, placement repair, net-class correction, seed routes/via changes, and constraint review before returning blocked status.
+
+**Hard gates for `COMPLETE`**
+- `unrouted_nets == 0`
+- ERC error count = 0
+- DRC error count = 0
+- schematic/PCB parity pass
+- fab export sanity pass (Gerber + drill artifacts present and valid)
+- required simulation scenarios pass (for applicable designs)
+- explicit human sign-off in high-stakes designs
+
+**Input quality policy**
+- Raster schematic inputs must be at least 300 DPI.
+- Extraction confidence thresholds:
+  - overall `>= 0.985`
+  - critical fields (RefDes, net labels, connector pins) `>= 0.995`
+- `ambiguous_nets == 0` and `unknown_components == 0` before PCB synthesis.
+
+**Routing/simulation defaults**
+- Route loop cap: 15 iterations, early stop after 3 no-improvement iterations.
+- SPICE-required design classes: analog, power, timing-critical control, protection circuits.
+- SPICE uses KiCad/ngspice-compatible netlist extraction, model provenance tracking, structured measurement parsing, and tolerance comparison.
+- Manufacturer SPICE models are cached locally with license/source metadata and are not redistributed unless the license permits it; legally unobtainable models produce a warning and generic-model suggestion when an acceptable substitute is available.
+- Default simulation tolerances:
+  - rails `±3%`
+  - analog setpoints `±5%`
+  - timing windows `±10%`
+  - protection thresholds `±7%`
+
+**Requirement-driven design**
+- Requirement-to-circuit workflows produce functional decomposition, known-good topology selection, component/module selection matrix, captured constraints, design rationale, and verification plan before schematic synthesis.
+- If no defensible topology/component set exists, the workflow returns `BLOCKED_ENGINEERING_DECISION`.
+
+**High-stakes boundary (mandatory user sign-off)**
+- Engine/generator start-stop/shutdown control
+- Hazardous energy (`>60VDC` or `>30VAC RMS`)
+- Current path above 5A
+- Isolation/interlock/protection function present
+- Military or mission-critical industrial usage
+
+**Distributor/BOM feature requirement**
+- Vendor-native BOM import/export adapters per distributor, backed by a canonical internal BOM model.
+- Initial vendor set: Digi-Key, Mouser, Arrow, Newark/Farnell/element14, LCSC, Parts Express.
+- Vendors lacking public API support use authenticated portal automation fallback.
+- KiCad fields map to canonical BOM fields: RefDes, value, footprint, manufacturer, MPN, vendor SKUs, quantity, DNP, lifecycle, and substitutions.
+- Order submission requires explicit user approval, final vendor/cart review, and a recorded order summary.
+
+**Fabrication and assembly outputs**
+- Gerbers, Excellon drills, drill map/report, BOM, pick-and-place/centroid file, assembly drawing, fabrication notes, STEP/3D output when available, and verification report.
+- Fabricator profiles define file naming and acceptance checks for JLCPCB, PCBWay, OSHPark, Eurocircuits, and custom board houses.
+- STEP models come from KiCad libraries, vendor/manufacturer downloads, generated package envelopes, or user-supplied files; omitted models are listed in the final report.
+
+**Visual QA**
+- Flags silkscreen overlap, RefDes legibility, polarity/pin-1 markings, connector orientation, front-panel label consistency, test point accessibility, keepout/enclosure visibility, and orientation anomalies.
+- Visual QA can block release for presentation/mechanical-readability issues but cannot override electrical, simulation, parity, or fabrication gates.
+
+**Terminal statuses**
+- `COMPLETE`
+- `BLOCKED`
+- `BLOCKED_INPUT_QUALITY`
+- `BLOCKED_VERSION`
+- `BLOCKED_SIMULATION`
+- `BLOCKED_TOOLING`
+- `BLOCKED_LIBRARY`
+- `BLOCKED_ENGINEERING_DECISION`
+- `IN_PROGRESS`
+
 **Complexity Classification** — `PlannerEngine` classifies each message into one of three tiers:
 
 | Tier | Routing |

@@ -6,6 +6,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
+**[v2.0]** Electronics/KiCad feature set: `merlin-kicad-mcp`, raster/PDF schematic ingestion, KiCad project generation, FreeRouting-backed route loop, ERC/DRC/parity/SPICE/fab gates, vendor-native BOM/order workflows.
 **[v3]** Agent intelligence + UX completeness: unified settings window, config system, AI-generated memories, hooks, thread automations, web search, reasoning effort, toolbar actions, notifications, personalization, context usage indicator, floating pop-out window, voice dictation.
 **[v4]** Subagents (Explorer + Worker), WorktreeManager, SubagentEngine, SubagentStreamUI, full settings surface (all 12 sections), WorkspaceLayoutManager, wired panes (FilePane, TerminalPane, PreviewPane, SideChat), DisabledSkillNames enforcement, keep-awake (IOPMAssertion), AgentRegistry, HookEngine wiring, tool registry launch.
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
@@ -2131,6 +2132,582 @@ The tracker, critic, planner, and routing all adapt automatically to whatever th
 | Default domain | `SoftwareDomain` — always registered, cannot be removed |
 | Multi-domain | One active domain at a time — multi-domain sessions deferred |
 | Core changes on new domain | None required |
+
+## Merlin v2.0 — Electronics/KiCad Feature Set
+
+This section is the architecture source of truth for KiCad integration requirements.
+
+KiCad and related electronics workflows are Merlin v2.0 scope. They use the v2 MCP/tool-registry foundation directly and are not deferred to the later generic DomainPlugin milestone.
+
+#### Locked v2.0 decisions
+
+1. Raster/PDF schematic ingestion is in v2.0 scope.
+2. Merlin owns the KiCad MCP server (`merlin-kicad-mcp`).
+3. Extraction confidence is computed from measurable multi-extractor agreement, not LLM self-report.
+4. Ambiguity resolution uses a targeted clarification loop.
+5. Footprint assignment order is: existing KiCad field, exact MPN, package constraint, project default, user clarification.
+6. First MVP fabrication profile is `jlcpcb_2layer_default`; follow-on profiles are `pcbway_2layer`, `oshpark_2layer`, then `custom`.
+7. Requirement-driven Ethernet/control designs may use IoT/component modules to reduce custom high-speed layout risk.
+8. Missing SPICE models block completion only when simulation is required and no legal model or acceptable generic substitute is available.
+9. Merlin may generate project-local symbols/footprints only when verification gates pass.
+10. Distributor integration includes BOM export, pricing/availability lookup, order preparation, and order submission.
+11. Board-house profiles are required immediately, not deferred behind generic Gerber checks.
+12. Placement and net-class repair are allowed automatically; layer-count and fabrication-profile changes require user approval.
+13. Routing uses FreeRouting first, wrapped by `merlin-kicad-mcp` through KiCad DSN/SES interchange.
+14. Schematic mutation uses a Merlin-owned `.kicad_sch` S-expression parser/writer with round-trip tests.
+
+#### Product intents
+
+1. `Draw me a pcb from this schematic - <schematic.pdf/png>`
+2. `Design me a start/stop circuit with ethernet that monitors front-panel signals`
+
+Merlin must not report success from schematic generation alone. Completion requires deterministic electrical and manufacturing gates.
+
+#### KiCad baseline and integration modes
+
+1. KiCad CLI version requirement: `>= 10.0.0` (lower versions are rejected with `BLOCKED_VERSION`).
+2. Hybrid execution strategy from day one:
+   - CLI: primary authority for deterministic checks and release gates.
+   - MCP: structured mutation/introspection during placement/routing workflows.
+   - GUI + vision: fallback and visual QA only, never sole pass authority.
+3. No KiCad core fork required for MVP; integration is external via CLI/MCP/automation.
+
+#### KiCad MCP server requirement
+
+Merlin v2.0 owns the KiCad MCP integration layer. The target server is `merlin-kicad-mcp`, an external MCP server process that wraps KiCad CLI and KiCad's supported scripting/API surfaces behind OpenAI-compatible tool contracts.
+
+The architecture does not depend on an unnamed community server. Community MCP servers may be inspected for prior art, but production coverage is provided by Merlin's server.
+
+Required MCP coverage:
+
+1. Project creation and file discovery
+2. Schematic parse/read/write operations
+3. Symbol, footprint, field, and library introspection
+4. Netlist extraction and parity checks
+5. Board outline, stackup, design-rule, and net-class mutation
+6. Footprint assignment and placement mutation
+7. Routing pass orchestration and connectivity inspection
+8. ERC, DRC, fabrication export, and report parsing
+9. SPICE scenario generation, execution, and result parsing
+10. Screenshot/GUI attachment points for visual QA fallback
+
+If the required server or a required tool is unavailable, electronics workflows return `BLOCKED_TOOLING`.
+
+#### Tool contract recommendation
+
+All KiCad tools use OpenAI function-calling schemas and return a common result envelope:
+
+```swift
+struct KiCadToolResult: Codable, Sendable {
+    var status: KiCadStatus
+    var artifacts: [ArtifactRef]
+    var violations: [KiCadViolation]
+    var metrics: [String: Double]
+    var questions: [ClarificationQuestion]
+    var nextActions: [String]
+}
+```
+
+Recommended v2.0 tool set:
+
+| Tool | Required input | Required output |
+|---|---|---|
+| `kicad_check_version` | `kicad_cli_path`, `required_major` | detected version, capability map, `BLOCKED_VERSION` on failure |
+| `kicad_ingest_schematic` | source artifact path, source type, extraction profile | `ExtractionReport`, source-coordinate evidence, clarification questions |
+| `kicad_answer_clarification` | extraction/design id, answers/annotations | updated `ExtractionReport`, remaining ambiguity count |
+| `kicad_build_intent_model` | extraction report or requirements, board profile, constraints | `DesignIntent`, assumptions, unresolved engineering decisions |
+| `kicad_select_components` | design intent, vendor/source policy | component matrix, selected MPNs/modules, rejected alternatives |
+| `kicad_prepare_libraries` | selected components, library policy | project-local symbols/footprints/3D refs, library verification report |
+| `kicad_assign_footprints` | schematic/design intent, component matrix | footprint assignment report, `unknown_footprints` |
+| `kicad_compile_project` | design intent, libraries, board profile | `.kicad_pro`, `.kicad_sch`, `.kicad_pcb`, compile diagnostics |
+| `kicad_apply_board_profile` | board profile, outline, stackup | applied constraints, DRC rule summary |
+| `kicad_generate_net_classes` | design intent, board profile | `NetClassPlan`, diff-pair/power/control assignments |
+| `kicad_place_components` | placement plan, board file | placement diagnostics, congestion/routability metrics |
+| `kicad_route_pass` | board file, router profile, iteration state | route report, routed percentage, failing nets |
+| `kicad_check_connectivity` | board file | unrouted nets, ratsnest/suspended trace metrics |
+| `kicad_run_erc` | schematic/project | structured ERC violations |
+| `kicad_run_drc` | board/project | structured DRC violations |
+| `kicad_check_parity` | schematic, board | schematic/PCB component and net parity report |
+| `kicad_run_spice` | simulation scenarios, model paths | raw traces, measurements, simulator logs |
+| `kicad_evaluate_simulation` | measurements, tolerance envelopes | pass/fail deltas, `BLOCKED_SIMULATION` reasons |
+| `kicad_visual_inspect` | KiCad window/project, inspection profile | screenshot evidence, overlap/orientation/readability findings |
+| `kicad_export_fab` | project, fabricator profile | Gerbers, drills, BOM, PnP, drawings, CAM report |
+| `kicad_prepare_vendor_order` | normalized BOM, vendor, quantity | native BOM/cart payload, price/availability report |
+| `kicad_submit_vendor_order` | approved vendor cart/order payload | order confirmation or blocked approval/payment state |
+| `kicad_package_release` | fab outputs, verification report | signed release package or pending sign-off state |
+
+Routing decision: v2.0 wraps FreeRouting through `merlin-kicad-mcp` as the first autorouting backend using KiCad DSN/SES interchange, while Merlin owns placement, net-class generation, rule setup, route retry policy, and deterministic KiCad verification after every import. A future custom router can be added behind the same `kicad_route_pass` contract.
+
+Schematic mutation decision: v2.0 owns a strict `.kicad_sch` S-expression parser/writer with round-trip tests. GUI automation is fallback only for operations that cannot be safely expressed through file/API mutation.
+
+#### Design data schemas
+
+The KiCad domain persists these canonical schemas so tool calls are resumable and auditable:
+
+```swift
+struct DesignIntent: Codable, Sendable {
+    var intentID: String
+    var sourceArtifacts: [ArtifactRef]
+    var requirements: [Requirement]
+    var assumptions: [Assumption]
+    var components: [ComponentIntent]
+    var nets: [NetIntent]
+    var boardProfile: BoardProfile
+    var safetyProfile: SafetyProfile
+}
+
+struct ExtractionReport: Codable, Sendable {
+    var sourceArtifact: ArtifactRef
+    var components: [ExtractedComponent]
+    var nets: [ExtractedNet]
+    var unresolvedRegions: [SourceRegion]
+    var confidence: ExtractionConfidence
+    var ambiguousNets: Int
+    var unknownComponents: Int
+}
+
+struct NormalizedBOM: Codable, Sendable {
+    var lines: [BOMLine]
+    var vendorMappings: [VendorBOMMapping]
+    var substitutions: [SubstitutionCandidate]
+}
+
+struct BoardProfile: Codable, Sendable {
+    var id: String
+    var fabricator: String
+    var layerCount: Int
+    var stackup: [StackupLayer]
+    var copperWeightOz: Double
+    var minTraceMm: Double
+    var minClearanceMm: Double
+    var minViaDrillMm: Double
+    var minViaPadMm: Double
+    var copperToEdgeMm: Double
+    var impedanceRequirements: [ImpedanceRule]
+    var differentialPairRules: [DifferentialPairRule]
+}
+
+struct NetClassPlan: Codable, Sendable {
+    var classes: [NetClass]
+    var assignments: [NetClassAssignment]
+    var differentialPairs: [DifferentialPair]
+}
+
+struct PlacementPlan: Codable, Sendable {
+    var fixedItems: [PlacementConstraint]
+    var regions: [PlacementRegion]
+    var componentPlacements: [ComponentPlacement]
+    var optimizationMetrics: [String: Double]
+}
+
+struct SimulationScenario: Codable, Sendable {
+    var id: String
+    var required: Bool
+    var netlistPath: String
+    var modelRefs: [ModelRef]
+    var stimuli: [SimulationStimulus]
+    var measurements: [MeasurementSpec]
+    var tolerances: [ToleranceEnvelope]
+}
+
+struct FabPackage: Codable, Sendable {
+    var fabricatorProfileID: String
+    var gerbers: [ArtifactRef]
+    var drills: [ArtifactRef]
+    var bom: ArtifactRef
+    var pickAndPlace: ArtifactRef?
+    var drawings: [ArtifactRef]
+    var stepModels: [ArtifactRef]
+}
+
+struct VerificationReport: Codable, Sendable {
+    var gates: [VerificationGateResult]
+    var approvals: [ApprovalRecord]
+    var assumptions: [Assumption]
+    var releaseStatus: KiCadStatus
+}
+```
+
+#### Hard completion gates (all required)
+
+1. Connectivity gate: `unrouted_nets == 0`
+2. ERC gate: zero error-level ERC violations
+3. DRC gate: zero error-level DRC violations
+4. Parity gate: schematic/PCB net + component parity pass
+5. Fabrication gate: Gerber + drill export success and required artifact sanity checks
+6. Simulation gate (applicable designs): all required scenarios pass tolerance checks
+7. High-stakes sign-off gate: explicit user approval before final fabrication release
+
+If any gate fails, status is not `COMPLETE`.
+
+#### Schematic extraction pipeline
+
+Raster and PDF schematic ingestion is a multi-stage extraction problem, not OCR alone.
+
+Extraction stages:
+
+1. Preprocess input: deskew, de-noise, normalize contrast, split pages/sheets, detect title blocks.
+2. Detect primitives: wires, buses, junction dots, no-connect markers, labels, symbol boxes, pins, power symbols, and off-sheet connectors.
+3. Recognize symbols: match against known KiCad/library symbols first, then use vision classification for unknowns.
+4. OCR text fields: RefDes, values, net labels, pin numbers, sheet names, and annotations.
+5. Trace connectivity graph: convert wire geometry, junctions, labels, power symbols, and off-sheet references into a candidate net graph.
+6. Infer implicit nets: global labels, power symbols, repeated labels, hierarchical sheet pins, and bus entries.
+7. Produce an extraction report: components, pins, nets, confidence evidence, unresolved regions, and source image coordinates.
+8. Human clarification loop: ambiguous nets/components are surfaced as targeted questions or annotation tasks before synthesis proceeds.
+
+Confidence is computed from measurable agreement between independent extractors, not from LLM self-report alone.
+
+Confidence model:
+
+1. Per-detection confidence is a weighted score from geometry (`0.30`), OCR/text (`0.20`), library match (`0.25`), net-graph plausibility (`0.15`), and cross-pass agreement (`0.10`).
+2. Critical fields use the minimum score across the field, attached symbol, attached pin, and attached net.
+3. Contradictions are hard vetoes, not averaged away: conflicting pin counts, incompatible package geometry, impossible junction topology, or ERC-impossible net graphs force ambiguity.
+4. Overall extraction confidence is the lower of aggregate component confidence and aggregate net confidence.
+5. LLM/vision model output can propose detections, but it cannot certify confidence without supporting geometry/library/net evidence.
+
+Confidence sources:
+
+1. Geometry confidence: line continuity, junction consistency, pin-to-wire attachment, crossing-vs-junction disambiguation.
+2. OCR confidence: text engine confidence plus agreement across rotated/cropped passes.
+3. Library match confidence: symbol geometry and pin-count agreement with known symbols.
+4. Net graph confidence: ERC-like plausibility checks before KiCad project generation.
+5. Cross-pass agreement: deterministic extractor, vision model, and KiCad import/export parity where available.
+
+No raster/PDF input proceeds to PCB synthesis until `ambiguous_nets == 0` and `unknown_components == 0`. The path to zero ambiguity is explicit user clarification or replacement input, not silent guessing.
+
+#### Hand-drawn schematic policy
+
+Hand-drawn, whiteboard, and paper sketch schematics are accepted only as conceptual input for requirements capture. They are not accepted as authoritative schematic-to-PCB extraction sources unless they independently meet the same geometry/OCR/library/net confidence thresholds as machine-drawn schematics.
+
+Expected behavior:
+
+1. Hand-drawn inputs usually return `BLOCKED_INPUT_QUALITY` for direct PCB synthesis.
+2. Merlin may convert a hand-drawn sketch into a proposed clean schematic intent model, but it must ask for user confirmation before treating it as the source schematic.
+3. The user-facing blocked report explains which items failed: unreadable labels, ambiguous junctions, uncertain pin attachments, unrecognized symbols, or insufficient geometry confidence.
+4. A cleaned KiCad schematic, vector PDF, or high-resolution machine-drawn image is the preferred replacement input.
+
+#### Input quality and extraction thresholds
+
+1. Minimum raster input quality: `300 DPI`
+2. Overall extraction confidence: `>= 0.985`
+3. Critical field confidence (RefDes, net labels, connector pins): `>= 0.995`
+4. Required pre-synthesis conditions:
+   - `ambiguous_nets == 0`
+   - `unknown_components == 0`
+5. Route loop defaults:
+   - `max_route_iterations = 15`
+   - early stop after `3` no-improvement iterations
+
+#### Footprint assignment
+
+Every schematic symbol must resolve to a footprint before board synthesis.
+
+Footprint assignment order:
+
+1. Preserve existing KiCad footprint fields when present.
+2. Resolve by exact MPN/vendor part metadata when available.
+3. Resolve by package constraints from the requirements/BOM (`0603`, `SOIC-8`, `RJ45_MAGJACK`, etc.).
+4. Resolve from approved project/library defaults.
+5. Ask for user clarification when multiple physically incompatible choices remain.
+
+The assignment report records symbol, selected footprint, source evidence, package dimensions, pin-count match, and unresolved alternatives. `unknown_footprints > 0` blocks PCB synthesis.
+
+#### Component library management
+
+Requirement-driven design must manage symbols, footprints, 3D models, and vendor fields as first-class artifacts.
+
+Library policy:
+
+1. Prefer KiCad standard libraries and project-local approved libraries.
+2. Vendor/imported symbols and footprints are copied into a project-local library before use.
+3. Generated custom symbols/footprints require pin-count, pin-name, pad-number, and package-dimension checks.
+4. Every selected component stores manufacturer, MPN, vendor part numbers, lifecycle status, and substitution policy.
+5. Missing libraries return `BLOCKED_LIBRARY` unless the workflow is allowed to generate and verify project-local library entries.
+
+#### Board constraints, stackup, and fabrication profiles
+
+Routing cannot begin until a board profile is selected or fully specified.
+
+Required board inputs:
+
+1. Board outline and mounting constraints
+2. Fabricator profile (`jlcpcb_2layer_default`, `pcbway_2layer`, `oshpark_2layer`, or `custom`)
+3. Layer count and stackup
+4. Copper weight
+5. Minimum trace/space
+6. Via drill and pad sizes
+7. Copper-to-edge clearance
+8. Soldermask/silkscreen constraints
+9. Impedance-control requirements when present
+10. Assembly-side and height constraints when present
+
+If the user omits these, Merlin may propose a default prototype profile, but the chosen profile is written into the design intent model and verification report.
+
+Default profile order:
+
+1. `jlcpcb_2layer_default` for MVP and unspecified prototype jobs.
+2. `pcbway_2layer` as the second board-house profile.
+3. `oshpark_2layer` as the third board-house profile.
+4. `custom` for user-specified stackups, constraints, and board houses.
+
+Layer-count or fabrication-profile changes during recovery require explicit user approval.
+
+#### Net class management
+
+Net classes are generated before routing and verified before DRC.
+
+Required net-class categories:
+
+1. Power rails and high-current paths
+2. Ground and plane-connected nets
+3. Ethernet MDI differential pairs
+4. Clocks, reset, and timing-sensitive signals
+5. Low-speed control/status signals
+6. Isolation-boundary nets
+
+Ethernet profiles must include differential-pair constraints, length/skew targets where applicable, magnetics/protection placement rules, and keepout/return-path checks.
+
+Default Ethernet differential-pair rules:
+
+1. `ethernet_100base_tx`: intra-pair skew <= `10 mm`, pair-to-pair skew advisory only unless a module/vendor guide specifies tighter limits.
+2. `ethernet_1000base_t`: intra-pair skew <= `5 mm`, pair-to-pair skew <= `25 mm` unless vendor/module documentation specifies otherwise.
+3. Characteristic impedance target: `100 ohm differential`, tolerance supplied by board profile/fabricator when impedance control is requested.
+4. Vendor module or PHY layout guidance overrides defaults when cited in the source corpus.
+5. If board stackup cannot support the requested impedance/skew profile, the workflow returns `BLOCKED_ENGINEERING_DECISION` or requests a board-profile change.
+
+For v2.0 requirement-driven Ethernet/control designs, component selection may prefer IoT/component modules with integrated Ethernet PHY/MAC/magnetics or certified module layouts when they satisfy requirements. This reduces custom high-speed layout burden. Custom Ethernet PHY layouts remain allowed only when the selected profile includes the required net-class, placement, simulation/check, and board-house constraints.
+
+#### Auto-placement strategy
+
+Placement is an explicit optimization stage before routing.
+
+Placement order:
+
+1. Fixed mechanical items: connectors, mounting holes, board-edge controls, LEDs, switches.
+2. Safety/isolation regions and keepouts.
+3. Power entry, protection, regulation, and bulk capacitance.
+4. High-speed interfaces: Ethernet PHY/magnetics/RJ45/ESD network.
+5. MCU, oscillators, reset/programming headers, local decoupling.
+6. I/O expanders, front-panel signal conditioning, pullups, debounce/filter networks.
+7. Test points, labels, and assembly affordances.
+
+Optimization criteria include routability, critical-net length, power-loop area, return-path continuity, thermal spacing, connector orientation, silkscreen readability, and DFT access. Poor placement is repaired before route retries consume the full route budget.
+
+#### Simulation policy defaults
+
+SPICE validation is required for analog, power, timing-critical control, and protection circuits.
+
+Default tolerance envelopes:
+
+1. Rails: `±3%`
+2. Analog setpoints: `±5%`
+3. Timing windows: `±10%`
+4. Protection trip thresholds: `±7%`
+
+SPICE workflow requirements:
+
+1. Extract simulation netlists from the KiCad schematic or generated design model.
+2. Use KiCad/ngspice-compatible execution for baseline simulation.
+3. Resolve manufacturer SPICE models from local cache, vendor libraries, or explicit user-provided model files.
+4. Record model provenance and downgrade legally unobtainable required manufacturer models to warnings when an acceptable generic substitute is available.
+5. Parse simulator outputs into structured measurements.
+6. Compare measurements against declared envelopes and return `BLOCKED_SIMULATION` on failure.
+
+SPICE model acquisition and caching policy:
+
+1. Merlin never redistributes manufacturer SPICE models unless the model license explicitly permits redistribution.
+2. Models behind manufacturer logins or click-through licenses are acquired by user-assisted download, authenticated browser/portal automation, or user-provided files.
+3. Cached models are stored in a local, non-shared cache with license metadata, source URL, retrieval date, hash, manufacturer, MPN, and permitted-use notes.
+4. Project artifacts reference cached models by hash/path but do not embed restricted model text into release packages unless allowed by license.
+5. If a required manufacturer model cannot be legally acquired or cached, Merlin emits a simulation warning with the missing model list, acquisition notes, and a suggested generic substitute when available.
+6. Generic substitute models may satisfy the simulation gate only when the selected profile permits generic equivalence or the user explicitly approves the downgrade from manufacturer-specific to generic simulation.
+7. If no legal manufacturer model or acceptable generic substitute is available for a simulation-required scenario, the workflow returns `BLOCKED_SIMULATION`.
+
+3D model sourcing policy:
+
+1. Prefer KiCad standard-library STEP models when the selected footprint already references a valid model.
+2. Use vendor/manufacturer STEP models when available under terms that permit local project use.
+3. Generate simple package-envelope STEP models from verified package dimensions when no accurate manufacturer model exists and mechanical clearance checking only needs an envelope.
+4. Require user-supplied STEP models for connectors, enclosures, controls, or mechanically critical components when package-envelope generation is insufficient.
+5. Omit STEP output for non-critical parts only when the final report lists omitted models and affected components.
+
+#### Visual QA scope
+
+Visual QA is a supplementary inspection layer. It can create repair tasks and block release on presentation/mechanical-readability issues, but it cannot override failed electrical, simulation, parity, or fabrication gates.
+
+Required visual QA checks:
+
+1. Silkscreen overlap with pads, vias, board edge, holes, or other silkscreen text.
+2. RefDes presence, legibility, and agreement with schematic/BOM references.
+3. Polarity and pin-1 markings for diodes, LEDs, ICs, electrolytic capacitors, connectors, and keyed parts.
+4. Connector orientation and board-edge accessibility.
+5. Front-panel/control labeling consistency with requirements.
+6. Test point labeling and accessibility.
+7. Mounting-hole, keepout, and enclosure-clearance visibility.
+8. Component orientation anomalies compared with placement rules and common package conventions.
+9. Layer/view sanity screenshots for top copper, bottom copper, silkscreen, soldermask, and 3D view when available.
+
+#### Requirement-driven circuit methodology
+
+Intent 2 requires a design-methodology stage before KiCad generation.
+
+Required outputs before schematic synthesis:
+
+1. Functional decomposition: power, controller, Ethernet, signal monitoring, protection, isolation, user interface, programming/debug.
+2. Reference topology selection: known-good vendor reference designs, application notes, or approved internal patterns.
+3. Component selection matrix: MCU/Ethernet option, IoT/component module, PHY or MAC+PHY module, magnetics, protection, regulator, I/O expansion, isolation, connectors.
+4. Constraint capture: supply voltage, monitored signals, generator interface levels, environment, enclosure, EMC/safety assumptions.
+5. Design rationale: selected topology, rejected alternatives, and safety assumptions.
+6. Verification plan: ERC/DRC, simulation, net-class checks, Ethernet layout checks, and human sign-off requirements.
+
+If no acceptable reference topology or component set can be justified, the workflow returns `BLOCKED_ENGINEERING_DECISION`.
+
+#### Reference-design and source corpus policy
+
+Requirement-driven designs use a curated source hierarchy:
+
+1. Project-local approved reference designs and user-supplied examples.
+2. xcalibre-server RAG sources for internal notes, manuals, prior projects, datasheets, and design rules.
+3. Vendor application notes, reference designs, evaluation-board schematics, and layout guides from the configured vendor/source list.
+4. KiCad official libraries and examples.
+5. Distributor/manufacturer metadata from Digi-Key, Mouser, Arrow, Newark/Farnell/element14, LCSC, Parts Express, and future configured vendors.
+
+Every requirement-driven schematic records source provenance for selected topologies, modules, components, and critical layout rules. Uncited LLM-only circuit invention is not sufficient for high-stakes or Ethernet/control designs.
+
+#### User approval workflow
+
+Recommendation: all electronics approvals use a single `ElectronicsApprovalRequest` surface backed by `AppSettings.propose(_:)`, so approvals are auditable and consistent with Merlin's existing settings-change model.
+
+Approval request types:
+
+1. `clarification` — resolves ambiguous extraction regions, nets, components, labels, or footprints.
+2. `high_stakes_signoff` — approves release packaging for control, hazardous-energy, military, or mission-critical designs.
+3. `profile_change` — approves layer-count, stackup, or fabricator-profile changes.
+4. `substitution` — approves vendor/component substitutions.
+5. `order_submission` — approves final vendor cart/order submission.
+6. `library_generation` — approves generated symbols/footprints when the project policy requires manual review.
+
+Each approval shows the proposed change, source evidence, affected nets/components/files, cost/safety impact when applicable, and available actions: approve, reject, request revision, or provide manual correction.
+
+#### Router failure recovery
+
+Routing failure is not terminal until placement and constraints have been analyzed.
+
+Recovery sequence:
+
+1. Inspect unrouted nets and congestion regions.
+2. Reclassify or correct net classes if constraints are wrong.
+3. Adjust placement of components involved in blocked routes.
+4. Add or move vias, seed routes, or plane connections where allowed.
+5. Propose constraint/profile changes only when electrically and manufacturably justified and require user approval for layer-count or fabrication-profile changes.
+6. Re-run ERC/DRC/parity/connectivity after every repair.
+
+If route iteration budget is reached, the blocked report includes percentage routed, failing nets, congestion regions, attempted repairs, and required human decisions.
+
+#### Fabrication, assembly, and CAM checks
+
+Fabrication sanity checks are profile-specific.
+
+Required output set:
+
+1. Gerbers
+2. Excellon drills
+3. drill map/report
+4. BOM
+5. pick-and-place/centroid file
+6. assembly drawing
+7. fabrication drawing/notes
+8. STEP/3D output when models are available
+9. verification report
+
+CAM checks validate required files, layer naming for the target fabricator, board outline, drill units, empty layers, soldermask/paste presence, copper-to-edge clearance, and basic manufacturability constraints. Fabricator profiles define naming and acceptance requirements starting with JLCPCB, PCBWay, OSHPark, and custom board houses.
+
+#### High-stakes boundary (mandatory human sign-off)
+
+Human sign-off is mandatory when any of the following are true:
+
+1. Engine/generator start-stop/shutdown control
+2. Hazardous energy context (`>60VDC` or `>30VAC RMS`)
+3. Expected current path above `5A`
+4. Isolation, interlock, or protection function present
+5. Military or mission-critical industrial usage
+
+In high-stakes mode, auto-waivers for ERC/DRC/simulation failures are disallowed.
+
+#### Distributor and BOM architecture requirements
+
+Merlin must support all configured vendors with vendor-native BOM file handling.
+
+Architecture requirements:
+
+1. Canonical internal BOM model (`NormalizedBOM`)
+2. Per-vendor native BOM adapters (import + export + column mapping)
+3. Per-vendor part match/pricing/availability clients
+4. Per-vendor quote/order-preparation/order-submission bridges
+5. Fallback path for vendors without public APIs: authenticated portal automation
+
+Initial vendor set includes Digi-Key, Mouser, Arrow, Newark/Farnell/element14, LCSC, and Parts Express, with the same adapter contract for additional distributors.
+
+BOM property linkage:
+
+1. KiCad fields map to canonical fields: RefDes, value, footprint, manufacturer, MPN, vendor SKUs, quantity, DNP, lifecycle, substitutions.
+2. Vendor adapters export native BOM formats for import into each vendor portal.
+3. Part matching never silently substitutes package, voltage/current rating, tolerance, temperature range, or lifecycle status.
+4. Vendor pricing/availability is advisory until the user approves substitutions.
+5. Order submission always requires explicit user approval, final vendor/cart review, and recorded order summary.
+
+Vendor order safety recommendation:
+
+1. Default workflow prepares carts/orders but does not submit until the user explicitly approves.
+2. API credentials and portal tokens are stored in Keychain.
+3. Order submission requires visible vendor, line items, quantities, unit prices, shipping, tax, total, payment method alias, and ship-to summary.
+4. Configurable purchase limits block orders above a user-defined threshold.
+5. Merlin records an order summary artifact but does not store full payment details.
+
+#### Acceptance test matrix
+
+v2.0 implementation is not complete until deterministic fixtures cover these cases:
+
+1. KiCad version below 10 returns `BLOCKED_VERSION`.
+2. Missing `merlin-kicad-mcp` or missing required tool returns `BLOCKED_TOOLING`.
+3. Clean native KiCad schematic compiles to project artifacts and passes parity.
+4. Low-resolution raster schematic returns `BLOCKED_INPUT_QUALITY`.
+5. Ambiguous junction/net in raster extraction creates targeted clarification questions.
+6. Missing footprint blocks PCB synthesis with `unknown_footprints > 0`.
+7. Generated project-local symbol/footprint fails pin/pad verification and returns `BLOCKED_LIBRARY`.
+8. Missing board profile selects `jlcpcb_2layer_default` and records it in the report.
+9. Ethernet/control requirement prefers acceptable IoT/module option when it satisfies constraints.
+10. Router leaves unrouted nets and prevents `COMPLETE` and fab export.
+11. Router recovery changes placement/net classes automatically but requests approval for layer/profile changes.
+12. ERC error blocks completion.
+13. DRC error blocks completion.
+14. Schematic/PCB parity mismatch blocks completion.
+15. Legally unobtainable required SPICE model emits a warning and generic-model suggestion when an acceptable substitute is available.
+16. Failed SPICE tolerance returns `BLOCKED_SIMULATION`.
+17. Gerber/drill/PnP output missing required fabricator file blocks release.
+18. Vendor BOM export uses selected vendor-native format.
+19. Vendor substitution requires explicit approval.
+20. Vendor order submission requires explicit cart/order approval and records summary.
+21. High-stakes generator start/stop design cannot package release without human sign-off.
+22. Multi-sheet schematic preserves hierarchical labels and sheet pins through extraction/parity.
+23. BOM fields round-trip KiCad fields to `NormalizedBOM` and vendor mappings.
+24. Visual QA flags silkscreen overlap/orientation issues but cannot override failed electrical gates.
+
+#### Status contract
+
+Terminal statuses:
+
+1. `COMPLETE`
+2. `BLOCKED`
+3. `BLOCKED_INPUT_QUALITY`
+4. `BLOCKED_VERSION`
+5. `BLOCKED_SIMULATION`
+6. `BLOCKED_TOOLING`
+7. `BLOCKED_LIBRARY`
+8. `BLOCKED_ENGINEERING_DECISION`
+9. `IN_PROGRESS`
+
+`COMPLETE` is legal only when all required gates pass.
 
 ---
 

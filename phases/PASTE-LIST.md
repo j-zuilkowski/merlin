@@ -1565,4 +1565,124 @@ Read phases/phase-189-crash-fix-chatview-v1-6-1.md and execute.
 # - Toggle: Settings → Agent → Prompt Compression
 #
 # v1.9.1, build 14
+
+# ── NEXT (Merlin v2.0 Electronics/KiCad Foundation) ─────────────────────────
+# Phase 208 establishes the first implementation contracts for the v2.0
+# Electronics/KiCad feature set.
+#
+# IMPORTANT for Merlin execution:
+# Do not run phases 209–218 in a single prompt. Use:
+#   phases/RUN-209-218-BATCHES.md
+# and execute one A/B pair per turn, compacting or starting a fresh turn between pairs.
+
+# ── PHASE 208a — KiCad Core Contracts Tests ────────────────────────────────
+Read phases/phase-208a-merlin-v2-kicad-core-contracts-tests.md and execute.
+# Verify: BUILD FAILED with missing KiCad v2.0 core-contract symbols
+# Commit: Phase 208a — KiCadV2CoreContractsTests (failing)
+
+# ── PHASE 208b — KiCad Core Contracts ──────────────────────────────────────
+Read phases/phase-208b-merlin-v2-kicad-core-contracts.md and execute.
+# Verify: BUILD SUCCEEDED; all KiCadV2CoreContractsTests pass
+# Commit: Phase 208b — Merlin v2.0 KiCad core contracts
+
+# ── PHASE 209a — KiCad MCP Tooling Boundary Tests ──────────────────────────
+Read phases/phase-209a-kicad-mcp-tooling-tests.md and execute.
+# Verify: BUILD FAILED with missing KiCad MCP tooling symbols
+# Commit: Phase 209a — KiCadMCPToolingTests (failing)
+
+# ── PHASE 209b — KiCad MCP Tooling Boundary ────────────────────────────────
+Read phases/phase-209b-kicad-mcp-tooling.md and execute.
+# Verify: BUILD SUCCEEDED; all KiCadMCPToolingTests pass
+# Commit: Phase 209b — KiCad MCP tooling boundary
+
+# ── PHASE 210a — KiCad Artifact Schemas Tests ──────────────────────────────
+Read phases/phase-210a-kicad-artifact-schemas-tests.md and execute.
+# Verify: BUILD FAILED with missing KiCad artifact schema/store symbols
+# Commit: Phase 210a — KiCadArtifactSchemasTests (failing)
+
+# ── PHASE 210b — KiCad Artifact Schemas ────────────────────────────────────
+Read phases/phase-210b-kicad-artifact-schemas.md and execute.
+# Verify: BUILD SUCCEEDED; all KiCadArtifactSchemasTests pass
+# Commit: Phase 210b — KiCad artifact schemas and store
+
+# ── PHASE 211a — KiCad Schematic Parser Tests ──────────────────────────────
+Read phases/phase-211a-kicad-schematic-parser-tests.md and execute.
+# Verify: BUILD FAILED with missing KiCad schematic parser symbols
+# Commit: Phase 211a — KiCadSchematicParserTests (failing)
+
+# ── PHASE 211b — KiCad Schematic Parser ────────────────────────────────────
+Read phases/phase-211b-kicad-schematic-parser.md and execute.
+# Verify: BUILD SUCCEEDED; all KiCadSchematicParserTests pass
+# Commit: Phase 211b — KiCad schematic parser and writer
+
+# ── PHASE 212a — Schematic Extraction Policy Tests ─────────────────────────
+Read phases/phase-212a-schematic-extraction-policy-tests.md and execute.
+# Verify: BUILD FAILED with missing schematic extraction policy symbols
+# Commit: Phase 212a — SchematicExtractionPolicyTests (failing)
+
+# ── PHASE 212b — Schematic Extraction Policy ───────────────────────────────
+Read phases/phase-212b-schematic-extraction-policy.md and execute.
+# Verify: BUILD SUCCEEDED; all SchematicExtractionPolicyTests pass
+# Commit: Phase 212b — schematic extraction policy and clarification planning
+
+# ── PHASE 213a — Components/Footprints/BOM Tests ───────────────────────────
+Read phases/phase-213a-components-footprints-bom-tests.md and execute.
+# Verify: BUILD FAILED with missing component/footprint/BOM policy symbols
+# Commit: Phase 213a — ComponentsFootprintsBOMTests (failing)
+
+# ── PHASE 213b — Components/Footprints/BOM ─────────────────────────────────
+Read phases/phase-213b-components-footprints-bom.md and execute.
+# Verify: BUILD SUCCEEDED; all ComponentsFootprintsBOMTests pass
+# Commit: Phase 213b — components footprints libraries and BOM policy
+
+# ── PHASE 214a — Board/Routing Policy Tests ────────────────────────────────
+Read phases/phase-214a-board-routing-policy-tests.md and execute.
+# Verify: BUILD FAILED with missing board/routing policy symbols
+# Commit: Phase 214a — BoardRoutingPolicyTests (failing)
+
+# ── PHASE 214b — Board/Routing Policy ──────────────────────────────────────
+Read phases/phase-214b-board-routing-policy.md and execute.
+# Verify: BUILD SUCCEEDED; all BoardRoutingPolicyTests pass
+# Commit: Phase 214b — board profiles net classes placement and routing policy
+
+# ── PHASE 215a — Verification/Fab Policy Tests ─────────────────────────────
+Read phases/phase-215a-verification-fab-policy-tests.md and execute.
+# Verify: BUILD FAILED with missing verification/fab policy symbols
+# Commit: Phase 215a — VerificationFabPolicyTests (failing)
+
+# ── PHASE 215b — Verification/Fab Policy ───────────────────────────────────
+Read phases/phase-215b-verification-fab-policy.md and execute.
+# Verify: BUILD SUCCEEDED; all VerificationFabPolicyTests pass
+# Commit: Phase 215b — verification gates fabrication and visual QA policy
+
+# ── PHASE 216a — Vendor Order/Approval Tests ───────────────────────────────
+Read phases/phase-216a-vendor-order-approval-tests.md and execute.
+# Verify: BUILD FAILED with missing vendor/order/approval symbols
+# Commit: Phase 216a — VendorOrderApprovalTests (failing)
+
+# ── PHASE 216b — Vendor Order/Approval ─────────────────────────────────────
+Read phases/phase-216b-vendor-order-approval.md and execute.
+# Verify: BUILD SUCCEEDED; all VendorOrderApprovalTests pass
+# Commit: Phase 216b — vendor BOM order and electronics approval policy
+
+# ── PHASE 217a — KiCad Workflow Orchestration Tests ────────────────────────
+Read phases/phase-217a-kicad-workflow-orchestration-tests.md and execute.
+# Verify: BUILD FAILED with missing workflow orchestration symbols
+# Commit: Phase 217a — KiCadWorkflowOrchestrationTests (failing)
+
+# ── PHASE 217b — KiCad Workflow Orchestration ──────────────────────────────
+Read phases/phase-217b-kicad-workflow-orchestration.md and execute.
+# Verify: BUILD SUCCEEDED; all KiCadWorkflowOrchestrationTests pass
+# Commit: Phase 217b — KiCad workflow orchestration
+
+# ── PHASE 218a — Merlin v2.0 Version Release Tests ─────────────────────────
+Read phases/phase-218a-merlin-v2-version-release-tests.md and execute.
+# Verify: BUILD FAILED until version/release artifacts are bumped
+# Commit: Phase 218a — MerlinV2VersionTests (failing)
+
+# ── PHASE 218b — Merlin v2.0 Version Release ───────────────────────────────
+Read phases/phase-218b-merlin-v2-version-release.md and execute.
+# Verify: BUILD SUCCEEDED; all MerlinV2VersionTests pass
+# Commit: Phase 218b — Merlin v2.0 version release
+# Tag: v2.0.0
 ```
