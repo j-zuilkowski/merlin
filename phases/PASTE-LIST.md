@@ -1689,7 +1689,7 @@ Read phases/phase-218b-merlin-v2-version-release.md and execute.
 
 ---
 
-## Budget-Aware Execution (v2.1.0)
+## Budget-Aware Execution (v2.1.0) - RELEASED v2.1.0
 
 Run phases 232–240 in strict sequence. Each `a` is failing tests; each `b` is the implementation
 that satisfies them. Do not skip a commit. Do not batch commits across phases. Phase 240b tags
