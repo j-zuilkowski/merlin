@@ -57,7 +57,7 @@ final class ComponentsFootprintsBOMTests: XCTestCase {
         XCTAssertTrue(report.requiredChecks.contains("package_dimension"))
     }
 
-    func test_kicadFields_mapToNormalizedBOM() {
+    func test_kicadFields_mapToNormalizedBOM() throws {
         let builder = NormalizedBOMBuilder()
         let bom = builder.build(
             designId: "design-bom",
@@ -77,17 +77,17 @@ final class ComponentsFootprintsBOMTests: XCTestCase {
             ]
         )
 
-        let line = try? XCTUnwrap(bom.lines.first)
-        XCTAssertEqual(line??.referenceDesignators, ["R1", "R2"])
-        XCTAssertEqual(line??.value, "10k")
-        XCTAssertEqual(line??.footprint, "Resistor_SMD:R_0603")
-        XCTAssertEqual(line??.manufacturer, "Yageo")
-        XCTAssertEqual(line??.mpn, "RC0603FR-0710KL")
-        XCTAssertEqual(line??.vendorSKUs["Digi-Key"], "311-10.0KHRCT-ND")
-        XCTAssertEqual(line??.quantity, 2)
-        XCTAssertEqual(line??.dnp, false)
-        XCTAssertEqual(line??.lifecycle, "active")
-        XCTAssertEqual(line??.substitutions, ["RC0603JR-0710KL"])
+        let line = try XCTUnwrap(bom.lines.first)
+        XCTAssertEqual(line.referenceDesignators, ["R1", "R2"])
+        XCTAssertEqual(line.value, "10k")
+        XCTAssertEqual(line.footprint, "Resistor_SMD:R_0603")
+        XCTAssertEqual(line.manufacturer, "Yageo")
+        XCTAssertEqual(line.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(line.vendorSKUs["Digi-Key"], "311-10.0KHRCT-ND")
+        XCTAssertEqual(line.quantity, 2)
+        XCTAssertEqual(line.dnp, false)
+        XCTAssertEqual(line.lifecycle, "active")
+        XCTAssertEqual(line.substitutions, ["RC0603JR-0710KL"])
     }
 
     func test_substitutions_neverSilentlyChangeCriticalFields() {

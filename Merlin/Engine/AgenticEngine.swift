@@ -74,6 +74,9 @@ final class AgenticEngine {
     var loraProvider: (any LLMProvider)?
     var registry: ProviderRegistry?
     var skillsRegistry: SkillsRegistry?
+    var activeDomainIDs: [String] = ["software"] {
+        didSet { _stablePrefixDirty = true }
+    }
     var permissionMode: PermissionMode = .ask {
         didSet { _stablePrefixDirty = true }
     }
@@ -224,6 +227,7 @@ final class AgenticEngine {
     @Published var isRunning: Bool = false
 
     init(slotAssignments: [AgentSlot: String] = [:],
+         activeDomainIDs: [String] = ["software"],
          registry: ProviderRegistry? = nil,
          toolRouter: ToolRouter,
          contextManager: ContextManager,
@@ -231,6 +235,7 @@ final class AgenticEngine {
          kagEngine: KAGEngine = .shared,
          memoryBackend: (any MemoryBackendPlugin)? = nil) {
         self.slotAssignments = slotAssignments
+        self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
         self.registry = registry
         self.toolRouter = toolRouter
         self.contextManager = contextManager
@@ -564,7 +569,7 @@ final class AgenticEngine {
         depth: Int
     ) async throws {
         let context = contextOverride ?? contextManager
-        let domain = await DomainRegistry.shared.activeDomain()
+        let domain = await activeDomain()
 
         // DPO pair proposal: if this turn looks like a correction of the previous turn,
         // capture the previous prompt+response as a rejected pair awaiting user review.
@@ -1809,12 +1814,16 @@ final class AgenticEngine {
             parts.append(providerAddendum)
         }
 
-        let domain = await DomainRegistry.shared.activeDomain()
+        let domain = await activeDomain()
         if let domainAddendum = domain.systemPromptAddendum, !domainAddendum.isEmpty {
             parts.append(domainAddendum)
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    private func activeDomain() async -> any DomainPlugin {
+        await DomainRegistry.shared.activeDomain(ids: activeDomainIDs)
     }
 
     private func contextOverrunRecoveryDirective(

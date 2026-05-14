@@ -19,7 +19,11 @@ final class SessionManager: ObservableObject {
 
     @discardableResult
     func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
-        let session = LiveSession(projectRef: projectRef, sessionStore: sessionStore)
+        let session = LiveSession(
+            projectRef: projectRef,
+            sessionStore: sessionStore,
+            activeDomainIDs: AppSettings.shared.activeDomainIDs
+        )
         session.permissionMode = mode
         session.appState.engine.sessionID = session.id
         liveSessions.append(session)
@@ -37,7 +41,8 @@ final class SessionManager: ObservableObject {
         let live = LiveSession(
             projectRef: projectRef,
             initialMessages: session.messages,
-            sessionStore: sessionStore
+            sessionStore: sessionStore,
+            activeDomainIDs: session.activeDomainIDs
         )
         live.title = session.title
         live.appState.engine.sessionID = live.id

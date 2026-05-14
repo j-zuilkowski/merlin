@@ -160,8 +160,4 @@ final class LiveSession: ObservableObject, Identifiable {
     var stagingBuffer: StagingBuffer {
         appState.engine.toolRouter.stagingBuffer ?? stagingBufferStorage
     }
-
-    func applyActiveDomains() async {
-        await DomainRegistry.shared.setActiveDomains(ids: activeDomainIDs)
-    }
 }

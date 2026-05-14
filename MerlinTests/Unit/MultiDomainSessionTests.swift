@@ -28,34 +28,61 @@ final class MultiDomainSessionTests: XCTestCase {
         XCTAssertEqual(decoded.activeDomainIDs, ["software"])
     }
 
-    func test_restoreAppliesRestoredDomainsToSharedRegistry() async {
+    func test_restoreKeepsSessionDomainsIndependentOfSharedRegistry() async {
         let registry = DomainRegistry.shared
-        await registry.register(StubDomain(id: "pcb", displayName: "PCB"))
+        await registry.register(StubDomain(id: "pcb", displayName: "PCB", systemPromptAddendum: "[PCB]"))
+        await registry.register(StubDomain(id: "docs", displayName: "Docs", systemPromptAddendum: "[DOCS]"))
         await registry.setActiveDomains(ids: ["software"])
 
         let ref = ProjectRef(path: "/tmp/multi-domain-\(UUID().uuidString)", displayName: "test")
         let manager = SessionManager(projectRef: ref)
+        let software = await manager.newSession()
         let session = Session(
             title: "Restored",
             messages: [],
             activeDomainIDs: ["pcb"]
         )
 
-        _ = await manager.restore(session: session)
+        let restored = await manager.restore(session: session)
+        manager.switchSession(to: software.id)
+        manager.switchSession(to: restored.id)
+
+        XCTAssertEqual(software.activeDomainIDs, ["software"])
+        XCTAssertEqual(software.appState.engine.activeDomainIDs, ["software"])
+        XCTAssertEqual(restored.activeDomainIDs, ["pcb"])
+        XCTAssertEqual(restored.appState.engine.activeDomainIDs, ["pcb"])
+
+        let softwarePrompt = await software.appState.engine.buildSystemPromptForTesting(slot: .execute)
+        let restoredPrompt = await restored.appState.engine.buildSystemPromptForTesting(slot: .execute)
+
+        XCTAssertFalse(softwarePrompt.contains("[PCB]"))
+        XCTAssertTrue(restoredPrompt.contains("[PCB]"))
 
         let active = await registry.activeDomains().map(\.id)
-        XCTAssertEqual(active, ["software", "pcb"])
+        XCTAssertEqual(active, ["software"])
+
+        await registry.unregister(id: "pcb")
+        await registry.unregister(id: "docs")
+        await registry.setActiveDomains(ids: ["software"])
     }
 }
 
 private struct StubDomain: DomainPlugin {
     var id: String
     var displayName: String
-    var taskTypes: [DomainTaskType] = [
-        DomainTaskType(domainID: "stub", name: "task", displayName: "Task")
-    ]
+    var taskTypes: [DomainTaskType]
     var verificationBackend: any VerificationBackend = NullVerificationBackend()
     var highStakesKeywords: [String] = []
     var systemPromptAddendum: String? = nil
     var mcpToolNames: [String] = []
+
+    init(id: String,
+         displayName: String,
+         taskTypes: [DomainTaskType] = [DomainTaskType(domainID: "stub", name: "task", displayName: "Task")],
+         systemPromptAddendum: String? = nil) {
+        self.id = id
+        self.displayName = displayName
+        self.taskTypes = taskTypes
+        self.systemPromptAddendum = systemPromptAddendum
+    }
 }

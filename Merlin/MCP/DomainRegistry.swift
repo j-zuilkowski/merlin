@@ -38,6 +38,19 @@ actor DomainRegistry {
         activeDomainIDs.compactMap { plugins[$0] }
     }
 
+    func activeDomains(ids: [String]) -> [any DomainPlugin] {
+        normalizeActiveDomainIDs(ids).compactMap { plugins[$0] }
+    }
+
+    func activeDomain(ids: [String]) -> any DomainPlugin {
+        let domains = activeDomains(ids: ids)
+        return domains.first(where: { $0.id != "software" }) ?? domains.first ?? SoftwareDomain()
+    }
+
+    func taskTypes(ids: [String]) -> [DomainTaskType] {
+        activeDomains(ids: ids).flatMap { $0.taskTypes }
+    }
+
     func setActiveDomains(ids: [String]) {
         activeDomainIDs = normalizeActiveDomainIDs(ids)
     }

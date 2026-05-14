@@ -44,6 +44,7 @@ private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 final class AppState: ObservableObject {
     let projectPath: String
     private let initialActiveDomainIDs: [String]
+    private var activeDomainIDs: [String]
     let registry = ProviderRegistry()
     let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
@@ -100,6 +101,7 @@ final class AppState: ObservableObject {
     init(projectPath: String = "", activeDomainIDs: [String] = ["software"]) {
         self.projectPath = projectPath
         self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        self.activeDomainIDs = self.initialActiveDomainIDs
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
             .path
@@ -176,6 +178,7 @@ final class AppState: ObservableObject {
 
         engine = AgenticEngine(
             slotAssignments: AppSettings.shared.slotAssignments,
+            activeDomainIDs: initialActiveDomainIDs,
             registry: registry,
             toolRouter: toolRouter,
             contextManager: ctx,
@@ -459,8 +462,10 @@ final class AppState: ObservableObject {
         } else {
             activeLocalProviderID = nil
         }
-        let resolvedDomainIDs = activeDomainIDs ?? AppSettings.shared.activeDomainIDs
-        Task { await DomainRegistry.shared.setActiveDomains(ids: resolvedDomainIDs) }
+        if let activeDomainIDs {
+            self.activeDomainIDs = activeDomainIDs.isEmpty ? ["software"] : activeDomainIDs
+        }
+        engine.activeDomainIDs = self.activeDomainIDs
         Task { [weak self] in await self?.refreshParameterAdvisories() }
     }
 
