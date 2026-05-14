@@ -26,6 +26,10 @@
 		06FDB75DC86BFDBB82F925AD /* LocalModelManagerProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F33955DA778562CF661683 /* LocalModelManagerProtocolTests.swift */; };
 		0715D7CD606EDE86FE7AD821 /* MerlinV2VersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE89ED651B2C2A8154569546 /* MerlinV2VersionTests.swift */; };
 		07D0847D623D7911F7A2F2FF /* SkillFrontmatterV5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */; };
+		B222B222B222B222B222B222 /* CriticPolicyResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C333C333C333C333C333C333 /* CriticPolicyResolverTests.swift */; };
+		F666F666F666F666F666F666 /* CriterionCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E555E555E555E555E555E555 /* CriterionCheckerTests.swift */; };
+		B888B888B888B888B888B888 /* DeterministicVerificationShortCircuitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A777A777A777A777A777A777 /* DeterministicVerificationShortCircuitTests.swift */; };
+		A1A1A1A1A1A1A1A1A1A1A1A1 /* SkillFrontmatterCriticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A111A111A111A111A111A111 /* SkillFrontmatterCriticTests.swift */; };
 		0806AD6BFD4920D30D7CCE84 /* DomainPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9286440D6ECF1D52FEBFB75F /* DomainPlugin.swift */; };
 		0839B8D6836089FDE12BE332 /* VerificationFabPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B590E503F3721174BB739045 /* VerificationFabPolicy.swift */; };
 		08920FCFE5F91B9FB9426038 /* WorkerSubagentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF95301411673E85D524025F /* WorkerSubagentEngine.swift */; };
@@ -531,6 +535,9 @@
 		03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeTools.swift; sourceTree = "<group>"; };
 		0379555CA364B57228C7FD6E /* KiCadV2Core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadV2Core.swift; sourceTree = "<group>"; };
 		037AA5CE654A8236DA197F08 /* CriticTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticTelemetryTests.swift; sourceTree = "<group>"; };
+		C333C333C333C333C333C333 /* CriticPolicyResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticPolicyResolverTests.swift; sourceTree = "<group>"; };
+		E555E555E555E555E555E555 /* CriterionCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriterionCheckerTests.swift; sourceTree = "<group>"; };
+		A777A777A777A777A777A777 /* DeterministicVerificationShortCircuitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeterministicVerificationShortCircuitTests.swift; sourceTree = "<group>"; };
 		04DF9AAC218773D5197F27F2 /* CalibrationReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationReportView.swift; sourceTree = "<group>"; };
 		055C28F4CCE3273D88BDD2F2 /* KiCadV2CoreContractsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadV2CoreContractsTests.swift; sourceTree = "<group>"; };
 		059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProviderRegistry+ReasoningEffort.swift"; sourceTree = "<group>"; };
@@ -555,6 +562,7 @@
 		10FA636CAF84B1837DE9EBCA /* ContextManagerMidLoopCompactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextManagerMidLoopCompactionTests.swift; sourceTree = "<group>"; };
 		11023B8556226A89A498B2CC /* RunLoopNoRecursionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunLoopNoRecursionTests.swift; sourceTree = "<group>"; };
 		111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFrontmatterV5Tests.swift; sourceTree = "<group>"; };
+		A111A111A111A111A111A111 /* SkillFrontmatterCriticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFrontmatterCriticTests.swift; sourceTree = "<group>"; };
 		11210162FADED2E2E8052679 /* FileSystemToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemToolTests.swift; sourceTree = "<group>"; };
 		11BC308DF06BD55B3F405DAF /* AdaptiveRAGIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveRAGIntegrationTests.swift; sourceTree = "<group>"; };
 		11F668D82D2CE9C0925BE74E /* PatternMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternMatcher.swift; sourceTree = "<group>"; };
@@ -1350,8 +1358,11 @@
 				0CE98B74ED0E8E45BAA52E7C /* CriticDocumentVerificationTests.swift */,
 				935037135636A211E60F8B0E /* CriticEngineContextAutoResizeTests.swift */,
 				00B19F4949C6D6571C64FCE0 /* CriticEngineTests.swift */,
+				C333C333C333C333C333C333 /* CriticPolicyResolverTests.swift */,
+				E555E555E555E555E555E555 /* CriterionCheckerTests.swift */,
 				8A7A0C0926301EAAAC3B27E2 /* CriticGatedMemoryTests.swift */,
 				037AA5CE654A8236DA197F08 /* CriticTelemetryTests.swift */,
+				A777A777A777A777A777A777 /* DeterministicVerificationShortCircuitTests.swift */,
 				242CEBD98C06B235C7583EBF /* DiffCommentTests.swift */,
 				B86EA0171621B21EECCFACE4 /* DiffEngineTests.swift */,
 				9F5C166B601F372FE87B663D /* DisabledSkillsTests.swift */,
@@ -1476,6 +1487,7 @@
 				C5F0CFE8CFF9E3AE11DD2427 /* ShellStreamViewModelTests.swift */,
 				7A27179BFF930CC92478C31D /* SkillCompactionTests.swift */,
 				111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */,
+				A111A111A111A111A111A111 /* SkillFrontmatterCriticTests.swift */,
 				893A184BB5D5B2E31CB6A951 /* SkillInvocationTests.swift */,
 				9292A8CD091C821C4400DB0C /* SkillsRegistryTests.swift */,
 				BFFFADD7C05F6C91B351BEFA /* SlotPickerEntriesTests.swift */,
@@ -2135,8 +2147,11 @@
 				30398C094FACED1F93BF5443 /* CriticDocumentVerificationTests.swift in Sources */,
 				B19F22565FF2D0274967D8E7 /* CriticEngineContextAutoResizeTests.swift in Sources */,
 				EDD614A2C56BA12B1573001E /* CriticEngineTests.swift in Sources */,
+				B222B222B222B222B222B222 /* CriticPolicyResolverTests.swift in Sources */,
+				F666F666F666F666F666F666 /* CriterionCheckerTests.swift in Sources */,
 				9F2FDB76BDC491E3471E04C7 /* CriticGatedMemoryTests.swift in Sources */,
 				96E9EC5BE292AA61EA28C059 /* CriticTelemetryTests.swift in Sources */,
+				B888B888B888B888B888B888 /* DeterministicVerificationShortCircuitTests.swift in Sources */,
 				80A9DA1F472978F7FD197166 /* DPOAutoFilterTests.swift in Sources */,
 				0DE9DFB352F7C771FBAE8D7E /* DPOQueueTests.swift in Sources */,
 				4A3179D35C772A9AE1B0DE1C /* DPOReviewQueueViewTests.swift in Sources */,
@@ -2272,6 +2287,7 @@
 				7C247B86E483FEE5E2065B78 /* ShellToolTests.swift in Sources */,
 				331A03FF42A45C1391F6A8F0 /* SkillCompactionTests.swift in Sources */,
 				07D0847D623D7911F7A2F2FF /* SkillFrontmatterV5Tests.swift in Sources */,
+				A1A1A1A1A1A1A1A1A1A1A1A1 /* SkillFrontmatterCriticTests.swift in Sources */,
 				377BF6C7D5E1055A67AB34C2 /* SkillInvocationTests.swift in Sources */,
 				0374606FA768FC5A367CF87D /* SkillsRegistryTests.swift in Sources */,
 				8CDEE6461DD2EE51FD2AA6DA /* SlotPickerEntriesTests.swift in Sources */,
