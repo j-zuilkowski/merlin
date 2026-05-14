@@ -136,6 +136,7 @@
 		466A38FBA7BFC06A6EBBE199 /* NotificationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F4442460A9F85EBB2236D6D /* NotificationEngine.swift */; };
 		46AEF34DEEAF9AD236D467CE /* MemoryBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */; };
 		4741A67B1593BF38278AD7AD /* DroppingContextManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DCF9053BC51A1B49F06006F /* DroppingContextManager.swift */; };
+		478011553C0DD0B74898235D /* MultiDomainSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F74910A5109A683A0D8EEC /* MultiDomainSessionTests.swift */; };
 		47A136A3280A8AF7478C7110 /* CalibrationSuite.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377D24125CA1E78926B4B4BC /* CalibrationSuite.swift */; };
 		47A4F0E203B559E2151FD126 /* KiCadWorkflowOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF8BD263ED8F8E0C39D6E69 /* KiCadWorkflowOrchestrator.swift */; };
 		4807B2C90E6A432D4DBDBA21 /* MCPSSETransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B159E2B2C279B8BC439525D2 /* MCPSSETransport.swift */; };
@@ -298,6 +299,7 @@
 		A87795245D6852BED4CCAEE9 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A385F93C62395C46EB6AEDD8 /* ContentView.swift */; };
 		A8DF211813085E8FAA7E483F /* ContextInjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69382D667DD3BE1FA7E1C42 /* ContextInjectionTests.swift */; };
 		AA398FA3A6B843DEEE470C0A /* LocalKAGPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF1EB06F74ED08FD57C9087 /* LocalKAGPluginTests.swift */; };
+		ABD3CD55668B575DF14A73D6 /* MultiDomainRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6FD350B57A7F8834BA220EB /* MultiDomainRegistryTests.swift */; };
 		ABEE2B66DAC15E36AB17F326 /* TruncatingMockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E26A48408D5A97B15FB178A /* TruncatingMockProvider.swift */; };
 		AC9115019B64AA2B1B033D62 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC940A41BD64C1D0F3201AEF /* TOMLParser.swift */; };
 		AD357A18591C5A9EA6ECCE93 /* CalibrationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */; };
@@ -762,6 +764,7 @@
 		B4558D538CAB0EAA7DE50F8D /* KiCadWorkflowOrchestrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadWorkflowOrchestrationTests.swift; sourceTree = "<group>"; };
 		B4D0BF16CD59610021F64B6A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B590E503F3721174BB739045 /* VerificationFabPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationFabPolicy.swift; sourceTree = "<group>"; };
+		B5F74910A5109A683A0D8EEC /* MultiDomainSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiDomainSessionTests.swift; sourceTree = "<group>"; };
 		B60898163F147C93BF66B39D /* FilePane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilePane.swift; sourceTree = "<group>"; };
 		B680BEF832B5812598710148 /* ProjectSizeMetricsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSizeMetricsTests.swift; sourceTree = "<group>"; };
 		B6AA54B3C1D1A4D904C33BAF /* KiCadMCPToolingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadMCPToolingTests.swift; sourceTree = "<group>"; };
@@ -851,6 +854,7 @@
 		E6494248B1FD3590E3ED8195 /* OutcomeRecordTrainingFieldsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutcomeRecordTrainingFieldsTests.swift; sourceTree = "<group>"; };
 		E6A866E3A6514CD973D0D095 /* AgenticEngineV5Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineV5Tests.swift; sourceTree = "<group>"; };
 		E6DA79C0A7864E74D544C651 /* CalibrationRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationRunnerTests.swift; sourceTree = "<group>"; };
+		E6FD350B57A7F8834BA220EB /* MultiDomainRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiDomainRegistryTests.swift; sourceTree = "<group>"; };
 		E7753CF650D45A07ADD16E3B /* AppControlTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppControlTests.swift; sourceTree = "<group>"; };
 		E850C670FD66C1D9E4A8A6C4 /* MCPBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPBridge.swift; sourceTree = "<group>"; };
 		E868BA8C00D69D8E23C52863 /* LocalVectorPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalVectorPluginTests.swift; sourceTree = "<group>"; };
@@ -1292,6 +1296,8 @@
 				2F4A6766C80ED76CF770A4C9 /* ModelManagerWiringTests.swift */,
 				C1C2104BDF2AA60A7A53161A /* ModelParameterAdvisorTests.swift */,
 				51C1D9FC9EC34E4AC273415B /* ModelPerformanceTrackerTests.swift */,
+				E6FD350B57A7F8834BA220EB /* MultiDomainRegistryTests.swift */,
+				B5F74910A5109A683A0D8EEC /* MultiDomainSessionTests.swift */,
 				DE842CAC22A23705E836EE90 /* NullKAGPluginTests.swift */,
 				C7A52C00C0BC245D6D31DF70 /* OpenAICompatibleProviderTests.swift */,
 				37C2E98086E770D58BF81F4B /* OutcomeRecordPersistenceTests.swift */,
@@ -2044,6 +2050,8 @@
 				C46CDA8E2AB57B16A3DE93C2 /* ModelManagerWiringTests.swift in Sources */,
 				49A749C076FD1920F45DC1BA /* ModelParameterAdvisorTests.swift in Sources */,
 				16294070012D5C8B978DEE66 /* ModelPerformanceTrackerTests.swift in Sources */,
+				ABD3CD55668B575DF14A73D6 /* MultiDomainRegistryTests.swift in Sources */,
+				478011553C0DD0B74898235D /* MultiDomainSessionTests.swift in Sources */,
 				EAD71278F289DD2370597B6B /* NullAuthGate.swift in Sources */,
 				DB5AB62056579E943E05F700 /* NullAuthPresenter.swift in Sources */,
 				895907D02B84CFE58FCD5676 /* NullKAGPluginTests.swift in Sources */,
