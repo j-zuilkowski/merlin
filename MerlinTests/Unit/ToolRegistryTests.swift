@@ -74,17 +74,19 @@ final class ToolRegistryTests: XCTestCase {
 
     // MARK: - registerBuiltins
 
-    func test_registerBuiltins_populates41Tools() async {
+    func test_registerBuiltins_populatesAllBuiltinTools() async {
         await registry.registerBuiltins()
-        let all = await registry.all()
-        XCTAssertEqual(all.count, 41)
+        let actualNames = Set(await registry.all().map(\.function.name))
+        let expectedNames = Set(ToolDefinitions.all.map(\.function.name))
+        XCTAssertEqual(actualNames, expectedNames)
     }
 
     func test_registerBuiltins_idempotent() async {
         await registry.registerBuiltins()
+        let onceNames = Set(await registry.all().map(\.function.name))
         await registry.registerBuiltins()
-        let all = await registry.all()
-        XCTAssertEqual(all.count, 41)
+        let twiceNames = Set(await registry.all().map(\.function.name))
+        XCTAssertEqual(twiceNames, onceNames)
     }
 
     // MARK: - Reset (test helper)
