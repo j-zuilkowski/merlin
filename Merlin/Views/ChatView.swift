@@ -884,13 +884,3 @@ struct ChatEntry: Identifiable, Sendable {
     var ragSources: [RAGChunk] = []
     var groundingReport: GroundingReport? = nil
 }
-
-// MARK: - Dead ChatEntryRow removed; rendering is via ConversationWebView + ConversationHTMLRenderer
-private struct RenderedMessage: Equatable {
-    struct Segment: Equatable {
-        let content: String
-        let isCode: Bool
-        let rendered: AttributedString?  // nil for code segments
-    }
-    let segments: [Segment]
-}
