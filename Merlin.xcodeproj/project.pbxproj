@@ -253,6 +253,7 @@
 		7AC49C29D0A3961B65FDB381 /* RAGSourceAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 814E0637CF12937447292FA1 /* RAGSourceAttributionTests.swift */; };
 		7C12EEF1D5A2507CF4FF2034 /* GroundingReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C82F6062102607DF26D4BAA /* GroundingReport.swift */; };
 		7C247B86E483FEE5E2065B78 /* ShellToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788C316547E5D5E66150F69A /* ShellToolTests.swift */; };
+		7C8A884AAFC06E4F33185162 /* FloatingWindowRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A81E538FE3358642C714076 /* FloatingWindowRuntimeTests.swift */; };
 		7CD14B6A0B8C6A6AD3D244C7 /* ContextInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A65F30CE00DABF745DC5826D /* ContextInjector.swift */; };
 		7DC399E6543DDB473F3D0F70 /* DeepSeekProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0F0905E8B59CA9201AB055D /* DeepSeekProvider.swift */; };
 		7DF6322F4CD38449C7DF05CB /* NullModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F945E3E5B2790E2E2ED374C /* NullModelManager.swift */; };
@@ -726,6 +727,7 @@
 		994E8E04190A4F68D04B0678 /* HookEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookEngine.swift; sourceTree = "<group>"; };
 		9A6143C997B792E607040419 /* ProjectPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPickerView.swift; sourceTree = "<group>"; };
 		9A7B9BE28E7E41F1BAC4F667 /* SubagentBlockViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockViewModelTests.swift; sourceTree = "<group>"; };
+		9A81E538FE3358642C714076 /* FloatingWindowRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingWindowRuntimeTests.swift; sourceTree = "<group>"; };
 		9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationRunner.swift; sourceTree = "<group>"; };
 		9B6924F574A25CB419F66863 /* MemoryInjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryInjectionTests.swift; sourceTree = "<group>"; };
 		9B98B2B88780EBA1FCCE5A23 /* MemoryBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryBrowserView.swift; sourceTree = "<group>"; };
@@ -1268,6 +1270,7 @@
 				860F4746759A2765E339BD40 /* EnginePreRunCompactionIntegrationTests.swift */,
 				17E91CB24512371A3FC1E1E2 /* EngineProviderRetryTests.swift */,
 				C5D6405DFE19D25D73F32754 /* EngineTelemetryTests.swift */,
+				9A81E538FE3358642C714076 /* FloatingWindowRuntimeTests.swift */,
 				3CE1EE6BFD0928A540C82786 /* GroundingConfidenceTests.swift */,
 				31F2FC60C3D0DCE5CD2401B0 /* GroundingReportUITests.swift */,
 				5CCDBF2ACA000098F1F6D01F /* GUIActionTelemetryTests.swift */,
@@ -2025,6 +2028,7 @@
 				1F1667729E16C86F80821A0A /* EngineProviderRetryTests.swift in Sources */,
 				143A9D8192F6ECB0D6D347CC /* EngineTelemetryTests.swift in Sources */,
 				2ABC783900CC3C7EA34E5837 /* FileSystemToolTests.swift in Sources */,
+				7C8A884AAFC06E4F33185162 /* FloatingWindowRuntimeTests.swift in Sources */,
 				FB7F5C506B103EF80063FA4B /* GUIActionTelemetryTests.swift in Sources */,
 				543ADBA8CF98BB566A498107 /* GroundingConfidenceTests.swift in Sources */,
 				94C1EAF1151F4ABBB362654F /* GroundingReportUITests.swift in Sources */,

@@ -5,8 +5,26 @@ import SwiftUI
 final class FloatingWindowManager: ObservableObject {
     static let shared = FloatingWindowManager()
 
+    enum RuntimeMode: Sendable {
+        case live
+        case testing
+    }
+
     private var windows: [UUID: NSWindow] = [:]
     private var trackers: [UUID: WindowCloseTracker] = [:]
+    private let runtimeMode: RuntimeMode
+    private let windowFactory: @MainActor (NSRect, NSWindow.StyleMask) -> NSWindow
+    private let rootViewFactory: @MainActor (Session, FloatingWindowManager) -> AnyView
+
+    init(
+        runtimeMode: RuntimeMode = .live,
+        windowFactory: @escaping @MainActor (NSRect, NSWindow.StyleMask) -> NSWindow = FloatingWindowManager.makeDefaultWindow,
+        rootViewFactory: @escaping @MainActor (Session, FloatingWindowManager) -> AnyView = FloatingWindowManager.makeDefaultRootView
+    ) {
+        self.runtimeMode = runtimeMode
+        self.windowFactory = windowFactory
+        self.rootViewFactory = rootViewFactory
+    }
 
     var openWindowCount: Int {
         windows.count
@@ -26,37 +44,29 @@ final class FloatingWindowManager: ObservableObject {
 
     private func openOnMain(session: Session, alwaysOnTop: Bool) {
         if let window = windows[session.id] {
-            window.makeKeyAndOrderFront(nil)
+            configure(window: window, session: session, alwaysOnTop: alwaysOnTop)
+            present(window)
             return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 100, y: 100, width: 480, height: 640),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
+        let window = windowFactory(
+            NSRect(x: 100, y: 100, width: 480, height: 640),
+            [.titled, .closable, .resizable, .miniaturizable]
         )
-        window.title = session.title
-        window.isReleasedWhenClosed = false
-        if alwaysOnTop {
-            window.level = .floating
-        }
-
-        let rootView: AnyView
-        if isRuntimeWindowAvailable {
-            rootView = AnyView(FloatingChatView(session: session, manager: self))
-        } else {
-            rootView = AnyView(FloatingWindowStubView(title: session.title))
-        }
-
-        window.contentView = NSHostingView(rootView: rootView)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
+        configure(window: window, session: session, alwaysOnTop: alwaysOnTop)
+        window.contentView = NSHostingView(rootView: rootViewFactory(session, self))
+        present(window)
 
         let tracker = WindowCloseTracker(sessionID: session.id, manager: self)
         window.delegate = tracker
         windows[session.id] = window
         trackers[session.id] = tracker
+    }
+
+    private func configure(window: NSWindow, session: Session, alwaysOnTop: Bool) {
+        window.title = session.title
+        window.isReleasedWhenClosed = false
+        window.level = alwaysOnTop ? .floating : .normal
     }
 
     private func closeOnMain(sessionID: UUID) {
@@ -69,9 +79,10 @@ final class FloatingWindowManager: ObservableObject {
         trackers.removeValue(forKey: sessionID)
     }
 
-    private var isRuntimeWindowAvailable: Bool {
-        ProcessInfo.processInfo.processName != "xctest" &&
-            ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+    private func present(_ window: NSWindow) {
+        guard runtimeMode == .live else { return }
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func executeOnMain(_ work: @escaping () -> Void) {
@@ -80,6 +91,19 @@ final class FloatingWindowManager: ObservableObject {
         } else {
             DispatchQueue.main.sync(execute: work)
         }
+    }
+
+    private static func makeDefaultWindow(contentRect: NSRect, styleMask: NSWindow.StyleMask) -> NSWindow {
+        NSWindow(
+            contentRect: contentRect,
+            styleMask: styleMask,
+            backing: .buffered,
+            defer: false
+        )
+    }
+
+    private static func makeDefaultRootView(session: Session, manager: FloatingWindowManager) -> AnyView {
+        AnyView(FloatingChatView(session: session, manager: manager))
     }
 }
 
@@ -98,28 +122,40 @@ private final class WindowCloseTracker: NSObject, NSWindowDelegate {
     }
 }
 
-private struct FloatingWindowStubView: View {
-    let title: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.headline)
-            Text("Floating window placeholder")
-                .foregroundStyle(.secondary)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
 struct FloatingChatView: View {
     let session: Session
     let manager: FloatingWindowManager
+    @StateObject private var sessionManager: SessionManager
+    @State private var liveSession: LiveSession?
+
+    init(session: Session, manager: FloatingWindowManager) {
+        self.session = session
+        self.manager = manager
+        let projectRef = ProjectRef(
+            path: "",
+            displayName: session.title,
+            lastOpenedAt: session.createdAt
+        )
+        _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: projectRef))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            ChatView()
+            if let liveSession {
+                ChatView()
+                    .environmentObject(liveSession.appState)
+                    .environmentObject(liveSession.skillsRegistry)
+                    .environmentObject(liveSession.appState.registry)
+                    .environmentObject(sessionManager)
+                    .environmentObject(liveSession.chatViewModel)
+            } else {
+                VStack(spacing: 10) {
+                    Text(session.title)
+                        .font(.headline)
+                    ProgressView("Loading chat session...")
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
             HStack {
                 Spacer()
                 Button("Close") {
@@ -127,6 +163,10 @@ struct FloatingChatView: View {
                 }
                 .padding(8)
             }
+        }
+        .task {
+            guard liveSession == nil else { return }
+            liveSession = await sessionManager.restore(session: session)
         }
     }
 }
