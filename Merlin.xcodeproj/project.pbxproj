@@ -179,6 +179,7 @@
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
 		4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */; };
 		4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */; };
+		A1B2C3D4E5F60718293A4C6D /* DocReferenceGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60718293A4C6D /* DocReferenceGraphTests.swift */; };
 		1A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift */; };
 		1B2B3C4D5E60718293A4B56C /* ManualSectionTemplateWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B2B3C4D5E60718293A4B56C /* ManualSectionTemplateWriterTests.swift */; };
 		9D1A2B3C4D5E60718293A4B6 /* ManualBaselineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD1A2B3C4D5E60718293A4B6 /* ManualBaselineManager.swift */; };
@@ -830,6 +831,7 @@
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
 		5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstallerTests.swift; sourceTree = "<group>"; };
 		6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCoverageScannerTests.swift; sourceTree = "<group>"; };
+		B1B2C3D4E5F60718293A4C6D /* DocReferenceGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocReferenceGraphTests.swift; sourceTree = "<group>"; };
 		2A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualBaselineDecayTests.swift; sourceTree = "<group>"; };
 		2B2B3C4D5E60718293A4B56C /* ManualSectionTemplateWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualSectionTemplateWriterTests.swift; sourceTree = "<group>"; };
 		AD1A2B3C4D5E60718293A4B6 /* ManualBaselineManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualBaselineManager.swift; sourceTree = "<group>"; };
@@ -1487,8 +1489,9 @@
 				C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */,
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
 				5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */,
-			6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */,
-			2A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift */,
+				6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */,
+				B1B2C3D4E5F60718293A4C6D /* DocReferenceGraphTests.swift */,
+				2A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift */,
 			2B2B3C4D5E60718293A4B56C /* ManualSectionTemplateWriterTests.swift */,
 				BB1B2C3D4E5F60718293A4B5 /* SessionStartHookTests.swift */,
 				A36BF301301756281333A6BF /* InstructionDistillationTests.swift */,
@@ -2357,6 +2360,7 @@
 				6706E115A3C64A0D4FB62C0C /* LoopContinuationTests.swift in Sources */,
 				4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */,
 				4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */,
+				A1B2C3D4E5F60718293A4C6D /* DocReferenceGraphTests.swift in Sources */,
 				1A2B3C4D5E60718293A4B56C /* ManualBaselineDecayTests.swift in Sources */,
 				1B2B3C4D5E60718293A4B56C /* ManualSectionTemplateWriterTests.swift in Sources */,
 				7F1A2B3C4D5E60718293A4B5 /* UserPromptDisciplineCheckerTests.swift in Sources */,
