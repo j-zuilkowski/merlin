@@ -8,15 +8,15 @@ final class AdapterRegistryTests: XCTestCase {
     func testRegisterAndRetrieve() async throws {
         let registry = AdapterRegistry()
         let adapter = ProjectAdapter.makeStub(language: "kotlin")
-        registry.register(adapter, for: "kotlin")
-        let retrieved = try registry.adapter(for: "kotlin")
+        await registry.register(adapter, for: "kotlin")
+        let retrieved = try await registry.adapter(for: "kotlin")
         XCTAssertEqual(retrieved.language, "kotlin")
     }
 
     func testNotFoundThrows() async {
         let registry = AdapterRegistry()
         do {
-            _ = try registry.adapter(for: "cobol")
+            _ = try await registry.adapter(for: "cobol")
             XCTFail("Expected notFound error")
         } catch AdapterRegistry.AdapterError.notFound(let lang) {
             XCTAssertEqual(lang, "cobol")
@@ -29,9 +29,9 @@ final class AdapterRegistryTests: XCTestCase {
         let registry = AdapterRegistry()
         let first = ProjectAdapter.makeStub(language: "swift", buildCommand: "xcodebuild-v1")
         let second = ProjectAdapter.makeStub(language: "swift", buildCommand: "xcodebuild-v2")
-        registry.register(first, for: "swift")
-        registry.register(second, for: "swift")
-        let retrieved = try registry.adapter(for: "swift")
+        await registry.register(first, for: "swift")
+        await registry.register(second, for: "swift")
+        let retrieved = try await registry.adapter(for: "swift")
         XCTAssertEqual(retrieved.buildCommand, "xcodebuild-v2")
     }
 
@@ -57,7 +57,7 @@ final class AdapterRegistryTests: XCTestCase {
 
         let registry = AdapterRegistry()
         try await registry.loadFromDirectory(dir.path)
-        let adapter = try registry.adapter(for: "haskell")
+        let adapter = try await registry.adapter(for: "haskell")
         XCTAssertEqual(adapter.language, "haskell")
         XCTAssertEqual(adapter.buildCommand, "cabal build")
     }
