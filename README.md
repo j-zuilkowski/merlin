@@ -124,7 +124,7 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh <version>      # e.g. 2.2.1
+bash scripts/package-dmg.sh <version>
 # → dist/Merlin-<version>.dmg
 ```
 
