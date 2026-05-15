@@ -179,6 +179,7 @@
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
 		4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */; };
 		4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */; };
+		AF2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */; };
 		AD2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */; };
 		DEADBEEFDEADBEEFDEADBEEF /* OverrideAuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */; };
 		AA2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */; };
@@ -848,6 +849,7 @@
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
 		5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstallerTests.swift; sourceTree = "<group>"; };
 		6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCoverageScannerTests.swift; sourceTree = "<group>"; };
+		B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPhaseSkillTests.swift; sourceTree = "<group>"; };
 		AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectInitSkillTests.swift; sourceTree = "<group>"; };
 		FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLog.swift; sourceTree = "<group>"; };
 		AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLogTests.swift; sourceTree = "<group>"; };
@@ -1524,6 +1526,7 @@
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
 				5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */,
 				6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */,
+				B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */,
 				AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */,
 				AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */,
 				Y1A2B3C4D5E60718293A4D6 /* ProseGateTests.swift */,
@@ -2411,6 +2414,7 @@
 				6706E115A3C64A0D4FB62C0C /* LoopContinuationTests.swift in Sources */,
 				4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */,
 				4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */,
+				AF2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift in Sources */,
 				AD2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift in Sources */,
 				AA2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift in Sources */,
 				X1A2B3C4D5E60718293A4D6 /* ProseGateTests.swift in Sources */,
