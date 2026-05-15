@@ -74,6 +74,7 @@
 		1BBEFFD5B13C8D8286BF5DEB /* ToolRegistration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C36E9B88D1A29977A17BE50 /* ToolRegistration.swift */; };
 		1C8A9DDFA10588B161B90AD9 /* SessionTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84689A7F39B30E7C1395725 /* SessionTitleTests.swift */; };
 		1CD5EFEF3AD5D2D95387093F /* EnrichedPlanStepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B141696E60A5B3F019CBFBAB /* EnrichedPlanStepTests.swift */; };
+		1CF4DEBCD91EBE582F0FD9A4 /* Finding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F71FA61A3745BE6889223D9 /* Finding.swift */; };
 		1D58BB8C3C2987A7D16B9FC1 /* TelemetryRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F043A3E1EB1671D22DFD9F14 /* TelemetryRecorder.swift */; };
 		1D6CBF963DE89D13BBB52A25 /* KiCadMCPTooling.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2277D128F8ED0FE540E3A0F /* KiCadMCPTooling.swift */; };
 		1DD890E2518B5B8571DA62DF /* MockEmbeddingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E192416F9C07D3460F53E283 /* MockEmbeddingProvider.swift */; };
@@ -337,6 +338,7 @@
 		993BDFE1B6D062E31C2C5F80 /* PlannerRefineStepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 932F8136F07BFA35F93628D4 /* PlannerRefineStepTests.swift */; };
 		9B59C2925E4DF5A22F7F0520 /* TerminalPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D431F5A6C3382C7EE8D9CE5 /* TerminalPane.swift */; };
 		9BE1F9281F39ED6EED62D5D3 /* ReleaseNotesPresenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA547A37C401641419B353C /* ReleaseNotesPresenceTests.swift */; };
+		9C2F8A901D367041B5ADFBD1 /* PendingAttentionQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290364852F5D620BCAE59D2C /* PendingAttentionQueue.swift */; };
 		9DC0A0D0DE6AD6BACBEDF458 /* RAGSearchToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22E60F5EEB48787BBABA4691 /* RAGSearchToolTests.swift */; };
 		9EAD776E0EB6DBBA8ED01F8C /* PlannerEngineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9E0B7C52D408B037D9DE440 /* PlannerEngineProtocol.swift */; };
 		9F2FDB76BDC491E3471E04C7 /* CriticGatedMemoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7A0C0926301EAAAC3B27E2 /* CriticGatedMemoryTests.swift */; };
@@ -627,6 +629,7 @@
 		282F5184FFE8F96E947FE04C /* CompactSlashCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactSlashCommandTests.swift; sourceTree = "<group>"; };
 		288E4CC27858465AACF8F7E4 /* ReasoningEffortTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReasoningEffortTests.swift; sourceTree = "<group>"; };
 		28BA69A9497A1166A7529CBA /* RAGSelectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGSelectorTests.swift; sourceTree = "<group>"; };
+		290364852F5D620BCAE59D2C /* PendingAttentionQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionQueue.swift; sourceTree = "<group>"; };
 		2988D5A14565391542674258 /* AuthMemoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthMemoryTests.swift; sourceTree = "<group>"; };
 		29A2FA4C5F8A661E1E26A625 /* ThreadAutomationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadAutomationStore.swift; sourceTree = "<group>"; };
 		29D2BCFB3F81D5B828CDBCA4 /* KiCadSchematicParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadSchematicParser.swift; sourceTree = "<group>"; };
@@ -777,6 +780,7 @@
 		7CF5F0045280FE53AEF88CE8 /* CheckpointStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckpointStoreTests.swift; sourceTree = "<group>"; };
 		7D2D077E373F74AF6AD556F6 /* SchedulerEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerEngineTests.swift; sourceTree = "<group>"; };
 		7E42FB7308686AE99E7CA75B /* ProjectConfigLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigLoader.swift; sourceTree = "<group>"; };
+		7F71FA61A3745BE6889223D9 /* Finding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Finding.swift; sourceTree = "<group>"; };
 		7F7B9942FE110C1FF4691B9F /* DiffEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffEngine.swift; sourceTree = "<group>"; };
 		7FDA8AE922D1DCB7E2BDEAB9 /* WorkingSetBudgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingSetBudgetTests.swift; sourceTree = "<group>"; };
 		803889700AE9486CD3A8A0D4 /* ConnectorCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectorCredentials.swift; sourceTree = "<group>"; };
@@ -1749,6 +1753,8 @@
 			children = (
 				0E514331049A76B0DEEFC75B /* AdapterRegistry.swift */,
 				038A2C41C72C6F02BB32904A /* DriftFinding.swift */,
+				7F71FA61A3745BE6889223D9 /* Finding.swift */,
+				290364852F5D620BCAE59D2C /* PendingAttentionQueue.swift */,
 				35E85911487A37C5C3A91AFF /* PhaseScanner.swift */,
 				16224D271BE7E0B550D3612D /* ProjectAdapter.swift */,
 				2F4C81FAEE26F9BFC5686A62 /* ProjectConfig.swift */,
@@ -2511,6 +2517,7 @@
 				ABAE692B0CF903EF12AB1D28 /* EscalationHandler.swift in Sources */,
 				C1B6E354EFC8DF8AD29795C3 /* FilePane.swift in Sources */,
 				03CDA909216758285A523D42 /* FileSystemTools.swift in Sources */,
+				1CF4DEBCD91EBE582F0FD9A4 /* Finding.swift in Sources */,
 				63F4CF3B30038B6E693E886D /* FirstLaunchSetupView.swift in Sources */,
 				70DB76C9FB1D1385878A720C /* FloatingWindowManager.swift in Sources */,
 				4CC851C35C540152E9E691E7 /* GitHubConnector.swift in Sources */,
@@ -2570,6 +2577,7 @@
 				BD776023D0704FE63E552DDB /* OpenAICompatibleProvider.swift in Sources */,
 				625D3D0D2FC9A9CBC024F14E /* PRMonitor.swift in Sources */,
 				93963248993487D653B2FB2F /* PatternMatcher.swift in Sources */,
+				9C2F8A901D367041B5ADFBD1 /* PendingAttentionQueue.swift in Sources */,
 				9F40F8A264545148CDDE3A6E /* PerformanceDashboardView.swift in Sources */,
 				CE87E15F7A1846759FB34CE3 /* PermissionMode.swift in Sources */,
 				623A1322580CC402EB50FDB1 /* PhaseScanner.swift in Sources */,
