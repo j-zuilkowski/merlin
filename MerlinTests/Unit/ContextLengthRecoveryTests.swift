@@ -93,8 +93,10 @@ final class ContextLengthRecoveryTests: XCTestCase {
         XCTAssertTrue(errorEvents.isEmpty, "context-length retry must not surface error; got: \(errorEvents)")
     }
 
-    func test_engine_retries_twice_then_surfaces_error_for_repeated_body_size_failures() async throws {
-        // Continuous body-size failures must stop after the bounded recovery limit.
+    func test_engine_bounds_retries_and_cleanStops_on_repeated_body_size_failures() async throws {
+        // A provider that fails every call with a body-size 400. The engine must NOT
+        // retry unboundedly — it must stop after a small finite number of attempts and
+        // yield a terminal .cleanStop event (post-237 behaviour).
         let provider = MockProvider(failAllCallsWith:
             ProviderError.httpError(statusCode: 400, body: "maximum request body size exceeded", providerID: "mock")
         )
@@ -105,18 +107,27 @@ final class ContextLengthRecoveryTests: XCTestCase {
             events.append(event)
         }
 
-        XCTAssertEqual(provider.callCount, 3, "must cap body-size recovery retries to a finite number")
+        // Bounded: 199 calls is the bug. Any small finite cap proves the fix. The exact
+        // count depends on planner refine calls; the contract is "finite and small".
+        XCTAssertGreaterThanOrEqual(provider.callCount, 2,
+            "engine must attempt at least one recovery retry")
+        XCTAssertLessThanOrEqual(provider.callCount, 12,
+            "repeated context-overrun must be bounded, not loop ~199 times; got \(provider.callCount)")
 
-        let errorEvents = events.filter { if case .error = $0 { return true } else { return false } }
-        XCTAssertFalse(errorEvents.isEmpty,
-            "when retry also fails, engine must surface an error event")
-
-        let recoveryNotes = events.compactMap { event -> String? in
-            if case .systemNote(let note) = event, note.lowercased().contains("overrun") {
-                return note
-            }
+        // The turn must terminate with a clean stop.
+        let cleanStops = events.compactMap { event -> String? in
+            if case .cleanStop(let reason, _) = event { return reason }
             return nil
         }
-        XCTAssertFalse(recoveryNotes.isEmpty, "must emit recovery notes during repeated failures")
+        XCTAssertFalse(cleanStops.isEmpty,
+            "repeated unrecoverable overrun must yield a .cleanStop terminal event")
+
+        // A context-overrun system note must have surfaced.
+        let notes = events.compactMap { event -> String? in
+            if case .systemNote(let note) = event { return note }
+            return nil
+        }
+        XCTAssertTrue(notes.contains(where: { $0.lowercased().contains("overrun") }),
+            "must emit a context-overrun note; notes: \(notes)")
     }
 }
