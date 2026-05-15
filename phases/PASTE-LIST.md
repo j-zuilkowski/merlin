@@ -1788,3 +1788,14 @@ Read phases/phase-240b-v2-1-release.md and execute.
 # Tag: v2.1.0
 # Release: gh release create v2.1.0 --latest
 ```
+
+---
+
+## Project Discipline
+
+```bash
+# ── PHASE 277 — Telemetry Test-Seam Cleanup ─────────────────────────────────
+cat phases/phase-277-telemetry-test-cleanup.md
+# Verify: BUILD SUCCEEDED; zero warnings; full suite green headless
+# Commit: Phase 277 — Remove dead telemetry test seam, dedup reader, fix dismiss test
+```

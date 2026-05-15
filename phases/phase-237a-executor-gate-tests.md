@@ -69,7 +69,7 @@ TDD coverage:
   File 3 — `MerlinTests/Unit/IterationCapEscalationTests.swift`: when loop count reaches the
     near-ceiling threshold *and* no new tool calls or text were emitted in the last 3 turns,
     `handleEscalation(reason: .iterationCap)` is invoked. Verified by emitting
-    `engine.escalation.start` and reading it back via `TelemetryRecorder`.
+    `engine.escalation.start` and reading it back from the telemetry JSONL file via `readTelemetryEvents(fromFile:)`.
   File 4 — `MerlinTests/Unit/CleanStopOutcomeTests.swift`: when `EscalationHandler` returns
     `.stop`, the engine yields a `.cleanStop` event (or matching `.systemNote`) with the
     structured "Cannot continue / Suggested / Progress so far" template and *does not* re-enter

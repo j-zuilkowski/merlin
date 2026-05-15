@@ -43,21 +43,11 @@ final class PlannerRefineTelemetryTests: XCTestCase {
         )
 
         await TelemetryEmitter.shared.flushForTesting()
-        let terminalEvents: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            terminalEvents = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-                .filter {
-                    let event = $0["event"] as? String
-                    return event == "planner.refine.success" || event == "planner.refine.cannot_decompose"
-                }
-        } else {
-            terminalEvents = []
-        }
+        let terminalEvents = readTelemetryEvents(fromFile: tempPath)
+            .filter {
+                let event = $0["event"] as? String
+                return event == "planner.refine.success" || event == "planner.refine.cannot_decompose"
+            }
         XCTAssertEqual(terminalEvents.count, 1)
         if let event = terminalEvents.first,
            let name = event["event"] as? String,

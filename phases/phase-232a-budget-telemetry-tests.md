@@ -1,5 +1,7 @@
 # Phase 232a — Budget Telemetry Tests
 
+> **Superseded by phase 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
@@ -29,8 +31,7 @@ TDD coverage:
   File 2 — `MerlinTests/Unit/TelemetryErrorBodyTests.swift`: when `AgenticEngine` catches a
     `ProviderError.httpError(statusCode: 400, body: "context_length_exceeded …", providerID:)`,
     the next `engine.turn.error` event payload contains `error_body` (redacted, ≤500 chars) and
-    `error_status: 400`. Uses an in-memory `TelemetryEmitter` test double via
-    `TestHelpers/TelemetryRecorder.swift` (also created in this phase).
+    `error_status: 400`. Uses a temp JSONL telemetry file helper in `TestHelpers/TelemetryTestSupport.swift`.
   File 3 — `MerlinTests/Unit/PreflightTelemetryTests.swift`: every `runLoop` turn emits exactly
     one `engine.preflight.estimate` event with `estimated_tokens > 0`, `provider_id` matching
     the resolved provider, and `slot` matching the working slot.
@@ -46,7 +47,7 @@ TDD coverage:
 - `MerlinTests/Unit/TelemetryErrorBodyTests.swift`
 - `MerlinTests/Unit/PreflightTelemetryTests.swift`
 - `MerlinTests/Unit/PlannerStepTelemetryTests.swift`
-- `TestHelpers/TelemetryRecorder.swift`
+- `TestHelpers/TelemetryTestSupport.swift`
 
 ---
 
@@ -60,8 +61,8 @@ xcodebuild -scheme MerlinTests build-for-testing \
 ```
 
 Expected: **BUILD FAILED** with errors naming `RedactedString.redacted`, the missing
-`TelemetryRecorder`, and the absence of the new `error_body` / `engine.preflight.estimate` /
-`planner.step.executing` emit paths.
+    the missing telemetry helper, and the absence of the new `error_body` / `engine.preflight.estimate` /
+    `planner.step.executing` emit paths.
 
 ## Commit
 
@@ -71,6 +72,6 @@ git add phases/phase-232a-budget-telemetry-tests.md \
     MerlinTests/Unit/TelemetryErrorBodyTests.swift \
     MerlinTests/Unit/PreflightTelemetryTests.swift \
     MerlinTests/Unit/PlannerStepTelemetryTests.swift \
-    TestHelpers/TelemetryRecorder.swift
+    TestHelpers/TelemetryTestSupport.swift
 git commit -m "Phase 232a — BudgetTelemetryTests (failing)"
 ```

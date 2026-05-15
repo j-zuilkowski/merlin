@@ -131,12 +131,17 @@ final class PendingAttentionViewModelTests: XCTestCase {
 
         let vm = PendingAttentionViewModel(disciplineEngine: engine)
         await vm.refresh(projectPath: projectRoot.path)
-        guard let finding = vm.findings.first else {
-            XCTFail("Expected at least one finding")
-            return
+        XCTAssertFalse(vm.findings.isEmpty, "scan must produce at least one finding")
+
+        // Dismiss every finding the scan produced — the scan can yield more than one
+        // (e.g. a phaseDrift and a docStaleReference for the same ghost symbol).
+        var guardCount = 0
+        while let finding = vm.findings.first, guardCount < 100 {
+            await vm.dismiss(finding: finding, rationale: "done")
+            await vm.refresh(projectPath: projectRoot.path)
+            guardCount += 1
         }
-        await vm.dismiss(finding: finding, rationale: "done")
-        await vm.refresh(projectPath: projectRoot.path)
-        XCTAssertFalse(vm.findings.contains(where: { $0.id == finding.id }))
+
+        XCTAssertTrue(vm.findings.isEmpty, "queue must be empty after the last dismiss")
     }
 }

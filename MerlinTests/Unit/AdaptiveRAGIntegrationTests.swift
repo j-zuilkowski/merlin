@@ -110,17 +110,7 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
         for await _ in smallEngine.send(userMessage: "ground me") {}
 
         await TelemetryEmitter.shared.flushForTesting()
-        let smallEvents: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            smallEvents = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-        } else {
-            smallEvents = []
-        }
+        let smallEvents = readTelemetryEvents(fromFile: tempPath)
         let smallEstimate = smallEvents.last(where: { $0["event"] as? String == "engine.preflight.estimate" })?[
             "data"
         ] as? [String: Any]
@@ -140,17 +130,7 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
         for await _ in largeEngine.send(userMessage: "ground me") {}
 
         await TelemetryEmitter.shared.flushForTesting()
-        let largeEvents: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            largeEvents = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-        } else {
-            largeEvents = []
-        }
+        let largeEvents = readTelemetryEvents(fromFile: tempPath)
         let largeEstimate = largeEvents.last(where: { $0["event"] as? String == "engine.preflight.estimate" })?[
             "data"
         ] as? [String: Any]

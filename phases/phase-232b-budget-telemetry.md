@@ -1,5 +1,7 @@
 # Phase 232b — Budget Telemetry
 
+> **Superseded by phase 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
@@ -24,10 +26,7 @@ rough estimator; phase 233b promotes that to the formal pre-flight gate.
   emit `engine.preflight.estimate` using `approximateTokens(in: context)` and the resolved
   provider's id. In the planner-driven branch, emit `planner.step.executing` once per step
   before dispatching that step's first provider call.
-- `TestHelpers/TelemetryRecorder.swift` — production-side companion if needed for DI; otherwise
-  pure test file consumed via the protocol `TelemetryEmitter` already exposes. Confirm
-  `TelemetryEmitter` has an injection seam for tests; if not, add a `static var sink: TelemetrySink?`
-  switchable from tests with a `Sendable` `TelemetrySink` protocol.
+- `TestHelpers/TelemetryTestSupport.swift` — shared helper for parsing telemetry JSONL in tests.
 
 ---
 

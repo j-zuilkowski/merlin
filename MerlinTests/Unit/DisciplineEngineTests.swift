@@ -92,17 +92,7 @@ final class DisciplineEngineTests: XCTestCase {
         _ = await engine.scan(projectPath: proj.path)
         _ = await engine.scan(projectPath: proj.path)
         await TelemetryEmitter.shared.flushForTesting()
-        let events: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            events = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-        } else {
-            events = []
-        }
+        let events = readTelemetryEvents(fromFile: tempPath)
         let disabled = events.contains { $0["event"] as? String == "discipline.disabled" }
         XCTAssertTrue(disabled, "Engine should emit discipline.disabled after 3 failures")
     }

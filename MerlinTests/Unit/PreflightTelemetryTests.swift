@@ -19,18 +19,8 @@ final class PreflightTelemetryTests: XCTestCase {
         for await _ in engine.send(userMessage: "hello") {}
 
         await TelemetryEmitter.shared.flushForTesting()
-        let events: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            events = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-                .filter { $0["event"] as? String == "engine.preflight.estimate" }
-        } else {
-            events = []
-        }
+        let events = readTelemetryEvents(fromFile: tempPath)
+            .filter { $0["event"] as? String == "engine.preflight.estimate" }
         XCTAssertEqual(events.count, 1)
         let data = events[0]["data"] as? [String: Any]
         XCTAssertGreaterThan(data?["estimated_tokens"] as? Int ?? 0, 0)

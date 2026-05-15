@@ -29,18 +29,8 @@ final class PlannerStepTelemetryTests: XCTestCase {
         _ = await engine.decompose(task: "split work", context: [])
 
         await TelemetryEmitter.shared.flushForTesting()
-        let events: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            events = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-                .filter { $0["event"] as? String == "planner.step.executing" }
-        } else {
-            events = []
-        }
+        let events = readTelemetryEvents(fromFile: tempPath)
+            .filter { $0["event"] as? String == "planner.step.executing" }
         XCTAssertEqual(events.count, 2)
         let firstData = events[0]["data"] as? [String: Any]
         let secondData = events[1]["data"] as? [String: Any]

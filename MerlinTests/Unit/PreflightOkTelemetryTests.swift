@@ -60,17 +60,7 @@ final class PreflightOkTelemetryTests: XCTestCase {
         XCTAssertEqual(outcome, .ok)
 
         await TelemetryEmitter.shared.flushForTesting()
-        let events: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            events = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-        } else {
-            events = []
-        }
+        let events = readTelemetryEvents(fromFile: tempPath)
 
         XCTAssertTrue(events.contains { $0["event"] as? String == "engine.preflight.ok" })
         XCTAssertFalse(events.contains { $0["event"] as? String == "engine.preflight.overflow" })

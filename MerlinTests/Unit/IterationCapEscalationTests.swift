@@ -27,18 +27,8 @@ final class IterationCapEscalationTests: XCTestCase {
         for await _ in engine.send(userMessage: "keep going until the ceiling") {}
 
         await TelemetryEmitter.shared.flushForTesting()
-        let escalationEvents: [[String: Any]]
-        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
-           let content = String(data: data, encoding: .utf8) {
-            escalationEvents = content
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .compactMap { line in
-                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
-                }
-                .filter { $0["event"] as? String == "engine.escalation.start" }
-        } else {
-            escalationEvents = []
-        }
+        let escalationEvents = readTelemetryEvents(fromFile: tempPath)
+            .filter { $0["event"] as? String == "engine.escalation.start" }
         XCTAssertFalse(
             escalationEvents.isEmpty,
             "Expected escalation telemetry when the loop approaches the ceiling without progress"
