@@ -27,6 +27,10 @@ targets:
           - KAG/**
       - path: Merlin/KAG
         type: group
+      # Bundled as a folder reference so installBuiltinSkills() can read
+      # Bundle.main/Builtin and copy the skills to ~/.merlin/skills at launch.
+      - path: Merlin/Skills/Builtin
+        type: folder
     dependencies:
       - sdk: AppIntents.framework
     settings:
