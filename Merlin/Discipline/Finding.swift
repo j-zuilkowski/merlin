@@ -46,4 +46,14 @@ struct Finding: Sendable, Identifiable, Codable, Equatable {
     let suggestedAction: String?
     let createdAt: Date
     let lastSeenAt: Date
+
+    /// Stable, content-derived idempotency key.
+    ///
+    /// `id` is a fresh `UUID` minted on every scan, so it cannot identify a logical
+    /// finding across runs. `dedupKey` is derived from the category and summary, the
+    /// fields that define what the finding is, so a re-scan that rediscovers the same
+    /// issue produces the same key.
+    var dedupKey: String {
+        "\(category.rawValue)|\(summary)"
+    }
 }

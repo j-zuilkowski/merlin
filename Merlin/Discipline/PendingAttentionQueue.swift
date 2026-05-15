@@ -7,22 +7,26 @@ actor PendingAttentionQueue {
     // MARK: - Storage
 
     private let storePath: String
-    private var findings: [UUID: Finding] = [:]
+    /// Keyed by `Finding.dedupKey` rather than `Finding.id`.
+    private var findings: [String: Finding] = [:]
 
     // MARK: - Init
 
     init(storePath: String) {
         self.storePath = storePath
         if let loaded = Self.loadFromDisk(storePath) {
-            self.findings = Dictionary(uniqueKeysWithValues: loaded.map { ($0.id, $0) })
+            self.findings = Dictionary(
+                loaded.map { ($0.dedupKey, $0) },
+                uniquingKeysWith: { _, newer in newer }
+            )
         }
     }
 
     // MARK: - API
 
     func add(_ finding: Finding) async {
-        if let existing = findings[finding.id] {
-            findings[finding.id] = Finding(
+        if let existing = findings[finding.dedupKey] {
+            findings[finding.dedupKey] = Finding(
                 id: existing.id,
                 category: existing.category,
                 severity: existing.severity,
@@ -33,7 +37,7 @@ actor PendingAttentionQueue {
                 lastSeenAt: finding.lastSeenAt
             )
         } else {
-            findings[finding.id] = finding
+            findings[finding.dedupKey] = finding
         }
 
         persist()
@@ -58,7 +62,10 @@ actor PendingAttentionQueue {
     }
 
     func dismiss(id: UUID, rationale: String) async {
-        let removed = findings.removeValue(forKey: id)
+        guard let key = findings.first(where: { $0.value.id == id })?.key else {
+            return
+        }
+        let removed = findings.removeValue(forKey: key)
         persist()
         if let removed {
             TelemetryEmitter.shared.emit("discipline.finding.dismissed", data: [

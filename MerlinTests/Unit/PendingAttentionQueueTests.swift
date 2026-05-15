@@ -13,13 +13,14 @@ final class PendingAttentionQueueTests: XCTestCase {
 
     private func makeFinding(
         severity: Severity = .nudge,
-        category: FindingCategory = .phaseDrift
+        category: FindingCategory = .phaseDrift,
+        summary: String = "Test finding"
     ) -> Finding {
         Finding(
             id: UUID(),
             category: category,
             severity: severity,
-            summary: "Test finding",
+            summary: summary,
             detail: "Detail",
             suggestedAction: nil,
             createdAt: Date(),
@@ -59,7 +60,9 @@ final class PendingAttentionQueueTests: XCTestCase {
     func testTopNRespectsLimit() async throws {
         let (queue, dir) = makeQueue()
         defer { try? FileManager.default.removeItem(at: dir) }
-        for _ in 0..<5 { await queue.add(makeFinding()) }
+        for index in 0..<5 {
+            await queue.add(makeFinding(summary: "Test finding \(index)"))
+        }
         let top = await queue.top(n: 3)
         XCTAssertEqual(top.count, 3)
     }

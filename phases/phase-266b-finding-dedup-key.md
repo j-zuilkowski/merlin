@@ -203,6 +203,8 @@ actor PendingAttentionQueue {
   keyed by `dedupKey`. `add()` now collapses repeat findings; `dismiss(id:)` locates
   entries by scanning for the matching `value.id`; `loadFromDisk` rebuilds the dict by
   `dedupKey` (newer entry wins on a key collision in a legacy file).
+- `PendingAttentionQueueTests.testTopNRespectsLimit` now seeds distinct summaries so the
+  limit assertion exercises the top-N truncation path instead of the dedupe path.
 
 ---
 
