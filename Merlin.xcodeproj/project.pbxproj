@@ -235,6 +235,7 @@
 		6190DAFAA760A98474AB1DA5 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9D64F0923F6953011C5268 /* CheckpointStore.swift */; };
 		6215E002BC3B8C4245FD222D /* ThreadAutomationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE88791F6ABE15DD10D51 /* ThreadAutomationEngine.swift */; };
 		6219702079F7F84275125E24 /* CalibrationAdvisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */; };
+		6B1A2B3C4D5E60718293A4B5 /* GitHookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B1A2B3C4D5E60718293A4B5 /* GitHookInstaller.swift */; };
 		2F0E1D3C4B5A69788796A5B4 /* DisciplineEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10F8C3B8A4E5F2A7B66F2B0A /* DisciplineEngine.swift */; };
 		3A4B5C6D7E8F9012A3B4C5D6 /* DocReferenceGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FBC6A38E4E5D62ACB6C2F10 /* DocReferenceGraph.swift */; };
 		5C6D7E8F9012A3B4C5D6E7F8 /* ManualCoverageScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A4E6A1D3B2F5C8D9E0F1234 /* ManualCoverageScanner.swift */; };
@@ -675,6 +676,7 @@
 		8F1A2B3C4D5E60718293A4B5 /* UserPromptDisciplineCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPromptDisciplineCheckerTests.swift; sourceTree = "<group>"; };
 		34891F5580C332770CBF01D7 /* TokenEstimatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenEstimatorTests.swift; sourceTree = "<group>"; };
 		35E85911487A37C5C3A91AFF /* PhaseScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseScanner.swift; sourceTree = "<group>"; };
+		7B1A2B3C4D5E60718293A4B5 /* GitHookInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstaller.swift; sourceTree = "<group>"; };
 		7C1C3D4E5F60718293A4B5C6 /* UserPromptDisciplineChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPromptDisciplineChecker.swift; sourceTree = "<group>"; };
 		5A6B7C8D9E0F1234567890AB /* WhyCommentScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhyCommentScanner.swift; sourceTree = "<group>"; };
 		35FE4136641B00DA7312B998 /* EscalationHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscalationHandlerTests.swift; sourceTree = "<group>"; };
@@ -1791,6 +1793,7 @@
 				16224D271BE7E0B550D3612D /* ProjectAdapter.swift */,
 				2F4C81FAEE26F9BFC5686A62 /* ProjectConfig.swift */,
 				7E42FB7308686AE99E7CA75B /* ProjectConfigLoader.swift */,
+				7B1A2B3C4D5E60718293A4B5 /* GitHookInstaller.swift */,
 				7C1C3D4E5F60718293A4B5C6 /* UserPromptDisciplineChecker.swift */,
 				4F0A1B2C3D4E5F60718293A4 /* ScanReport.swift */,
 				3D7A9B0C1E2F4A5B6C7D8E90 /* ProseReadabilityChecker.swift */,
@@ -2624,6 +2627,7 @@
 				CE87E15F7A1846759FB34CE3 /* PermissionMode.swift in Sources */,
 				3A4B5C6D7E8F9012A3B4C5D6 /* DocReferenceGraph.swift in Sources */,
 				623A1322580CC402EB50FDB1 /* PhaseScanner.swift in Sources */,
+				6B1A2B3C4D5E60718293A4B5 /* GitHookInstaller.swift in Sources */,
 				5C6D7E8F9012A3B4C5D6E7F8 /* ManualCoverageScanner.swift in Sources */,
 				F7D7DFC7E2D2A89C4E5A53E7 /* PlannerEngine.swift in Sources */,
 				9EAD776E0EB6DBBA8ED01F8C /* PlannerEngineProtocol.swift in Sources */,
