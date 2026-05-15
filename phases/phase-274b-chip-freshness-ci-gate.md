@@ -6,10 +6,14 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 274a complete: failing tests for the chip-freshness fix and the CI test gate.
 
-This phase fixes the two-queue staleness bug and makes the test suite green on a
-headless runner (GitHub CI and Codex's sandbox), so the 69 unpushed commits can be
-pushed without a red pipeline. Confirmed against CI run 25890231419: the build
-SUCCEEDS on macos-15 / Xcode 16 — only runtime test failures are red.
+This phase fixes the two-queue staleness bug and gates the environment-dependent test
+methods so the suite is green on a headless runner (GitHub CI and Codex's sandbox).
+Confirmed against CI run 25890231419: the build SUCCEEDS on macos-15 / Xcode 16 — only
+runtime test failures are red.
+
+**Execution order:** 274b → 275 → 276. Phases 275 and 276 fix two genuine engine
+regressions found during 274a's investigation (see "Deferred failures" below). 274b is
+committed first; the suite becomes fully green after 276b.
 
 ---
 
@@ -19,7 +23,7 @@ SUCCEEDS on macos-15 / Xcode 16 — only runtime test failures are red.
 not a private `PendingAttentionQueue`.
 
 - `Merlin/ViewModels/PendingAttentionViewModel.swift`:
-    - Replace the stored `private let queue: PendingAttentionQueue` with
+    - Replace `private let queue: PendingAttentionQueue` with
       `private let disciplineEngine: DisciplineEngine`.
     - Replace `init(queue:)` with `init(disciplineEngine: DisciplineEngine)`.
     - `refresh(projectPath:)` — `findings = Array(await disciplineEngine.pendingAttention(projectPath: projectPath).prefix(3))`.
@@ -28,12 +32,11 @@ not a private `PendingAttentionQueue`.
     - Remove the standalone `let disciplineQueue = PendingAttentionQueue(...)` local.
     - Build the view model from the engine:
       `pendingAttention = PendingAttentionViewModel(disciplineEngine: disciplineEngine)`.
-    - Leave `DisciplineEngine.init(... storePath:)` unchanged — the engine still owns
-      the one real queue; the view model now goes through it.
+    - Leave `DisciplineEngine.init(... storePath:)` unchanged — the engine owns the one
+      real queue; the view model now goes through it.
 - Update the existing phase-264 test that constructs `PendingAttentionViewModel(queue:)`.
   Grep for `PendingAttentionViewModel(queue:` — update each call site to
-  `PendingAttentionViewModel(disciplineEngine:)`, constructing a `DisciplineEngine` the
-  same way `DisciplineChipFreshnessTests` does. List every test file changed in the commit.
+  `PendingAttentionViewModel(disciplineEngine:)`. List every test file changed in the commit.
 
 ## Edit 2 — Add the live-environment test gate
 
@@ -65,10 +68,10 @@ not a private `PendingAttentionQueue`.
 ## Edit 3 — Gate the environment-dependent test methods
 
 Add `try skipUnlessLiveEnvironment()` as the **first statement** of each test method
-below (the methods that fail on a headless runner — confirmed from CI run 25890231419).
-Gate per-method, NOT in `setUpWithError()` — these suites also contain pure unit tests
-(e.g. `AgenticEngineCriticRetryTests.testCriticEnabledDefaultIsTrue`) that are CI-safe
-and must keep running.
+below (confirmed failing on a headless runner — CI run 25890231419). Gate per-method,
+NOT in `setUpWithError()` — these suites also contain pure unit tests (e.g.
+`AgenticEngineCriticRetryTests.testCriticEnabledDefaultIsTrue`) that are CI-safe and
+must keep running. An `async` test gains `throws` if absent (`async throws`).
 
 | File | Methods to gate |
 |---|---|
@@ -83,10 +86,6 @@ and must keep running.
 | `LoopContinuationTests.swift` | `testPlanBatchSplitsAndSchedulesContinuation` |
 | `SemanticFaultInjectionTests.swift` | `testTruncatingProviderAccumulatesInAdvisor` |
 
-Methods that are `async` need `try skipUnlessLiveEnvironment()` and must already be
-`throws` — add `throws` to the signature if absent (an `async` test may be
-`async throws`).
-
 ## Edit 4 — Delete the stale v2.0.0 version test
 
 `MerlinTests/Unit/MerlinV2VersionTests.swift` asserts `MARKETING_VERSION: "2.0.0"` and
@@ -94,36 +93,27 @@ checks `RELEASE-v2.0.0.md` for KiCad scope. It is a v2.0.0-era test, fails at ev
 version since, and is fully superseded by `AppVersionTests`, `AppVersion221Tests`,
 `ReleaseNotesPresenceTests`, and `ReleaseNotes221Tests`. **Delete the file.**
 
-## Edit 5 — Investigate two ambiguous failures
-
-These two are NOT obviously environment-dependent — investigate each, then act:
-
-- `ContextLengthRecoveryTests.test_engine_retries_twice_then_surfaces_error_for_repeated_body_size_failures`
-  fails with `("199") is not equal to ("3")` — the engine retried ~199 times where the
-  test expects a finite cap of 3. Phase 237b deleted the recursive recovery and retry
-  counters. Determine which is true:
-    1. **Stale test** — it asserts the pre-237 `contextLengthRetryCount` behaviour that
-       no longer exists. The post-237 no-recursion guarantee is already covered by
-       `RunLoopNoRecursionTests` and `RetryCounterDeletionTests`. → Rewrite this single
-       method to assert the post-237 escalation behaviour, or remove just this method
-       (keep the pure `test_isContextLengthExceeded_*` tests in the file — they are
-       CI-safe and valuable). If the engine path it drives needs a live provider, gate
-       it with `skipUnlessLiveEnvironment()` instead.
-    2. **Real regression** — body-size 400s genuinely loop ~199 times unbounded,
-       meaning escalation does not cover that path. → **STOP and report.** Do not gate
-       or delete a real unbounded-retry bug; it needs its own fix phase.
-- `ParallelWorkerTests.test_parseSteps_defaultsParallelSafeToFalse` fails `("0") is not
-  equal to ("1")` — `parseSteps` returned 0 steps. Determine: env-dependent (needs a
-  provider to produce steps) → gate; stale (phase 236 changed `parseSteps` / `PlanStep`
-  and the fixture is outdated) → update the test; genuine parser regression → STOP and
-  report.
-
-## Edit 6 — Fix the CI build step so it can actually fail
+## Edit 5 — Fix the CI build step so it can actually fail
 
 `.github/workflows/ci.yml` — the "Build (Release)" step pipes `xcodebuild` to `grep`
-without `set -o pipefail`, so a `BUILD FAILED` is masked (grep matches the failure text
-and exits 0). Add `set -o pipefail` as the first line of that step's `run:` block, the
-same way the "Run Unit Tests" step already does.
+without `set -o pipefail`, so a `BUILD FAILED` is masked. Add `set -o pipefail` as the
+first line of that step's `run:` block, matching the "Run Unit Tests" step.
+
+---
+
+## Deferred failures — handled in phases 275 and 276
+
+274a's investigation found two **genuine engine regressions** (not stale tests, not
+environment-dependent). They are out of scope for 274b and fixed next:
+
+- `ContextLengthRecoveryTests.test_engine_retries_twice_then_surfaces_error_for_repeated_body_size_failures`
+  — the engine makes ~199 provider calls on repeated body-size 400s instead of a small
+  bounded number, and surfaces no terminal event. **→ phase 275.**
+- `ParallelWorkerTests.test_parseSteps_defaultsParallelSafeToFalse`
+  — `parseSteps` drops a step whose `complexity` is `"high_stakes"` (returns 0 steps),
+  then the test crashes on `steps[0]`. **→ phase 276.**
+
+Do **not** gate or delete these — they are real bugs with their own fix phases.
 
 ---
 
@@ -143,14 +133,11 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**. The test run is executed in a headless sandbox
-(`RUN_LIVE_TESTS` unset), so the gated engine methods report as **skipped**, not
-failed. **Zero test failures.** `DisciplineChipFreshnessTests` and `CITestGateTests`
-pass. If any non-gated suite still fails, that is a genuine bug — stop and report.
-
-This is the post-fix CI contract: with `RUN_LIVE_TESTS` unset the suite is green
-(pass + skip, no failures); a developer runs `RUN_LIVE_TESTS=1 xcodebuild …` for the
-full engine coverage.
+Expected: **BUILD SUCCEEDED**. The test run is headless (`RUN_LIVE_TESTS` unset), so the
+gated engine methods report as **skipped**. `DisciplineChipFreshnessTests` and
+`CITestGateTests` pass. The **only** acceptable remaining failures are the two
+regressions named above (`ContextLengthRecoveryTests` and `ParallelWorkerTests`), which
+phases 275 and 276 fix. Any other failure is a genuine bug — stop and report.
 
 ## Commit
 
@@ -160,15 +147,9 @@ git add phases/phase-274b-chip-freshness-ci-gate.md \
     Merlin/App/AppState.swift \
     TestHelpers/LiveEnvironmentGate.swift \
     .github/workflows/ci.yml \
-    MerlinTests/
+    <each gated test file> <updated phase-264 test file(s)>
 git rm MerlinTests/Unit/MerlinV2VersionTests.swift
 git commit -m "Phase 274b — Chip freshness fix + live-environment CI test gate"
 ```
 
-(Adjust the `git add MerlinTests/` line to the specific gated test files plus the two
-new test files from 274a — never `git add -A`.)
-
-## PASTE-LIST update
-
-Append phase 274a/274b under the "Budget-Aware Execution / Project Discipline" section,
-noting it as the CI-readiness remediation.
+(List the specific gated test files explicitly — never `git add -A`.)
