@@ -28,13 +28,13 @@ final class AdapterSeedTests: XCTestCase {
         let registry = AdapterRegistry()
         try await registry.loadFromDirectory(dir.path)
 
-        let swift = try await registry.adapter(for: "swift")
+        let swift = try await registry.adapter(for: "swift-xcode")
         XCTAssertEqual(swift.language, "swift")
         XCTAssertEqual(swift.versioningFile, "project.yml")
         XCTAssertFalse(swift.whyCommentTriggers.isEmpty,
                        "Swift adapter should have WHY triggers")
 
-        let rust = try await registry.adapter(for: "rust")
+        let rust = try await registry.adapter(for: "rust-cargo")
         XCTAssertEqual(rust.language, "rust")
         XCTAssertEqual(rust.versioningFile, "Cargo.toml")
         XCTAssertFalse(rust.whyCommentTriggers.isEmpty,
@@ -51,7 +51,7 @@ final class AdapterSeedTests: XCTestCase {
         let registry = AdapterRegistry()
         try await registry.loadFromDirectory(dir.path)
 
-        let swift = try await registry.adapter(for: "swift")
+        let swift = try await registry.adapter(for: "swift-xcode")
         XCTAssertFalse(swift.manualCoveragePatterns.isEmpty,
                        "Swift adapter should have manual coverage patterns")
     }

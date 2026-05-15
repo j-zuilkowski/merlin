@@ -48,7 +48,12 @@ actor AdapterRegistry {
             let text = try String(contentsOf: file, encoding: .utf8)
             do {
                 let adapter = try TOMLAdapterParser.parse(text)
-                adapters[adapter.language] = adapter
+                // Register under the filename stem (the adapter-key, e.g.
+                // "swift-xcode"). ProjectConfig.adapter from .merlin/project.toml uses
+                // that key, not the bare language, so keying by language here would
+                // make adapter(for: config.adapter) throw notFound for every project.
+                let key = file.deletingPathExtension().lastPathComponent
+                adapters[key] = adapter
             } catch {
                 // Log but continue — one bad file should not block the rest.
                 TelemetryEmitter.shared.emit("discipline.adapter.parse_error", data: [
