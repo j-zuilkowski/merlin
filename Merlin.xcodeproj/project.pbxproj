@@ -177,6 +177,7 @@
 		49B0C1CC9D3B7C91A6C067F7 /* SubagentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71C1C016F54B6FA9F5520B08 /* SubagentEngine.swift */; };
 		4A3179D35C772A9AE1B0DE1C /* DPOReviewQueueViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4638FBF518CD9C37B73DD46 /* DPOReviewQueueViewTests.swift */; };
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
+		4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */; };
 		AA1B2C3D4E5F60718293A4B5 /* SessionStartHookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1B2C3D4E5F60718293A4B5 /* SessionStartHookTests.swift */; };
 		7F1A2B3C4D5E60718293A4B5 /* UserPromptDisciplineCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F1A2B3C4D5E60718293A4B5 /* UserPromptDisciplineCheckerTests.swift */; };
 		4BB9CF2BE370F5A4F35B0B04 /* WorkingSetBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 089AE1D6D482A02B2F830589 /* WorkingSetBudget.swift */; };
@@ -820,6 +821,7 @@
 		871665DBD8007EE7BD516A6D /* SkillsRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsRegistry.swift; sourceTree = "<group>"; };
 		87B86EE2BFD08B444FDCD4FD /* KAGBackendRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KAGBackendRegistryTests.swift; sourceTree = "<group>"; };
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
+		5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstallerTests.swift; sourceTree = "<group>"; };
 		889632963D116230631B0602 /* HookTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookTelemetryTests.swift; sourceTree = "<group>"; };
 		89183F04816C851AB7EFD89A /* VLLMModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLLMModelManager.swift; sourceTree = "<group>"; };
 		893A184BB5D5B2E31CB6A951 /* SkillInvocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillInvocationTests.swift; sourceTree = "<group>"; };
@@ -1472,6 +1474,7 @@
 				5CCDBF2ACA000098F1F6D01F /* GUIActionTelemetryTests.swift */,
 				C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */,
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
+				5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */,
 				BB1B2C3D4E5F60718293A4B5 /* SessionStartHookTests.swift */,
 				A36BF301301756281333A6BF /* InstructionDistillationTests.swift */,
 				91E93F05C2FB42546E634A61 /* IterationCapEscalationTests.swift */,
@@ -2334,6 +2337,7 @@
 				06FDB75DC86BFDBB82F925AD /* LocalModelManagerProtocolTests.swift in Sources */,
 				1F42954DF9826A4AF007197D /* LocalVectorPluginTests.swift in Sources */,
 				6706E115A3C64A0D4FB62C0C /* LoopContinuationTests.swift in Sources */,
+				4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */,
 				7F1A2B3C4D5E60718293A4B5 /* UserPromptDisciplineCheckerTests.swift in Sources */,
 				6F93F1A6F0B5CB1934D23ACC /* MCPBridgeTests.swift in Sources */,
 				D8D06D9C7832E49138775007 /* MCPBridgeTransportSelectionTests.swift in Sources */,
