@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 2.0.0** (build 15, tag `v2.0.0`)
+**Version 2.2.1** (build 18, tag `v2.2.1`)
 
 ---
 
@@ -26,7 +26,11 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Behavioral Reliability** — a circuit breaker halts or warns after consecutive critic failures; a grounding confidence signal (`GroundingReport`) surfaces RAG chunk count, average cosine score, and staleness on every turn so you can see when the model is reasoning over thin or stale retrieval.
 
+**Budget-Aware Execution** (v2.1) — every LLM request is sized to the active provider's context window before it is sent. A pre-flight estimator gates each call; working-set caps bound the system prompt, RAG injection, recent turns, and tool-call bursts independently. Oversized work is decomposed into smaller substeps first, with cross-provider routing to a larger-context model only as a last resort.
+
 **LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local model (via MLX-LM) on your own accepted sessions. The trained adapter is loaded into `mlx_lm.server` and Merlin routes the execute slot through it automatically.
+
+**Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD phase pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and phase-file/code sync. Five `/project:*` skills (`init`, `phase`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
 
 See [`FEATURES.md`](FEATURES.md) for a complete capability reference.  
 See [`architecture.md`](architecture.md) for implementation details and design decisions.
@@ -120,8 +124,8 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
 ## Packaging
 
 ```bash
-bash scripts/package-dmg.sh 2.0.0
-# → dist/Merlin-2.0.0.dmg
+bash scripts/package-dmg.sh <version>      # e.g. 2.2.1
+# → dist/Merlin-<version>.dmg
 ```
 
 Or build a release DMG directly:
@@ -131,9 +135,9 @@ xcodebuild -scheme Merlin -configuration Release \
     -derivedDataPath /tmp/merlin-release \
     -destination 'platform=macOS' build
 
-hdiutil create -volname "Merlin 2.0.0" \
+hdiutil create -volname "Merlin <version>" \
     -srcfolder /tmp/merlin-release/Build/Products/Release/Merlin.app \
-    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v2.0.0.dmg
+    -ov -format UDZO dist/Merlin-$(date +%Y-%m-%d)-v<version>.dmg
 ```
 
 Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install create-dmg`) or falls back to `hdiutil`.

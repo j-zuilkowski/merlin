@@ -1,6 +1,6 @@
 # Merlin — Developer Manual
 
-**Version 2.0**
+**Version 2.2.1**
 
 This manual covers the complete architecture, development workflow, and code organisation of Merlin. It is intended for contributors working on the codebase. Code references use the format `File.swift:ClassName.method()` matching the comments embedded throughout the source.
 

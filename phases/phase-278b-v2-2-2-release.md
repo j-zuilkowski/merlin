@@ -23,9 +23,15 @@ Tag locally only; the push and GitHub release are an explicit manual step (as wi
   is `2.2.1` / build `18`; after this bump it would fail. It is superseded by
   `AppVersion222Tests`. (`ReleaseNotes221Tests.swift` stays — `RELEASE-v2.2.1.md` still
   exists and that test still passes.)
-- `CLAUDE.md`:
-    - `**Current version: 2.2.1** (build 18, tag v2.2.1)` →
+- **Version banners — update every doc that carries one** (2.2.1 → 2.2.2, build 18 → 19):
+    - `CLAUDE.md`: `**Current version: 2.2.1** (build 18, tag v2.2.1)` →
       `**Current version: 2.2.2** (build 19, tag v2.2.2)`.
+    - `README.md`: `**Version 2.2.1** (build 18, tag v2.2.1)` →
+      `**Version 2.2.2** (build 19, tag v2.2.2)`.
+    - `Merlin/Docs/UserGuide.md`: `**Version 2.2.1**` → `**Version 2.2.2**`.
+    - `Merlin/Docs/DeveloperManual.md`: `**Version 2.2.1**` → `**Version 2.2.2**`.
+    - `Requirements.md`: `Current version: **2.2.1** (build 18)` →
+      `Current version: **2.2.2** (build 19)`.
 - `RELEASE-v2.2.2.md` — new file at the repository root, content below.
 - After all edits run `xcodegen generate`.
 
@@ -100,6 +106,17 @@ Expected: **BUILD SUCCEEDED** and **all phase 278a tests pass** (`AppVersion222T
 `ReleaseNotes222Tests`). The full suite is green headless — zero failures. `AppVersion221Tests`
 is gone.
 
+Then run the version-banner sweep and confirm there is no stale string left:
+
+```bash
+grep -rnE "2\.2\.1|build 18|Version 2\.0|2\.0\.0" \
+    README.md CLAUDE.md Requirements.md Merlin/Docs/UserGuide.md Merlin/Docs/DeveloperManual.md
+```
+
+Expected: **no output** except, in `CLAUDE.md`, the historical "Versioning" example text
+if any. Every "current version" / "Version" banner must read `2.2.2` / build `19`. If any
+doc still shows an older version, fix it before committing.
+
 ## Commit & tag
 
 ```bash
@@ -107,6 +124,10 @@ cd ~/Documents/localProject/merlin
 git add phases/phase-278b-v2-2-2-release.md \
     project.yml \
     CLAUDE.md \
+    README.md \
+    Requirements.md \
+    Merlin/Docs/UserGuide.md \
+    Merlin/Docs/DeveloperManual.md \
     RELEASE-v2.2.2.md \
     Merlin.xcodeproj/project.pbxproj \
     MerlinTests/Unit/AppVersion222Tests.swift \
