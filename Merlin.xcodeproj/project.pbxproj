@@ -184,6 +184,9 @@
 		C2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift */; };
 		E2A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift */; };
 		G3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = H3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModelTests.swift */; };
+		I3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = J3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModel.swift */; };
+		L3A2B3C4D5E60718293A4D6 /* PendingAttentionChipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = M3A2B3C4D5E60718293A4D6 /* PendingAttentionChipView.swift */; };
+		N3A2B3C4D5E60718293A4D6 /* PendingAttentionPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = O3A2B3C4D5E60718293A4D6 /* PendingAttentionPanelView.swift */; };
 		AD2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */; };
 		DEADBEEFDEADBEEFDEADBEEF /* OverrideAuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */; };
 		AA2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */; };
@@ -858,6 +861,9 @@
 		D2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectReleaseSkillTests.swift; sourceTree = "<group>"; };
 		F3A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAdoptSkillTests.swift; sourceTree = "<group>"; };
 		H3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionViewModelTests.swift; sourceTree = "<group>"; };
+		J3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionViewModel.swift; sourceTree = "<group>"; };
+		M3A2B3C4D5E60718293A4D6 /* PendingAttentionChipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionChipView.swift; sourceTree = "<group>"; };
+		O3A2B3C4D5E60718293A4D6 /* PendingAttentionPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionPanelView.swift; sourceTree = "<group>"; };
 		AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectInitSkillTests.swift; sourceTree = "<group>"; };
 		FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLog.swift; sourceTree = "<group>"; };
 		AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLogTests.swift; sourceTree = "<group>"; };
@@ -1360,12 +1366,21 @@
 				BD2C66CF46C811C43E986CEB /* Telemetry */,
 				82153BEAB5C8E1114AF3330C /* Toolbar */,
 				2457A5719BC483BFA0641E2B /* Tools */,
+				K3A2B3C4D5E60718293A4D6 /* ViewModels */,
 				FBE0C13B3DB3863D29547F55 /* UI */,
 				E324F97EC11F864EC9B01239 /* Views */,
 				B747899B6A89032EB9BAD027 /* Voice */,
 				12526266AB31F3A7C2DA3DCE /* Windows */,
 			);
 			path = Merlin;
+			sourceTree = "<group>";
+		};
+		K3A2B3C4D5E60718293A4D6 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				J3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModel.swift */,
+			);
+			path = ViewModels;
 			sourceTree = "<group>";
 		};
 		419233FFCEC6A39B1828694D /* Sessions */ = {
@@ -2055,6 +2070,8 @@
 				771F529757CEE05DAD31B2A9 /* ScreenPreviewView.swift */,
 				FC6E1F55194B08C8A1A77DD2 /* SessionSidebar.swift */,
 				C521DD975EF12840B4051D21 /* ShellStreamViewModel.swift */,
+				M3A2B3C4D5E60718293A4D6 /* PendingAttentionChipView.swift */,
+				O3A2B3C4D5E60718293A4D6 /* PendingAttentionPanelView.swift */,
 				DD3758F9E11891F59094224B /* SideChatPane.swift */,
 				D618333C226998B947B39EA5 /* SkillsPicker.swift */,
 				18BA95141C99394B0E7873D4 /* SlashCommandHandler.swift */,
@@ -2726,6 +2743,9 @@
 				93963248993487D653B2FB2F /* PatternMatcher.swift in Sources */,
 				2F0E1D3C4B5A69788796A5B4 /* DisciplineEngine.swift in Sources */,
 				9C2F8A901D367041B5ADFBD1 /* PendingAttentionQueue.swift in Sources */,
+				I3A2B3C4D5E60718293A4D6 /* PendingAttentionViewModel.swift in Sources */,
+				L3A2B3C4D5E60718293A4D6 /* PendingAttentionChipView.swift in Sources */,
+				N3A2B3C4D5E60718293A4D6 /* PendingAttentionPanelView.swift in Sources */,
 				9F40F8A264545148CDDE3A6E /* PerformanceDashboardView.swift in Sources */,
 				CE87E15F7A1846759FB34CE3 /* PermissionMode.swift in Sources */,
 				3A4B5C6D7E8F9012A3B4C5D6 /* DocReferenceGraph.swift in Sources */,
