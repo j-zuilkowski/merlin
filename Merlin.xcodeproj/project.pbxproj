@@ -43,6 +43,7 @@
 		0DE9DFB352F7C771FBAE8D7E /* DPOQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 925A108CF1DDBE6B1620B6B4 /* DPOQueueTests.swift */; };
 		0E4AA16752228A2E50542380 /* RetryCounterDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5656F8B4E67B92EC713547BB /* RetryCounterDeletionTests.swift */; };
 		0F2C1F505DB4BD2CD294C40F /* PlannerTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C74C390BC35B4A1DF6C3B379 /* PlannerTelemetryTests.swift */; };
+		0FB68A06EA534F0FCEDFF20A /* ProjectConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7901CDCDF1E4DD8944F87B53 /* ProjectConfigTests.swift */; };
 		10658091031D263DC7268997 /* ModelControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7288D50FB7BDB82A4950C059 /* ModelControlView.swift */; };
 		10FC247E5784E0B7C511A1EE /* ProviderRetryPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB911B3FEF4E2928C7FA9914 /* ProviderRetryPolicyTests.swift */; };
 		119758F3D3907D9DC4029D37 /* ThreadAutomationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37CCCD6384273AA9C07C6738 /* ThreadAutomationTests.swift */; };
@@ -285,6 +286,7 @@
 		78F450B25A80042202A3E586 /* AuthMemoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2988D5A14565391542674258 /* AuthMemoryTests.swift */; };
 		79F8514D6C3AA9D22A2B761A /* SessionCheckpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA39E1D6983538C0D9EFF4B /* SessionCheckpoint.swift */; };
 		7AC49C29D0A3961B65FDB381 /* RAGSourceAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 814E0637CF12937447292FA1 /* RAGSourceAttributionTests.swift */; };
+		7B36E995A973E60E004E6010 /* ProjectConfigLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199E7B3579FD41943FF28C1B /* ProjectConfigLoaderTests.swift */; };
 		7C12EEF1D5A2507CF4FF2034 /* GroundingReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C82F6062102607DF26D4BAA /* GroundingReport.swift */; };
 		7C247B86E483FEE5E2065B78 /* ShellToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 788C316547E5D5E66150F69A /* ShellToolTests.swift */; };
 		7C8A884AAFC06E4F33185162 /* FloatingWindowRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A81E538FE3358642C714076 /* FloatingWindowRuntimeTests.swift */; };
@@ -591,6 +593,7 @@
 		18BA95141C99394B0E7873D4 /* SlashCommandHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandHandler.swift; sourceTree = "<group>"; };
 		18DDEF48DF384E91C6252D7A /* SubagentSidebarRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentSidebarRowView.swift; sourceTree = "<group>"; };
 		195DBB95FAE46D4D3360C223 /* AgenticEngineKAGWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineKAGWiringTests.swift; sourceTree = "<group>"; };
+		199E7B3579FD41943FF28C1B /* ProjectConfigLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigLoaderTests.swift; sourceTree = "<group>"; };
 		1AEAE21270C7E4046B66899D /* MerlinE2ETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MerlinE2ETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B5AA6EBE46E0FF58097FC4E /* ParallelWorkerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParallelWorkerTests.swift; sourceTree = "<group>"; };
 		1C07A06E404659EA74281294 /* ProviderRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistryTests.swift; sourceTree = "<group>"; };
@@ -751,6 +754,7 @@
 		785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAdvisor.swift; sourceTree = "<group>"; };
 		788C316547E5D5E66150F69A /* ShellToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellToolTests.swift; sourceTree = "<group>"; };
 		78CAF89EA21DC3E47F923F95 /* Skill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skill.swift; sourceTree = "<group>"; };
+		7901CDCDF1E4DD8944F87B53 /* ProjectConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigTests.swift; sourceTree = "<group>"; };
 		792CDC9A36497CE8E31394F0 /* XcalibreKAGPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcalibreKAGPlugin.swift; sourceTree = "<group>"; };
 		7A27179BFF930CC92478C31D /* SkillCompactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillCompactionTests.swift; sourceTree = "<group>"; };
 		7A91D42A1456239A2BC38E54 /* MockToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockToolRouter.swift; sourceTree = "<group>"; };
@@ -1487,6 +1491,8 @@
 				B0133F4927860C3DEA9F2DE5 /* PRMonitorTests.swift */,
 				D3EE0903D91FCB4E3B2E21EF /* ProcessMemoryTelemetryTests.swift */,
 				E3A08F21B7367292B92EFE13 /* ProjectAdapterTests.swift */,
+				199E7B3579FD41943FF28C1B /* ProjectConfigLoaderTests.swift */,
+				7901CDCDF1E4DD8944F87B53 /* ProjectConfigTests.swift */,
 				8342FAD802DCE4DF18053002 /* ProjectPathSettingsTests.swift */,
 				B680BEF832B5812598710148 /* ProjectSizeMetricsTests.swift */,
 				900140099FE3642F6609B9C8 /* ProjectSizeObserverTests.swift */,
@@ -2305,6 +2311,8 @@
 				E74EE444EB063815BCD8541A /* PreflightTelemetryTests.swift in Sources */,
 				EBEAF5B07F19E181DEECCB8C /* ProcessMemoryTelemetryTests.swift in Sources */,
 				22A31CC31EE84B1FD810067B /* ProjectAdapterTests.swift in Sources */,
+				7B36E995A973E60E004E6010 /* ProjectConfigLoaderTests.swift in Sources */,
+				0FB68A06EA534F0FCEDFF20A /* ProjectConfigTests.swift in Sources */,
 				0C56C14039D9AEA8F411655A /* ProjectPathSettingsTests.swift in Sources */,
 				069AF25F2015490EC46AD210 /* ProjectSizeMetricsTests.swift in Sources */,
 				4C8617A38AF4555D22EDFFA2 /* ProjectSizeObserverTests.swift in Sources */,
