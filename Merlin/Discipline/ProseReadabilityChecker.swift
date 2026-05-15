@@ -13,10 +13,13 @@ actor ProseReadabilityChecker {
 
     private let dryRun: Bool
     private let forcedGrade: Double?
+    /// Maximum wall-clock seconds the `vale` child process may run. Injectable for tests.
+    private let timeoutSeconds: Int
 
-    init(dryRun: Bool = false, forcedGrade: Double? = nil) {
+    init(dryRun: Bool = false, forcedGrade: Double? = nil, timeoutSeconds: Int = 120) {
         self.dryRun = dryRun
         self.forcedGrade = forcedGrade
+        self.timeoutSeconds = timeoutSeconds
     }
 
     func check(docFile: String, targetGrade: Double) async -> ReadabilityFinding {
@@ -50,22 +53,45 @@ actor ProseReadabilityChecker {
     }
 
     private func spawnVale(docFile: String) async -> String {
-        await withCheckedContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["vale", "--output", "JSON", docFile]
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["vale", "--output", "JSON", docFile]
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        let guardBox = ProseResumeGuard()
+        let deadline = timeoutSeconds
+
+        return await withCheckedContinuation { continuation in
             process.terminationHandler = { _ in
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                continuation.resume(returning: String(data: data, encoding: .utf8) ?? "")
+                let text = String(data: data, encoding: .utf8) ?? ""
+                Task {
+                    guard await guardBox.claim() else { return }
+                    continuation.resume(returning: text)
+                }
             }
+
+            // Watchdog: a hung `vale` is terminated and the call falls back to "".
+            Task {
+                try? await Task.sleep(
+                    nanoseconds: UInt64(deadline) * 1_000_000_000)
+                guard await guardBox.claim() else { return }
+                if process.isRunning {
+                    process.terminate()
+                }
+                continuation.resume(returning: "")
+            }
+
             do {
                 try process.run()
             } catch {
-                continuation.resume(returning: "")
+                Task {
+                    guard await guardBox.claim() else { return }
+                    continuation.resume(returning: "")
+                }
             }
         }
     }
@@ -121,5 +147,15 @@ actor ProseReadabilityChecker {
             return nil
         }
         return Double(text[range])
+    }
+}
+
+/// Single-resume guard for ProseReadabilityChecker's process continuation.
+private actor ProseResumeGuard {
+    private var claimed = false
+    func claim() -> Bool {
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }

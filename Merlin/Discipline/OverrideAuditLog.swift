@@ -31,9 +31,10 @@ actor OverrideAuditLog {
             at: parent, withIntermediateDirectories: true, attributes: nil)
 
         if FileManager.default.fileExists(atPath: logPath) {
+            guard let lineData = (line + "\n").data(using: .utf8) else { return }
             let handle = try FileHandle(forWritingTo: url)
             handle.seekToEndOfFile()
-            handle.write((line + "\n").data(using: .utf8)!)
+            handle.write(lineData)
             handle.closeFile()
         } else {
             try (line + "\n").write(to: url, atomically: true, encoding: .utf8)

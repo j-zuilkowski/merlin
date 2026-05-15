@@ -8,6 +8,8 @@ actor GitHookInstaller {
     enum HookError: Error, Sendable {
         case notAGitRepo(String)
         case writeFailed(String)
+        /// A non-Merlin hook already occupies this path. install() will not clobber it.
+        case foreignHookPresent(String)
     }
 
     // MARK: - Marker
@@ -22,13 +24,16 @@ actor GitHookInstaller {
             throw HookError.notAGitRepo(projectPath)
         }
 
-        let postCommitScript = makePostCommitScript()
-        let prePushScript = makePrePushScript()
+        let postCommitURL = hooksDir.appendingPathComponent("post-commit")
+        let prePushURL = hooksDir.appendingPathComponent("pre-push")
 
-        try write(script: postCommitScript,
-                  to: hooksDir.appendingPathComponent("post-commit"))
-        try write(script: prePushScript,
-                  to: hooksDir.appendingPathComponent("pre-push"))
+        // Refuse to overwrite a hook the user (or another tool) installed. A hook that
+        // already carries Merlin's marker is ours and may be re-written idempotently.
+        try ensureNotForeign(postCommitURL)
+        try ensureNotForeign(prePushURL)
+
+        try write(script: makePostCommitScript(), to: postCommitURL)
+        try write(script: makePrePushScript(), to: prePushURL)
     }
 
     func uninstall(projectPath: String) async throws {
@@ -57,6 +62,15 @@ actor GitHookInstaller {
     }
 
     // MARK: - Helpers
+
+    /// Throws `foreignHookPresent` when `url` exists and does NOT carry Merlin's marker.
+    private func ensureNotForeign(_ url: URL) throws {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        if !text.contains(marker) {
+            throw HookError.foreignHookPresent(url.path)
+        }
+    }
 
     nonisolated private func hooksDirectory(projectPath: String) -> URL {
         URL(fileURLWithPath: projectPath)

@@ -9,9 +9,13 @@ actor APIDocGenerator {
     }
 
     private let dryRun: Bool
+    /// Maximum wall-clock seconds a doc-generation child process may run before it is
+    /// terminated and the call fails. Injectable so tests can use a short value.
+    private let timeoutSeconds: Int
 
-    init(dryRun: Bool = false) {
+    init(dryRun: Bool = false, timeoutSeconds: Int = 120) {
         self.dryRun = dryRun
+        self.timeoutSeconds = timeoutSeconds
     }
 
     func generate(projectPath: String, adapter: ProjectAdapter) async throws -> String {
@@ -34,6 +38,21 @@ actor APIDocGenerator {
         default:
             return projectPath + "/docs/api.md"
         }
+    }
+
+    /// Test seam: runs a process through the same timeout-guarded runner used in
+    /// production and surfaces a non-zero / timeout result as `generationFailed`.
+    func runForTesting(
+        executable: String,
+        args: [String],
+        workingDirectory: String
+    ) async throws -> Int32 {
+        let result = try await runProcess(
+            executable, args: args, workingDirectory: workingDirectory)
+        if result != 0 {
+            throw GeneratorError.generationFailed("process exited \(result)")
+        }
+        return result
     }
 
     private func generateDocC(projectPath: String, adapter: ProjectAdapter) async throws -> String {
@@ -75,26 +94,61 @@ actor APIDocGenerator {
         return output
     }
 
+    /// Runs a child process with a hard timeout. A continuation guarded by an actor-
+    /// isolated flag guarantees exactly one resume: whichever of the termination
+    /// handler or the timeout watchdog fires first wins; the loser is a no-op.
     private func runProcess(
         _ executable: String,
         args: [String],
         workingDirectory: String
     ) async throws -> Int32 {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: executable)
-            process.arguments = args
-            process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = args
+        process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        let guardBox = ResumeGuard()
+        let deadline = timeoutSeconds
+
+        return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { p in
-                continuation.resume(returning: p.terminationStatus)
+                Task {
+                    guard await guardBox.claim() else { return }
+                    continuation.resume(returning: p.terminationStatus)
+                }
             }
+
+            // Watchdog: terminate the child and fail if it outlives the deadline.
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(deadline) * 1_000_000_000)
+                guard await guardBox.claim() else { return }
+                if process.isRunning {
+                    process.terminate()
+                }
+                continuation.resume(
+                    throwing: GeneratorError.generationFailed("timed out"))
+            }
+
             do {
                 try process.run()
             } catch {
-                continuation.resume(throwing: error)
+                Task {
+                    guard await guardBox.claim() else { return }
+                    continuation.resume(throwing: error)
+                }
             }
         }
+    }
+}
+
+/// Single-resume guard: the first `claim()` returns true, every later one returns false.
+private actor ResumeGuard {
+    private var claimed = false
+    func claim() -> Bool {
+        guard !claimed else { return false }
+        claimed = true
+        return true
     }
 }
