@@ -36,17 +36,34 @@ final class ParallelWorkerTests: XCTestCase {
         XCTAssertFalse(steps[1].parallelSafe, "test run depends on prior edit — not parallel-safe")
     }
 
-    /// parseSteps defaults parallelSafe to false when annotation is absent.
-    /// FAILS before 199b — parseStepsForTesting() does not exist.
+    /// parseSteps defaults parallelSafe to false when the annotation is absent, and
+    /// must not drop a step whose complexity uses the snake_case "high_stakes" form.
     func test_parseSteps_defaultsParallelSafeToFalse() {
         let planner = PlannerEngine()
         let raw = """
         [{"step": "Deploy", "success_criteria": "deployed", "complexity": "high_stakes"}]
         """
         let steps = planner.parseStepsForTesting(from: raw)
-        XCTAssertEqual(steps.count, 1)
-        XCTAssertFalse(steps[0].parallelSafe,
+        XCTAssertEqual(steps.count, 1,
+                       "a step with complexity \"high_stakes\" must not be dropped")
+        guard let first = steps.first else { return }
+        XCTAssertFalse(first.parallelSafe,
                        "missing parallel_safe annotation must default to false")
+    }
+
+    /// ComplexityTier must decode the snake_case "high_stakes" form, not only the
+    /// hyphenated raw value.
+    func test_complexityTier_decodesSnakeCaseHighStakes() throws {
+        let data = Data("\"high_stakes\"".utf8)
+        let tier = try JSONDecoder().decode(ComplexityTier.self, from: data)
+        XCTAssertEqual(tier, .highStakes)
+    }
+
+    /// An unrecognised complexity string decodes to .standard rather than throwing.
+    func test_complexityTier_unknownValueDecodesToStandard() throws {
+        let data = Data("\"banana\"".utf8)
+        let tier = try JSONDecoder().decode(ComplexityTier.self, from: data)
+        XCTAssertEqual(tier, .standard)
     }
 
     // MARK: - Parallel spawn_agent dispatch
