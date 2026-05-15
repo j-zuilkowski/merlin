@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
 
-**Version 2.2.1** (build 18, tag `v2.2.1`)
+**Version 2.2.2** (build 19, tag `v2.2.2`)
 
 ---
 

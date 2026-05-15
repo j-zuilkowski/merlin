@@ -249,7 +249,6 @@
 		60C31A349012669EACD909F1 /* APIDocGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F51964CE4F6FDD2FE26688 /* APIDocGeneratorTests.swift */; };
 		60FB535A117E5C28BDC2CD19 /* MockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D668025EC8FF40063C869BB /* MockProvider.swift */; };
 		6113E03B2F80735898502432 /* PreflightOkTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C32451D4E762E819EC07CC /* PreflightOkTelemetryTests.swift */; };
-		616C04E3DD03B1990894984A /* AppVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13B6DCDDC8D0FE8DC5F46F8 /* AppVersionTests.swift */; };
 		6175C7C8AD37AD4FF242569C /* KAGEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFEE038AE6CA7EB6AD149950 /* KAGEngineTests.swift */; };
 		6190DAFAA760A98474AB1DA5 /* CheckpointStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9D64F0923F6953011C5268 /* CheckpointStore.swift */; };
 		6215E002BC3B8C4245FD222D /* ThreadAutomationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 897DE88791F6ABE15DD10D51 /* ThreadAutomationEngine.swift */; };
@@ -408,7 +407,6 @@
 		ACB3A7848F14F2685367D6B0 /* DocReferenceDanglingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9284F1CA4DC19A4FDDC032 /* DocReferenceDanglingTests.swift */; };
 		AD357A18591C5A9EA6ECCE93 /* CalibrationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */; };
 		AF10D533F644FEBD64AFEFD5 /* AgenticEngineDocumentCriticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A50393525C9F4685A282CC0 /* AgenticEngineDocumentCriticTests.swift */; };
-		AF21D5E1C0EFD56EC22DC21E /* AppVersion221Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CAE7D4E8BA4CB2D61A73046 /* AppVersion221Tests.swift */; };
 		AF7B6C64B1D9AEB98460E23E /* VerificationBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26F883190E34EFA1262B19C /* VerificationBackend.swift */; };
 		AFD58D5799515461B4DBA8D0 /* CriticPolicyResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FD21FBEF6B20E9B0153600 /* CriticPolicyResolverTests.swift */; };
 		B0165BB40FA30E0026A94E4B /* LocalModelManagerSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 940B179816BAF554FDE883A5 /* LocalModelManagerSupport.swift */; };
@@ -830,7 +828,6 @@
 		6C36E9B88D1A29977A17BE50 /* ToolRegistration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRegistration.swift; sourceTree = "<group>"; };
 		6C794B63C4F42ADBFC28681C /* SchedulerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchedulerEngine.swift; sourceTree = "<group>"; };
 		6C82F6062102607DF26D4BAA /* GroundingReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroundingReport.swift; sourceTree = "<group>"; };
-		6CAE7D4E8BA4CB2D61A73046 /* AppVersion221Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion221Tests.swift; sourceTree = "<group>"; };
 		6CDA0C15C4ED50CD4A4E34A9 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		6D49A2778DC12C5404613AA9 /* AppControlTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppControlTools.swift; sourceTree = "<group>"; };
 		6E26A48408D5A97B15FB178A /* TruncatingMockProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TruncatingMockProvider.swift; sourceTree = "<group>"; };
@@ -1106,7 +1103,6 @@
 		DFC75EBFF790CF43357FECFE /* MemoryReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryReviewView.swift; sourceTree = "<group>"; };
 		E0B3F4871689D08DFF5511D9 /* CGEventToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGEventToolTests.swift; sourceTree = "<group>"; };
 		E0E1851AC83396B7F03551B7 /* RAGSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGSettingsTests.swift; sourceTree = "<group>"; };
-		E13B6DCDDC8D0FE8DC5F46F8 /* AppVersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersionTests.swift; sourceTree = "<group>"; };
 		E192416F9C07D3460F53E283 /* MockEmbeddingProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockEmbeddingProvider.swift; sourceTree = "<group>"; };
 		E20D115148A8BCDAF104A028 /* ThinkingModeDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingModeDetectorTests.swift; sourceTree = "<group>"; };
 		E29C095E5E568CEBA737178E /* KAGTriple.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KAGTriple.swift; sourceTree = "<group>"; };
@@ -1510,9 +1506,7 @@
 				DCFD70396141F3CD97D01D02 /* AppSettingsKAGTests.swift */,
 				9EA9D168EE03ED999D3C9E6E /* AppSettingsTests.swift */,
 				D68DF90F638AEABE20362678 /* AppStateSessionTests.swift */,
-				6CAE7D4E8BA4CB2D61A73046 /* AppVersion221Tests.swift */,
 				752515E33544337CA41B092E /* AppVersion222Tests.swift */,
-				E13B6DCDDC8D0FE8DC5F46F8 /* AppVersionTests.swift */,
 				F048C72E3E76D0BBC84AA7BF /* AsyncToolDispatchTests.swift */,
 				7306BD77A5F6F3910A0F5C5C /* AuthGateTests.swift */,
 				2988D5A14565391542674258 /* AuthMemoryTests.swift */,
@@ -2396,9 +2390,7 @@
 				E837986D4ED48347E955ECE2 /* AppSettingsKAGTests.swift in Sources */,
 				3212EEE0FE3A78B6F379EBFA /* AppSettingsTests.swift in Sources */,
 				53CADF9E74548C42F9C29312 /* AppStateSessionTests.swift in Sources */,
-				AF21D5E1C0EFD56EC22DC21E /* AppVersion221Tests.swift in Sources */,
 				6EA38E96CC40E8CEA62D9084 /* AppVersion222Tests.swift in Sources */,
-				616C04E3DD03B1990894984A /* AppVersionTests.swift in Sources */,
 				A4345AF8A22E33F845E92FA2 /* AsyncToolDispatchTests.swift in Sources */,
 				E6B689E1589A85CDF0A80C52 /* AuthGateTests.swift in Sources */,
 				78F450B25A80042202A3E586 /* AuthMemoryTests.swift in Sources */,
@@ -3010,7 +3002,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -3024,7 +3016,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.2.1;
+				MARKETING_VERSION = 2.2.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -3124,7 +3116,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -3144,7 +3136,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.2.1;
+				MARKETING_VERSION = 2.2.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

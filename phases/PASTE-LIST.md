@@ -1799,3 +1799,16 @@ cat phases/phase-277-telemetry-test-cleanup.md
 # Verify: BUILD SUCCEEDED; zero warnings; full suite green headless
 # Commit: Phase 277 — Remove dead telemetry test seam, dedup reader, fix dismiss test
 ```
+
+```bash
+# -- PHASE 278a — v2.2.2 Release Tests (failing) ----------------------------
+cat phases/phase-278a-v2-2-2-release-tests.md
+# Verify: BUILD SUCCEEDED; AppVersion222Tests + ReleaseNotes222Tests fail at runtime
+# Commit: Phase 278a — V2_2_2ReleaseTests (failing)
+
+# -- PHASE 278b — v2.2.2 Release -------------------------------------------
+cat phases/phase-278b-v2-2-2-release.md
+# Ships the CI-readiness remediation and regression fixes as v2.2.2.
+# Verify: BUILD SUCCEEDED; full suite green headless; version banners read 2.2.2/build 19
+# Commit: Phase 278b — Bump version to 2.2.2 (build 19)
+```
