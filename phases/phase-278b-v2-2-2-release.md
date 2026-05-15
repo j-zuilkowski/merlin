@@ -19,10 +19,11 @@ Tag locally only; the push and GitHub release are an explicit manual step (as wi
     - `CURRENT_PROJECT_VERSION: 18` → `CURRENT_PROJECT_VERSION: 19`.
     - Under `MerlinTests` → `resources:`, add a third entry `- path: RELEASE-v2.2.2.md`
       (keep the existing `project.yml` and `RELEASE-v2.2.1.md` entries).
-- **Delete** `MerlinTests/Unit/AppVersion221Tests.swift`. It asserts the bundle version
-  is `2.2.1` / build `18`; after this bump it would fail. It is superseded by
-  `AppVersion222Tests`. (`ReleaseNotes221Tests.swift` stays — `RELEASE-v2.2.1.md` still
-  exists and that test still passes.)
+- **Delete BOTH stale version tests** — `MerlinTests/Unit/AppVersion221Tests.swift`
+  **and** `MerlinTests/Unit/AppVersionTests.swift`. Both assert the bundle version is
+  `2.2.1` / build `18` against `Bundle.main`; after this bump both would fail. They are
+  superseded by `AppVersion222Tests`. (`ReleaseNotes221Tests.swift` stays —
+  `RELEASE-v2.2.1.md` still exists and that test still passes.)
 - **Version banners — update every doc that carries one** (2.2.1 → 2.2.2, build 18 → 19):
     - `CLAUDE.md`: `**Current version: 2.2.1** (build 18, tag v2.2.1)` →
       `**Current version: 2.2.2** (build 19, tag v2.2.2)`.
@@ -133,7 +134,7 @@ git add phases/phase-278b-v2-2-2-release.md \
     MerlinTests/Unit/AppVersion222Tests.swift \
     MerlinTests/Unit/ReleaseNotes222Tests.swift \
     phases/phase-278a-v2-2-2-release-tests.md
-git rm MerlinTests/Unit/AppVersion221Tests.swift
+git rm MerlinTests/Unit/AppVersion221Tests.swift MerlinTests/Unit/AppVersionTests.swift
 git commit -m "Phase 278b — Bump version to 2.2.2 (build 19)"
 
 git tag v2.2.2
