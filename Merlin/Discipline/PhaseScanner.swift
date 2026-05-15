@@ -168,10 +168,11 @@ actor PhaseScanner {
 
         for case let url as URL in enumerator {
             guard url.pathExtension == "swift" else { continue }
-            let path = url.path
-            if path.contains("/phases/") || path.contains("/Tests/") {
-                continue
-            }
+            // Exclude phase docs and any test target. The test directory is named
+            // `MerlinTests` (also `MerlinLiveTests`, `MerlinE2ETests`), so a literal
+            // "/Tests/" match misses it - check for a path component ending in "Tests".
+            if url.path.contains("/phases/") { continue }
+            if url.pathComponents.contains(where: { $0.hasSuffix("Tests") }) { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.components(separatedBy: .newlines) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)

@@ -45,8 +45,16 @@ actor WhyCommentScanner {
         var results: [WhyCommentTrigger] = []
 
         for (idx, line) in lines.enumerated() {
-            guard line.range(of: spec.regex, options: .regularExpression) != nil else { continue }
+            guard let matchRange = line.range(of: spec.regex, options: .regularExpression) else {
+                continue
+            }
             if line.contains("rationale-not-needed:") { continue }
+            // A trigger pattern that only appears inside a // comment or a string
+            // literal is discussion, not code - skip it so the gate does not block
+            // legitimate commits on false positives.
+            if isInsideCommentOrString(line: line, matchStart: matchRange.lowerBound) {
+                continue
+            }
 
             let windowStart = max(0, idx - 2)
             let windowEnd = min(lines.count - 1, idx + 2)
@@ -72,5 +80,34 @@ actor WhyCommentScanner {
         }
 
         return results
+    }
+
+    /// True when `matchStart` lies inside a `//` line comment or a `"..."` string
+    /// literal on `line`.
+    ///
+    /// Heuristic, not a full lexer: it scans the prefix of the line up to the match.
+    /// - If a `//` occurs before the match while not inside quotes, the match is in a
+    ///   comment.
+    /// - The count of unescaped `"` characters before the match: an odd count means
+    ///   the match sits inside an open string literal.
+    private func isInsideCommentOrString(line: String, matchStart: String.Index) -> Bool {
+        var insideString = false
+        var previous: Character?
+        var index = line.startIndex
+
+        while index < matchStart {
+            let ch = line[index]
+            if ch == "\"" && previous != "\\" {
+                insideString.toggle()
+            } else if ch == "/" && previous == "/" && !insideString {
+                // A "//" reached before the match, outside any string -> comment.
+                return true
+            }
+            previous = ch
+            index = line.index(after: index)
+        }
+
+        // If we ended the prefix scan still inside a string, the match is in a literal.
+        return insideString
     }
 }
