@@ -12,6 +12,8 @@
 import Foundation
 
 actor HookEngine {
+    static let shared = HookEngine()
+
     private var hooks: [HookConfig]
 
     init(hooks: [HookConfig] = []) {
@@ -172,6 +174,40 @@ actor HookEngine {
         }
 
         return false
+    }
+
+    /// Called when a session opens with a project path loaded.
+    /// Reads pending.json and injects the top-3 findings as a system note.
+    /// Returns the formatted note string, or nil if the queue is empty.
+    func runSessionStart(projectPath: String) async -> String? {
+        let storePath = projectPath + "/.merlin/pending.json"
+        let queue = PendingAttentionQueue(storePath: storePath)
+        let top = await queue.top(n: 3)
+        guard top.isEmpty == false else {
+            return nil
+        }
+
+        var lines = ["**Discipline — pending attention (top \(top.count)):**"]
+        for finding in top {
+            let icon: String
+            switch finding.severity {
+            case .block:
+                icon = "🔴"
+            case .nudge:
+                icon = "🟡"
+            case .silent:
+                icon = "⚪"
+            }
+            lines.append("- \(icon) [\(finding.category.rawValue)] \(finding.summary)")
+            if let action = finding.suggestedAction {
+                lines.append("  → \(action)")
+            }
+        }
+
+        let note = lines.joined(separator: "\n")
+        TelemetryEmitter.shared.emit("discipline.session-start.injected",
+            data: ["findings_count": top.count])
+        return note
     }
 
     func hasStopHooks() -> Bool {

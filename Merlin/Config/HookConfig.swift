@@ -1,5 +1,13 @@
 import Foundation
 
+enum HookEvent: String, Codable, Sendable, CaseIterable {
+    case preToolUse = "PreToolUse"
+    case postToolUse = "PostToolUse"
+    case userPromptSubmit = "UserPromptSubmit"
+    case stop = "Stop"
+    case sessionStart = "SessionStart"
+}
+
 struct HookConfig: Codable, Sendable, Identifiable {
     var id: String { "\(event):\(command)" }
     var event: String
@@ -16,6 +24,10 @@ struct HookConfig: Codable, Sendable, Identifiable {
         self.event = event
         self.command = command
         self.enabled = enabled
+    }
+
+    init(event: HookEvent, command: String, enabled: Bool = true) {
+        self.init(event: event.rawValue, command: command, enabled: enabled)
     }
 
     init(from decoder: Decoder) throws {
