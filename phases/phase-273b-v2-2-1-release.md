@@ -110,6 +110,9 @@ running app and fixes correctness bugs found in code review.
   pre-existing non-Merlin hook. `APIDocGenerator` and `ProseReadabilityChecker` gain
   process timeouts so a hung child cannot stall the app. `OverrideAuditLog` no longer
   force-unwraps.
+- **Release-version tests updated.** The legacy `AppVersionTests` now assert the v2.2.1
+  marketing version and build number, so the old 2.2.0 / build 17 expectations do not
+  regress during the release bump.
 
 ## Migration
 

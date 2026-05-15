@@ -472,7 +472,7 @@ Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train option
 
 ### Overview
 
-`DisciplineEngine` is a top-level `actor`, peer to `AgenticEngine`, `MemoryEngine`, and `PlannerEngine`. It coordinates five scanners, owns the pending-attention queue, and integrates with the hook engine. It runs after every turn (`Stop` hook) and injects findings at session start (`SessionStart` hook).
+`DisciplineEngine` is a top-level `actor`, peer to `AgenticEngine`, `MemoryEngine`, and `PlannerEngine`. It coordinates five scanners - the phase scanner, manual-coverage scanner, doc-reference graph, why-comment scanner, and prose-readability checker - owns the pending-attention queue, and integrates with the hook engine. It runs after every turn (`Stop` hook) and injects findings at session start (`SessionStart` hook).
 
 ```swift
 actor DisciplineEngine {
