@@ -2,6 +2,11 @@ import XCTest
 
 final class ProjectReviseSkillTests: XCTestCase {
 
+    override func setUpWithError() throws {
+        try skipUnlessLiveEnvironment(
+            "project:* skill must be installed in ~/.merlin/skills")
+    }
+
     private let skillPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".merlin/skills/project-revise/SKILL.md").path

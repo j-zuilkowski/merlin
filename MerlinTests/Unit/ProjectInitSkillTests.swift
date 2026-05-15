@@ -4,6 +4,11 @@ import XCTest
 /// These tests fail until phase 259b writes the skill file.
 final class ProjectInitSkillTests: XCTestCase {
 
+    override func setUpWithError() throws {
+        try skipUnlessLiveEnvironment(
+            "project:* skill must be installed in ~/.merlin/skills")
+    }
+
     private let skillPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".merlin/skills/project-init/SKILL.md").path
