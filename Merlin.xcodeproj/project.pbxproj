@@ -179,6 +179,8 @@
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
 		4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */; };
 		4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */; };
+		L1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */; };
+		N1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */; };
 		J1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */; };
 		H1A2B3C4D5E60718293A4D6 /* DevGuideGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = I1A2B3C4D5E60718293A4D6 /* DevGuideGenerator.swift */; };
 		F2A2B3C4D5E60718293A4D6 /* DevGuideGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G2A2B3C4D5E60718293A4D6 /* DevGuideGeneratorTests.swift */; };
@@ -836,6 +838,8 @@
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
 		5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstallerTests.swift; sourceTree = "<group>"; };
 		6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCoverageScannerTests.swift; sourceTree = "<group>"; };
+		M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WHYCommentGateTests.swift; sourceTree = "<group>"; };
+		O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAnnotationParserTests.swift; sourceTree = "<group>"; };
 		K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhyCommentScannerTests.swift; sourceTree = "<group>"; };
 		I1A2B3C4D5E60718293A4D6 /* DevGuideGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevGuideGenerator.swift; sourceTree = "<group>"; };
 		G2A2B3C4D5E60718293A4D6 /* DevGuideGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevGuideGeneratorTests.swift; sourceTree = "<group>"; };
@@ -1500,6 +1504,8 @@
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
 				5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */,
 				6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */,
+				M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */,
+				O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */,
 				K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */,
 				G2A2B3C4D5E60718293A4D6 /* DevGuideGeneratorTests.swift */,
 				D1A2B3C4D5E60718293A4D6 /* APIDocGeneratorTests.swift */,
@@ -2375,6 +2381,8 @@
 				6706E115A3C64A0D4FB62C0C /* LoopContinuationTests.swift in Sources */,
 				4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */,
 				4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */,
+				L1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift in Sources */,
+				N1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift in Sources */,
 				J1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift in Sources */,
 				F2A2B3C4D5E60718293A4D6 /* DevGuideGeneratorTests.swift in Sources */,
 				C1A2B3C4D5E60718293A4D6 /* APIDocGeneratorTests.swift in Sources */,
