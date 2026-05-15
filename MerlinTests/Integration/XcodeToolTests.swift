@@ -4,6 +4,7 @@ import XCTest
 final class XcodeToolTests: XCTestCase {
 
     func testSimulatorListReturnsJSON() async throws {
+        try skipUnlessLiveEnvironment("xcrun simctl requires a working Xcode simulator runtime")
         let result = try await XcodeTools.simulatorList()
         // xcrun simctl list --json always succeeds if Xcode is installed
         XCTAssertTrue(result.contains("devices"))

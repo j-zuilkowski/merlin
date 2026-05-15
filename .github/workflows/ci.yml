@@ -27,6 +27,7 @@ jobs:
 
       - name: Build (Release)
         run: |
+          set -o pipefail
           xcodebuild \
             -scheme Merlin \
             -configuration Release \
