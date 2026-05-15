@@ -48,6 +48,10 @@ final class AppState: ObservableObject {
     let registry = ProviderRegistry()
     let prMonitor = PRMonitor()
     @Published var engine: AgenticEngine!
+    /// v2.2 Project Discipline Subsystem - central scanner coordinator. Built in init.
+    let disciplineEngine: DisciplineEngine
+    /// View-model backing the pending-attention chip + panel in ChatView.
+    @Published var pendingAttention: PendingAttentionViewModel
     @Published var sessionStore: SessionStore!
     @Published var authMemory: AuthMemory
     @Published var showFirstLaunchSetup: Bool = false
@@ -105,6 +109,26 @@ final class AppState: ObservableObject {
         self.projectPath = projectPath
         self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         self.activeDomainIDs = self.initialActiveDomainIDs
+        // --- v2.2 Project Discipline Subsystem ---
+        // Built early so the non-optional stored properties are initialised before any
+        // self-using call. The pending-attention queue persists to <project>/.merlin.
+        let disciplineStorePath = (projectPath.isEmpty
+            ? FileManager.default.temporaryDirectory.path
+            : projectPath) + "/.merlin/pending.json"
+        let disciplineQueue = PendingAttentionQueue(storePath: disciplineStorePath)
+        // The seed adapters are installed asynchronously below; use the Swift stub as
+        // the engine's adapter until a real .merlin/project.toml selection exists.
+        let disciplineAdapter = ProjectAdapter.makeStub(language: "swift")
+        disciplineEngine = DisciplineEngine(
+            adapter: disciplineAdapter,
+            phaseScanner: PhaseScanner(),
+            manualCoverageScanner: ManualCoverageScanner(),
+            docReferenceGraph: DocReferenceGraph(),
+            whyCommentScanner: WhyCommentScanner(),
+            proseReadabilityChecker: ProseReadabilityChecker(),
+            storePath: disciplineStorePath
+        )
+        pendingAttention = PendingAttentionViewModel(queue: disciplineQueue)
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
             .path
@@ -130,6 +154,13 @@ final class AppState: ObservableObject {
             let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
             let agentsDir = URL(fileURLWithPath: "\(home)/.merlin/agents")
             try? await AgentRegistry.shared.loadDirectory(agentsDir)
+        }
+        Task {
+            // Install + load the discipline seed adapters into ~/.merlin/adapters.
+            let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+            let adaptersDir = "\(home)/.merlin/adapters"
+            try? await AdapterRegistry.installSeedAdapters(into: adaptersDir)
+            try? await AdapterRegistry.shared.loadFromDirectory(adaptersDir)
         }
 
         let gate = AuthGate(memory: authMemory, presenter: self)
@@ -197,6 +228,21 @@ final class AppState: ObservableObject {
             .sink { [weak self] _ in
                 guard let self, self.toolActivityState != .idle else { return }
                 self.toolActivityState = .idle
+            }
+            .store(in: &cancellables)
+        // After every turn, run a discipline scan and refresh the pending-attention
+        // chip. No-op for projects without a phases/ or .merlin/ tree.
+        engine.$isRunning
+            .filter { !$0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, !self.projectPath.isEmpty else { return }
+                let path = self.projectPath
+                Task { [weak self] in
+                    guard let self else { return }
+                    _ = await self.disciplineEngine.scan(projectPath: path)
+                    await self.pendingAttention.refresh(projectPath: path)
+                }
             }
             .store(in: &cancellables)
         // Prefer the open project's path; fall back to the global config.toml setting.
@@ -294,6 +340,19 @@ final class AppState: ObservableObject {
 
         Task { [weak self] in
             await self?.refreshParameterAdvisories()
+        }
+
+        if !projectPath.isEmpty {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let note = await HookEngine.shared.runSessionStart(
+                    projectPath: projectPath) {
+                    self.toolLogLines.append(ToolLogLine(
+                        text: note, source: .system, timestamp: Date()))
+                }
+                // Refresh the chip from any persisted findings.
+                await self.pendingAttention.refresh(projectPath: projectPath)
+            }
         }
 
         settingsCancellable = AppSettings.shared.objectWillChange.dropFirst().sink { [weak self] _ in

@@ -112,6 +112,7 @@ struct ChatView: View {
             .help("Cycle permission mode (⌘⇧M)")
 
             ProviderHUD()
+            PendingAttentionChipView(viewModel: appState.pendingAttention)
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)

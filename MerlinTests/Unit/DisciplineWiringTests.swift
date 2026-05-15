@@ -1,19 +1,18 @@
 import XCTest
 @testable import Merlin
 
-@MainActor
 final class DisciplineWiringTests: XCTestCase {
 
     private var projectRoot: URL!
 
-    @MainActor override func setUpWithError() throws {
+    override func setUpWithError() throws {
         projectRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
             at: projectRoot, withIntermediateDirectories: true)
     }
 
-    @MainActor override func tearDownWithError() throws {
+    override func tearDownWithError() throws {
         if let projectRoot {
             try? FileManager.default.removeItem(at: projectRoot)
         }
@@ -21,6 +20,7 @@ final class DisciplineWiringTests: XCTestCase {
 
     // MARK: - AppState wires the discipline subsystem
 
+    @MainActor
     func testAppStateExposesDisciplineSubsystem() {
         let appState = AppState(projectPath: projectRoot.path)
 
