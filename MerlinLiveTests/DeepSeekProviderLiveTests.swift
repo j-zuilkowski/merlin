@@ -6,6 +6,7 @@ final class DeepSeekProviderLiveTests: XCTestCase {
     var provider: DeepSeekProvider!
 
     override func setUpWithError() throws {
+        try skipUnlessLiveEnvironment()
         guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"]
             ?? KeychainManager.readAPIKey()
         else {

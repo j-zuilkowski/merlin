@@ -148,6 +148,7 @@ final class CriticGatedMemoryTests: XCTestCase {
     }
 
     func testMemoryWrittenWhenCriticPasses() async throws {
+        try skipUnlessLiveEnvironment()
         let spy = SpyXcalibreClient()
         let memSpy = SpyMemoryBackend()
         let engine = makeTestEngine(spy: spy, memoryBackend: memSpy, criticVerdict: .pass)
@@ -161,6 +162,7 @@ final class CriticGatedMemoryTests: XCTestCase {
     }
 
     func testMemoryWrittenWhenCriticSkipped() async throws {
+        try skipUnlessLiveEnvironment()
         let spy = SpyXcalibreClient()
         let memSpy = SpyMemoryBackend()
         let engine = makeTestEngine(spy: spy, memoryBackend: memSpy, criticVerdict: .skipped)
@@ -174,6 +176,7 @@ final class CriticGatedMemoryTests: XCTestCase {
     }
 
     func testMemoryWrittenWhenCriticNotInvokedRoutineTask() async throws {
+        try skipUnlessLiveEnvironment()
         let spy = SpyXcalibreClient()
         let memSpy = SpyMemoryBackend()
         // Routine task: critic branch not entered, lastCriticVerdict stays nil

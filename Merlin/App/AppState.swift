@@ -115,7 +115,6 @@ final class AppState: ObservableObject {
         let disciplineStorePath = (projectPath.isEmpty
             ? FileManager.default.temporaryDirectory.path
             : projectPath) + "/.merlin/pending.json"
-        let disciplineQueue = PendingAttentionQueue(storePath: disciplineStorePath)
         // The seed adapters are installed asynchronously below; use the Swift stub as
         // the engine's adapter until a real .merlin/project.toml selection exists.
         let disciplineAdapter = ProjectAdapter.makeStub(language: "swift")
@@ -128,7 +127,7 @@ final class AppState: ObservableObject {
             proseReadabilityChecker: ProseReadabilityChecker(),
             storePath: disciplineStorePath
         )
-        pendingAttention = PendingAttentionViewModel(queue: disciplineQueue)
+        pendingAttention = PendingAttentionViewModel(disciplineEngine: disciplineEngine)
         let authStorePath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Merlin/auth.json")
             .path

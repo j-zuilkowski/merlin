@@ -6,7 +6,7 @@ import XCTest
 final class CITestGateTests: XCTestCase {
 
     func testIsLiveEnvironmentFalseWithoutOptIn() throws {
-        if ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] == "1" {
+        if isLiveEnvironment() {
             throw XCTSkip("RUN_LIVE_TESTS is set in this environment")
         }
         XCTAssertFalse(isLiveEnvironment(),
@@ -14,7 +14,7 @@ final class CITestGateTests: XCTestCase {
     }
 
     func testSkipUnlessLiveEnvironmentThrowsWithoutOptIn() throws {
-        if ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] == "1" {
+        if isLiveEnvironment() {
             throw XCTSkip("RUN_LIVE_TESTS is set in this environment")
         }
         XCTAssertThrowsError(try skipUnlessLiveEnvironment(),

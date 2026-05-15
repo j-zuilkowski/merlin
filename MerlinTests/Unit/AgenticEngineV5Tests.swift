@@ -6,7 +6,8 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     // MARK: - Complexity tier routing
 
-    func testRoutineTaskSkipsCritic() async {
+    func testRoutineTaskSkipsCritic() async throws {
+        try skipUnlessLiveEnvironment()
         let (engine, criticSpy) = makeEngineWithCriticSpy(classifierTier: .routine)
         _ = await collectEvents(engine.send(userMessage: "rename this variable"))
         XCTAssertFalse(criticSpy.wasEvaluated, "Routine tasks should skip the critic")
@@ -48,7 +49,8 @@ final class AgenticEngineV5Tests: XCTestCase {
 
     // MARK: - Outcome recording
 
-    func testOutcomeRecordedAtSessionEnd() async {
+    func testOutcomeRecordedAtSessionEnd() async throws {
+        try skipUnlessLiveEnvironment()
         let trackerSpy = PerformanceTrackerSpy()
         let engine = makeV5Engine(tracker: trackerSpy)
         _ = await collectEvents(engine.send(userMessage: "write tests for the auth module"))

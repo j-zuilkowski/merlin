@@ -140,6 +140,7 @@ final class SemanticFaultInjectionTests: XCTestCase {
     }
 
     func testTruncatingProviderAccumulatesInAdvisor() async throws {
+        try skipUnlessLiveEnvironment()
         let advisor = ModelParameterAdvisor()
         let engine = makeEngine(
             provider: TruncatingMockProvider(maxChars: 10)

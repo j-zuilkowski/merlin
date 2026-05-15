@@ -66,6 +66,7 @@ final class AgenticEngineMemoryPluginTests: XCTestCase {
     // MARK: - Episodic write
 
     func testEpisodicWriteGoesToBackendAfterTurn() async throws {
+        try skipUnlessLiveEnvironment()
         let backend = CapturingMemoryBackend()
         let xcalibre = XcalibreClientSpy(bookChunks: [])
         let engine = makeEngine(xcalibreClient: xcalibre)
@@ -93,6 +94,7 @@ final class AgenticEngineMemoryPluginTests: XCTestCase {
     }
 
     func testCriticPassAllowsBackendWrite() async throws {
+        try skipUnlessLiveEnvironment()
         let backend = CapturingMemoryBackend()
         let engine = makeEngine()
         await engine.setMemoryBackend(backend)

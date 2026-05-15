@@ -11,12 +11,9 @@ private func launchTargetApp() -> XCUIApplication {
 final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testAXTreeIsRich() async throws {
+        try skipUnlessLiveEnvironment()
         let targetApp = launchTargetApp()
         defer { targetApp.terminate() }
-
-        guard ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] != nil else {
-            throw XCTSkip("Live tests disabled")
-        }
 
         let tree = await AXInspectorTool.probe(bundleID: "com.merlin.TestTargetApp")
         XCTAssertTrue(tree.isRich)
@@ -25,12 +22,9 @@ final class GUIAutomationE2ETests: XCTestCase {
 
     @MainActor
     func testAXClickPrimaryButton() async throws {
+        try skipUnlessLiveEnvironment()
         let targetApp = launchTargetApp()
         defer { targetApp.terminate() }
-
-        guard ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] != nil else {
-            throw XCTSkip("Live tests disabled")
-        }
 
         let element = await AXInspectorTool.findElement(
             bundleID: "com.merlin.TestTargetApp",
@@ -55,12 +49,9 @@ final class GUIAutomationE2ETests: XCTestCase {
 
     @MainActor
     func testVisionQueryIdentifiesButton() async throws {
+        try skipUnlessLiveEnvironment()
         let targetApp = launchTargetApp()
         defer { targetApp.terminate() }
-
-        guard ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] != nil else {
-            throw XCTSkip("Live tests disabled")
-        }
 
         let jpeg = try await ScreenCaptureTool.captureWindow(
             bundleID: "com.merlin.TestTargetApp",

@@ -61,6 +61,7 @@ final class EngineTelemetryTests: XCTestCase {
     }
 
     func testTurnCompleteEventEmitted() async throws {
+        try skipUnlessLiveEnvironment()
         let (engine, provider) = await makeEngine()
         provider.streamResult = [CompletionChunk(delta: "done", finishReason: "stop")]
 
@@ -78,6 +79,7 @@ final class EngineTelemetryTests: XCTestCase {
     }
 
     func testTurnCompleteIncludesLoopCount() async throws {
+        try skipUnlessLiveEnvironment()
         let (engine, provider) = await makeEngine()
         provider.streamResult = [CompletionChunk(delta: "result", finishReason: "stop")]
 
@@ -92,6 +94,7 @@ final class EngineTelemetryTests: XCTestCase {
     }
 
     func testTurnErrorEventEmittedOnProviderFailure() async throws {
+        try skipUnlessLiveEnvironment()
         let (engine, provider) = await makeEngine()
         provider.shouldThrow = true
 

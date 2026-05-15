@@ -25,7 +25,6 @@
 		054593F594B87D37446B1A7B /* RAGToolsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB63718E38C096E40A8A2532 /* RAGToolsTests.swift */; };
 		069AF25F2015490EC46AD210 /* ProjectSizeMetricsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B680BEF832B5812598710148 /* ProjectSizeMetricsTests.swift */; };
 		06FDB75DC86BFDBB82F925AD /* LocalModelManagerProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07F33955DA778562CF661683 /* LocalModelManagerProtocolTests.swift */; };
-		0715D7CD606EDE86FE7AD821 /* MerlinV2VersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE89ED651B2C2A8154569546 /* MerlinV2VersionTests.swift */; };
 		07D0847D623D7911F7A2F2FF /* SkillFrontmatterV5Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111C1207F0A9D082201977F4 /* SkillFrontmatterV5Tests.swift */; };
 		0806AD6BFD4920D30D7CCE84 /* DomainPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9286440D6ECF1D52FEBFB75F /* DomainPlugin.swift */; };
 		0839B8D6836089FDE12BE332 /* VerificationFabPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B590E503F3721174BB739045 /* VerificationFabPolicy.swift */; };
@@ -76,6 +75,7 @@
 		1C8A9DDFA10588B161B90AD9 /* SessionTitleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84689A7F39B30E7C1395725 /* SessionTitleTests.swift */; };
 		1CD5EFEF3AD5D2D95387093F /* EnrichedPlanStepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B141696E60A5B3F019CBFBAB /* EnrichedPlanStepTests.swift */; };
 		1CF4DEBCD91EBE582F0FD9A4 /* Finding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F71FA61A3745BE6889223D9 /* Finding.swift */; };
+		1D0E41BA44FF6291D16E5F9E /* LiveEnvironmentGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */; };
 		1D58BB8C3C2987A7D16B9FC1 /* TelemetryRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F043A3E1EB1671D22DFD9F14 /* TelemetryRecorder.swift */; };
 		1D683B5077BD013DDDE6B962 /* ScanReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B26042D0020FD057FED0774A /* ScanReport.swift */; };
 		1D6CBF963DE89D13BBB52A25 /* KiCadMCPTooling.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2277D128F8ED0FE540E3A0F /* KiCadMCPTooling.swift */; };
@@ -299,6 +299,7 @@
 		71D673C1A49CCD77F0C37F3D /* KiCadMCPToolingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6AA54B3C1D1A4D904C33BAF /* KiCadMCPToolingTests.swift */; };
 		71DA6968A6887C2199F88E23 /* WorkspaceCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DA70EF4312727318F19D540 /* WorkspaceCoordinator.swift */; };
 		726241993E958F2079347E1F /* ProviderRegistry+ReasoningEffort.swift in Sources */ = {isa = PBXBuildFile; fileRef = 059296B9CD195E4C00EF83D0 /* ProviderRegistry+ReasoningEffort.swift */; };
+		72E776AEA0A18B4994C6D9FB /* LiveEnvironmentGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */; };
 		73A7657DE7B1E201C0BF59C6 /* AppIntentsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81DD9BA4AA3CF59BD836137B /* AppIntentsSupport.swift */; };
 		73AF108FF3D7DF0F401807AC /* MockEmbeddingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E192416F9C07D3460F53E283 /* MockEmbeddingProvider.swift */; };
 		74646282C9E3002A3A75F891 /* MemoryInjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6924F574A25CB419F66863 /* MemoryInjectionTests.swift */; };
@@ -310,6 +311,7 @@
 		75F0B33A7EEEFE087F476FA6 /* AtMentionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D346174A6A0E86C7CA26312 /* AtMentionPicker.swift */; };
 		7621709D16BBAB8DA4D03F02 /* BundleModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1644B717ECEF9823F2E96994 /* BundleModule.swift */; };
 		77188FF4498F15027211C474 /* HelpWindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C679B162CF558C8FDCCD1EA /* HelpWindowManager.swift */; };
+		77732E325E49B8D395424D39 /* LiveEnvironmentGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */; };
 		77B626CB125C52FF1B27EAFC /* CapturingMemoryBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6321DE6C7E3238ECEB274017 /* CapturingMemoryBackend.swift */; };
 		77B9783E7BFB51802D46C588 /* RAGSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E1851AC83396B7F03551B7 /* RAGSettingsTests.swift */; };
 		7819FBAECD6B3BD3C8666FBD /* AgenticEngineProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0311508A5D8A5706DC29D5E8 /* AgenticEngineProviderTests.swift */; };
@@ -974,7 +976,6 @@
 		ACF1BED90BA42975873A60FB /* DPOReviewStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DPOReviewStore.swift; sourceTree = "<group>"; };
 		AD4315F5CC65750F4E68F04C /* VoiceDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictationTests.swift; sourceTree = "<group>"; };
 		AE4BC7B7FEC65D3BA6A3FB16 /* LoRACoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRACoordinator.swift; sourceTree = "<group>"; };
-		AE89ED651B2C2A8154569546 /* MerlinV2VersionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MerlinV2VersionTests.swift; sourceTree = "<group>"; };
 		AEB7E79C3694578E2C0E6E95 /* PlannerStepTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerStepTelemetryTests.swift; sourceTree = "<group>"; };
 		AF3CDA79F36E4AF8736659AC /* BtwSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtwSession.swift; sourceTree = "<group>"; };
 		AF63E7387E6B7D79A9B63AD0 /* BtwOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtwOverlayView.swift; sourceTree = "<group>"; };
@@ -1147,6 +1148,7 @@
 		F4919A99A39BBA0124C04C20 /* LoRATrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRATrainer.swift; sourceTree = "<group>"; };
 		F4A3E7BC1DB1F40B9BDB5C3D /* SubagentBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockView.swift; sourceTree = "<group>"; };
 		F51F141207FDDE07F86DBA5D /* KAGBackendPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KAGBackendPlugin.swift; sourceTree = "<group>"; };
+		F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveEnvironmentGate.swift; sourceTree = "<group>"; };
 		F6EC30AA86593D0E23A30FE3 /* PerformanceDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceDashboardView.swift; sourceTree = "<group>"; };
 		F800B4D9703BCD2F802BAA40 /* FloatingWindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingWindowManager.swift; sourceTree = "<group>"; };
 		F8E637AA607AA5850675764E /* SemanticFaultInjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticFaultInjectionTests.swift; sourceTree = "<group>"; };
@@ -1186,6 +1188,7 @@
 				1644B717ECEF9823F2E96994 /* BundleModule.swift */,
 				6321DE6C7E3238ECEB274017 /* CapturingMemoryBackend.swift */,
 				A4781CD2816F2B1105F71278 /* EngineFactory.swift */,
+				F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */,
 				E192416F9C07D3460F53E283 /* MockEmbeddingProvider.swift */,
 				2D668025EC8FF40063C869BB /* MockProvider.swift */,
 				7A91D42A1456239A2BC38E54 /* MockToolRouter.swift */,
@@ -1620,7 +1623,6 @@
 				9B6924F574A25CB419F66863 /* MemoryInjectionTests.swift */,
 				17FFC29E928FEE1EBC28CC6B /* MemoryTelemetryTests.swift */,
 				3949488AD7F80BADC3BAF286 /* MemoryXcalibreIndexTests.swift */,
-				AE89ED651B2C2A8154569546 /* MerlinV2VersionTests.swift */,
 				FF80CDB4576042C834A75A7A /* ModelControlViewTests.swift */,
 				2F4A6766C80ED76CF770A4C9 /* ModelManagerWiringTests.swift */,
 				C1C2104BDF2AA60A7A53161A /* ModelParameterAdvisorTests.swift */,
@@ -2347,6 +2349,7 @@
 				56AD322345B06EDB30F49459 /* EmptyToolResultRouter.swift in Sources */,
 				1EF8B0A5CB55500E3774B9F2 /* EngineFactory.swift in Sources */,
 				DEE69496F67473805533141A /* LMStudioProviderLiveTests.swift in Sources */,
+				72E776AEA0A18B4994C6D9FB /* LiveEnvironmentGate.swift in Sources */,
 				0990AC714B4FFBE4D6B09FC7 /* MockEmbeddingProvider.swift in Sources */,
 				60FB535A117E5C28BDC2CD19 /* MockProvider.swift in Sources */,
 				00522FB4B63D80813F5BCF81 /* MockToolRouter.swift in Sources */,
@@ -2484,6 +2487,7 @@
 				D14F1DFBCFEDDDCC5094F295 /* KiCadWorkflowOrchestrationTests.swift in Sources */,
 				8498B9E9B2645BEFC3294D21 /* LLMSummarisationCompactionTests.swift in Sources */,
 				D53B931F1EE0E7A478EAF82B /* LMStudioContextAutoResizeTests.swift in Sources */,
+				77732E325E49B8D395424D39 /* LiveEnvironmentGate.swift in Sources */,
 				F07CA005D9EF157B9FFFE855 /* LoRACoordinatorTests.swift in Sources */,
 				1AF487899B31AD33C2430881 /* LoRAProviderRoutingTests.swift in Sources */,
 				89EEA017C05C812B03517C69 /* LoRASettingsTests.swift in Sources */,
@@ -2510,7 +2514,6 @@
 				74646282C9E3002A3A75F891 /* MemoryInjectionTests.swift in Sources */,
 				15BAE009EA2C0110CA70AF86 /* MemoryTelemetryTests.swift in Sources */,
 				FD2B56D632499963539B106F /* MemoryXcalibreIndexTests.swift in Sources */,
-				0715D7CD606EDE86FE7AD821 /* MerlinV2VersionTests.swift in Sources */,
 				1DD890E2518B5B8571DA62DF /* MockEmbeddingProvider.swift in Sources */,
 				00D9D63A7E64B33E0507648D /* MockProvider.swift in Sources */,
 				E32003D06CF6B90CEF081501 /* MockToolRouter.swift in Sources */,
@@ -2930,6 +2933,7 @@
 				2631D16DF9D7B4D88345DAAC /* EmptyToolResultRouter.swift in Sources */,
 				210DEF0084AF315215BDAA4E /* EngineFactory.swift in Sources */,
 				1AA78FA2201E1350ED5DE11A /* GUIAutomationE2ETests.swift in Sources */,
+				1D0E41BA44FF6291D16E5F9E /* LiveEnvironmentGate.swift in Sources */,
 				73AF108FF3D7DF0F401807AC /* MockEmbeddingProvider.swift in Sources */,
 				0113DAF4D13FD7D09F800147 /* MockProvider.swift in Sources */,
 				626F9D08C667D23166519E4F /* MockToolRouter.swift in Sources */,

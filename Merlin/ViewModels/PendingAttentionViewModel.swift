@@ -8,18 +8,18 @@ final class PendingAttentionViewModel: ObservableObject {
     @Published var findings: [Finding] = []
     @Published var isExpanded: Bool = false
 
-    private let queue: PendingAttentionQueue
+    private let disciplineEngine: DisciplineEngine
 
-    init(queue: PendingAttentionQueue) {
-        self.queue = queue
+    init(disciplineEngine: DisciplineEngine) {
+        self.disciplineEngine = disciplineEngine
     }
 
     func refresh(projectPath: String) async {
-        findings = await queue.top(n: 3)
+        findings = Array(await disciplineEngine.pendingAttention(projectPath: projectPath).prefix(3))
     }
 
     func dismiss(finding: Finding, rationale: String) async {
-        await queue.dismiss(id: finding.id, rationale: rationale)
+        await disciplineEngine.dismiss(findingID: finding.id, rationale: rationale)
         findings = findings.filter { $0.id != finding.id }
     }
 }

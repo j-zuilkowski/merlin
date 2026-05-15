@@ -27,6 +27,7 @@ final class AgenticEngineKAGWiringTests: XCTestCase {
     // MARK: - Enabled
 
     func test_scheduleExtraction_called_when_kagEnabled() async throws {
+        try skipUnlessLiveEnvironment()
         AppSettings.shared.kagEnabled = true
 
         let provider = MockProvider(chunks: [

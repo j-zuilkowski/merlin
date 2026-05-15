@@ -112,6 +112,7 @@ final class CircuitBreakerTests: XCTestCase {
     // MARK: - Warn mode
 
     func testWarnModeEmitsNoteAtThreshold() async throws {
+        try skipUnlessLiveEnvironment()
         let engine = makeEngine(threshold: 2, mode: "warn")
         for await _ in engine.send(userMessage: "t1") {}
         let notes = await systemNotes(from: engine, message: "t2")

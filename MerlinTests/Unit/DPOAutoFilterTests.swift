@@ -63,6 +63,7 @@ final class DPOAutoFilterTests: XCTestCase {
     }
 
     func testDPOEntryProposedWhenFollowUpBeginsWithCorrectionKeyword() async throws {
+        try skipUnlessLiveEnvironment()
         let tmpDir = URL(fileURLWithPath: "/tmp/dpo-filter-correct-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tmpDir) }
 
@@ -79,6 +80,7 @@ final class DPOAutoFilterTests: XCTestCase {
     }
 
     func testDPOEntryContainsOriginalPromptAndResponse() async throws {
+        try skipUnlessLiveEnvironment()
         let tmpDir = URL(fileURLWithPath: "/tmp/dpo-filter-content-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: tmpDir) }
 

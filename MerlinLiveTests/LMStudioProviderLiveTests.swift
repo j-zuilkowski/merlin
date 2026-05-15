@@ -5,9 +5,7 @@ final class LMStudioProviderLiveTests: XCTestCase {
     // Requires LM Studio running on localhost:1234 with vision model loaded
     // Tagged: skip unless RUN_LIVE_TESTS env var is set
     func testVisionQueryRoundTrip() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] != nil else {
-            throw XCTSkip("Live tests disabled")
-        }
+        try skipUnlessLiveEnvironment()
         let provider = LMStudioProvider()
         let req = CompletionRequest(
             model: provider.id,

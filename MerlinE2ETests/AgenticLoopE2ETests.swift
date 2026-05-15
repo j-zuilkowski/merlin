@@ -5,10 +5,10 @@ import XCTest
 final class AgenticLoopE2ETests: XCTestCase {
     @MainActor
     func testFullLoopWithRealDeepSeek() async throws {
-        guard ProcessInfo.processInfo.environment["RUN_LIVE_TESTS"] != nil,
-              let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"] ?? KeychainManager.readAPIKey()
+        try skipUnlessLiveEnvironment()
+        guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"] ?? KeychainManager.readAPIKey()
         else {
-            throw XCTSkip("Live tests disabled or no API key")
+            throw XCTSkip("No API key")
         }
 
         let tmpPath = "/tmp/merlin-e2e-test.txt"

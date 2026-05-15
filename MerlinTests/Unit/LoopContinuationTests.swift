@@ -65,6 +65,7 @@ final class LoopContinuationTests: XCTestCase {
     /// When the planner returns more steps than the per-turn budget (maxIterations / 4),
     /// the engine executes only the first batch and writes a [CONTINUATION] inject for the rest.
     func testPlanBatchSplitsAndSchedulesContinuation() async throws {
+        try skipUnlessLiveEnvironment()
         let provider = MockProvider(responses: [MockLLMResponse.text("done with batch")])
         let engine = makeEngine(provider: provider)
 

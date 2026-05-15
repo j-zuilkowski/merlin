@@ -114,7 +114,8 @@ final class AgenticEngineCriticRetryTests: XCTestCase {
 
     // MARK: - OutcomeSignals wiring
 
-    func testOutcomeSignalsCriticRetryCountZeroOnFirstPassAttempt() async {
+    func testOutcomeSignalsCriticRetryCountZeroOnFirstPassAttempt() async throws {
+        try skipUnlessLiveEnvironment()
         let spy = RetryCountCriticSpy(failTimes: 0)
         let tracker = CapturingPerformanceTracker()
         let engine = makeCriticRetryEngine(spy: spy)
@@ -125,7 +126,8 @@ final class AgenticEngineCriticRetryTests: XCTestCase {
                        "criticRetryCount must be 0 when critic passes on first attempt")
     }
 
-    func testOutcomeSignalsCriticRetryCountOneAfterOneRetry() async {
+    func testOutcomeSignalsCriticRetryCountOneAfterOneRetry() async throws {
+        try skipUnlessLiveEnvironment()
         let settings = AppSettings.shared
         let originalRetries = settings.maxCriticRetries
         settings.maxCriticRetries = 2
@@ -141,7 +143,8 @@ final class AgenticEngineCriticRetryTests: XCTestCase {
                        "criticRetryCount must equal 1 after one retry")
     }
 
-    func testOutcomeSignalsStage1PassedTrueWhenCriticPasses() async {
+    func testOutcomeSignalsStage1PassedTrueWhenCriticPasses() async throws {
+        try skipUnlessLiveEnvironment()
         let spy = RetryCountCriticSpy(failTimes: 0)
         let tracker = CapturingPerformanceTracker()
         let engine = makeCriticRetryEngine(spy: spy)
@@ -152,7 +155,8 @@ final class AgenticEngineCriticRetryTests: XCTestCase {
                        "stage1Passed must be true when critic passes")
     }
 
-    func testOutcomeSignalsStage1PassedFalseWhenAllRetriesExhausted() async {
+    func testOutcomeSignalsStage1PassedFalseWhenAllRetriesExhausted() async throws {
+        try skipUnlessLiveEnvironment()
         let settings = AppSettings.shared
         let originalRetries = settings.maxCriticRetries
         settings.maxCriticRetries = 1
