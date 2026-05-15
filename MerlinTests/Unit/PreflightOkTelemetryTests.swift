@@ -41,9 +41,11 @@ final class PreflightOkTelemetryTests: XCTestCase {
     }
 
     func testWellBelowBudgetEmitsPreflightOk() async throws {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("preflight-ok-telemetry-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let provider = StubProvider()
         let engine = makeEngine(provider: provider)
@@ -56,8 +58,22 @@ final class PreflightOkTelemetryTests: XCTestCase {
 
         let outcome = try await engine.preflightCheck(request: request, provider: provider)
         XCTAssertEqual(outcome, .ok)
-        XCTAssertTrue(recorder.events.contains { $0.event == "engine.preflight.ok" })
-        XCTAssertFalse(recorder.events.contains { $0.event == "engine.preflight.overflow" })
-        XCTAssertFalse(recorder.events.contains { $0.event == "engine.preflight.compacted" })
+
+        await TelemetryEmitter.shared.flushForTesting()
+        let events: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            events = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+        } else {
+            events = []
+        }
+
+        XCTAssertTrue(events.contains { $0["event"] as? String == "engine.preflight.ok" })
+        XCTAssertFalse(events.contains { $0["event"] as? String == "engine.preflight.overflow" })
+        XCTAssertFalse(events.contains { $0["event"] as? String == "engine.preflight.compacted" })
     }
 }

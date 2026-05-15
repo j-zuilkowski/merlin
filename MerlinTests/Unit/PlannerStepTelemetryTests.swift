@@ -1,12 +1,15 @@
+import Foundation
 import XCTest
 @testable import Merlin
 
 final class PlannerStepTelemetryTests: XCTestCase {
 
     func testPlannerEmitsOneTelemetryEventPerStep() async throws {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("planner-step-telemetry-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let engine = PlannerEngine(
             executeProvider: MockProvider(chunks: []),
@@ -25,11 +28,25 @@ final class PlannerStepTelemetryTests: XCTestCase {
 
         _ = await engine.decompose(task: "split work", context: [])
 
-        let events = recorder.events.filter { $0.event == "planner.step.executing" }
+        await TelemetryEmitter.shared.flushForTesting()
+        let events: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            events = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+                .filter { $0["event"] as? String == "planner.step.executing" }
+        } else {
+            events = []
+        }
         XCTAssertEqual(events.count, 2)
-        XCTAssertEqual(events[0].data["step_index"]?.intValue, 0)
-        XCTAssertEqual(events[1].data["step_index"]?.intValue, 1)
-        XCTAssertEqual(events[0].data["total_steps"]?.intValue, 2)
-        XCTAssertEqual(events[1].data["total_steps"]?.intValue, 2)
+        let firstData = events[0]["data"] as? [String: Any]
+        let secondData = events[1]["data"] as? [String: Any]
+        XCTAssertEqual(firstData?["step_index"] as? Int, 0)
+        XCTAssertEqual(secondData?["step_index"] as? Int, 1)
+        XCTAssertEqual(firstData?["total_steps"] as? Int, 2)
+        XCTAssertEqual(secondData?["total_steps"] as? Int, 2)
     }
 }

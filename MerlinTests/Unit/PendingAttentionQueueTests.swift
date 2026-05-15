@@ -45,9 +45,9 @@ final class PendingAttentionQueueTests: XCTestCase {
     func testTopNReturnsMostSevereFirst() async throws {
         let (queue, dir) = makeQueue()
         defer { try? FileManager.default.removeItem(at: dir) }
-        let silent = makeFinding(severity: .silent)
-        let block = makeFinding(severity: .block)
-        let nudge = makeFinding(severity: .nudge)
+        let silent = makeFinding(severity: .silent, summary: "Silent finding")
+        let block = makeFinding(severity: .block, summary: "Block finding")
+        let nudge = makeFinding(severity: .nudge, summary: "Nudge finding")
         await queue.add(silent)
         await queue.add(block)
         await queue.add(nudge)

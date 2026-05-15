@@ -90,9 +90,11 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
     }
 
     func testSmallBudgetRetainsFewerChunksThanLargeBudget() async throws {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("adaptive-rag-telemetry-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let provider = MockProvider(chunks: [
             .init(delta: .init(content: "ok"), finishReason: "stop")
@@ -107,11 +109,24 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
         smallEngine.ragChunkLimit = 20
         for await _ in smallEngine.send(userMessage: "ground me") {}
 
-        let smallEstimate = recorder.events.last(where: { $0.event == "engine.preflight.estimate" })?
-            .data["estimated_tokens"]?
-            .intValue ?? 0
+        await TelemetryEmitter.shared.flushForTesting()
+        let smallEvents: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            smallEvents = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+        } else {
+            smallEvents = []
+        }
+        let smallEstimate = smallEvents.last(where: { $0["event"] as? String == "engine.preflight.estimate" })?[
+            "data"
+        ] as? [String: Any]
+            ?? [:]
 
-        recorder.clear()
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
 
         let largeProvider = MockProvider(chunks: [
             .init(delta: .init(content: "ok"), finishReason: "stop")
@@ -124,12 +139,27 @@ final class AdaptiveRAGIntegrationTests: XCTestCase {
         largeEngine.ragChunkLimit = 20
         for await _ in largeEngine.send(userMessage: "ground me") {}
 
-        let largeEstimate = recorder.events.last(where: { $0.event == "engine.preflight.estimate" })?
-            .data["estimated_tokens"]?
-            .intValue ?? 0
+        await TelemetryEmitter.shared.flushForTesting()
+        let largeEvents: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            largeEvents = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+        } else {
+            largeEvents = []
+        }
+        let largeEstimate = largeEvents.last(where: { $0["event"] as? String == "engine.preflight.estimate" })?[
+            "data"
+        ] as? [String: Any]
+            ?? [:]
+        let smallEstimateValue = smallEstimate["estimated_tokens"] as? Int ?? 0
+        let largeEstimateValue = largeEstimate["estimated_tokens"] as? Int ?? 0
 
-        XCTAssertLessThan(smallEstimate, largeEstimate)
-        XCTAssertGreaterThan(smallEstimate, 0)
-        XCTAssertGreaterThan(largeEstimate, 0)
+        XCTAssertLessThan(smallEstimateValue, largeEstimateValue)
+        XCTAssertGreaterThan(smallEstimateValue, 0)
+        XCTAssertGreaterThan(largeEstimateValue, 0)
     }
 }

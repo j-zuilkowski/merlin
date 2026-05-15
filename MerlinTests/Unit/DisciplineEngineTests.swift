@@ -72,7 +72,11 @@ final class DisciplineEngineTests: XCTestCase {
     func testCircuitBreakerDisablesAfterThreeFailures() async throws {
         let proj = try makeTmpProject()
         defer { try? FileManager.default.removeItem(at: proj) }
-        let recorder = TelemetryRecorder()
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("discipline-engine-telemetry-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
         let adapter = ProjectAdapter.makeStub(language: "swift")
         let engine = DisciplineEngine(
             adapter: adapter,
@@ -87,7 +91,19 @@ final class DisciplineEngineTests: XCTestCase {
         _ = await engine.scan(projectPath: proj.path)
         _ = await engine.scan(projectPath: proj.path)
         _ = await engine.scan(projectPath: proj.path)
-        let disabled = recorder.events.contains { $0.name == "discipline.disabled" }
+        await TelemetryEmitter.shared.flushForTesting()
+        let events: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            events = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+        } else {
+            events = []
+        }
+        let disabled = events.contains { $0["event"] as? String == "discipline.disabled" }
         XCTAssertTrue(disabled, "Engine should emit discipline.disabled after 3 failures")
     }
 }

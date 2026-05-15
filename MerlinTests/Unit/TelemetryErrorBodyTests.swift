@@ -5,9 +5,11 @@ import XCTest
 final class TelemetryErrorBodyTests: XCTestCase {
 
     func testHttpErrorBodyIsRecordedAndRedacted() async throws {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("telemetry-error-body-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let provider = MockProvider(failAllCallsWith: .httpError(
             statusCode: 400,
@@ -18,13 +20,26 @@ final class TelemetryErrorBodyTests: XCTestCase {
 
         for await _ in engine.send(userMessage: "trigger context overflow") {}
 
-        let events = recorder.events
-        let errorEvent = events.first { $0.event == "engine.turn.error" }
+        await TelemetryEmitter.shared.flushForTesting()
+        let events: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            events = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+        } else {
+            events = []
+        }
+
+        let errorEvent = events.first { $0["event"] as? String == "engine.turn.error" }
         XCTAssertNotNil(errorEvent)
-        XCTAssertEqual(errorEvent?.data["error_status"]?.intValue, 400)
-        XCTAssertTrue((errorEvent?.data["error_body"]?.stringValue ?? "").count <= 500)
-        XCTAssertFalse(errorEvent?.data["error_body"]?.stringValue?.contains("sk-test-secret") ?? true)
-        XCTAssertFalse(errorEvent?.data["error_body"]?.stringValue?.contains("pk-test-secret") ?? true)
-        XCTAssertFalse(errorEvent?.data["error_body"]?.stringValue?.contains("Bearer token-value") ?? true)
+        let data = errorEvent?["data"] as? [String: Any]
+        XCTAssertEqual(data?["error_status"] as? Int, 400)
+        XCTAssertTrue(((data?["error_body"] as? String) ?? "").count <= 500)
+        XCTAssertFalse((data?["error_body"] as? String ?? "").contains("sk-test-secret"))
+        XCTAssertFalse((data?["error_body"] as? String ?? "").contains("pk-test-secret"))
+        XCTAssertFalse((data?["error_body"] as? String ?? "").contains("Bearer token-value"))
     }
 }

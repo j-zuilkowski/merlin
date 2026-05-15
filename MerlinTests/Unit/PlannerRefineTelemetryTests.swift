@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import Merlin
 
@@ -21,9 +22,11 @@ final class PlannerRefineTelemetryTests: XCTestCase {
     }
 
     func testRefineStepEmitsExactlyOneTerminalTelemetryEvent() async {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("planner-refine-telemetry-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let planner = makePlanner(response: #"""
         {
@@ -39,12 +42,28 @@ final class PlannerRefineTelemetryTests: XCTestCase {
             context: []
         )
 
-        let terminalEvents = recorder.events.filter {
-            $0.event == "planner.refine.success" || $0.event == "planner.refine.cannot_decompose"
+        await TelemetryEmitter.shared.flushForTesting()
+        let terminalEvents: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            terminalEvents = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+                .filter {
+                    let event = $0["event"] as? String
+                    return event == "planner.refine.success" || event == "planner.refine.cannot_decompose"
+                }
+        } else {
+            terminalEvents = []
         }
         XCTAssertEqual(terminalEvents.count, 1)
-        if let event = terminalEvents.first, event.event == "planner.refine.success" {
-            XCTAssertNotNil(event.data["substep_count"])
+        if let event = terminalEvents.first,
+           let name = event["event"] as? String,
+           name == "planner.refine.success" {
+            let data = event["data"] as? [String: Any]
+            XCTAssertNotNil(data?["substep_count"])
         }
     }
 }

@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 @testable import Merlin
 
@@ -5,9 +6,11 @@ import XCTest
 final class IterationCapEscalationTests: XCTestCase {
 
     func testNearCeilingWithNoProgressEmitsEscalationTelemetry() async throws {
-        let recorder = TelemetryRecorder()
-        TelemetryEmitter.sink = recorder
-        defer { TelemetryEmitter.sink = nil }
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("iteration-cap-escalation-\(UUID().uuidString).jsonl")
+            .path
+        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
         let provider = MockProvider(responses: [
             .toolCall(id: "t1", name: "noop", args: "{}"),
@@ -23,7 +26,19 @@ final class IterationCapEscalationTests: XCTestCase {
 
         for await _ in engine.send(userMessage: "keep going until the ceiling") {}
 
-        let escalationEvents = recorder.events.filter { $0.event == "engine.escalation.start" }
+        await TelemetryEmitter.shared.flushForTesting()
+        let escalationEvents: [[String: Any]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: tempPath)),
+           let content = String(data: data, encoding: .utf8) {
+            escalationEvents = content
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .compactMap { line in
+                    try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
+                }
+                .filter { $0["event"] as? String == "engine.escalation.start" }
+        } else {
+            escalationEvents = []
+        }
         XCTAssertFalse(
             escalationEvents.isEmpty,
             "Expected escalation telemetry when the loop approaches the ceiling without progress"

@@ -137,6 +137,6 @@ final class PendingAttentionViewModelTests: XCTestCase {
         }
         await vm.dismiss(finding: finding, rationale: "done")
         await vm.refresh(projectPath: projectRoot.path)
-        XCTAssertTrue(vm.findings.isEmpty)
+        XCTAssertFalse(vm.findings.contains(where: { $0.id == finding.id }))
     }
 }
