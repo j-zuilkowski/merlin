@@ -66,7 +66,7 @@ actor DisciplineEngine {
             async let driftFindings = phaseScanner.scan(projectPath: projectPath)
             async let coverageGaps = manualCoverageScanner.scan(
                 projectPath: projectPath, adapter: adapter)
-            async let docRefs = docReferenceGraph.build(projectPath: projectPath)
+            async let docRefs = docReferenceGraph.danglingReferences(projectPath: projectPath)
             async let whyTriggers = whyCommentScanner.scan(
                 projectPath: projectPath, adapter: adapter)
 
@@ -107,15 +107,16 @@ actor DisciplineEngine {
                 findings.append(f)
             }
 
-            // Stale doc references.
+            // Dangling doc references - doc mentions of code symbols that do not
+            // exist in the source tree. Silent severity: informational, never blocks.
             for ref in refs {
                 let f = Finding(
                     id: UUID(),
                     category: .docStaleReference,
                     severity: .silent,
                     summary: ref.codeSymbol,
-                    detail: "Referenced in \(ref.docFile)",
-                    suggestedAction: "Review doc section",
+                    detail: "Referenced in \(ref.docFile) but not found in source tree",
+                    suggestedAction: "Remove the stale reference or restore the symbol",
                     createdAt: now,
                     lastSeenAt: now
                 )
