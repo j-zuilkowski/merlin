@@ -140,6 +140,29 @@ actor DisciplineEngine {
                 findings.append(f)
             }
 
+            // Prose readability - run the checker over project doc files.
+            for docFile in Self.enumerateDocFiles(projectPath: projectPath) {
+                let targetGrade = Self.targetGrade(for: docFile, adapter: adapter)
+                let result = await proseReadabilityChecker.check(
+                    docFile: docFile, targetGrade: targetGrade)
+                guard result.measuredGrade > result.targetGrade else { continue }
+                let f = Finding(
+                    id: UUID(),
+                    category: .proseReadabilityFail,
+                    severity: .nudge,
+                    summary: URL(fileURLWithPath: docFile).lastPathComponent,
+                    detail: String(
+                        format: "Readability grade %.1f exceeds target %.1f",
+                        result.measuredGrade, result.targetGrade),
+                    suggestedAction: result.suggestions.first
+                        ?? "Simplify the prose in this document",
+                    createdAt: now,
+                    lastSeenAt: now
+                )
+                await queue.add(f)
+                findings.append(f)
+            }
+
             consecutiveFailures = 0
             let durationMs = Int(Date().timeIntervalSince(start) * 1000)
             TelemetryEmitter.shared.emit("discipline.scan.complete",
@@ -166,6 +189,41 @@ actor DisciplineEngine {
 
     func dismiss(findingID: UUID, rationale: String) async {
         await queue.dismiss(id: findingID, rationale: rationale)
+    }
+
+    // MARK: - Doc-file helpers
+
+    private static func enumerateDocFiles(projectPath: String) -> [String] {
+        var files: [String] = []
+        let root = URL(fileURLWithPath: projectPath)
+        guard let enumerator = FileManager.default.enumerator(
+            at: root, includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else { return files }
+        for case let url as URL in enumerator where url.pathExtension == "md" {
+            files.append(url.path)
+        }
+        return files
+    }
+
+    /// Target Flesch-Kincaid grade for a doc file. Architecture-related docs allow a
+    /// higher grade (11.0); everything else uses the adapter's configured grade for a
+    /// matching doc kind, falling back to 9.0.
+    private static func targetGrade(
+        for docFile: String, adapter: ProjectAdapter
+    ) -> Double {
+        let name = URL(fileURLWithPath: docFile).lastPathComponent.lowercased()
+            .replacingOccurrences(of: "_", with: "-")
+        if name.contains("architecture") {
+            return 11.0
+        }
+        for (pattern, grade) in adapter.docTargetGrade {
+            let normalized = pattern.lowercased().replacingOccurrences(of: "_", with: "-")
+            if name.contains(normalized) {
+                return grade
+            }
+        }
+        return 9.0
     }
 
     // MARK: - Errors

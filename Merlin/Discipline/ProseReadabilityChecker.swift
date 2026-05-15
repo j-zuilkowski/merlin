@@ -37,6 +37,8 @@ actor ProseReadabilityChecker {
 
     private func runVale(docFile: String, targetGrade: Double) async -> ReadabilityFinding {
         let valeOutput = await spawnVale(docFile: docFile)
+        // No grade extracted (vale missing, no readability alert) -> fall back to the
+        // target so the gate passes - graceful degradation.
         let grade = extractGrade(from: valeOutput) ?? targetGrade
         let suggestions = grade > targetGrade ? extractSuggestions(from: valeOutput) : []
         return ReadabilityFinding(
@@ -68,18 +70,56 @@ actor ProseReadabilityChecker {
         }
     }
 
+    /// Parses Vale's `--output JSON` shape: a dictionary keyed by file path whose
+    /// values are arrays of alert objects. Each alert has `Check`, `Message`, `Line`,
+    /// and `Severity`. The readability grade lives in the `Message` of the alert whose
+    /// `Check` belongs to a readability rule (e.g. `Merlin.readability`).
     private func extractGrade(from json: String) -> Double? {
-        guard let data = json.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let score = obj["readability"] as? Double
-        else { return nil }
-        return score
+        guard let alerts = parseAlerts(json) else { return nil }
+        for alert in alerts {
+            let check = (alert["Check"] as? String ?? "").lowercased()
+            guard check.contains("readability") else { continue }
+            let message = alert["Message"] as? String ?? ""
+            if let grade = firstNumber(in: message) {
+                return grade
+            }
+        }
+        return nil
     }
 
     private func extractSuggestions(from json: String) -> [String] {
+        guard let alerts = parseAlerts(json) else { return [] }
+        return alerts.compactMap { $0["Message"] as? String }
+    }
+
+    /// Flattens Vale's `{ "file": [alert, ...] }` JSON into a single alert list.
+    private func parseAlerts(_ json: String) -> [[String: Any]]? {
         guard let data = json.data(using: .utf8),
-              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        else { return [] }
-        return arr.compactMap { $0["Message"] as? String }
+              let root = try? JSONSerialization.jsonObject(with: data) else {
+            return nil
+        }
+        if let byFile = root as? [String: Any] {
+            var all: [[String: Any]] = []
+            for value in byFile.values {
+                if let alerts = value as? [[String: Any]] {
+                    all.append(contentsOf: alerts)
+                }
+            }
+            return all
+        }
+        // Tolerate a bare alert array as well.
+        if let alerts = root as? [[String: Any]] {
+            return alerts
+        }
+        return nil
+    }
+
+    /// Extracts the first numeric token (integer or decimal) from a string.
+    private func firstNumber(in text: String) -> Double? {
+        guard let range = text.range(
+            of: #"[0-9]+(\.[0-9]+)?"#, options: .regularExpression) else {
+            return nil
+        }
+        return Double(text[range])
     }
 }

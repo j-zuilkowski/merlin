@@ -22,13 +22,20 @@ struct ValeStyleWriter: Sendable {
             atomically: true, encoding: .utf8)
     }
 
+    // Vale's real readability rule. `extends: readability` computes a readability
+    // metric over each scope and flags scopes above `grade`. `existence` (the previous
+    // value) is a token-matcher and never produces a grade.
+    // The implementer should confirm the exact metric name against the installed
+    // `vale` version's docs (https://vale.sh/docs/topics/styles/#readability); the
+    // hard requirement here is `extends: readability` and a `grade:` threshold.
     private let readabilityYML = """
-    extends: existence
+    extends: readability
     message: "Readability grade (%s) exceeds target."
     level: warning
     link: https://vale.sh/docs/topics/styles/
-    tokens:
-      - Flesch-Kincaid
+    metrics:
+      - Flesch-Kincaid Grade Level
+    grade: 9
     """
 
     private let acceptTxt = """
