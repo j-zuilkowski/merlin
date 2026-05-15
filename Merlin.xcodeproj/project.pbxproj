@@ -182,6 +182,7 @@
 		AF2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */; };
 		A2A2B3C4D5E60718293A4D6 /* ProjectReviseSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A2B3C4D5E60718293A4D6 /* ProjectReviseSkillTests.swift */; };
 		C2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift */; };
+		E2A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift */; };
 		AD2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */; };
 		DEADBEEFDEADBEEFDEADBEEF /* OverrideAuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */; };
 		AA2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */; };
@@ -854,6 +855,7 @@
 		B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectPhaseSkillTests.swift; sourceTree = "<group>"; };
 		B2A2B3C4D5E60718293A4D6 /* ProjectReviseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectReviseSkillTests.swift; sourceTree = "<group>"; };
 		D2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectReleaseSkillTests.swift; sourceTree = "<group>"; };
+		F3A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectAdoptSkillTests.swift; sourceTree = "<group>"; };
 		AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectInitSkillTests.swift; sourceTree = "<group>"; };
 		FEEDFACEFEEDFACEFEEDFACE /* OverrideAuditLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLog.swift; sourceTree = "<group>"; };
 		AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAuditLogTests.swift; sourceTree = "<group>"; };
@@ -1533,6 +1535,7 @@
 				B0A2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift */,
 				B2A2B3C4D5E60718293A4D6 /* ProjectReviseSkillTests.swift */,
 				D2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift */,
+				F3A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift */,
 				AE2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift */,
 				AB2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift */,
 				Y1A2B3C4D5E60718293A4D6 /* ProseGateTests.swift */,
@@ -2423,6 +2426,7 @@
 				AF2B3C4D5E60718293A4D6 /* ProjectPhaseSkillTests.swift in Sources */,
 				A2A2B3C4D5E60718293A4D6 /* ProjectReviseSkillTests.swift in Sources */,
 				C2A2B3C4D5E60718293A4D6 /* ProjectReleaseSkillTests.swift in Sources */,
+				E2A2B3C4D5E60718293A4D6 /* ProjectAdoptSkillTests.swift in Sources */,
 				AD2B3C4D5E60718293A4D6 /* ProjectInitSkillTests.swift in Sources */,
 				AA2B3C4D5E60718293A4D6 /* OverrideAuditLogTests.swift in Sources */,
 				X1A2B3C4D5E60718293A4D6 /* ProseGateTests.swift in Sources */,
