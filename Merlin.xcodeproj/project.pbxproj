@@ -179,6 +179,10 @@
 		4BB5C3B3FCA717D9B2D7F3E8 /* HookEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C112B6E60DAFCEF42B268509 /* HookEngineTests.swift */; };
 		4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */; };
 		4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */; };
+		T1A2B3C4D5E60718293A4D6 /* ProseReadabilityCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = U1A2B3C4D5E60718293A4D6 /* ProseReadabilityCheckerTests.swift */; };
+		V1A2B3C4D5E60718293A4D6 /* ValeStyleWriterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = W1A2B3C4D5E60718293A4D6 /* ValeStyleWriterTests.swift */; };
+		P1A2B3C4D5E60718293A4D6 /* WHYCommentGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = Q1A2B3C4D5E60718293A4D6 /* WHYCommentGate.swift */; };
+		R1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = S1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParser.swift */; };
 		L1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */; };
 		N1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */; };
 		J1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */; };
@@ -838,6 +842,10 @@
 		87D59A3311ADB597E77084CF /* ToolRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRouter.swift; sourceTree = "<group>"; };
 		5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHookInstallerTests.swift; sourceTree = "<group>"; };
 		6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCoverageScannerTests.swift; sourceTree = "<group>"; };
+		U1A2B3C4D5E60718293A4D6 /* ProseReadabilityCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProseReadabilityCheckerTests.swift; sourceTree = "<group>"; };
+		W1A2B3C4D5E60718293A4D6 /* ValeStyleWriterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValeStyleWriterTests.swift; sourceTree = "<group>"; };
+		Q1A2B3C4D5E60718293A4D6 /* WHYCommentGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WHYCommentGate.swift; sourceTree = "<group>"; };
+		S1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAnnotationParser.swift; sourceTree = "<group>"; };
 		M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WHYCommentGateTests.swift; sourceTree = "<group>"; };
 		O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAnnotationParserTests.swift; sourceTree = "<group>"; };
 		K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhyCommentScannerTests.swift; sourceTree = "<group>"; };
@@ -1504,6 +1512,8 @@
 				889632963D116230631B0602 /* HookTelemetryTests.swift */,
 				5C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift */,
 				6D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift */,
+				U1A2B3C4D5E60718293A4D6 /* ProseReadabilityCheckerTests.swift */,
+				W1A2B3C4D5E60718293A4D6 /* ValeStyleWriterTests.swift */,
 				M1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift */,
 				O1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift */,
 				K1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift */,
@@ -1825,6 +1835,8 @@
 			2A4E6A1D3B2F5C8D9E0F1234 /* ManualCoverageScanner.swift */,
 			F1A2B3C4D5E60718293A4D6 /* APIDocGenerator.swift */,
 			I1A2B3C4D5E60718293A4D6 /* DevGuideGenerator.swift */,
+			Q1A2B3C4D5E60718293A4D6 /* WHYCommentGate.swift */,
+			S1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParser.swift */,
 			AD1A2B3C4D5E60718293A4B6 /* ManualBaselineManager.swift */,
 			290364852F5D620BCAE59D2C /* PendingAttentionQueue.swift */,
 			35E85911487A37C5C3A91AFF /* PhaseScanner.swift */,
@@ -2381,6 +2393,8 @@
 				6706E115A3C64A0D4FB62C0C /* LoopContinuationTests.swift in Sources */,
 				4C1A2B3C4D5E60718293A4B5 /* GitHookInstallerTests.swift in Sources */,
 				4D1A2B3C4D5E60718293A4B5 /* ManualCoverageScannerTests.swift in Sources */,
+				T1A2B3C4D5E60718293A4D6 /* ProseReadabilityCheckerTests.swift in Sources */,
+				V1A2B3C4D5E60718293A4D6 /* ValeStyleWriterTests.swift in Sources */,
 				L1A2B3C4D5E60718293A4D6 /* WHYCommentGateTests.swift in Sources */,
 				N1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParserTests.swift in Sources */,
 				J1A2B3C4D5E60718293A4D6 /* WhyCommentScannerTests.swift in Sources */,
@@ -2679,6 +2693,8 @@
 				5C6D7E8F9012A3B4C5D6E7F8 /* ManualCoverageScanner.swift in Sources */,
 				E1A2B3C4D5E60718293A4D6 /* APIDocGenerator.swift in Sources */,
 				H1A2B3C4D5E60718293A4D6 /* DevGuideGenerator.swift in Sources */,
+				P1A2B3C4D5E60718293A4D6 /* WHYCommentGate.swift in Sources */,
+				R1A2B3C4D5E60718293A4D6 /* OverrideAnnotationParser.swift in Sources */,
 				9D1A2B3C4D5E60718293A4B6 /* ManualBaselineManager.swift in Sources */,
 				9E1A2B3C4D5E60718293A4B6 /* ManualSectionTemplateWriter.swift in Sources */,
 				F7D7DFC7E2D2A89C4E5A53E7 /* PlannerEngine.swift in Sources */,
