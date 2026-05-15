@@ -13,8 +13,8 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
-    MARKETING_VERSION: "2.1.0"
-    CURRENT_PROJECT_VERSION: 16
+    MARKETING_VERSION: "2.2.0"
+    CURRENT_PROJECT_VERSION: 17
 
 targets:
   Merlin:
@@ -58,7 +58,7 @@ targets:
     sources: [MerlinTests/, TestHelpers/]
     resources:
       - path: project.yml
-      - path: RELEASE-v2.1.0.md
+      - path: RELEASE-v2.2.0.md
     dependencies:
       - target: Merlin
     settings:
