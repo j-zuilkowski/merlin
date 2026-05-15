@@ -1,11 +1,16 @@
 import XCTest
-@testable import Merlin
 
 final class AppVersionTests: XCTestCase {
 
-    func testBundleVersionMatchesV210ReleaseTarget() {
-        let info = Bundle.main.infoDictionary
-        XCTAssertEqual(info?["CFBundleShortVersionString"] as? String, "2.1.0")
-        XCTAssertEqual(info?["CFBundleVersion"] as? String, "16")
+    func testMarketingVersion() throws {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        XCTAssertEqual(version, "2.2.0",
+                       "MARKETING_VERSION must be 2.2.0. Run phase 265b to bump project.yml.")
+    }
+
+    func testBuildNumber() throws {
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        XCTAssertEqual(build, "17",
+                       "CURRENT_PROJECT_VERSION must be 17. Run phase 265b to bump project.yml.")
     }
 }
