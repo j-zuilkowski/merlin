@@ -16,7 +16,8 @@ actor EscalationHandler {
     private let planner: PlannerEngine
     private let registry: ProviderRegistry?
     private let maxRefinementsPerTurn: Int
-    private var successfulRefinements = 0
+    private var escalationAttempts = 0
+    private var routedProviderIDs: Set<String> = []
 
     init(
         planner: PlannerEngine,
@@ -33,7 +34,7 @@ actor EscalationHandler {
         reason: EscalationReason,
         context: [Message]
     ) async -> EscalationDecision {
-        guard successfulRefinements < maxRefinementsPerTurn else {
+        guard escalationAttempts < maxRefinementsPerTurn else {
             return .stop(message: stopMessage(
                 reason: "refinement budget exhausted",
                 suggestion: "reduce scope before retrying",
@@ -52,19 +53,24 @@ actor EscalationHandler {
         let outcome = await planner.refineStep(currentStep, reason: refineReason, context: context)
         switch outcome {
         case .decomposed(let replacementSteps):
-            successfulRefinements += 1
+            escalationAttempts += 1
             return .continueWith(replacementSteps: replacementSteps)
         case .cannotDecompose(let explanation):
             if let registry {
                 let orderedProviders = await registry.providersOrderedByBudget()
-                if let provider = orderedProviders.reversed().first(where: { $0.budget.usableInputTokens >= currentStep.minContextRequired }) {
+                if let provider = orderedProviders.reversed().first(where: {
+                    $0.budget.usableInputTokens >= currentStep.minContextRequired
+                        && routedProviderIDs.contains($0.id) == false
+                }) {
+                    routedProviderIDs.insert(provider.id)
+                    escalationAttempts += 1
                     return .routeToProvider(providerID: provider.id, reason: explanation)
                 }
                 return .stop(message: "step requires \(currentStep.minContextRequired) tokens; no configured provider supports that budget")
             }
             let fallbackSteps = await planner.decompose(task: currentStep.description, context: context)
             if fallbackSteps.isEmpty == false {
-                successfulRefinements += 1
+                escalationAttempts += 1
                 return .continueWith(replacementSteps: fallbackSteps)
             }
             return .stop(message: stopMessage(
