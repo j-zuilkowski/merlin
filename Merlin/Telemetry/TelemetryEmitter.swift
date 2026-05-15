@@ -46,6 +46,9 @@ public struct TelemetryEvent: Encodable, Sendable {
     public var durationMs: Double?
     public var data: [String: TelemetryValue]
 
+    /// Backward-compatible alias for older test and sink code.
+    public var name: String { event }
+
     enum CodingKeys: String, CodingKey {
         case ts, turn, loop, event, data
         case sessionID  = "session_id"
