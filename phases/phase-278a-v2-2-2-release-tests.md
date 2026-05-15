@@ -84,6 +84,20 @@ final class ReleaseNotes222Tests: XCTestCase {
 
 ---
 
+## Regenerate the Xcode project
+
+The two new test files must be registered in the `MerlinTests` target. `project.yml`
+uses a directory-glob source (`sources: [MerlinTests/, …]`), so a newly added `.swift`
+file is **not** in `project.pbxproj` until the project is regenerated. Skip this and the
+files compile-silent and never run.
+
+```bash
+cd ~/Documents/localProject/merlin
+xcodegen generate
+```
+
+---
+
 ## Verify
 
 ```bash
@@ -105,11 +119,17 @@ Expected: **BUILD SUCCEEDED**, but `AppVersion222Tests` and `ReleaseNotes222Test
 exist yet. Every other test still passes (gated engine tests skip headless). 278b makes
 the new tests pass.
 
+**Sanity check:** the names `AppVersion222Tests` and `ReleaseNotes222Tests` MUST appear
+in the test log. If they do not appear at all (a `TEST SUCCEEDED` with neither name
+present), the project was not regenerated — the test files are not in the `MerlinTests`
+target. Run `xcodegen generate` and re-verify before committing.
+
 ## Commit
 
 ```bash
 git add phases/phase-278a-v2-2-2-release-tests.md \
     MerlinTests/Unit/AppVersion222Tests.swift \
-    MerlinTests/Unit/ReleaseNotes222Tests.swift
+    MerlinTests/Unit/ReleaseNotes222Tests.swift \
+    Merlin.xcodeproj/project.pbxproj
 git commit -m "Phase 278a — V2_2_2ReleaseTests (failing)"
 ```
