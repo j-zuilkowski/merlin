@@ -231,6 +231,7 @@
 		5B173BD3CF9D4C73B8775973 /* LocalAIModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C97ABA91376C71D992319981 /* LocalAIModelManager.swift */; };
 		5B7EABA082DDEABF9947FFC6 /* AgenticEngineMemoryPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B6CDF8126C67EC37E4240C /* AgenticEngineMemoryPluginTests.swift */; };
 		5C3717699D7507C8F2B1855D /* CompactSlashCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282F5184FFE8F96E947FE04C /* CompactSlashCommandTests.swift */; };
+		5CF34BFFA24F05ECBC3259E8 /* DisciplineWiringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0185100C935F15E5E9955C53 /* DisciplineWiringTests.swift */; };
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
 		5D5B8655E0EB3BC0C0F8308F /* CalibrationFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4684727E5DF2B5B405CA78C /* CalibrationFlowView.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
@@ -609,6 +610,7 @@
 		00CA7E6A1BC038C97DD9DCE1 /* CriticEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticEngineProtocol.swift; sourceTree = "<group>"; };
 		010B889262AAE8AF30CF04F1 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		017BE52E9FB37750D343ACED /* ScheduledTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledTask.swift; sourceTree = "<group>"; };
+		0185100C935F15E5E9955C53 /* DisciplineWiringTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisciplineWiringTests.swift; sourceTree = "<group>"; };
 		02044BCB2257F6F8D87EA37C /* XcalibreClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcalibreClientTests.swift; sourceTree = "<group>"; };
 		02150624FD9EF00BB318E40B /* CalibrationAdvisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationAdvisorTests.swift; sourceTree = "<group>"; };
 		0311508A5D8A5706DC29D5E8 /* AgenticEngineProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineProviderTests.swift; sourceTree = "<group>"; };
@@ -1538,6 +1540,7 @@
 				B86EA0171621B21EECCFACE4 /* DiffEngineTests.swift */,
 				9F5C166B601F372FE87B663D /* DisabledSkillsTests.swift */,
 				68024282EF0CFFEDC10628A8 /* DisciplineEngineTests.swift */,
+				0185100C935F15E5E9955C53 /* DisciplineWiringTests.swift */,
 				BC9284F1CA4DC19A4FDDC032 /* DocReferenceDanglingTests.swift */,
 				7013A8BC625A83D38AF562CB /* DocReferenceGraphTests.swift */,
 				BB3508BAC94769DC8D62BE44 /* DocReferenceSectionTests.swift */,
@@ -2423,6 +2426,7 @@
 				6AD546A3480BB3BA91CA4753 /* DiffEngineTests.swift in Sources */,
 				74AD396A676AE9D85216BEA7 /* DisabledSkillsTests.swift in Sources */,
 				90C4169F555F0049930CAC44 /* DisciplineEngineTests.swift in Sources */,
+				5CF34BFFA24F05ECBC3259E8 /* DisciplineWiringTests.swift in Sources */,
 				ACB3A7848F14F2685367D6B0 /* DocReferenceDanglingTests.swift in Sources */,
 				89F37DE06F881757B54932FE /* DocReferenceGraphTests.swift in Sources */,
 				E8F130AB2D63CD37E0FABA36 /* DocReferenceSectionTests.swift in Sources */,
