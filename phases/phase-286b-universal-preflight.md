@@ -1,10 +1,12 @@
-# Phase 285b — Universal Pre-flight Guard
+# Phase 286b — Universal Pre-flight Guard
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 285a complete: failing tests for `PreflightGuard.fit`.
+Phase 286a complete: failing tests for `PreflightGuard.fit`.
+Phase 285 complete: `ContextBudgetResolver` discovers the active model's real context
+window — the guard takes its budget from the resolver, never a hardcoded value.
 
 After this phase, **every** LLM request is sized to fit the provider's input window
 before it is sent — not just the main turn loop. The HTTP 400 context-overflow class
@@ -42,12 +44,15 @@ enum PreflightGuard {
         // (Full body written here.)
     }
 
-    /// Convenience: clamp then send. A drop-in for `provider.complete(request:)`.
+    /// Clamp-to-fit then send. A drop-in replacement for `provider.complete(request:)`.
+    /// The budget is discovered live via `ContextBudgetResolver` — never hardcoded, so
+    /// it tracks whatever model the provider currently has loaded.
     static func complete(_ request: CompletionRequest,
-                         provider: any LLMProvider,
-                         usableInputTokens: Int)
+                         provider: any LLMProvider)
         async throws -> AsyncThrowingStream<CompletionChunk, Error> {
-        try await provider.complete(request: fit(request, usableInputTokens: usableInputTokens))
+        let budget = await ContextBudgetResolver.shared.usableInputTokens(for: provider)
+        return try await provider.complete(
+            request: fit(request, usableInputTokens: budget))
     }
 }
 ```
@@ -59,9 +64,9 @@ request is clamped, so this is observable.
 ### 2. Route every send site through the guard
 
 For each `provider.complete(request:)` site below, replace the bare call with
-`PreflightGuard.complete(request, provider: provider, usableInputTokens: budget)`.
-The budget: use the call's provider budget where available
-(`ProviderConfig.budget?.usableInputTokens`), else `ProviderBudget.conservative.usableInputTokens`.
+`PreflightGuard.complete(request, provider: provider)`. The guard resolves the budget
+itself via `ContextBudgetResolver` — call sites pass no budget and need no knowledge of
+the model's context window.
 
 | File | Line(s) |
 |---|---|
@@ -102,7 +107,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 285a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all phase 286a tests pass, no prior phase regresses.
 
 Then confirm no un-guarded send remains:
 
@@ -116,7 +121,7 @@ call. A bare `provider.complete(request:)` anywhere else is an un-guarded path �
 ## Commit
 
 ```bash
-git add phases/phase-285b-universal-preflight.md \
+git add phases/phase-286b-universal-preflight.md \
     Merlin/Engine/PreflightGuard.swift \
     Merlin/Engine/PlannerEngine.swift \
     Merlin/Engine/CriticEngine.swift \
@@ -129,7 +134,7 @@ git add phases/phase-285b-universal-preflight.md \
     Merlin/Views/BtwSession.swift \
     Merlin/Calibration/CalibrationCoordinator.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 285b — Route every provider send through PreflightGuard"
+git commit -m "Phase 286b — Route every provider send through PreflightGuard"
 ```
 
 ## Fixes

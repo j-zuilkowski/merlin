@@ -1,10 +1,12 @@
-# Phase 285a — Universal Pre-flight Guard Tests (failing)
+# Phase 286a — Universal Pre-flight Guard Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Phase 284 complete: `run_shell` / `read_file` output is capped.
+Phase 285 complete: `ContextBudgetResolver` discovers the active model's real context
+window.
 
 **The bug.** `architecture.md` states every LLM request is sized to the provider's
 input window before sending. In the code, `preflightCheck` is invoked at **one** of
@@ -15,7 +17,7 @@ loop. `PlannerEngine` (decompose / classify / refineStep), `CriticEngine`,
 `CalibrationCoordinator` all send requests with no budget check at all. A bloated
 context on any of those paths goes straight to the provider and is rejected HTTP 400.
 
-New surface introduced in phase 285b:
+New surface introduced in phase 286b:
   - `PreflightGuard` enum in `Merlin/Engine/PreflightGuard.swift`:
     ```swift
     enum PreflightGuard {
@@ -27,7 +29,7 @@ New surface introduced in phase 285b:
                         usableInputTokens: Int) -> CompletionRequest
     }
     ```
-  - 285b routes every `provider.complete(request:)` site through `PreflightGuard.fit`
+  - 286b routes every `provider.complete(request:)` site through `PreflightGuard.fit`
     so no oversized request is ever sent.
 
 TDD coverage:
@@ -110,10 +112,10 @@ Expected: **BUILD FAILED** — errors naming the missing `PreflightGuard` type /
 ## Commit
 
 ```bash
-git add phases/phase-285a-universal-preflight-tests.md \
+git add phases/phase-286a-universal-preflight-tests.md \
     MerlinTests/Unit/PreflightGuardTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 285a — PreflightGuardTests (failing)"
+git commit -m "Phase 286a — PreflightGuardTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file registers.)
