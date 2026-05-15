@@ -7,6 +7,22 @@ enum ComplexityTier: String, Codable, Equatable, Sendable {
     case routine
     case standard
     case highStakes = "high-stakes"
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        let normalized = raw.lowercased()
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .replacingOccurrences(of: " ", with: "")
+        switch normalized {
+        case "routine":
+            self = .routine
+        case "highstakes":
+            self = .highStakes
+        default:
+            self = .standard
+        }
+    }
 }
 
 // MARK: - ClassifierResult
