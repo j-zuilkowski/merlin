@@ -48,6 +48,14 @@ struct ChatView: View {
                 endPoint: .bottom
             )
         )
+        .overlay(alignment: .topTrailing) {
+            PendingAttentionPanelView(
+                viewModel: appState.pendingAttention,
+                projectPath: appState.projectPath
+            )
+            .padding(.top, 56)
+            .padding(.trailing, 12)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .merlinNewSession)) { _ in
             model.clear()
             autoScrollEnabled = true

@@ -142,9 +142,23 @@ just before `Spacer(minLength: 0)`:
 If `PendingAttentionChipView`'s initializer differs (e.g. it takes an
 `@ObservedObject` via a different label), match its actual signature from
 `Merlin/Views/PendingAttentionChipView.swift` — the requirement is that `ChatView`
-constructs `PendingAttentionChipView` bound to `appState.pendingAttention`. The
-expandable `PendingAttentionPanelView` is presented by the chip itself (popover /
-disclosure), so no separate placement is needed in `ChatView`.
+constructs `PendingAttentionChipView` bound to `appState.pendingAttention`.
+
+`PendingAttentionChipView` only toggles `viewModel.isExpanded`; it does NOT present
+the panel. `PendingAttentionPanelView` must be placed separately — it self-gates on
+`isExpanded` (renders nothing when collapsed) and styles itself as a floating card,
+so add it as a `.topTrailing` overlay on the `ChatView` body `VStack`:
+
+```swift
+        .overlay(alignment: .topTrailing) {
+            PendingAttentionPanelView(
+                viewModel: appState.pendingAttention,
+                projectPath: appState.projectPath
+            )
+            .padding(.top, 56)
+            .padding(.trailing, 12)
+        }
+```
 
 ---
 
@@ -158,6 +172,16 @@ disclosure), so no separate placement is needed in `ChatView`.
   `disciplineEngine.scan()` and refreshes the chip.
 - `ChatView` header embeds `PendingAttentionChipView` bound to
   `appState.pendingAttention`. The v2.2 subsystem is now live in the app.
+
+### v2.2.4 — panel never placed (dead chip click)
+
+The original wiring assumed the chip presented its own panel. It does not —
+`PendingAttentionChipView` only toggles `viewModel.isExpanded`. Because
+`PendingAttentionPanelView` was never instantiated anywhere in the app, clicking the
+chip flipped `isExpanded` with no observer, so nothing happened. Fixed by adding the
+`PendingAttentionPanelView` `.topTrailing` overlay to the `ChatView` body (see the
+corrected ChatView edit above). Regression guard:
+`MerlinTests/Unit/PendingAttentionPanelViewTests.swift`.
 
 ---
 
