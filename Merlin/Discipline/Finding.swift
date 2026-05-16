@@ -11,6 +11,7 @@ enum FindingCategory: String, Codable, Sendable, CaseIterable {
     case overrideAuditAccumulation
     case ungatedTarget
     case stubbedImplementation
+    case unwiredComponent
 }
 
 // MARK: - Severity

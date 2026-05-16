@@ -32,6 +32,7 @@ final class FindingModelTests: XCTestCase {
         XCTAssertEqual(FindingCategory.overrideAuditAccumulation.rawValue, "overrideAuditAccumulation")
         XCTAssertEqual(FindingCategory.ungatedTarget.rawValue, "ungatedTarget")
         XCTAssertEqual(FindingCategory.stubbedImplementation.rawValue, "stubbedImplementation")
+        XCTAssertEqual(FindingCategory.unwiredComponent.rawValue, "unwiredComponent")
     }
 
     func testSeverityRawValues() {

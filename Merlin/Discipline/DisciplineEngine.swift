@@ -14,6 +14,7 @@ actor DisciplineEngine {
     private let proseReadabilityChecker: ProseReadabilityChecker
     private let targetGateScanner: TargetGateScanner
     private let stubMarkerScanner: StubMarkerScanner
+    private let reachabilityScanner: ReachabilityScanner
     private let queue: PendingAttentionQueue
     private let overrideLog: OverrideAuditLog
 
@@ -38,6 +39,7 @@ actor DisciplineEngine {
         proseReadabilityChecker: ProseReadabilityChecker,
         targetGateScanner: TargetGateScanner = TargetGateScanner(),
         stubMarkerScanner: StubMarkerScanner = StubMarkerScanner(),
+        reachabilityScanner: ReachabilityScanner = ReachabilityScanner(),
         storePath: String,
         forceErrorForTesting: Bool = false
     ) {
@@ -49,6 +51,7 @@ actor DisciplineEngine {
         self.proseReadabilityChecker = proseReadabilityChecker
         self.targetGateScanner = targetGateScanner
         self.stubMarkerScanner = stubMarkerScanner
+        self.reachabilityScanner = reachabilityScanner
         self.queue = PendingAttentionQueue(storePath: storePath)
         self.overrideLog = OverrideAuditLog(
             logPath: URL(fileURLWithPath: storePath)
@@ -84,9 +87,11 @@ actor DisciplineEngine {
                 projectPath: projectPath,
                 gatingSchemes: Self.gatingSchemes(projectPath: projectPath))
             async let stubMarkers = stubMarkerScanner.scan(projectPath: projectPath)
+            async let unwiredComponents = reachabilityScanner.scan(projectPath: projectPath)
 
-            let (drift, gaps, refs, why, ungated, stubs) = await (
-                driftFindings, coverageGaps, docRefs, whyTriggers, ungatedTargets, stubMarkers)
+            let (drift, gaps, refs, why, ungated, stubs, unwired) = await (
+                driftFindings, coverageGaps, docRefs, whyTriggers,
+                ungatedTargets, stubMarkers, unwiredComponents)
 
             var findings: [Finding] = []
             let now = Date()
@@ -201,6 +206,22 @@ actor DisciplineEngine {
                     suggestedAction: stub.isHardStub
                         ? "Finish this implementation or remove the dead path."
                         : "Resolve or remove the deferred-work marker.",
+                    createdAt: now,
+                    lastSeenAt: now
+                )
+                await queue.add(f)
+                findings.append(f)
+            }
+
+            // Unwired components - code that compiles green but is never reached.
+            for component in unwired {
+                let f = Finding(
+                    id: UUID(),
+                    category: .unwiredComponent,
+                    severity: .nudge,
+                    summary: component.symbol,
+                    detail: component.detail,
+                    suggestedAction: "Wire this component into the app, or delete it if obsolete.",
                     createdAt: now,
                     lastSeenAt: now
                 )
