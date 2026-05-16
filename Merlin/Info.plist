@@ -15,6 +15,10 @@
     <string>Merlin uses Accessibility to inspect and control UI elements in other apps during development automation.</string>
     <key>NSScreenCaptureUsageDescription</key>
     <string>Merlin captures screenshots of app windows to enable AI-driven visual UI analysis.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Merlin uses speech recognition to transcribe voice dictation into chat input.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Merlin uses the microphone to capture voice dictation.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Merlin sends Apple Events to Xcode to open files at specific line numbers.</string>
 </dict>
