@@ -12,6 +12,8 @@ enum DisciplineCLI {
         let projectPath = arguments[2]
 
         switch subcommand {
+        case "scan":
+            return await runScan(projectPath: projectPath)
         case "pre-commit":
             return await runPreCommit(projectPath: projectPath)
         case "post-commit":
@@ -22,6 +24,40 @@ enum DisciplineCLI {
             printUsage()
             return 2
         }
+    }
+
+    /// Renders discipline findings as a human-readable report, grouped by category.
+    static func formatScanReport(_ findings: [Finding]) -> String {
+        guard !findings.isEmpty else {
+            return "merlin-discipline scan: no findings."
+        }
+        var out = "merlin-discipline scan: \(findings.count) finding(s)\n"
+        let byCategory = Dictionary(grouping: findings, by: { $0.category.rawValue })
+        for category in byCategory.keys.sorted() {
+            out += "\n[\(category)]\n"
+            for f in (byCategory[category] ?? []).sorted(by: { $0.summary < $1.summary }) {
+                out += "  (\(f.severity.rawValue)) \(f.summary) — \(f.detail)\n"
+            }
+        }
+        return out
+    }
+
+    private static func runScan(projectPath: String) async -> Int32 {
+        print("merlin-discipline: scan \(projectPath)")
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: projectPath)
+        let storePath = URL(fileURLWithPath: projectPath, isDirectory: true)
+            .appendingPathComponent(".merlin/pending.json").path
+        let engine = DisciplineEngine(
+            adapter: adapter,
+            phaseScanner: PhaseScanner(),
+            manualCoverageScanner: ManualCoverageScanner(),
+            docReferenceGraph: DocReferenceGraph(),
+            whyCommentScanner: WhyCommentScanner(),
+            proseReadabilityChecker: ProseReadabilityChecker(),
+            storePath: storePath)
+        let report = await engine.scan(projectPath: projectPath)
+        print(formatScanReport(report.findings))
+        return 0
     }
 
     private static func runPreCommit(projectPath: String) async -> Int32 {
@@ -246,7 +282,7 @@ enum DisciplineCLI {
     }
 
     private static func printUsage() {
-        writeStderr("usage: merlin-discipline <pre-commit|post-commit|pre-push> <project-path>\n")
+        writeStderr("usage: merlin-discipline <scan|pre-commit|post-commit|pre-push> <project-path>\n")
     }
 
     private static func writeStderr(_ message: String) {
