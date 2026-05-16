@@ -55,13 +55,13 @@ actor DocReferenceGraph {
         var seen: Set<String> = []
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
+            // Phase-doc Markdown is build scaffolding — historical and illustrative
+            // identifiers, not product documentation. Never scan it for staleness.
+            if docFile.contains("/phases/") { continue }
+
             guard let text = try? String(
                 contentsOf: URL(fileURLWithPath: docFile), encoding: .utf8)
             else { continue }
-
-            // Phase-doc Markdown is build scaffolding full of illustrative code; only
-            // verify fenced blocks in product documentation.
-            let checkFences = !docFile.contains("/phases/")
 
             var currentSection: String?
             var inFence = false
@@ -89,7 +89,7 @@ actor DocReferenceGraph {
                 }
 
                 // Inside a fenced code block, verify enum-case declarations too.
-                if inFence && checkFences {
+                if inFence {
                     for caseName in extractEnumCaseNames(from: trimmed)
                     where caseName.count >= 4 && !symbolSet.contains(caseName) {
                         let key = "\(docFile)|\(caseName)"
@@ -126,7 +126,6 @@ actor DocReferenceGraph {
         let sourceExtensions: Set<String> = ["swift", "rs", "py", "ts", "js"]
         for case let url as URL in enumerator {
             guard sourceExtensions.contains(url.pathExtension),
-                  !url.path.contains("Tests/"),
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
 
             for line in text.components(separatedBy: .newlines) {

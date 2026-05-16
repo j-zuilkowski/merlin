@@ -1,5 +1,8 @@
 # Phase 310b — DocReferenceGraph Fenced-Block Strengthening
 
+> **Note:** `danglingReferences` and `enumerateSourceSymbols` here are superseded by
+> phase 316b (skip `phases/`, include test symbols). Implement 316b's versions.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 310a complete: failing runtime test in `DocReferenceGraphFencedBlockTests`.
