@@ -868,6 +868,9 @@ extension Notification.Name {
     static let merlinSelectProvider = Notification.Name("com.merlin.selectProvider")
     // Posted by File → New Session to open the project picker from Commands context
     static let merlinOpenPicker = Notification.Name("com.merlin.openPicker")
+    static let merlinToggleTerminal = Notification.Name("com.merlin.toggleTerminal")
+    static let merlinToggleSideChat = Notification.Name("com.merlin.toggleSideChat")
+    static let merlinReviewMemories = Notification.Name("com.merlin.reviewMemories")
     // Posted by the inject-file watcher when ~/.merlin/inject.txt is written.
     // userInfo["message"] contains the message string to submit to the active chat.
     static let merlinInjectMessage = Notification.Name("com.merlin.injectMessage")

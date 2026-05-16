@@ -84,13 +84,19 @@ struct MerlinCommands: Commands {
         }
 
         CommandMenu("View") {
-            Button("Toggle Terminal") {}
+            Button("Toggle Terminal") {
+                NotificationCenter.default.post(name: .merlinToggleTerminal, object: nil)
+            }
                 .keyboardShortcut("`", modifiers: [.control])
 
-            Button("Toggle Side Chat") {}
+            Button("Toggle Side Chat") {
+                NotificationCenter.default.post(name: .merlinToggleSideChat, object: nil)
+            }
                 .keyboardShortcut("/", modifiers: [.command, .shift])
 
-            Button("Review Memories") {}
+            Button("Review Memories") {
+                NotificationCenter.default.post(name: .merlinReviewMemories, object: nil)
+            }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
         }
 

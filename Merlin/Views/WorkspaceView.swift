@@ -49,6 +49,15 @@ struct WorkspaceView: View {
         .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
         .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
+        .onReceive(NotificationCenter.default.publisher(for: .merlinToggleTerminal)) { _ in
+            layout.showTerminalPane.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .merlinToggleSideChat)) { _ in
+            layout.showSideChat.toggle()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .merlinReviewMemories)) { _ in
+            showMemoriesWindow = true
+        }
         .preferredColorScheme(settings.appearance.theme.colorScheme)
         .sheet(isPresented: $coordinator.showingProjectPicker) {
             ProjectPickerView(onSelect: { ref in
