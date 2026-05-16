@@ -388,6 +388,11 @@ final class AppState: ObservableObject {
 
         if !projectPath.isEmpty {
             startDisciplineEventPolling(projectPath: projectPath)
+            // Auto-arm the discipline pre-commit gate for projects that opt into the
+            // pre_commit layer - no Settings toggle required (phase 313).
+            Task {
+                await DisciplineGateInstaller.installIfConfigured(projectPath: projectPath)
+            }
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let note = await HookEngine.shared.runSessionStart(

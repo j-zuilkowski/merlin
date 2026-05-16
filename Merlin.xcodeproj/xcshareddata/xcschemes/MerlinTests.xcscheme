@@ -35,6 +35,20 @@
                ReferencedContainer = "container:Merlin.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "5BCF6BEF01C24A7A3C3AD88E"
+               BuildableName = "merlin-discipline"
+               BlueprintName = "merlin-discipline"
+               ReferencedContainer = "container:Merlin.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

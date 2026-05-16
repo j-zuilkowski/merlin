@@ -125,6 +125,7 @@ schemes:
     build:
       targets:
         Merlin: all
+        merlin-discipline: all
         MerlinTests: [test]
     test:
       targets: [MerlinTests]
