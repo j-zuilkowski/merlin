@@ -509,6 +509,7 @@
 		D34C1332B065DE66CF3C2E93 /* SharedTypesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0FFAB3E5D9AFC65164EFA60 /* SharedTypesTests.swift */; };
 		D3DA4A3456EEC1C4552C48A3 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CDA0C15C4ED50CD4A4E34A9 /* Session.swift */; };
 		D40B5356B66D808C280C2906 /* OverrideAuditLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77BCC45602238EC50B7796DA /* OverrideAuditLog.swift */; };
+		D4B5F95B4F4CA9C4C000C311 /* ToolOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B006E37F9397B8F89885C2 /* ToolOutput.swift */; };
 		D4FA8D51EC2A58729DAC603F /* AgenticEngineCancelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4879C74446B4356A1C75FFDF /* AgenticEngineCancelTests.swift */; };
 		D53B931F1EE0E7A478EAF82B /* LMStudioContextAutoResizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCF8B3F74E3F3B73320C05B /* LMStudioContextAutoResizeTests.swift */; };
 		D730A15F97C392106774AD38 /* SpawnAgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7BA0465626E27DEA4B48D /* SpawnAgentTool.swift */; };
@@ -1012,6 +1013,7 @@
 		B8207E6A8C51267F37E0E48D /* SessionManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionManagerTests.swift; sourceTree = "<group>"; };
 		B8375634B4D905BCCA581AED /* AgenticEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngineTests.swift; sourceTree = "<group>"; };
 		B86EA0171621B21EECCFACE4 /* DiffEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffEngineTests.swift; sourceTree = "<group>"; };
+		B9B006E37F9397B8F89885C2 /* ToolOutput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolOutput.swift; sourceTree = "<group>"; };
 		BA3505FF13941D504C0A1363 /* VerificationFabPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationFabPolicyTests.swift; sourceTree = "<group>"; };
 		BAE51DDDA6FE781E7F3FCABC /* OverrideAnnotationParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverrideAnnotationParser.swift; sourceTree = "<group>"; };
 		BB3508BAC94769DC8D62BE44 /* DocReferenceSectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocReferenceSectionTests.swift; sourceTree = "<group>"; };
@@ -1299,6 +1301,7 @@
 				3DC46E6E6A09E9D9D4E88C79 /* ShellTool.swift */,
 				C70C83D88223C2B2DE3A5242 /* ToolDefinitions.swift */,
 				1C21FDA72563FEE392D0E2A6 /* ToolDiscovery.swift */,
+				B9B006E37F9397B8F89885C2 /* ToolOutput.swift */,
 				CA5AFB445A14C6FD59FE8C84 /* ToolRegistry.swift */,
 				B19DE0FBDE08CA74A748E58F /* VisionQueryTool.swift */,
 				03399FCD4CC20C0F9F4B787B /* XcodeTools.swift */,
@@ -2908,6 +2911,7 @@
 				C26DF83B0A2259D091F26D58 /* ToolDefinitions.swift in Sources */,
 				FC76FF05E0B2D9DD7F518202 /* ToolDiscovery.swift in Sources */,
 				8DCA5E2C9822732AF3875E94 /* ToolLogView.swift in Sources */,
+				D4B5F95B4F4CA9C4C000C311 /* ToolOutput.swift in Sources */,
 				1BBEFFD5B13C8D8286BF5DEB /* ToolRegistration.swift in Sources */,
 				6F1FF67B6E4FE0D7C1F4FE92 /* ToolRegistry.swift in Sources */,
 				6AFD893DBFDD19375FF54BF1 /* ToolRouter.swift in Sources */,

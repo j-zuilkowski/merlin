@@ -5,7 +5,8 @@ func registerAllTools(router: ToolRouter) {
     // MARK: File System
     router.register(name: "read_file") { args in
         let a = try decode(args, as: PathArgs.self)
-        return try await FileSystemTools.readFile(path: a.path)
+        let output = try await FileSystemTools.readFile(path: a.path)
+        return ToolOutput.clamp(output)
     }
     router.register(name: "write_file") { args in
         let a = try decode(args, as: WriteFileArgs.self)
@@ -33,7 +34,8 @@ func registerAllTools(router: ToolRouter) {
     }
     router.register(name: "search_files") { args in
         let a = try decode(args, as: SearchFilesArgs.self)
-        return try await FileSystemTools.searchFiles(path: a.path, pattern: a.pattern, contentPattern: a.contentPattern)
+        let output = try await FileSystemTools.searchFiles(path: a.path, pattern: a.pattern, contentPattern: a.contentPattern)
+        return ToolOutput.clamp(output)
     }
 
     // MARK: Shell
@@ -44,7 +46,8 @@ func registerAllTools(router: ToolRouter) {
             cwd: a.cwd,
             timeoutSeconds: a.timeoutSeconds ?? 120
         )
-        return "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
+        let output = "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
+        return ToolOutput.clamp(output)
     }
     // Alias for models trained on Claude computer-use format (e.g. DeepSeek V4 Pro)
     router.register(name: "bash") { args in
@@ -54,7 +57,8 @@ func registerAllTools(router: ToolRouter) {
             cwd: a.cwd,
             timeoutSeconds: a.timeoutSeconds ?? 120
         )
-        return "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
+        let output = "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
+        return ToolOutput.clamp(output)
     }
 
     // MARK: App Control
