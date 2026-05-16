@@ -316,7 +316,7 @@ actor PlannerEngine {
         for _ in 0..<max(1, maxPlanRetries) {
             do {
                 var raw = ""
-                let stream = try await provider.complete(request: request)
+                let stream = try await PreflightGuard.complete(request, provider: provider)
                 for try await chunk in stream {
                     raw += chunk.delta?.content ?? ""
                 }
@@ -406,7 +406,7 @@ actor PlannerEngine {
 
         do {
             var raw = ""
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             for try await chunk in stream {
                 raw += chunk.delta?.content ?? ""
             }
@@ -469,7 +469,7 @@ actor PlannerEngine {
 
         do {
             var raw = ""
-            let stream = try await executeProvider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: executeProvider)
             for try await chunk in stream {
                 raw += chunk.delta?.content ?? ""
             }

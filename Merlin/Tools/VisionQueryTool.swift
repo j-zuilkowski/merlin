@@ -28,7 +28,7 @@ enum VisionQueryTool {
             temperature: 0.1
         )
 
-        let stream = try await provider.complete(request: request)
+        let stream = try await PreflightGuard.complete(request, provider: provider)
         var response = ""
         for try await chunk in stream {
             if let content = chunk.delta?.content {

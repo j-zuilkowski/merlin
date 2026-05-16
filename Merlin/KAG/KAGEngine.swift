@@ -80,7 +80,7 @@ public final class KAGEngine {
         )
 
         do {
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             var collected = ""
             for try await chunk in stream {
                 collected += chunk.delta?.content ?? ""

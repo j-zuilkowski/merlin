@@ -35,7 +35,7 @@ final class BtwSession: ObservableObject {
 
         do {
             var accumulated = ""
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             for try await chunk in stream {
                 if let text = chunk.delta?.content, !text.isEmpty {
                     accumulated += text

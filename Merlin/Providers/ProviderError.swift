@@ -58,6 +58,50 @@ enum ProviderError: Error, Sendable {
             || lower.contains("content length exceeded")
     }
 
+    /// The context-window size (tokens) the provider reported in a context-overflow
+    /// 400 body, e.g. the 8192 in "maximum context length is 8192 tokens".
+    var observedContextLimit: Int? {
+        guard isContextLengthExceeded,
+              case .httpError(_, let body, _) = self
+        else {
+            return nil
+        }
+
+        let lower = body.lowercased()
+        guard let regex = try? NSRegularExpression(pattern: #"[0-9][0-9,]*"#) else {
+            return nil
+        }
+        let fullRange = NSRange(lower.startIndex..<lower.endIndex, in: lower)
+        let matches = regex.matches(in: lower, range: fullRange)
+        let candidates = matches.compactMap { match -> Int? in
+            guard let range = Range(match.range, in: lower) else { return nil }
+            let raw = lower[range].replacingOccurrences(of: ",", with: "")
+            guard let value = Int(raw),
+                  (512...10_000_000).contains(value)
+            else {
+                return nil
+            }
+
+            let prefixDistance = lower.distance(from: lower.startIndex, to: range.lowerBound)
+            let suffixDistance = lower.distance(from: range.upperBound, to: lower.endIndex)
+            let start = lower.index(range.lowerBound, offsetBy: -min(prefixDistance, 80))
+            let end = lower.index(range.upperBound, offsetBy: min(suffixDistance, 80))
+            let context = lower[start..<end]
+
+            guard context.contains("context length")
+                    || context.contains("context window")
+                    || context.contains("maximum context")
+                    || context.contains("context_length")
+                    || context.contains("token")
+            else {
+                return nil
+            }
+            return value
+        }
+
+        return candidates.max()
+    }
+
     // MARK: - Back-off
 
     /// Recommended delay before the next retry attempt.

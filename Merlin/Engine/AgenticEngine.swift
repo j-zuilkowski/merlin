@@ -2039,7 +2039,7 @@ final class AgenticEngine {
         request.maxTokens = 1_024
 
         do {
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             var result = ""
             for try await chunk in stream {
                 if let text = chunk.delta?.content { result += text }
@@ -2246,7 +2246,10 @@ final class AgenticEngine {
         while attempt < maxAttempts {
             attempt += 1
             do {
-                return try await provider.complete(request: request)
+                let budget = await ContextBudgetResolver.shared.usableInputTokens(for: provider)
+                return try await provider.complete(
+                    request: PreflightGuard.fit(request, usableInputTokens: budget)
+                )
             } catch let pe as ProviderError where pe.isRetriable && attempt < maxAttempts {
                 lastError = pe
                 onRetry(attempt, maxAttempts)

@@ -371,7 +371,7 @@ actor CriticEngine {
 
         do {
             var fullResponse = ""
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             for try await chunk in stream {
                 fullResponse += chunk.delta?.content ?? ""
             }

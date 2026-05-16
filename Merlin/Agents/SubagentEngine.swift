@@ -100,7 +100,7 @@ actor SubagentEngine {
             )
             let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
             inferenceDefaults.apply(to: &request)
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             var accumulated = ""
             for try await chunk in stream {
                 if Task.isCancelled {

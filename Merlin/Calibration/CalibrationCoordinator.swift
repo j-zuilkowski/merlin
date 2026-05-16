@@ -277,7 +277,7 @@ enum CalibrationError: Error, Sendable {
 
 private func calibrationCompleteText(provider: any LLMProvider, request: CompletionRequest) async throws -> String {
     var text = ""
-    let stream = try await provider.complete(request: request)
+    let stream = try await PreflightGuard.complete(request, provider: provider)
     for try await chunk in stream {
         text += chunk.delta?.content ?? ""
     }

@@ -312,6 +312,7 @@
 		74EB77FD48DB5E780961F6ED /* ScrollLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53E402BD101A862A02334C2 /* ScrollLockTests.swift */; };
 		7536430B6FF222EF218E3E3F /* ManualBaselineManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E61B841FDD46489C4A120D /* ManualBaselineManager.swift */; };
 		75B448BE3CB34C6F8C35A3C1 /* TOMLValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F5A34C572AD3C149CB95E10 /* TOMLValue.swift */; };
+		75CBE200FB6938813E84640D /* PreflightGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A434A5DF57629BBB019C5D /* PreflightGuard.swift */; };
 		75F0B33A7EEEFE087F476FA6 /* AtMentionPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D346174A6A0E86C7CA26312 /* AtMentionPicker.swift */; };
 		7621709D16BBAB8DA4D03F02 /* BundleModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1644B717ECEF9823F2E96994 /* BundleModule.swift */; };
 		76C99E90855AC89904F33BEE /* TelemetryTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D501FAEB789C93F0650523 /* TelemetryTestSupport.swift */; };
@@ -692,6 +693,7 @@
 		1E8ACDC8C4937F1B05DC995B /* MemoryEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryEngineTests.swift; sourceTree = "<group>"; };
 		1EF8BD263ED8F8E0C39D6E69 /* KiCadWorkflowOrchestrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadWorkflowOrchestrator.swift; sourceTree = "<group>"; };
 		2094536245C525EF5D0F8D09 /* BtwSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtwSessionTests.swift; sourceTree = "<group>"; };
+		20A434A5DF57629BBB019C5D /* PreflightGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreflightGuard.swift; sourceTree = "<group>"; };
 		20FCE64961CA8682E880D07D /* Builtin */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Builtin; path = Merlin/Skills/Builtin; sourceTree = SOURCE_ROOT; };
 		218C6502D1FD274880D1BB8A /* CalibrationProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationProgressView.swift; sourceTree = "<group>"; };
 		222FBE611A8D66041CE04135 /* BoardRoutingPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardRoutingPolicyTests.swift; sourceTree = "<group>"; };
@@ -1367,6 +1369,7 @@
 				84DD2796B13F22A3D1B0154F /* NullProvider.swift */,
 				85C6DF69B2D78173D8A33A75 /* PermissionMode.swift */,
 				AB2DC940A662EE8A948649A3 /* PlannerEngine.swift */,
+				20A434A5DF57629BBB019C5D /* PreflightGuard.swift */,
 				CFC2CED1BFD45B1E35C220B8 /* ProjectSizeObserver.swift */,
 				EA835ED6A2583140479B6F27 /* RAGSelector.swift */,
 				975097FE4BDDE42B128A4FD2 /* RedactedString.swift */,
@@ -2850,6 +2853,7 @@
 				623A1322580CC402EB50FDB1 /* PhaseScanner.swift in Sources */,
 				F7D7DFC7E2D2A89C4E5A53E7 /* PlannerEngine.swift in Sources */,
 				9EAD776E0EB6DBBA8ED01F8C /* PlannerEngineProtocol.swift in Sources */,
+				75CBE200FB6938813E84640D /* PreflightGuard.swift in Sources */,
 				6BB6BB0C69CA9E687F05995D /* PreviewPane.swift in Sources */,
 				3F2E8C0226752991DEC5A3CA /* ProjectAdapter.swift in Sources */,
 				D27CB77722BE635C7CFA1F38 /* ProjectConfig.swift in Sources */,

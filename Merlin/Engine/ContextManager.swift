@@ -207,7 +207,7 @@ class ContextManager: ObservableObject {
         request.maxTokens = 256
 
         do {
-            let stream = try await provider.complete(request: request)
+            let stream = try await PreflightGuard.complete(request, provider: provider)
             var result = ""
             for try await chunk in stream {
                 if let text = chunk.delta?.content { result += text }
