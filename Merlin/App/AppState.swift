@@ -40,6 +40,10 @@ enum ToolActivityState: String, Sendable {
 
 private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 
+private struct DisciplineToolArgs: Decodable {
+    var projectPath: String?
+}
+
 @MainActor
 final class AppState: ObservableObject {
     let projectPath: String
@@ -212,6 +216,38 @@ final class AppState: ObservableObject {
             }
 
             return "exit:\(exitCode)\nstdout:\(stdout)\nstderr:\(stderr)"
+        }
+
+        toolRouter.register(name: "generate_api_docs") { [weak self] args in
+            guard let self else { return "AppState unavailable." }
+            let path = self.disciplineToolProjectPath(from: args)
+            let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+            let out = try await APIDocGenerator().generate(projectPath: path, adapter: adapter)
+            return "API docs generated: \(out)"
+        }
+        toolRouter.register(name: "generate_dev_guide") { [weak self] args in
+            guard let self else { return "AppState unavailable." }
+            let path = self.disciplineToolProjectPath(from: args)
+            let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+            try await DevGuideGenerator().generate(projectPath: path, adapter: adapter)
+            return "Developer guide updated."
+        }
+        toolRouter.register(name: "write_vale_styles") { [weak self] args in
+            guard let self else { return "AppState unavailable." }
+            let path = self.disciplineToolProjectPath(from: args)
+            try await ValeStyleWriter().writeStyles(to: path + "/.vale/styles")
+            return "Vale styles written to .vale/styles."
+        }
+        toolRouter.register(name: "scaffold_manual_coverage") { [weak self] args in
+            guard let self else { return "AppState unavailable." }
+            let path = self.disciplineToolProjectPath(from: args)
+            let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+            let gaps = await ManualCoverageScanner().scan(projectPath: path, adapter: adapter)
+            let writer = ManualSectionTemplateWriter()
+            for gap in gaps {
+                try await writer.write(gap: gap, to: path + "/docs/manual-coverage.md")
+            }
+            return "Scaffolded \(gaps.count) manual-coverage section(s)."
         }
 
         let ctx = ContextManager()
@@ -481,6 +517,20 @@ final class AppState: ObservableObject {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
+    }
+
+    private func disciplineToolProjectPath(from args: String) -> String {
+        let decoded = try? JSONDecoder().decode(DisciplineToolArgs.self, from: Data(args.utf8))
+        if let requested = decoded?.projectPath, !requested.isEmpty {
+            return requested
+        }
+        if let current = engine.currentProjectPath, !current.isEmpty {
+            return current
+        }
+        if !projectPath.isEmpty {
+            return projectPath
+        }
+        return AppSettings.shared.projectPath
     }
 
     private static func disciplineToolLogText(for event: DisciplineEvent) -> String {

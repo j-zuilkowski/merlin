@@ -15,6 +15,8 @@ enum ToolDefinitions {
         uiType, uiKey, uiScroll,
         uiScreenshot, visionQuery,
         ragSearch, ragListBooks,
+        generateAPIDocs, generateDevGuide,
+        writeValeStyles, scaffoldManualCoverage,
     ] + KiCadToolDefinitions.all + [
         .spawnAgent,
     ]
@@ -180,6 +182,55 @@ enum ToolDefinitions {
         name: "tool_discover",
         description: "Discover CLI tools available on PATH",
         parameters: JSONSchema(type: "object", properties: [:], required: [])
+    ))
+
+    // Discipline
+    static let generateAPIDocs = ToolDefinition(function: .init(
+        name: "generate_api_docs",
+        description: "Generate API documentation for the current project",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "projectPath": JSONSchema(type: "string", description: "Optional project path")
+            ],
+            required: []
+        )
+    ))
+
+    static let generateDevGuide = ToolDefinition(function: .init(
+        name: "generate_dev_guide",
+        description: "Update the developer guide for the current project",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "projectPath": JSONSchema(type: "string", description: "Optional project path")
+            ],
+            required: []
+        )
+    ))
+
+    static let writeValeStyles = ToolDefinition(function: .init(
+        name: "write_vale_styles",
+        description: "Write Merlin Vale style files for the current project",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "projectPath": JSONSchema(type: "string", description: "Optional project path")
+            ],
+            required: []
+        )
+    ))
+
+    static let scaffoldManualCoverage = ToolDefinition(function: .init(
+        name: "scaffold_manual_coverage",
+        description: "Scaffold manual coverage sections for uncovered user-facing surfaces",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "projectPath": JSONSchema(type: "string", description: "Optional project path")
+            ],
+            required: []
+        )
     ))
 
     // Xcode
