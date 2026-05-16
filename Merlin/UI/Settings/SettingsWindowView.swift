@@ -140,7 +140,9 @@ private struct GeneralSettingsView: View {
         Form {
             Section("Startup") {
                 Toggle("Keep Mac awake during long sessions", isOn: $settings.keepAwake)
+                    .accessibilityIdentifier(AccessibilityID.settingsGeneralKeepAwakeToggle)
                 Toggle("Show notifications", isOn: $settings.notificationsEnabled)
+                    .accessibilityIdentifier(AccessibilityID.settingsGeneralNotificationsToggle)
             }
 
             Section("Permissions") {
@@ -149,6 +151,7 @@ private struct GeneralSettingsView: View {
                         Text(mode.label).tag(mode)
                     }
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsGeneralPermissionModePicker)
                 Text("New sessions open in this mode. Can be changed per-session in the chat header.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -158,16 +161,20 @@ private struct GeneralSettingsView: View {
                 Stepper(value: $settings.maxTokens, in: 1_024...1_000_000, step: 4_096) {
                     Text("Context window: \(settings.maxTokens.formatted())")
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsGeneralMaxTokensStepper)
                 Toggle("Auto compact at 80% context", isOn: $settings.autoCompact)
+                    .accessibilityIdentifier(AccessibilityID.settingsGeneralAutoCompactToggle)
             }
 
             Section("Subagents") {
                 Stepper(value: $settings.maxSubagentThreads, in: 1...16, step: 1) {
                     Text("Max parallel threads: \(settings.maxSubagentThreads)")
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsGeneralMaxSubagentThreadsStepper)
                 Stepper(value: $settings.maxSubagentDepth, in: 1...8, step: 1) {
                     Text("Max spawn depth: \(settings.maxSubagentDepth)")
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsGeneralMaxSubagentDepthStepper)
             }
         }
         .formStyle(.grouped)
@@ -187,14 +194,18 @@ private struct AppearanceSettingsView: View {
                         Text(theme.rawValue.capitalized).tag(theme)
                     }
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAppearanceThemePicker)
             }
 
             Section("Typography") {
                 Stepper(value: $settings.appearance.fontSize, in: 9...32, step: 1) {
                     Text("Font size: \(settings.appearance.fontSize, specifier: "%.0f")")
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAppearanceFontSizeStepper)
                 TextField("Font name", text: $settings.appearance.fontName)
+                    .accessibilityIdentifier(AccessibilityID.settingsAppearanceFontNameField)
                 TextField("Accent color hex", text: $settings.appearance.accentColorHex)
+                    .accessibilityIdentifier(AccessibilityID.settingsAppearanceAccentColorField)
             }
 
             Section("Message Layout") {
@@ -203,6 +214,7 @@ private struct AppearanceSettingsView: View {
                         Text(density.rawValue.capitalized).tag(density)
                     }
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAppearanceDensityPicker)
                 Text("Controls vertical padding between messages.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -236,6 +248,7 @@ struct AgentSettingsView: View {
                         Text(config.displayName).tag(config.id)
                     }
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAgentProviderPicker)
                 let models = registry.modelsByProviderID[settings.providerName] ?? []
                 if !models.isEmpty {
                     Picker("Model", selection: $settings.modelID) {
@@ -243,9 +256,11 @@ struct AgentSettingsView: View {
                             Text(model).tag(model)
                         }
                     }
+                    .accessibilityIdentifier(AccessibilityID.settingsAgentModelPicker)
                 }
                 TextField("Custom model ID", text: $settings.modelID)
                     .font(.system(.body, design: .monospaced))
+                    .accessibilityIdentifier(AccessibilityID.settingsAgentCustomModelField)
             }
 
             Section("Reasoning") {
@@ -256,17 +271,20 @@ struct AgentSettingsView: View {
                         set: { settings.reasoningEnabledOverrides[settings.modelID] = $0 }
                     )
                 )
+                .accessibilityIdentifier(AccessibilityID.settingsAgentReasoningToggle)
             }
 
             Section("Prompting") {
                 Toggle("Prompt Compression", isOn: $settings.promptCompressionEnabled)
                     .help("When enabled: uses a compact distilled version of the core system prompt, and compresses your CLAUDE.md once per change. Reduces token cost of each LLM request.")
+                    .accessibilityIdentifier(AccessibilityID.settingsAgentPromptCompressionToggle)
             }
 
             Section("Standing Instructions") {
                 TextEditor(text: $settings.standingInstructions)
                     .frame(minHeight: 120)
                     .font(.system(.body, design: .monospaced))
+                    .accessibilityIdentifier(AccessibilityID.settingsAgentStandingInstructionsEditor)
                 Text("Injected at the top of every system prompt.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -294,6 +312,7 @@ struct HooksSettingsView: View {
                 get: { disciplineHooksInstalled },
                 set: { setDisciplineHooks(enabled: $0) }
             ))
+            .accessibilityIdentifier(AccessibilityID.settingsHooksDisciplineToggle)
             .disabled(settings.projectPath.isEmpty || disciplineHooksBusy)
             .onAppear { refreshDisciplineHookState() }
             .onChange(of: settings.projectPath) { _, _ in
@@ -305,6 +324,7 @@ struct HooksSettingsView: View {
                     Toggle("", isOn: $hook.enabled)
                         .labelsHidden()
                         .toggleStyle(.checkbox)
+                        .accessibilityIdentifier(AccessibilityID.settingsHooksEnabledTogglePrefix + hook.event)
                         .onChange(of: hook.enabled) { _, _ in saveHooks() }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(hook.event)
@@ -323,6 +343,7 @@ struct HooksSettingsView: View {
                             .foregroundStyle(.red)
                     }
                     .buttonStyle(.borderless)
+                    .accessibilityIdentifier(AccessibilityID.settingsHooksDeleteButtonPrefix + hook.event)
                 }
             }
 
@@ -332,10 +353,13 @@ struct HooksSettingsView: View {
                         ForEach(eventTypes, id: \.self) { Text($0).tag($0) }
                     }
                     .pickerStyle(.menu)
+                    .accessibilityIdentifier(AccessibilityID.settingsHooksEventPicker)
                     TextField("Script path or shell command", text: $newCommand)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsHooksCommandField)
                     HStack {
                         Button("Cancel") { isAdding = false; newCommand = "" }
+                            .accessibilityIdentifier(AccessibilityID.settingsHooksCancelButton)
                         Spacer()
                         Button("Add") {
                             settings.hooks.append(HookConfig(event: newEvent, command: newCommand))
@@ -345,6 +369,7 @@ struct HooksSettingsView: View {
                         }
                         .disabled(newCommand.trimmingCharacters(in: .whitespaces).isEmpty)
                         .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier(AccessibilityID.settingsHooksConfirmAddButton)
                     }
                 }
                 .padding(.vertical, 4)
@@ -355,6 +380,7 @@ struct HooksSettingsView: View {
                 if !isAdding {
                     Button("Add Hook…") { isAdding = true }
                         .padding(.horizontal)
+                        .accessibilityIdentifier(AccessibilityID.settingsHooksAddButton)
                 }
                 Text("Scripts receive JSON on stdin; return JSON on stdout. Non-zero exit = deny (PreToolUse).")
                     .font(.caption)
@@ -428,17 +454,20 @@ struct MemoriesSettingsView: View {
         VStack(spacing: 0) {
             Form {
                 Toggle("Enable memory generation", isOn: $settings.memoriesEnabled)
+                    .accessibilityIdentifier(AccessibilityID.settingsMemoriesEnabledToggle)
                 Picker("Generate after idle", selection: $settings.memoryIdleTimeout) {
                     ForEach(timeoutOptions, id: \.seconds) { option in
                         Text(option.label).tag(option.seconds)
                     }
                 }
                 .disabled(!settings.memoriesEnabled)
+                .accessibilityIdentifier(AccessibilityID.settingsMemoriesIdlePicker)
                 Picker("Memory backend", selection: $settings.memoryBackendID) {
                     Text("Local (on-device)").tag("local-vector")
                     Text("None").tag("null")
                 }
                 .disabled(!settings.memoriesEnabled)
+                .accessibilityIdentifier(AccessibilityID.settingsMemoriesBackendPicker)
                 Text("After this idle period, Merlin summarises the conversation into memory files for your review.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -495,6 +524,7 @@ struct MCPSettingsView: View {
                                 Image(systemName: "trash")
                             }
                             .buttonStyle(.borderless)
+                            .accessibilityIdentifier(AccessibilityID.settingsMCPDeleteButtonPrefix + name)
                         }
                     }
                 }
@@ -512,10 +542,13 @@ struct MCPSettingsView: View {
             if isAddingServer {
                 VStack(alignment: .leading, spacing: 8) {
                     TextField("Server name", text: $newName)
+                        .accessibilityIdentifier(AccessibilityID.settingsMCPNameField)
                     TextField("Command (e.g. npx -y @modelcontextprotocol/server-filesystem)", text: $newCommand)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsMCPCommandField)
                     TextField("Args (space-separated, optional)", text: $newArgs)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsMCPArgsField)
                     HStack {
                         Button("Cancel") {
                             isAddingServer = false
@@ -523,6 +556,7 @@ struct MCPSettingsView: View {
                             newCommand = ""
                             newArgs = ""
                         }
+                        .accessibilityIdentifier(AccessibilityID.settingsMCPCancelButton)
                         Spacer()
                         Button("Add") {
                             addServer()
@@ -530,6 +564,7 @@ struct MCPSettingsView: View {
                         .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty ||
                                   newCommand.trimmingCharacters(in: .whitespaces).isEmpty)
                         .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier(AccessibilityID.settingsMCPConfirmAddButton)
                     }
                 }
                 .padding()
@@ -538,6 +573,7 @@ struct MCPSettingsView: View {
                     isAddingServer = true
                 }
                 .padding()
+                .accessibilityIdentifier(AccessibilityID.settingsMCPAddButton)
             }
         }
         .task {
@@ -609,6 +645,7 @@ struct SkillsSettingsView: View {
                                 .foregroundStyle(.tertiary)
                         }
                     }
+                    .accessibilityIdentifier(AccessibilityID.settingsSkillsEnabledTogglePrefix + skill.name)
                 }
             }
         }
@@ -621,6 +658,7 @@ struct SkillsSettingsView: View {
                     NSWorkspace.shared.open(dir)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityIdentifier(AccessibilityID.settingsSkillsOpenFolderButton)
                 Spacer()
                 Text("Disabled skills are hidden from the agent's tool list.")
                     .font(.caption)
@@ -646,6 +684,7 @@ struct SearchSettingsView: View {
             Section("Brave Search API Key") {
                 SecureField("API key", text: $apiKey)
                     .textContentType(.password)
+                    .accessibilityIdentifier(AccessibilityID.settingsSearchAPIKeyField)
                 Text("Get a free key at brave.com/search/api — used only for web_search tool calls.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -661,6 +700,7 @@ struct SearchSettingsView: View {
                 save()
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(AccessibilityID.settingsSearchSaveButton)
         }
         .formStyle(.grouped)
         .onAppear {
@@ -757,6 +797,7 @@ struct PermissionsSettingsView: View {
                             Image(systemName: "minus.circle")
                         }
                         .buttonStyle(.borderless)
+                        .accessibilityIdentifier(AccessibilityID.settingsPermissionsRemoveButtonPrefix + pattern.tool)
                     }
                 }
             }
@@ -778,6 +819,7 @@ private struct ConnectorsSettingsView: View {
             Section("GitHub") {
                 SecureField("Personal Access Token", text: $githubToken)
                     .textContentType(.password)
+                    .accessibilityIdentifier(AccessibilityID.settingsConnectorsGitHubTokenField)
                 Text("Required for PR monitoring and GitHub tool calls.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -786,16 +828,19 @@ private struct ConnectorsSettingsView: View {
             Section("Slack") {
                 SecureField("Bot Token (xoxb-...)", text: $slackToken)
                     .textContentType(.password)
+                    .accessibilityIdentifier(AccessibilityID.settingsConnectorsSlackTokenField)
             }
 
             Section("Linear") {
                 SecureField("API Key", text: $linearToken)
                     .textContentType(.password)
+                    .accessibilityIdentifier(AccessibilityID.settingsConnectorsLinearTokenField)
             }
 
             Section("Xcalibre RAG") {
                 SecureField("API Token", text: $xcalibreToken)
                     .textContentType(.password)
+                    .accessibilityIdentifier(AccessibilityID.settingsConnectorsXcalibreTokenField)
                 Text("Token for the Xcalibre semantic search service.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -812,6 +857,7 @@ private struct ConnectorsSettingsView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { save() }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(AccessibilityID.settingsConnectorsSaveButton)
             }
         }
     }
@@ -860,6 +906,7 @@ private struct AdvancedSettingsView: View {
                     }
                     NSWorkspace.shared.activateFileViewerSelecting([config])
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAdvancedShowConfigButton)
 
                 Button("Show Memories Folder in Finder") {
                     let home = FileManager.default.homeDirectoryForCurrentUser
@@ -867,6 +914,7 @@ private struct AdvancedSettingsView: View {
                     try? FileManager.default.createDirectory(at: memories, withIntermediateDirectories: true)
                     NSWorkspace.shared.open(memories)
                 }
+                .accessibilityIdentifier(AccessibilityID.settingsAdvancedShowMemoriesButton)
             }
 
             Section("Reset") {
@@ -874,6 +922,7 @@ private struct AdvancedSettingsView: View {
                     showResetConfirmation = true
                 }
                 .foregroundStyle(.red)
+                .accessibilityIdentifier(AccessibilityID.settingsAdvancedResetButton)
                 .confirmationDialog(
                     "Reset all settings?",
                     isPresented: $showResetConfirmation,
@@ -882,7 +931,9 @@ private struct AdvancedSettingsView: View {
                     Button("Reset", role: .destructive) {
                         resetToDefaults()
                     }
+                    .accessibilityIdentifier(AccessibilityID.settingsAdvancedConfirmResetButton)
                     Button("Cancel", role: .cancel) {}
+                        .accessibilityIdentifier(AccessibilityID.settingsAdvancedCancelResetButton)
                 } message: {
                     Text("This will reset all Merlin settings to their defaults. API keys and connector tokens are not affected.")
                 }

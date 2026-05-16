@@ -100,6 +100,7 @@ struct ChatView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 5))
                 }
                 .help("Stop (⌘.)")
+                .accessibilityIdentifier(AccessibilityID.chatStopButton)
                 .transition(.scale.combined(with: .opacity))
             }
 
@@ -118,6 +119,7 @@ struct ChatView: View {
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
             .help("Cycle permission mode (⌘⇧M)")
+            .accessibilityIdentifier(AccessibilityID.chatPermissionModeButton)
 
             ProviderHUD()
             PendingAttentionChipView(viewModel: appState.pendingAttention)
@@ -151,6 +153,7 @@ struct ChatView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .accessibilityIdentifier(AccessibilityID.chatToolbarActionPrefix + action.id.uuidString)
                 }
             }
             .padding(.horizontal, 16)
@@ -171,6 +174,7 @@ struct ChatView: View {
             .buttonStyle(.bordered)
             .help("Attach files")
             .disabled(model.isSending)
+            .accessibilityIdentifier(AccessibilityID.chatAttachmentButton)
 
             TextField("Message", text: $model.draft, axis: .vertical)
                 .lineLimit(1...5)
@@ -200,6 +204,7 @@ struct ChatView: View {
                         showAtPicker = false
                     }
                     .padding(10)
+                    .accessibilityIdentifier(AccessibilityID.chatAtMentionPicker)
                 }
                 .popover(isPresented: $showSkillsPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
                     SkillsPicker(query: $skillQuery) { skill in
@@ -207,10 +212,12 @@ struct ChatView: View {
                     }
                     .environmentObject(skillsRegistry)
                     .padding(10)
+                    .accessibilityIdentifier(AccessibilityID.chatSkillsPicker)
                 }
 
             VoiceDictationButton(draft: $model.draft)
                 .disabled(model.isSending)
+                .accessibilityIdentifier(AccessibilityID.chatVoiceButton)
 
             Button {
                 if model.isSending {
@@ -505,6 +512,7 @@ struct ChatView: View {
             .font(.caption.weight(.medium))
             .buttonStyle(.plain)
             .foregroundStyle(Color.accentColor)
+            .accessibilityIdentifier(AccessibilityID.chatResumeScrollButton)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)

@@ -33,6 +33,7 @@ struct TerminalPane: View {
                 TextField("Shell command", text: $command)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
+                    .accessibilityIdentifier(AccessibilityID.terminalPaneInput)
                     .onSubmit(runCommand)
 
                 Text(workingDirectory.isEmpty ? "Current working directory" : workingDirectory)
@@ -42,11 +43,13 @@ struct TerminalPane: View {
 
             Button("Run", action: runCommand)
                 .disabled(command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.status == .running)
+                .accessibilityIdentifier(AccessibilityID.terminalPaneRunButton)
 
             Button("Stop") {
                 viewModel.cancel()
             }
             .disabled(viewModel.status != .running)
+            .accessibilityIdentifier(AccessibilityID.terminalPaneStopButton)
 
             Spacer(minLength: 12)
 

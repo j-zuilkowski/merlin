@@ -22,6 +22,7 @@ struct MemoryReviewView: View {
             }
             .listStyle(.inset)
             .frame(width: 200, alignment: .leading)
+            .accessibilityIdentifier(AccessibilityID.memoryReviewList)
 
             Divider()
 
@@ -43,11 +44,13 @@ struct MemoryReviewView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(selectedURL == nil)
+                    .accessibilityIdentifier(AccessibilityID.memoryReviewRejectButton)
                     Button("Approve") {
                         Task { await approveSelected() }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(selectedURL == nil)
+                    .accessibilityIdentifier(AccessibilityID.memoryReviewApproveButton)
                 }
                 .padding(12)
             }

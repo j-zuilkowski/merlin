@@ -27,6 +27,7 @@ struct CalibrationProviderPickerView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .buttonStyle(.borderless)
+                    .accessibilityIdentifier(AccessibilityID.calibrationCancelButton)
             }
 
             Divider()
@@ -41,6 +42,7 @@ struct CalibrationProviderPickerView: View {
                 }
             }
             .pickerStyle(.radioGroup)
+            .accessibilityIdentifier(AccessibilityID.calibrationProviderPicker)
             .onChange(of: availableProviders) { _, providers in
                 if selectedProvider.isEmpty, let first = providers.first {
                     selectedProvider = first
@@ -74,6 +76,7 @@ struct CalibrationProviderPickerView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selectedProvider.isEmpty)
+                .accessibilityIdentifier(AccessibilityID.calibrationStartButton)
             }
         }
         .padding(24)

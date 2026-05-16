@@ -175,6 +175,7 @@ private struct StagedChangeView: View {
                     TextField("Comment on line \(lineIdx + 1)…", text: $pendingComment)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
+                        .accessibilityIdentifier(AccessibilityID.diffPaneCommentFieldPrefix + "\(lineIdx)")
                     Button("Submit") {
                         guard !pendingComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                         let comment = DiffComment(lineIndex: lineIdx, body: pendingComment)
@@ -186,12 +187,14 @@ private struct StagedChangeView: View {
                         commentingLineIndex = nil
                     }
                     .font(.caption.weight(.medium))
+                    .accessibilityIdentifier(AccessibilityID.diffPaneCommentSubmitButtonPrefix + "\(lineIdx)")
                     Button("Cancel") {
                         commentingLineIndex = nil
                         pendingComment = ""
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.diffPaneCommentCancelButtonPrefix + "\(lineIdx)")
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -201,8 +204,10 @@ private struct StagedChangeView: View {
             HStack(spacing: 4) {
                 Button("Accept", action: onAccept)
                     .buttonStyle(DiffActionButtonStyle(color: .green))
+                    .accessibilityIdentifier(AccessibilityID.diffPaneAcceptAllButton)
                 Button("Reject", action: onReject)
                     .buttonStyle(DiffActionButtonStyle(color: .red))
+                    .accessibilityIdentifier(AccessibilityID.diffPaneRejectAllButton)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)

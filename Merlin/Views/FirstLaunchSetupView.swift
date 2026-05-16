@@ -40,6 +40,7 @@ struct FirstLaunchSetupView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityIdentifier(AccessibilityID.firstLaunchProviderPicker)
             .onChange(of: selectedID) { _, _ in
                 apiKey = ""
                 attempted = false
@@ -50,6 +51,7 @@ struct FirstLaunchSetupView: View {
                     SecureField(selected.keyPlaceholder ?? "", text: $apiKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 13, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.firstLaunchAPIKeyField)
 
                     if attempted && keyIsEmpty {
                         Text("Please enter an API key to continue.")
@@ -74,6 +76,7 @@ struct FirstLaunchSetupView: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier(AccessibilityID.firstLaunchSkipButton)
 
                 Spacer()
 
@@ -90,6 +93,7 @@ struct FirstLaunchSetupView: View {
                     appState.showFirstLaunchSetup = false
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.firstLaunchContinueButton)
             }
         }
         .padding(32)

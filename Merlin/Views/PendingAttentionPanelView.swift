@@ -23,6 +23,7 @@ struct PendingAttentionPanelView: View {
                             .imageScale(.small)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(AccessibilityID.pendingAttentionCloseButton)
                 }
 
                 Divider()
@@ -77,6 +78,7 @@ private struct FindingRowView: View {
                 Button("Dismiss") { showDismissSheet = true }
                     .font(.caption)
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier(AccessibilityID.pendingAttentionDismissButtonPrefix + finding.id.uuidString)
             }
             if let action = finding.suggestedAction {
                 Text("→ \(action)")
@@ -91,14 +93,17 @@ private struct FindingRowView: View {
                     .font(.headline)
                 TextField("Why are you dismissing this finding?", text: $rationale)
                     .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier(AccessibilityID.pendingAttentionRationaleField)
                 HStack {
                     Button("Cancel") { showDismissSheet = false }
+                        .accessibilityIdentifier(AccessibilityID.pendingAttentionCancelDismissButton)
                     Spacer()
                     Button("Dismiss") {
                         onDismiss(rationale)
                         showDismissSheet = false
                     }
                     .disabled(rationale.isEmpty)
+                    .accessibilityIdentifier(AccessibilityID.pendingAttentionConfirmDismissButton)
                 }
             }
             .padding()

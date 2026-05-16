@@ -31,6 +31,7 @@ struct MemoryBrowserView: View {
                 .foregroundStyle(.secondary)
             TextField("Search memory…", text: $query)
                 .textFieldStyle(.plain)
+                .accessibilityIdentifier(AccessibilityID.memoryBrowserSearchField)
                 .onSubmit { Task { await runSearch() } }
             if isSearching {
                 ProgressView()
@@ -38,6 +39,7 @@ struct MemoryBrowserView: View {
             }
             Button("Search") { Task { await runSearch() } }
                 .disabled(query.trimmingCharacters(in: .whitespaces).isEmpty || isSearching)
+                .accessibilityIdentifier(AccessibilityID.memoryBrowserSearchButton)
         }
         .padding(10)
     }
@@ -96,6 +98,7 @@ struct MemoryBrowserView: View {
             }
             .buttonStyle(.plain)
             .disabled(deletingID != nil)
+            .accessibilityIdentifier(AccessibilityID.memoryBrowserDeleteButtonPrefix + chunk.chunkID)
         }
         .padding(.vertical, 4)
     }

@@ -30,6 +30,7 @@ struct AuthPopupView: View {
                     }
                     .buttonStyle(.plain)
                     .textSelection(.enabled)
+                    .accessibilityIdentifier(AccessibilityID.authArgumentButton)
                 }
             }
 
@@ -64,18 +65,21 @@ struct AuthPopupView: View {
                 }
                 .keyboardShortcut(.return, modifiers: [])
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier(AccessibilityID.authAllowOnceButton)
 
                 Button("Allow Always") {
                     onDecision(.allowAlways(pattern: suggestedPattern))
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier(AccessibilityID.authAllowAlwaysButton)
 
                 Button("Deny") {
                     onDecision(.deny)
                 }
                 .keyboardShortcut(.cancelAction)
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier(AccessibilityID.authDenyButton)
             }
         }
         .padding(24)

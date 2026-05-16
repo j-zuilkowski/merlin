@@ -39,6 +39,7 @@ struct RoleSlotSettingsView: View {
                     )
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsRoleVerifyCommandField)
                 }
                 LabeledContent("Lint / Check") {
                     TextField(
@@ -50,6 +51,7 @@ struct RoleSlotSettingsView: View {
                     )
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsRoleCheckCommandField)
                 }
             }
 
@@ -64,6 +66,7 @@ struct RoleSlotSettingsView: View {
                     )
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
+                        .accessibilityIdentifier(AccessibilityID.settingsRoleProjectPathField)
                         .help("Scopes xcalibre memory search to this project directory. Leave empty to search all memory.")
                 }
                 LabeledContent("Memory Enabled") {
@@ -72,6 +75,7 @@ struct RoleSlotSettingsView: View {
                         set: { settings.memoriesEnabled = $0 }
                         ))
                         .labelsHidden()
+                        .accessibilityIdentifier(AccessibilityID.settingsRoleMemoryEnabledToggle)
                 }
                 LabeledContent("Rerank Results") {
                     HStack(spacing: 8) {
@@ -80,6 +84,7 @@ struct RoleSlotSettingsView: View {
                             set: { settings.ragRerank = $0 }
                         ))
                             .labelsHidden()
+                            .accessibilityIdentifier(AccessibilityID.settingsRoleRerankToggle)
                         if settings.ragRerank {
                             Text("Requires 7B+ reranking model and ≥12GB VRAM")
                                 .font(.caption)
@@ -104,6 +109,7 @@ struct RoleSlotSettingsView: View {
                             Text("\(settings.ragChunkLimit) chunks")
                                 .monospacedDigit()
                         }
+                        .accessibilityIdentifier(AccessibilityID.settingsRoleChunkLimitStepper)
                         Text(settings.ragRerank
                              ? "Increase to 8–10 for best rerank quality"
                              : "3 is optimal without reranking")
@@ -144,6 +150,7 @@ struct RoleSlotSettingsView: View {
                 }
                 .labelsHidden()
                 .frame(maxWidth: 260)
+                .accessibilityIdentifier(AccessibilityID.settingsRoleSlotsPickerPrefix + slot.rawValue)
 
                 if let assignedID = settings.slotAssignments[slot],
                    !assignedID.isEmpty,
@@ -178,6 +185,7 @@ struct RoleSlotSettingsView: View {
             }
             .labelsHidden()
             .frame(maxWidth: 260)
+            .accessibilityIdentifier(AccessibilityID.settingsRoleActiveDomainPicker)
         }
     }
 

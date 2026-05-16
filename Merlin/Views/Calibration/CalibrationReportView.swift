@@ -32,6 +32,7 @@ struct CalibrationReportView: View {
                 Spacer()
                 Button("Done") { dismiss() }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier(AccessibilityID.calibrationDoneButton)
             }
             .padding([.horizontal, .top], 20)
             .padding(.bottom, 12)
@@ -70,6 +71,7 @@ struct CalibrationReportView: View {
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(AccessibilityID.calibrationApplyAllButton)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)

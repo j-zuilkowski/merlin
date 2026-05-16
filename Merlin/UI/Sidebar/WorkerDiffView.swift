@@ -38,8 +38,10 @@ struct WorkerDiffView: View {
             ToolbarItemGroup(placement: .automatic) {
                 Button("Reject All") { }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier(AccessibilityID.workerDiffRejectAllButton)
                 Button("Accept & Merge") { }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier(AccessibilityID.workerDiffAcceptMergeButton)
             }
         }
     }

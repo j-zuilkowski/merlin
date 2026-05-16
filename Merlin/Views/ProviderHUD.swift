@@ -132,6 +132,7 @@ struct ProviderHUD: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.primary)
+        .accessibilityIdentifier(AccessibilityID.providerSelector + "-" + entry.id)
     }
 
     private func emptyLocalHint(for entry: SlotPickerEntry) -> Bool {

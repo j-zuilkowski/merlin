@@ -38,7 +38,7 @@ struct ToolLogView: View {
                     }
                     .padding(12)
                 }
-                .accessibilityIdentifier("tool-log")
+                .accessibilityIdentifier(AccessibilityID.toolLog)
                 .textSelection(.enabled)
                 .onChange(of: appState.toolLogLines.count) { _, _ in
                     guard let last = appState.toolLogLines.last else { return }
@@ -64,6 +64,7 @@ struct ToolLogView: View {
                 appState.toolLogLines.removeAll()
             }
             .buttonStyle(.borderless)
+            .accessibilityIdentifier(AccessibilityID.toolLogClearButton)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

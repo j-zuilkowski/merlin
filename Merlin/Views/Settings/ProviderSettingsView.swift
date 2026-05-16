@@ -59,6 +59,7 @@ struct ProviderSettingsView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(isFetchingModels)
+                    .accessibilityIdentifier(AccessibilityID.settingsProvidersRefreshButton)
                 }
             }
         }
@@ -109,6 +110,7 @@ private struct ProviderRow: View {
                         .font(.caption)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 200)
+                        .accessibilityIdentifier(AccessibilityID.settingsProviderModelFieldPrefix + config.id)
                         .onAppear { modelDraft = config.model }
                         .onSubmit { onModelChange(modelDraft) }
                 } else {
@@ -131,6 +133,7 @@ private struct ProviderRow: View {
                         .font(.caption)
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 90)
+                        .accessibilityIdentifier(AccessibilityID.settingsProviderMaxTokensFieldPrefix + config.id)
                         .onAppear {
                             maxTokensDraft = config.maxOutputTokens.map { "\($0)" } ?? ""
                         }
@@ -154,11 +157,13 @@ private struct ProviderRow: View {
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
+                .accessibilityIdentifier(AccessibilityID.settingsProviderKeyButtonPrefix + config.id)
             }
 
             Toggle("", isOn: Binding(get: { config.isEnabled }, set: { _ in onToggle() }))
                 .labelsHidden()
                 .disabled(!hasKey && !config.isLocal)
+                .accessibilityIdentifier(AccessibilityID.settingsProviderEnabledTogglePrefix + config.id)
 
             Button(isActive ? "Active" : "Use") {
                 if config.isEnabled {
@@ -168,6 +173,7 @@ private struct ProviderRow: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .disabled(!config.isEnabled || isActive)
+            .accessibilityIdentifier(AccessibilityID.settingsProviderUseButtonPrefix + config.id)
         }
         .padding(.vertical, 4)
     }
@@ -186,12 +192,15 @@ private struct APIKeyEntrySheet: View {
             SecureField("sk-...", text: $draft)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 320)
+                .accessibilityIdentifier(AccessibilityID.settingsProviderKeyField)
             HStack {
                 Button("Cancel", action: onCancel)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeyCancelButton)
                 Spacer()
                 Button("Save", action: onSave)
                     .buttonStyle(.borderedProminent)
                     .disabled(draft.isEmpty)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeySaveButton)
             }
         }
         .padding(24)

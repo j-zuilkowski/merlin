@@ -79,16 +79,20 @@ struct ProjectPickerView: View {
                     .buttonStyle(.plain)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(AccessibilityID.projectPickerClearRecentsButton)
                 Spacer()
                 if onSelect != nil {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier(AccessibilityID.projectPickerCancelButton)
                 }
                 Button("Open Folder…") { isShowingFilePicker = true }
+                    .accessibilityIdentifier(AccessibilityID.projectPickerOpenFolderButton)
                 Button(onSelect == nil ? "Open" : "Add to Workspace") {
                     if let s = selected { open(s) }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selected == nil)
+                .accessibilityIdentifier(AccessibilityID.projectPickerOpenButton)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)

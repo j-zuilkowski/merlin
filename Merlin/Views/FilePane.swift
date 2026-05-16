@@ -85,6 +85,7 @@ struct FilePane: View {
             }
             .buttonStyle(.borderless)
             .help("Open file…")
+            .accessibilityIdentifier(AccessibilityID.filePaneOpenButton)
 
             if fileURL != nil {
                 Button {
@@ -98,6 +99,7 @@ struct FilePane: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Close file")
+                .accessibilityIdentifier(AccessibilityID.filePaneCloseButton)
             }
         }
         .padding(.horizontal, 12)
@@ -118,6 +120,7 @@ struct FilePane: View {
                 openFilePicker()
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.filePaneOpenButton)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, minHeight: 160)

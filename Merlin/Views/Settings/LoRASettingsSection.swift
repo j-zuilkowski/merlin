@@ -24,11 +24,13 @@ struct LoRASettingsSection: View {
             Section {
                 Toggle("Enable LoRA fine-tuning", isOn: $settings.loraEnabled)
                     .help("Master switch. When off, no training or adapter loading occurs.")
+                    .accessibilityIdentifier(AccessibilityID.settingsLoRAEnableToggle)
             }
 
             Section("Training") {
                 Toggle("Auto-train when threshold reached", isOn: $settings.loraAutoTrain)
                     .help("Automatically fine-tune after enough sessions accumulate.")
+                    .accessibilityIdentifier(AccessibilityID.settingsLoRAAutoTrainToggle)
 
                 Stepper(
                     "Minimum samples: \(settings.loraMinSamples)",
@@ -37,6 +39,7 @@ struct LoRASettingsSection: View {
                     step: 10
                 )
                 .help("Number of high-quality session records required before training fires.")
+                .accessibilityIdentifier(AccessibilityID.settingsLoRAMinSamplesStepper)
 
                 LabeledContent("Base model") {
                     TextField(
@@ -45,6 +48,7 @@ struct LoRASettingsSection: View {
                     )
                     .textFieldStyle(.roundedBorder)
                     .help("HuggingFace model ID or local path of the MLX model to fine-tune.")
+                    .accessibilityIdentifier(AccessibilityID.settingsLoRABaseModelField)
                 }
 
                 LabeledContent("Adapter output path") {
@@ -54,12 +58,14 @@ struct LoRASettingsSection: View {
                             text: $settings.loraAdapterPath
                         )
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier(AccessibilityID.settingsLoRAAdapterPathField)
 
                         Button("Browse…") {
                             if let url = browseForDirectory() {
                                 settings.loraAdapterPath = url.path
                             }
                         }
+                        .accessibilityIdentifier(AccessibilityID.settingsLoRAAdapterBrowseButton)
                     }
                     .help("Directory where mlx_lm.lora writes the trained adapter weights.")
                 }
@@ -69,12 +75,14 @@ struct LoRASettingsSection: View {
             Section("Inference") {
                 Toggle("Auto-load adapter after training", isOn: $settings.loraAutoLoad)
                     .help("Route the execute slot through mlx_lm.server when an adapter is available.")
+                    .accessibilityIdentifier(AccessibilityID.settingsLoRAAutoLoadToggle)
 
                 LabeledContent("MLX-LM server URL") {
                     TextField("http://localhost:8080", text: $settings.loraServerURL)
                         .textFieldStyle(.roundedBorder)
                         .disabled(!settings.loraAutoLoad)
                         .help("OpenAI-compatible endpoint of your mlx_lm.server running with the adapter loaded.\nStart with: python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080")
+                        .accessibilityIdentifier(AccessibilityID.settingsLoRAServerURLField)
                 }
             }
             .disabled(!settings.loraEnabled)

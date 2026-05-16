@@ -64,6 +64,7 @@ private struct ProjectSection: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(AccessibilityID.sessionProjectHeaderPrefix + mgr.projectRef.path)
             .popover(isPresented: $showHeaderPopover, arrowEdge: .trailing) {
                 ProjectHeaderPopover(mgr: mgr, coordinator: coordinator,
                                      isPresented: $showHeaderPopover)
@@ -155,6 +156,7 @@ private struct ProjectSection: View {
                         .padding(.bottom, 2)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier(AccessibilityID.sessionArchivedTogglePrefix + mgr.projectRef.path)
 
                     if showArchived {
                         ForEach(archived) { session in
@@ -229,6 +231,7 @@ private struct ProjectHeaderPopover: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(AccessibilityID.sessionProjectNewButton)
 
             Divider()
 
@@ -244,6 +247,7 @@ private struct ProjectHeaderPopover: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier(AccessibilityID.sessionProjectCloseButton)
         }
         .padding(.vertical, 4)
         .frame(minWidth: 180)

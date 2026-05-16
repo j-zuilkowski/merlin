@@ -42,6 +42,7 @@ struct ModelControlView: View {
                         get: { config.flashAttention ?? false },
                         set: { config.flashAttention = $0 }
                     ))
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlFlashAttentionToggle)
                 }
                 if supports(.cacheTypeK) {
                     Picker("KV Cache Type (K)", selection: Binding(
@@ -51,6 +52,7 @@ struct ModelControlView: View {
                         ForEach(["f32", "f16", "q8_0", "q4_0"], id: \.self) { Text($0) }
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlCacheKPicker)
                 }
                 if supports(.cacheTypeV) {
                     Picker("KV Cache Type (V)", selection: Binding(
@@ -60,6 +62,7 @@ struct ModelControlView: View {
                         ForEach(["f32", "f16", "q8_0", "q4_0"], id: \.self) { Text($0) }
                     }
                     .pickerStyle(.segmented)
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlCacheVPicker)
                 }
                 if supports(.ropeFrequencyBase) {
                     DoubleField("RoPE Frequency Base", value: $config.ropeFrequencyBase, placeholder: 1_000_000)
@@ -69,12 +72,14 @@ struct ModelControlView: View {
                         get: { config.useMmap ?? true },
                         set: { config.useMmap = $0 }
                     ))
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlUseMmapToggle)
                 }
                 if supports(.useMlock) {
                     Toggle("Use mlock (pin in RAM)", isOn: Binding(
                         get: { config.useMlock ?? false },
                         set: { config.useMlock = $0 }
                     ))
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlUseMlockToggle)
                 }
             }
 
@@ -93,12 +98,14 @@ struct ModelControlView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(isReloading)
+                        .accessibilityIdentifier(AccessibilityID.settingsModelControlApplyReloadButton)
                     } else {
                         Button("Show Restart Instructions") {
                             restartInstructions = manager.restartInstructions(modelID: modelID, config: config)
                             showRestartSheet = restartInstructions != nil
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityIdentifier(AccessibilityID.settingsModelControlRestartButton)
                     }
                 }
             }
@@ -174,6 +181,7 @@ private struct IntField: View {
             ))
             .frame(width: 100)
             .multilineTextAlignment(.trailing)
+            .accessibilityIdentifier(AccessibilityID.settingsModelControlFieldPrefix + label)
         }
     }
 }
@@ -200,6 +208,7 @@ private struct DoubleField: View {
             ))
             .frame(width: 120)
             .multilineTextAlignment(.trailing)
+            .accessibilityIdentifier(AccessibilityID.settingsModelControlFieldPrefix + label)
         }
     }
 }
@@ -237,6 +246,7 @@ struct RestartInstructionsSheet: View {
                 Spacer()
                 Button("Done") { dismiss() }
                     .buttonStyle(.bordered)
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlRestartDoneButton)
             }
 
             Text(instructions.explanation)
@@ -263,6 +273,7 @@ struct RestartInstructionsSheet: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Copy to clipboard")
+                    .accessibilityIdentifier(AccessibilityID.settingsModelControlCopyCommandButton)
                 }
             }
 

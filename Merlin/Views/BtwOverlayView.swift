@@ -31,6 +31,7 @@ struct BtwOverlayView: View {
                 .buttonStyle(.plain)
                 .keyboardShortcut(.cancelAction)
                 .help("Dismiss (Esc)")
+                .accessibilityIdentifier(AccessibilityID.btwCloseButton)
             }
 
             Divider()
@@ -41,6 +42,7 @@ struct BtwOverlayView: View {
                     .textFieldStyle(.plain)
                     .lineLimit(1...4)
                     .focused($inputFocused)
+                    .accessibilityIdentifier(AccessibilityID.btwQuestionField)
                     .onSubmit { submit() }
 
                 if session.isLoading {
@@ -52,6 +54,7 @@ struct BtwOverlayView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier(AccessibilityID.btwSubmitButton)
                 }
             }
 

@@ -15,6 +15,7 @@ struct SchedulerView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityIdentifier(AccessibilityID.schedulerAddButton)
             }
             .padding()
 
@@ -89,9 +90,13 @@ private struct AddScheduledTaskView: View {
     var body: some View {
         Form {
             TextField("Name", text: $name)
+                .accessibilityIdentifier(AccessibilityID.schedulerNameField)
             TextField("Time (HH:mm)", text: $time)
+                .accessibilityIdentifier(AccessibilityID.schedulerTimeField)
             TextField("Project path", text: $projectPath)
+                .accessibilityIdentifier(AccessibilityID.schedulerProjectPathField)
             TextField("Prompt", text: $prompt)
+                .accessibilityIdentifier(AccessibilityID.schedulerPromptField)
         }
         .padding()
         .toolbar {
@@ -110,11 +115,13 @@ private struct AddScheduledTaskView: View {
                     dismiss()
                 }
                 .disabled(name.isEmpty || projectPath.isEmpty)
+                .accessibilityIdentifier(AccessibilityID.schedulerConfirmAddButton)
             }
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
                     dismiss()
                 }
+                .accessibilityIdentifier(AccessibilityID.schedulerCancelButton)
             }
         }
         .frame(width: 360)
