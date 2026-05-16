@@ -104,6 +104,7 @@ final class AppState: ObservableObject {
     private var selectProviderObserver: NSObjectProtocol?
     private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
     private var cancellables: Set<AnyCancellable> = []
+    private var disciplineEventPollTask: Task<Void, Never>?
 
     init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.projectPath = projectPath
@@ -350,6 +351,7 @@ final class AppState: ObservableObject {
         }
 
         if !projectPath.isEmpty {
+            startDisciplineEventPolling(projectPath: projectPath)
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 if let note = await HookEngine.shared.runSessionStart(
@@ -447,7 +449,52 @@ final class AppState: ObservableObject {
         MerlinAppIntentsSupport.install(appState: self)
     }
 
+    private func startDisciplineEventPolling(projectPath: String) {
+        guard !projectPath.isEmpty else { return }
+        disciplineEventPollTask?.cancel()
+        let logPath = URL(fileURLWithPath: projectPath, isDirectory: true)
+            .appendingPathComponent(".merlin/discipline-events.jsonl")
+            .path
+        let log = DisciplineEventLog(logPath: logPath)
+
+        disciplineEventPollTask = Task { @MainActor [weak self] in
+            var since = Date(timeIntervalSince1970: 0)
+            while !Task.isCancelled {
+                let events = await log.events(since: since)
+                    .sorted { $0.timestamp < $1.timestamp }
+                if let latest = events.map(\.timestamp).max() {
+                    since = Date(timeInterval: 0.001, since: latest)
+                }
+
+                if !events.isEmpty {
+                    guard let self else { return }
+                    for event in events {
+                        self.toolLogLines.append(ToolLogLine(
+                            text: Self.disciplineToolLogText(for: event),
+                            source: .system,
+                            timestamp: event.timestamp
+                        ))
+                    }
+                    await self.pendingAttention.refresh(projectPath: projectPath)
+                }
+
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+    }
+
+    private static func disciplineToolLogText(for event: DisciplineEvent) -> String {
+        let status: String
+        if let passed = event.passed {
+            status = passed ? "passed" : "blocked"
+        } else {
+            status = event.detail
+        }
+        return "[discipline] \(event.subcommand): \(event.step) — \(status)"
+    }
+
     deinit {
+        disciplineEventPollTask?.cancel()
         if let githubTokenObserver {
             NotificationCenter.default.removeObserver(githubTokenObserver)
         }

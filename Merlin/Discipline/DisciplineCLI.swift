@@ -24,20 +24,50 @@ enum DisciplineCLI {
 
     private static func runPostCommit(projectPath: String) async -> Int32 {
         print("merlin-discipline: post-commit \(projectPath)")
+        let log = eventLog(projectPath: projectPath)
         let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: projectPath)
         let whyResult = await WHYCommentGate().check(projectPath: projectPath, adapter: adapter)
         switch whyResult {
         case .pass:
             print("merlin-discipline: WHY comment gate passed")
+            await record(
+                log: log,
+                subcommand: "post-commit",
+                step: "why-comment-gate",
+                detail: "WHY comment gate passed",
+                passed: true
+            )
+            await record(
+                log: log,
+                subcommand: "post-commit",
+                step: "result",
+                detail: "post-commit passed",
+                passed: true
+            )
             return 0
         case .block(let violations):
             printWHYViolations(violations)
+            await record(
+                log: log,
+                subcommand: "post-commit",
+                step: "why-comment-gate",
+                detail: "\(violations.count) WHY comment violation(s)",
+                passed: false
+            )
+            await record(
+                log: log,
+                subcommand: "post-commit",
+                step: "result",
+                detail: "post-commit blocked",
+                passed: false
+            )
             return 1
         }
     }
 
     private static func runPrePush(projectPath: String) async -> Int32 {
         print("merlin-discipline: pre-push \(projectPath)")
+        let log = eventLog(projectPath: projectPath)
         let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: projectPath)
 
         let whyResult = await WHYCommentGate().check(projectPath: projectPath, adapter: adapter)
@@ -48,20 +78,78 @@ enum DisciplineCLI {
         switch whyResult {
         case .pass:
             print("merlin-discipline: WHY comment gate passed")
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "why-comment-gate",
+                detail: "WHY comment gate passed",
+                passed: true
+            )
         case .block(let violations):
             printWHYViolations(violations)
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "why-comment-gate",
+                detail: "\(violations.count) WHY comment violation(s)",
+                passed: false
+            )
             shouldBlock = true
         }
 
         switch proseResult {
         case .pass:
             print("merlin-discipline: prose gate passed")
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "prose-gate",
+                detail: "prose gate passed for \(changedDocs.count) changed doc(s)",
+                passed: true
+            )
         case .block(let findings):
             printProseFindings(findings)
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "prose-gate",
+                detail: "\(findings.count) prose readability violation(s)",
+                passed: false
+            )
             shouldBlock = true
         }
 
+        await record(
+            log: log,
+            subcommand: "pre-push",
+            step: "result",
+            detail: shouldBlock ? "pre-push blocked" : "pre-push passed",
+            passed: !shouldBlock
+        )
         return shouldBlock ? 1 : 0
+    }
+
+    private static func eventLog(projectPath: String) -> DisciplineEventLog {
+        let path = URL(fileURLWithPath: projectPath, isDirectory: true)
+            .appendingPathComponent(".merlin/discipline-events.jsonl")
+            .path
+        return DisciplineEventLog(logPath: path)
+    }
+
+    private static func record(
+        log: DisciplineEventLog,
+        subcommand: String,
+        step: String,
+        detail: String,
+        passed: Bool?
+    ) async {
+        try? await log.record(DisciplineEvent(
+            timestamp: Date(),
+            subcommand: subcommand,
+            step: step,
+            detail: detail,
+            passed: passed
+        ))
     }
 
     private static func changedMarkdownDocs(projectPath: String) -> [String] {
