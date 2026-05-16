@@ -13,8 +13,8 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
-    MARKETING_VERSION: "2.2.3"
-    CURRENT_PROJECT_VERSION: 20
+    MARKETING_VERSION: "2.2.4"
+    CURRENT_PROJECT_VERSION: 21
 
 targets:
   Merlin:
@@ -65,6 +65,7 @@ targets:
       - path: RELEASE-v2.2.1.md
       - path: RELEASE-v2.2.2.md
       - path: RELEASE-v2.2.3.md
+      - path: RELEASE-v2.2.4.md
     dependencies:
       - target: Merlin
     settings:
