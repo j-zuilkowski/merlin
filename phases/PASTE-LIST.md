@@ -1972,3 +1972,23 @@ cat phases/phase-312-verification-gate-update.md
 # Verify: CLAUDE.md names MerlinTests-Live; .merlin/project.toml lists both gating schemes; MerlinTests-Live build-for-testing SUCCEEDED
 # Commit: Phase 312 — Fold MerlinTests-Live into the verification gate
 ```
+
+---
+
+## Discipline Gate Auto-Install (phase 313)
+
+> Makes the discipline pre-commit gate arm itself at app launch for any project that
+> opts into the `pre_commit` discipline layer — removes reliance on the opt-in Settings
+> toggle. The toggle stays as a manual install/uninstall override.
+
+```bash
+# ── PHASE 313a — Discipline Gate Auto-Install Tests (failing) ───────────────
+cat phases/phase-313a-discipline-gate-autoinstall-tests.md
+# Verify: BUILD FAILED — missing DisciplineGateInstaller
+# Commit: Phase 313a — Discipline gate auto-install tests (failing)
+
+# ── PHASE 313b — Discipline Gate Auto-Install ───────────────────────────────
+cat phases/phase-313b-discipline-gate-autoinstall.md
+# Verify: BUILD SUCCEEDED, zero warnings; DisciplineGateInstallerTests passes
+# Commit: Phase 313b — Auto-arm the discipline pre-commit gate at app launch
+```
