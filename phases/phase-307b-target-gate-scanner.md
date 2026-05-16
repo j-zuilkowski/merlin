@@ -1,5 +1,8 @@
 # Phase 307b — TargetGateScanner (implementation)
 
+> **Note:** the `scan` method here is superseded by phase 314b, which adds
+> transitive `dependencies:` following. Implement 314b's version.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 307a complete: failing tests in `TargetGateScannerTests`.

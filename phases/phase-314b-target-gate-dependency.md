@@ -1,24 +1,25 @@
-import Foundation
+# Phase 314b — TargetGateScanner Dependency-Following
 
-/// One target that the build gate never compiles.
-struct UngatedTargetFinding: Sendable, Equatable {
-    let targetName: String
-    let reason: String
-    /// True when the target is built by no scheme at all (hard problem); false when it
-    /// is built only by schemes outside the gating set (advisory).
-    let blocking: Bool
-}
+## Context
+Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
+Phase 314a complete: failing runtime test in `TargetGateScannerTests`.
 
-/// Scans `project.yml` for targets the verification gate never builds.
-///
-/// A target the gate never compiles rots silently the moment an API it depends on
-/// changes — exactly how `MerlinLiveTests` / `MerlinE2ETests` bit-rotted for ~160
-/// phases. This scanner makes that condition a first-class discipline finding.
-actor TargetGateScanner {
+Refines `TargetGateScanner` (phase 307b) so a target reached transitively through
+`dependencies:` from a scheme-built target counts as gated. This removes the
+false-positive class that blocked a real commit when the gate went live: `merlin-discipline`
+is built as a dependency of `Merlin` but is named in no scheme block.
 
-    /// Reports targets declared in `project.yml` that no scheme builds, or — when
-    /// `gatingSchemes` is non-empty — that only non-gating schemes build.
-    /// Returns `[]` when there is no `project.yml` (self-gates to xcodegen projects).
+`TargetGateScanner.swift` is in `Merlin/Discipline/` — pure Foundation, compiled into
+both the app and the `merlin-discipline` CLI. Keep it that way.
+
+---
+
+## 1. Edit: Merlin/Discipline/TargetGateScanner.swift
+
+**1a.** Replace the entire `scan(projectPath:gatingSchemes:)` method with this version
+— it builds the per-target dependency graph and expands each scheme's reach through it:
+
+```swift
     func scan(projectPath: String,
               gatingSchemes: [String] = []) async -> [UngatedTargetFinding] {
         let ymlURL = URL(fileURLWithPath: projectPath)
@@ -86,9 +87,11 @@ actor TargetGateScanner {
         }
         return findings
     }
+```
 
-    // MARK: - Minimal YAML helpers (xcodegen project.yml structure)
+**1b.** Add this private helper next to the other YAML helpers:
 
+```swift
     /// Dependency target names declared in a target's `dependencies:` block, restricted
     /// to `knownTargets` so non-target entries (`- sdk: AppIntents.framework`) are
     /// ignored.
@@ -107,59 +110,37 @@ actor TargetGateScanner {
         }
         return deps
     }
+```
 
-    /// The indent-2 keys directly under a column-0 `section` line (e.g. `targets:`).
-    private func childKeys(of section: String, in lines: [String]) -> [String] {
-        guard let start = lines.firstIndex(of: section) else { return [] }
-        var keys: [String] = []
-        var i = start + 1
-        while i < lines.count {
-            let line = lines[i]
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if !trimmed.isEmpty && !line.hasPrefix(" ") { break }
-            if line.hasPrefix("  ") && !line.hasPrefix("   "),
-               !trimmed.hasPrefix("#"), trimmed.hasSuffix(":") {
-                keys.append(String(trimmed.dropLast()))
-            }
-            i += 1
-        }
-        return keys
-    }
+`childKeys`, `block`, and `mentions` are unchanged from phase 307b — reuse them.
 
-    /// All lines nested beneath the indent-2 key `key` under column-0 `section`.
-    private func block(of key: String, under section: String,
-                       in lines: [String]) -> [String] {
-        guard let secStart = lines.firstIndex(of: section) else { return [] }
-        let keyLine = "  \(key):"
-        var i = secStart + 1
-        while i < lines.count && lines[i] != keyLine {
-            let line = lines[i]
-            if !line.trimmingCharacters(in: .whitespaces).isEmpty,
-               !line.hasPrefix(" ") {
-                return []
-            }
-            i += 1
-        }
-        guard i < lines.count else { return [] }
-        var body: [String] = []
-        i += 1
-        while i < lines.count {
-            let line = lines[i]
-            if line.trimmingCharacters(in: .whitespaces).isEmpty { i += 1; continue }
-            guard line.hasPrefix("   ") else { break }
-            body.append(line)
-            i += 1
-        }
-        return body
-    }
+## 2. Edit: phases/phase-307b-target-gate-scanner.md
+Add a one-line banner under that doc's title so the rebuild source of truth stays
+honest:
+```
+> **Note:** the `scan` method here is superseded by phase 314b, which adds
+> transitive `dependencies:` following. Implement 314b's version.
+```
 
-    /// True when `target` appears as a whole word anywhere in `body`. The character
-    /// class excludes `-` so hyphenated target names (`merlin-discipline`) match
-    /// exactly and `Merlin` does not falsely match inside `MerlinTests`.
-    private func mentions(_ body: String, _ target: String) -> Bool {
-        let pattern = "(^|[^A-Za-z0-9_-])"
-            + NSRegularExpression.escapedPattern(for: target)
-            + "([^A-Za-z0-9_-]|$)"
-        return body.range(of: pattern, options: .regularExpression) != nil
-    }
-}
+---
+
+## Verify
+```
+xcodegen generate
+xcodebuild -scheme MerlinTests test -destination 'platform=macOS' \
+  -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  -only-testing:MerlinTests/TargetGateScannerTests 2>&1 \
+  | grep -E 'Test Case|TEST (SUCCEEDED|FAILED)|error:'
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
+  -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)'
+```
+Expected: every `TargetGateScannerTests` method passes (including
+`testDependencyOnlyTargetIsTreatedAsGated` and the original 307a tests); BUILD
+SUCCEEDED, zero warnings.
+
+## Commit
+```
+git add Merlin/Discipline/TargetGateScanner.swift phases/phase-307b-target-gate-scanner.md \
+  phases/phase-314b-target-gate-dependency.md
+git commit -m "Phase 314b — TargetGateScanner follows transitive project.yml dependencies"
+```
