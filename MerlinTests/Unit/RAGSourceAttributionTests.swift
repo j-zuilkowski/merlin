@@ -125,12 +125,6 @@ final class RAGSourceAttributionTests: XCTestCase {
         XCTAssertTrue(ragEvents.isEmpty)
     }
 
-    // MARK: - View type existence
-
-    func testRAGSourcesViewTypeExists() {
-        guard ProcessInfo.processInfo.environment["RUN_VIEW_INSTANTIATION"] == "1" else { return }
-        _ = RAGSourcesView(chunks: [])
-    }
 }
 
 // MARK: - Helpers

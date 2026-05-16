@@ -1225,7 +1225,6 @@ Cross-reference between code comments and this manual:
 | `RoleSlotSettingsView` | `Views/Settings/RoleSlotSettingsView.swift` | [Supervisor-Worker Engine → AgentSlot](#agentslot) |
 | `PerformanceDashboardView` | `Views/Settings/PerformanceDashboardView.swift` | [Supervisor-Worker Engine → ModelPerformanceTracker](#modelperformancetracker) |
 | `MemoryBrowserView` | `Views/Settings/MemoryBrowserView.swift` | [RAG Memory Browser](#rag-memory-browser) |
-| `RAGSourcesView` | `Views/RAGSourcesView.swift` | [RAG Memory Extension](#rag-memory-extension) |
 | `MemoryBackendPlugin` | `Memories/MemoryBackendPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
 | `MemoryBackendRegistry` | `Memories/MemoryBackendPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |
 | `LocalVectorPlugin` | `Memories/LocalVectorPlugin.swift` | [Memory System → Local Vector Store (v9)](#local-vector-store-v9) |

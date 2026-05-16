@@ -139,8 +139,9 @@ enum ConversationHTMLRenderer {
         let textDiv = """
         <div class="assistant-text">\(thinking)\(content)</div>
         """
+        let ragSources = entry.ragSources.isEmpty ? "" : ragSourcesHTML(entry.ragSources)
         return """
-        <div class="message assistant" data-id="\(id)">\(toolGroup)\(grounding)\(textDiv)</div>
+        <div class="message assistant" data-id="\(id)">\(toolGroup)\(grounding)\(textDiv)\(ragSources)</div>
         """
     }
 
@@ -173,6 +174,29 @@ enum ConversationHTMLRenderer {
           <span class="grounding-status">\(htmlEscape(statusLabel))</span>
           <span class="grounding-meta">\(details)</span>
         </div>
+        """
+    }
+
+    private static func ragSourcesHTML(_ chunks: [RAGChunk]) -> String {
+        let rows = chunks.map { chunk -> String in
+            let badge = htmlEscape(chunk.source)
+            let locationParts = [chunk.bookTitle, chunk.headingPath]
+                .compactMap { $0 }.filter { !$0.isEmpty }
+            let location = htmlEscape(locationParts.joined(separator: " · "))
+            let preview = htmlEscape(String(chunk.text.prefix(140)))
+            return """
+            <div class="rag-source">
+              <span class="rag-source-badge rag-source-\(badge)">\(badge)</span>
+              <span class="rag-source-loc">\(location)</span>
+              <div class="rag-source-preview">\(preview)</div>
+            </div>
+            """
+        }.joined()
+        return """
+        <details class="rag-sources">
+          <summary class="rag-sources-header">Sources (\(chunks.count))</summary>
+          <div class="rag-sources-body">\(rows)</div>
+        </details>
         """
     }
 
@@ -370,6 +394,52 @@ enum ConversationHTMLRenderer {
         }
         .grounding-meta {
             color: var(--fg-secondary);
+        }
+        .rag-sources {
+            margin-top: 8px;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        .rag-sources-header {
+            list-style: none;
+            cursor: pointer;
+            user-select: none;
+            color: var(--fg-secondary);
+            font-weight: 600;
+        }
+        .rag-sources-header::-webkit-details-marker { display: none; }
+        .rag-sources-body {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .rag-source {
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+        }
+        .rag-source-badge {
+            display: inline-block;
+            margin-right: 6px;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+            color: var(--fg-secondary);
+            font-family: var(--mono);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+        .rag-source-loc {
+            color: var(--fg-secondary);
+            font-size: 11px;
+        }
+        .rag-source-preview {
+            margin-top: 3px;
+            color: var(--fg);
+            line-height: 1.35;
         }
         .tool-header {
             list-style: none;
