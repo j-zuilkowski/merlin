@@ -19,8 +19,10 @@ final class GitHookInstallerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: repo) }
         let installer = GitHookInstaller()
         try await installer.install(projectPath: repo.path)
+        let preCommit = repo.appendingPathComponent(".git/hooks/pre-commit")
         let postCommit = repo.appendingPathComponent(".git/hooks/post-commit")
         let prePush = repo.appendingPathComponent(".git/hooks/pre-push")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: preCommit.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: postCommit.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: prePush.path))
     }
@@ -42,10 +44,10 @@ final class GitHookInstallerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: repo) }
         let installer = GitHookInstaller()
         try await installer.install(projectPath: repo.path)
-        let postCommit = repo.appendingPathComponent(".git/hooks/post-commit").path
-        let attrs = try FileManager.default.attributesOfItem(atPath: postCommit)
+        let preCommit = repo.appendingPathComponent(".git/hooks/pre-commit").path
+        let attrs = try FileManager.default.attributesOfItem(atPath: preCommit)
         if let perms = attrs[.posixPermissions] as? Int {
-            XCTAssertTrue(perms & 0o111 != 0, "post-commit should be executable")
+            XCTAssertTrue(perms & 0o111 != 0, "pre-commit should be executable")
         }
     }
 

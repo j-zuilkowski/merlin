@@ -31,6 +31,8 @@ final class GitHookHardeningTests: XCTestCase {
         try await installer.install(projectPath: repoRoot.path)
 
         XCTAssertTrue(FileManager.default.fileExists(
+            atPath: hooksDir.appendingPathComponent("pre-commit").path))
+        XCTAssertTrue(FileManager.default.fileExists(
             atPath: hooksDir.appendingPathComponent("post-commit").path))
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: hooksDir.appendingPathComponent("pre-push").path))

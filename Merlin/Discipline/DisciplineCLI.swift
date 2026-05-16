@@ -12,6 +12,8 @@ enum DisciplineCLI {
         let projectPath = arguments[2]
 
         switch subcommand {
+        case "pre-commit":
+            return await runPreCommit(projectPath: projectPath)
         case "post-commit":
             return await runPostCommit(projectPath: projectPath)
         case "pre-push":
@@ -19,6 +21,39 @@ enum DisciplineCLI {
         default:
             printUsage()
             return 2
+        }
+    }
+
+    private static func runPreCommit(projectPath: String) async -> Int32 {
+        print("merlin-discipline: pre-commit \(projectPath)")
+        let log = eventLog(projectPath: projectPath)
+        let gating = DisciplineEngine.gatingSchemes(projectPath: projectPath)
+        let result = await LivenessGate().check(
+            projectPath: projectPath, gatingSchemes: gating)
+        switch result {
+        case .pass:
+            print("merlin-discipline: liveness gate passed")
+            await record(
+                log: log,
+                subcommand: "pre-commit",
+                step: "liveness-gate",
+                detail: "liveness gate passed",
+                passed: true
+            )
+            return 0
+        case .block(let orphans):
+            for orphan in orphans {
+                print("merlin-discipline: ungated target "
+                    + "\(orphan.targetName) - \(orphan.reason)")
+            }
+            await record(
+                log: log,
+                subcommand: "pre-commit",
+                step: "liveness-gate",
+                detail: "\(orphans.count) ungated target(s)",
+                passed: false
+            )
+            return 1
         }
     }
 
@@ -211,7 +246,7 @@ enum DisciplineCLI {
     }
 
     private static func printUsage() {
-        writeStderr("usage: merlin-discipline <post-commit|pre-push> <project-path>\n")
+        writeStderr("usage: merlin-discipline <pre-commit|post-commit|pre-push> <project-path>\n")
     }
 
     private static func writeStderr(_ message: String) {
