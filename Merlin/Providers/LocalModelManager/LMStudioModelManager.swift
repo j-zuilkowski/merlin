@@ -154,7 +154,29 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
     // MARK: - Context auto-resize
 
+    func loadedContextLength(modelID: String) async throws -> Int? {
+        let entry = try await loadedV0Entry(modelID: modelID)
+        return entry?.loaded_context_length
+    }
+
     func ensureContextLength(modelID: String, minimumTokens: Int) async throws {
+        guard let entry = try await loadedV0Entry(modelID: modelID) else { return }
+
+        let loadedCtx = entry.loaded_context_length ?? 0
+        guard minimumTokens > loadedCtx else { return }
+
+        let maxCtx = entry.max_context_length ?? 131_072
+        let target = min(nextPowerOf2(minimumTokens), maxCtx)
+        try await reload(modelID: modelID, config: LocalModelConfig(contextLength: target))
+    }
+
+    private struct V0Entry: Decodable {
+        var id: String
+        var loaded_context_length: Int?
+        var max_context_length: Int?
+    }
+
+    private func loadedV0Entry(modelID: String) async throws -> V0Entry? {
         let url = baseURL.appendingPathComponent("api/v0/models")
         var request = URLRequest(url: url)
         applyAuth(&request)
@@ -164,22 +186,10 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
             throw ModelManagerError.providerUnavailable
         }
 
-        struct V0Entry: Decodable {
-            var id: String
-            var loaded_context_length: Int?
-            var max_context_length: Int?
-        }
         struct V0Response: Decodable { var data: [V0Entry] }
 
         let decoded = try JSONDecoder().decode(V0Response.self, from: data)
-        guard let entry = decoded.data.first(where: { $0.id == modelID }) else { return }
-
-        let loadedCtx = entry.loaded_context_length ?? 0
-        guard minimumTokens > loadedCtx else { return }
-
-        let maxCtx = entry.max_context_length ?? 131_072
-        let target = min(nextPowerOf2(minimumTokens), maxCtx)
-        try await reload(modelID: modelID, config: LocalModelConfig(contextLength: target))
+        return decoded.data.first { $0.id == modelID }
     }
 
     private func nextPowerOf2(_ n: Int) -> Int {

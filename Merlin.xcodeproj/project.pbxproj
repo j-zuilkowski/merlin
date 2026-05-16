@@ -156,6 +156,7 @@
 		387BAC27250F396D9E6B7712 /* DisciplineEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4BB36CD5D6200B581A4940E /* DisciplineEngine.swift */; };
 		38B2EF6AE4CDA8CF2D6693E6 /* PlannerEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04CA04F7BDB4D00A2DADB4E /* PlannerEngineTests.swift */; };
 		38DD51CC18DF4B8E8B0A0A44 /* WorkspaceLayoutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A231B0513B388FE4EB74817E /* WorkspaceLayoutManager.swift */; };
+		396AB76E06E7C2D268C2782E /* ContextBudgetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4D402C58CD9C4590D2C0CFE /* ContextBudgetResolver.swift */; };
 		3AA0A2DA6521FA8C692A463A /* WhyCommentFalsePositiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9178474ED8730F415B30317 /* WhyCommentFalsePositiveTests.swift */; };
 		3B136CCE4873557676DF6FF2 /* ToolBurstCompactionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A6BC64F332AB9DEFA827E9 /* ToolBurstCompactionTests.swift */; };
 		3BAE3E589F99F577D8AA892A /* HelpWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC2DE6BBD3111E153605E48 /* HelpWindowView.swift */; };
@@ -1159,6 +1160,7 @@
 		F4638FBF518CD9C37B73DD46 /* DPOReviewQueueViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DPOReviewQueueViewTests.swift; sourceTree = "<group>"; };
 		F4919A99A39BBA0124C04C20 /* LoRATrainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRATrainer.swift; sourceTree = "<group>"; };
 		F4A3E7BC1DB1F40B9BDB5C3D /* SubagentBlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentBlockView.swift; sourceTree = "<group>"; };
+		F4D402C58CD9C4590D2C0CFE /* ContextBudgetResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextBudgetResolver.swift; sourceTree = "<group>"; };
 		F51F141207FDDE07F86DBA5D /* KAGBackendPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KAGBackendPlugin.swift; sourceTree = "<group>"; };
 		F5E176E4F32A909643CACCBC /* LiveEnvironmentGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveEnvironmentGate.swift; sourceTree = "<group>"; };
 		F6EC30AA86593D0E23A30FE3 /* PerformanceDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceDashboardView.swift; sourceTree = "<group>"; };
@@ -1342,6 +1344,7 @@
 				A9994CB480DAB11B8081EC89 /* AgenticEngine.swift */,
 				F9B6610DB9A5FDADAD72CA67 /* AgentSlot.swift */,
 				8DEAE4AFECE902973EADC31F /* CLAUDEMDLoader.swift */,
+				F4D402C58CD9C4590D2C0CFE /* ContextBudgetResolver.swift */,
 				A65F30CE00DABF745DC5826D /* ContextInjector.swift */,
 				9893A2495D30F7BB69D2C739 /* ContextManager.swift */,
 				6F556B4619F1B0C216C83EA1 /* ContextUsageTracker.swift */,
@@ -2740,6 +2743,7 @@
 				6A3BE638CA60364F47B45B6E /* Connector.swift in Sources */,
 				431702F121351568B8793A6A /* ConnectorCredentials.swift in Sources */,
 				2E6AC6AD832870A142F9B7D1 /* ContentView.swift in Sources */,
+				396AB76E06E7C2D268C2782E /* ContextBudgetResolver.swift in Sources */,
 				7CD14B6A0B8C6A6AD3D244C7 /* ContextInjector.swift in Sources */,
 				174394DE8B17C3EBB5495E58 /* ContextManager.swift in Sources */,
 				1978829EFB49171EA494B584 /* ContextUsageTracker.swift in Sources */,

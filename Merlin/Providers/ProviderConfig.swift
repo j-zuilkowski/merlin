@@ -147,7 +147,7 @@ final class ProviderRegistry: ObservableObject {
     private let persistURL: URL
     private let session: URLSession
 
-    static var defaultPersistURL: URL {
+    nonisolated static var defaultPersistURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Merlin/providers.json")
     }
@@ -298,6 +298,27 @@ final class ProviderRegistry: ObservableObject {
             ?? defaultProviders.filter(\.isEnabled)
     }
 
+    nonisolated static func persistedBudget(for id: String) -> ProviderBudget? {
+        load(from: defaultPersistURL)?.providers.first { $0.id == id }?.budget
+    }
+
+    nonisolated static func recordLearnedContextWindow(_ contextTokens: Int, for id: String) {
+        guard var snapshot = load(from: defaultPersistURL),
+              let index = snapshot.providers.firstIndex(where: { $0.id == id }) else { return }
+        let existingReserved = snapshot.providers[index].budget?.reservedOutputTokens ?? 4_096
+        snapshot.providers[index].budget = ProviderBudget(
+            maxInputTokens: contextTokens,
+            reservedOutputTokens: existingReserved
+        )
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        try? FileManager.default.createDirectory(
+            at: defaultPersistURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        try? data.write(to: defaultPersistURL, options: .atomic)
+    }
+
     static func persistedActiveProviderID() -> String {
         load(from: defaultPersistURL)?.activeProviderID ?? "deepseek"
     }
@@ -434,6 +455,12 @@ final class ProviderRegistry: ObservableObject {
     func updateMaxOutputTokens(_ tokens: Int?, for id: String) {
         guard let index = providers.firstIndex(where: { $0.id == id }) else { return }
         providers[index].maxOutputTokens = tokens
+        persist()
+    }
+
+    func updateBudget(_ budget: ProviderBudget?, for id: String) {
+        guard let index = providers.firstIndex(where: { $0.id == id }) else { return }
+        providers[index].budget = budget
         persist()
     }
 
@@ -600,7 +627,7 @@ final class ProviderRegistry: ObservableObject {
         var activeProviderID: String
     }
 
-    private static func load(from url: URL) -> Snapshot? {
+    nonisolated private static func load(from url: URL) -> Snapshot? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(Snapshot.self, from: data)
     }
