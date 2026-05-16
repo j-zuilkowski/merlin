@@ -53,6 +53,8 @@ actor ProseReadabilityChecker {
     }
 
     private func spawnVale(docFile: String) async -> String {
+        guard await ToolRequirementCoordinator.shared.ensure("vale") else { return "" }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = ["vale", "--output", "JSON", docFile]

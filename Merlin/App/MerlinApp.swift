@@ -20,12 +20,19 @@ struct MerlinApp: App {
     @StateObject private var recents = RecentProjectsStore()
     @StateObject private var scheduler = SchedulerEngine()
     @StateObject private var settings = AppSettings.shared
+    @StateObject private var toolRequirements = ToolRequirementCoordinator.shared
 
     var body: some Scene {
         WindowGroup("Merlin", id: "workspace") {
             WorkspaceView()
                 .environmentObject(recents)
                 .frame(minWidth: 900, minHeight: 600)
+                .sheet(item: $toolRequirements.pending) { requirement in
+                    ToolRequirementSheet(
+                        requirement: requirement,
+                        coordinator: toolRequirements
+                    )
+                }
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)

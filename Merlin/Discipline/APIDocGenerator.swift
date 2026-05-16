@@ -82,6 +82,9 @@ actor APIDocGenerator {
     private func generateRustDoc(projectPath: String, adapter: ProjectAdapter) async throws -> String {
         let output = outputPath(projectPath: projectPath, adapter: adapter)
         if dryRun { return output }
+        guard await ToolRequirementCoordinator.shared.ensure("cargo") else {
+            throw GeneratorError.generationFailed("Required tool unavailable: cargo")
+        }
 
         let result = try await runProcess(
             "/usr/bin/env",
