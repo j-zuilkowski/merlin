@@ -520,6 +520,7 @@ final class ChatViewModel: ObservableObject {
     @Published var isSending: Bool = false
     @Published var revision: Int = 0
 
+    weak var subagentSidebar: SubagentSidebarViewModel?
     var subagentVMs: [UUID: SubagentBlockViewModel] = [:]
     private var assistantIndex: Int?
     private(set) var lastRAGSources: [RAGChunk] = []
@@ -690,6 +691,13 @@ final class ChatViewModel: ObservableObject {
                 text: ""
             )
             items.append(entry)
+            if let sidebar = subagentSidebar {
+                sidebar.add(SubagentSidebarEntry(
+                    id: id,
+                    parentSessionID: sidebar.parentSessionID,
+                    agentName: agentName,
+                    label: agentName))
+            }
             bumpRevision()
         case .subagentUpdate(let id, let subagentEvent):
             subagentVMs[id]?.apply(subagentEvent)
@@ -710,6 +718,7 @@ final class ChatViewModel: ObservableObject {
                     summary: vm.summary,
                     text: vm.accumulatedText)
             }
+            subagentSidebar?.apply(event: subagentEvent, to: id)
             bumpRevision()
             case .ragSources(let chunks):
                 lastRAGSources = chunks

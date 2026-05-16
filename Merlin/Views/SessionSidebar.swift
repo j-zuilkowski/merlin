@@ -83,6 +83,13 @@ private struct ProjectSection: View {
                         }
                 }
 
+                if let active = coordinator.activeSession,
+                   mgr.liveSessions.contains(where: { $0.id == active.id }),
+                   !active.subagentSidebar.workerEntries.isEmpty {
+                    SubagentSection(sidebar: active.subagentSidebar)
+                        .padding(.top, 6)
+                }
+
                 // Prior sessions (disk records not currently live)
                 let liveIDs = Set(mgr.liveSessions.map(\.id))
                 let prior = mgr.sessionStore.activeSessions.filter { !liveIDs.contains($0.id) }
@@ -167,6 +174,33 @@ private struct ProjectSection: View {
             }
             .padding(.horizontal, 6)
             .padding(.bottom, 8)
+        }
+    }
+}
+
+// MARK: - Subagents
+
+private struct SubagentSection: View {
+    @ObservedObject var sidebar: SubagentSidebarViewModel
+
+    private var selectedEntry: SubagentSidebarEntry? {
+        guard let selectedEntryID = sidebar.selectedEntryID else { return nil }
+        return sidebar.workerEntries.first { $0.id == selectedEntryID }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            SectionLabel("Active Subagents")
+
+            ForEach(sidebar.workerEntries) { entry in
+                SubagentSidebarRowView(entry: entry, isSelected: entry.id == sidebar.selectedEntryID)
+                    .onTapGesture { sidebar.select(id: entry.id) }
+            }
+
+            if let selectedEntry {
+                WorkerDiffView(entry: selectedEntry)
+                    .frame(height: 180)
+            }
         }
     }
 }

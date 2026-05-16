@@ -24,6 +24,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let appState: AppState
     let skillsRegistry: SkillsRegistry
     let chatViewModel = ChatViewModel()
+    let subagentSidebar: SubagentSidebarViewModel
     let activeDomainIDs: [String]
     @Published private(set) var isClosed = false
     /// Set by SessionManager.restore() to record which store Session this live session
@@ -48,6 +49,7 @@ final class LiveSession: ObservableObject, Identifiable {
          sessionStore: SessionStore? = nil,
          activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.id = UUID()
+        self.subagentSidebar = SubagentSidebarViewModel(parentSessionID: self.id)
         self.title = "New Session"
         self.createdAt = Date()
         self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
@@ -94,6 +96,7 @@ final class LiveSession: ObservableObject, Identifiable {
             appState.engine.contextManager.load(initialMessages)
             chatViewModel.load(from: initialMessages)
         }
+        chatViewModel.subagentSidebar = subagentSidebar
 
         let mcpToolRouter = appState.engine.toolRouter
         lifecycleTasks.append(Task { @MainActor [mcpBridge, projectPath = projectRef.path, mcpToolRouter] in
