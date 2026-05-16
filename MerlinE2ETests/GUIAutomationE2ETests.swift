@@ -57,7 +57,11 @@ final class GUIAutomationE2ETests: XCTestCase {
             bundleID: "com.merlin.TestTargetApp",
             quality: 0.85
         )
-        let provider = LMStudioProvider()
+        let provider = OpenAICompatibleProvider(
+            id: "lmstudio",
+            baseURL: URL(string: "http://localhost:1234/v1")!,
+            apiKey: nil,
+            modelID: "")
         let response = try await VisionQueryTool.query(
             imageData: jpeg,
             prompt: "Where is the 'Primary Action' button? Return JSON: {\"x\": int, \"y\": int}",
