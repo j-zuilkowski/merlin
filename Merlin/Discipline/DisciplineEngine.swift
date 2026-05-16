@@ -208,6 +208,11 @@ actor DisciplineEngine {
         return await queue.top(n: 50)
     }
 
+    /// The full count of queued findings (the chip badge total, uncapped).
+    func pendingAttentionCount() async -> Int {
+        await queue.all().count
+    }
+
     func dismiss(finding: Finding, rationale: String) async {
         await queue.dismiss(id: finding.id, rationale: rationale)
         let entry = OverrideEntry(

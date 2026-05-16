@@ -13,7 +13,7 @@ struct PendingAttentionChipView: View {
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(chipColor)
-                Text("\(viewModel.findings.count)")
+                Text("\(viewModel.totalCount)")
                     .font(.caption.monospacedDigit())
                     .foregroundColor(.primary)
             }
@@ -25,8 +25,8 @@ struct PendingAttentionChipView: View {
             )
         }
         .buttonStyle(.plain)
-        .help("Discipline: \(viewModel.findings.count) pending findings")
-        .opacity(viewModel.findings.isEmpty ? 0 : 1)
+        .help("Discipline: \(viewModel.totalCount) pending findings")
+        .opacity(viewModel.totalCount == 0 ? 0 : 1)
     }
 
     private var chipColor: Color {

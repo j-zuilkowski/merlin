@@ -6,6 +6,7 @@ import SwiftUI
 final class PendingAttentionViewModel: ObservableObject {
 
     @Published var findings: [Finding] = []
+    @Published var totalCount: Int = 0
     @Published var isExpanded: Bool = false
 
     private let disciplineEngine: DisciplineEngine
@@ -16,6 +17,7 @@ final class PendingAttentionViewModel: ObservableObject {
 
     func refresh(projectPath: String) async {
         findings = Array(await disciplineEngine.pendingAttention(projectPath: projectPath).prefix(3))
+        totalCount = await disciplineEngine.pendingAttentionCount()
     }
 
     func dismiss(finding: Finding, rationale: String) async {
