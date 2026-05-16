@@ -72,4 +72,30 @@ final class TargetGateScannerTests: XCTestCase {
                       "a target built only by a non-gating scheme must be flagged")
         XCTAssertFalse(findings.contains { $0.targetName == "App" })
     }
+
+    /// A target built only as a dependency of a scheme-built target is reached
+    /// transitively and must NOT be flagged as ungated.
+    func testDependencyOnlyTargetIsTreatedAsGated() async throws {
+        let proj = try makeTmpProject(projectYML: """
+        name: Demo
+        targets:
+          App:
+            type: application
+            dependencies:
+              - target: CoreLib
+          CoreLib:
+            type: framework
+        schemes:
+          App:
+            build:
+              targets:
+                App: all
+        """)
+        defer { try? FileManager.default.removeItem(at: proj) }
+
+        let findings = await TargetGateScanner().scan(projectPath: proj.path)
+        XCTAssertFalse(findings.contains { $0.targetName == "CoreLib" },
+                       "a target built transitively as a dependency of a scheme-built "
+                       + "target must not be flagged as ungated")
+    }
 }
