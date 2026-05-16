@@ -62,7 +62,7 @@ final class DisciplineEngineTests: XCTestCase {
             // No findings in clean project — inject one via the queue
             return
         }
-        await engine.dismiss(findingID: first.id, rationale: "test dismiss")
+        await engine.dismiss(finding: first, rationale: "test dismiss")
         findings = await engine.pendingAttention(projectPath: proj.path)
         XCTAssertFalse(findings.contains { $0.id == first.id })
     }

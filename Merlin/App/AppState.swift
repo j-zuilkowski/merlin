@@ -247,6 +247,7 @@ final class AppState: ObservableObject {
                 Task { [weak self] in
                     guard let self else { return }
                     _ = await self.disciplineEngine.scan(projectPath: path)
+                    await self.disciplineEngine.runWeeklyOverrideReview()
                     await self.pendingAttention.refresh(projectPath: path)
                 }
             }

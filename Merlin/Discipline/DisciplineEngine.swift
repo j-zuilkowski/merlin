@@ -13,6 +13,7 @@ actor DisciplineEngine {
     private let whyCommentScanner: WhyCommentScanner
     private let proseReadabilityChecker: ProseReadabilityChecker
     private let queue: PendingAttentionQueue
+    private let overrideLog: OverrideAuditLog
 
     // MARK: - Circuit breaker
 
@@ -43,6 +44,10 @@ actor DisciplineEngine {
         self.whyCommentScanner = whyCommentScanner
         self.proseReadabilityChecker = proseReadabilityChecker
         self.queue = PendingAttentionQueue(storePath: storePath)
+        self.overrideLog = OverrideAuditLog(
+            logPath: URL(fileURLWithPath: storePath)
+                .deletingLastPathComponent()
+                .appendingPathComponent("override-log.jsonl").path)
         self.forceErrorForTesting = forceErrorForTesting
     }
 
@@ -187,8 +192,25 @@ actor DisciplineEngine {
         return await queue.top(n: 50)
     }
 
-    func dismiss(findingID: UUID, rationale: String) async {
-        await queue.dismiss(id: findingID, rationale: rationale)
+    func dismiss(finding: Finding, rationale: String) async {
+        await queue.dismiss(id: finding.id, rationale: rationale)
+        let entry = OverrideEntry(
+            timestamp: Date(),
+            category: finding.category.rawValue,
+            file: finding.summary,
+            line: 0,
+            rationale: rationale,
+            userDismissed: true,
+            viaAnnotation: false,
+            annotationText: nil
+        )
+        try? await overrideLog.record(entry)
+    }
+
+    /// Runs the weekly override-accumulation review, adding an
+    /// `.overrideAuditAccumulation` finding when a category is dismissed too often.
+    func runWeeklyOverrideReview() async {
+        await overrideLog.weeklyReview(queue: queue)
     }
 
     // MARK: - Adapter

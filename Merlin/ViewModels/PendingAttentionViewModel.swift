@@ -19,7 +19,7 @@ final class PendingAttentionViewModel: ObservableObject {
     }
 
     func dismiss(finding: Finding, rationale: String) async {
-        await disciplineEngine.dismiss(findingID: finding.id, rationale: rationale)
+        await disciplineEngine.dismiss(finding: finding, rationale: rationale)
         findings = findings.filter { $0.id != finding.id }
     }
 }
