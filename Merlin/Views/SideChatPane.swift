@@ -5,6 +5,7 @@ struct SideChatPane: View {
     @StateObject private var appState: AppState
     @StateObject private var skillsRegistry: SkillsRegistry
     @StateObject private var sessionManager: SessionManager
+    @StateObject private var chatViewModel: ChatViewModel
 
     init(isVisible: Binding<Bool>, projectPath: String) {
         _isVisible = isVisible
@@ -13,6 +14,7 @@ struct SideChatPane: View {
         _skillsRegistry = StateObject(wrappedValue: SkillsRegistry(projectPath: projectPath))
         let ref = ProjectRef(path: projectPath, displayName: "Side Chat", lastOpenedAt: Date())
         _sessionManager = StateObject(wrappedValue: SessionManager(projectRef: ref))
+        _chatViewModel = StateObject(wrappedValue: ChatViewModel())
     }
 
     var body: some View {
@@ -27,6 +29,7 @@ struct SideChatPane: View {
                     .environmentObject(skillsRegistry)
                     .environmentObject(appState.registry)
                     .environmentObject(sessionManager)
+                    .environmentObject(chatViewModel)
             } else {
                 placeholder
             }

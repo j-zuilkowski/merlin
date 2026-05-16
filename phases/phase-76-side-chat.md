@@ -82,3 +82,26 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Views/SideChatPane.swift
 git commit -m "Phase 76 — SideChatPane: independent AppState secondary chat panel"
 ```
+
+---
+
+## Fixes
+
+### v2.2.4 — missing `ChatViewModel` environment object (crash)
+
+`ChatView` (now rendered directly by `SideChatPane`, not `ContentView`) declares
+`@EnvironmentObject private var model: ChatViewModel`. `SideChatPane` injected
+`appState`, `skillsRegistry`, `appState.registry`, and `sessionManager` but **not** a
+`ChatViewModel` — unlike the other two `ChatView` call sites (`FloatingWindowManager`
+uses `liveSession.chatViewModel`; `WorkspaceView → ContentView` uses
+`session.chatViewModel`). The first time the pane was made visible, SwiftUI trapped in
+`EnvironmentObject.error()` during the layout pass (`ChatView.messageList` reading
+`model.items`), crashing the app with `EXC_BREAKPOINT`.
+
+Fix: `SideChatPane` now owns its own `ChatViewModel` as a `@StateObject` (constructed in
+`init`, matching how it already constructs `AppState`/`SkillsRegistry`/`SessionManager`)
+and injects it onto `ChatView` via `.environmentObject(chatViewModel)`.
+
+Regression test: `MerlinTests/Unit/SideChatPaneEnvironmentTests.swift` hosts the pane
+with `isVisible: true` and forces a layout pass; a missing `@EnvironmentObject` aborts
+the test (verified — reproduces the original fatal error when the injection is removed).
