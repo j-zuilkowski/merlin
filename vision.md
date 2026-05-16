@@ -9,7 +9,169 @@ upstream of committed design.
 
 ## Active
 
-_No ideas currently awaiting promotion._
+### Spec-Driven Development alignment
+
+Merlin's discipline subsystem already practices Spec-Driven Development (SDD) under its
+own names: `CLAUDE.md` is the constitution, `architecture.md` is the spec/plan,
+`phases/` are the tasks, and the `vision → architecture → phase → code` pipeline is the
+SDD workflow. This initiative formalizes that alignment so the methodology is named,
+consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro).
+
+**What:**
+- **Vocabulary rename** — adopt SDD terms across the docs and the `project:*` skill
+  subsystem: *constitution* (`CLAUDE.md`), *spec* (`architecture.md`), *tasks*
+  (`phases/`), *vision* (`vision.md`).
+- **EARS acceptance criteria** — add a `## Behavior` block to the phase/task template
+  using EARS notation (`WHEN [trigger] THE [system] SHALL [response]`, plus `WHILE`,
+  `IF … THEN`, `WHERE`, and ubiquitous forms). Each task states its intended behavior
+  in a standardized, testable form that the `a`-phase TDD tests verify directly.
+- **Backfill** — retrofit the EARS `## Behavior` block and the SDD vocabulary into the
+  existing committed phase files, not new phases only.
+- **Consistency gate** — extend `DisciplineEngine` with a vision↔spec↔task coherence
+  check (the SDD `/analyze` equivalent), run before implementation rather than only as
+  post-hoc drift detection. It verifies that every task traces to a spec section and
+  every spec section to a vision item, and flags divergence up front.
+
+**Why:** Merlin converged on SDD independently; naming it removes ambiguity, EARS
+sharpens every task's acceptance criteria, a shared vocabulary makes the discipline
+subsystem legible to the ecosystem, and the consistency gate catches spec/task
+divergence before code is written. SDD is additive here — keep the phase-file + TDD
+engine; do not swap the `project:*` subsystem for Spec Kit's CLI.
+
+**Rename scope — decided: structural rename.** `phases/` → `tasks/` (and each
+`phase-NNx-*.md` → `task-NNx-*.md`); `architecture.md` → `spec.md`. `CLAUDE.md` keeps
+its filename — Claude Code auto-loads `CLAUDE.md` by name, so renaming it would break
+the toolchain; it is *designated* the constitution in place. The rename touches every
+task file, the `DisciplineEngine` / `PhaseScanner` code that walks `phases/`,
+`REBUILD-GUIDE.md`, `PASTE-LIST.md`, `ALL-PHASES.md`, and **all five `project:*` skills
+(`init`, `adopt`, `phase`, `revise`, `release`)** — all updated together in one
+mechanical phase.
+
+For the `project:*` skills the rename is **two-sided**: not only their own prose but
+also the artifacts they *scaffold* must change — `project:init` and `project:adopt`
+write `spec.md` / `tasks/` (not `architecture.md` / `phases/`), `project:phase` and
+`project:revise` operate on `tasks/`, and the doc templates under
+`~/.merlin/templates/docs/` follow suit. So every project Merlin creates or adopts after
+the rename uses the SDD names from the start, not just the Merlin repo itself.
+
+**Design consideration — keep it domain-agnostic.** The discipline subsystem must serve
+software, electronics (KiCad), and the planned mechanical-CAD (Fusion) domain — not just
+Swift code. Write the methodology generically: constitution → vision → spec → tasks →
+produce → verify, with the **verification gate as a pluggable per-domain step**. This
+is not new infrastructure — domains are already plugins (`DomainPlugin` / `DomainRegistry`,
+plus `MCPDomainAdapter` for fully external MCP domains), and `DomainPlugin.verificationBackend`
+— with `DomainManifest.verificationCommands` for external domains — already *is* the
+per-domain verification seam. SDD builds on it: each domain's `verificationBackend`
+supplies that domain's acceptance check — TDD tests for software, ERC/DRC/SPICE for
+KiCad, interference/clearance for Fusion. (This is distinct from `AdapterRegistry`,
+which is the project *build* toolchain — `swift-xcode` / `rust-cargo`.) One adjustment
+for non-code domains: SDD's "the spec regenerates the artifact" assumption holds for
+code but weakens for PCB layout and CAD geometry — those are stateful craft artifacts
+the spec *governs and gates* rather than *regenerates*. The `spec.md` methodology
+section must state this explicitly, so the EARS `## Behavior` blocks and the consistency
+gate are written to *verify* hardware artifacts, not regenerate them.
+
+**Promotion:** promote to `spec.md` as a methodology section, then decompose into tasks
+in this order — (1) EARS `## Behavior` template change; (2) structural rename sweep;
+(3) backfill EARS + SDD vocabulary into the existing renamed task files; (4) the
+vision↔spec↔task consistency gate in `DisciplineEngine`.
+
+_Status: held in `## Active` — not yet promoted to the spec._
+
+### Runtime plugin architecture + the electronics plugin
+
+Merlin's domains become **runtime-loaded plugins**. `merlin/plugins/` holds plugin
+source — one subdirectory per plugin. Each plugin builds to a **shared library**; at
+launch Merlin scans the installed-plugins location, loads each one, and registers it
+with `DomainRegistry`. A plugin contributes its domain logic, tools, and verification
+backend — **and its own settings panel**, which Merlin discovers and renders
+dynamically in the Settings window. Adding a domain (with its settings UI) becomes
+dropping in a plugin, not editing the app. For now every plugin lives in the Merlin
+repo and is built together with Merlin; splitting plugins into their own repos is
+expected later but explicitly deferred.
+
+**The electronics plugin** — `merlin/plugins/electronics/` — is the first plugin and
+consolidates *all* KiCad and FreeRouting work into one directory: the current in-app
+KiCad client (`Merlin/Electronics/` — contracts, schemas, the `.kicad_sch` parser,
+`KiCadToolDefinitions`, `KiCadWorkflowOrchestrator`, policies) plus the `kicad-cli` /
+FreeRouting execution the `merlin-kicad-mcp` scaffold was started for. One plugin, one
+directory.
+
+**FreeRouting backend — local or hosted.** Routing (`kicad_route_pass`) supports two
+interchangeable backends, user-selectable, behind the one `kicad_route_pass` contract
+and the same KiCad DSN/SES interchange:
+- **Local (default)** — the FreeRouting install at `/Applications/freerouting.app`. The
+  app bundle ships its own Java runtime (jpackage-style); the plugin invokes its
+  launcher `/Applications/freerouting.app/Contents/MacOS/freerouting` in headless/CLI
+  mode. No separate JRE is needed — and the system has none installed (`/usr/bin/java`
+  is only Apple's stub).
+- **Hosted API (optional)** — `api.freerouting.app/v1` with an API key, for when the
+  local install is absent or remote routing is wanted.
+
+**This supersedes the separate-MCP-server model.** `merlin-kicad-mcp` was scaffolded as
+a standalone out-of-process MCP server (stdio JSON-RPC). Under the runtime-plugin model
+the electronics plugin is **in-process** — a loadable `DomainPlugin`, not a server
+process. The KiCad/FreeRouting *logic* and the ~23-tool contract survive; the stdio MCP
+transport does not. The `merlin/plugins/merlin-kicad-mcp/` scaffold (constitution,
+ROADMAP, phases 00/01a/01b) must be reconceived as `merlin/plugins/electronics/` with
+its ROADMAP rewritten — phase 01 is no longer "MCP stdio server" but "loadable
+`DomainPlugin` bundle + factory entry point".
+
+**Infrastructure this needs first (before the electronics plugin):**
+- A shared **`MerlinPluginAPI`** module — a dynamic library that both Merlin and every
+  plugin link against — defining the `DomainPlugin` contract (moved out of the app) and
+  a versioned plugin factory entry point. It must be genuinely *shared* (dynamically
+  linked), not statically linked into each side, or host and plugin end up with
+  separate copies of the type metadata. The contract also covers a plugin's
+  **settings schema** — a *declarative* description of the panel's fields, **not** a
+  shipped SwiftUI `View`. The host renders it. Declarative settings sidestep the
+  SwiftUI-across-`dlopen` sharp edge and are the only mechanism that also works for
+  out-of-process (Tier 2) plugins, so both tiers share one settings contract. Each
+  plugin gets its own settings-persistence namespace.
+- A **plugin loader** in Merlin: at launch, scan the plugins location, `dlopen` each
+  bundle, `dlsym` a `@_cdecl` factory symbol, instantiate, register with
+  `DomainRegistry`. Merlin is non-sandboxed, so `dlopen` of bundles is permitted.
+- **Build wiring** so every `merlin/plugins/*/` package builds to its shared library
+  alongside the Merlin build.
+
+**Two-tier plugin model — decided.** Plugins load by trust level — not one mechanism
+for all:
+- **Tier 1 — in-process, first-party** (electronics, software, future Fusion): a
+  `dlopen`'d shared library, built and rebuilt together with Merlin. ABI coupling is
+  handled by "rebuild everything" — no `-enable-library-evolution` gymnastics needed.
+  Fast, no IPC. Accepted cost: a Tier-1 plugin crash or hang takes Merlin down with it.
+- **Tier 2 — out-of-process, third-party / store**: a separate process Merlin talks to,
+  bridged by the existing `MCPDomainAdapter`. This is what the plugin store distributes
+  — third-party native code is **never** `dlopen`'d into Merlin. Rationale: Merlin is
+  non-sandboxed (filesystem, shell, AX, screen capture, input synthesis); an in-process
+  third-party plugin would inherit all of it with no boundary. A separate process
+  restores crash isolation and gives a real security boundary. The IPC cost is
+  negligible for domains like electronics whose work is already `kicad-cli`-subprocess
+  and HTTP bound.
+
+`DomainPlugin` is the one abstraction over both tiers; `MCPDomainAdapter` already
+bridges Tier 2. Design `MerlinPluginAPI` for both tiers from the start — do not assume
+every plugin is in-process, and do not over-invest in library-evolution resilience for
+a third-party-in-process case that should not exist.
+
+**Future — plugin store.** Once the model is proven, a **plugins menu** lets the user
+browse, search, and install plugins from an online store (likely GitHub-hosted). Store
+plugins are **Tier 2** — out-of-process, signed and notarized (macOS Gatekeeper blocks
+unsigned downloaded bundles) — never `dlopen`'d into Merlin. It is the marketplace
+layer on top of the Tier-2 bridge; deferred until the in-repo first-party model is
+proven, not a prerequisite for it.
+
+**Promotion:** promote to `spec.md` as the plugin-architecture section, then phases —
+(1) the `MerlinPluginAPI` shared module (the `DomainPlugin` contract + declarative
+settings-schema, designed for both tiers); (2) the Tier-1 in-process loader + launch
+scan; (3) the build wiring; (4) host-rendered dynamic settings panels in the Settings
+window; (5+) the electronics plugin — the KiCad/FreeRouting ~23-tool contract from the
+old `merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable `DomainPlugin`, with the
+local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
+
+_Status: held in `## Active` — architecture clarified, not yet promoted. The
+`merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the
+above._
 
 ## Deferred
 
