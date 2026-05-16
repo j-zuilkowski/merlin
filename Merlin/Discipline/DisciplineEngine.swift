@@ -129,12 +129,12 @@ actor DisciplineEngine {
             }
 
             // Dangling doc references - doc mentions of code symbols that do not
-            // exist in the source tree. Silent severity: informational, never blocks.
+            // exist in the source tree.
             for ref in refs {
                 let f = Finding(
                     id: UUID(),
                     category: .docStaleReference,
-                    severity: .silent,
+                    severity: .nudge,
                     summary: ref.codeSymbol,
                     detail: "Referenced in \(ref.docFile) but not found in source tree",
                     suggestedAction: "Remove the stale reference or restore the symbol",

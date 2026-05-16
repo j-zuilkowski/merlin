@@ -59,29 +59,49 @@ actor DocReferenceGraph {
                 contentsOf: URL(fileURLWithPath: docFile), encoding: .utf8)
             else { continue }
 
+            // Phase-doc Markdown is build scaffolding full of illustrative code; only
+            // verify fenced blocks in product documentation.
+            let checkFences = !docFile.contains("/phases/")
+
             var currentSection: String?
+            var inFence = false
             for line in text.components(separatedBy: .newlines) {
-                if line.hasPrefix("## ") || line.hasPrefix("# ") {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("```") {
+                    inFence.toggle()
+                    continue
+                }
+                if !inFence, line.hasPrefix("## ") || line.hasPrefix("# ") {
                     currentSection = line.trimmingCharacters(
                         in: CharacterSet(charactersIn: "# "))
                     continue
                 }
 
+                // Backticked identifiers - existing behaviour, inside and outside fences.
                 for sym in extractBacktickedSymbols(from: line)
                 where looksLikeCodeSymbol(sym) && !symbolSet.contains(sym) {
                     let key = "\(docFile)|\(sym)"
                     guard !seen.contains(key) else { continue }
                     seen.insert(key)
                     dangling.append(DocReference(
-                        docFile: docFile,
-                        docSection: currentSection,
-                        codeSymbol: sym,
-                        sourceFile: nil
-                    ))
+                        docFile: docFile, docSection: currentSection,
+                        codeSymbol: sym, sourceFile: nil))
+                }
+
+                // Inside a fenced code block, verify enum-case declarations too.
+                if inFence && checkFences {
+                    for caseName in extractEnumCaseNames(from: trimmed)
+                    where caseName.count >= 4 && !symbolSet.contains(caseName) {
+                        let key = "\(docFile)|\(caseName)"
+                        guard !seen.contains(key) else { continue }
+                        seen.insert(key)
+                        dangling.append(DocReference(
+                            docFile: docFile, docSection: currentSection,
+                            codeSymbol: caseName, sourceFile: nil))
+                    }
                 }
             }
         }
-
         return dangling
     }
 
@@ -114,6 +134,9 @@ actor DocReferenceGraph {
                 if let name = extractDeclaredSymbol(from: t) {
                     entries.append(SymbolEntry(name: name, file: url.path))
                 }
+                for caseName in extractEnumCaseNames(from: t) {
+                    entries.append(SymbolEntry(name: caseName, file: url.path))
+                }
             }
         }
 
@@ -134,6 +157,22 @@ actor DocReferenceGraph {
             }
         }
         return nil
+    }
+
+    /// Enum-case identifiers declared on a trimmed `line` - `case phaseDrift`, or a
+    /// comma list `case a, b = "x"`. Over-collecting switch-statement `case` patterns is
+    /// harmless: it only adds to the known-symbol set.
+    private func extractEnumCaseNames(from line: String) -> [String] {
+        guard line.hasPrefix("case ") else { return [] }
+        var names: [String] = []
+        for piece in line.dropFirst(5).split(separator: ",") {
+            let trimmed = piece.trimmingCharacters(in: .whitespaces)
+            if let r = trimmed.range(of: #"^[a-z][A-Za-z0-9_]*"#,
+                                     options: .regularExpression) {
+                names.append(String(trimmed[r]))
+            }
+        }
+        return names
     }
 
     private func extractMentionedSymbols(from text: String) -> [String] {
