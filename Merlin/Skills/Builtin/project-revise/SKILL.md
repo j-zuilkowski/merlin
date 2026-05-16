@@ -14,6 +14,17 @@ User says any of:
 
 ## Steps
 
+## Vision
+
+`project:revise` is also how `vision.md` grows after `project:init` seeds it. On request:
+- **Add an idea** — append a new entry to `vision.md`'s `## Active` section.
+- **Defer an idea** — move an entry from `## Active` to `## Deferred`, adding a
+  "reconsider when" note.
+- **Promote an idea** — move an `## Active` entry into `architecture.md` as a committed
+  design decision; remove it from `vision.md`. From there it follows the pipeline:
+  `architecture.md → phases/ → code`.
+Vision edits are committed in the same batch commit as other revision findings.
+
 1. **Run scan**: Call `DisciplineEngine.scan(projectPath: projectPath)`.
    Display the `ScanReport.findings` grouped by severity: block → nudge → silent.
 

@@ -25,41 +25,55 @@ User says any of:
    - If a "Project Discipline" section is absent, append one describing the v2.2 subsystem.
    - Never rewrite an existing CLAUDE.md from scratch.
 
-3. **Scan current codebase state**:
+3. **Incorporate `vision.md`** — the idea launchpad:
+   - If the project already has a `vision.md`: preserve it. Ensure it has `## Active`
+     and `## Deferred` sections; if it predates the launchpad model, restructure it
+     non-destructively — existing content kept verbatim, only re-nested under the right
+     section. Never discard or reword existing vision content.
+   - If the project has no `vision.md`: create the launchpad scaffold — a `## Active`
+     section and a `## Deferred` section. Seed `## Active` from any forward-looking
+     content already in the existing docs (an "out of scope", "future work", "roadmap",
+     or "TODO" section in `architecture.md` / `README.md`); if there is none, leave a
+     placeholder line. Do not fabricate a backlog.
+   - From here `vision.md` is the project's launchpad: `vision.md → architecture.md →
+     phases/ → code`.
+
+4. **Scan current codebase state**:
    a. Run `PhaseScanner.scan(projectPath:)` — report drift (green/yellow/red/orange).
    b. Run `ManualCoverageScanner.scan(projectPath:adapter:)` — count uncovered surfaces.
    c. Run `WhyCommentScanner.scan(projectPath:adapter:)` — count trigger violations.
    d. Run `ProseReadabilityChecker` on each doc file — report grade violations.
 
-4. **Write `.merlin/project.toml`**:
+5. **Write `.merlin/project.toml`**:
    - Set `adapter` to the detected adapter key.
-   - Set `manual_coverage_baseline` = current uncovered-surface count from step 3b.
+   - Set `manual_coverage_baseline` = current uncovered-surface count from step 4b.
    - Set `decay_per_release` = 10 (default; user can override).
    - Set `discipline_layers` = ["soft_prompt", "pre_commit"].
 
-5. **Install git hooks** (confirm per layer):
+6. **Install git hooks** (confirm per layer):
    - Layer 2 (soft prompts): always recommended.
    - Layer 3 (pre-commit): confirm before installing — existing hooks are preserved.
    - Call `GitHookInstaller.install(projectPath:)`.
 
-6. **Seed adapters**: Call `AdapterRegistry.installSeedAdapters(into:)` if
+7. **Seed adapters**: Call `AdapterRegistry.installSeedAdapters(into:)` if
    `~/.merlin/adapters/` does not exist.
 
-7. **Install Vale styles**: Call `ValeStyleWriter.writeStyles(to:)` for
+8. **Install Vale styles**: Call `ValeStyleWriter.writeStyles(to:)` for
    `~/.merlin/styles/`.
 
-8. **Write adoption report** (one page, plain language):
+9. **Write adoption report** (one page, plain language):
    ```
    Adopted. Language: Swift (swift-xcode adapter).
    Baseline coverage gap: 314 surfaces.
    Default decay: 10 per release → comprehensive in 32 releases.
+   vision.md: incorporated existing (N active ideas) or launchpad created.
    WHY-comment violations found: 47.
    Prose readability fails in 6 docs.
    Phase drift: green except 3 yellow.
    Next step: /project:revise to start working through the backlog.
    ```
 
-9. **Commit** (after confirmation): `git commit -m "Adopt Merlin v2.2 discipline"`.
+10. **Commit** (after confirmation): `git commit -m "Adopt Merlin v2.2 discipline"`.
 
 ## First adoption target: Merlin itself
 
@@ -73,6 +87,7 @@ When run against `~/Documents/localProject/merlin`:
 ## Output
 
 - `.merlin/project.toml` written with detected language, baseline, and decay.
+- `vision.md` incorporated or launchpad scaffold created.
 - Git hooks installed (Layer 2 and 3 if opted in).
 - `CLAUDE.md` updated with "Project Discipline" section if absent.
 - Adoption report shown to user.
