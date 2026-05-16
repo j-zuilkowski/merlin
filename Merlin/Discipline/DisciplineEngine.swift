@@ -12,6 +12,7 @@ actor DisciplineEngine {
     private let docReferenceGraph: DocReferenceGraph
     private let whyCommentScanner: WhyCommentScanner
     private let proseReadabilityChecker: ProseReadabilityChecker
+    private let targetGateScanner: TargetGateScanner
     private let queue: PendingAttentionQueue
     private let overrideLog: OverrideAuditLog
 
@@ -34,6 +35,7 @@ actor DisciplineEngine {
         docReferenceGraph: DocReferenceGraph,
         whyCommentScanner: WhyCommentScanner,
         proseReadabilityChecker: ProseReadabilityChecker,
+        targetGateScanner: TargetGateScanner = TargetGateScanner(),
         storePath: String,
         forceErrorForTesting: Bool = false
     ) {
@@ -43,6 +45,7 @@ actor DisciplineEngine {
         self.docReferenceGraph = docReferenceGraph
         self.whyCommentScanner = whyCommentScanner
         self.proseReadabilityChecker = proseReadabilityChecker
+        self.targetGateScanner = targetGateScanner
         self.queue = PendingAttentionQueue(storePath: storePath)
         self.overrideLog = OverrideAuditLog(
             logPath: URL(fileURLWithPath: storePath)
@@ -74,8 +77,12 @@ actor DisciplineEngine {
             async let docRefs = docReferenceGraph.danglingReferences(projectPath: projectPath)
             async let whyTriggers = whyCommentScanner.scan(
                 projectPath: projectPath, adapter: adapter)
+            async let ungatedTargets = targetGateScanner.scan(
+                projectPath: projectPath,
+                gatingSchemes: Self.gatingSchemes(projectPath: projectPath))
 
-            let (drift, gaps, refs, why) = await (driftFindings, coverageGaps, docRefs, whyTriggers)
+            let (drift, gaps, refs, why, ungated) = await (
+                driftFindings, coverageGaps, docRefs, whyTriggers, ungatedTargets)
 
             var findings: [Finding] = []
             let now = Date()
@@ -159,6 +166,23 @@ actor DisciplineEngine {
                     await queue.add(f)
                     findings.append(f)
                 }
+            }
+
+            // Ungated targets - a target the build gate never compiles.
+            for ut in ungated {
+                let f = Finding(
+                    id: UUID(),
+                    category: .ungatedTarget,
+                    severity: ut.blocking ? .block : .nudge,
+                    summary: ut.targetName,
+                    detail: ut.reason,
+                    suggestedAction: "Add the target to a verification scheme, or list its "
+                        + "scheme in .merlin/project.toml gating_schemes.",
+                    createdAt: now,
+                    lastSeenAt: now
+                )
+                await queue.add(f)
+                findings.append(f)
             }
 
             // Prose readability - run the checker over project doc files.
@@ -279,6 +303,27 @@ actor DisciplineEngine {
             files.append(url.path)
         }
         return files
+    }
+
+    /// Verification-gate scheme names, read from `.merlin/project.toml`'s
+    /// `gating_schemes = ["A", "B"]` line. Empty when the file or key is absent.
+    static func gatingSchemes(projectPath: String) -> [String] {
+        let tomlURL = URL(fileURLWithPath: projectPath)
+            .appendingPathComponent(".merlin/project.toml")
+        guard let text = try? String(contentsOf: tomlURL, encoding: .utf8) else {
+            return []
+        }
+        for line in text.components(separatedBy: .newlines) {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            guard t.hasPrefix("gating_schemes"),
+                  let open = t.firstIndex(of: "["),
+                  let close = t.lastIndex(of: "]") else { continue }
+            return t[t.index(after: open)..<close]
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: " \"'")) }
+                .filter { !$0.isEmpty }
+        }
+        return []
     }
 
     /// Target Flesch-Kincaid grade for a doc file. Architecture-related docs allow a

@@ -30,6 +30,7 @@ final class FindingModelTests: XCTestCase {
         XCTAssertEqual(FindingCategory.whyCommentMissing.rawValue, "whyCommentMissing")
         XCTAssertEqual(FindingCategory.proseReadabilityFail.rawValue, "proseReadabilityFail")
         XCTAssertEqual(FindingCategory.overrideAuditAccumulation.rawValue, "overrideAuditAccumulation")
+        XCTAssertEqual(FindingCategory.ungatedTarget.rawValue, "ungatedTarget")
     }
 
     func testSeverityRawValues() {

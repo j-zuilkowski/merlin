@@ -9,6 +9,7 @@ enum FindingCategory: String, Codable, Sendable, CaseIterable {
     case whyCommentMissing
     case proseReadabilityFail
     case overrideAuditAccumulation
+    case ungatedTarget
 }
 
 // MARK: - Severity
