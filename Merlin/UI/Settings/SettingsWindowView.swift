@@ -283,11 +283,23 @@ struct HooksSettingsView: View {
     @State private var isAdding = false
     @State private var newEvent = "PreToolUse"
     @State private var newCommand = ""
+    @State private var disciplineHooksInstalled = false
+    @State private var disciplineHooksBusy = false
 
     private let eventTypes = ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"]
 
     var body: some View {
         List {
+            Toggle("Project discipline git hooks", isOn: Binding(
+                get: { disciplineHooksInstalled },
+                set: { setDisciplineHooks(enabled: $0) }
+            ))
+            .disabled(settings.projectPath.isEmpty || disciplineHooksBusy)
+            .onAppear { refreshDisciplineHookState() }
+            .onChange(of: settings.projectPath) { _, _ in
+                refreshDisciplineHookState()
+            }
+
             ForEach($settings.hooks) { $hook in
                 HStack(spacing: 12) {
                     Toggle("", isOn: $hook.enabled)
@@ -358,6 +370,32 @@ struct HooksSettingsView: View {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let url = home.appendingPathComponent(".merlin/config.toml")
             try? await AppSettings.shared.save(to: url)
+        }
+    }
+
+    private func refreshDisciplineHookState() {
+        let path = settings.projectPath
+        guard !path.isEmpty else {
+            disciplineHooksInstalled = false
+            return
+        }
+        disciplineHooksInstalled = GitHookInstaller().isInstalled(projectPath: path)
+    }
+
+    private func setDisciplineHooks(enabled: Bool) {
+        let path = settings.projectPath
+        guard !path.isEmpty else { return }
+        disciplineHooksBusy = true
+        Task { @MainActor in
+            let installer = GitHookInstaller()
+            if enabled {
+                _ = try? await DisciplineBinaryInstaller.install()
+                try? await installer.install(projectPath: path)
+            } else {
+                try? await installer.uninstall(projectPath: path)
+            }
+            disciplineHooksInstalled = installer.isInstalled(projectPath: path)
+            disciplineHooksBusy = false
         }
     }
 }

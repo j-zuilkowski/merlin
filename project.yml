@@ -32,6 +32,10 @@ targets:
       - path: Merlin/Skills/Builtin
         type: folder
     dependencies:
+      - target: merlin-discipline
+        embed: true
+        copy:
+          destination: executables
       - sdk: AppIntents.framework
     settings:
       base:
