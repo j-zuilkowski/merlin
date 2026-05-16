@@ -49,6 +49,9 @@ struct ProviderHUD: View {
             providerPopover
                 .padding(16)
                 .frame(width: 240)
+                .task {
+                    await registry.fetchAllModels()
+                }
         }
     }
 
@@ -87,8 +90,8 @@ struct ProviderHUD: View {
                 .font(.headline)
 
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(registry.providers.filter { $0.isEnabled || $0.id == registry.activeProviderID }) { config in
-                    providerButton(title: config.displayName, id: config.id)
+                ForEach(registry.allSlotPickerEntries) { entry in
+                    providerButton(entry: entry)
                 }
             }
 
@@ -105,14 +108,21 @@ struct ProviderHUD: View {
         }
     }
 
-    private func providerButton(title: String, id: String) -> some View {
+    private func providerButton(entry: SlotPickerEntry) -> some View {
         Button {
-            appState.activeProviderID = id
+            appState.activeProviderID = entry.id
         } label: {
             HStack {
-                Text(title)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(entry.displayName)
+                    if emptyLocalHint(for: entry) {
+                        Text("no models loaded")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
-                if appState.activeProviderID == id {
+                if appState.activeProviderID == entry.id {
                     Image(systemName: "checkmark")
                         .font(.caption.weight(.semibold))
                 }
@@ -124,12 +134,19 @@ struct ProviderHUD: View {
         .foregroundStyle(.primary)
     }
 
+    private func emptyLocalHint(for entry: SlotPickerEntry) -> Bool {
+        guard !entry.isVirtual,
+              let config = registry.config(for: entry.id),
+              config.isLocal else { return false }
+        return registry.modelsByProviderID[config.id]?.isEmpty ?? true
+    }
+
     private var labelText: String {
-        registry.activeConfig?.displayName ?? appState.activeProviderID
+        registry.displayName(for: appState.activeProviderID)
     }
 
     private var isConnectable: Bool {
-        guard let config = registry.activeConfig else { return false }
+        guard let config = registry.config(for: appState.activeProviderID) else { return false }
         if config.isLocal {
             return registry.availabilityByID[config.id] == true
         }
@@ -147,7 +164,7 @@ struct ProviderHUD: View {
 
     private var statusText: String {
         guard isConnectable else {
-            guard let config = registry.activeConfig else { return "no provider" }
+            guard let config = registry.config(for: appState.activeProviderID) else { return "no provider" }
             return config.isLocal ? "not running" : "no API key"
         }
         switch appState.toolActivityState {

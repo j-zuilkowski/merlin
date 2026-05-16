@@ -116,6 +116,7 @@ struct RoleSlotSettingsView: View {
         .formStyle(.grouped)
         .navigationTitle("Providers & Slots")
         .task {
+            await registry.fetchAllModels()
             await applyActiveDomain()
         }
         .onChange(of: settings.activeDomainID) { _, _ in

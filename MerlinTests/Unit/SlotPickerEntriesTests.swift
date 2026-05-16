@@ -140,10 +140,11 @@ final class SlotPickerEntriesTests: XCTestCase {
     // MARK: - Count
 
     func testTotalCountIsCorrect() {
-        // 2 enabled providers + 2 virtual entries for lmstudio = 4
+        // 1 remote base provider + 2 virtual entries for lmstudio = 3.
+        // The local base entry is hidden while loaded models are known.
         let registry = makeRegistry(models: ["lmstudio": ["phi-4", "qwen"]])
         let entries = registry.allSlotPickerEntries
 
-        XCTAssertEqual(entries.count, 4)
+        XCTAssertEqual(entries.count, 3)
     }
 }

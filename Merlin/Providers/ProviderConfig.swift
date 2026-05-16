@@ -343,14 +343,18 @@ final class ProviderRegistry: ObservableObject {
 
         for config in enabled {
             let backendName = config.displayName.isEmpty ? config.id : config.displayName
-            plain.append(SlotPickerEntry(id: config.id, displayName: backendName, isVirtual: false))
+            let loadedModels = modelsByProviderID[config.id] ?? []
+            let virtualEntries = loadedModels.sorted().map { model in
+                let vid = "\(config.id):\(model)"
+                let vname = "\(backendName) — \(model)"
+                return SlotPickerEntry(id: vid, displayName: vname, isVirtual: true)
+            }
 
-            if let models = modelsByProviderID[config.id], !models.isEmpty {
-                for model in models.sorted() {
-                    let vid = "\(config.id):\(model)"
-                    let vname = "\(backendName) — \(model)"
-                    virtual.append(SlotPickerEntry(id: vid, displayName: vname, isVirtual: true))
-                }
+            if config.isLocal && !loadedModels.isEmpty {
+                virtual.append(contentsOf: virtualEntries)
+            } else {
+                plain.append(SlotPickerEntry(id: config.id, displayName: backendName, isVirtual: false))
+                virtual.append(contentsOf: virtualEntries)
             }
         }
 
