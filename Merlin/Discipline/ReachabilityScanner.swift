@@ -45,6 +45,9 @@ actor ReachabilityScanner {
 
         for source in sources {
             for line in source.lines {
+                // Comments are discussion, not code — never mine them for a View
+                // declaration or an environment-object consumer.
+                if line.trimmingCharacters(in: .whitespaces).hasPrefix("//") { continue }
                 if let view = declaredViewName(in: line), (frequency[view] ?? 0) <= 1 {
                     findings.append(UnwiredComponentFinding(
                         symbol: view, file: source.path,
@@ -119,24 +122,36 @@ actor ReachabilityScanner {
         return String(line[r])
     }
 
-    /// Type names constructed on an injection-relevant line - a `.environmentObject(...)`
-    /// call or a `@StateObject`/`@ObservedObject` property. Approximates "this type is
-    /// created and provided to the environment somewhere".
+    /// Type names this line shows being created or owned for environment injection:
+    /// inline constructors on a `.environmentObject(...)` / `@StateObject` /
+    /// `@ObservedObject` line, plus the declared type of such a property.
     private func injectedTypes(in line: String) -> [String] {
         guard line.contains(".environmentObject(")
             || line.contains("@StateObject")
             || line.contains("@ObservedObject") else { return [] }
-        var types: [String] = []
-        let pattern = #"\b([A-Z][A-Za-z0-9_]*)\s*\("#
-        if let regex = try? NSRegularExpression(pattern: pattern) {
+        var types: Set<String> = []
+
+        // Inline-constructed types: `SomeType(...)`.
+        if let ctor = try? NSRegularExpression(
+            pattern: #"\b([A-Z][A-Za-z0-9_]*)\s*\("#) {
             let ns = line as NSString
-            for m in regex.matches(
+            for m in ctor.matches(
                 in: line, range: NSRange(location: 0, length: ns.length)) {
                 if let r = Range(m.range(at: 1), in: line) {
-                    types.append(String(line[r]))
+                    types.insert(String(line[r]))
                 }
             }
         }
-        return types
+        // Declared property type: `@StateObject ... var x: SomeType`.
+        if let annot = try? NSRegularExpression(pattern:
+            #"@(?:StateObject|ObservedObject)\s+(?:(?:private|public|internal|fileprivate)\s+)?var\s+\w+\s*:\s*([A-Z][A-Za-z0-9_]*)"#) {
+            let ns = line as NSString
+            if let m = annot.firstMatch(
+                in: line, range: NSRange(location: 0, length: ns.length)),
+               let r = Range(m.range(at: 1), in: line) {
+                types.insert(String(line[r]))
+            }
+        }
+        return Array(types)
     }
 }

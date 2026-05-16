@@ -1,5 +1,8 @@
 # Phase 309b — ReachabilityScanner (implementation)
 
+> **Note:** `injectedTypes` and the per-line loop here are refined by phase 317b
+> (annotation-based injection detection, comment-line skip). Implement 317b's version.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 309a complete: failing tests in `ReachabilityScannerTests`.
