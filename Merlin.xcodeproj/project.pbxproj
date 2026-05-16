@@ -344,6 +344,7 @@
 		80A9DA1F472978F7FD197166 /* DPOAutoFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 935A9E1BBDE8E32956BD81D6 /* DPOAutoFilterTests.swift */; };
 		80CAD12A3B3E6512011D51BD /* SessionRestoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC2155AD0ACD7189C36DD06F /* SessionRestoreTests.swift */; };
 		80EE3815EC811D3C1A1EC423 /* ProcessTimeoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9CF5130F4037A3B8F39F9E /* ProcessTimeoutTests.swift */; };
+		814BB7CFFD39B8DB89335F06 /* ProjectVisionLaunchpadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A929C65EA2C19F41A8D5CB95 /* ProjectVisionLaunchpadTests.swift */; };
 		82249D2A3CAC92C35AC3788F /* StagingBufferSignalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61D603DCD19F997A62ADB6F2 /* StagingBufferSignalsTests.swift */; };
 		824D25082E9A81E18B3EA963 /* EscalationDecomposeFirstTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D9D01BCBB160532CDA6AA4 /* EscalationDecomposeFirstTests.swift */; };
 		826ED65C263577ECEDDF1A82 /* WebSearchToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C2C7B8E9D69BF79290F2BA4 /* WebSearchToolTests.swift */; };
@@ -986,6 +987,7 @@
 		A6C7B1D0E6F6980AB92430E4 /* SessionSidebarHelpersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSidebarHelpersTests.swift; sourceTree = "<group>"; };
 		A7A42F3A6E349ED8DAEEB719 /* ContextLengthRecoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextLengthRecoveryTests.swift; sourceTree = "<group>"; };
 		A887F2D46BBF1DB9DA57A104 /* AppearanceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettings.swift; sourceTree = "<group>"; };
+		A929C65EA2C19F41A8D5CB95 /* ProjectVisionLaunchpadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectVisionLaunchpadTests.swift; sourceTree = "<group>"; };
 		A9994CB480DAB11B8081EC89 /* AgenticEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgenticEngine.swift; sourceTree = "<group>"; };
 		A99BF7DAEA1C66C3366467FE /* ProjectReleaseSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectReleaseSkillTests.swift; sourceTree = "<group>"; };
 		AA231BB600D5DA17BBB560F3 /* ReasoningEffort.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReasoningEffort.swift; sourceTree = "<group>"; };
@@ -1700,6 +1702,7 @@
 				03E702CB99DA122ABD1D15F9 /* ProjectReviseSkillTests.swift */,
 				B680BEF832B5812598710148 /* ProjectSizeMetricsTests.swift */,
 				900140099FE3642F6609B9C8 /* ProjectSizeObserverTests.swift */,
+				A929C65EA2C19F41A8D5CB95 /* ProjectVisionLaunchpadTests.swift */,
 				DA9176D4C64CD8BB6161DAA0 /* ProseGateTests.swift */,
 				B78D7132EBB99E35F7CB8BB0 /* ProseProductionPathTests.swift */,
 				3E8A109F40F110C0526E0B61 /* ProseReadabilityCheckerTests.swift */,
@@ -2604,6 +2607,7 @@
 				4FE147A2C36859085246F443 /* ProjectReviseSkillTests.swift in Sources */,
 				069AF25F2015490EC46AD210 /* ProjectSizeMetricsTests.swift in Sources */,
 				4C8617A38AF4555D22EDFFA2 /* ProjectSizeObserverTests.swift in Sources */,
+				814BB7CFFD39B8DB89335F06 /* ProjectVisionLaunchpadTests.swift in Sources */,
 				CEF9BF5A47483C656F02478F /* ProseGateTests.swift in Sources */,
 				4C6F65513CFD2B6627895CC9 /* ProseProductionPathTests.swift in Sources */,
 				5779B7B7830127A69B622F45 /* ProseReadabilityCheckerTests.swift in Sources */,
