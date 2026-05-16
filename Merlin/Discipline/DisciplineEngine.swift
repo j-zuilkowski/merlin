@@ -13,6 +13,7 @@ actor DisciplineEngine {
     private let whyCommentScanner: WhyCommentScanner
     private let proseReadabilityChecker: ProseReadabilityChecker
     private let targetGateScanner: TargetGateScanner
+    private let stubMarkerScanner: StubMarkerScanner
     private let queue: PendingAttentionQueue
     private let overrideLog: OverrideAuditLog
 
@@ -36,6 +37,7 @@ actor DisciplineEngine {
         whyCommentScanner: WhyCommentScanner,
         proseReadabilityChecker: ProseReadabilityChecker,
         targetGateScanner: TargetGateScanner = TargetGateScanner(),
+        stubMarkerScanner: StubMarkerScanner = StubMarkerScanner(),
         storePath: String,
         forceErrorForTesting: Bool = false
     ) {
@@ -46,6 +48,7 @@ actor DisciplineEngine {
         self.whyCommentScanner = whyCommentScanner
         self.proseReadabilityChecker = proseReadabilityChecker
         self.targetGateScanner = targetGateScanner
+        self.stubMarkerScanner = stubMarkerScanner
         self.queue = PendingAttentionQueue(storePath: storePath)
         self.overrideLog = OverrideAuditLog(
             logPath: URL(fileURLWithPath: storePath)
@@ -80,9 +83,10 @@ actor DisciplineEngine {
             async let ungatedTargets = targetGateScanner.scan(
                 projectPath: projectPath,
                 gatingSchemes: Self.gatingSchemes(projectPath: projectPath))
+            async let stubMarkers = stubMarkerScanner.scan(projectPath: projectPath)
 
-            let (drift, gaps, refs, why, ungated) = await (
-                driftFindings, coverageGaps, docRefs, whyTriggers, ungatedTargets)
+            let (drift, gaps, refs, why, ungated, stubs) = await (
+                driftFindings, coverageGaps, docRefs, whyTriggers, ungatedTargets, stubMarkers)
 
             var findings: [Finding] = []
             let now = Date()
@@ -178,6 +182,25 @@ actor DisciplineEngine {
                     detail: ut.reason,
                     suggestedAction: "Add the target to a verification scheme, or list its "
                         + "scheme in .merlin/project.toml gating_schemes.",
+                    createdAt: now,
+                    lastSeenAt: now
+                )
+                await queue.add(f)
+                findings.append(f)
+            }
+
+            // Stub / deferred-work markers - unfinished code that compiles green.
+            for stub in stubs {
+                let name = URL(fileURLWithPath: stub.file).lastPathComponent
+                let f = Finding(
+                    id: UUID(),
+                    category: .stubbedImplementation,
+                    severity: stub.isHardStub ? .nudge : .silent,
+                    summary: "\(name):\(stub.line)",
+                    detail: "\(stub.marker): \(stub.context)",
+                    suggestedAction: stub.isHardStub
+                        ? "Finish this implementation or remove the dead path."
+                        : "Resolve or remove the deferred-work marker.",
                     createdAt: now,
                     lastSeenAt: now
                 )

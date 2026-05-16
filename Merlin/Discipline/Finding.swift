@@ -10,6 +10,7 @@ enum FindingCategory: String, Codable, Sendable, CaseIterable {
     case proseReadabilityFail
     case overrideAuditAccumulation
     case ungatedTarget
+    case stubbedImplementation
 }
 
 // MARK: - Severity
