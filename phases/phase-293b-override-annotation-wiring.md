@@ -33,3 +33,9 @@ Expected: BUILD SUCCEEDED, all tests pass.
 git add Merlin/Discipline/WhyCommentScanner.swift Merlin/Discipline/DisciplineEngine.swift \
   MerlinTests/Unit/WhyCommentScannerTests.swift phases/phase-293b-override-annotation-wiring.md
 git commit -m "Phase 293b — Override-annotation wiring"
+
+## Fixes
+- `WHYCommentGate.check` now excludes triggers with a non-nil `overrideRationale` from
+  its violation set. The scanner no longer drops annotated triggers, so without this
+  the gate would block on an acknowledged override (caught by the full-suite run —
+  `WHYCommentGateTests.testPassWhenAllSuppressed`).
