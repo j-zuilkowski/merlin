@@ -53,7 +53,7 @@ final class AccessibilityIDCoverageTests: XCTestCase {
 
 NOTE for executor: the exact constant names above are a starting set — 306b may rename
 them, but every name referenced here must exist as an `AccessibilityID` constant. The
-full identifier list is driven by `merlin-eval/SURFACE-INVENTORY.md`.
+full identifier list is driven by `phases/SURFACE-INVENTORY.md`.
 
 ## Verify
 ```

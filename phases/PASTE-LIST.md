@@ -1812,3 +1812,163 @@ cat phases/phase-278b-v2-2-2-release.md
 # Verify: BUILD SUCCEEDED; full suite green headless; version banners read 2.2.2/build 19
 # Commit: Phase 278b — Bump version to 2.2.2 (build 19)
 ```
+
+---
+
+## Context-Overflow Hardening (toward v2.2.4)
+
+> **Model:** run these on **gpt-5.5**, not gpt-5.4-mini. 285b and 286b are
+> cross-cutting changes under `SWIFT_STRICT_CONCURRENCY=complete` (a new actor with an
+> injected protocol + `nonisolated static` persistence helpers; 286b reroutes 14
+> `provider.complete` sites across 11 files and adds actor-hopped learn-and-retry).
+> The mini tier is documented for "lighter coding tasks"; this batch is not light.
+> Run a→b strictly in order; do not start a `b` phase until its `a` commit exists.
+
+```bash
+# ── PHASE 283a — Local Model Picker Entries Tests (failing) ─────────────────
+cat phases/phase-283a-local-model-picker-tests.md
+# Verify: BUILD SUCCEEDED; testLocalProviderWithModelsYieldsOnlyVirtualEntries FAILS at runtime
+# Commit: Phase 283a — LocalModelPickerEntriesTests (failing)
+
+# ── PHASE 283b — Local Model Picker ─────────────────────────────────────────
+cat phases/phase-283b-local-model-picker.md
+# Verify: BUILD SUCCEEDED; all phase 283a tests pass; no prior phase regresses
+# Commit: Phase 283b — Local model picker in chat HUD + slot picker; model-list refresh
+
+# ── PHASE 284a — Tool Output Cap Tests (failing) ────────────────────────────
+cat phases/phase-284a-tool-output-cap-tests.md
+# Verify: BUILD FAILED — errors naming the missing ToolOutput type / clamp / maxChars
+# Commit: Phase 284a — ToolOutputClampTests (failing)
+
+# ── PHASE 284b — Tool Output Cap ────────────────────────────────────────────
+cat phases/phase-284b-tool-output-cap.md
+# Verify: BUILD SUCCEEDED; all phase 284a tests pass; no prior phase regresses
+# Commit: Phase 284b — Cap run_shell and read_file output before it enters context
+
+# ── PHASE 285a — Context Budget Resolver Tests (failing) ────────────────────
+cat phases/phase-285a-context-budget-resolver-tests.md
+# Verify: BUILD FAILED — missing ContextBudgetResolver / ContextBudgetStore / EphemeralBudgetStore
+# Commit: Phase 285a — ContextBudgetResolverTests (failing)
+
+# ── PHASE 285b — Context Budget Resolver ────────────────────────────────────
+cat phases/phase-285b-context-budget-resolver.md
+# Verify: BUILD SUCCEEDED; all phase 285a tests pass; no prior phase regresses
+# Commit: Phase 285b — ContextBudgetResolver: discover and persist the model's real context window
+
+# ── PHASE 286a — Universal Pre-flight Guard Tests (failing) ─────────────────
+cat phases/phase-286a-universal-preflight-tests.md
+# Verify: BUILD FAILED — errors naming the missing PreflightGuard type / fit
+# Commit: Phase 286a — PreflightGuardTests (failing)
+
+# ── PHASE 286b — Universal Pre-flight Guard ─────────────────────────────────
+cat phases/phase-286b-universal-preflight.md
+# Verify: BUILD SUCCEEDED; all phase 286a tests pass; grep finds no un-guarded provider.complete
+# Commit: Phase 286b — Route every provider send through PreflightGuard
+```
+
+---
+
+## Tool Detection + Vision Launchpad (toward v2.2.4)
+
+> **Model:** gpt-5.5, reasoning effort `high`. 287b adds a new actor + a SwiftUI
+> sheet + first-use wiring across several files under strict concurrency; 288 is
+> skill/doc work. Run a→b strictly in order.
+
+```bash
+# ── PHASE 287a — Tool Requirement Checker Tests (failing) ───────────────────
+cat phases/phase-287a-tool-requirement-checker-tests.md
+# Verify: BUILD FAILED — missing ToolRequirement / ToolRequirements / ToolRequirementChecker
+# Commit: Phase 287a — ToolRequirementCheckerTests (failing)
+
+# ── PHASE 287b — Tool Requirement Checker ───────────────────────────────────
+cat phases/phase-287b-tool-requirement-checker.md
+# Verify: BUILD SUCCEEDED; all phase 287a tests pass; no prior phase regresses
+# Commit: Phase 287b — Tool requirement checker: detect on first use, offer brew install
+
+# ── PHASE 288a — Vision Launchpad Tests (failing) ───────────────────────────
+cat phases/phase-288a-vision-launchpad-tests.md
+# Verify: BUILD SUCCEEDED; ProjectVisionLaunchpadTests fail at runtime (skill not yet updated)
+# Commit: Phase 288a — ProjectVisionLaunchpadTests (failing)
+
+# ── PHASE 288b — Vision Launchpad ───────────────────────────────────────────
+cat phases/phase-288b-vision-launchpad.md
+# Verify: BUILD SUCCEEDED; all phase 288a tests pass; vision.md has ## Active + ## Deferred
+# Commit: Phase 288b — vision.md launchpad: seed at init, vision→architecture→phase→code pipeline
+```
+
+```bash
+# ── PHASE 289 — v2.2.4 Release (ships phases 283–288) ───────────────────────
+# Run only after 283–288 are all committed.
+cat phases/phase-289-v2-2-4-release.md
+# Verify: BUILD SUCCEEDED; full suite green; grep finds no stale 2.2.3/build 20
+# Commit: Phase 289 — Bump version to 2.2.4 (build 21); local tag v2.2.4
+# NOTE: git push + gh release create are a MANUAL step — do not push in the batch.
+```
+
+---
+
+## Liveness Discipline (phases 307–312)
+
+> Extends Project Discipline to catch *liveness drift* — code that exists and compiles
+> but is never reached, gated, or finished (off-gate targets, stub/deferred code,
+> unwired components, stale docs). Four scanners + a pre-commit gate + the verification
+> gate fix. Run a→b strictly in order; each `b` phase wires its scanner into
+> `DisciplineEngine` with a defaulted init parameter, so existing call sites are
+> unaffected. Prerequisite: phases 294–306 + 302c complete.
+
+```bash
+# ── PHASE 307a — TargetGateScanner Tests (failing) ──────────────────────────
+cat phases/phase-307a-target-gate-scanner-tests.md
+# Verify: BUILD FAILED — missing TargetGateScanner / UngatedTargetFinding
+# Commit: Phase 307a — TargetGateScanner tests (failing)
+
+# ── PHASE 307b — TargetGateScanner ──────────────────────────────────────────
+cat phases/phase-307b-target-gate-scanner.md
+# Verify: BUILD SUCCEEDED, zero warnings; TargetGateScannerTests + FindingModelTests pass
+# Commit: Phase 307b — TargetGateScanner: flag targets the build gate never compiles
+
+# ── PHASE 308a — StubMarkerScanner Tests (failing) ──────────────────────────
+cat phases/phase-308a-stub-marker-scanner-tests.md
+# Verify: BUILD FAILED — missing StubMarkerScanner / StubMarkerFinding
+# Commit: Phase 308a — StubMarkerScanner tests (failing)
+
+# ── PHASE 308b — StubMarkerScanner ──────────────────────────────────────────
+cat phases/phase-308b-stub-marker-scanner.md
+# Verify: BUILD SUCCEEDED, zero warnings; StubMarkerScannerTests + FindingModelTests pass
+# Commit: Phase 308b — StubMarkerScanner: surface unfinished code as discipline findings
+
+# ── PHASE 309a — ReachabilityScanner Tests (failing) ────────────────────────
+cat phases/phase-309a-reachability-scanner-tests.md
+# Verify: BUILD FAILED — missing ReachabilityScanner / UnwiredComponentFinding
+# Commit: Phase 309a — ReachabilityScanner tests (failing)
+
+# ── PHASE 309b — ReachabilityScanner ────────────────────────────────────────
+cat phases/phase-309b-reachability-scanner.md
+# Verify: BUILD SUCCEEDED, zero warnings; ReachabilityScannerTests + FindingModelTests pass
+# Commit: Phase 309b — ReachabilityScanner: flag unwired views and uninjected env objects
+
+# ── PHASE 310a — DocReferenceGraph Fenced-Block Tests (failing) ─────────────
+cat phases/phase-310a-doc-reference-fenced-block-tests.md
+# Verify: BUILD SUCCEEDED; DocReferenceGraphFencedBlockTests FAILS at runtime (verify with `test`)
+# Commit: Phase 310a — DocReferenceGraph fenced-block tests (failing)
+
+# ── PHASE 310b — DocReferenceGraph Fenced-Block Strengthening ───────────────
+cat phases/phase-310b-doc-reference-fenced-block.md
+# Verify: BUILD SUCCEEDED, zero warnings; DocReferenceGraphFencedBlockTests passes
+# Commit: Phase 310b — DocReferenceGraph verifies fenced-block enum cases
+
+# ── PHASE 311a — LivenessGate Tests (failing) ───────────────────────────────
+cat phases/phase-311a-liveness-gate-tests.md
+# Verify: BUILD FAILED — missing LivenessGate / LivenessGateResult
+# Commit: Phase 311a — LivenessGate tests (failing)
+
+# ── PHASE 311b — LivenessGate + pre-commit hook ─────────────────────────────
+cat phases/phase-311b-liveness-gate.md
+# Verify: BUILD SUCCEEDED, zero warnings; LivenessGateTests + DisciplineCLITests pass; merlin-discipline builds
+# Commit: Phase 311b — LivenessGate: pre-commit hook blocks ungated targets
+
+# ── PHASE 312 — Verification Gate Update ────────────────────────────────────
+cat phases/phase-312-verification-gate-update.md
+# Verify: CLAUDE.md names MerlinTests-Live; .merlin/project.toml lists both gating schemes; MerlinTests-Live build-for-testing SUCCEEDED
+# Commit: Phase 312 — Fold MerlinTests-Live into the verification gate
+```

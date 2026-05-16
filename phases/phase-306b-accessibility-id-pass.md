@@ -5,7 +5,7 @@ Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 306a complete: failing tests in `AccessibilityIDCoverageTests`.
 
 Goal: every interactive control in Merlin is addressable by XCUITest. This is a broad,
-mechanical pass driven by the catalogue in `merlin-eval/SURFACE-INVENTORY.md`.
+mechanical pass driven by the catalogue in `phases/SURFACE-INVENTORY.md`.
 
 ## Edit: Merlin/Support/AccessibilityID.swift
 Extend the `AccessibilityID` namespace with a stable, unique constant for every
@@ -44,10 +44,11 @@ identifier (e.g. a system menu) is noted in the phase doc.
 
 ## Executor Notes
 
-- `merlin-eval/SURFACE-INVENTORY.md` was not present in this checkout when this phase
-  was executed, so the pass was driven from the actual SwiftUI control surface under
-  `Merlin/Views`, `Merlin/UI`, and `Merlin/App`, plus the representative constants from
-  phase 306a.
+- The surface catalogue is `phases/SURFACE-INVENTORY.md` (in-repo). It was absent from
+  the checkout during the original execution of this phase, so the pass was driven from
+  the actual SwiftUI control surface under `Merlin/Views`, `Merlin/UI`, and `Merlin/App`
+  plus the representative constants from phase 306a. A future rebuild has the catalogue
+  available and should cross-check against it.
 - SwiftUI `Commands` menu items in `Merlin/App/MerlinCommands.swift` are system menu
   entries; they are intentionally addressed by visible menu-item titles in XCUITest
   rather than `.accessibilityIdentifier`.
