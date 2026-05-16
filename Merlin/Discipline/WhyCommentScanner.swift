@@ -7,6 +7,9 @@ struct WhyCommentTrigger: Sendable {
     let line: Int
     let context: String
     let hasNearbyComment: Bool
+    /// Non-nil when the trigger line carries an inline `rationale-not-needed:`
+    /// annotation — the trigger is an acknowledged override rather than a violation.
+    let overrideRationale: String?
 }
 
 /// Scans source files for adapter-defined WHY-trigger patterns and checks for
@@ -48,7 +51,6 @@ actor WhyCommentScanner {
             guard let matchRange = line.range(of: spec.regex, options: .regularExpression) else {
                 continue
             }
-            if line.contains("rationale-not-needed:") { continue }
             // A trigger pattern that only appears inside a // comment or a string
             // literal is discussion, not code - skip it so the gate does not block
             // legitimate commits on false positives.
@@ -69,13 +71,15 @@ actor WhyCommentScanner {
                     !t.contains("rationale-not-needed:")
             }
 
+            let override = OverrideAnnotationParser().parse(line: line)
             results.append(WhyCommentTrigger(
                 pattern: spec.regex,
                 reason: spec.reason,
                 file: file,
                 line: idx + 1,
                 context: contextStr,
-                hasNearbyComment: hasComment
+                hasNearbyComment: hasComment,
+                overrideRationale: override?.rationale
             ))
         }
 

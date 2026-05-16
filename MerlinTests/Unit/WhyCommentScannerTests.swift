@@ -63,7 +63,7 @@ final class WhyCommentScannerTests: XCTestCase {
         }
     }
 
-    func testRationaleNotNeededSuppresses() async throws {
+    func testRationaleNotNeededIsCarriedAsOverride() async throws {
         let proj = try makeTmpProject(sourceContent: """
         import Foundation
         let x = try? doSomething() // rationale-not-needed: best-effort call
@@ -75,8 +75,11 @@ final class WhyCommentScannerTests: XCTestCase {
         ])
         let scanner = WhyCommentScanner()
         let triggers = await scanner.scan(projectPath: proj.path, adapter: adapter)
-        XCTAssertTrue(triggers.isEmpty,
-                      "rationale-not-needed should suppress the trigger entirely")
+        // An annotated trigger is no longer dropped — it is carried with its
+        // overrideRationale so DisciplineEngine can record it as a viaAnnotation override.
+        let tryTrigger = triggers.first { $0.pattern.contains("try") }
+        XCTAssertEqual(tryTrigger?.overrideRationale, "best-effort call",
+                       "rationale-not-needed must be carried as an override, not dropped")
     }
 
     func testEmptyDirectoryReturnsEmpty() async throws {

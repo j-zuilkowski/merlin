@@ -129,20 +129,36 @@ actor DisciplineEngine {
                 findings.append(f)
             }
 
-            // WHY-comment missing.
-            for trigger in why where !trigger.hasNearbyComment {
-                let f = Finding(
-                    id: UUID(),
-                    category: .whyCommentMissing,
-                    severity: .nudge,
-                    summary: "\(trigger.file):\(trigger.line)",
-                    detail: trigger.context,
-                    suggestedAction: "Add WHY comment: \(trigger.reason)",
-                    createdAt: now,
-                    lastSeenAt: now
-                )
-                await queue.add(f)
-                findings.append(f)
+            // WHY-comment triggers. An inline `rationale-not-needed:` annotation is
+            // recorded as a viaAnnotation override; an un-annotated trigger with no
+            // nearby comment becomes a finding.
+            for trigger in why {
+                if let rationale = trigger.overrideRationale {
+                    let entry = OverrideEntry(
+                        timestamp: now,
+                        category: FindingCategory.whyCommentMissing.rawValue,
+                        file: trigger.file,
+                        line: trigger.line,
+                        rationale: rationale,
+                        userDismissed: false,
+                        viaAnnotation: true,
+                        annotationText: rationale
+                    )
+                    try? await overrideLog.record(entry)
+                } else if !trigger.hasNearbyComment {
+                    let f = Finding(
+                        id: UUID(),
+                        category: .whyCommentMissing,
+                        severity: .nudge,
+                        summary: "\(trigger.file):\(trigger.line)",
+                        detail: trigger.context,
+                        suggestedAction: "Add WHY comment: \(trigger.reason)",
+                        createdAt: now,
+                        lastSeenAt: now
+                    )
+                    await queue.add(f)
+                    findings.append(f)
+                }
             }
 
             // Prose readability - run the checker over project doc files.
