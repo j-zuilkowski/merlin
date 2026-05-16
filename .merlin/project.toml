@@ -3,4 +3,4 @@ adapter_version = "1.0"
 discipline_layers = ["soft_prompt", "pre_commit"]
 manual_coverage_baseline = 0
 decay_per_release = 0
-gating_schemes = ["MerlinTests"]
+gating_schemes = ["MerlinTests", "MerlinTests-Live"]
