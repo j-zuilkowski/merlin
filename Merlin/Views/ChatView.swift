@@ -682,10 +682,34 @@ final class ChatViewModel: ObservableObject {
             subagentVMs[id] = vm
             var entry = ChatEntry(role: .assistant, text: "")
             entry.subagentID = id
+            entry.subagentBlock = SubagentBlock(
+                agentName: agentName,
+                status: "running",
+                tools: [],
+                summary: nil,
+                text: ""
+            )
             items.append(entry)
             bumpRevision()
         case .subagentUpdate(let id, let subagentEvent):
             subagentVMs[id]?.apply(subagentEvent)
+            if let vm = subagentVMs[id],
+               let idx = items.firstIndex(where: { $0.subagentID == id }) {
+                let statusString: String
+                switch vm.status {
+                case .running:   statusString = "running"
+                case .completed: statusString = "completed"
+                case .failed:    statusString = "failed"
+                }
+                items[idx].subagentBlock = SubagentBlock(
+                    agentName: vm.agentName,
+                    status: statusString,
+                    tools: vm.toolEvents.map {
+                        SubagentToolLine(name: $0.toolName, done: $0.status == .done)
+                    },
+                    summary: vm.summary,
+                    text: vm.accumulatedText)
+            }
             bumpRevision()
             case .ragSources(let chunks):
                 lastRAGSources = chunks
@@ -897,6 +921,7 @@ struct ChatEntry: Identifiable, Sendable {
     var thinkingExpanded: Bool = false
     var toolCalls: [ToolCallEntry] = []   // nested tool calls for assistant entries
     var subagentID: UUID? = nil
+    var subagentBlock: SubagentBlock? = nil
     var ragSources: [RAGChunk] = []
     var groundingReport: GroundingReport? = nil
 }

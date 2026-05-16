@@ -135,13 +135,14 @@ enum ConversationHTMLRenderer {
         <div class="tool-group">\(entry.toolCalls.map { toolCallHTML($0) }.joined())</div>
         """
         let grounding = entry.groundingReport.map { groundingReportHTML($0) } ?? ""
+        let subagentBlock = entry.subagentBlock.map { subagentBlockHTML($0) } ?? ""
         let content = markdownToHTML(htmlEscape(entry.text))
         let textDiv = """
         <div class="assistant-text">\(thinking)\(content)</div>
         """
         let ragSources = entry.ragSources.isEmpty ? "" : ragSourcesHTML(entry.ragSources)
         return """
-        <div class="message assistant" data-id="\(id)">\(toolGroup)\(grounding)\(textDiv)\(ragSources)</div>
+        <div class="message assistant" data-id="\(id)">\(toolGroup)\(grounding)\(subagentBlock)\(textDiv)\(ragSources)</div>
         """
     }
 
@@ -174,6 +175,39 @@ enum ConversationHTMLRenderer {
           <span class="grounding-status">\(htmlEscape(statusLabel))</span>
           <span class="grounding-meta">\(details)</span>
         </div>
+        """
+    }
+
+    private static func subagentBlockHTML(_ block: SubagentBlock) -> String {
+        let statusClass = htmlEscape(block.status)
+        let toolRows = block.tools.map { tool -> String in
+            let doneClass = tool.done ? "done" : "running"
+            let doneText = tool.done ? "done" : "running"
+            return """
+            <div class="subagent-tool \(doneClass)">
+              <span class="subagent-tool-name">\(htmlEscape(tool.name))</span>
+              <span class="subagent-tool-status">\(doneText)</span>
+            </div>
+            """
+        }.joined()
+        let tools = toolRows.isEmpty ? "" : """
+        <div class="subagent-tools">\(toolRows)</div>
+        """
+        let text = block.text.isEmpty ? "" : """
+        <div class="subagent-text">\(htmlEscape(block.text))</div>
+        """
+        let summary = (block.summary ?? "").isEmpty ? "" : """
+        <div class="subagent-summary">\(htmlEscape(block.summary ?? ""))</div>
+        """
+        return """
+        <details class="subagent-block" open>
+          <summary class="subagent-header">
+            <span class="subagent-dot \(statusClass)"></span>
+            <span class="subagent-name">[\(htmlEscape(block.agentName))]</span>
+            <span class="subagent-status">\(htmlEscape(block.status))</span>
+          </summary>
+          <div class="subagent-body">\(tools)\(text)\(summary)</div>
+        </details>
         """
     }
 
@@ -371,6 +405,74 @@ enum ConversationHTMLRenderer {
             font-size: 12px;
         }
         .tool-row.tool-error { border-color: rgba(255,100,100,0.4); }
+        .subagent-block {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .subagent-header {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .subagent-header::-webkit-details-marker { display: none; }
+        .subagent-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--fg-secondary);
+        }
+        .subagent-dot.running { background: #b78cff; }
+        .subagent-dot.completed { background: #63d487; }
+        .subagent-dot.failed { background: #ff6b6b; }
+        .subagent-name {
+            font-family: var(--mono);
+            font-weight: 700;
+        }
+        .subagent-status {
+            color: var(--fg-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .subagent-body {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .subagent-tools {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .subagent-tool {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--fg-secondary);
+        }
+        .subagent-tool-name {
+            font-family: var(--mono);
+            color: var(--fg);
+            flex: 1;
+        }
+        .subagent-tool-status {
+            font-size: 11px;
+        }
+        .subagent-text, .subagent-summary {
+            white-space: pre-wrap;
+            color: var(--fg);
+            line-height: 1.35;
+        }
+        .subagent-summary {
+            color: var(--fg-secondary);
+        }
         .grounding-report {
             margin-bottom: 8px;
             padding: 6px 8px;
