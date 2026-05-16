@@ -698,6 +698,15 @@ final class AgenticEngine {
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
             continuation.yield(.systemNote(augmented))
         }
+        // Discipline: flag a feature request submitted without a phase NNa file, so the
+        // project's TDD-first workflow is visible in the agent loop.
+        if let disciplineProjectPath = currentProjectPath, !disciplineProjectPath.isEmpty {
+            let promptCheck = await UserPromptDisciplineChecker().check(
+                prompt: effectiveMessage, projectPath: disciplineProjectPath)
+            if case .missingPhaseFile(let suggestion) = promptCheck {
+                continuation.yield(.systemNote("⚠️ TDD discipline: \(suggestion)"))
+            }
+        }
         let hadCompactionBeforeTurn = context.compactionCount > 0
         let shouldHintCompaction = context.messages.count > 80
         var turnCompactionCount = context.compactionCount
