@@ -1,5 +1,8 @@
 # Phase 308b — StubMarkerScanner (implementation)
 
+> **Note:** the `scan` method here is refined by phase 318b (skip empty `.cancel`
+> buttons, track `"""` multi-line strings). Implement 318b's version.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 308a complete: failing tests in `StubMarkerScannerTests`.

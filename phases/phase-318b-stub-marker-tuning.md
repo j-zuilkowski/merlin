@@ -1,39 +1,21 @@
-import Foundation
+# Phase 318b — StubMarkerScanner Tuning
 
-/// One stub, placeholder, or deferred-work marker found in source.
-struct StubMarkerFinding: Sendable, Equatable {
-    let file: String
-    let line: Int
-    let marker: String
-    /// True for code that aborts or does nothing if reached; false for deferral
-    /// comments that merely flag future work.
-    let isHardStub: Bool
-    let context: String
-}
+## Context
+Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
+Phase 318a complete: failing runtime tests in `StubMarkerScannerTuningTests`.
 
-/// Scans source for markers of unfinished work - code that compiles green but is not
-/// actually done. Language-agnostic line scan over Swift and Rust sources.
-actor StubMarkerScanner {
+Removes the two `stubbedImplementation` false positives: empty `.cancel`-role buttons
+(idiomatic SwiftUI) and markers inside `"""` multi-line string literals (template
+content). `StubMarkerScanner.swift` is in `Merlin/Discipline/` — pure Foundation,
+compiled into both the app and the `merlin-discipline` CLI.
 
-    private struct Marker {
-        let regex: String
-        let label: String
-        let hard: Bool
-    }
+---
 
-    private let markers: [Marker] = [
-        Marker(regex: #"\bfatalError\s*\("#, label: "fatalError", hard: true),
-        Marker(regex: #"\bpreconditionFailure\s*\("#, label: "preconditionFailure", hard: true),
-        Marker(regex: #"\bunimplemented\b"#, label: "unimplemented", hard: true),
-        Marker(regex: #"\bnotImplemented\b"#, label: "notImplemented", hard: true),
-        Marker(regex: #"Button\([^)]*\)\s*\{\s*\}"#, label: "empty Button action", hard: true),
-        Marker(regex: #"//\s*(stub|placeholder|deferred)\b"#, label: "stub comment", hard: true),
-        Marker(regex: #"\bTODO\b"#, label: "TODO", hard: false),
-        Marker(regex: #"\bFIXME\b"#, label: "FIXME", hard: false),
-        Marker(regex: #"\bXXX\b"#, label: "XXX", hard: false),
-        Marker(regex: #"\bHACK\b"#, label: "HACK", hard: false),
-    ]
+## 1. Edit: Merlin/Discipline/StubMarkerScanner.swift
+Replace the whole `scan(projectPath:)` method with this version — it tracks `"""`
+multi-line string fences and skips empty `.cancel`-role buttons:
 
+```swift
     func scan(projectPath: String) async -> [StubMarkerFinding] {
         var results: [StubMarkerFinding] = []
         let root = URL(fileURLWithPath: projectPath)
@@ -61,7 +43,7 @@ actor StubMarkerScanner {
                 for marker in markers {
                     guard let range = line.range(
                         of: marker.regex, options: .regularExpression) else { continue }
-                    // A marker inside a "..." string literal is data, not a code marker.
+                    // A marker inside a single-line "..." literal is data, not a marker.
                     if isInsideStringLiteral(line: line, matchStart: range.lowerBound) {
                         continue
                     }
@@ -82,18 +64,35 @@ actor StubMarkerScanner {
         }
         return results
     }
+```
 
-    /// True when `matchStart` lies inside a `"..."` string literal on `line`.
-    private func isInsideStringLiteral(line: String, matchStart: String.Index) -> Bool {
-        var insideString = false
-        var previous: Character?
-        var index = line.startIndex
-        while index < matchStart {
-            let ch = line[index]
-            if ch == "\"" && previous != "\\" { insideString.toggle() }
-            previous = ch
-            index = line.index(after: index)
-        }
-        return insideString
-    }
-}
+The `markers` table and `isInsideStringLiteral(line:matchStart:)` are unchanged.
+
+## 2. Edit: phases/phase-308b-stub-marker-scanner.md
+Add a one-line banner under that doc's title:
+```
+> **Note:** the `scan` method here is refined by phase 318b (skip empty `.cancel`
+> buttons, track `"""` multi-line strings). Implement 318b's version.
+```
+
+---
+
+## Verify
+```
+xcodegen generate
+xcodebuild -scheme MerlinTests test -destination 'platform=macOS' \
+  -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+  -only-testing:MerlinTests/StubMarkerScannerTuningTests -only-testing:MerlinTests/StubMarkerScannerTests 2>&1 \
+  | grep -E 'Test Case|TEST (SUCCEEDED|FAILED)|error:'
+xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
+  -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)'
+```
+Expected: `StubMarkerScannerTuningTests` and the original `StubMarkerScannerTests` all
+pass; BUILD SUCCEEDED, zero warnings.
+
+## Commit
+```
+git add Merlin/Discipline/StubMarkerScanner.swift phases/phase-308b-stub-marker-scanner.md \
+  phases/phase-318b-stub-marker-tuning.md
+git commit -m "Phase 318b — StubMarkerScanner skips .cancel buttons and multi-line strings"
+```
