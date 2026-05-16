@@ -6,7 +6,7 @@ actor DisciplineEngine {
 
     // MARK: - Dependencies
 
-    private let adapter: ProjectAdapter
+    private var adapter: ProjectAdapter
     private let phaseScanner: PhaseScanner
     private let manualCoverageScanner: ManualCoverageScanner
     private let docReferenceGraph: DocReferenceGraph
@@ -189,6 +189,38 @@ actor DisciplineEngine {
 
     func dismiss(findingID: UUID, rationale: String) async {
         await queue.dismiss(id: findingID, rationale: rationale)
+    }
+
+    // MARK: - Adapter
+
+    /// Replaces the engine's adapter at runtime. Called once the project's real adapter
+    /// is resolved from `.merlin/project.toml` — the engine bootstraps with a stub.
+    func setAdapter(_ adapter: ProjectAdapter) {
+        self.adapter = adapter
+    }
+
+    /// The adapter the engine currently scans with.
+    func currentAdapter() -> ProjectAdapter {
+        adapter
+    }
+
+    /// Resolves a project's discipline adapter: reads `.merlin/project.toml`, looks the
+    /// adapter key up in `registry`, and falls back to the Swift stub when there is no
+    /// config or the key is unknown.
+    static func resolveProjectAdapter(
+        projectPath: String,
+        registry: AdapterRegistry = .shared
+    ) async -> ProjectAdapter {
+        let stub = ProjectAdapter.makeStub(language: "swift")
+        guard !projectPath.isEmpty else { return stub }
+        let loader = ProjectConfigLoader()
+        guard loader.exists(projectPath: projectPath) else { return stub }
+        do {
+            let config = try await loader.load(projectPath: projectPath)
+            return try await registry.adapter(for: config.adapter)
+        } catch {
+            return stub
+        }
     }
 
     // MARK: - Doc-file helpers

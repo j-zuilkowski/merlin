@@ -154,12 +154,19 @@ final class AppState: ObservableObject {
             let agentsDir = URL(fileURLWithPath: "\(home)/.merlin/agents")
             try? await AgentRegistry.shared.loadDirectory(agentsDir)
         }
+        let disciplineEngineForAdapter = disciplineEngine
+        let projectPathForAdapter = projectPath
         Task {
-            // Install + load the discipline seed adapters into ~/.merlin/adapters.
+            // Install + load the discipline seed adapters into ~/.merlin/adapters, then
+            // resolve this project's real adapter from .merlin/project.toml and apply it
+            // to the engine, replacing the bootstrap stub set above.
             let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
             let adaptersDir = "\(home)/.merlin/adapters"
             try? await AdapterRegistry.installSeedAdapters(into: adaptersDir)
             try? await AdapterRegistry.shared.loadFromDirectory(adaptersDir)
+            let resolved = await DisciplineEngine.resolveProjectAdapter(
+                projectPath: projectPathForAdapter)
+            await disciplineEngineForAdapter.setAdapter(resolved)
         }
 
         let gate = AuthGate(memory: authMemory, presenter: self)
