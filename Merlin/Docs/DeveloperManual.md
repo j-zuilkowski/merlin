@@ -519,7 +519,7 @@ struct Finding: Sendable, Identifiable, Codable {
     let id: UUID
     let category: FindingCategory   // phaseDrift | manualCoverageGap | docStaleReference
                                     // | whyCommentMissing | proseReadabilityFail
-                                    // | versionBumpCandidate | overrideAuditAccumulation
+                                    // | overrideAuditAccumulation
     let severity: Severity          // block | nudge | silent
     let summary: String
     let detail: String

@@ -8,7 +8,6 @@ enum FindingCategory: String, Codable, Sendable, CaseIterable {
     case docStaleReference
     case whyCommentMissing
     case proseReadabilityFail
-    case versionBumpCandidate
     case overrideAuditAccumulation
 }
 

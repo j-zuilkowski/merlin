@@ -29,7 +29,6 @@ final class FindingModelTests: XCTestCase {
         XCTAssertEqual(FindingCategory.docStaleReference.rawValue, "docStaleReference")
         XCTAssertEqual(FindingCategory.whyCommentMissing.rawValue, "whyCommentMissing")
         XCTAssertEqual(FindingCategory.proseReadabilityFail.rawValue, "proseReadabilityFail")
-        XCTAssertEqual(FindingCategory.versionBumpCandidate.rawValue, "versionBumpCandidate")
         XCTAssertEqual(FindingCategory.overrideAuditAccumulation.rawValue, "overrideAuditAccumulation")
     }
 
