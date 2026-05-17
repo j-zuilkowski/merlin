@@ -131,9 +131,19 @@ actor XcalibreClient {
         !(fetcher is URLSession)
     }
 
+    /// The configured xcalibre-server base URL. Reads `XCALIBRE_BASE_URL` via `getenv`
+    /// (the live process environment) rather than `ProcessInfo.processInfo.environment`,
+    /// which snapshots the environment at first access and so misses a later `setenv`.
+    static func defaultBaseURL() -> String {
+        if let raw = getenv("XCALIBRE_BASE_URL"), case let value = String(cString: raw),
+           !value.isEmpty {
+            return value
+        }
+        return "http://localhost:8083"
+    }
+
     init(
-        baseURL: String = ProcessInfo.processInfo.environment["XCALIBRE_BASE_URL"]
-            ?? "http://localhost:8083",
+        baseURL: String = XcalibreClient.defaultBaseURL(),
         token: String = "",
         fetcher: any HTTPFetching = URLSession.shared
     ) {
