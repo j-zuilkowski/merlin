@@ -155,12 +155,19 @@ actor DocReferenceGraph {
     }
 
     /// Enum-case identifiers declared on a trimmed `line` - `case phaseDrift`, or a
-    /// comma list `case a, b = "x"`. Over-collecting switch-statement `case` patterns is
-    /// harmless: it only adds to the known-symbol set.
+    /// comma list `case a, b = "x"`. A trailing `//` line comment is stripped first so a
+    /// comma inside the comment is not mistaken for a case separator (e.g.
+    /// `case green // present, shape unchanged` must not yield a phantom case `shape`).
+    /// Over-collecting switch-statement `case` patterns is harmless: it only adds to the
+    /// known-symbol set.
     private func extractEnumCaseNames(from line: String) -> [String] {
         guard line.hasPrefix("case ") else { return [] }
+        var body = line
+        if let comment = body.range(of: "//") {
+            body = String(body[..<comment.lowerBound])
+        }
         var names: [String] = []
-        for piece in line.dropFirst(5).split(separator: ",") {
+        for piece in body.dropFirst(5).split(separator: ",") {
             let trimmed = piece.trimmingCharacters(in: .whitespaces)
             if let r = trimmed.range(of: #"^[a-z][A-Za-z0-9_]*"#,
                                      options: .regularExpression) {
