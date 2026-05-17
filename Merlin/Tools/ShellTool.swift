@@ -62,7 +62,11 @@ enum ShellTool {
         }
 
         return try await withTaskCancellationHandler(operation: {
-            let timeoutWorkItem = DispatchWorkItem { process.terminate() }
+            // `terminate()` throws NSInvalidArgumentException ("task not launched")
+            // if the timeout fires before `process.run()` — guard on `isRunning`.
+            let timeoutWorkItem = DispatchWorkItem {
+                if process.isRunning { process.terminate() }
+            }
             DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(timeoutSeconds), execute: timeoutWorkItem)
 
             async let stdoutLines = readLines(from: stdoutPipe.fileHandleForReading, source: .stdout, onLine: onLine)
@@ -85,7 +89,9 @@ enum ShellTool {
             let stderr = try await stderrLines
             return normalize(command: command, stdoutLines: stdout, stderrLines: stderr, exitCode: exitCode)
         }, onCancel: {
-            process.terminate()
+            // A cancelled Task can fire this before `process.run()`; `terminate()`
+            // on an unlaunched Process crashes with NSInvalidArgumentException.
+            if process.isRunning { process.terminate() }
         })
     }
 
