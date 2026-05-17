@@ -68,7 +68,7 @@ struct LoRATrainingResult: Sendable {
 // MARK: - LoRATrainer
 
 /// Exports session OutcomeRecords as MLX-LM training JSONL and shells out to
-/// `python -m mlx_lm.lora` to fine-tune a local model on the M4 Mac.
+/// `python3 -m mlx_lm.lora` to fine-tune a local model on the M4 Mac.
 ///
 /// Training only fires when loraEnabled + loraAutoTrain + sample threshold met.
 /// The trained adapter is saved to loraAdapterPath; when loraAutoLoad is true,
@@ -103,7 +103,7 @@ actor LoRATrainer {
 
     // MARK: - Training
 
-    /// Exports records to a temp JSONL file and runs `python -m mlx_lm.lora --train`.
+    /// Exports records to a temp JSONL file and runs `python3 -m mlx_lm.lora --train`.
     /// Returns immediately with success=false if there are no valid training samples.
     func train(
         records: [OutcomeRecord],
@@ -143,7 +143,7 @@ actor LoRATrainer {
         )
 
         let command = [
-            "python -m mlx_lm.lora",
+            "python3 -m mlx_lm.lora",
             "--model \"\(baseModel)\"",
             "--train",
             "--data \"\(tempURL.path)\"",
