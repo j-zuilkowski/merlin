@@ -1,5 +1,7 @@
 # Phase 316a — DocReferenceGraph Scope Tests (failing)
 
+> **Note:** the test file from this phase is rewritten by phase 319b. Use 319b's version.
+
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.

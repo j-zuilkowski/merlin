@@ -1,5 +1,7 @@
 # Phase 317b — ReachabilityScanner Injection-Detection Fix
 
+> **Note:** phase 319b adds build/ + DerivedData/ skips to swiftFiles.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 317a complete: failing runtime tests in `ReachabilityScannerInjectionTests`.

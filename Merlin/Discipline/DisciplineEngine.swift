@@ -344,7 +344,10 @@ actor DisciplineEngine {
             options: [.skipsHiddenFiles]
         ) else { return files }
         for case let url as URL in enumerator where url.pathExtension == "md" {
-            files.append(url.path)
+            let p = url.path
+            if p.contains("/build/") || p.contains("/DerivedData/")
+                || p.contains("/.build/") { continue }
+            files.append(p)
         }
         return files
     }

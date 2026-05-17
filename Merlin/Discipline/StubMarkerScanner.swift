@@ -45,6 +45,8 @@ actor StubMarkerScanner {
             guard url.pathExtension == "swift" || url.pathExtension == "rs",
                   !url.path.contains("Tests/"),
                   !url.path.contains("/.build/"),
+                  !url.path.contains("/build/"),
+                  !url.path.contains("/DerivedData/"),
                   // The scanner's own marker table embeds the marker vocabulary.
                   url.lastPathComponent != "StubMarkerScanner.swift",
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }

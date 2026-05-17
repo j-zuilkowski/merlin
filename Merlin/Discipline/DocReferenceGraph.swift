@@ -55,8 +55,7 @@ actor DocReferenceGraph {
         var seen: Set<String> = []
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
-            // Phase-doc Markdown is build scaffolding — historical and illustrative
-            // identifiers, not product documentation. Never scan it for staleness.
+            // Phase-doc Markdown is build scaffolding — never scan it for staleness.
             if docFile.contains("/phases/") { continue }
 
             guard let text = try? String(
@@ -76,19 +75,11 @@ actor DocReferenceGraph {
                         in: CharacterSet(charactersIn: "# "))
                     continue
                 }
-
-                // Backticked identifiers - existing behaviour, inside and outside fences.
-                for sym in extractBacktickedSymbols(from: line)
-                where looksLikeCodeSymbol(sym) && !symbolSet.contains(sym) {
-                    let key = "\(docFile)|\(sym)"
-                    guard !seen.contains(key) else { continue }
-                    seen.insert(key)
-                    dangling.append(DocReference(
-                        docFile: docFile, docSection: currentSection,
-                        codeSymbol: sym, sourceFile: nil))
-                }
-
-                // Inside a fenced code block, verify enum-case declarations too.
+                // High-precision check only: an enum `case` declared inside a fenced
+                // code block that names no real source symbol is a genuinely stale doc
+                // example. The former loose backticked-identifier check was dropped in
+                // phase 319 — it could not tell a stale Merlin reference from a mention
+                // of an Apple or standard-library type, and ran ~95% false positive.
                 if inFence {
                     for caseName in extractEnumCaseNames(from: trimmed)
                     where caseName.count >= 4 && !symbolSet.contains(caseName) {
@@ -125,8 +116,13 @@ actor DocReferenceGraph {
 
         let sourceExtensions: Set<String> = ["swift", "rs", "py", "ts", "js"]
         for case let url as URL in enumerator {
+            let p = url.path
             guard sourceExtensions.contains(url.pathExtension),
-                  let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                  !p.contains("/build/"), !p.contains("/DerivedData/"),
+                  !p.contains("/.build/"),
+                  let text = try? String(contentsOf: url, encoding: .utf8) else {
+                continue
+            }
 
             for line in text.components(separatedBy: .newlines) {
                 let t = line.trimmingCharacters(in: .whitespaces)
@@ -193,38 +189,6 @@ actor DocReferenceGraph {
         return symbols
     }
 
-    /// Extracts identifiers that appear inside backticks only: `` `Name` ``.
-    /// Used for dangling-reference detection: an unquoted capitalised word is far more
-    /// likely to be ordinary prose, so dangling detection requires the backticks.
-    private func extractBacktickedSymbols(from line: String) -> [String] {
-        var symbols: [String] = []
-        let pattern = #"`([A-Za-z][A-Za-z0-9_]+)`"#
-        let regex = try? NSRegularExpression(pattern: pattern)
-        let nsLine = line as NSString
-        let matches = regex?.matches(
-            in: line, range: NSRange(location: 0, length: nsLine.length)) ?? []
-        for match in matches {
-            let r = match.range(at: 1)
-            if r.location != NSNotFound, let range = Range(r, in: line) {
-                symbols.append(String(line[range]))
-            }
-        }
-        return symbols
-    }
-
-    /// True when `name` looks like a code symbol: PascalCase type name or camelCase
-    /// function name, length >= 4. Length-4 minimum suppresses false positives on
-    /// short backticked words like `id` or `URL` fragments.
-    private func looksLikeCodeSymbol(_ name: String) -> Bool {
-        guard name.count >= 4 else { return false }
-        guard let first = name.first else { return false }
-        let isIdentifier = name.allSatisfy { $0.isLetter || $0.isNumber || $0 == "_" }
-        guard isIdentifier else { return false }
-        guard first.isLetter else { return false }
-        let interior = name.dropFirst()
-        return interior.contains { $0.isUppercase }
-    }
-
     private func enumerateDocFiles(projectPath: String) -> [String] {
         var files: [String] = []
         let root = URL(fileURLWithPath: projectPath)
@@ -233,7 +197,10 @@ actor DocReferenceGraph {
             options: [.skipsHiddenFiles]
         ) else { return files }
         for case let url as URL in enumerator where url.pathExtension == "md" {
-            files.append(url.path)
+            let p = url.path
+            if p.contains("/build/") || p.contains("/DerivedData/")
+                || p.contains("/.build/") { continue }
+            files.append(p)
         }
         return files
     }

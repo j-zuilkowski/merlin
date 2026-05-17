@@ -1,5 +1,7 @@
 # Phase 316b — DocReferenceGraph Scope Fix
 
+> **Note:** these methods are further refined by phase 319b (skip build/, drop the loose backticked check). Implement 319b's versions.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 316a complete: failing runtime test in `DocReferenceGraphScopeTests`.

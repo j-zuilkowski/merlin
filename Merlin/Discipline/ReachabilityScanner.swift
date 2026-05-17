@@ -84,7 +84,9 @@ actor ReachabilityScanner {
         while let url = enumerator.nextObject() as? URL {
             guard url.pathExtension == "swift",
                   !url.path.contains("Tests/"),
-                  !url.path.contains("/.build/") else { continue }
+                  !url.path.contains("/.build/"),
+                  !url.path.contains("/build/"),
+                  !url.path.contains("/DerivedData/") else { continue }
             files.append(url)
         }
         return files

@@ -1,5 +1,7 @@
 # Phase 318b — StubMarkerScanner Tuning
 
+> **Note:** phase 319b adds build/ + DerivedData/ skips to scan's file guard.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Phase 318a complete: failing runtime tests in `StubMarkerScannerTuningTests`.
