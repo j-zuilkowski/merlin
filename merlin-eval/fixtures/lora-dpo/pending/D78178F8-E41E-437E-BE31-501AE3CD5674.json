@@ -1,0 +1,8 @@
+{
+  "id" : "D78178F8-E41E-437E-BE31-501AE3CD5674",
+  "prompt" : "Explain osmosis (variant c).",
+  "chosen" : "The topic osmosis is a natural process explained in one clear sentence.",
+  "rejected" : "Well, osmosis is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}

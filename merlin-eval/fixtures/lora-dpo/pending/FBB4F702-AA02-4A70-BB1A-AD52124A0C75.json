@@ -1,0 +1,8 @@
+{
+  "id" : "FBB4F702-AA02-4A70-BB1A-AD52124A0C75",
+  "prompt" : "Explain fermentation (variant d).",
+  "chosen" : "The topic fermentation is a natural process explained in one clear sentence.",
+  "rejected" : "Well, fermentation is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}

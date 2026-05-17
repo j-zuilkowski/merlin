@@ -1,0 +1,8 @@
+{
+  "id" : "F45FBBD5-8EAD-4804-B0A6-591B56233BAA",
+  "prompt" : "Explain gravity (variant b).",
+  "chosen" : "The topic gravity is a natural process explained in one clear sentence.",
+  "rejected" : "Well, gravity is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}

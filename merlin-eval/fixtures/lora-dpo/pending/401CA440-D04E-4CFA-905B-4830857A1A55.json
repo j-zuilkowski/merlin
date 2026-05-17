@@ -1,0 +1,8 @@
+{
+  "id" : "401CA440-D04E-4CFA-905B-4830857A1A55",
+  "prompt" : "Explain evaporation (variant b).",
+  "chosen" : "The topic evaporation is a natural process explained in one clear sentence.",
+  "rejected" : "Well, evaporation is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}

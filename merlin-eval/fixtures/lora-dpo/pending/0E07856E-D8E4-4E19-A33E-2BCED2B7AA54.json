@@ -1,0 +1,8 @@
+{
+  "id" : "0E07856E-D8E4-4E19-A33E-2BCED2B7AA54",
+  "prompt" : "Explain erosion (variant c).",
+  "chosen" : "The topic erosion is a natural process explained in one clear sentence.",
+  "rejected" : "Well, erosion is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}

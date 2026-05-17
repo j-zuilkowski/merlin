@@ -1,0 +1,12 @@
+{
+  "schematic": "RC low-pass filter",
+  "components": [
+    { "designator": "R1", "value": "10k",   "type": "resistor" },
+    { "designator": "C1", "value": "100nF", "type": "capacitor" }
+  ],
+  "nets": [
+    { "name": "VIN", "pins": ["R1-1"] },
+    { "name": "OUT", "pins": ["R1-2", "C1-1"] },
+    { "name": "GND", "pins": ["C1-2"] }
+  ]
+}

@@ -29,3 +29,10 @@ dist/
 .merlin/pending.json
 .merlin/discipline-events.jsonl
 .merlin/override-log.jsonl
+
+# Eval suite (merlin-eval/) — fixture *sources* and the OCR image are tracked; the
+# regenerable build outputs are not.
+merlin-eval/fixtures/**/target/
+merlin-eval/fixtures/**/ledger.txt
+merlin-eval/fixtures/electronics/*
+!merlin-eval/fixtures/electronics/schematic-image/

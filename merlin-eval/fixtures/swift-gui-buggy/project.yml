@@ -1,0 +1,29 @@
+name: TaskBoard
+options:
+  bundleIdPrefix: com.merlineval
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  TaskBoard:
+    type: application
+    platform: macOS
+    sources: [TaskBoard]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlineval.taskboard
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+  TaskBoardTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [TaskBoardTests]
+    dependencies:
+      - target: TaskBoard
+schemes:
+  TaskBoard:
+    build:
+      targets: { TaskBoard: all, TaskBoardTests: [test] }
+    test:
+      targets: [TaskBoardTests]

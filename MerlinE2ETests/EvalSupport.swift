@@ -2,8 +2,9 @@ import Foundation
 import XCTest
 @testable import Merlin
 
-/// Resolves `merlin-eval/<...>` - a sibling of the `merlin` repo - from this source
-/// file's location, so the harness needs no env var or absolute path.
+/// Resolves `merlin-eval/<...>` - the eval suite, which lives inside the `merlin` repo
+/// at `merlin/merlin-eval/` - from this source file's location, so the harness needs no
+/// env var or absolute path.
 enum EvalPaths {
     /// `.../localProject`
     static var root: URL {
@@ -13,7 +14,7 @@ enum EvalPaths {
             .deletingLastPathComponent()           // .../localProject
     }
     static func fixture(_ name: String) -> String {
-        root.appendingPathComponent("merlin-eval/fixtures/\(name)").path
+        root.appendingPathComponent("merlin/merlin-eval/fixtures/\(name)").path
     }
     static func sibling(_ name: String) -> String {
         root.appendingPathComponent(name).path     // e.g. "xcalibre-server"
@@ -120,11 +121,11 @@ enum EvalLMStudio {
     }
 }
 
-/// Appends a scenario's captured run to `merlin-eval/results/` - every value logged end
+/// Appends a scenario's captured run to `merlin/merlin-eval/results/` - every value logged end
 /// to end (SURFACE-CENSUS.md -> "Evidence & end-to-end value logging").
 enum EvalLog {
     static func write(scenario: String, summary: String) {
-        let dir = EvalPaths.root.appendingPathComponent("merlin-eval/results")
+        let dir = EvalPaths.root.appendingPathComponent("merlin/merlin-eval/results")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let stamp = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")

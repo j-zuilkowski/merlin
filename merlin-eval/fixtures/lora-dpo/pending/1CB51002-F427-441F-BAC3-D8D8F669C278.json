@@ -1,0 +1,8 @@
+{
+  "id" : "1CB51002-F427-441F-BAC3-D8D8F669C278",
+  "prompt" : "Explain combustion (variant c).",
+  "chosen" : "The topic combustion is a natural process explained in one clear sentence.",
+  "rejected" : "Well, combustion is quite interesting. There are many aspects to it. First, one must consider the background. Then there is the mechanism. Finally, the effects are worth discussing at length.",
+  "model_id" : "qwen/qwen3.6-27b",
+  "timestamp" : "2026-05-17T12:00:00Z"
+}
