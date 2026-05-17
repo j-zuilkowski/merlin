@@ -141,10 +141,6 @@ public final class TelemetryEmitter: @unchecked Sendable {
         self.loop      = loop
     }
 
-    public func setSession(_ id: String) { sessionID = id }
-    public func setTurn(_ t: Int)        { turn = t }
-    public func setLoop(_ l: Int)        { loop = l }
-
     // MARK: Emit
 
     /// Fire-and-forget event. Never blocks the caller.

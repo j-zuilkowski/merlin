@@ -153,10 +153,6 @@ public final class TelemetryEmitter: @unchecked Sendable {
         self.loop      = loop
     }
 
-    public func setSession(_ id: String) { sessionID = id }
-    public func setTurn(_ t: Int)        { turn = t }
-    public func setLoop(_ l: Int)        { loop = l }
-
     // MARK: Emit
 
     /// Fire-and-forget event. Never blocks the caller.
@@ -278,3 +274,8 @@ Expected: all TelemetryEmitterTests pass, BUILD SUCCEEDED.
 git add Merlin/Telemetry/TelemetryEmitter.swift project.yml Merlin.xcodeproj
 git commit -m "Phase diag-01b — TelemetryEmitter core"
 ```
+
+## Fixes
+Phase 322 removed `setSession(_:)`, `setTurn(_:)` and `setLoop(_:)` — dead code with
+zero callers in any target (W4 trace-audit finding F5). `setContext(sessionID:turn:loop:)`
+is the surviving context setter.
