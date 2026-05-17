@@ -7,9 +7,23 @@ import XCTest
 /// app *running* (they probe it through AXInspectorTool / CGEventTool by bundle ID).
 @MainActor
 private func launchTargetApp() async throws -> NSRunningApplication {
-    let productsDir = Bundle(for: GUIAutomationE2ETests.self)
-        .bundleURL.deletingLastPathComponent()
-    let appURL = productsDir.appendingPathComponent("TestTargetApp.app")
+    // The xctest bundle is embedded in Merlin.app/Contents/PlugIns; TestTargetApp.app
+    // sits in the build products directory several levels up. Walk up to find it.
+    var dir = Bundle(for: GUIAutomationE2ETests.self).bundleURL.deletingLastPathComponent()
+    var appURL: URL?
+    for _ in 0..<8 {
+        let candidate = dir.appendingPathComponent("TestTargetApp.app")
+        if FileManager.default.fileExists(atPath: candidate.path) {
+            appURL = candidate
+            break
+        }
+        let parent = dir.deletingLastPathComponent()
+        if parent == dir { break }
+        dir = parent
+    }
+    guard let appURL else {
+        throw XCTSkip("TestTargetApp.app not found in the build products directory")
+    }
     let config = NSWorkspace.OpenConfiguration()
     config.activates = true
     config.createsNewApplicationInstance = true
