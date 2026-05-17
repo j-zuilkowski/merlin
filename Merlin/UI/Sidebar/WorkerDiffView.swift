@@ -36,10 +36,14 @@ struct WorkerDiffView: View {
         .task { await loadEntries() }
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
-                Button("Reject All") { }
+                Button("Reject All") {
+                    Task { await rejectAllChanges() }
+                }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier(AccessibilityID.workerDiffRejectAllButton)
-                Button("Accept & Merge") { }
+                Button("Accept & Merge") {
+                    Task { await acceptAndMergeChanges() }
+                }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(AccessibilityID.workerDiffAcceptMergeButton)
             }
@@ -52,6 +56,20 @@ struct WorkerDiffView: View {
         } else {
             stagingEntries = []
         }
+    }
+
+    func rejectAllChanges() async {
+        if let buffer = entry.stagingBuffer {
+            await buffer.rejectAll()
+        }
+        await loadEntries()
+    }
+
+    func acceptAndMergeChanges() async {
+        if let buffer = entry.stagingBuffer {
+            try? await buffer.acceptAll()
+        }
+        await loadEntries()
     }
 
     private func iconFor(_ op: String) -> String {
