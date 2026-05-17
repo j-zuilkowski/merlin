@@ -140,6 +140,4 @@ schemes:
     test:
       targets: [MerlinLiveTests, MerlinE2ETests]
       environmentVariables:
-        RUN_LIVE_TESTS:
-          value: "1"
-          isEnabled: true
+        RUN_LIVE_TESTS: "1"
