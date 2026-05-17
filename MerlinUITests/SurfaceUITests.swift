@@ -1,5 +1,8 @@
 import XCTest
-@testable import Merlin
+
+// AccessibilityID and SettingsSection are Foundation-only Merlin types compiled
+// directly into this UI-testing target (see project.yml) — a UI-testing bundle
+// cannot `@testable import Merlin`.
 
 /// W5 - M2 surface harness (S7-S11). Drives Merlin's own UI via XCUITest.
 @MainActor

@@ -1,10 +1,21 @@
+import AppKit
 import XCTest
 @testable import Merlin
 
+/// Launches TestTargetApp via NSWorkspace. This target is a `bundle.unit-test`, not a
+/// UI-testing bundle, so `XCUIApplication` is unavailable — these tests only need the
+/// app *running* (they probe it through AXInspectorTool / CGEventTool by bundle ID).
 @MainActor
-private func launchTargetApp() -> XCUIApplication {
-    let app = XCUIApplication(bundleIdentifier: "com.merlin.TestTargetApp")
-    app.launch()
+private func launchTargetApp() async throws -> NSRunningApplication {
+    let productsDir = Bundle(for: GUIAutomationE2ETests.self)
+        .bundleURL.deletingLastPathComponent()
+    let appURL = productsDir.appendingPathComponent("TestTargetApp.app")
+    let config = NSWorkspace.OpenConfiguration()
+    config.activates = true
+    config.createsNewApplicationInstance = true
+    let app = try await NSWorkspace.shared.openApplication(at: appURL, configuration: config)
+    // Let the app finish launching and publish its accessibility tree.
+    try await Task.sleep(nanoseconds: 1_500_000_000)
     return app
 }
 
@@ -12,7 +23,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testAXTreeIsRich() async throws {
         try skipUnlessLiveEnvironment()
-        let targetApp = launchTargetApp()
+        let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 
         let tree = await AXInspectorTool.probe(bundleID: "com.merlin.TestTargetApp")
@@ -23,7 +34,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testAXClickPrimaryButton() async throws {
         try skipUnlessLiveEnvironment()
-        let targetApp = launchTargetApp()
+        let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 
         let element = await AXInspectorTool.findElement(
@@ -50,7 +61,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testVisionQueryIdentifiesButton() async throws {
         try skipUnlessLiveEnvironment()
-        let targetApp = launchTargetApp()
+        let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 
         let jpeg = try await ScreenCaptureTool.captureWindow(

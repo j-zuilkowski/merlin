@@ -115,6 +115,25 @@ targets:
         BUNDLE_IDENTIFIER: com.merlin.MerlinE2ETests
         GENERATE_INFOPLIST_FILE: YES
 
+  # XCUITest surface harness (M2 / S7–S11). A bundle.ui-testing target drives the
+  # real Merlin app via XCUIApplication; it cannot @testable import Merlin, so the
+  # Foundation-only AccessibilityID + SettingsSection are compiled in directly.
+  MerlinUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - MerlinUITests/
+      - Merlin/Support/AccessibilityID.swift
+      - Merlin/UI/Settings/SettingsSection.swift
+    dependencies:
+      - target: Merlin
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.MerlinUITests
+        BUNDLE_IDENTIFIER: com.merlin.MerlinUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Merlin
+
 schemes:
   Merlin:
     build:
@@ -136,8 +155,9 @@ schemes:
         Merlin: all
         MerlinLiveTests: [test]
         MerlinE2ETests: [test]
+        MerlinUITests: [test]
         TestTargetApp: all
     test:
-      targets: [MerlinLiveTests, MerlinE2ETests]
+      targets: [MerlinLiveTests, MerlinE2ETests, MerlinUITests]
       environmentVariables:
         RUN_LIVE_TESTS: "1"
