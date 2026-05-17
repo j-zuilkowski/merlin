@@ -612,14 +612,13 @@ struct KAGTriple: Codable, Sendable {
     var domainID: String
     var sessionID: String
     var confidence: Double          // 0.0–1.0; extracted triples default to 0.8
-    var source: KAGTripleSource     // .session | .book | .domain
+    var source: KAGTripleSource     // .session | .book
     var timestamp: Date
 }
 
 enum KAGTripleSource: String, Codable, Sendable {
     case session   // extracted from a Merlin turn
     case book      // extracted by xcalibre-server from book content at ingestion
-    case domain    // asserted by a domain MCP server tool
 }
 ```
 
@@ -4930,8 +4929,10 @@ enum FindingCategory: String, Codable, Sendable {
     case docStaleReference
     case whyCommentMissing
     case proseReadabilityFail
-    case versionBumpCandidate
     case overrideAuditAccumulation
+    case ungatedTarget
+    case stubbedImplementation
+    case unwiredComponent
 }
 
 enum Severity: String, Codable, Sendable {
