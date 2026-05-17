@@ -1,0 +1,11 @@
+#!/bin/bash
+# Launches the merlin-kicad-mcp MCP server (JSON-RPC 2.0 over stdio).
+# Builds the release binary on first use. Build chatter goes to stderr —
+# stdout carries protocol traffic exclusively.
+set -e
+DIR="$(cd "$(dirname "$0")" && pwd)"
+BIN="$DIR/.build/release/merlin-kicad-mcp"
+if [ ! -x "$BIN" ]; then
+  swift build -c release --package-path "$DIR" 1>&2
+fi
+exec "$BIN" "$@"
