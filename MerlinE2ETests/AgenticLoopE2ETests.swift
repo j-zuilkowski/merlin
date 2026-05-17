@@ -6,10 +6,14 @@ final class AgenticLoopE2ETests: XCTestCase {
     @MainActor
     func testFullLoopWithRealDeepSeek() async throws {
         try skipUnlessLiveEnvironment()
+        // KeychainManager.readAPIKey() (no-arg) resolves the dead "deepseek-legacy"
+        // provider ID; Merlin actually stores the key under "deepseek" / "deepseek-flash"
+        // in ~/.merlin/api-keys.json. Read those — the real key store.
         guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"]
-            ?? KeychainManager.readAPIKey()
+            ?? KeychainManager.readAPIKey(for: "deepseek")
+            ?? KeychainManager.readAPIKey(for: "deepseek-flash")
         else {
-            throw XCTSkip("No API key")
+            throw XCTSkip("No DeepSeek API key in ~/.merlin/api-keys.json or Keychain")
         }
 
         let tmpPath = "/tmp/merlin-e2e-test.txt"

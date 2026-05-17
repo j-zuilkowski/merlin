@@ -86,12 +86,16 @@ final class CapabilityScenarioTests: XCTestCase {
             throw XCTSkip("no non-vision LM Studio provider configured - "
                           + "S4 reranking needs a text model")
         }
+        // Key names must match xcalibre-server's config structs (config.rs):
+        // [app] base_url + storage_path are both validated-required; [database] is a
+        // single `url` field that must be a sqlite:// URL — not a `path`.
         let configPath = "\(work)/config.toml"
         try """
         [app]
+        base_url = "http://127.0.0.1:\(port)"
         storage_path = "\(work)/storage"
         [database]
-        path = "\(work)/library.db"
+        url = "sqlite://\(work)/library.db"
         [watch_folder]
         enabled = true
         path = "\(EvalPaths.fixture("rag-corpus"))"
@@ -194,9 +198,11 @@ final class CapabilityScenarioTests: XCTestCase {
         try? FileManager.default.createDirectory(
             atPath: fixture, withIntermediateDirectories: true)
 
+        // Skip on the launchable `run` executable, not the plugin directory — the dir
+        // exists as phase docs long before the MCP server is actually built.
         let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        try XCTSkipUnless(FileManager.default.fileExists(atPath: mcpServerPath),
-                          "merlin-kicad-mcp plugin not found")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: "\(mcpServerPath)/run"),
+                          "merlin-kicad-mcp server not built — no run executable")
         let mcpJSON = """
         { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
         """
@@ -235,7 +241,7 @@ final class CapabilityScenarioTests: XCTestCase {
         // The KiCad MCP server (Merlin spawns it) lets Merlin write the extracted
         // schematic; same config as Part A.
         let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        if FileManager.default.fileExists(atPath: mcpServerPath) {
+        if FileManager.default.fileExists(atPath: "\(mcpServerPath)/run") {
             let mcpJSON = """
             { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
             """
