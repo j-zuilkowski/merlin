@@ -198,11 +198,9 @@ final class CapabilityScenarioTests: XCTestCase {
         try? FileManager.default.createDirectory(
             atPath: fixture, withIntermediateDirectories: true)
 
-        // Skip on the launchable `run` executable, not the plugin directory — the dir
-        // exists as phase docs long before the MCP server is actually built.
         let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        try XCTSkipUnless(FileManager.default.fileExists(atPath: "\(mcpServerPath)/run"),
-                          "merlin-kicad-mcp server not built — no run executable")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: mcpServerPath),
+                          "merlin-kicad-mcp plugin not found")
         let mcpJSON = """
         { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
         """
@@ -241,7 +239,7 @@ final class CapabilityScenarioTests: XCTestCase {
         // The KiCad MCP server (Merlin spawns it) lets Merlin write the extracted
         // schematic; same config as Part A.
         let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        if FileManager.default.fileExists(atPath: "\(mcpServerPath)/run") {
+        if FileManager.default.fileExists(atPath: mcpServerPath) {
             let mcpJSON = """
             { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
             """
