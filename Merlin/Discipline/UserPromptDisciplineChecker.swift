@@ -74,7 +74,9 @@ actor UserPromptDisciplineChecker {
         _ candidates: [String], projectPath: String
     ) -> Bool {
         let phasesDir = URL(fileURLWithPath: projectPath).appendingPathComponent("phases")
-        guard let files = try? FileManager.default.contentsOfDirectory(
+        // Check existence first so a project with no phases/ never constructs an NSError.
+        guard FileManager.default.fileExists(atPath: phasesDir.path),
+              let files = try? FileManager.default.contentsOfDirectory(
             at: phasesDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
         ) else { return false }
 

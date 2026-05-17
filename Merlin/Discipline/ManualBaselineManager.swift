@@ -69,7 +69,11 @@ actor ManualBaselineManager {
     }
 
     private func snapshots(projectPath: String) -> [BaselineSnapshot] {
-        guard let data = try? Data(contentsOf: baselineURL(projectPath: projectPath)),
+        // No baseline file yet = no snapshots. Check existence first so a missing
+        // .merlin/manual-coverage-baseline.json never constructs an NSError.
+        let url = baselineURL(projectPath: projectPath)
+        guard FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
               let list = try? JSONDecoder().decode([BaselineSnapshot].self, from: data)
         else {
             return []

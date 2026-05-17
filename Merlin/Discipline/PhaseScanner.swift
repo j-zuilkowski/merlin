@@ -70,7 +70,10 @@ actor PhaseScanner {
     }
 
     private func extractDeclaredSurfaces(phasesDir: URL) -> [DeclaredSurface] {
-        guard let files = try? FileManager.default.contentsOfDirectory(
+        // A project with no phases/ directory has no declared surfaces. Check
+        // existence first so the missing path never constructs an NSError.
+        guard FileManager.default.fileExists(atPath: phasesDir.path),
+              let files = try? FileManager.default.contentsOfDirectory(
             at: phasesDir,
             includingPropertiesForKeys: nil,
             options: .skipsHiddenFiles

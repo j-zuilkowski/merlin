@@ -23,7 +23,10 @@ actor TargetGateScanner {
               gatingSchemes: [String] = []) async -> [UngatedTargetFinding] {
         let ymlURL = URL(fileURLWithPath: projectPath)
             .appendingPathComponent("project.yml")
-        guard let text = try? String(contentsOf: ymlURL, encoding: .utf8) else {
+        // Self-gates to xcodegen projects; check existence first so a project with no
+        // project.yml never constructs an NSError.
+        guard FileManager.default.fileExists(atPath: ymlURL.path),
+              let text = try? String(contentsOf: ymlURL, encoding: .utf8) else {
             return []
         }
         let lines = text.components(separatedBy: .newlines)
