@@ -134,14 +134,30 @@ enum EvalLMStudio {
     }
 
     /// Resolves an LM Studio model id (e.g. `qwen3-coder-next`) to its on-disk model
-    /// directory under `~/.lmstudio/models/`. `mlx_lm.lora` needs a real path or a
-    /// HuggingFace repo id — the LM Studio *alias* is neither. Returns nil when the
-    /// `lms` CLI is absent or the model is not resolvable on disk.
+    /// directory. `mlx_lm.lora` needs a real path or a HuggingFace repo id — the LM
+    /// Studio *alias* is neither. Both the models base directory and the per-model
+    /// relative path are determined programmatically: the base from LM Studio's
+    /// `settings.json` (`downloadsFolder`, which is user-configurable), the relative
+    /// path from `lms ls --json`. Returns nil when nothing resolves on disk.
     static func localModelDirectory(forModelID modelID: String) -> String? {
         let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
-        let lms = "\(home)/.lmstudio/bin/lms"
-        guard FileManager.default.isExecutableFile(atPath: lms) else { return nil }
+        let lmStudioHome = "\(home)/.lmstudio"
 
+        // Models base directory — read from LM Studio's settings, never assumed.
+        let modelsBase: String = {
+            let settingsURL = URL(fileURLWithPath: "\(lmStudioHome)/settings.json")
+            if FileManager.default.fileExists(atPath: settingsURL.path),
+               let data = try? Data(contentsOf: settingsURL),
+               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let folder = object["downloadsFolder"] as? String, !folder.isEmpty {
+                return folder
+            }
+            return "\(lmStudioHome)/models"
+        }()
+
+        // Per-model relative path — read from the `lms` CLI's model index.
+        let lms = "\(lmStudioHome)/bin/lms"
+        guard FileManager.default.isExecutableFile(atPath: lms) else { return nil }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: lms)
         process.arguments = ["ls", "--json"]
@@ -158,7 +174,7 @@ enum EvalLMStudio {
             ?? []
         guard let entry = entries.first(where: { ($0["modelKey"] as? String) == modelID }),
               let relativePath = entry["path"] as? String else { return nil }
-        let fullPath = "\(home)/.lmstudio/models/\(relativePath)"
+        let fullPath = "\(modelsBase)/\(relativePath)"
         return FileManager.default.fileExists(atPath: fullPath) ? fullPath : nil
     }
 }
