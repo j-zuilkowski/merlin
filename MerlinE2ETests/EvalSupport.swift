@@ -92,10 +92,10 @@ final class EvalService {
     }
 }
 
-/// Resolves the LM Studio model to use - by capability, from Merlin's own provider
-/// config (actual values, never invented, never "the first listed"). LM Studio may have
-/// both a vision model and a text model loaded; reranking (S4) and LoRA training (S5)
-/// need the **text** model, so it is picked deliberately via `supportsVision`.
+/// Resolves the LM Studio model to use - by capability, from Merlin's own config
+/// (actual values, never invented). LM Studio's `[[providers]]` entry carries an empty
+/// `model`; the model per role lives in `slotAssignments` as `"lmstudio:<modelID>"`,
+/// so text vs vision is resolved from the slot, not the provider's bare `model` field.
 enum EvalLMStudio {
     /// Merlin's configured LM Studio-backed providers.
     @MainActor
@@ -105,19 +105,32 @@ enum EvalLMStudio {
         }
     }
 
-    /// The non-vision LM Studio provider - its endpoint + model are the values to use
-    /// for text tasks (rerank, LoRA base). `nil` if none is configured.
+    /// The LM Studio provider with `model` filled in from role slot `slot` - the
+    /// `[[providers]]` entry stores no model, so it is read from `slotAssignments`.
     @MainActor
-    static func textProvider() -> ProviderConfig? {
-        providers.first { !$0.supportsVision && !$0.model.isEmpty }
-            ?? providers.first { !$0.model.isEmpty }
+    private static func resolved(slot: AgentSlot, vision: Bool) -> ProviderConfig? {
+        guard let assigned = AppSettings.shared.slotAssignments[slot] else { return nil }
+        let parts = assigned.split(separator: ":", maxSplits: 1)
+        guard parts.count == 2,
+              var base = providers.first(where: { $0.id == String(parts[0]) })
+        else { return nil }
+        base.model = String(parts[1])
+        base.supportsVision = vision
+        return base
     }
 
-    /// The vision-capable LM Studio provider - its model is what schematic OCR
-    /// (S6 Part B) needs. `nil` if none is configured.
+    /// The LM Studio text model (S4 rerank, S5 LoRA base) - from the `execute` slot,
+    /// falling back to `orchestrate`. `nil` when LM Studio is not slotted.
+    @MainActor
+    static func textProvider() -> ProviderConfig? {
+        resolved(slot: .execute, vision: false)
+            ?? resolved(slot: .orchestrate, vision: false)
+    }
+
+    /// The LM Studio vision model (S6 Part B schematic OCR) - from the `vision` slot.
     @MainActor
     static func visionProvider() -> ProviderConfig? {
-        providers.first { $0.supportsVision && !$0.model.isEmpty }
+        resolved(slot: .vision, vision: true)
     }
 }
 
