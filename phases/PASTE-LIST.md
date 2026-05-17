@@ -1992,3 +1992,234 @@ cat phases/phase-313b-discipline-gate-autoinstall.md
 # Verify: BUILD SUCCEEDED, zero warnings; DisciplineGateInstallerTests passes
 # Commit: Phase 313b — Auto-arm the discipline pre-commit gate at app launch
 ```
+
+---
+
+## Discipline Operability (phases 314–315)
+
+> W2 of the proving-readiness plan. 314 fixes a `TargetGateScanner` false positive
+> (a dependency-only target was flagged ungated — it blocked a real commit). 315 adds a
+> `merlin-discipline scan` subcommand so an operator can run the full discipline scan
+> and see every finding. Run a→b strictly in order.
+
+```bash
+# ── PHASE 314a — TargetGateScanner Dependency-Following Tests (failing) ──────
+cat phases/phase-314a-target-gate-dependency-tests.md
+# Verify (test — runtime-failure phase): BUILD SUCCEEDED; testDependencyOnlyTargetIsTreatedAsGated FAILS
+# Commit: Phase 314a — TargetGateScanner dependency-following tests (failing)
+
+# ── PHASE 314b — TargetGateScanner Dependency-Following ─────────────────────
+cat phases/phase-314b-target-gate-dependency.md
+# Verify: BUILD SUCCEEDED, zero warnings; all TargetGateScannerTests pass
+# Commit: Phase 314b — TargetGateScanner follows transitive project.yml dependencies
+
+# ── PHASE 315a — merlin-discipline scan Command Tests (failing) ─────────────
+cat phases/phase-315a-discipline-scan-command-tests.md
+# Verify: BUILD FAILED — missing DisciplineCLI.formatScanReport
+# Commit: Phase 315a — merlin-discipline scan command tests (failing)
+
+# ── PHASE 315b — merlin-discipline scan Command ─────────────────────────────
+cat phases/phase-315b-discipline-scan-command.md
+# Verify: BUILD SUCCEEDED, zero warnings; DisciplineScanReportTests + DisciplineCLITests pass; merlin-discipline builds
+# Commit: Phase 315b — merlin-discipline scan: print all discipline findings
+```
+
+---
+
+## Scanner Tuning (phases 316–318)
+
+> W2 follow-up. The first real `merlin-discipline scan` of the Merlin repo was ~99%
+> false positives. These three phase pairs tune the scanners against real-repo noise.
+> All three `a` phases are RUNTIME-failure phases — build SUCCEEDS, the new test FAILS;
+> verify with `test`, not build-for-testing. Run a→b strictly in order.
+
+```bash
+# ── PHASE 316a — DocReferenceGraph Scope Tests (failing) ────────────────────
+cat phases/phase-316a-doc-reference-scope-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; testPhasesDocsAndTestSymbolsAreNotFlagged FAILS
+# Commit: Phase 316a — DocReferenceGraph scope tests (failing)
+
+# ── PHASE 316b — DocReferenceGraph Scope Fix ────────────────────────────────
+cat phases/phase-316b-doc-reference-scope.md
+# Verify: BUILD SUCCEEDED, zero warnings; DocReferenceGraphScopeTests + DocReferenceGraphFencedBlockTests pass
+# Commit: Phase 316b — DocReferenceGraph skips phases/ and knows test symbols
+
+# ── PHASE 317a — ReachabilityScanner Injection-Detection Tests (failing) ────
+cat phases/phase-317a-reachability-injection-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; ReachabilityScannerInjectionTests FAIL
+# Commit: Phase 317a — ReachabilityScanner injection-detection tests (failing)
+
+# ── PHASE 317b — ReachabilityScanner Injection-Detection Fix ────────────────
+cat phases/phase-317b-reachability-injection.md
+# Verify: BUILD SUCCEEDED, zero warnings; ReachabilityScanner tests pass
+# Commit: Phase 317b — ReachabilityScanner reads annotation injection, skips comments
+
+# ── PHASE 318a — StubMarkerScanner Tuning Tests (failing) ───────────────────
+cat phases/phase-318a-stub-marker-tuning-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; StubMarkerScannerTuningTests FAIL
+# Commit: Phase 318a — StubMarkerScanner tuning tests (failing)
+
+# ── PHASE 318b — StubMarkerScanner Tuning ───────────────────────────────────
+cat phases/phase-318b-stub-marker-tuning.md
+# Verify: BUILD SUCCEEDED, zero warnings; StubMarkerScanner tests pass
+# Commit: Phase 318b — StubMarkerScanner skips .cancel buttons and multi-line strings
+```
+
+---
+
+## Scanner Tuning — Precision (phase 319)
+
+> Final scanner-tuning pass. Skips build-output directories (`build/`, `DerivedData/`,
+> `.build/`) in all scanner file enumeration, and drops DocReferenceGraph's
+> low-precision loose backticked-identifier check (keeping the high-precision
+> fenced-block enum-case check). 319a is a RUNTIME-failure phase — verify with `test`.
+> 319b also rewrites the phase-316a test and adds banners to four prior phase docs.
+
+```bash
+# ── PHASE 319a — DocReferenceGraph Precision Tests (failing) ────────────────
+cat phases/phase-319a-doc-reference-precision-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; DocReferenceGraphPrecisionTests FAIL
+# Commit: Phase 319a — DocReferenceGraph precision tests (failing)
+
+# ── PHASE 319b — DocReferenceGraph Precision Fix ────────────────────────────
+cat phases/phase-319b-doc-reference-precision.md
+# Verify: BUILD SUCCEEDED, zero warnings; DocReferenceGraph Precision/Scope/FencedBlock tests pass
+# Commit: Phase 319b — DocReferenceGraph precision: skip build/, drop the loose check
+```
+
+## Phases 320–324 — W4 trace-audit findings
+
+> Authored from the W4 trace-the-calls audit (`merlin-eval/TRACE-AUDIT.md`). 320 wires
+> the two dead `WorkerDiffView` toolbar buttons (empty `{ }` actions) to the staging
+> buffer. 321 fixes a `DocReferenceGraph` false positive — `extractEnumCaseNames` parsed
+> words out of `//` comments on `case` lines. 322 removes three dead `TelemetryEmitter`
+> setters (zero callers). 323 fixes the `PhaseScanner` doc-tier blind spot (it read only
+> `phase-NNb` docs; the "New surface" block lives in the `a` docs) and makes phaseDrift
+> always a nudge. 324 fixes `PhaseScanner` symbol matching — qualified names, enum cases,
+> non-symbol filtering — so the phaseDrift metric is real, not noise. 320a is a
+> COMPILE-failure phase (verify with `build-for-testing`); 321a, 323a and 324a are
+> RUNTIME-failure phases (verify with `test`); 322 is an implementation-only cleanup.
+
+```bash
+# ── PHASE 320a — WorkerDiffView Reject/Accept Action Tests (failing) ────────
+cat phases/phase-320a-worker-diff-actions-tests.md
+# Verify (build-for-testing — compile-failure): BUILD FAILED; missing rejectAllChanges/acceptAndMergeChanges
+# Commit: Phase 320a — WorkerDiffViewActionTests (failing)
+
+# ── PHASE 320b — Wire WorkerDiffView Reject-All / Accept-and-Merge ──────────
+cat phases/phase-320b-worker-diff-actions.md
+# Verify: BUILD SUCCEEDED, zero warnings; WorkerDiffViewActionTests pass
+# Commit: Phase 320b — Wire WorkerDiffView reject-all / accept-and-merge
+
+# ── PHASE 321a — DocReferenceGraph Comment-Stripping Tests (failing) ────────
+cat phases/phase-321a-doc-reference-comment-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; DocReferenceGraphCommentTests FAIL
+# Commit: Phase 321a — DocReferenceGraphCommentTests (failing)
+
+# ── PHASE 321b — DocReferenceGraph extractEnumCaseNames Strips // Comments ──
+cat phases/phase-321b-doc-reference-comment.md
+# Verify: BUILD SUCCEEDED, zero warnings; DocReferenceGraph comment/fenced/precision/dangling tests pass
+# Commit: Phase 321b — DocReferenceGraph extractEnumCaseNames strips // comments
+
+# ── PHASE 322 — Remove Dead TelemetryEmitter Setters ───────────────────────
+cat phases/phase-322-remove-dead-telemetry-setters.md
+# Verify: BUILD SUCCEEDED both schemes, zero warnings; TelemetryEmitterTests pass
+# Commit: Phase 322 — Remove dead TelemetryEmitter setters
+
+# ── PHASE 323a — PhaseScanner Doc-Coverage & Drift-Severity Tests (failing) ─
+cat phases/phase-323a-phasescanner-doc-coverage-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; all 3 new tests FAIL
+# Commit: Phase 323a — PhaseScanner doc-coverage & drift-severity tests (failing)
+
+# ── PHASE 323b — PhaseScanner Reads All Phase Docs; Drift Is Always a Nudge ─
+cat phases/phase-323b-phasescanner-doc-coverage.md
+# Verify: full MerlinTests suite passes; MerlinTests-Live compiles; zero warnings
+# Commit: Phase 323b — PhaseScanner reads all phase docs; drift is always a nudge
+
+# ── PHASE 324a — PhaseScanner Symbol-Matching Accuracy Tests (failing) ──────
+cat phases/phase-324a-phasescanner-matching-tests.md
+# Verify (test — runtime-failure): BUILD SUCCEEDED; all 5 new tests FAIL
+# Commit: Phase 324a — PhaseScanner symbol-matching tests (failing)
+
+# ── PHASE 324b — PhaseScanner Symbol-Matching Accuracy ──────────────────────
+cat phases/phase-324b-phasescanner-matching.md
+# Verify: full MerlinTests suite passes; MerlinTests-Live compiles; zero warnings
+# Commit: Phase 324b — PhaseScanner symbol-matching accuracy
+```
+
+## Phase 325 — W5 surface-census gap fill
+
+> The W5 surface census (`merlin-eval/SURFACE-CENSUS.md` §1.2) found 12 interactive
+> controls with no `AccessibilityID` — XCUITest cannot reach them, so they are untested
+> surface. 325 adds the 12 constants and applies `.accessibilityIdentifier(...)`. 325a
+> is a COMPILE-failure phase (verify with `build-for-testing`).
+
+```bash
+# ── PHASE 325a — AccessibilityID Gap-Fill Tests (failing) ───────────────────
+cat phases/phase-325a-accessibility-id-gap-tests.md
+# Verify (build-for-testing — compile-failure): BUILD FAILED; 12 missing AccessibilityID members
+# Commit: Phase 325a — AccessibilityID gap-fill tests (failing)
+
+# ── PHASE 325b — AccessibilityID Gap-Fill Implementation ────────────────────
+cat phases/phase-325b-accessibility-id-gap.md
+# Verify: BUILD SUCCEEDED both schemes, zero warnings; AccessibilityIDCoverageTests pass
+# Commit: Phase 325b — AccessibilityID gap-fill: the 12 controls phase 306 missed
+```
+
+## Phases 326–330 — W5 proving-suite harness
+
+> The `MerlinE2ETests` / `MerlinTests` harness that drives the S1–S18 eval scenarios.
+> Each is an implementation phase (the test file is the deliverable); verify with
+> `build-for-testing` (it compiles the harness — the proving suite is run separately).
+> Fixtures must be built first per `merlin-eval/fixtures/S{1,2,4,5,6}-*.md`.
+
+```bash
+# ── PHASE 326 — Eval Capability Harness (S1–S6) ─────────────────────────────
+cat phases/phase-326-eval-capability-harness.md
+# Verify: BUILD SUCCEEDED both schemes, zero warnings
+# Commit: Phase 326 — Eval capability harness (S1–S6)
+
+# ── PHASE 327 — Eval Agent-Tool Census (S18) ────────────────────────────────
+cat phases/phase-327-eval-agent-tool-census.md
+# Verify: BUILD SUCCEEDED, zero warnings; AgentToolCensusTests pass
+# Commit: Phase 327 — Eval agent-tool census (S18)
+
+# ── PHASE 328 — Eval Surface Harness (S7–S11) ───────────────────────────────
+cat phases/phase-328-eval-surface-harness.md
+# Verify: BUILD SUCCEEDED (MerlinTests-Live), zero warnings
+# Commit: Phase 328 — Eval surface harness (S7–S11)
+
+# ── PHASE 329 — Eval Render Harness (S10) ───────────────────────────────────
+cat phases/phase-329-eval-render-harness.md
+# Verify: BUILD SUCCEEDED, zero warnings; ConversationRenderTests pass
+# Commit: Phase 329 — Eval render harness (S10 chat rendering)
+
+# ── PHASE 330 — Eval Operator Harness (S12–S17) ─────────────────────────────
+cat phases/phase-330-eval-operator-harness.md
+# Verify: BUILD SUCCEEDED, zero warnings; OperatorConfigTests pass
+# Commit: Phase 330 — Eval operator harness (S12–S17)
+```
+
+## Phases 331–332 — merlin-eval relocation
+
+> Adds a shared directory blacklist (`DisciplineExclusions`) to every file-walking
+> discipline scanner, then moves the eval suite (`merlin-eval/`) into the merlin repo so
+> it is version-controlled with the project. 331a/331b are a TDD pair; 332 is the
+> filesystem move + harness path fix + commit.
+
+```bash
+# ── PHASE 331a — DisciplineExclusions Tests (failing) ───────────────────────
+cat phases/phase-331a-discipline-exclusions-tests.md
+# Verify (build-for-testing — compile-failure): BUILD FAILED; 4 "cannot find 'DisciplineExclusions'" errors
+# Commit: Phase 331a — DisciplineExclusionsTests (failing)
+
+# ── PHASE 331b — DisciplineExclusions Blacklist ─────────────────────────────
+cat phases/phase-331b-discipline-exclusions.md
+# Verify: BUILD SUCCEEDED both schemes, zero warnings; DisciplineExclusionsTests pass; grep lists 8 scanner files
+# Commit: Phase 331b — DisciplineExclusions blacklist
+
+# ── PHASE 332 — Relocate merlin-eval Into The Repo ──────────────────────────
+cat phases/phase-332-relocate-merlin-eval.md
+# Verify: move done, old sibling path gone; MerlinTests-Live BUILD SUCCEEDED, zero warnings
+# Commit: Phase 332 — Relocate merlin-eval into the merlin repo
+```
