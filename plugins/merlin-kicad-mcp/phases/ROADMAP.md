@@ -48,3 +48,28 @@ and `Merlin/Electronics/KiCadToolDefinitions.swift` confirms the names.
   phase's test surface grows too large — keep each phase to one coherent, verifiable
   unit of work.
 - Estimated total: ~30 phase files (00 + 01–14 paired + 15).
+
+---
+
+## Build status
+
+The server was built in a single consolidated pass during the proving-suite run
+(commit `Build merlin-kicad-mcp server (S6)`), ahead of writing out the individual
+`NNa`/`NNb` phase sheets for phases 02–15. What landed:
+
+- **Phase 00–01 (foundation):** `Package.swift`, `KiCadMCPKit`, the executable.
+  `MCPServer` (JSON-RPC 2.0 core — `initialize`, `tools/list`, `tools/call`,
+  `resources/list`, error codes) and `StdioTransport` (newline-delimited stdio pump).
+- **Phase 02 (registry/dispatch):** `MCPTool` + the registry inside `MCPServer`;
+  `tools/call` routes to handlers, with tool-not-found / bad-argument errors.
+- **The full 23-tool `kicad_*` surface** (`KiCadTools`) — names/descriptions/schemas
+  match Merlin's `KiCadToolDefinitions`. Handlers do real work via the installed
+  `kicad-cli` and the filesystem (`KiCadCLI`, `KiCadProject`): version gate, project
+  materialization, ERC/DRC, gerber export. Steps needing capability not yet present
+  (FreeRouting key, ngspice, vision QA) return an honest structured `blocked_tooling`
+  result rather than a fabricated success.
+
+Not yet done — to be back-filled as proper `NNa`/`NNb` phase sheets: the
+`merlin://domain/manifest` resource (phase 03), the canonical schemas + S-expression
+parser (phases 05–06), and deepening the design-pipeline handlers (07–14) from
+structured-result placeholders to full KiCad work.
