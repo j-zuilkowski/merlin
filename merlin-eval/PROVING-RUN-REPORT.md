@@ -23,6 +23,7 @@ and fixed in the loop **run → triage → fix → re-run**. All fixes are local
 | `d39490c` | M-3 (cont.) — discipline `phases/` + `project.yml` + baseline reads `fileExists`-guarded | Merlin hardening |
 | `5403c1a` | `GUIAutomationE2ETests` — locate `TestTargetApp.app` in the build products dir | Harness defect |
 | `7fd53f0` | kicad-mcp roadmap note | Docs |
+| `99582c6` | S5 — `EvalLMStudio.localModelDirectory` resolves the LM Studio alias to its on-disk MLX path for `mlx_lm` | Harness defect |
 
 ## Per-scenario verdict
 
@@ -31,7 +32,7 @@ and fixed in the loop **run → triage → fix → re-run**. All fixes are local
 | **S1** Swift GUI debug | times out (1800s) | The NSError-260 crash is **fixed** — S1 now cleanly throws `timedOut`. Remaining: the GUI-debug scenario does not finish inside 30 min — a capability/duration outcome, not a bug. |
 | **S2** Rust debug | `cargo test` not green (1100s) | First genuine verdict (HARNESS-4 unblocked it). The agent did not fix every Rust bug in the run — a capability outcome for human rubric. |
 | **S4** xcalibre RAG | server ready ✓, retrieval empty | The config + `getenv` fixes got the server up and reachable (was: 120s readiness timeout). The RAG search then returned no passages — the watch-folder corpus did not surface. Needs ingestion verification (EPUB index timing / embedding config). |
-| **S5** LoRA pipeline | environment | `mlx_lm.lora` was handed the LM Studio model **alias** `qwen3-coder-next`, which is neither a HuggingFace repo nor a local path → `RepositoryNotFoundError`. Needs the LM Studio alias resolved to its on-disk MLX model directory. |
+| **S5** LoRA pipeline | **fixed** (harness) | `mlx_lm.lora` was handed the LM Studio **alias** `qwen3-coder-next` → `RepositoryNotFoundError`. The alias resolves to `mlx-community/Qwen3-Coder-Next-8bit` (MLX safetensors, on disk at `~/.lmstudio/models/`). Added `EvalLMStudio.localModelDirectory` (resolves via `lms ls --json`); S5 now feeds `LoRATrainer` a real MLX directory. Full training verification (loads the 84 GB model) not run. |
 | **S6** electronics | **PASS** (625s) | The `merlin-kicad-mcp` server now exists; Merlin's agent made 29 tool calls, detected KiCad 10, drove the `kicad_*` surface. |
 | **S6-OCR** schematic OCR | 260 **fixed**; capability outcome | `d39490c` verified: S6-OCR ran 844s with **no NSError 260**. It now fails on its real assertions — the vision model did not recognise R1/C1 or read their values. A genuine vision-capability finding for human rubric, no longer a harness crash. |
 | **AgenticLoop** | runs (was skipped) | Key-gate fix verified — no longer skips on "No API key". It executes and produces a real verdict; the loop's content assertion still fails — open. |
@@ -74,6 +75,6 @@ domain-activation decision.
   fixes still need `## Fixes` notes in their `b` phase docs. The discipline guards do
   not change *described* behaviour (missing file → empty), so the docs are not wrong,
   only incomplete.
-- **S4** RAG retrieval, **S5** LoRA model-path resolution, **AgenticLoop** content
-  assertion — triaged above; fixes not yet attempted.
+- **S4** RAG retrieval and **AgenticLoop** content assertion — triaged above; fixes
+  not yet attempted. **S5** model-path fixed; full training run not yet verified.
 - **M5** manual runsheet — deferred by the user.
