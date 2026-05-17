@@ -91,6 +91,9 @@ actor PendingAttentionQueue {
     }
 
     private static func loadFromDisk(_ path: String) -> [Finding]? {
+        // No queue file yet = nothing persisted. Check existence explicitly so a
+        // missing .merlin/pending.json never constructs an NSFileReadNoSuchFileError.
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
         let url = URL(fileURLWithPath: path)
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode([Finding].self, from: data)

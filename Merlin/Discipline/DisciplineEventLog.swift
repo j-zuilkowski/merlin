@@ -33,7 +33,10 @@ actor DisciplineEventLog {
     }
 
     private func loadAll() -> [DisciplineEvent] {
-        guard let text = try? String(contentsOfFile: logPath, encoding: .utf8) else { return [] }
+        // No log file yet = no events. Check existence explicitly so a missing
+        // .merlin/discipline-events.jsonl never constructs an NSFileReadNoSuchFileError.
+        guard FileManager.default.fileExists(atPath: logPath),
+              let text = try? String(contentsOfFile: logPath, encoding: .utf8) else { return [] }
         return text.components(separatedBy: .newlines)
             .filter { !$0.isEmpty }
             .compactMap { line in

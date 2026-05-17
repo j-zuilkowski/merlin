@@ -361,7 +361,11 @@ actor DisciplineEngine {
     static func gatingSchemes(projectPath: String) -> [String] {
         let tomlURL = URL(fileURLWithPath: projectPath)
             .appendingPathComponent(".merlin/project.toml")
-        guard let text = try? String(contentsOf: tomlURL, encoding: .utf8) else {
+        // A project with no .merlin/project.toml has no discipline config — treat that
+        // as "no gating schemes" by an explicit existence check, never by reading a
+        // missing path (which constructs an NSFileReadNoSuchFileError).
+        guard FileManager.default.fileExists(atPath: tomlURL.path),
+              let text = try? String(contentsOf: tomlURL, encoding: .utf8) else {
             return []
         }
         for line in text.components(separatedBy: .newlines) {

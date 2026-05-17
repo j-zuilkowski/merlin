@@ -83,7 +83,10 @@ actor OverrideAuditLog {
     }
 
     private func loadAll() -> [OverrideEntry] {
-        guard let text = try? String(contentsOfFile: logPath, encoding: .utf8) else { return [] }
+        // No log file yet = no overrides recorded. Check existence explicitly so a
+        // missing .merlin/override-log.jsonl never constructs an NSFileReadNoSuchFileError.
+        guard FileManager.default.fileExists(atPath: logPath),
+              let text = try? String(contentsOfFile: logPath, encoding: .utf8) else { return [] }
         return text.components(separatedBy: .newlines)
             .filter { !$0.isEmpty }
             .compactMap { line in
