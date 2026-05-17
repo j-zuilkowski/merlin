@@ -53,10 +53,12 @@ final class SurfaceUITests: XCTestCase {
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
         app.typeKey(",", modifierFlags: .command)
 
-        // The sidebar lists every SettingsSection by its label.
+        // The sidebar lists every SettingsSection by its label. A label can resolve to
+        // several nested elements (cell + static text), so take firstMatch — a bare
+        // subscript throws "multiple matching elements" before the click.
         let paneLabels = SettingsSection.allCases.map { $0.label }
         for label in paneLabels {
-            let row = app.descendants(matching: .any)[label]
+            let row = app.descendants(matching: .any).matching(identifier: label).firstMatch
             if row.exists {
                 row.click()
                 XCTAssertTrue(app.windows.count >= 1,
