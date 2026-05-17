@@ -96,12 +96,16 @@ actor DisciplineEngine {
             var findings: [Finding] = []
             let now = Date()
 
-            // Convert drift findings to queue findings.
-            for d in drift where d.severity == .red || d.severity == .orange {
+            // Convert drift findings to queue findings. Surface red (absent),
+            // yellow (signature-drift) and orange (undeclared) drift — all as nudges.
+            // Phase drift is advisory: a symbol declared many phases ago and since
+            // refactored is normal evolution, not a commit-blocker. green = no-op.
+            for d in drift where d.severity == .red
+                || d.severity == .yellow || d.severity == .orange {
                 let f = Finding(
                     id: UUID(),
                     category: .phaseDrift,
-                    severity: d.severity == .red ? .block : .nudge,
+                    severity: .nudge,
                     summary: d.surface,
                     detail: d.evidence,
                     suggestedAction: d.suggestedAction,

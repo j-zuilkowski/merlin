@@ -88,17 +88,20 @@ actor PhaseScanner {
             return []
         }
 
-        let nnbFiles = files
+        // Read every phase document — the `a` (tests) and `b` (implementation) tiers
+        // and the `diag-*` series. The "New surface introduced in phase" block lives in
+        // the `a` doc per the project template, so the former `phase-\d+b-` filter saw
+        // almost no declared surface. Files with no such block contribute nothing.
+        let phaseDocFiles = files
             .filter { file in
                 let name = file.lastPathComponent
-                return name.hasPrefix("phase-")
-                    && name.hasSuffix(".md")
-                    && name.range(of: #"phase-\d+b-"#, options: .regularExpression) != nil
+                return name.hasSuffix(".md")
+                    && (name.hasPrefix("phase-") || name.hasPrefix("diag-"))
             }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
         var result: [DeclaredSurface] = []
-        for file in nnbFiles {
+        for file in phaseDocFiles {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let phaseID = extractPhaseID(from: file.lastPathComponent)
             let surfaces = extractSurfaces(from: text)
