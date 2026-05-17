@@ -166,15 +166,20 @@ final class CapabilityScenarioTests: XCTestCase {
 
         // 2. Run the real training pipeline - LoRATrainer drives `python -m mlx_lm.lora`.
         //    The base model is Merlin's configured non-vision LM Studio model - the
-        //    text model, picked by capability, not the first one listed.
+        //    text model, picked by capability, not the first one listed. mlx_lm needs
+        //    the model's on-disk MLX directory, not the LM Studio alias.
         guard let lm = EvalLMStudio.textProvider() else {
             throw XCTSkip("no non-vision LM Studio provider configured - "
                           + "S5 needs a text base model")
         }
+        guard let baseModelPath = EvalLMStudio.localModelDirectory(forModelID: lm.model) else {
+            throw XCTSkip("could not resolve LM Studio model '\(lm.model)' to a local "
+                          + "MLX model directory - S5 needs a path mlx_lm can load")
+        }
         let adapterDir = NSTemporaryDirectory() + "merlin-lora-adapter-\(UUID())"
         let result = await LoRATrainer().train(
             records: records,
-            baseModel: lm.model,
+            baseModel: baseModelPath,
             adapterOutputPath: adapterDir,
             iterations: 20)
 

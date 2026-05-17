@@ -132,6 +132,35 @@ enum EvalLMStudio {
     static func visionProvider() -> ProviderConfig? {
         resolved(slot: .vision, vision: true)
     }
+
+    /// Resolves an LM Studio model id (e.g. `qwen3-coder-next`) to its on-disk model
+    /// directory under `~/.lmstudio/models/`. `mlx_lm.lora` needs a real path or a
+    /// HuggingFace repo id — the LM Studio *alias* is neither. Returns nil when the
+    /// `lms` CLI is absent or the model is not resolvable on disk.
+    static func localModelDirectory(forModelID modelID: String) -> String? {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        let lms = "\(home)/.lmstudio/bin/lms"
+        guard FileManager.default.isExecutableFile(atPath: lms) else { return nil }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: lms)
+        process.arguments = ["ls", "--json"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+
+        let object = try? JSONSerialization.jsonObject(with: data)
+        let entries = (object as? [[String: Any]])
+            ?? ((object as? [String: Any])?["data"] as? [[String: Any]])
+            ?? []
+        guard let entry = entries.first(where: { ($0["modelKey"] as? String) == modelID }),
+              let relativePath = entry["path"] as? String else { return nil }
+        let fullPath = "\(home)/.lmstudio/models/\(relativePath)"
+        return FileManager.default.fileExists(atPath: fullPath) ? fullPath : nil
+    }
 }
 
 /// Appends a scenario's captured run to `merlin/merlin-eval/results/` - every value logged end
