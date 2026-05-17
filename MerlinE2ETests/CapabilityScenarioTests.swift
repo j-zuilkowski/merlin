@@ -45,7 +45,9 @@ final class CapabilityScenarioTests: XCTestCase {
             fixturePath: fixture, prompt: EvalPrompts.s2, timeout: 1800)
         XCTAssertTrue(run.errors.isEmpty, "S2 engine errors: \(run.errors)")
 
-        let testOut = EvalShell.run("/usr/bin/env", ["cargo", "test"], cwd: fixture)
+        // Run via `zsh -c` (sources the user's env) — `/usr/bin/env` execs with the
+        // test process's minimal PATH, which lacks `~/.cargo/bin`, so `cargo` is unfound.
+        let testOut = EvalShell.run("/bin/zsh", ["-c", "cargo test"], cwd: fixture)
         EvalLog.write(scenario: "S2", summary: "tools \(run.toolCalls.count)\n"
             + "\(testOut.suffix(600))\n\(run.assistantText)")
         XCTAssertTrue(testOut.contains("test result: ok"),
@@ -64,7 +66,7 @@ final class CapabilityScenarioTests: XCTestCase {
         let serverDir = EvalPaths.sibling("xcalibre-server")
         try XCTSkipUnless(FileManager.default.fileExists(atPath: serverDir),
                           "xcalibre-server repo not found beside merlin")
-        _ = EvalShell.run("/usr/bin/env", ["cargo", "build", "-p", "backend"], cwd: serverDir)
+        _ = EvalShell.run("/bin/zsh", ["-c", "cargo build -p backend"], cwd: serverDir)
         let binary = "\(serverDir)/target/debug/backend"
         try XCTSkipUnless(FileManager.default.fileExists(atPath: binary),
                           "xcalibre-server backend did not build")
@@ -135,7 +137,7 @@ final class CapabilityScenarioTests: XCTestCase {
         try skipUnlessLiveEnvironment()
         try XCTSkipUnless(EvalPaths.fixtureExists("lora-dpo"),
                           "S5 fixture missing - build fixtures/S5-lora-dpo-fixture.md")
-        let mlx = EvalShell.run("/usr/bin/env", ["python3", "-c", "import mlx_lm"], cwd: "/tmp")
+        let mlx = EvalShell.run("/bin/zsh", ["-c", "python3 -c 'import mlx_lm'"], cwd: "/tmp")
         try XCTSkipUnless(!mlx.contains("Error") && !mlx.contains("Traceback"),
                           "mlx_lm not importable - S5 needs the LoRA training environment")
 
