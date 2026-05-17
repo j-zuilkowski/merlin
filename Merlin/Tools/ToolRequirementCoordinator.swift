@@ -60,10 +60,12 @@ struct ToolRequirementSheet: View {
                         Task { await coordinator.installPending() }
                     }
                     .disabled(coordinator.isInstalling)
+                    .accessibilityIdentifier(AccessibilityID.toolRequirementInstallButton)
                     Button("Cancel") {
                         coordinator.pending = nil
                     }
                     .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier(AccessibilityID.toolRequirementCancelButton)
                 }
             case .manual(let command, let url):
                 Link(url, destination: URL(string: url) ?? URL(fileURLWithPath: "/"))
@@ -76,6 +78,7 @@ struct ToolRequirementSheet: View {
                     coordinator.pending = nil
                 }
                 .keyboardShortcut(.defaultAction)
+                .accessibilityIdentifier(AccessibilityID.toolRequirementDoneButton)
             }
         }
         .padding(24)

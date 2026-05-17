@@ -26,6 +26,9 @@ struct AdvisoryRow: View {
                         Button("Fix this", action: onFix)
                             .buttonStyle(.bordered)
                             .controlSize(.small)
+                            .accessibilityIdentifier(
+                                AccessibilityID.performanceAdvisoryApplyButtonPrefix
+                                + advisory.parameterName)
                     }
                 }
                 Text(advisory.explanation)

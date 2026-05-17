@@ -214,4 +214,19 @@ public enum AccessibilityID {
     public static let calibrationStartButton = "calibration-start-button"
     public static let calibrationDoneButton = "calibration-done-button"
     public static let calibrationApplyAllButton = "calibration-apply-all-button"
+
+    // MARK: - Surface-census gap fill (phase 325)
+
+    public static let workspaceToggleDiffButton = "workspace-toggle-diff-button"
+    public static let workspaceToggleFileButton = "workspace-toggle-file-button"
+    public static let workspaceToggleTerminalButton = "workspace-toggle-terminal-button"
+    public static let workspaceTogglePreviewButton = "workspace-toggle-preview-button"
+    public static let workspaceToggleSideChatButton = "workspace-toggle-side-chat-button"
+    public static let workspaceToggleMemoriesButton = "workspace-toggle-memories-button"
+    public static let screenPreviewToggleButton = "screen-preview-toggle-button"
+    public static let previewPaneCloseButton = "preview-pane-close-button"
+    public static let toolRequirementInstallButton = "tool-requirement-install-button"
+    public static let toolRequirementCancelButton = "tool-requirement-cancel-button"
+    public static let toolRequirementDoneButton = "tool-requirement-done-button"
+    public static let performanceAdvisoryApplyButtonPrefix = "performance-advisory-apply-button-"
 }

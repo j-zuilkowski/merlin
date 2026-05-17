@@ -40,6 +40,7 @@ struct ScreenPreviewView: View {
             .background(Color(nsColor: .underPageBackgroundColor).opacity(0.45))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(AccessibilityID.screenPreviewToggleButton)
     }
 
     @ViewBuilder

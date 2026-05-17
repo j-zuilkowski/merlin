@@ -36,6 +36,7 @@ struct PreviewPane: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Close preview")
+                .accessibilityIdentifier(AccessibilityID.previewPaneCloseButton)
             }
         }
         .padding(.horizontal, 12)

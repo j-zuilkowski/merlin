@@ -160,6 +160,7 @@ struct WorkspaceView: View {
             .buttonStyle(.bordered)
             .tint(layout.showDiffPane ? .accentColor : .secondary)
             .help("Toggle staged changes")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleDiffButton)
 
             Button { layout.showFilePane.toggle() } label: {
                 Label("File Viewer", systemImage: "doc.text")
@@ -167,6 +168,7 @@ struct WorkspaceView: View {
             .buttonStyle(.bordered)
             .tint(layout.showFilePane ? .accentColor : .secondary)
             .help("Toggle file viewer")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleFileButton)
 
             Button { layout.showTerminalPane.toggle() } label: {
                 Label("Terminal", systemImage: "terminal")
@@ -174,6 +176,7 @@ struct WorkspaceView: View {
             .buttonStyle(.bordered)
             .tint(layout.showTerminalPane ? .accentColor : .secondary)
             .help("Toggle terminal")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleTerminalButton)
 
             Button { layout.showPreviewPane.toggle() } label: {
                 Label("Preview", systemImage: "eye")
@@ -181,6 +184,7 @@ struct WorkspaceView: View {
             .buttonStyle(.bordered)
             .tint(layout.showPreviewPane ? .accentColor : .secondary)
             .help("Toggle preview")
+            .accessibilityIdentifier(AccessibilityID.workspaceTogglePreviewButton)
 
             Button { layout.showSideChat.toggle() } label: {
                 Label("Side Chat", systemImage: "bubble.right")
@@ -188,12 +192,14 @@ struct WorkspaceView: View {
             .buttonStyle(.bordered)
             .tint(layout.showSideChat ? .accentColor : .secondary)
             .help("Toggle side chat")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleSideChatButton)
 
             Button { showMemoriesWindow = true } label: {
                 Label("Memories", systemImage: "brain")
             }
             .buttonStyle(.bordered)
             .help("Review memories")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleMemoriesButton)
         }
     }
 
