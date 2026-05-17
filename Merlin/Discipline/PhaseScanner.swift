@@ -15,27 +15,17 @@ actor PhaseScanner {
         let declaredNames = Set(declaredSurfaces.map { normalisedName(surface: $0.surface) })
 
         for declaration in declaredSurfaces {
-            let declared = normalisedSignature(surface: declaration.surface)
             let declaredName = normalisedName(surface: declaration.surface)
             let matches = sourceDeclarations.filter { $0.name == declaredName }
 
-            if let exact = matches.first(where: { $0.signature == declared }) {
+            if let found = matches.first {
                 findings.append(DriftFinding(
                     id: UUID(),
                     phaseID: declaration.phaseID,
                     surface: declaration.surface,
                     severity: .green,
-                    evidence: "Found in \(exact.file.lastPathComponent)",
+                    evidence: "Found \(found.signature) in \(found.file.lastPathComponent)",
                     suggestedAction: "No action needed"
-                ))
-            } else if let nearMiss = matches.first {
-                findings.append(DriftFinding(
-                    id: UUID(),
-                    phaseID: declaration.phaseID,
-                    surface: declaration.surface,
-                    severity: .yellow,
-                    evidence: "Found \(nearMiss.signature) in \(nearMiss.file.lastPathComponent)",
-                    suggestedAction: "Update the phase file or write an addendum"
                 ))
             } else {
                 findings.append(DriftFinding(
@@ -150,12 +140,30 @@ actor PhaseScanner {
             let afterOpening = trimmed[opening.upperBound...]
             guard let closing = afterOpening.range(of: "`") else { continue }
             let symbol = String(afterOpening[afterOpening.startIndex..<closing.lowerBound])
-            if !symbol.isEmpty {
+            if isLikelyCodeSymbol(symbol) {
                 surfaces.append(symbol)
             }
         }
 
         return surfaces
+    }
+
+    /// A backtick-quoted "New surface" entry is a code symbol only if it looks like a
+    /// Swift declaration — not a slash-command (`/compact`), a version (`2.1.0`), a
+    /// file name (`Foo.swift`), or a tag (`#high-stakes`).
+    private func isLikelyCodeSymbol(_ raw: String) -> Bool {
+        let s = raw.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty, !s.contains("/"), !s.contains("#") else { return false }
+        if s.range(of: #"^\d+(\.\d+)+$"#, options: .regularExpression) != nil {
+            return false
+        }
+        for ext in [".swift", ".md", ".json", ".toml", ".txt", ".png", ".plist"]
+        where s.hasSuffix(ext) {
+            return false
+        }
+        let core = s.hasPrefix(".") ? String(s.dropFirst()) : s
+        guard let first = core.first, first.isLetter || first == "_" else { return false }
+        return true
     }
 
     private func enumerateSourceDeclarations(root: URL) -> [SourceSymbol] {
@@ -179,8 +187,10 @@ actor PhaseScanner {
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.components(separatedBy: .newlines) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
-                guard let symbol = parseSourceDeclaration(trimmed, file: url) else { continue }
-                symbols.append(symbol)
+                if let symbol = parseSourceDeclaration(trimmed, file: url) {
+                    symbols.append(symbol)
+                }
+                symbols.append(contentsOf: enumCaseSymbols(in: trimmed, file: url))
             }
         }
 
@@ -217,6 +227,27 @@ actor PhaseScanner {
         return prefixes.contains { line.hasPrefix($0) || line.contains(" " + $0) }
     }
 
+    /// Enum-case declarations on a `case …` source line — `case foo`, `case foo(Bar)`,
+    /// or a comma list `case a, b = "x"`. A trailing `//` comment is stripped first.
+    /// Recorded so a phase doc declaring `.foo` or `Enum.foo` matches; never `isPublic`,
+    /// so cases never enlarge the orange (undeclared-public) set.
+    private func enumCaseSymbols(in line: String, file: URL) -> [SourceSymbol] {
+        guard line.hasPrefix("case ") else { return [] }
+        var body = line
+        if let comment = body.range(of: "//") {
+            body = String(body[..<comment.lowerBound])
+        }
+        var result: [SourceSymbol] = []
+        for piece in body.dropFirst(5).split(separator: ",") {
+            let canonical = canonicalDeclaration(from: String(piece))
+            let name = normalisedName(signature: canonical)
+            guard let first = name.first, first.isLetter || first == "_" else { continue }
+            result.append(SourceSymbol(
+                name: name, signature: canonical, isPublic: false, file: file))
+        }
+        return result
+    }
+
     private func normalisedSignature(surface: String) -> String {
         canonicalDeclaration(from: surface)
     }
@@ -228,10 +259,15 @@ actor PhaseScanner {
     private func canonicalDeclaration(from raw: String) -> String {
         var value = raw.trimmingCharacters(in: .whitespaces)
 
+        // Access modifiers and declaration-kind keywords carry no identity for
+        // matching: strip them so a doc's bare `Foo` matches source `actor Foo`, and
+        // `func f()` matches `f()`.
         let removablePrefixes = [
             "public ", "internal ", "private ", "fileprivate ", "open ",
             "static ", "final ", "nonisolated ", "override ", "mutating ",
-            "nonmutating "
+            "nonmutating ",
+            "func ", "class ", "struct ", "enum ", "actor ", "protocol ",
+            "typealias ", "var ", "let "
         ]
         var changed = true
         while changed {
@@ -240,6 +276,19 @@ actor PhaseScanner {
                 value.removeFirst(prefix.count)
                 changed = true
             }
+        }
+
+        // Strip a leading member-access dot (`.fail`) and any leading type qualifier
+        // (`AgentEvent.criticResult` -> `criticResult`): phase docs write members
+        // qualified, source declares them bare.
+        if value.hasPrefix(".") {
+            value.removeFirst()
+        }
+        while let dot = value.firstIndex(of: "."), dot != value.startIndex,
+              value[value.startIndex..<dot].allSatisfy({
+                  $0.isLetter || $0.isNumber || $0 == "_"
+              }) {
+            value = String(value[value.index(after: dot)...])
         }
 
         if let brace = value.firstIndex(of: "{") {

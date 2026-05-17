@@ -1,11 +1,13 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 323a — failing test: DisciplineEngine must surface phaseDrift findings as
-/// `.nudge` (never `.block`) and must surface `.yellow` signature-drift findings.
+/// Phase 323a, rewritten by phase 324b. DisciplineEngine must surface phaseDrift
+/// findings as `.nudge` (never `.block`). After phase 324 `PhaseScanner` reports a
+/// declared symbol as `red` only when it is genuinely absent from source; a present
+/// symbol is `green` and is not surfaced as drift.
 final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
 
-    func testPhaseDriftFindingsAreNudgeAndYellowIsSurfaced() async throws {
+    func testPhaseDriftFindingsAreNudgeNeverBlock() async throws {
         let proj = FileManager.default.temporaryDirectory
             .appendingPathComponent("drift-sev-\(UUID())")
         try FileManager.default.createDirectory(
@@ -14,9 +16,7 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
             at: proj.appendingPathComponent("Src"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: proj) }
 
-        // A `b` phase doc (read even before phase 323) declaring two surfaces:
-        //  - ghostMethod()       — absent from source            -> red drift
-        //  - driftMethod(a: Int) — present, signature differs     -> yellow drift
+        // A phase doc declaring one absent symbol (red drift) and one present symbol.
         let doc = """
         # Phase 701b — Drift Phase
 
@@ -25,7 +25,7 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
 
         New surface introduced in phase 701b:
           - `func ghostMethod()` — absent surface
-          - `func driftMethod(a: Int)` — drifted surface
+          - `Worker.presentMethod()` — present surface
 
         ---
         """
@@ -34,7 +34,9 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
             atomically: true, encoding: .utf8)
         try """
         import Foundation
-        func driftMethod(b: String) { }
+        struct Worker {
+            public func presentMethod() { }
+        }
         """.write(
             to: proj.appendingPathComponent("Src/Code.swift"),
             atomically: true, encoding: .utf8)
@@ -52,11 +54,13 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
         let report = await engine.scan(projectPath: proj.path)
         let drift = report.findings.filter { $0.category == .phaseDrift }
 
+        XCTAssertFalse(drift.isEmpty,
+                       "the absent declared symbol must surface as drift")
         XCTAssertTrue(drift.allSatisfy { $0.severity == .nudge },
                       "phaseDrift findings must be nudge severity — never block")
         XCTAssertTrue(drift.contains { $0.summary.contains("ghostMethod") },
-                      "the red (absent-symbol) drift must still be surfaced, as a nudge")
-        XCTAssertTrue(drift.contains { $0.summary.contains("driftMethod") },
-                      "the yellow (signature-drift) finding must be surfaced")
+                      "the absent symbol (red drift) is surfaced as a nudge")
+        XCTAssertFalse(drift.contains { $0.summary.contains("presentMethod") },
+                       "a symbol present in source is green and not surfaced as drift")
     }
 }
