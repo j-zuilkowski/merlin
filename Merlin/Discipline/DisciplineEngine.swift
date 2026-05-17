@@ -350,7 +350,7 @@ actor DisciplineEngine {
         for case let url as URL in enumerator where url.pathExtension == "md" {
             let p = url.path
             if p.contains("/build/") || p.contains("/DerivedData/")
-                || p.contains("/.build/") { continue }
+                || p.contains("/.build/") || DisciplineExclusions.isExcluded(url) { continue }
             files.append(p)
         }
         return files

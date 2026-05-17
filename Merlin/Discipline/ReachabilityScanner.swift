@@ -86,7 +86,8 @@ actor ReachabilityScanner {
                   !url.path.contains("Tests/"),
                   !url.path.contains("/.build/"),
                   !url.path.contains("/build/"),
-                  !url.path.contains("/DerivedData/") else { continue }
+                  !url.path.contains("/DerivedData/"),
+                  !DisciplineExclusions.isExcluded(url) else { continue }
             files.append(url)
         }
         return files

@@ -66,6 +66,7 @@ actor ManualCoverageScanner {
             guard url.pathExtension == "swift",
                   !url.path.contains("Tests/"),
                   !url.path.contains("/phases/"),
+                  !DisciplineExclusions.isExcluded(url),
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
 
             let lines = text.components(separatedBy: .newlines)
@@ -151,7 +152,8 @@ actor ManualCoverageScanner {
             at: root, includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         ) else { return files }
-        for case let url as URL in enumerator where url.pathExtension == "md" {
+        for case let url as URL in enumerator
+        where url.pathExtension == "md" && !DisciplineExclusions.isExcluded(url) {
             files.append(url.path)
         }
         return files

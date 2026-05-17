@@ -184,6 +184,7 @@ actor PhaseScanner {
             // "/Tests/" match misses it - check for a path component ending in "Tests".
             if url.path.contains("/phases/") { continue }
             if url.pathComponents.contains(where: { $0.hasSuffix("Tests") }) { continue }
+            if DisciplineExclusions.isExcluded(url) { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.components(separatedBy: .newlines) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)

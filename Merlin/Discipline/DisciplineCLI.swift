@@ -256,7 +256,8 @@ enum DisciplineCLI {
         ) else { return [] }
 
         var docs: [String] = []
-        for case let url as URL in enumerator where url.pathExtension == "md" {
+        for case let url as URL in enumerator
+        where url.pathExtension == "md" && !DisciplineExclusions.isExcluded(url) {
             docs.append(url.path)
         }
         return docs.sorted()

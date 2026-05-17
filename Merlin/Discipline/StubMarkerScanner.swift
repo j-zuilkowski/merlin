@@ -47,6 +47,7 @@ actor StubMarkerScanner {
                   !url.path.contains("/.build/"),
                   !url.path.contains("/build/"),
                   !url.path.contains("/DerivedData/"),
+                  !DisciplineExclusions.isExcluded(url),
                   // The scanner's own marker table embeds the marker vocabulary.
                   url.lastPathComponent != "StubMarkerScanner.swift",
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }

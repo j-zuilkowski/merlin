@@ -29,6 +29,7 @@ actor WhyCommentScanner {
         while let url = enumerator.nextObject() as? URL {
             guard (url.pathExtension == "swift" || url.pathExtension == "rs"),
                   !url.path.contains("Tests/"),
+                  !DisciplineExclusions.isExcluded(url),
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
 
             let lines = text.components(separatedBy: .newlines)
