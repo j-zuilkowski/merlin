@@ -24,6 +24,7 @@ struct SessionSidebar: View {
             } label: {
                 Label("New Project Workspace", systemImage: "plus.square.on.square")
                     .font(.caption.weight(.medium))
+                    .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
@@ -307,8 +308,8 @@ private struct PriorSessionRow: View {
                 .lineLimit(1)
             Spacer()
             Text(RelativeTimestampFormatter.string(from: session.updatedAt))
-                .font(.system(size: 9))
-                .foregroundStyle(.accessibleSecondary)
+                .font(.system(size: 10))
+                .foregroundStyle(.primary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
