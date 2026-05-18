@@ -199,3 +199,13 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/LoRATrainer.swift
 git commit -m "Phase 118b — LoRATrainer (JSONL export + mlx_lm.lora shell invocation)"
 ```
+
+## Fixes
+
+- **S5 proving-run fix (2026-05-18).** `LoRATrainer.train` wrote a single
+  `train.jsonl` and passed it to `mlx_lm.lora --data`. mlx_lm requires `--data` to
+  be a *directory* containing `train.jsonl` / `valid.jsonl`; the file form aborted
+  with "Training set not found or empty". `train` now writes both splits (90/10)
+  into a temp data directory and points `--data` at the directory. `exportJSONL`
+  (chat format) is unchanged. Regression guard added to `LoRATrainerTests`
+  (`testTrainBuildsCorrectShellCommand` asserts `--data` is not a `.jsonl` path).

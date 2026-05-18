@@ -516,3 +516,12 @@ git add Merlin/RAG/XcalibreClient.swift \
         Merlin/App/AppState.swift
 git commit -m "Phase 25b — RAG integration: XcalibreClient + auto-inject + rag_search + rag_list_books"
 ```
+
+## Fixes
+
+- **S4 proving-run fix (2026-05-18).** `XcalibreClient` gained a `defaultToken()`
+  that reads the `XCALIBRE_TOKEN` environment variable (mirrors `defaultBaseURL()` /
+  `XCALIBRE_BASE_URL`), used as the `init` default. `AppState` falls back to that
+  env token when no token is persisted in settings. Without this, the client held
+  an empty bearer token and short-circuited every search to an empty result before
+  issuing a request — the xcalibre-server search endpoints require a JWT.
