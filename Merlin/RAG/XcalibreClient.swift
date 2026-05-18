@@ -142,9 +142,20 @@ actor XcalibreClient {
         return "http://localhost:8083"
     }
 
+    /// The configured xcalibre-server bearer token. Reads `XCALIBRE_TOKEN` via
+    /// `getenv` (the live process environment) — mirrors `defaultBaseURL()` so an
+    /// environment override applies even when no token is persisted in settings.
+    static func defaultToken() -> String {
+        if let raw = getenv("XCALIBRE_TOKEN"), case let value = String(cString: raw),
+           !value.isEmpty {
+            return value
+        }
+        return ""
+    }
+
     init(
         baseURL: String = XcalibreClient.defaultBaseURL(),
-        token: String = "",
+        token: String = XcalibreClient.defaultToken(),
         fetcher: any HTTPFetching = URLSession.shared
     ) {
         self.baseURL = baseURL

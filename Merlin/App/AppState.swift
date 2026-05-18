@@ -138,7 +138,11 @@ final class AppState: ObservableObject {
             .path
 
         authMemory = AuthMemory(storePath: authStorePath)
-        xcalibreClient = XcalibreClient(token: AppSettings.shared.xcalibreToken)
+        let configuredXcalibreToken = AppSettings.shared.xcalibreToken
+        xcalibreClient = XcalibreClient(
+            token: configuredXcalibreToken.isEmpty
+                ? XcalibreClient.defaultToken()
+                : configuredXcalibreToken)
         configureKAGBackend()
         // 1. Register the built-in local backend.
         let vectorPlugin = LocalVectorPlugin(

@@ -116,12 +116,24 @@ final class CapabilityScenarioTests: XCTestCase {
         let ready = await server.waitUntilReady(
             url: "http://127.0.0.1:\(port)/api/docs/openapi.json", timeout: 120)
         XCTAssertTrue(ready, "xcalibre-server did not become ready")
-        // Give the watch-folder scan time to ingest the 2 EPUBs.
-        try await Task.sleep(nanoseconds: 8_000_000_000)
+        // 3. Register the first user (auto-promoted to admin on a fresh install) and
+        //    log in to obtain a JWT. The xcalibre-server search endpoints require
+        //    auth, so Merlin's XcalibreClient needs a real bearer token — an empty
+        //    token makes it short-circuit every search to an empty result.
+        let base = "http://127.0.0.1:\(port)"
+        let token = try await Self.bootstrapXcalibreAdminToken(baseURL: base)
+        setenv("XCALIBRE_BASE_URL", base, 1)
+        setenv("XCALIBRE_TOKEN", token, 1)
+        defer { unsetenv("XCALIBRE_BASE_URL"); unsetenv("XCALIBRE_TOKEN") }
 
-        // 3. Point Merlin's xcalibre-server client at the instance and run the scenario.
-        setenv("XCALIBRE_BASE_URL", "http://127.0.0.1:\(port)", 1)
-        defer { unsetenv("XCALIBRE_BASE_URL") }
+        // Wait for the watch-folder to ingest both corpus EPUBs (file stored, book
+        // row inserted, search chunks generated) before the scenario runs — the
+        // first RAG query must have data to retrieve.
+        let ingestedCount = await Self.waitForWatchFolderIngest(
+            baseURL: base, token: token, expected: 2, timeoutSeconds: 120)
+        XCTAssertEqual(ingestedCount, 2,
+                       "xcalibre-server watch-folder must ingest both corpus EPUBs")
+
         let run = try await EvalHarness.runScenario(
             fixturePath: EvalPaths.fixture("rag-corpus"),
             prompt: EvalPrompts.s4, timeout: 900)
@@ -274,5 +286,67 @@ final class CapabilityScenarioTests: XCTestCase {
                       "S6 OCR: R1's value (10k) must be read")
         XCTAssertTrue(report.contains("100n") || report.lowercased().contains("100 nf"),
                       "S6 OCR: C1's value (100nF) must be read")
+    }
+
+    // MARK: - S4 helpers
+
+    private enum S4Error: Error { case message(String) }
+
+    /// Registers the first xcalibre-server user (auto-promoted to admin on a fresh
+    /// install) and logs in, returning the JWT access token.
+    private static func bootstrapXcalibreAdminToken(baseURL: String) async throws -> String {
+        let username = "evaladmin"
+        let password = "EvalPass123!"
+        _ = try await postJSON(
+            url: "\(baseURL)/api/v1/auth/register",
+            body: ["username": username, "email": "eval@merlin.test", "password": password])
+        let login = try await postJSON(
+            url: "\(baseURL)/api/v1/auth/login",
+            body: ["username": username, "password": password])
+        guard let token = login["access_token"] as? String, !token.isEmpty else {
+            throw S4Error.message("xcalibre-server login returned no access_token")
+        }
+        return token
+    }
+
+    /// Polls the watch-folder log until `expected` files reach a terminal status,
+    /// returning the count that were successfully ingested.
+    private static func waitForWatchFolderIngest(
+        baseURL: String, token: String, expected: Int, timeoutSeconds: Int
+    ) async -> Int {
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutSeconds))
+        while Date() < deadline {
+            if let log = try? await getJSON(
+                url: "\(baseURL)/api/v1/admin/watch-folder/log", token: token),
+               let items = log["items"] as? [[String: Any]] {
+                let statuses = items.compactMap { $0["status"] as? String }
+                let terminal = statuses.filter { $0 != "pending" }
+                if terminal.count >= expected {
+                    return terminal.filter { $0 == "ingested" }.count
+                }
+            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        return 0
+    }
+
+    private static func postJSON(url: String, body: [String: Any]) async throws -> [String: Any] {
+        guard let endpoint = URL(string: url) else { throw S4Error.message("bad URL \(url)") }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 15
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+    }
+
+    private static func getJSON(url: String, token: String) async throws -> [String: Any] {
+        guard let endpoint = URL(string: url) else { throw S4Error.message("bad URL \(url)") }
+        var request = URLRequest(url: endpoint)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return (try JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     }
 }
