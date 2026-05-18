@@ -28,7 +28,7 @@ struct ScreenPreviewView: View {
             HStack {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.accessibleSecondary)
                 Text("Screen Preview")
                     .font(.headline)
                 Spacer()
@@ -59,10 +59,10 @@ struct ScreenPreviewView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Captured \(formatted(screenshot.timestamp))")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.accessibleSecondary)
                     Text(screenshot.sourceBundleID)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.accessibleSecondary)
                 }
             }
         } else {
@@ -70,7 +70,7 @@ struct ScreenPreviewView: View {
                 Spacer(minLength: 0)
                 Text("No capture yet")
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.accessibleSecondary)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, minHeight: 140)

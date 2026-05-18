@@ -15,7 +15,7 @@ struct ToolLogView: View {
                         if appState.toolLogLines.isEmpty {
                             Text("[idle]")
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.accessibleSecondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 4)
                         } else {

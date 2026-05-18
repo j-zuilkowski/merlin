@@ -501,7 +501,7 @@ struct ChatView: View {
         HStack {
             Label("Scrolled up — new output continuing below", systemImage: "arrow.up")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.accessibleSecondary)
             Spacer()
             Button("Resume ↓") {
                 autoScrollEnabled = true

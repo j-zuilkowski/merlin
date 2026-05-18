@@ -155,11 +155,11 @@ struct WorkspaceView: View {
         VStack(spacing: 16) {
             Image(systemName: "pawprint")
                 .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.accessibleSecondary)
             Text(coordinator.projectManagers.isEmpty
                  ? "Add a project to get started"
                  : "Select a session from the sidebar")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.accessibleSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -171,7 +171,7 @@ struct WorkspaceView: View {
                 Label("Staged Changes", systemImage: "arrow.triangle.branch")
             }
             .buttonStyle(.bordered)
-            .tint(layout.showDiffPane ? .accentColor : .secondary)
+            .tint(layout.showDiffPane ? .accentColor : .accessibleSecondary)
             .help("Toggle staged changes")
             .accessibilityIdentifier(AccessibilityID.workspaceToggleDiffButton)
 
@@ -179,7 +179,7 @@ struct WorkspaceView: View {
                 Label("File Viewer", systemImage: "doc.text")
             }
             .buttonStyle(.bordered)
-            .tint(layout.showFilePane ? .accentColor : .secondary)
+            .tint(layout.showFilePane ? .accentColor : .accessibleSecondary)
             .help("Toggle file viewer")
             .accessibilityIdentifier(AccessibilityID.workspaceToggleFileButton)
 
@@ -187,7 +187,7 @@ struct WorkspaceView: View {
                 Label("Terminal", systemImage: "terminal")
             }
             .buttonStyle(.bordered)
-            .tint(layout.showTerminalPane ? .accentColor : .secondary)
+            .tint(layout.showTerminalPane ? .accentColor : .accessibleSecondary)
             .help("Toggle terminal")
             .accessibilityIdentifier(AccessibilityID.workspaceToggleTerminalButton)
 
@@ -195,7 +195,7 @@ struct WorkspaceView: View {
                 Label("Preview", systemImage: "eye")
             }
             .buttonStyle(.bordered)
-            .tint(layout.showPreviewPane ? .accentColor : .secondary)
+            .tint(layout.showPreviewPane ? .accentColor : .accessibleSecondary)
             .help("Toggle preview")
             .accessibilityIdentifier(AccessibilityID.workspaceTogglePreviewButton)
 
@@ -203,7 +203,7 @@ struct WorkspaceView: View {
                 Label("Side Chat", systemImage: "bubble.right")
             }
             .buttonStyle(.bordered)
-            .tint(layout.showSideChat ? .accentColor : .secondary)
+            .tint(layout.showSideChat ? .accentColor : .accessibleSecondary)
             .help("Toggle side chat")
             .accessibilityIdentifier(AccessibilityID.workspaceToggleSideChatButton)
 

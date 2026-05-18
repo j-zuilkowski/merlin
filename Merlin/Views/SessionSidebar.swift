@@ -145,10 +145,10 @@ private struct ProjectSection: View {
                         HStack(spacing: 4) {
                             Image(systemName: showArchived ? "chevron.down" : "chevron.right")
                                 .font(.system(size: 9, weight: .semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.accessibleSecondary)
                             Text("Show archived")
                                 .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.accessibleSecondary)
                             Spacer()
                         }
                         .padding(.horizontal, 12)
@@ -303,12 +303,12 @@ private struct PriorSessionRow: View {
         HStack(spacing: 8) {
             Text(session.title)
                 .font(.caption.weight(.medium))
-                .foregroundStyle(dimmed ? .tertiary : .secondary)
+                .foregroundStyle(dimmed ? .accessibleSecondary : .primary)
                 .lineLimit(1)
             Spacer()
             Text(RelativeTimestampFormatter.string(from: session.updatedAt))
                 .font(.system(size: 9))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.accessibleSecondary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -323,7 +323,7 @@ private struct SectionLabel: View {
     var body: some View {
         Text(title)
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.accessibleSecondary)
             .padding(.horizontal, 12)
             .padding(.top, 10)
             .padding(.bottom, 4)

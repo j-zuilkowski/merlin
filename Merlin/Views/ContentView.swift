@@ -1,5 +1,12 @@
 import SwiftUI
 
+extension ShapeStyle where Self == Color {
+    /// De-emphasized text/icon colour that still meets WCAG AA contrast. SwiftUI's
+    /// system `.secondary` / `.tertiary` styles fall short on small text — the
+    /// accessibility audit flags them — so this keeps visual hierarchy while passing.
+    static var accessibleSecondary: Color { Color.primary.opacity(0.75) }
+}
+
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var registry: ProviderRegistry
@@ -36,7 +43,7 @@ struct ContentView: View {
                     Label("Tool Log", systemImage: "wrench.and.screwdriver")
                 }
                 .buttonStyle(.bordered)
-                .tint(showToolPane ? .accentColor : .secondary)
+                .tint(showToolPane ? .accentColor : .accessibleSecondary)
                 .help("Toggle tool log")
                 .accessibilityIdentifier(AccessibilityID.settingsButton)
             }
