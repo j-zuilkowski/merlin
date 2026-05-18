@@ -180,7 +180,9 @@ final class AppState: ObservableObject {
 
         let gate = AuthGate(memory: authMemory, presenter: self)
         let toolRouter = ToolRouter(authGate: gate)
-        registerAllTools(router: toolRouter)
+        registerAllTools(
+            router: toolRouter,
+            visionProvider: { [weak self] in self?.engine?.provider(for: .vision) })
 
         toolRouter.register(name: "run_shell") { [weak self] args in
             struct RunShellArgs: Decodable {

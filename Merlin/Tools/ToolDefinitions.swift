@@ -501,12 +501,15 @@ enum ToolDefinitions {
 
     static let visionQuery = ToolDefinition(function: .init(
         name: "vision_query",
-        description: "Query the vision model about the last captured screenshot",
+        description: "Ask the vision model a question about an image. Use this to read or "
+            + "describe any image — a screenshot captured with ui_screenshot, or an image "
+            + "file on disk (PNG, JPEG, etc.).",
         parameters: JSONSchema(
             type: "object",
             properties: [
-                "image_id": JSONSchema(type: "string", description: "ID from ui_screenshot result"),
-                "prompt": JSONSchema(type: "string", description: "Question about the screenshot"),
+                "image_id": JSONSchema(type: "string", description: "The image id returned "
+                    + "by ui_screenshot, or a path to an image file on disk"),
+                "prompt": JSONSchema(type: "string", description: "Question about the image"),
             ],
             required: ["image_id", "prompt"]
         )

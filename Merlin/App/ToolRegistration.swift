@@ -1,7 +1,24 @@
 import Foundation
+import AppKit
+
+/// Loads an image file as JPEG data (the format the vision API expects). Returns
+/// the bytes unchanged when already JPEG; converts PNG/other formats via NSImage.
+private func loadImageAsJPEG(_ path: String) -> Data? {
+    guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+    if data.starts(with: [0xFF, 0xD8, 0xFF]) { return data }
+    guard let image = NSImage(data: data),
+          let tiff = image.tiffRepresentation,
+          let rep = NSBitmapImageRep(data: tiff),
+          let jpeg = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+    else { return nil }
+    return jpeg
+}
 
 @MainActor
-func registerAllTools(router: ToolRouter) {
+func registerAllTools(
+    router: ToolRouter,
+    visionProvider: @escaping @MainActor () -> (any LLMProvider)? = { nil }
+) {
     // MARK: File System
     router.register(name: "read_file") { args in
         let a = try decode(args, as: PathArgs.self)
@@ -239,11 +256,23 @@ func registerAllTools(router: ToolRouter) {
         } else {
             data = try await ScreenCaptureTool.captureDisplay(quality: quality)
         }
-        return "JPEG: \(data.count) bytes"
+        // Persist the capture so vision_query can retrieve it. The returned path
+        // is the image id callers pass back to vision_query.
+        let path = NSTemporaryDirectory() + "merlin-screenshot-\(UUID().uuidString).jpg"
+        try data.write(to: URL(fileURLWithPath: path))
+        return "Screenshot captured (\(data.count) bytes). image id: \(path)"
     }
     router.register(name: "vision_query") { args in
-        _ = try decode(args, as: VisionQueryArgs.self)
-        return "vision_query: use ui_screenshot first to capture, then this tool queries it"
+        let a = try decode(args, as: VisionQueryArgs.self)
+        guard let provider = visionProvider() else {
+            return "vision_query error: no vision model is configured (set the vision slot)"
+        }
+        guard let jpeg = loadImageAsJPEG(a.imageId) else {
+            return "vision_query error: could not load image '\(a.imageId)' — pass a "
+                + "screenshot id from ui_screenshot or an image file path"
+        }
+        return try await VisionQueryTool.query(
+            imageData: jpeg, prompt: a.prompt, provider: provider)
     }
 }
 
