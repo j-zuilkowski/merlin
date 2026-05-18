@@ -187,6 +187,12 @@ final class AgenticEngine {
     /// within the current user-initiated task. Prevents infinite ceiling bouncing.
     /// Resets when a fresh (non-continuation) user message starts a new turn.
     private var ceilingContinuationCount = 0
+    /// Subagents spawned within the current user-initiated task. The local model
+    /// tends to delegate compulsively instead of doing the work; once this hits
+    /// `maxSpawnsPerTask`, further spawn_agent calls are rejected. Resets per task.
+    private var spawnedSubagentCount = 0
+    /// Hard per-task cap on subagent spawns.
+    private let maxSpawnsPerTask = 8
     private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
 
     /// Maximum number of auto-continuations triggered by ceiling hits before the
@@ -617,6 +623,7 @@ final class AgenticEngine {
         // starts so the budget applies per task, not per session.
         if !isContinuation {
             ceilingContinuationCount = 0
+            spawnedSubagentCount = 0
         }
         let classification: ClassifierResult
         if isContinuation {
@@ -1169,7 +1176,32 @@ final class AgenticEngine {
                         regularCalls.append(call)
                     }
                 }
-                await handleSpawnAgents(spawnCalls, depth: depth, continuation: continuation)
+                // Enforce the per-task subagent cap. Over-budget spawn_agent calls
+                // are rejected with a tool result that tells the model to finish the
+                // task itself — the local model otherwise delegates without bound.
+                var allowedSpawnCalls: [ToolCall] = []
+                for call in spawnCalls {
+                    if spawnedSubagentCount < maxSpawnsPerTask {
+                        spawnedSubagentCount += 1
+                        allowedSpawnCalls.append(call)
+                    } else {
+                        let rejection = ToolResult(
+                            toolCallId: call.id,
+                            content: "spawn_agent budget exhausted — \(maxSpawnsPerTask) "
+                                + "subagents already spawned for this task. Do NOT spawn "
+                                + "more agents. Complete the remaining work yourself now "
+                                + "with your own tools (run_shell, read_file, write_file, "
+                                + "edit_file) and verify it.",
+                            isError: true)
+                        continuation.yield(.toolCallResult(rejection))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(rejection.content),
+                            toolCallId: call.id,
+                            timestamp: Date()))
+                    }
+                }
+                await handleSpawnAgents(allowedSpawnCalls, depth: depth, continuation: continuation)
                 await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
