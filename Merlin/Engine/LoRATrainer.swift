@@ -103,7 +103,8 @@ actor LoRATrainer {
 
     // MARK: - Training
 
-    /// Exports records to a temp JSONL file and runs `python3 -m mlx_lm.lora --train`.
+    /// Exports records to a temp data directory (train.jsonl + valid.jsonl) and runs
+    /// `python3 -m mlx_lm.lora --train`.
     /// Returns immediately with success=false if there are no valid training samples.
     func train(
         records: [OutcomeRecord],
@@ -121,11 +122,20 @@ actor LoRATrainer {
             )
         }
 
-        // Write JSONL to a temporary file
-        let tempURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("merlin-lora-train-\(UUID().uuidString).jsonl")
+        // mlx_lm's --data expects a directory containing train.jsonl / valid.jsonl,
+        // not a single file. Write both splits into a temp data directory.
+        let dataDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("merlin-lora-data-\(UUID().uuidString)", isDirectory: true)
         do {
-            try exportJSONL(valid, to: tempURL)
+            try FileManager.default.createDirectory(
+                at: dataDir, withIntermediateDirectories: true)
+            let valCount = max(1, valid.count / 10)
+            let trainRecords = valid.count > valCount
+                ? Array(valid.dropLast(valCount)) : valid
+            let validRecords = valid.count > valCount
+                ? Array(valid.suffix(valCount)) : valid
+            try exportJSONL(trainRecords, to: dataDir.appendingPathComponent("train.jsonl"))
+            try exportJSONL(validRecords, to: dataDir.appendingPathComponent("valid.jsonl"))
         } catch {
             return LoRATrainingResult(
                 sampleCount: valid.count,
@@ -134,7 +144,7 @@ actor LoRATrainer {
                 errorMessage: "JSONL export failed: \(error.localizedDescription)"
             )
         }
-        defer { try? FileManager.default.removeItem(at: tempURL) }
+        defer { try? FileManager.default.removeItem(at: dataDir) }
 
         // Ensure adapter output directory exists
         try? FileManager.default.createDirectory(
@@ -146,7 +156,7 @@ actor LoRATrainer {
             "python3 -m mlx_lm.lora",
             "--model \"\(baseModel)\"",
             "--train",
-            "--data \"\(tempURL.path)\"",
+            "--data \"\(dataDir.path)\"",
             "--adapter-path \"\(adapterOutputPath)\"",
             "--iters \(iterations)",
             "--batch-size 1",

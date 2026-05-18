@@ -96,6 +96,10 @@ final class LoRATrainerTests: XCTestCase {
         XCTAssertTrue(capturer.lastCommand?.contains("mlx-community/Qwen2.5-Coder-7B-Instruct-4bit") ?? false)
         XCTAssertTrue(capturer.lastCommand?.contains("--adapter-path") ?? false)
         XCTAssertTrue(capturer.lastCommand?.contains("--iters 50") ?? false)
+        XCTAssertTrue(capturer.lastCommand?.contains("--data") ?? false,
+                      "Shell command must pass --data")
+        XCTAssertFalse(capturer.lastCommand?.contains(".jsonl") ?? true,
+                       "--data must point at a directory, not a .jsonl file (mlx_lm requirement)")
     }
 
     // MARK: - LoRATrainingResult fields
