@@ -53,17 +53,21 @@ final class SurfaceUITests: XCTestCase {
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
         app.typeKey(",", modifierFlags: .command)
 
-        // The sidebar lists every SettingsSection by its label. A label can resolve to
-        // several nested elements (cell + static text), so take firstMatch — a bare
-        // subscript throws "multiple matching elements" before the click.
+        // The sidebar lists every SettingsSection by its label. A label resolves to
+        // several elements — the List row, the enclosing scroll view, the detail
+        // pane's navigation title. Click the first *hittable* one (the row); the
+        // scroll view has no hit point and the bare firstMatch could land on it.
         let paneLabels = SettingsSection.allCases.map { $0.label }
         for label in paneLabels {
-            let row = app.descendants(matching: .any).matching(identifier: label).firstMatch
-            if row.exists {
-                row.click()
-                XCTAssertTrue(app.windows.count >= 1,
-                              "settings pane '\(label)' crashed the window")
+            let candidates = app.descendants(matching: .any).matching(identifier: label)
+            for index in 0..<candidates.count {
+                let element = candidates.element(boundBy: index)
+                guard element.exists, element.isHittable else { continue }
+                element.click()
+                break
             }
+            XCTAssertTrue(app.windows.count >= 1,
+                          "settings pane '\(label)' crashed the window")
         }
     }
 
@@ -97,11 +101,13 @@ final class SurfaceUITests: XCTestCase {
     // MARK: - S10 - chat input surfaces
 
     func testChatInputSurfacesPresent() {
-        let app = launchMerlin()
+        // The chat surfaces only render once a session is active — open a test
+        // project so WorkspaceView shows ContentView instead of placeholderContent.
+        let app = launchMerlin(["--open-test-project"])
         defer { app.terminate() }
         XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 10))
 
-        XCTAssertTrue(app.textFields[AccessibilityID.chatInput].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.textFields[AccessibilityID.chatInput].waitForExistence(timeout: 12),
                       "the chat input field must be present")
         for id in [AccessibilityID.chatSendButton, AccessibilityID.chatAttachmentButton,
                    AccessibilityID.chatVoiceButton] {

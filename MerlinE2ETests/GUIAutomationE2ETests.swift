@@ -1,6 +1,24 @@
 import AppKit
+import CoreGraphics
 import XCTest
 @testable import Merlin
+
+/// macOS TCC gates AX inspection and screen capture behind per-process grants that
+/// no API can self-issue. When the test host lacks the grant these probes return an
+/// empty tree / `permissionDenied`, which is an environment gap, not a code defect —
+/// so skip with the exact remedy, matching how the suite skips on a missing API key.
+private func skipUnlessAccessibilityTrusted() throws {
+    try XCTSkipUnless(AXIsProcessTrusted(),
+        "Accessibility permission not granted to the test host. Grant it in "
+        + "System Settings → Privacy & Security → Accessibility (add the test "
+        + "runner — Xcode.app or the xctest host), then re-run.")
+}
+
+private func skipUnlessScreenCaptureTrusted() throws {
+    try XCTSkipUnless(CGPreflightScreenCaptureAccess(),
+        "Screen Recording permission not granted to the test host. Grant it in "
+        + "System Settings → Privacy & Security → Screen Recording, then re-run.")
+}
 
 /// Launches TestTargetApp via NSWorkspace. This target is a `bundle.unit-test`, not a
 /// UI-testing bundle, so `XCUIApplication` is unavailable — these tests only need the
@@ -37,6 +55,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testAXTreeIsRich() async throws {
         try skipUnlessLiveEnvironment()
+        try skipUnlessAccessibilityTrusted()
         let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 
@@ -48,6 +67,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testAXClickPrimaryButton() async throws {
         try skipUnlessLiveEnvironment()
+        try skipUnlessAccessibilityTrusted()
         let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 
@@ -75,6 +95,7 @@ final class GUIAutomationE2ETests: XCTestCase {
     @MainActor
     func testVisionQueryIdentifiesButton() async throws {
         try skipUnlessLiveEnvironment()
+        try skipUnlessScreenCaptureTrusted()
         let targetApp = try await launchTargetApp()
         defer { targetApp.terminate() }
 

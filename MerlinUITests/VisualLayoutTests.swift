@@ -26,10 +26,17 @@ final class VisualLayoutTests: XCTestCase {
 
     @MainActor
     func testAccessibilityAudit() throws {
-        let app = launchFixtureApp()
+        let app = launchFixtureApp(arguments: ["--open-test-project"])
         defer { app.terminate() }
 
-        try app.performAccessibilityAudit()
+        var issues: [String] = []
+        try app.performAccessibilityAudit { issue in
+            issues.append("[\(issue.auditType)] \(issue.compactDescription)")
+            return true   // collect every issue without aborting the audit
+        }
+        XCTAssertTrue(issues.isEmpty,
+                      "accessibility audit found \(issues.count) issue(s):\n"
+                      + issues.joined(separator: "\n"))
     }
 
     @MainActor
@@ -45,20 +52,22 @@ final class VisualLayoutTests: XCTestCase {
 
     @MainActor
     func testInputFieldExists() {
-        let app = launchFixtureApp()
+        // Chat surfaces require an active session — open a test project.
+        let app = launchFixtureApp(arguments: ["--open-test-project"])
         defer { app.terminate() }
 
         let input = app.textFields["chat-input"]
-        XCTAssertTrue(input.exists)
+        XCTAssertTrue(input.waitForExistence(timeout: 10))
         XCTAssertTrue(input.isEnabled)
     }
 
     @MainActor
     func testToolLogPanelVisible() {
-        let app = launchFixtureApp()
+        // The tool-log pane starts open under --open-test-project.
+        let app = launchFixtureApp(arguments: ["--open-test-project"])
         defer { app.terminate() }
 
-        XCTAssertTrue(app.scrollViews["tool-log"].exists)
+        XCTAssertTrue(app.scrollViews["tool-log"].waitForExistence(timeout: 10))
     }
 
     @MainActor

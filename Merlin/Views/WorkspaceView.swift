@@ -37,6 +37,19 @@ struct WorkspaceView: View {
             AppSettings.shared.startWatching(url: configURL)
             layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
             didLoadLayout = true
+
+            // UI-test hook: open a throwaway project so a session is active and the
+            // chat/tool-log surfaces actually render (without a session WorkspaceView
+            // only shows placeholderContent). Used by MerlinUITests.
+            if ProcessInfo.processInfo.arguments.contains("--open-test-project"),
+               coordinator.activeSession == nil {
+                let dir = NSTemporaryDirectory()
+                    + "merlin-uitest-project-\(UUID().uuidString)"
+                try? FileManager.default.createDirectory(
+                    atPath: dir, withIntermediateDirectories: true)
+                _ = await coordinator.addProject(
+                    ProjectRef(path: dir, displayName: "UITest", lastOpenedAt: Date()))
+            }
         }
         .navigationTitle(
             coordinator.activeSession?.title

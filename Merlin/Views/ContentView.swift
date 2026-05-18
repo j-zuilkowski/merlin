@@ -4,7 +4,10 @@ struct ContentView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var registry: ProviderRegistry
 
-    @State private var showToolPane = false
+    // Starts open under the UI-test launch flag so MerlinUITests can see the
+    // tool-log pane; otherwise collapsed by default.
+    @State private var showToolPane =
+        ProcessInfo.processInfo.arguments.contains("--open-test-project")
     @State private var engineRunning = false
     @State private var activeProviderID = ""
 
