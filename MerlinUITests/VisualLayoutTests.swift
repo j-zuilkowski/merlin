@@ -31,7 +31,14 @@ final class VisualLayoutTests: XCTestCase {
 
         var issues: [String] = []
         try app.performAccessibilityAudit { issue in
-            issues.append("[\(issue.auditType)] \(issue.compactDescription)")
+            let el = issue.element
+            let frame = el?.frame ?? .zero
+            issues.append("[\(issue.auditType.rawValue)] \(issue.compactDescription) "
+                + ":: type=\(el?.elementType.rawValue ?? 0) "
+                + "id='\(el?.identifier ?? "")' label='\(el?.label ?? "")' "
+                + "title='\(el?.title ?? "")' "
+                + "frame=(\(Int(frame.minX)),\(Int(frame.minY)),"
+                + "\(Int(frame.width))x\(Int(frame.height)))")
             return true   // collect every issue without aborting the audit
         }
         XCTAssertTrue(issues.isEmpty,

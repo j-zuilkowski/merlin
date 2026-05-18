@@ -34,6 +34,7 @@ struct TerminalPane: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
                     .accessibilityIdentifier(AccessibilityID.terminalPaneInput)
+                    .accessibilityLabel("Shell command")
                     .onSubmit(runCommand)
 
                 Text(workingDirectory.isEmpty ? "Current working directory" : workingDirectory)

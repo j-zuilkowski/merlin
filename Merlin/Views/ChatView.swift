@@ -190,6 +190,7 @@ struct ChatView: View {
                         .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
                 )
                 .accessibilityIdentifier(AccessibilityID.chatInput)
+                .accessibilityLabel("Message")
                 .disabled(model.isSending)
                 .onSubmit(sendMessage)
                 .onChange(of: model.draft) { _, draft in
