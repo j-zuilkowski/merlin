@@ -52,6 +52,18 @@ enum EvalHarness {
         var all: [AgentEvent] = []
 
         let deadline = Date().addingTimeInterval(timeout)
+
+        // Hard wall-clock bound. A watchdog closes the session after `timeout` even
+        // when the event stream stalls entirely and produces nothing — closing
+        // cancels the engine, whose stream cancellation handler ends the `for await`
+        // below. An in-loop deadline check (the previous design) cannot fire on a
+        // stalled stream, so a hung scenario could block the whole suite forever.
+        let watchdog = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(timeout))
+            guard Task.isCancelled == false else { return }
+            await session.close()
+        }
+
         for await event in engine.send(userMessage: prompt) {
             all.append(event)
             switch event {
@@ -71,12 +83,13 @@ enum EvalHarness {
                 }
             default: break
             }
-            if Date() > deadline {
-                await session.close()
-                throw HarnessError.timedOut
-            }
         }
+        watchdog.cancel()
         await session.close()
+
+        if Date() > deadline {
+            throw HarnessError.timedOut
+        }
 
         return EvalRun(
             assistantText: text,

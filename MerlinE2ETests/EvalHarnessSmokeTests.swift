@@ -25,34 +25,33 @@ final class EvalHarnessSmokeTests: XCTestCase {
                       "a trivial scenario must not produce engine errors")
     }
 
-    /// M-3 reproduction: a scenario that times out tears the LiveSession down while a
-    /// turn is still live. On a project with no `.merlin/` directory this surfaced an
-    /// NSError 260 that escaped `runScenario` (which only ever throws `HarnessError`).
+    /// HARNESS-5 regression: a scenario whose event stream stalls (here the agent runs
+    /// one long blocking shell command, emitting no events) must still be bounded by
+    /// `runScenario`'s `timeout`. The old in-loop deadline check could not fire on a
+    /// stalled stream, so a hung scenario blocked the whole suite indefinitely.
     @MainActor
-    func testTimeoutTeardownDoesNotLeakForeignError() async throws {
+    func testStalledScenarioIsWallClockBounded() async throws {
         try skipUnlessLiveEnvironment()
 
         let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("eval-teardown-\(UUID())", isDirectory: true)
+            .appendingPathComponent("eval-stall-\(UUID())", isDirectory: true)
         try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
-        // Copy the real swift-gui-buggy fixture so the scenario does genuine Xcode
-        // work (build/launch/GUI) — that is the S1 condition under which NSError 260
-        // surfaced. The copy keeps the shared fixture pristine.
-        let src = EvalPaths.fixture("swift-gui-buggy")
-        try XCTSkipUnless(FileManager.default.fileExists(atPath: src),
-                          "swift-gui-buggy fixture missing")
-        let work = tmp.appendingPathComponent("swift-gui-buggy", isDirectory: true)
-        try FileManager.default.copyItem(atPath: src, toPath: work.path)
-
+        let start = Date()
         do {
             _ = try await EvalHarness.runScenario(
-                fixturePath: work.path, prompt: EvalPrompts.s1, timeout: 120)
-            // Completing before the deadline is fine — the point is no foreign error.
+                fixturePath: tmp.path,
+                prompt: "Run this exact shell command and wait for it to finish: sleep 600",
+                timeout: 45)
+            XCTFail("a stalled scenario was expected to time out")
         } catch let error as EvalHarness.HarnessError {
             XCTAssertEqual(String(describing: error), "timedOut",
-                           "timeout teardown must yield HarnessError.timedOut")
+                           "a stalled scenario must yield HarnessError.timedOut")
         }
+        let elapsed = Date().timeIntervalSince(start)
+        XCTAssertLessThan(elapsed, 180,
+                          "runScenario must wall-clock-bound a stalled scenario near "
+                          + "its timeout, not run to the shell command's completion")
     }
 }
