@@ -156,28 +156,36 @@ actor CriticEngine {
     private let reasonProvider: (any LLMProvider)?
     private let shellRunner: any ShellRunning
     private let modelManager: (any LocalModelManagerProtocol)?
+    /// Working-project root. When set, Stage 1 auto-detects the project's build
+    /// system and runs its real build/test as a deterministic check — so a broken
+    /// edit (e.g. code that does not compile) fails the critic and forces a retry.
+    private let projectPath: String?
 
     init(
         verificationBackend: any VerificationBackend,
         reasonProvider: (any LLMProvider)?,
         shellRunner: any ShellRunning = LiveShellRunner(),
-        modelManager: (any LocalModelManagerProtocol)? = nil
+        modelManager: (any LocalModelManagerProtocol)? = nil,
+        projectPath: String? = nil
     ) {
         self.verificationBackend = verificationBackend
         self.reasonProvider = reasonProvider
         self.shellRunner = shellRunner
         self.modelManager = modelManager
+        self.projectPath = projectPath
     }
 
     init(
         verificationBackend: any VerificationBackend,
         shellRunner: any ShellRunning = LiveShellRunner(),
-        orchestrateProvider: (any LLMProvider)?
+        orchestrateProvider: (any LLMProvider)?,
+        projectPath: String? = nil
     ) {
         self.verificationBackend = verificationBackend
         self.reasonProvider = orchestrateProvider
         self.shellRunner = shellRunner
         self.modelManager = nil
+        self.projectPath = projectPath
     }
 
     func evaluate(
@@ -239,8 +247,9 @@ actor CriticEngine {
     // MARK: - Stage 1
 
     func runStage1(taskType: DomainTaskType) async -> CriticResult {
-        let commands = await verificationBackend.verificationCommands(for: taskType)
-        guard let commands, !commands.isEmpty else {
+        var commands = (await verificationBackend.verificationCommands(for: taskType)) ?? []
+        commands += autoDetectedProjectCommands(for: taskType)
+        guard !commands.isEmpty else {
             return .skipped
         }
 
@@ -260,6 +269,49 @@ actor CriticEngine {
             }
         }
         return .pass
+    }
+
+    /// Detects the working project's build system and returns its real build/test
+    /// as deterministic verification commands. This is what catches a broken edit
+    /// (code that does not compile, tests left red) and fails the critic so the
+    /// agent is forced to retry — independent of any manually-configured command.
+    /// Only runs for code-modifying task types.
+    func autoDetectedProjectCommands(for taskType: DomainTaskType) -> [VerificationCommand] {
+        let codeTaskTypes: Set<String> = [
+            "code_generation", "refactoring", "test_writing",
+            "debugging", "schema_migration", "security_logic",
+        ]
+        guard codeTaskTypes.contains(taskType.name),
+              let projectPath, !projectPath.isEmpty,
+              FileManager.default.fileExists(atPath: projectPath) else {
+            return []
+        }
+        let fm = FileManager.default
+        let quoted = projectPath.replacingOccurrences(of: "'", with: "'\\''")
+        func has(_ name: String) -> Bool {
+            fm.fileExists(atPath: projectPath + "/" + name)
+        }
+        if has("Cargo.toml") {
+            return [
+                VerificationCommand(
+                    label: "cargo build",
+                    command: "cd '\(quoted)' && cargo build --quiet 2>&1",
+                    passCondition: .exitCode(0)),
+                VerificationCommand(
+                    label: "cargo test",
+                    command: "cd '\(quoted)' && cargo test --quiet 2>&1",
+                    passCondition: .exitCode(0)),
+            ]
+        }
+        if has("Package.swift") {
+            return [
+                VerificationCommand(
+                    label: "swift build",
+                    command: "cd '\(quoted)' && swift build 2>&1",
+                    passCondition: .exitCode(0)),
+            ]
+        }
+        return []
     }
 
     func runStage1(criteria: [StepCriterion]) async -> CriticResult {

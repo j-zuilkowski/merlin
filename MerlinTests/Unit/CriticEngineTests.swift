@@ -46,6 +46,50 @@ final class CriticEngineTests: XCTestCase {
         XCTAssertEqual(result, .skipped)
     }
 
+    // MARK: - Auto-detected project build verification
+
+    func testAutoDetectsCargoProject() async throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("critic-cargo-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try "[package]\nname=\"x\"".write(
+            to: dir.appendingPathComponent("Cargo.toml"), atomically: true, encoding: .utf8)
+
+        let engine = CriticEngine(
+            verificationBackend: NullVerificationBackend(),
+            reasonProvider: nil,
+            shellRunner: StubShellRunner(exitCode: 0),
+            projectPath: dir.path)
+        let debugging = DomainTaskType(
+            domainID: "software", name: "debugging", displayName: "Debugging")
+        let commands = await engine.autoDetectedProjectCommands(for: debugging)
+        XCTAssertEqual(commands.count, 2, "cargo project → build + test commands")
+        XCTAssertTrue(commands.allSatisfy { $0.command.contains("cargo") })
+        XCTAssertTrue(commands.contains { $0.command.contains("cargo test") })
+    }
+
+    func testAutoDetectSkipsNonCodeTaskType() async {
+        let engine = CriticEngine(
+            verificationBackend: NullVerificationBackend(),
+            reasonProvider: nil,
+            shellRunner: StubShellRunner(exitCode: 0),
+            projectPath: NSTemporaryDirectory())
+        let explanation = DomainTaskType(
+            domainID: "software", name: "explanation", displayName: "Explanation")
+        let commands = await engine.autoDetectedProjectCommands(for: explanation)
+        XCTAssertTrue(commands.isEmpty, "explanation tasks must not trigger a build check")
+    }
+
+    func testAutoDetectEmptyWithoutProjectPath() async {
+        let engine = CriticEngine(
+            verificationBackend: NullVerificationBackend(),
+            reasonProvider: nil,
+            shellRunner: StubShellRunner(exitCode: 0))
+        let commands = await engine.autoDetectedProjectCommands(for: taskType)
+        XCTAssertTrue(commands.isEmpty)
+    }
+
     // MARK: - Stage 2 graceful degradation
 
     func testStage2SkippedWhenReasonProviderNil() async {

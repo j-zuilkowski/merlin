@@ -1528,7 +1528,8 @@ final class AgenticEngine {
         return CriticEngine(
             verificationBackend: domain.verificationBackend,
             reasonProvider: provider(for: .reason),
-            modelManager: manager
+            modelManager: manager,
+            projectPath: currentProjectPath
         )
     }
 
