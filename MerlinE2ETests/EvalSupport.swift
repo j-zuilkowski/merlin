@@ -175,7 +175,34 @@ enum EvalLMStudio {
         guard let entry = entries.first(where: { ($0["modelKey"] as? String) == modelID }),
               let relativePath = entry["path"] as? String else { return nil }
         let fullPath = "\(modelsBase)/\(relativePath)"
-        return FileManager.default.fileExists(atPath: fullPath) ? fullPath : nil
+        if FileManager.default.fileExists(atPath: "\(fullPath)/config.json") {
+            return fullPath
+        }
+        // `lms ls` can report a curated alias (e.g. "qwen/qwen3-coder-next") that does
+        // not match the on-disk HF-repo directory. Fall back to a filesystem search:
+        // match the model id's stem against <owner>/<repo> directory names.
+        return searchModelDirectory(modelsBase: modelsBase, modelID: modelID)
+    }
+
+    private static func searchModelDirectory(modelsBase: String, modelID: String) -> String? {
+        func normalized(_ string: String) -> String {
+            string.lowercased().filter { $0.isLetter || $0.isNumber }
+        }
+        let needle = normalized(modelID.split(separator: "/").last.map(String.init) ?? modelID)
+        guard !needle.isEmpty else { return nil }
+        let fm = FileManager.default
+        guard let owners = try? fm.contentsOfDirectory(atPath: modelsBase) else { return nil }
+        for owner in owners {
+            let ownerPath = "\(modelsBase)/\(owner)"
+            guard let repos = try? fm.contentsOfDirectory(atPath: ownerPath) else { continue }
+            for repo in repos where normalized(repo).contains(needle) {
+                let candidate = "\(ownerPath)/\(repo)"
+                if fm.fileExists(atPath: "\(candidate)/config.json") {
+                    return candidate
+                }
+            }
+        }
+        return nil
     }
 
     /// A model loaded in LM Studio, with the context length and parallel-slot count it
