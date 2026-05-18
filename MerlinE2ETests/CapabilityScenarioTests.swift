@@ -258,8 +258,14 @@ final class CapabilityScenarioTests: XCTestCase {
                           + "schematic OCR needs a vision model")
         }
         let priorVision = AppSettings.shared.slotAssignments[.vision]
-        AppSettings.shared.slotAssignments[.vision] = vision.id
+        // Slot assignments are "<provider>:<model>". vision.id alone is just the
+        // provider ("lmstudio") — that leaves the vision call with no model, so OCR
+        // never reaches qwen3-vl-8b. Assign the full provider:model pair.
+        AppSettings.shared.slotAssignments[.vision] = "\(vision.id):\(vision.model)"
         defer { AppSettings.shared.slotAssignments[.vision] = priorVision }
+        // Make the vision model resident so the OCR call does not burn the
+        // scenario's time budget on a cold JIT load.
+        EvalLMStudio.ensureModelLoaded(vision.model)
 
         // The KiCad MCP server (Merlin spawns it) lets Merlin write the extracted
         // schematic; same config as Part A.

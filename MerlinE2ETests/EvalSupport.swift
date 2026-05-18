@@ -252,6 +252,16 @@ enum EvalLMStudio {
         }
     }
 
+    /// Ensures `key` is resident in LM Studio, loading it additively (other models
+    /// stay loaded) past the guardrail when absent. Idempotent. Used to make the
+    /// vision model resident for S6-OCR so the scenario does not spend its time
+    /// budget on a cold JIT load.
+    static func ensureModelLoaded(_ key: String, contextLength: Int = 32768) {
+        guard !key.isEmpty else { return }
+        if loadedModels().contains(where: { $0.key == key }) { return }
+        loadModels([LoadedModel(key: key, contextLength: contextLength, parallel: 1)])
+    }
+
     /// Ensures the LM Studio model backing the `execute` slot is loaded — the model
     /// every scenario's agent loop drives. Loads it past the guardrail when absent.
     /// Idempotent: a no-op (one `lms ps`) when the model is already resident.
