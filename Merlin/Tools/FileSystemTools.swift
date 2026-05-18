@@ -1,8 +1,19 @@
 import Foundation
 
 enum FileSystemTools {
+    private static let imageExtensions: Set<String> =
+        ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp", "heic"]
+
     static func readFile(path: String) async throws -> String {
-        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let url = URL(fileURLWithPath: path)
+        // read_file decodes as UTF-8 text; an image yields garbage. Redirect the
+        // caller to vision_query, which routes the image to the vision model.
+        if imageExtensions.contains(url.pathExtension.lowercased()) {
+            return "[\(url.lastPathComponent) is an image file — read_file cannot show "
+                + "image content. Use the vision_query tool with "
+                + "image_id=\"\(path)\" and a prompt describing what to extract.]"
+        }
+        let data = try Data(contentsOf: url)
         let text = String(decoding: data, as: UTF8.self)
         let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
         return lines.enumerated().map { "\($0.offset + 1)\t\($0.element)" }.joined(separator: "\n")
