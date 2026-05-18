@@ -35,6 +35,11 @@ enum EvalHarness {
         prompt: String,
         timeout: TimeInterval = 1800
     ) async throws -> EvalRun {
+        // Standard pipeline: ensure LM Studio has the execute-slot model resident
+        // before the scenario runs. Idempotent — a no-op when it is already loaded;
+        // this is also what reloads it after S5's training unloads it.
+        EvalLMStudio.ensureExecuteSlotModelLoaded()
+
         let session = LiveSession(
             projectRef: ProjectRef(path: fixturePath,
                                    displayName: "eval",
