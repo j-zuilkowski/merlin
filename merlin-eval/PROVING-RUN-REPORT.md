@@ -19,7 +19,7 @@ and S5 training. Launched with `RUN_LIVE_TESTS=1` and `DEEPSEEK_API_KEY` exporte
 | S4 xcalibre RAG | ✗ | **✓** 44s | **Fixed.** Retrieved 47 kPa / TANGERINE-7 / Ada Pellington / Vorren-1888; correctly declined the absent Q4 |
 | S5 LoRA pipeline | ✗ tokenizer | ✗ data-dir | Both bugs now fixed (see below); training verified directly post-pass9 |
 | S6 electronics | ✓ 633s | ✗ 524s | Model made 26 tool calls but did not call the KiCad MCP tools — model non-determinism (passed pass8) |
-| S6-OCR schematic | ✗ timeout | ✗ 900s | Watchdog timeout — vision-model speed |
+| S6-OCR schematic | ✗ timeout | ✗ 900s → retest | **Vision-slot bug fixed** (commit `9612099`): the slot was set to the provider id, not `provider:model`, so OCR never reached qwen3-vl-8b. Retest: vision model engaged, 0 → 48 tool calls; now fails on an agent-loop convergence issue (Merlin repeats its turn intro, times out) |
 | AgenticLoop (real DeepSeek) | ✗ | ✗ 2s | Fast-fail; `finalText` empty — see triage below |
 | GUIAutomation ×3 | ✗ | ✗ 1.6s | macOS TCC: test process lacks Accessibility / Screen-Recording grants |
 | EvalHarnessSmoke ×2 | ✓ | **✓** | Harness itself healthy |
@@ -74,10 +74,13 @@ not a tunable-parameter problem.
 
 ## Remaining red — honest classification
 
-- **S1 / S6-OCR** — wall-clock timeouts. The local 4-bit `qwen3-coder-next` (and
-  `qwen3-vl-8b` for OCR) does not finish these scenarios inside their 30-min / 15-min
-  budgets. Calibration confirms parameters are fine; this is raw inference speed.
-  Not a code defect — either the budget is raised or faster hardware/model is used.
+- **S1** — wall-clock timeout. The local 4-bit `qwen3-coder-next` does not finish the
+  30-min Swift-GUI-debug scenario. Calibration confirms parameters are fine; raw speed.
+- **S6-OCR** — the vision-slot bug is **fixed** (commit `9612099`): the scenario now
+  routes OCR at `qwen3-vl-8b` and Merlin makes 48 tool calls (was 0). It still fails:
+  the agent loops — re-emitting its turn intro and re-verifying the image file without
+  converging — and times out at 900s. An agent-loop convergence problem, separate from
+  the (now-fixed) model-selection bug.
 - **S6** — model non-determinism: it passed pass8, failed pass9 by not calling the
   (available) KiCad MCP tools. Capability/consistency outcome.
 - **AgenticLoop** — fast-fails (~2s) against real DeepSeek with empty output. The key
