@@ -5,23 +5,31 @@
 
 ## Final status (2026-05-18)
 
-Every proving-suite scenario now passes or skips gracefully. The only failing
-test is `testAccessibilityAudit` (a reduced set of residual findings).
+Every infrastructure defect is fixed: each scenario has passed at least once with
+the fixes in place. The final full pass scored **19 passed / 3 failed / 6 skipped**
+— S2 and S6 flaked on model non-determinism (both passed pass10), and
+`testAccessibilityAudit` has residual findings. pass9 was 12 / 14 / 3.
 
-| Test | pass9 | now | Verified |
-|---|---|---|---|
-| Calibration | ✗ | **✓** | pass10 (884s) |
-| S1 Swift GUI debug | ✗ timeout | **✓** | verify run (1565s) |
-| S2 Rust debug | ✓ | **✓** | pass10 |
-| S4 xcalibre RAG | ✗ | **✓** | pass10 (59s) |
-| S5 LoRA training | ✗ | **✓** | pass10 (33s) |
-| S6 electronics | ✗ | **✓** | pass10 (1190s) |
-| S6-OCR schematic | ✗ timeout | **✓** | pass10 (245s) |
-| AgenticLoop | ✗ | **✓** | pass10 (3s) |
-| EvalHarnessSmoke ×2 | ✓ | **✓** | pass10 |
-| GUIAutomation ×3 | ✗ | **skip** w/ remedy | pass10 — run for real once TCC granted |
-| M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | pass10 |
-| M2 VisualLayoutTests | 3✗ | 5✓ / 1✗ | only `testAccessibilityAudit` fails |
+| Test | pass9 | pass10 | final pass | Notes |
+|---|---|---|---|---|
+| Calibration | ✗ | ✓ | **✓** | |
+| S1 Swift GUI debug | ✗ timeout | ✗ (old build) | **✓** 1321s | slot-routing + app_launch fixes |
+| S2 Rust debug | ✓ | ✓ | **✗** 881s | model didn't get `cargo test` green — non-determinism |
+| S4 xcalibre RAG | ✗ | ✓ | **✓** 73s | |
+| S5 LoRA training | ✗ | ✓ | **✓** 26s | |
+| S6 electronics | ✗ | ✓ | **✗** 524s | model hand-wrote files instead of calling MCP tools — non-determinism |
+| S6-OCR schematic | ✗ timeout | ✓ | **✓** 83s | vision pipeline working |
+| AgenticLoop | ✗ | ✓ | **✓** 3s | |
+| EvalHarnessSmoke ×2 | ✓ | ✓ | **✓** | |
+| GUIAutomation ×3 | ✗ | skip | **skip** | TCC — run for real once granted |
+| M2 SurfaceUITests ×6 | 3✗ | 6✓ | **6✓** | |
+| M2 VisualLayoutTests | 3✗ | 5✓/1✗ | **5✓/1✗** | only `testAccessibilityAudit` |
+
+**S2 / S6 are model-capability outcomes, not code defects.** Across passes S2 went
+✓✓✓✗ and S6 went ✓✗✓✗. The harness runs them correctly and the tools are available
+(MCP race fixed); the 4-bit local model's strategy varies run-to-run — sometimes it
+drives the task directly, sometimes it over-delegates to subagents or improvises.
+That is a local-model reliability ceiling, not a fixable Merlin bug.
 
 ## Root causes found and fixed
 
