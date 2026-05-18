@@ -29,6 +29,11 @@ final class AgenticLoopE2ETests: XCTestCase {
             let decoded = try JSONDecoder().decode(PathArgs.self, from: Data(args.utf8))
             return try await FileSystemTools.readFile(path: decoded.path)
         }
+        // The engine advertises tool *schemas* to the LLM from ToolRegistry.shared
+        // (AgenticEngine builds request.tools from it). Registering an executor on the
+        // router is not enough — without the schema the model is never offered the
+        // tool and just answers in prose. Register read_file's definition too.
+        ToolRegistry.shared.register(ToolDefinitions.readFile)
 
         // Post-phase-145b: AgenticEngine resolves providers from a ProviderRegistry
         // via slot assignments - it no longer takes pro/flash/vision arguments.
@@ -58,13 +63,27 @@ final class AgenticLoopE2ETests: XCTestCase {
             contextManager: ContextManager())
 
         var finalText = ""
+        var diagnostics: [String] = []
         for await event in engine.send(userMessage:
             "Read \(tmpPath) and tell me what it says") {
-            if case .text(let text) = event {
+            switch event {
+            case .text(let text):
                 finalText += text
+            case .error(let err):
+                diagnostics.append("ERROR: \(String(describing: err))")
+            case .systemNote(let note):
+                diagnostics.append("NOTE: \(note)")
+            case .toolCallStarted(let call):
+                diagnostics.append("TOOL-START: \(String(describing: call))")
+            case .toolCallResult(let result):
+                diagnostics.append("TOOL-RESULT: \(String(describing: result))")
+            default:
+                diagnostics.append("EVENT: \(String(describing: event))")
             }
         }
 
-        XCTAssertTrue(finalText.lowercased().contains("hello from e2e test"))
+        let report = "finalText=[\(finalText)]\nevents:\n" + diagnostics.joined(separator: "\n")
+        XCTAssertTrue(finalText.lowercased().contains("hello from e2e test"),
+                      "AgenticLoop did not echo the file content.\n\(report)")
     }
 }
