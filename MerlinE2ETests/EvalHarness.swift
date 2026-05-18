@@ -98,15 +98,43 @@ enum EvalHarness {
         watchdog.cancel()
         await session.close()
 
-        if Date() > deadline {
-            throw HarnessError.timedOut
-        }
-
-        return EvalRun(
+        let collected = EvalRun(
             assistantText: text,
             toolCalls: order.compactMap { tools[$0] },
             systemNotes: notes,
             errors: errors,
             allEvents: all)
+
+        if Date() > deadline {
+            // A timeout otherwise discards everything the scenario produced.
+            // Dump the partial run so a hung scenario (e.g. S1) is diagnosable.
+            writeTimeoutDiagnostic(prompt: prompt, timeout: timeout, run: collected)
+            throw HarnessError.timedOut
+        }
+
+        return collected
+    }
+
+    /// Writes the partial run of a timed-out scenario to a temp file for triage.
+    private static func writeTimeoutDiagnostic(
+        prompt: String, timeout: TimeInterval, run: EvalRun
+    ) {
+        let toolLines = run.toolCalls.map {
+            "  \($0.name)(\($0.arguments.prefix(160)))"
+                + ($0.isError ? " [ERROR]" : "")
+        }.joined(separator: "\n")
+        let dump = """
+        TIMED OUT after \(Int(timeout))s
+        prompt: \(prompt.prefix(120))
+        tool calls: \(run.toolCalls.count)
+        errors: \(run.errors.count)
+        --- tools ---
+        \(toolLines)
+        --- assistantText ---
+        \(run.assistantText)
+        """
+        let path = NSTemporaryDirectory()
+            + "merlin-scenario-timeout-\(Int(Date().timeIntervalSince1970)).md"
+        try? dump.write(toFile: path, atomically: true, encoding: .utf8)
     }
 }
