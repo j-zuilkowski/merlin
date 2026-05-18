@@ -49,6 +49,12 @@ enum EvalHarness {
             throw HarnessError.engineUnavailable
         }
 
+        // Wait for MCP servers to finish launching and registering their tools.
+        // LiveSession starts them in a background task; sending the prompt before
+        // it completes races registration and the model's first turn is offered
+        // no MCP tools (e.g. S6 sees no kicad_* tools and improvises).
+        await session.awaitMCPReady()
+
         var text = ""
         var tools: [String: ToolCallRecord] = [:]
         var order: [String] = []

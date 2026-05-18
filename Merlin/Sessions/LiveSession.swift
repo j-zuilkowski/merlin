@@ -36,6 +36,7 @@ final class LiveSession: ObservableObject, Identifiable {
     private let automationStore = ThreadAutomationStore()
     private let automationEngine = ThreadAutomationEngine()
     private var lifecycleTasks: [Task<Void, Never>] = []
+    private var mcpStartupTask: Task<Void, Never>?
     var permissionMode: PermissionMode = AppSettings.shared.defaultPermissionMode {
         didSet {
             appState.engine.permissionMode = permissionMode
@@ -99,11 +100,13 @@ final class LiveSession: ObservableObject, Identifiable {
         chatViewModel.subagentSidebar = subagentSidebar
 
         let mcpToolRouter = appState.engine.toolRouter
-        lifecycleTasks.append(Task { @MainActor [mcpBridge, projectPath = projectRef.path, mcpToolRouter] in
+        let mcpTask = Task { @MainActor [mcpBridge, projectPath = projectRef.path, mcpToolRouter] in
             let config = MCPConfig.merged(projectPath: projectPath)
             try? await mcpBridge.start(config: config,
                                        toolRouter: mcpToolRouter)
-        })
+        }
+        mcpStartupTask = mcpTask
+        lifecycleTasks.append(mcpTask)
 
         lifecycleTasks.append(Task {
             let store = automationStore
@@ -169,6 +172,15 @@ final class LiveSession: ObservableObject, Identifiable {
 
     var stagingBuffer: StagingBuffer {
         appState.engine.toolRouter.stagingBuffer ?? stagingBufferStorage
+    }
+
+    /// Awaits completion of the background MCP-server startup — process launch,
+    /// `tools/list`, and tool registration into ToolRegistry/ToolRouter. Callers
+    /// that send a prompt programmatically (e.g. the eval harness) must await this
+    /// first; otherwise the first turn races MCP registration and the model is
+    /// offered no MCP tools.
+    func awaitMCPReady() async {
+        await mcpStartupTask?.value
     }
 
     func close() async {
