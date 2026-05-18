@@ -81,6 +81,16 @@ final class AgenticEngineSlotTests: XCTestCase {
         XCTAssertEqual(slot, .execute)
     }
 
+    func testSelectSlotCodingPromptWithClickButtonStaysExecute() {
+        let engine = makeEngine()
+        // A coding/debug task that merely mentions clicking buttons must run on the
+        // execute model — routing the whole agentic loop to the smaller vision model
+        // cripples it (this mis-routed S1's Swift-GUI-debug scenario).
+        let slot = engine.selectSlot(
+            for: "Build the app, launch it, and click every toolbar button to find defects")
+        XCTAssertEqual(slot, .execute)
+    }
+
     func testSelectSlotReasonOverrideAnnotation() {
         let engine = makeEngine()
         let slot = engine.selectSlot(for: "@reason review this migration for correctness")

@@ -388,15 +388,20 @@ final class AgenticEngine {
         return .execute
     }
 
-    /// Returns true when the message clearly targets the vision provider.
-    /// Uses word-boundary matching (\b) to avoid false positives from substrings
-    /// inside file paths or user names (e.g. "jonz**ui**lkowski" must not match "ui").
+    /// Returns true when the message clearly targets the vision provider — i.e. the
+    /// whole turn should run on the (smaller) vision model rather than the execute
+    /// model. This must be conservative: routing a coding/agentic task to the vision
+    /// model cripples it. "click"/"button" are NOT used — they are ubiquitous in
+    /// coding and UI-debug prompts (e.g. S1's "click every toolbar button"), which
+    /// must run on the execute model; per-image work goes through the vision_query
+    /// tool instead, which routes only that call to the vision slot.
     static func looksLikeVisionRequest(_ lower: String) -> Bool {
         // Exact-phrase keywords that are unambiguous without boundary checks.
-        let phraseKeywords = ["screenshot", "take a picture", "capture the screen"]
+        let phraseKeywords = ["screenshot", "take a picture", "capture the screen",
+                              "describe the image", "what is in this image"]
         if phraseKeywords.contains(where: { lower.contains($0) }) { return true }
         // Word-boundary keywords: must appear as complete words.
-        let wordKeywords = ["screen", "vision", "click", "button"]
+        let wordKeywords = ["vision"]
         return wordKeywords.contains { keyword in
             (try? NSRegularExpression(pattern: "\\b\(keyword)\\b"))
                 .map { $0.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)) != nil }
