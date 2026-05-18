@@ -248,7 +248,7 @@ actor CriticEngine {
 
     func runStage1(taskType: DomainTaskType) async -> CriticResult {
         var commands = (await verificationBackend.verificationCommands(for: taskType)) ?? []
-        commands += autoDetectedProjectCommands(for: taskType)
+        commands += await autoDetectedProjectCommands(for: taskType)
         guard !commands.isEmpty else {
             return .skipped
         }
@@ -276,7 +276,7 @@ actor CriticEngine {
     /// (code that does not compile, tests left red) and fails the critic so the
     /// agent is forced to retry — independent of any manually-configured command.
     /// Only runs for code-modifying task types.
-    func autoDetectedProjectCommands(for taskType: DomainTaskType) -> [VerificationCommand] {
+    func autoDetectedProjectCommands(for taskType: DomainTaskType) async -> [VerificationCommand] {
         let codeTaskTypes: Set<String> = [
             "code_generation", "refactoring", "test_writing",
             "debugging", "schema_migration", "security_logic",
@@ -311,7 +311,34 @@ actor CriticEngine {
                     passCondition: .exitCode(0)),
             ]
         }
+        // Xcode project — run the scheme's test action so failing unit tests are
+        // caught (a build-only check would miss them).
+        let entries = (try? fm.contentsOfDirectory(atPath: projectPath)) ?? []
+        if let proj = entries.first(where: { $0.hasSuffix(".xcodeproj") }) {
+            let (_, listOut) = await shellRunner.run(
+                "cd '\(quoted)' && xcodebuild -list -json 2>/dev/null")
+            let scheme = Self.firstScheme(fromXcodebuildListJSON: listOut)
+                ?? (proj as NSString).deletingPathExtension
+            return [
+                VerificationCommand(
+                    label: "xcodebuild test (\(scheme))",
+                    command: "cd '\(quoted)' && xcodebuild test -scheme '\(scheme)' "
+                        + "-destination 'platform=macOS' CODE_SIGN_IDENTITY='' "
+                        + "CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1",
+                    passCondition: .outputContains("TEST SUCCEEDED")),
+            ]
+        }
         return []
+    }
+
+    /// Extracts the first scheme name from `xcodebuild -list -json` output.
+    static func firstScheme(fromXcodebuildListJSON json: String) -> String? {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        let container = (object["project"] as? [String: Any])
+            ?? (object["workspace"] as? [String: Any])
+        return (container?["schemes"] as? [String])?.first
     }
 
     func runStage1(criteria: [StepCriterion]) async -> CriticResult {

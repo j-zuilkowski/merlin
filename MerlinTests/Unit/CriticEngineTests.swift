@@ -90,6 +90,36 @@ final class CriticEngineTests: XCTestCase {
         XCTAssertTrue(commands.isEmpty)
     }
 
+    func testFirstSchemeParsesXcodebuildListJSON() {
+        let projectJSON = #"{"project":{"name":"TaskBoard","schemes":["TaskBoard","Tests"]}}"#
+        XCTAssertEqual(
+            CriticEngine.firstScheme(fromXcodebuildListJSON: projectJSON), "TaskBoard")
+        let workspaceJSON = #"{"workspace":{"name":"W","schemes":["AppScheme"]}}"#
+        XCTAssertEqual(
+            CriticEngine.firstScheme(fromXcodebuildListJSON: workspaceJSON), "AppScheme")
+        XCTAssertNil(CriticEngine.firstScheme(fromXcodebuildListJSON: "not json"))
+    }
+
+    func testAutoDetectsXcodeProject() async throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("critic-xcode-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: dir.appendingPathComponent("App.xcodeproj"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let engine = CriticEngine(
+            verificationBackend: NullVerificationBackend(),
+            reasonProvider: nil,
+            shellRunner: StubShellRunner(
+                exitCode: 0, output: #"{"project":{"schemes":["App"]}}"#),
+            projectPath: dir.path)
+        let debugging = DomainTaskType(
+            domainID: "software", name: "debugging", displayName: "Debugging")
+        let commands = await engine.autoDetectedProjectCommands(for: debugging)
+        XCTAssertEqual(commands.count, 1)
+        XCTAssertTrue(commands[0].command.contains("xcodebuild test -scheme 'App'"))
+    }
+
     // MARK: - Stage 2 graceful degradation
 
     func testStage2SkippedWhenReasonProviderNil() async {
