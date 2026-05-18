@@ -177,6 +177,60 @@ enum EvalLMStudio {
         let fullPath = "\(modelsBase)/\(relativePath)"
         return FileManager.default.fileExists(atPath: fullPath) ? fullPath : nil
     }
+
+    /// A model loaded in LM Studio, with the context length it was loaded at — both
+    /// read from `lms ps --json` so a restore reproduces the exact load state.
+    struct LoadedModel: Sendable {
+        let key: String
+        let contextLength: Int?
+    }
+
+    /// The models currently loaded in LM Studio's memory.
+    static func loadedModels() -> [LoadedModel] {
+        guard let output = runLMS(["ps", "--json"]),
+              let object = try? JSONSerialization.jsonObject(with: Data(output.utf8)),
+              let entries = object as? [[String: Any]] else { return [] }
+        return entries.compactMap { entry in
+            guard let key = (entry["modelKey"] as? String) ?? (entry["identifier"] as? String)
+            else { return nil }
+            return LoadedModel(key: key, contextLength: entry["contextLength"] as? Int)
+        }
+    }
+
+    /// Unloads every model from LM Studio's memory (frees RAM for an out-of-process
+    /// trainer; best-effort).
+    static func unloadAllModels() {
+        _ = runLMS(["unload", "--all"])
+    }
+
+    /// Loads the given models back into LM Studio at their captured context length.
+    /// Blocks until each load completes so a later scenario finds the model ready.
+    static func loadModels(_ models: [LoadedModel]) {
+        for model in models {
+            var args = ["load", model.key]
+            if let context = model.contextLength {
+                args += ["-c", String(context)]
+            }
+            _ = runLMS(args)
+        }
+    }
+
+    /// Runs the LM Studio `lms` CLI, returning combined stdout (nil when `lms` is absent).
+    private static func runLMS(_ args: [String]) -> String? {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? ""
+        let lms = "\(home)/.lmstudio/bin/lms"
+        guard FileManager.default.isExecutableFile(atPath: lms) else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: lms)
+        process.arguments = args
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(data: data, encoding: .utf8)
+    }
 }
 
 /// Appends a scenario's captured run to `merlin/merlin-eval/results/` - every value logged end

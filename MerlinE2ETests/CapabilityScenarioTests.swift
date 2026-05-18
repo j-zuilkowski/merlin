@@ -176,6 +176,14 @@ final class CapabilityScenarioTests: XCTestCase {
             throw XCTSkip("could not resolve LM Studio model '\(lm.model)' to a local "
                           + "MLX model directory - S5 needs a path mlx_lm can load")
         }
+        // mlx_lm loads the base model into memory; on a machine where LM Studio
+        // already holds large models the two collide on RAM and LM Studio evicts its
+        // loaded models, corrupting every later scenario. Free LM Studio's memory for
+        // the trainer and restore exactly what was loaded afterwards.
+        let lmStudioLoaded = EvalLMStudio.loadedModels()
+        EvalLMStudio.unloadAllModels()
+        defer { EvalLMStudio.loadModels(lmStudioLoaded) }
+
         let adapterDir = NSTemporaryDirectory() + "merlin-lora-adapter-\(UUID())"
         let result = await LoRATrainer().train(
             records: records,
