@@ -2,12 +2,14 @@ import Foundation
 import XCTest
 @testable import Merlin
 
-/// Runs Merlin's `/calibrate` skill end-to-end as a suite setup step: the 18-prompt
-/// battery against the configured execute-slot model with DeepSeek as the reference,
-/// then applies the resulting parameter advisories through the real runtime pipeline.
+/// Runs Merlin's calibration engine end-to-end as a suite setup step: the 18-prompt
+/// `CalibrationSuite` battery against the configured execute-slot model, scored by a
+/// DeepSeek reference, then applies `CalibrationAdvisor`'s parameter advisories.
 ///
-/// Named to sort before `CapabilityScenarioTests`, so a full `MerlinTests-Live` pass
-/// calibrates the model first and the scenarios then run with the tuned parameters.
+/// Sorts before `CapabilityScenarioTests`, so a full `MerlinTests-Live` pass
+/// calibrates the model first and the scenarios run with the tuned parameters.
+/// Drives `CalibrationRunner`/`CalibrationAdvisor` directly with explicitly built
+/// providers — no `AppState` dependency, so provider-registry timing cannot break it.
 final class CalibrationLiveTests: XCTestCase {
 
     @MainActor
@@ -18,47 +20,93 @@ final class CalibrationLiveTests: XCTestCase {
               assigned.hasPrefix("lmstudio:") else {
             throw XCTSkip("execute slot is not an LM Studio model — calibration needs a local model")
         }
-        let parts = assigned.split(separator: ":", maxSplits: 1)
-        guard parts.count == 2 else { throw XCTSkip("malformed execute slot assignment") }
-        let localProviderID = String(parts[0])
-        let localModelID = String(parts[1])
-
-        // Make sure the model is resident (single-slot, via the standard pipeline).
+        let localModelID = String(assigned.dropFirst("lmstudio:".count))
         EvalLMStudio.ensureExecuteSlotModelLoaded()
 
-        let appState = AppState(projectPath: "")
-        let coordinator = appState.calibrationCoordinator
-
-        coordinator.begin(localProviderID: localProviderID, localModelID: localModelID)
-        guard case .pickProvider(let references)? = coordinator.sheet else {
-            throw XCTSkip("calibration could not open the reference-provider picker")
-        }
-        guard let reference = references.first(where: { $0.lowercased().contains("deepseek") })
-            ?? references.first else {
-            throw XCTSkip("no reference provider configured for calibration")
+        guard let deepSeekKey = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"]
+            ?? KeychainManager.readAPIKey(for: "deepseek")
+            ?? KeychainManager.readAPIKey(for: "deepseek-flash") else {
+            throw XCTSkip("no DeepSeek API key — calibration needs a reference provider")
         }
 
-        await coordinator.start(referenceProviderID: reference)
+        let local: any LLMProvider = OpenAICompatibleProvider(
+            id: "lmstudio",
+            baseURL: URL(string: "http://localhost:1234/v1")!,
+            apiKey: nil,
+            modelID: localModelID)
+        let reference: any LLMProvider = DeepSeekProvider(apiKey: deepSeekKey, model: "deepseek-v4-pro")
 
-        guard case .report(let report)? = coordinator.sheet else {
-            XCTFail("calibration run did not produce a report")
-            return
+        let runner = CalibrationRunner(
+            localProvider: { prompt in
+                try await Self.complete(provider: local, model: localModelID, prompt: prompt)
+            },
+            referenceProvider: { prompt in
+                try await Self.complete(provider: reference, model: "deepseek-v4-pro", prompt: prompt)
+            },
+            scorer: { prompt, response in
+                let judge = """
+                You are scoring a model answer for calibration. Return PASS if the answer is \
+                strong and directly addresses the prompt; return FAIL if it is incomplete, \
+                incorrect, or low quality.
+
+                Prompt:
+                \(prompt)
+
+                Candidate answer:
+                \(response)
+                """
+                let verdict = ((try? await Self.complete(
+                    provider: reference, model: "deepseek-v4-pro", prompt: judge)) ?? "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                if verdict.hasPrefix("PASS") { return 1.0 }
+                if verdict.hasPrefix("FAIL") { return 0.0 }
+                return 0.5
+            })
+
+        let responses = try await runner.run(suite: .default)
+        let advisories = CalibrationAdvisor().analyze(
+            responses: responses, localModelID: localModelID, localProviderID: "lmstudio")
+
+        // Apply the advisories so the capability scenarios run with tuned parameters.
+        for advisory in advisories {
+            switch advisory.kind {
+            case .temperatureUnstable:
+                AppSettings.shared.inferenceTemperature = Double(advisory.suggestedValue) ?? 0.3
+            case .maxTokensTooLow:
+                AppSettings.shared.inferenceMaxTokens = Int(advisory.suggestedValue) ?? 4096
+            case .repetitiveOutput:
+                AppSettings.shared.inferenceRepeatPenalty = Double(advisory.suggestedValue) ?? 1.15
+            case .contextLengthTooSmall:
+                // The harness already loads the execute model at 32768 in a single
+                // slot; record the advisory without shrinking the running model.
+                break
+            }
         }
 
-        let advisorySummary = report.advisories
+        let summary = advisories
             .map { "\($0.kind) → \($0.parameterName)=\($0.suggestedValue)" }
             .joined(separator: " | ")
         EvalLog.write(
             scenario: "CALIBRATION",
-            summary: "local \(localModelID) vs reference \(reference)\n"
-                + "battery \(report.responses.count) prompts\n"
-                + "advisories \(report.advisories.count): "
-                + (advisorySummary.isEmpty ? "(none — model within tolerance)" : advisorySummary))
+            summary: "local \(localModelID) vs deepseek-v4-pro | battery \(responses.count) prompts\n"
+                + "advisories \(advisories.count): "
+                + (summary.isEmpty ? "(none — model within tolerance)" : summary))
 
-        // Apply the advisories so the capability scenarios run with tuned parameters.
-        await coordinator.applyAll()
-
-        XCTAssertEqual(report.responses.count, CalibrationSuite.default.prompts.count,
+        XCTAssertEqual(responses.count, CalibrationSuite.default.prompts.count,
                        "calibration must run the full prompt battery")
+    }
+
+    private static func complete(provider: any LLMProvider,
+                                 model: String,
+                                 prompt: String) async throws -> String {
+        let request = CompletionRequest(
+            model: model,
+            messages: [Message(role: .user, content: .text(prompt), timestamp: Date())])
+        var text = ""
+        let stream = try await PreflightGuard.complete(request, provider: provider)
+        for try await chunk in stream {
+            text += chunk.delta?.content ?? ""
+        }
+        return text
     }
 }
