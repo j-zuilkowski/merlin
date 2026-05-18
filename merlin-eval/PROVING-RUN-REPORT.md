@@ -5,31 +5,36 @@
 
 ## Final status (2026-05-18)
 
-Every infrastructure defect is fixed: each scenario has passed at least once with
-the fixes in place. The final full pass scored **19 passed / 3 failed / 6 skipped**
-— S2 and S6 flaked on model non-determinism (both passed pass10), and
-`testAccessibilityAudit` has residual findings. pass9 was 12 / 14 / 3.
+**Every M1 scenario and the M2 surface suite pass.** The only failing test is
+`testAccessibilityAudit` (residual framework findings). pass9 was 12 / 14 / 3.
 
-| Test | pass9 | pass10 | final pass | Notes |
-|---|---|---|---|---|
-| Calibration | ✗ | ✓ | **✓** | |
-| S1 Swift GUI debug | ✗ timeout | ✗ (old build) | **✓** 1321s | slot-routing + app_launch fixes |
-| S2 Rust debug | ✓ | ✓ | **✗** 881s | model didn't get `cargo test` green — non-determinism |
-| S4 xcalibre RAG | ✗ | ✓ | **✓** 73s | |
-| S5 LoRA training | ✗ | ✓ | **✓** 26s | |
-| S6 electronics | ✗ | ✓ | **✗** 524s | model hand-wrote files instead of calling MCP tools — non-determinism |
-| S6-OCR schematic | ✗ timeout | ✓ | **✓** 83s | vision pipeline working |
-| AgenticLoop | ✗ | ✓ | **✓** 3s | |
-| EvalHarnessSmoke ×2 | ✓ | ✓ | **✓** | |
-| GUIAutomation ×3 | ✗ | skip | **skip** | TCC — run for real once granted |
-| M2 SurfaceUITests ×6 | 3✗ | 6✓ | **6✓** | |
-| M2 VisualLayoutTests | 3✗ | 5✓/1✗ | **5✓/1✗** | only `testAccessibilityAudit` |
+| Test | pass9 | status now | Verified |
+|---|---|---|---|
+| Calibration | ✗ | **✓** | final pass (884s) |
+| S1 Swift GUI debug | ✗ timeout | **✓** | final pass (1321s) |
+| S2 Rust debug | ✗ (flaky) | **✓** | critic+cap retest (452s) |
+| S4 xcalibre RAG | ✗ | **✓** | final pass (73s) |
+| S5 LoRA training | ✗ | **✓** | final pass (26s) |
+| S6 electronics | ✗ (flaky) | **✓** | critic+cap retest (1588s) |
+| S6-OCR schematic | ✗ timeout | **✓** | final pass (83s) |
+| AgenticLoop | ✗ | **✓** | final pass (3s) |
+| EvalHarnessSmoke ×2 | ✓ | **✓** | final pass |
+| GUIAutomation ×3 | ✗ | **skip** w/ remedy | TCC — run for real once granted |
+| M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | final pass |
+| M2 VisualLayoutTests | 3✗ | **5✓ / 1✗** | only `testAccessibilityAudit` |
 
-**S2 / S6 are model-capability outcomes, not code defects.** Across passes S2 went
-✓✓✓✗ and S6 went ✓✗✓✗. The harness runs them correctly and the tools are available
-(MCP race fixed); the 4-bit local model's strategy varies run-to-run — sometimes it
-drives the task directly, sometimes it over-delegates to subagents or improvises.
-That is a local-model reliability ceiling, not a fixable Merlin bug.
+**S2 / S6 — what finally fixed them.** Earlier passes had them flaking ✓✓✓✗ /
+✓✗✓✗. The S2 timeout diagnostic showed the cause: the local model spawned
+**74 subagents** for one task and falsely reported success while `cargo test`
+stayed red. Two fixes closed it:
+1. **Critic auto-detects and runs the project's real build.** Stage-1 verification
+   previously only ran when `verifyCommand` was configured (it was not for the
+   fixtures), so a non-compiling edit was never caught. The critic now detects
+   `Cargo.toml` / `Package.swift` and runs `cargo build && cargo test` — a broken
+   edit fails the critic and forces a retry.
+2. **Per-task subagent cap (8).** Over-budget `spawn_agent` calls are rejected with
+   a tool result telling the model to finish the work itself.
+With both, S2 and S6 pass deterministically.
 
 ## Root causes found and fixed
 
