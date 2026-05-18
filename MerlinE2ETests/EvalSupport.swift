@@ -178,11 +178,12 @@ enum EvalLMStudio {
         return FileManager.default.fileExists(atPath: fullPath) ? fullPath : nil
     }
 
-    /// A model loaded in LM Studio, with the context length it was loaded at — both
-    /// read from `lms ps --json` so a restore reproduces the exact load state.
+    /// A model loaded in LM Studio, with the context length and parallel-slot count it
+    /// was loaded at — all read from `lms ps --json` so a restore reproduces the state.
     struct LoadedModel: Sendable {
         let key: String
         let contextLength: Int?
+        let parallel: Int?
     }
 
     /// The models currently loaded in LM Studio's memory.
@@ -193,7 +194,9 @@ enum EvalLMStudio {
         return entries.compactMap { entry in
             guard let key = (entry["modelKey"] as? String) ?? (entry["identifier"] as? String)
             else { return nil }
-            return LoadedModel(key: key, contextLength: entry["contextLength"] as? Int)
+            return LoadedModel(key: key,
+                               contextLength: entry["contextLength"] as? Int,
+                               parallel: entry["parallel"] as? Int)
         }
     }
 
@@ -214,6 +217,9 @@ enum EvalLMStudio {
                 if let context = model.contextLength {
                     args += ["-c", String(context)]
                 }
+                if let parallel = model.parallel {
+                    args += ["--parallel", String(parallel)]
+                }
                 _ = runLMS(args)
             }
         }
@@ -227,8 +233,19 @@ enum EvalLMStudio {
         guard let assigned = AppSettings.shared.slotAssignments[.execute],
               assigned.hasPrefix("lmstudio:") else { return }
         let key = String(assigned.dropFirst("lmstudio:".count))
-        guard !loadedModels().contains(where: { $0.key == key }) else { return }
-        loadModels([LoadedModel(key: key, contextLength: 32768)])
+        // --parallel 1: the eval is a single agentic session, so the whole 32768-token
+        // context window must go to one conversation. A higher parallel count splits
+        // the context across slots (~8k each at parallel 4), which truncates the
+        // agent's loop mid-run — the model then loses its tools and starts narrating.
+        guard let existing = loadedModels().first(where: { $0.key == key }) else {
+            loadModels([LoadedModel(key: key, contextLength: 32768, parallel: 1)])
+            return
+        }
+        // Loaded but split across parallel slots — reload it as a single slot.
+        if (existing.parallel ?? 1) > 1 {
+            unloadAllModels()
+            loadModels([LoadedModel(key: key, contextLength: 32768, parallel: 1)])
+        }
     }
 
     // MARK: - Resource guardrail
