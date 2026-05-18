@@ -1,121 +1,59 @@
 # Proving-Suite Run — Report
 
-> Supersedes `PROVING-RUN-STATE.md`. Mechanisms M1–M4 + M6 exercised; M5 (manual
-> runsheet) deferred by the user. All fixes are local commits on `main` (no push).
+> Mechanisms M1–M4 + M6 exercised; M5 (manual runsheet) deferred by the user.
+> All fixes are local commits on `main` (no push).
 
-## Latest status — pass9 (2026-05-18)
+## Latest status — pass10 (2026-05-18)
 
-Full `MerlinTests-Live` run with calibration first, then M1 scenarios, M2 surface,
-and S5 training. Launched with `RUN_LIVE_TESTS=1` and `DEEPSEEK_API_KEY` exported
-(the key lives in `~/.merlin/api-keys.json`, which the test key-gate does not read).
+Full `MerlinTests-Live` run: calibration, M1 scenarios, M2 surface, S5 training.
 
-**Result: 12 passed, 14 failed, 3 skipped.**
+**Result: 20 passed, 2 failed, 6 skipped** (pass9 was 12 / 14 / 3).
 
-| Test | pass8 | pass9 | Notes |
+| Test | pass9 | pass10 | Notes |
 |---|---|---|---|
-| Calibration | ✗ (stale) | **✓** | 18-prompt battery vs deepseek-v4-pro; **0 advisories — model within tolerance** |
-| S1 Swift GUI debug | ✗ 2083s | ✗ 1810s | Watchdog timeout. Scenario does not finish in the 30-min budget — local-model speed, not a bug |
-| S2 Rust debug | ✓ | **✓** 326s | |
-| S4 xcalibre RAG | ✗ | **✓** 44s | **Fixed.** Retrieved 47 kPa / TANGERINE-7 / Ada Pellington / Vorren-1888; correctly declined the absent Q4 |
-| S5 LoRA pipeline | ✗ tokenizer | ✗ data-dir | Both bugs now fixed (see below); training verified directly post-pass9 |
-| S6 electronics | ✓ 633s | ✗ 524s | Model made 26 tool calls but did not call the KiCad MCP tools — model non-determinism (passed pass8) |
-| S6-OCR schematic | ✗ timeout | ✗ 900s → retest | **Vision-slot bug fixed** (commit `9612099`): the slot was set to the provider id, not `provider:model`, so OCR never reached qwen3-vl-8b. Retest: vision model engaged, 0 → 48 tool calls; now fails on an agent-loop convergence issue (Merlin repeats its turn intro, times out) |
-| AgenticLoop (real DeepSeek) | ✗ | ✗ 2s | Fast-fail; `finalText` empty — see triage below |
-| GUIAutomation ×3 | ✗ | ✗ 1.6s | macOS TCC: test process lacks Accessibility / Screen-Recording grants |
-| EvalHarnessSmoke ×2 | ✓ | **✓** | Harness itself healthy |
-| M2 SurfaceUITests | 3✓/3✗ | 4✓/2✗ | |
-| M2 VisualLayoutTests | 3✓/3✗ | 3✓/3✗ | |
-| DeepSeekProviderLiveTests ×3 | skip | skip | Key-gate reads Keychain only, not env / `api-keys.json` |
+| Calibration | ✓ | **✓** | 18-prompt battery, 0 advisories |
+| S1 Swift GUI debug | ✗ | ✗ → fix verifying | Agent looped `app_launch` failures 35× (175 calls) — `app_launch` could not find a freshly-built app. Fixed (`120c61b`); verification run in progress |
+| S2 Rust debug | ✓ | **✓** | |
+| S4 xcalibre RAG | ✓ | **✓** | Grounded facts retrieved |
+| S5 LoRA training | ✗ | **✓** | tokenizer + mlx_lm data-dir fixes — trains, saves adapter |
+| S6 electronics | ✗ | **✓** | MCP startup race fixed — kicad tools registered before turn 1 |
+| S6-OCR schematic | ✗ timeout | **✓** 245s | `vision_query` was a stub; implemented it + `read_file` image redirect. `qwen3-vl-8b` now used; agent converges in 10 tool calls (was looping 48+) |
+| AgenticLoop (real DeepSeek) | ✗ | **✓** | `read_file` tool schema registered so the model is offered the tool |
+| EvalHarnessSmoke ×2 | ✓ | **✓** | |
+| GUIAutomation ×3 | ✗ | **skip** | TCC preflight — skip with the exact permission remedy; run for real once granted |
+| M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | `--open-test-project` flag renders chat/tool-log; settings-pane click fix |
+| M2 VisualLayoutTests | 3✗ | 5✓ / 1✗ | only `testAccessibilityAudit` fails (residual a11y) |
+| DeepSeekProviderLiveTests ×3 | skip | skip | key-gate reads Keychain only, not env / `api-keys.json` |
 
 ## Fixes landed this session
 
-### S4 — xcalibre RAG (FIXED, verified passing in pass9)
+| Area | Fix | Commit |
+|---|---|---|
+| S4 RAG | xcalibre-server watch-folder ingestion (`process_pending`) | `50316d6` (xcalibre-server) |
+| S4 RAG | `XcalibreClient` `XCALIBRE_TOKEN` env override; harness registers + logs in | `eea8dfb` |
+| S5 training | model `tokenizer_config.json` `extra_special_tokens` list → `additional_special_tokens` | (model file) |
+| S5 training | `LoRATrainer` writes a `--data` directory (train/valid jsonl), not a file | `7bc79b2` |
+| AgenticLoop | register the `read_file` tool schema so DeepSeek is offered the tool | `9fc381f` |
+| S6 | await MCP server startup before the first prompt (was a fire-and-forget race) | `b54ee2f` |
+| S6-OCR | route the vision slot at `provider:model`, not the provider id; preload vision model | `9612099` |
+| S6-OCR | implement `vision_query` (was a stub that never called any model) | `722b04f` |
+| S6-OCR | `read_file` redirects image files to `vision_query` | `b6cbc4b` |
+| S1 | `app_launch` falls back to locating a freshly-built `.app` in DerivedData | `120c61b` |
+| M2 surface | `--open-test-project` launch flag; settings-pane hittable-click fix | `633b2b1` |
+| GUIAutomation | preflight Accessibility / Screen-Recording TCC, skip with remedy | `633b2b1` |
+| Harness | dump partial run on scenario timeout for triage | `2f4fb06` |
+| A11y | `Color.accessibleSecondary` — replace low-contrast `.secondary`/`.tertiary` text | `b02a976`, `17d9cb8`, `a0ff75f` |
 
-Two independent root causes:
+## Remaining
 
-1. **xcalibre-server watch-folder never ingested.** `scan_once` only inserted
-   `'pending'` rows into `watch_folder_log`; nothing consumed them, so watched
-   ebooks were detected but never became searchable. Added `process_pending` +
-   `ingest_file_from_disk` (detect format → extract metadata → store → insert book →
-   generate chunks → mark the log row). xcalibre-server commit `50316d6`.
-2. **`XcalibreClient` had an empty bearer token**, so every search short-circuited
-   before issuing a request. Added an `XCALIBRE_TOKEN` env override mirroring
-   `XCALIBRE_BASE_URL`; the S4 harness now registers the first user (auto-admin),
-   logs in for a JWT, exports it, and waits for the corpus to ingest. Merlin commit
-   `eea8dfb`.
-
-Target-tested server-side end-to-end before pass9: the corpus EPUBs ingest,
-`book_chunks` populate, and `/api/v1/search/chunks` returns the grounded facts.
-
-### S5 — LoRA training pipeline (FIXED, verified directly)
-
-Two sequential blockers:
-
-1. **Tokenizer crash.** The model's `tokenizer_config.json` had `extra_special_tokens`
-   as a list; transformers 4.57.6 expects that key to be a dict. Moved the 13 tokens
-   to the correct `additional_special_tokens` field
-   (`~/.lmstudio/models/lmstudio-community/Qwen3-Coder-Next-MLX-4bit/tokenizer_config.json`;
-   original backed up alongside).
-2. **`--data` path.** `LoRATrainer` passed `mlx_lm.lora` a single `.jsonl` file, but
-   mlx_lm expects `--data` to be a *directory* containing `train.jsonl`/`valid.jsonl`.
-   It aborted with "Training set not found or empty". Now writes both splits (90/10)
-   into a temp directory. Merlin commit `7bc79b2`.
-
-Verified directly post-pass9: `mlx_lm.lora` loads the model, loads the datasets,
-trains, and saves `adapters.safetensors` (val loss 5.13 → 3.85 over 2 iters).
-
-### Calibration (FIXED — passes)
-
-`CalibrationLiveTests` was rebuilt to drive `CalibrationRunner`/`CalibrationAdvisor`
-directly (commit `1caaa27`), avoiding the `AppState` provider-registry race that
-fast-failed it. pass9 ran the full battery and passed; 0 advisories — the model's
-inference parameters are within tolerance, so S1/S6-OCR timeouts are speed-bound,
-not a tunable-parameter problem.
-
-## Remaining red — honest classification
-
-- **S1** — wall-clock timeout. The local 4-bit `qwen3-coder-next` does not finish the
-  30-min Swift-GUI-debug scenario. Calibration confirms parameters are fine; raw speed.
-- **S6-OCR** — the vision-slot bug is **fixed** (commit `9612099`): the scenario now
-  routes OCR at `qwen3-vl-8b` and Merlin makes 48 tool calls (was 0). It still fails:
-  the agent loops — re-emitting its turn intro and re-verifying the image file without
-  converging — and times out at 900s. An agent-loop convergence problem, separate from
-  the (now-fixed) model-selection bug.
-- **S6** — model non-determinism: it passed pass8, failed pass9 by not calling the
-  (available) KiCad MCP tools. Capability/consistency outcome.
-- **AgenticLoop** — fast-fails (~2s) against real DeepSeek with empty output. The key
-  works and `deepseek-v4-flash`/`-pro` are valid (verified by direct API call);
-  `SSEParser` handles `reasoning_content`. Consistent with the known intermittent
-  DeepSeek "governor" error or the flash model not emitting the tool call. Infra/model.
-- **GUIAutomation ×3** — macOS TCC. The test runner lacks Accessibility and
-  Screen-Recording permission; the AX tree is empty and `ScreenCaptureTool` returns
-  `permissionDenied`. Must be granted in System Settings → Privacy. Environment.
-- **M2 surface (5)** — `testChatInputSurfacesPresent` / `testInputFieldExists`: the
-  chat input + send/attachment/voice controls are not in the XCUITest tree at default
-  launch (the chat input is a vertical-axis `TextField`, which surfaces as a
-  `textView` not a `textField`; and the bar may not render in the empty-project
-  state). `testToolLogPanelVisible`: the tool-log panel is a toggle-gated workspace
-  panel, hidden by default. `testAllSeventeenSettingsPanesRender`: a scroll-view
-  hit-point miss. `testAccessibilityAudit`: real audit findings (missing element
-  descriptions, contrast). These are genuine UI/test bugs needing GUI inspection.
-- **DeepSeekProviderLiveTests ×3** — skip, not fail: the key-gate reads only the
-  Keychain, not `DEEPSEEK_API_KEY` / `~/.merlin/api-keys.json`.
-
-## Verification
-
-- **S4** — passed in pass9 (44s, evidence retrieved all grounded facts) and
-  target-tested server-side before the pass.
-- **S5** — `mlx_lm.lora` smoke run completed and saved an adapter.
-- **Calibration** — passed in pass9 (858s, full 18-prompt battery).
-- **xcalibre-server** — `cargo build -p backend` + `cargo clippy -p backend` clean.
-- **Merlin** — `MerlinTests-Live build-for-testing` SUCCEEDED with all changes.
-
-## Deferred / open
-
-- **S1 / S6 / S6-OCR / AgenticLoop / GUIAutomation / M2 surface** — classified above;
-  not code-fixable within this run (model speed, model non-determinism, DeepSeek
-  infra, macOS TCC, UI inspection). Each is a distinct follow-up.
-- **Phase-doc `## Fixes` sync** — `XcalibreClient`, `AppState`, `LoRATrainer`,
-  `CapabilityScenarioTests` carry this session's changes; their `b` phase docs need
-  `## Fixes` notes.
+- **S1** — root cause (`app_launch` failure loop) fixed in `120c61b`; a verification
+  run with the fix is in progress (pass10 was built before the commit).
+- **testAccessibilityAudit** — `performAccessibilityAudit()` findings reduced **47 → 11**.
+  The pervasive low-contrast-text problem (41 contrast findings) is fixed (→ ~5). The
+  residual 11 are diffuse: ~5 tiny/edge elements and ~6 SwiftUI framework container
+  findings (a window content `Group`, the panes, the system toolbar flagged
+  "no description"). These need deep per-element accessibility-tree work.
+- **GUIAutomation ×3** — skip cleanly; pass for real once the test host is granted
+  Accessibility + Screen Recording in System Settings → Privacy & Security.
+- **DeepSeekProviderLiveTests ×3** — skip; their key-gate reads only the Keychain.
 - **M5** manual runsheet — deferred by the user.
