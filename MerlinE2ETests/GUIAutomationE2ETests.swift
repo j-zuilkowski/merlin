@@ -103,11 +103,17 @@ final class GUIAutomationE2ETests: XCTestCase {
             bundleID: "com.merlin.TestTargetApp",
             quality: 0.85
         )
+        // Use the configured vision model — an empty modelID makes the request
+        // send "lmstudio" (the provider id) as the model, which LM Studio rejects.
+        guard let visionModel = EvalLMStudio.visionProvider()?.model,
+              !visionModel.isEmpty else {
+            throw XCTSkip("no vision model configured for the vision slot")
+        }
         let provider = OpenAICompatibleProvider(
             id: "lmstudio",
             baseURL: URL(string: "http://localhost:1234/v1")!,
             apiKey: nil,
-            modelID: "")
+            modelID: visionModel)
         let response = try await VisionQueryTool.query(
             imageData: jpeg,
             prompt: "Where is the 'Primary Action' button? Return JSON: {\"x\": int, \"y\": int}",
