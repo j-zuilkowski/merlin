@@ -53,6 +53,8 @@ struct ToolLogView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Tool Log")
     }
 
     private var header: some View {

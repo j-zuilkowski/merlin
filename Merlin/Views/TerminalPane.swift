@@ -39,7 +39,7 @@ struct TerminalPane: View {
 
                 Text(workingDirectory.isEmpty ? "Current working directory" : workingDirectory)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.accessibleSecondary)
             }
 
             Button("Run", action: runCommand)
@@ -91,7 +91,7 @@ struct TerminalPane: View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(record.kind == .stderr ? "stderr" : "stdout")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(record.isError ? .red : .secondary)
+                .foregroundStyle(record.isError ? .red : .accessibleSecondary)
                 .frame(width: 48, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -115,7 +115,7 @@ struct TerminalPane: View {
             Text("No shell command has run yet.")
                 .font(.headline)
             Text("Enter a command above and run it to stream stdout, stderr, and the exit status.")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.accessibleSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .padding(24)
@@ -139,7 +139,7 @@ struct TerminalPane: View {
     private var statusColor: Color {
         switch viewModel.status {
         case .idle:
-            return .secondary
+            return .accessibleSecondary
         case .running:
             return .blue
         case .finished(let exitStatus):

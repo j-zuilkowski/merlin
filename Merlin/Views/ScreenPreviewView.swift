@@ -17,6 +17,8 @@ struct ScreenPreviewView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Screen Preview")
     }
 
     private var header: some View {

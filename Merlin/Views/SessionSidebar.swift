@@ -337,8 +337,8 @@ private struct PermissionModeBadge: View {
             .font(.system(size: 9, weight: .semibold))
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
-            .background(mode.color.opacity(0.15))
-            .foregroundStyle(mode.color)
+            .background(mode.color.opacity(0.22))
+            .foregroundStyle(.primary)
             .clipShape(RoundedRectangle(cornerRadius: 3))
     }
 }

@@ -113,8 +113,8 @@ struct ChatView: View {
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(currentMode.color.opacity(0.12))
-                    .foregroundStyle(currentMode.color)
+                    .background(currentMode.color.opacity(0.22))
+                    .foregroundStyle(.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 5))
             }
             .keyboardShortcut("m", modifiers: [.command, .shift])
