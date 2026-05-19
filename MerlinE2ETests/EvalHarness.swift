@@ -92,6 +92,29 @@ enum EvalHarness {
                         name: existing.name, arguments: existing.arguments,
                         result: result.content, isError: result.isError)
                 }
+            case .subagentUpdate(_, let subEvent):
+                // A subagent's tool calls are real Merlin tool calls — count them so
+                // a scenario whose work is delegated to subagents is not invisible
+                // (e.g. S6 asserts the kicad_* tools were used; they may be used by
+                // a subagent rather than the top-level loop).
+                switch subEvent {
+                case .toolCallStarted(let toolName, let input):
+                    let id = "subagent-tool-\(order.count)"
+                    order.append(id)
+                    let argsJSON = (try? JSONSerialization.data(withJSONObject: input))
+                        .flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                    tools[id] = ToolCallRecord(
+                        name: toolName, arguments: argsJSON, result: nil, isError: false)
+                case .toolCallCompleted(let toolName, let result):
+                    if let lastID = order.last(where: {
+                        tools[$0]?.name == toolName && tools[$0]?.result == nil
+                    }), let existing = tools[lastID] {
+                        tools[lastID] = ToolCallRecord(
+                            name: existing.name, arguments: existing.arguments,
+                            result: result, isError: false)
+                    }
+                default: break
+                }
             default: break
             }
         }
