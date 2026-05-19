@@ -26,6 +26,13 @@ actor EscalationHandler {
     /// routing an escalation to one of those just kills the turn. Empty = no filter
     /// (preserves behaviour for callers that don't supply it, e.g. unit tests).
     private let viableProviderIDs: Set<String>
+    /// The engine-designated stronger provider (the reason slot's assignment, e.g.
+    /// `deepseek:deepseek-v4-pro`). A capability escalation (critic/refinement
+    /// exhaustion) routes here first — `providersOrderedByBudget()` ranks by
+    /// context window, not capability, so a local model loaded at a large context
+    /// would otherwise out-rank a stronger remote model and the escalation would
+    /// just route back to the local backend. `nil` disables the preference.
+    private let preferredEscalationProviderID: String?
     private var escalationAttempts = 0
     private var routedProviderIDs: Set<String> = []
 
@@ -33,12 +40,14 @@ actor EscalationHandler {
         planner: PlannerEngine,
         registry: ProviderRegistry? = nil,
         maxRefinementsPerTurn: Int = 2,
-        viableProviderIDs: Set<String> = []
+        viableProviderIDs: Set<String> = [],
+        preferredEscalationProviderID: String? = nil
     ) {
         self.planner = planner
         self.registry = registry
         self.maxRefinementsPerTurn = max(0, maxRefinementsPerTurn)
         self.viableProviderIDs = viableProviderIDs
+        self.preferredEscalationProviderID = preferredEscalationProviderID
     }
 
     /// True when `id` is an allowed escalation target (wired to a slot), or when no
@@ -59,6 +68,17 @@ actor EscalationHandler {
         })?.id
     }
 
+    /// The target for a *capability* escalation (critic/refinement exhaustion):
+    /// the engine-designated stronger provider first, then the strongest viable
+    /// provider by budget. `nil` when nothing is left to try.
+    private func capabilityEscalationTarget() async -> String? {
+        if let preferred = preferredEscalationProviderID,
+           routedProviderIDs.contains(preferred) == false {
+            return preferred
+        }
+        return await strongestUnusedViableProvider()
+    }
+
     func escalateOrStop(
         currentStep: PlanStep,
         reason: EscalationReason,
@@ -69,7 +89,7 @@ actor EscalationHandler {
             // provider not yet tried this turn — a stalled local model often
             // succeeds on a remote model that doesn't malform tool calls. Stop
             // only when no viable stronger provider remains.
-            if let provider = await strongestUnusedViableProvider() {
+            if let provider = await capabilityEscalationTarget() {
                 routedProviderIDs.insert(provider)
                 escalationAttempts += 1
                 return .routeToProvider(
@@ -84,11 +104,11 @@ actor EscalationHandler {
         }
 
         // Critic exhaustion is not a planning/budget problem — the model simply was
-        // not capable enough. Skip step refinement and route the correction straight
-        // to the strongest provider not yet tried this turn (typically a remote model
-        // far stronger than a local execute model).
+        // not capable enough. Skip step refinement and route the correction to the
+        // designated stronger provider (the reason slot — a capable remote model),
+        // falling back to the strongest viable provider by budget.
         if case .criticExhausted(let why) = reason {
-            if let provider = await strongestUnusedViableProvider() {
+            if let provider = await capabilityEscalationTarget() {
                 routedProviderIDs.insert(provider)
                 escalationAttempts += 1
                 return .routeToProvider(providerID: provider,

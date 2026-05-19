@@ -779,9 +779,17 @@ final class AgenticEngine {
             [AgentSlot.execute, .reason, .orchestrate, .vision]
                 .compactMap { provider(for: $0)?.id }
                 .map { String($0.split(separator: ":", maxSplits: 1).first ?? Substring($0)) })
+        // A capability escalation routes to the reason slot — Merlin's designated
+        // stronger model — rather than the biggest-context one. (Budget ranking
+        // would pick a local model loaded at a large context over a stronger
+        // remote model.) Skip it when the reason slot is the execute slot itself.
+        let reasonSlotAssignment = slotAssignments[.reason]
+        let preferredEscalation = (reasonSlotAssignment != slotAssignments[.execute])
+            ? reasonSlotAssignment : nil
         let escalation = EscalationHandler(
             planner: planner, registry: registry,
-            viableProviderIDs: viableEscalationProviders)
+            viableProviderIDs: viableEscalationProviders,
+            preferredEscalationProviderID: preferredEscalation)
         let originalSlotAssignment = slotAssignments[workingSlot]
         defer {
             if let originalSlotAssignment {

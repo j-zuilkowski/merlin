@@ -209,6 +209,30 @@ final class EscalationHandlerTests: XCTestCase {
                        "escalation must skip the higher-budget but non-viable 'vllm'")
     }
 
+    /// A capability escalation routes to the engine-designated preferred provider
+    /// (the reason slot), NOT the highest-budget one — a local model loaded at a
+    /// large context must not out-rank the designated stronger remote model.
+    func testCriticExhaustedPrefersDesignatedProviderOverBudget() async {
+        let handler = EscalationHandler(
+            planner: makePlanner(response: "[]"),
+            // "local" has the BIGGEST budget; "remote" is the designated provider.
+            registry: makeRegistry([("local", 200_000), ("remote", 60_000)]),
+            maxRefinementsPerTurn: 2,
+            viableProviderIDs: ["local", "remote"],
+            preferredEscalationProviderID: "remote"
+        )
+        let decision = await handler.escalateOrStop(
+            currentStep: makeStep(),
+            reason: .criticExhausted(reason: "still red"),
+            context: []
+        )
+        guard case .routeToProvider(let providerID, _) = decision else {
+            return XCTFail("Expected routeToProvider, got \(decision)")
+        }
+        XCTAssertEqual(providerID, "remote",
+                       "must escalate to the designated provider, not the largest-budget one")
+    }
+
     /// Once the refinement budget is spent, escalation routes to a stronger
     /// provider rather than dead-ending at `.stop`.
     func testRefinementExhaustedEscalatesToProvider() async {
