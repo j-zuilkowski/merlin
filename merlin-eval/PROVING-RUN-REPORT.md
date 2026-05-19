@@ -131,12 +131,25 @@ correct — it auto-detects the `.xcodeproj`, runs `xcodebuild test`, and fails 
 anything but `TEST SUCCEEDED`. But it is gated by `CriticPolicyResolver`
 (`shouldRunCritic` needs substantial output / written files), so when S1's model
 *stalls* it never produces critic-worthy output and the critic never fires — the
-`iterationCap` escalation handles that case instead. Two engine changes this pass
-make the critic path sound where it does apply: critic-correction retries now
-emit `[Critic: …]` systemNotes (observability), and **critic-retry exhaustion now
-escalates the correction to a stronger provider** (`EscalationReason.criticExhausted`)
-rather than dead-ending. A stronger execute model remains the real fix for S1 —
-a hardware/config decision.
+`iterationCap` escalation handles that case instead.
+
+**Escalation ladder — completed this pass.** The critic/escalation path is now
+sound end to end:
+- critic-correction retries emit `[Critic: …]` systemNotes (observability —
+  previously the in-retry corrections were invisible to the event stream);
+- **critic-retry exhaustion** escalates the correction to a stronger provider
+  (`EscalationReason.criticExhausted`) instead of dead-ending;
+- **plan-refinement exhaustion** likewise escalates instead of `.stop`;
+- escalation only routes to **slot-wired (reachable)** providers — a real bug
+  fix: a run died routing to a configured-but-unstarted `vllm`;
+- escalation routes to the **strongest** viable provider (a routing bug — it had
+  picked the weakest — caught by new deterministic `EscalationHandlerTests`).
+
+So a stalled local model now escalates the task to the strongest remote model
+rather than failing the run. Six escalation unit tests prove the routing.
+A stronger execute model remains the real fix for S1's flakiness — a
+hardware/config decision — but the engine no longer dead-ends when the local
+model stalls.
 
 Two further findings, both **pre-existing and not caused by the changes**:
 
