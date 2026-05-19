@@ -3,6 +3,30 @@
 > Mechanisms M1–M4 + M6 exercised; M5 (manual runsheet) deferred by the user.
 > All fixes are local commits on `main` (no push).
 
+## Execute-model swap — `qwen3-coder-30b-a3b-instruct-mlx` (2026-05-19)
+
+The 4-bit 80B `qwen3-coder-next` execute model was replaced with
+`qwen3-coder-30b-a3b-instruct-mlx` (8-bit). Full `MerlinTests-Live` run:
+**24 passed / 2 failed.** The entire capability suite — S2, S4, S5, S6, S6-OCR,
+AgenticLoop, Calibration, EvalHarnessSmoke, SurfaceUITests ×6, VisualLayoutTests
+×5 — passed in one clean run, no thrashing, no timeouts, none of the 4-bit
+model's malformed-tool-call death-spirals. A clear, measured improvement: the
+4-bit model was flaky across S1/S2/S6; the 8-bit model is clean on all but S1.
+
+The 2 failures:
+- **`testAccessibilityAudit`** — the documented a11y-tree residual; model-independent.
+- **S1** — the 8-bit model stalls on S1's hardest path (empty turns, no progress).
+  An escalation ladder was built to rescue this (route a stalled local model to
+  DeepSeek): 7 fixes — `criticExhausted`/refinement-exhausted rungs, viable-id
+  normalization, fresh loop budget on hand-off, route to the designated reason
+  slot. After all 7 the escalation **routes correctly** (verified:
+  `switching to deepseek:deepseek-v4-pro` with a fresh budget) — but escalating
+  still does not rescue S1: handed a 90-turn, compacted, confused context
+  mid-task, even DeepSeek-v4-pro does not recover the two `TaskStore` bugs. A
+  *reliable* escalation rescue would need to fire earlier (before the context
+  degrades) or hand off a clean task framing — a deliberate redesign, not a
+  patch. S1 stands as the lone capability residue (1/26).
+
 ## Final status (2026-05-19)
 
 pass9 was 12 / 14 / 3. S6 is now genuinely deterministic (6/6). The post-fix
