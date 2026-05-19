@@ -765,7 +765,16 @@ final class AgenticEngine {
             orchestrateProvider: provider(for: .orchestrate),
             maxPlanRetries: AppSettings.shared.maxPlanRetries
         )
-        let escalation = EscalationHandler(planner: planner, registry: registry)
+        // Only let an escalation route to providers actually wired to a slot —
+        // those are configured and reachable. The registry also carries merely-
+        // configured providers (e.g. a `vllm` entry with no server running);
+        // routing an escalation to one of those kills the turn.
+        let viableEscalationProviders = Set(
+            [AgentSlot.execute, .reason, .orchestrate, .vision]
+                .compactMap { provider(for: $0)?.id })
+        let escalation = EscalationHandler(
+            planner: planner, registry: registry,
+            viableProviderIDs: viableEscalationProviders)
         let originalSlotAssignment = slotAssignments[workingSlot]
         defer {
             if let originalSlotAssignment {
@@ -1131,6 +1140,11 @@ final class AgenticEngine {
                             case .fail(let reason):
                                 if criticRetryCount < maxRetries {
                                     criticRetryCount += 1
+                                    // Surface the correction so the critic's work is
+                                    // observable in the event stream, not just in context.
+                                    continuation.yield(.systemNote(
+                                        "[Critic: correction \(criticRetryCount)/\(maxRetries) — \(reason)]"
+                                    ))
                                     context.append(Message(
                                         role: .user,
                                         content: .text(
@@ -1140,10 +1154,39 @@ final class AgenticEngine {
                                     ))
                                     continue
                                 } else {
+                                    // Retry budget on the current model is spent.
+                                    // Escalate the correction to a stronger provider
+                                    // rather than abandoning the task.
                                     consecutiveCriticFailures += 1
                                     continuation.yield(.systemNote(
-                                        "[Critic: max retries (\(maxRetries)) exhausted — \(reason)]"
+                                        "[Critic: \(maxRetries) retries exhausted — escalating: \(reason)]"
                                     ))
+                                    let escalationDecision = await handleEscalation(
+                                        currentStep: currentEscalationStep,
+                                        reason: .criticExhausted(reason: reason),
+                                        escalation: escalation,
+                                        workingSlot: workingSlot,
+                                        context: context,
+                                        continuation: continuation,
+                                        originalTask: userMessage
+                                    )
+                                    switch escalationDecision {
+                                    case .continueWith, .routeToProvider:
+                                        context.append(Message(
+                                            role: .user,
+                                            content: .text(
+                                                "[Critic escalation: the previous model could not "
+                                                + "satisfy the critic after \(maxRetries) retries — "
+                                                + "\(reason). Address this issue and provide a "
+                                                + "corrected response.]"
+                                            ),
+                                            timestamp: Date()
+                                        ))
+                                        criticRetryCount = 0
+                                        continue turnLoop
+                                    case .stop:
+                                        break turnLoop
+                                    }
                                 }
                             case .skipped:
                                 continuation.yield(.systemNote("[unverified — critic unavailable]"))
@@ -1673,6 +1716,8 @@ final class AgenticEngine {
             return "iteration cap reached after \(loopCount) loop(s); last observation: \(lastObservation)"
         case .preflightOverflow(let estimated, let budget):
             return "preflight overflow (\(estimated) > \(budget))"
+        case .criticExhausted(let reason):
+            return "critic retries exhausted: \(reason)"
         }
     }
 

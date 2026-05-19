@@ -3,6 +3,10 @@ import Foundation
 enum EscalationReason: Sendable {
     case iterationCap(loopCount: Int, lastObservation: String)
     case preflightOverflow(estimated: Int, budget: Int)
+    /// The model exhausted its critic-correction retry budget and still could not
+    /// produce a result the critic accepts. The correction is routed to a stronger
+    /// provider rather than abandoned.
+    case criticExhausted(reason: String)
 }
 
 enum EscalationDecision: Sendable {
@@ -16,17 +20,31 @@ actor EscalationHandler {
     private let planner: PlannerEngine
     private let registry: ProviderRegistry?
     private let maxRefinementsPerTurn: Int
+    /// Provider IDs an escalation may route to — the providers actually wired to a
+    /// slot, hence configured and reachable. The registry also lists providers that
+    /// are merely *configured* (e.g. a `vllm` entry whose server is not running);
+    /// routing an escalation to one of those just kills the turn. Empty = no filter
+    /// (preserves behaviour for callers that don't supply it, e.g. unit tests).
+    private let viableProviderIDs: Set<String>
     private var escalationAttempts = 0
     private var routedProviderIDs: Set<String> = []
 
     init(
         planner: PlannerEngine,
         registry: ProviderRegistry? = nil,
-        maxRefinementsPerTurn: Int = 2
+        maxRefinementsPerTurn: Int = 2,
+        viableProviderIDs: Set<String> = []
     ) {
         self.planner = planner
         self.registry = registry
         self.maxRefinementsPerTurn = max(0, maxRefinementsPerTurn)
+        self.viableProviderIDs = viableProviderIDs
+    }
+
+    /// True when `id` is an allowed escalation target (wired to a slot), or when no
+    /// viability filter was supplied.
+    private func isViable(_ id: String) -> Bool {
+        viableProviderIDs.isEmpty || viableProviderIDs.contains(id)
     }
 
     func escalateOrStop(
@@ -42,12 +60,37 @@ actor EscalationHandler {
             ))
         }
 
+        // Critic exhaustion is not a planning/budget problem — the model simply was
+        // not capable enough. Skip step refinement and route the correction straight
+        // to the strongest provider not yet tried this turn (typically a remote model
+        // far stronger than a local execute model).
+        if case .criticExhausted(let why) = reason {
+            if let registry {
+                let orderedProviders = await registry.providersOrderedByBudget()
+                if let provider = orderedProviders.reversed().first(where: {
+                    routedProviderIDs.contains($0.id) == false && isViable($0.id)
+                }) {
+                    routedProviderIDs.insert(provider.id)
+                    escalationAttempts += 1
+                    return .routeToProvider(providerID: provider.id,
+                                            reason: "critic unsatisfied: \(why)")
+                }
+            }
+            return .stop(message: stopMessage(
+                reason: "critic could not be satisfied: \(why)",
+                suggestion: "no stronger provider available to escalate to",
+                context: context
+            ))
+        }
+
         let refineReason: RefineReason
         switch reason {
         case .iterationCap(let loopCount, let lastObservation):
             refineReason = .iterationCap(loopCount: loopCount, lastObservation: lastObservation)
         case .preflightOverflow(let estimated, let budget):
             refineReason = .budget(estimated: estimated, budget: budget)
+        case .criticExhausted:
+            refineReason = .iterationCap(loopCount: 0, lastObservation: "")  // unreachable
         }
 
         let outcome = await planner.refineStep(currentStep, reason: refineReason, context: context)
@@ -61,6 +104,7 @@ actor EscalationHandler {
                 if let provider = orderedProviders.reversed().first(where: {
                     $0.budget.usableInputTokens >= currentStep.minContextRequired
                         && routedProviderIDs.contains($0.id) == false
+                        && isViable($0.id)
                 }) {
                     routedProviderIDs.insert(provider.id)
                     escalationAttempts += 1
