@@ -261,6 +261,28 @@ final class EscalationHandlerTests: XCTestCase {
         XCTAssertEqual(providerID, "remote")
     }
 
+    /// After the designated provider has been tried, a further capability
+    /// escalation stops rather than downgrading to a weaker provider.
+    func testCapabilityEscalationDoesNotDowngradeAfterDesignatedProviderTried() async {
+        let handler = EscalationHandler(
+            planner: makePlanner(response: "[]"),
+            registry: makeRegistry([("local", 200_000), ("remote", 60_000)]),
+            maxRefinementsPerTurn: 4,
+            viableProviderIDs: ["local", "remote"],
+            preferredEscalationProviderID: "remote"
+        )
+        let first = await handler.escalateOrStop(
+            currentStep: makeStep(), reason: .criticExhausted(reason: "x"), context: [])
+        guard case .routeToProvider("remote", _) = first else {
+            return XCTFail("first escalation should route to the designated provider, got \(first)")
+        }
+        let second = await handler.escalateOrStop(
+            currentStep: makeStep(), reason: .criticExhausted(reason: "x again"), context: [])
+        guard case .stop = second else {
+            return XCTFail("second escalation must stop, not downgrade — got \(second)")
+        }
+    }
+
     // MARK: - Escalation handoff context
 
     /// The handoff context is a clean task framing — the original task plus an

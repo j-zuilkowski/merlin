@@ -68,13 +68,15 @@ actor EscalationHandler {
         })?.id
     }
 
-    /// The target for a *capability* escalation (critic/refinement exhaustion):
-    /// the engine-designated stronger provider first, then the strongest viable
-    /// provider by budget. `nil` when nothing is left to try.
+    /// The target for a *capability* escalation (critic/refinement exhaustion).
+    /// When a designated stronger provider exists, escalate to it — once. If it
+    /// has already been tried, return `nil` (stop) rather than downgrade to a
+    /// weaker provider: routing "down" after the strong model failed is pointless
+    /// and risks landing on a modelless local backend. Only when there is no
+    /// designated provider does it fall back to the strongest viable by budget.
     private func capabilityEscalationTarget() async -> String? {
-        if let preferred = preferredEscalationProviderID,
-           routedProviderIDs.contains(preferred) == false {
-            return preferred
+        if let preferred = preferredEscalationProviderID {
+            return routedProviderIDs.contains(preferred) ? nil : preferred
         }
         return await strongestUnusedViableProvider()
     }

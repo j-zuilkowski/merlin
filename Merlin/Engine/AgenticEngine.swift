@@ -1355,7 +1355,12 @@ final class AgenticEngine {
                 )
                 // Prompt compression: mid-loop LLM summarisation (Phase 206b).
                 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
-                let turnHadProgress = !fullText.isEmpty || !fullThinking.isEmpty || !writtenFilePaths.isEmpty
+                // A turn that made tool calls IS progress — the model acted, even
+                // if it produced no prose. Omitting `calls` here made a model that
+                // was legitimately building/testing/reading (tool-only turns)
+                // register as stalled, mis-firing the no-progress escalation.
+                let turnHadProgress = !fullText.isEmpty || !fullThinking.isEmpty
+                    || !writtenFilePaths.isEmpty || !calls.isEmpty
                 recentProgressFlags.append(turnHadProgress)
                 if recentProgressFlags.count > 3 {
                     recentProgressFlags.removeFirst(recentProgressFlags.count - 3)
