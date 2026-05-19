@@ -117,13 +117,26 @@ The honest harness then exposed three more bugs underneath S1/S2, each fixed:
    Fixed to fall back to the resolved `modelID(for:)`.
 3. (The fixture-pollution fix itself, `8cc73f3`, above.)
 
-**S1 — the residue is the 4-bit model's debugging ability, not infrastructure.**
-After all three fixes S1 runs a clean 17-min cycle (90 tools, 0 errors, builds
-and launches the app, exercises the GUI) but does not find/fix the two
-`TaskStore` logic bugs its unit tests assert (`testDeleteRemovesTheTaskAtThatIndex`,
-`testSummaryCountsDoneOnly`). Every infrastructure cause has been removed; what
-remains is genuine model capability. A stronger execute model would likely close
-it — that is a hardware/config decision, not a code fix.
+**S1 — the residue is the 4-bit model's reliability, not infrastructure.**
+After the infra fixes S1 is genuinely non-deterministic: across this session it
+has both **passed** (1087 s — the model found and fixed both `TaskStore` bugs,
+`xcodebuild test` → `TEST SUCCEEDED`) and failed several different ways — getting
+stuck on **malformed tool calls** (`DecodingError: Key 'path' not found` — the
+4-bit model emits tool arguments without required keys), stalling into empty
+turns, or simply not finding the two bugs. Every infrastructure cause has been
+removed; what remains is the 4-bit model's tool-call and debugging reliability.
+
+**Does the critic catch the red `TaskBoardTests`?** Its verification logic is
+correct — it auto-detects the `.xcodeproj`, runs `xcodebuild test`, and fails on
+anything but `TEST SUCCEEDED`. But it is gated by `CriticPolicyResolver`
+(`shouldRunCritic` needs substantial output / written files), so when S1's model
+*stalls* it never produces critic-worthy output and the critic never fires — the
+`iterationCap` escalation handles that case instead. Two engine changes this pass
+make the critic path sound where it does apply: critic-correction retries now
+emit `[Critic: …]` systemNotes (observability), and **critic-retry exhaustion now
+escalates the correction to a stronger provider** (`EscalationReason.criticExhausted`)
+rather than dead-ending. A stronger execute model remains the real fix for S1 —
+a hardware/config decision.
 
 Two further findings, both **pre-existing and not caused by the changes**:
 
