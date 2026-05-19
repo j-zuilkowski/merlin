@@ -8,6 +8,31 @@ import XCTest
 /// against the logged `EvalRun`.
 final class CapabilityScenarioTests: XCTestCase {
 
+    /// A fresh, pristine (git-committed) copy of a fixture in a temp directory.
+    /// The S1/S2 debug scenarios mutate their fixture in place — Merlin edits the
+    /// buggy sources to fix them — so running on the tracked fixture makes each run
+    /// start from the previous run's leftover edits (or, after a failed run, from a
+    /// half-broken tree with spurious files). That was a primary cause of S1/S2
+    /// non-determinism. Running on a `git archive HEAD` extract makes each run start
+    /// from the identical pristine baseline and never mutates the tracked fixture.
+    /// The caller deletes the returned directory's parent.
+    private static func pristineFixtureCopy(_ name: String) throws -> String {
+        let repoRoot = URL(fileURLWithPath: #filePath)   // …/merlin/MerlinE2ETests/CapabilityScenarioTests.swift
+            .deletingLastPathComponent().deletingLastPathComponent().path
+        let rel = "merlin-eval/fixtures/\(name)"
+        let dest = NSTemporaryDirectory() + "eval-fixture-\(name)-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(
+            atPath: dest, withIntermediateDirectories: true)
+        let out = EvalShell.run("/bin/zsh", ["-c",
+            "git -C '\(repoRoot)' archive HEAD '\(rel)' | tar -x -C '\(dest)'"],
+            cwd: repoRoot)
+        let copied = "\(dest)/\(rel)"
+        guard FileManager.default.fileExists(atPath: copied) else {
+            throw XCTSkip("could not extract pristine fixture '\(name)': \(out)")
+        }
+        return copied
+    }
+
     // MARK: - S1 - Swift GUI debug cycle
 
     @MainActor
@@ -15,7 +40,12 @@ final class CapabilityScenarioTests: XCTestCase {
         try skipUnlessLiveEnvironment()
         try XCTSkipUnless(EvalPaths.fixtureExists("swift-gui-buggy"),
                           "S1 fixture missing - build fixtures/S1-taskboard-fixture.md")
-        let fixture = EvalPaths.fixture("swift-gui-buggy")
+        // Run on a pristine extract — Merlin edits the buggy sources, so reusing the
+        // tracked fixture would carry a prior run's edits into this one.
+        let fixture = try Self.pristineFixtureCopy("swift-gui-buggy")
+        defer { try? FileManager.default.removeItem(
+            atPath: URL(fileURLWithPath: fixture).deletingLastPathComponent()
+                .deletingLastPathComponent().deletingLastPathComponent().path) }
 
         let run = try await EvalHarness.runScenario(
             fixturePath: fixture, prompt: EvalPrompts.s1, timeout: 1800)
@@ -39,7 +69,12 @@ final class CapabilityScenarioTests: XCTestCase {
         try skipUnlessLiveEnvironment()
         try XCTSkipUnless(EvalPaths.fixtureExists("rust-buggy"),
                           "S2 fixture missing - build fixtures/S2-ledger-fixture.md")
-        let fixture = EvalPaths.fixture("rust-buggy")
+        // Run on a pristine extract — Merlin edits the buggy sources, so reusing the
+        // tracked fixture would carry a prior run's edits into this one.
+        let fixture = try Self.pristineFixtureCopy("rust-buggy")
+        defer { try? FileManager.default.removeItem(
+            atPath: URL(fileURLWithPath: fixture).deletingLastPathComponent()
+                .deletingLastPathComponent().deletingLastPathComponent().path) }
 
         let run = try await EvalHarness.runScenario(
             fixturePath: fixture, prompt: EvalPrompts.s2, timeout: 1800)
