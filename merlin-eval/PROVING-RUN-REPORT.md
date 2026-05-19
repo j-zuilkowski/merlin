@@ -18,7 +18,7 @@ now deterministic (5/5). The residue is a test-isolation bug and the a11y audit.
 | S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 5/5 pass (255–1053s) |
 | S6-OCR schematic | ✗ timeout | **✓** | final pass (90s) |
 | AgenticLoop | ✗ | **✓** | final pass (3s) |
-| EvalHarnessSmoke ×2 | ✓ | **✓ isolated** | passes alone; fails in-suite (state pollution) |
+| EvalHarnessSmoke ×2 | ✓ | **✓** | 1 transient fail in 4 runs; not reproducible — instrumented |
 | GUIAutomation ×3 | ✗ | **skip / fixed** | AX ×2 skip (Accessibility TCC); vision test modelID bug fixed |
 | M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | final pass |
 | M2 VisualLayoutTests | 3✗ | **5✓ / 1✗** | only `testAccessibilityAudit` |
@@ -60,10 +60,18 @@ budget. The root cause had three layers, each fixed:
 Verified 5/5: runs 2 and 4 on the partial fix, then 3/3 (255 s, 475 s, 1053 s) on
 the dispatch-rejection fix. No improvisation, no timeouts.
 
-**EvalHarnessSmoke ×2** pass in isolation but fail at the end of a full suite run:
-an earlier test leaves `AppSettings.shared` routing to the (unreachable) vLLM
-provider. A test-isolation hygiene bug, not a harness or engine defect.
-With both, S2 and S6 pass deterministically.
+**EvalHarnessSmoke — a rare transient, not state pollution.** The earlier
+"`AppSettings.shared` routes to a dead vLLM provider" diagnosis did not hold up.
+`testHarnessRunsATrivialScenario` was run four times across the suspect
+sequences — alone, after `DeepSeek`, after `Calibration`, and after the exact
+`DeepSeek → Calibration` chain that failed once. It reproduced **zero times in
+three reproduction attempts** (the failing chain passed on re-run). The single
+failure was a fast 2.25 s error (no assistant text, engine errors) — a transient
+provider hiccup on a fresh session's first request, not deterministic pollution.
+`CalibrationLiveTests` mutates only the three inference params and only when the
+advisor emits advisories — it emitted none, so it wrote nothing to shared state.
+The smoke test's failure message now dumps `run.errors`/`systemNotes`/`toolCalls`
+(`10ca238`) so the next occurrence, if any, is fully diagnosable.
 
 ## Root causes found and fixed
 
@@ -85,6 +93,7 @@ With both, S2 and S6 pass deterministically.
 | 14 | S6 | improvisation tools offered alongside the KiCad MCP tools → model hand-wrote `.kicad_sch` | `offeredTools()` withholds shell/file/spawn tools when `kicad` MCP is connected |
 | 15 | S6 | model emits withheld tool calls from training memory; engine ran them (handlers still registered) | `runLoop` rejects gated-tool calls at dispatch with an `mcp:`-steer tool result |
 | 16 | S6 | electronics fixture polluted with prior-run output → model saw an existing project, did nothing | `testS6Electronics` runs in a freshly-wiped `s6-workspace` |
+| 17 | DeepSeek live tests | skip-gate called the bare `readAPIKey()` → only read the legacy `deepseek-legacy` Keychain item | gate now reads `DEEPSEEK_API_KEY` + the file key store (`10ca238`) |
 
 Diagnostics added: `EvalHarness` dumps the partial run on a scenario timeout
 (`2f4fb06`) — this is what pinned down the S1 loop.
@@ -100,8 +109,6 @@ Diagnostics added: `EvalHarness` dumps the partial run on a scenario timeout
   tree work; the framework-container findings are not user-facing defects.
 - **GUIAutomation ×3** — pass for real once the test host is granted Accessibility
   + Screen Recording in System Settings → Privacy & Security.
-- **DeepSeekProviderLiveTests ×3** — skip; their key-gate reads only the Keychain,
-  not `DEEPSEEK_API_KEY` / `~/.merlin/api-keys.json`.
 - **M5** manual runsheet — deferred by the user.
 
 ## How to run the suite
