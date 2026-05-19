@@ -299,24 +299,43 @@ final class ProviderRegistry: ObservableObject {
     }
 
     nonisolated static func persistedBudget(for id: String) -> ProviderBudget? {
-        load(from: defaultPersistURL)?.providers.first { $0.id == id }?.budget
+        persistedBudget(for: id, persistURL: defaultPersistURL)
+    }
+
+    nonisolated static func persistedBudget(for id: String, persistURL: URL) -> ProviderBudget? {
+        load(from: persistURL)?.providers.first { $0.id == id }?.budget
     }
 
     nonisolated static func recordLearnedContextWindow(_ contextTokens: Int, for id: String) {
-        guard var snapshot = load(from: defaultPersistURL),
+        recordLearnedContextWindow(contextTokens, for: id, persistURL: defaultPersistURL)
+    }
+
+    nonisolated static func recordLearnedContextWindow(
+        _ contextTokens: Int,
+        for id: String,
+        persistURL: URL
+    ) {
+        guard var snapshot = load(from: persistURL),
               let index = snapshot.providers.firstIndex(where: { $0.id == id }) else { return }
         let existingReserved = snapshot.providers[index].budget?.reservedOutputTokens ?? 4_096
-        snapshot.providers[index].budget = ProviderBudget(
+        let learned = ProviderBudget(
             maxInputTokens: contextTokens,
             reservedOutputTokens: existingReserved
         )
+        // A learned context window must leave a positive usable input budget. LM Studio's
+        // /api/v0/models reports loaded_context_length 0 for a model that is registered but
+        // not yet fully loaded; persisting that writes a degenerate budget that overflows
+        // every later preflight check and kills the run on its first request. Reject the
+        // observation and keep whatever budget is already persisted.
+        guard learned.usableInputTokens > 0 else { return }
+        snapshot.providers[index].budget = learned
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? FileManager.default.createDirectory(
-            at: defaultPersistURL.deletingLastPathComponent(),
+            at: persistURL.deletingLastPathComponent(),
             withIntermediateDirectories: true,
             attributes: nil
         )
-        try? data.write(to: defaultPersistURL, options: .atomic)
+        try? data.write(to: persistURL, options: .atomic)
     }
 
     static func persistedActiveProviderID() -> String {
@@ -402,7 +421,13 @@ final class ProviderRegistry: ObservableObject {
             let modelID = String(parts[1])
             guard let config = providers.first(where: { $0.id == backendID && $0.isEnabled }),
                   let url = URL(string: config.baseURL) else { return nil }
-            return OpenAICompatibleProvider(id: id, baseURL: url, apiKey: nil, modelID: modelID)
+            // A compound id (`backend:model`) must still authenticate: read the
+            // backend's API key for non-local providers, exactly as makeLLMProvider
+            // does. Passing `apiKey: nil` here built keyless remote providers — a
+            // virtual/compound `deepseek:…` provider then 401'd ("Authentication
+            // Fails"), which is what broke escalation routing to the reason slot.
+            let apiKey = config.isLocal ? nil : readAPIKey(for: backendID)
+            return OpenAICompatibleProvider(id: id, baseURL: url, apiKey: apiKey, modelID: modelID)
         }
 
         guard let config = providers.first(where: { $0.id == id }) else { return nil }
