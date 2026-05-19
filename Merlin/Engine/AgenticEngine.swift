@@ -861,6 +861,17 @@ final class AgenticEngine {
         var nearCeilingEmitted = false
         var recentProgressFlags: [Bool] = []
         var didAttemptContextOverrunRecovery = false
+        // Escalation fires near the loop ceiling (its trigger is the near-ceiling
+        // no-progress check). Routing to a stronger provider there leaves it almost
+        // no iterations to act — S1: DeepSeek inherited ~4 of 94 loops and stalled.
+        // When a `.routeToProvider` escalation hands off to a different provider,
+        // grant it a fresh loop budget. Bounded: `EscalationHandler` caps the total
+        // number of provider routes per turn, and each provider is routed once.
+        let grantFreshLoopBudgetAfterEscalation = {
+            loopCount = 0
+            nearCeilingEmitted = false
+            self.nearCeilingWarningAddendum = nil
+        }
         turnLoop: while true {
                 await pauseForReload()
                 guard loopCount < maxIterations else {
@@ -929,7 +940,10 @@ final class AgenticEngine {
                         originalTask: userMessage
                     )
                     switch decision {
-                    case .continueWith, .routeToProvider:
+                    case .continueWith:
+                        continue turnLoop
+                    case .routeToProvider:
+                        grantFreshLoopBudgetAfterEscalation()
                         continue turnLoop
                     case .stop:
                         break turnLoop
@@ -1190,6 +1204,9 @@ final class AgenticEngine {
                                             timestamp: Date()
                                         ))
                                         criticRetryCount = 0
+                                        if case .routeToProvider = escalationDecision {
+                                            grantFreshLoopBudgetAfterEscalation()
+                                        }
                                         continue turnLoop
                                     case .stop:
                                         break turnLoop
@@ -1353,7 +1370,10 @@ final class AgenticEngine {
                             originalTask: userMessage
                         )
                         switch decision {
-                        case .continueWith, .routeToProvider:
+                        case .continueWith:
+                            continue turnLoop
+                        case .routeToProvider:
+                            grantFreshLoopBudgetAfterEscalation()
                             continue turnLoop
                         case .stop:
                             break turnLoop
@@ -1385,7 +1405,10 @@ final class AgenticEngine {
                             originalTask: userMessage
                         )
                         switch decision {
-                        case .continueWith, .routeToProvider:
+                        case .continueWith:
+                            continue turnLoop
+                        case .routeToProvider:
+                            grantFreshLoopBudgetAfterEscalation()
                             continue turnLoop
                         case .stop:
                             break turnLoop
