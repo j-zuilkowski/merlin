@@ -49,10 +49,12 @@ actor EscalationHandler {
 
     /// The strongest provider (highest budget) wired to a slot and not yet routed
     /// to this turn — the escalation target. `nil` when none remain.
+    /// `providersOrderedByBudget()` is sorted largest-budget-first, so `first`
+    /// (not `reversed().first`) yields the strongest provider.
     private func strongestUnusedViableProvider() async -> String? {
         guard let registry else { return nil }
         let ordered = await registry.providersOrderedByBudget()
-        return ordered.reversed().first(where: {
+        return ordered.first(where: {
             routedProviderIDs.contains($0.id) == false && isViable($0.id)
         })?.id
     }
