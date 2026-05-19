@@ -100,15 +100,21 @@ Diagnostics added: `EvalHarness` dumps the partial run on a scenario timeout
 
 ## Remaining
 
-- **testAccessibilityAudit** — `performAccessibilityAudit()` findings reduced
-  **47 → 8**. The pervasive low-contrast-text problem (41 contrast findings) is
-  fixed via `Color.accessibleSecondary` applied across the views. The residual 8:
-  2 contrast on the sidebar's bottom button, 5 SwiftUI framework container
-  findings ("Element has no description" on the content `Group`, the panes, the
-  toolbar), 1 parent/child hierarchy. These need deep per-element accessibility-
-  tree work; the framework-container findings are not user-facing defects.
-- **GUIAutomation ×3** — pass for real once the test host is granted Accessibility
-  + Screen Recording in System Settings → Privacy & Security.
+- **testAccessibilityAudit** — `performAccessibilityAudit()` findings were reduced
+  **47 → 8** in an earlier session (the 41 low-contrast-text findings fixed via
+  `Color.accessibleSecondary` across the views). The residual 8: 2 contrast on the
+  sidebar's bottom button, 5 SwiftUI framework-container findings ("Element has no
+  description" on the content `Group`, the panes, the toolbar), 1 parent/child
+  hierarchy. **Cannot be re-measured or fixed-and-verified headless:** it is an
+  `XCUITest` in `MerlinUITests`, and a `xcodebuild test-without-building` run here
+  fails at *"Timed out while enabling automation mode"* — the same UI-automation
+  TCC gap as GUIAutomation (confirmed: two run attempts, no stuck processes).
+  Fixing the 8 findings requires the test host granted UI automation so each fix
+  can be verified against a live audit; doing it blind would be unverifiable.
+- **GUIAutomation ×3 + testAccessibilityAudit** — all four are `XCUITest`/AX probes
+  blocked by macOS UI-automation TCC. They pass for real once the test runner
+  (Xcode.app / the xctest host) is granted Accessibility + Screen Recording in
+  System Settings → Privacy & Security. No API can self-issue these grants.
 - **M5** manual runsheet — deferred by the user.
 
 ## How to run the suite
