@@ -23,15 +23,17 @@ final class CapabilityScenarioTests: XCTestCase {
         let dest = NSTemporaryDirectory() + "eval-fixture-\(name)-\(UUID().uuidString)"
         try FileManager.default.createDirectory(
             atPath: dest, withIntermediateDirectories: true)
-        // cwd is `dest` (a temp dir), NOT `repoRoot`: git and tar both take
-        // explicit `-C` paths, so the subprocess never needs the repo as its
-        // working directory — and resolving a cwd under ~/Documents wedges the
-        // shell. The test-host app is rebuilt (new cdhash) every run, so its
-        // TCC "Documents folder" grant is dropped each time; the child shell's
-        // getcwd() then blocks indefinitely on the unanswered TCC check. A temp
-        // cwd lives under /private/var/folders and needs no TCC at all.
+        // `git --git-dir=`, NOT `git -C`: `-C` chdir's git into the repo, which
+        // lives under ~/Documents, and git's startup `getcwd()` of that path
+        // then wedges. The test-host app is rebuilt (new cdhash) every run, so
+        // its TCC "Documents folder" grant is dropped each time; a `getcwd()`
+        // directory-walk through ~/Documents blocks indefinitely on the
+        // unanswered TCC check (proven via lsof: the wedged git's cwd was the
+        // repo). `--git-dir` reads the object DB without chdir'ing, so git's
+        // cwd stays in the temp `dest` dir — a /private/var/folders path that
+        // needs no TCC. zsh's cwd is `dest` for the same reason.
         let out = EvalShell.run("/bin/zsh", ["-c",
-            "git -C '\(repoRoot)' archive HEAD '\(rel)' | tar -x -C '\(dest)'"],
+            "git --git-dir='\(repoRoot)/.git' archive HEAD '\(rel)' | tar -x -C '\(dest)'"],
             cwd: dest)
         let copied = "\(dest)/\(rel)"
         guard FileManager.default.fileExists(atPath: copied) else {
