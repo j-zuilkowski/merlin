@@ -2458,7 +2458,10 @@ final class AgenticEngine {
     }
 
     private func effectiveBudget(for provider: any LLMProvider) -> ProviderBudget {
-        registry?.config(for: provider.id)?.budget ?? .conservative
+        // `.preflightSafe` guards against a degenerate persisted/configured budget
+        // (usableInputTokens <= 0), which would otherwise overflow every preflight
+        // check and kill the run on its first request.
+        (registry?.config(for: provider.id)?.budget ?? .conservative).preflightSafe
     }
 
     // MARK: - Provider retry
