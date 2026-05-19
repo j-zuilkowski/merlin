@@ -26,9 +26,17 @@ enum EvalPaths {
 
 /// Runs a shell command synchronously; returns combined stdout+stderr.
 enum EvalShell {
+    /// Mutable output buffer shared with the background reader thread. The main
+    /// path only reads `data` after the semaphore resolves (a happens-after
+    /// barrier), so the unchecked-Sendable conformance is sound for test code.
+    private final class OutputBox: @unchecked Sendable {
+        var data = Data()
+    }
+
     @discardableResult
     static func run(_ launchPath: String, _ args: [String],
-                    cwd: String, env: [String: String] = [:]) -> String {
+                    cwd: String, env: [String: String] = [:],
+                    timeout: TimeInterval = 600) -> String {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: launchPath)
         proc.arguments = args
@@ -42,9 +50,27 @@ enum EvalShell {
         proc.standardOutput = pipe
         proc.standardError = pipe
         do { try proc.run() } catch { return "EvalShell launch error: \(error)" }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+
+        // Drain the combined pipe on a background thread. `readDataToEndOfFile`
+        // returns only when every write-end fd is closed, so a wedged child —
+        // e.g. a subprocess frozen in a kernel syscall on a stalled filesystem
+        // (an iCloud/fileproviderd hiccup once hung S1 here for 40 minutes) —
+        // would otherwise block the caller indefinitely. The bounded semaphore
+        // wait below converts that into a fast, explicit timeout so one stuck
+        // subprocess fails its scenario instead of hanging the whole suite.
+        let readDone = DispatchSemaphore(value: 0)
+        let box = OutputBox()
+        DispatchQueue.global(qos: .userInitiated).async {
+            box.data = pipe.fileHandleForReading.readDataToEndOfFile()
+            readDone.signal()
+        }
+        if readDone.wait(timeout: .now() + timeout) == .timedOut {
+            kill(proc.processIdentifier, SIGKILL)
+            return "EvalShell timeout after \(Int(timeout))s: "
+                + "\(launchPath) \(args.joined(separator: " "))"
+        }
         proc.waitUntilExit()
-        return String(data: data, encoding: .utf8) ?? ""
+        return String(data: box.data, encoding: .utf8) ?? ""
     }
 }
 
