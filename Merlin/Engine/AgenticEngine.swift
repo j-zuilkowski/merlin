@@ -868,6 +868,12 @@ final class AgenticEngine {
         var finalCriticResult: CriticResult? = nil
         var nearCeilingEmitted = false
         var recentProgressFlags: [Bool] = []
+        // Verbatim-response fingerprints for the last few tool-calling turns. A
+        // model that emits the same prose intro 3× over a 6-turn window is in a
+        // non-converging loop — `recentProgressFlags` misses this because a turn
+        // with text + tool calls counts as "progress" even when it is identical
+        // to the turn before it. See the repetition-stall escalation below.
+        var recentTurnFingerprints: [String] = []
         var didAttemptContextOverrunRecovery = false
         // Clean handoff when a `.routeToProvider` escalation hands the task to a
         // stronger provider. Two problems are fixed together:
@@ -885,6 +891,7 @@ final class AgenticEngine {
             nearCeilingEmitted = false
             self.nearCeilingWarningAddendum = nil
             recentProgressFlags.removeAll()
+            recentTurnFingerprints.removeAll()
             context.clear()
             context.load(Self.escalationHandoffMessages(task: userMessage))
         }
@@ -945,6 +952,40 @@ final class AgenticEngine {
                 // longer waits for the near-ceiling budget to run out: escalating
                 // early means the stronger provider takes over before ~90 turns of
                 // flailing accumulate (and the handoff discards that history anyway).
+                // Repetition stall: the model emitted the same prose response on
+                // ≥3 of the last 6 tool-calling turns. `recentProgressFlags` does
+                // not catch this — a turn with text + tool calls reads as progress
+                // even when it is verbatim-identical to the one before it. A model
+                // re-introducing itself ("I'll help you build, test, and fix…")
+                // every turn is looping, not working. This is a capability failure,
+                // so it escalates straight to a stronger provider (no refinement).
+                var fingerprintCounts: [String: Int] = [:]
+                for fingerprint in recentTurnFingerprints where fingerprint.isEmpty == false {
+                    fingerprintCounts[fingerprint, default: 0] += 1
+                }
+                if let repeatCount = fingerprintCounts.values.filter({ $0 >= 3 }).max() {
+                    let decision = await handleEscalation(
+                        currentStep: currentEscalationStep,
+                        reason: .repetitionStall(
+                            repeats: repeatCount,
+                            lastObservation: "model repeated the same response verbatim"
+                        ),
+                        escalation: escalation,
+                        workingSlot: workingSlot,
+                        context: context,
+                        continuation: continuation,
+                        originalTask: userMessage
+                    )
+                    switch decision {
+                    case .continueWith:
+                        continue turnLoop
+                    case .routeToProvider:
+                        prepareEscalationHandoff()
+                        continue turnLoop
+                    case .stop:
+                        break turnLoop
+                    }
+                }
                 if recentProgressFlags.count >= 3,
                    recentProgressFlags.suffix(3).allSatisfy({ $0 == false }) {
                     let decision = await handleEscalation(
@@ -1375,6 +1416,20 @@ final class AgenticEngine {
                 if recentProgressFlags.count > 3 {
                     recentProgressFlags.removeFirst(recentProgressFlags.count - 3)
                 }
+                // Record this turn's prose fingerprint for repetition-stall
+                // detection. Only the prose intro is fingerprinted: a productive
+                // model never narrates an 80-char prefix verbatim three times,
+                // whereas a looping model re-introduces itself every turn. An
+                // empty prefix (tool-only turn) is recorded but ignored by the
+                // detector's `key.isEmpty == false` filter — distinct shell work
+                // with no narration must not read as repetition.
+                let turnFingerprint = String(
+                    fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased().prefix(80))
+                recentTurnFingerprints.append(turnFingerprint)
+                if recentTurnFingerprints.count > 6 {
+                    recentTurnFingerprints.removeFirst(recentTurnFingerprints.count - 6)
+                }
                 context.compactAfterToolBurst()
                 emitCompactionNoteIfNeeded()
                 } catch {
@@ -1788,6 +1843,8 @@ final class AgenticEngine {
             return "preflight overflow (\(estimated) > \(budget))"
         case .criticExhausted(let reason):
             return "critic retries exhausted: \(reason)"
+        case .repetitionStall(let repeats, let lastObservation):
+            return "repetition stall — same response \(repeats)× without progress; last observation: \(lastObservation)"
         }
     }
 

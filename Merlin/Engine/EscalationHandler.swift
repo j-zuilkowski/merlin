@@ -7,6 +7,12 @@ enum EscalationReason: Sendable {
     /// produce a result the critic accepts. The correction is routed to a stronger
     /// provider rather than abandoned.
     case criticExhausted(reason: String)
+    /// The model emitted the same response verbatim several turns running — a
+    /// non-converging loop. Like `criticExhausted`, this is a capability failure,
+    /// not a planning problem: the model is not stalled for lack of a smaller
+    /// step, it is repeating itself. It routes straight to a stronger provider
+    /// rather than refining a task the stalled model keeps re-running identically.
+    case repetitionStall(repeats: Int, lastObservation: String)
 }
 
 enum EscalationDecision: Sendable {
@@ -123,13 +129,31 @@ actor EscalationHandler {
             ))
         }
 
+        // A repetition stall is likewise a capability failure: refining the step
+        // is futile when the model keeps emitting the *same* turn verbatim. Route
+        // straight to a stronger provider, same as critic exhaustion.
+        if case .repetitionStall(let repeats, _) = reason {
+            if let provider = await capabilityEscalationTarget() {
+                routedProviderIDs.insert(provider)
+                escalationAttempts += 1
+                return .routeToProvider(
+                    providerID: provider,
+                    reason: "model repeated the same response \(repeats)× without progress")
+            }
+            return .stop(message: stopMessage(
+                reason: "model stuck repeating the same response \(repeats)× with no progress",
+                suggestion: "no stronger provider available to escalate to",
+                context: context
+            ))
+        }
+
         let refineReason: RefineReason
         switch reason {
         case .iterationCap(let loopCount, let lastObservation):
             refineReason = .iterationCap(loopCount: loopCount, lastObservation: lastObservation)
         case .preflightOverflow(let estimated, let budget):
             refineReason = .budget(estimated: estimated, budget: budget)
-        case .criticExhausted:
+        case .criticExhausted, .repetitionStall:
             refineReason = .iterationCap(loopCount: 0, lastObservation: "")  // unreachable
         }
 

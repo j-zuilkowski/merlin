@@ -69,3 +69,26 @@ git commit -m "Phase 239b — Decompose-on-overflow with cross-provider fallback
 ## PASTE-LIST update
 
 Append phase 239a/239b under the "Budget-Aware Execution (v2.1.0)" section.
+
+## Fixes
+
+### Repetition-stall escalation (2026-05-19)
+
+`recentProgressFlags` treats any turn with text or tool calls as progress, so a
+model stuck in a verbatim loop — re-emitting the same prose intro ("I'll help you
+build, test, and fix…") turn after turn while still issuing tool calls — never
+trips the no-progress escalation. S1 failed this way: the execute model flailed
+for the full 1800 s timeout without the escalation ladder ever firing.
+
+- `EscalationReason.repetitionStall(repeats:lastObservation:)` — new case.
+  `EscalationHandler.escalateOrStop` handles it as a capability failure (same as
+  `criticExhausted`): route straight to the designated stronger provider, skip
+  step refinement (refining is futile when the model keeps re-running the same
+  turn). Stops cleanly when no stronger provider remains.
+- `AgenticEngine.runLoop` fingerprints each tool-calling turn by its trimmed,
+  lowercased 80-char prose prefix. When one non-empty prefix recurs ≥3× within a
+  6-turn window, it escalates with `.repetitionStall`. Empty prefixes (tool-only
+  turns) are ignored, so distinct un-narrated shell work is never misread as a
+  loop. `prepareEscalationHandoff` clears the fingerprint window.
+- Tests: `EscalationHandlerTests.testRepetitionStallRoutesToStrongerProvider`,
+  `testRepetitionStallStopsWhenNoProviderAvailable`.

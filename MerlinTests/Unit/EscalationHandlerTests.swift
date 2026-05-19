@@ -187,6 +187,47 @@ final class EscalationHandlerTests: XCTestCase {
                        "critic exhaustion must escalate to the strongest viable provider")
     }
 
+    /// A repetition stall is a capability failure: it escalates straight to the
+    /// designated stronger provider, skipping step refinement entirely (refining
+    /// a task is futile when the model keeps emitting the same turn verbatim).
+    func testRepetitionStallRoutesToStrongerProvider() async {
+        let handler = EscalationHandler(
+            planner: makePlanner(response: Self.decomposableStep),
+            registry: makeRegistry([("local", 30_000), ("remote", 200_000)]),
+            maxRefinementsPerTurn: 2,
+            viableProviderIDs: ["local", "remote"],
+            preferredEscalationProviderID: "remote"
+        )
+        let decision = await handler.escalateOrStop(
+            currentStep: makeStep(),
+            reason: .repetitionStall(repeats: 3, lastObservation: "same response verbatim"),
+            context: []
+        )
+        guard case .routeToProvider(let providerID, _) = decision else {
+            return XCTFail("Expected routeToProvider, got \(decision)")
+        }
+        XCTAssertEqual(providerID, "remote",
+                       "a repetition stall must escalate to the designated provider, not refine")
+    }
+
+    /// A repetition stall stops cleanly when no stronger provider remains, rather
+    /// than dead-ending in silent refinement.
+    func testRepetitionStallStopsWhenNoProviderAvailable() async {
+        let handler = EscalationHandler(
+            planner: makePlanner(response: Self.decomposableStep),
+            maxRefinementsPerTurn: 2
+        )
+        let decision = await handler.escalateOrStop(
+            currentStep: makeStep(),
+            reason: .repetitionStall(repeats: 4, lastObservation: "looping"),
+            context: []
+        )
+        guard case .stop(let message) = decision else {
+            return XCTFail("Expected a stop decision, got \(decision)")
+        }
+        XCTAssertTrue(message.lowercased().contains("repeating"))
+    }
+
     /// Escalation never routes to a provider absent from `viableProviderIDs`,
     /// even when it has the largest budget (the dead-`vllm` regression).
     func testEscalationSkipsNonViableProvider() async {
