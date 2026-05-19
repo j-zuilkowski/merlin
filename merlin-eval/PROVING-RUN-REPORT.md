@@ -3,10 +3,10 @@
 > Mechanisms M1–M4 + M6 exercised; M5 (manual runsheet) deferred by the user.
 > All fixes are local commits on `main` (no push).
 
-## Final status (2026-05-18)
+## Final status (2026-05-19)
 
-pass9 was 12 / 14 / 3. Every scenario has a verified fix; the residue is one
-non-deterministic scenario, a test-isolation bug, and the a11y audit.
+pass9 was 12 / 14 / 3. Every scenario has a verified fix — including S6, which is
+now deterministic (5/5). The residue is a test-isolation bug and the a11y audit.
 
 | Test | pass9 | status | Verified |
 |---|---|---|---|
@@ -15,7 +15,7 @@ non-deterministic scenario, a test-isolation bug, and the a11y audit.
 | S2 Rust debug | ✗ | **✓** | critic+cap; final pass (904s) |
 | S4 xcalibre RAG | ✗ | **✓** | final pass (47s) |
 | S5 LoRA training | ✗ | **✓** | final pass (34s) |
-| S6 electronics | ✗ | **flaky** | passes ~50% (critic+cap retest 1588s ✓; final pass timed out) |
+| S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 5/5 pass (255–1053s) |
 | S6-OCR schematic | ✗ timeout | **✓** | final pass (90s) |
 | AgenticLoop | ✗ | **✓** | final pass (3s) |
 | EvalHarnessSmoke ×2 | ✓ | **✓ isolated** | passes alone; fails in-suite (state pollution) |
@@ -23,7 +23,7 @@ non-deterministic scenario, a test-isolation bug, and the a11y audit.
 | M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | final pass |
 | M2 VisualLayoutTests | 3✗ | **5✓ / 1✗** | only `testAccessibilityAudit` |
 
-**S1 / S2 / S6 — the critic was the key.** Earlier passes had them flaking. The S2
+**S1 / S2 — the critic was the key.** Earlier passes had them flaking. The S2
 timeout diagnostic showed why: the local model spawned **74 subagents** for one
 task and falsely reported success while `cargo test` stayed red, and the critic
 never noticed because Stage-1 verification only ran when `verifyCommand` was
@@ -36,11 +36,29 @@ configured (it was not for the fixtures). Three fixes:
    with a tool result telling the model to finish the work itself.
 3. **`spawn_agent` description** rewritten to discourage delegating sequential work.
 
-**S6 remains non-deterministic.** With the fixes it passes ~half the time; in the
-other half the 4-bit model improvises (`run_shell` + `write_file` instead of the
-KiCad MCP tools) and exceeds the 30-min budget. Infrastructure is sound — MCP race
-fixed, tools registered, spawn runaway capped — but the model's tool choice on the
-5-step KiCad pipeline is a coin flip. A stronger execute model would close it.
+**S6 is now deterministic — domain tool-gating closed the coin flip.** The earlier
+flake was the 4-bit execute model improvising: instead of the `mcp:kicad:*` tools
+it hand-wrote `.kicad_sch` with `write_file`/`run_shell` or fanned the task out to
+`spawn_agent`, then either failed the KiCad assertion or exceeded the 30-min
+budget. The root cause had three layers, each fixed:
+
+1. **The improvisation tools were on the menu.** `AgenticEngine.offeredTools()`
+   now withholds `run_shell`, `bash`, `write_file`, `create_file`, and
+   `spawn_agent` from the per-turn tool list whenever an authoritative domain MCP
+   server (`kicad`) is connected — that server's tools cover the whole workflow.
+2. **The model called them anyway.** A 4-bit model emits `run_shell`/`write_file`
+   tool calls from training memory even when they are absent from the offered
+   list, and the engine *executed* them because the handlers stay registered.
+   `runLoop` now rejects any call to a withheld tool at dispatch time with a tool
+   result that steers the model back to `mcp:` — the model has no executable path
+   around the KiCad server.
+3. **The fixture was polluted.** Prior runs left ten 555-blinker project
+   directories in `fixtures/electronics/`; the model `list_directory`'d the root,
+   found an existing project, and declared the task already done. `testS6Electronics`
+   now runs in a freshly-wiped `s6-workspace`.
+
+Verified 5/5: runs 2 and 4 on the partial fix, then 3/3 (255 s, 475 s, 1053 s) on
+the dispatch-rejection fix. No improvisation, no timeouts.
 
 **EvalHarnessSmoke ×2** pass in isolation but fail at the end of a full suite run:
 an earlier test leaves `AppSettings.shared` routing to the (unreachable) vLLM
@@ -64,6 +82,9 @@ With both, S2 and S6 pass deterministically.
 | 11 | S1 | slot router sent the whole loop to the 8B vision model (prompt said "click button") | restrict vision-slot heuristic (`4b6e262`) |
 | 12 | M2 surface | chat/tool-log not rendered at launch (no active session) | `--open-test-project` flag (`633b2b1`) |
 | 13 | GUIAutomation | test host lacks Accessibility / Screen-Recording TCC | preflight + skip with remedy (`633b2b1`) |
+| 14 | S6 | improvisation tools offered alongside the KiCad MCP tools → model hand-wrote `.kicad_sch` | `offeredTools()` withholds shell/file/spawn tools when `kicad` MCP is connected |
+| 15 | S6 | model emits withheld tool calls from training memory; engine ran them (handlers still registered) | `runLoop` rejects gated-tool calls at dispatch with an `mcp:`-steer tool result |
+| 16 | S6 | electronics fixture polluted with prior-run output → model saw an existing project, did nothing | `testS6Electronics` runs in a freshly-wiped `s6-workspace` |
 
 Diagnostics added: `EvalHarness` dumps the partial run on a scenario timeout
 (`2f4fb06`) — this is what pinned down the S1 loop.

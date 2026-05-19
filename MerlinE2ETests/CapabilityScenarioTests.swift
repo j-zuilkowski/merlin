@@ -219,9 +219,17 @@ final class CapabilityScenarioTests: XCTestCase {
         try skipUnlessLiveEnvironment()
         // The merlin-kicad-mcp server is launched BY Merlin from the project's
         // `.mcp.json` - the harness only writes that config; no service to manage here.
-        let fixture = EvalPaths.fixture("electronics")
-        try? FileManager.default.createDirectory(
-            atPath: fixture, withIntermediateDirectories: true)
+        //
+        // S6 builds a KiCad project from scratch. Run it in a freshly-wiped
+        // workspace: a prior run leaves .kicad_sch/.kicad_pcb directories behind in
+        // the fixture, and the model then `list_directory`s the root, finds an
+        // existing 555-blinker project, declares the task already done, and never
+        // calls the KiCad tools. Wiping the workspace each run removes that
+        // short-circuit — it was a primary cause of S6's non-determinism.
+        let workspace = "\(EvalPaths.fixture("electronics"))/s6-workspace"
+        try? FileManager.default.removeItem(atPath: workspace)
+        try FileManager.default.createDirectory(
+            atPath: workspace, withIntermediateDirectories: true)
 
         let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
         try XCTSkipUnless(FileManager.default.fileExists(atPath: mcpServerPath),
@@ -229,11 +237,11 @@ final class CapabilityScenarioTests: XCTestCase {
         let mcpJSON = """
         { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
         """
-        try mcpJSON.write(toFile: "\(fixture)/.mcp.json", atomically: true, encoding: .utf8)
+        try mcpJSON.write(toFile: "\(workspace)/.mcp.json", atomically: true, encoding: .utf8)
         // (Confirm the merlin-kicad-mcp launch command from its README.)
 
         let run = try await EvalHarness.runScenario(
-            fixturePath: fixture, prompt: EvalPrompts.s6, timeout: 1800)
+            fixturePath: workspace, prompt: EvalPrompts.s6, timeout: 1800)
         EvalLog.write(scenario: "S6", summary: "tools \(run.toolCalls.count) "
             + "errors \(run.errors.count)\n\(run.assistantText)")
         XCTAssertTrue(run.toolCalls.contains { $0.name.hasPrefix("kicad_") }

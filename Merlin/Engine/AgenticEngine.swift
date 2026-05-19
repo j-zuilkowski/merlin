@@ -195,6 +195,29 @@ final class AgenticEngine {
     /// S2. (A spawned subagent runs a single LLM completion and does not execute
     /// tools, so heavy delegation does no real work regardless.)
     private let maxSpawnsPerTask = 8
+
+    /// Built-in tools a coding model can use to "fake" domain work — hand-writing a
+    /// domain file, shelling out to a CLI, or delegating to context-free subagents —
+    /// instead of calling a connected domain MCP server's tools. When an
+    /// authoritative domain server is connected (see `improvisationGatedMCPServers`)
+    /// these are withheld from the turn's tool list so the model is forced down the
+    /// supported, verified MCP path. This is what makes S6 (KiCad) deterministic:
+    /// the 4-bit execute model otherwise non-deterministically writes `.kicad_sch`
+    /// by hand — and it reaches for *any* available file/shell tool, so all of them
+    /// must go. `bash` and `run_shell` are both shell tools (gating only `run_shell`
+    /// left `bash` as an escape hatch — the exact hole that failed an S6 run);
+    /// `write_file`/`create_file` author files directly; `spawn_agent` delegates to
+    /// subagents that run one LLM completion and execute no tools, so it does no
+    /// real KiCad work and only burns the loop budget.
+    private static let improvisationToolNames: Set<String> = [
+        "run_shell", "bash", "write_file", "create_file", "spawn_agent"
+    ]
+    /// MCP servers whose tool set fully covers their domain's authoring workflow, so
+    /// the generic file/shell tools are redundant and only invite improvisation.
+    /// `kicad` exposes schematic/PCB/route/sim tools end to end — see
+    /// merlin-kicad-mcp's KiCadTools (kicad_compile_project materializes the files).
+    private static let improvisationGatedMCPServers: Set<String> = ["kicad"]
+
     private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
 
     /// Maximum number of auto-continuations triggered by ceiling hits before the
@@ -918,7 +941,7 @@ final class AgenticEngine {
                     messages: rawMessages,
                     thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
                 )
-                request.tools = ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()
+                request.tools = offeredTools()
                 AppSettings.shared.applyInferenceDefaults(to: &request)
                 // Per-provider max_tokens override: takes precedence over the global default.
                 // Allows each provider to use its documented output limit (e.g. 131 072 for
@@ -1169,10 +1192,35 @@ final class AgenticEngine {
                 ))
 
                 toolRouter.permissionMode = permissionMode
+                // Gated-improvisation enforcement. When an authoritative domain MCP
+                // server is connected, the improvisation tools are withheld from the
+                // offered list — but the 4-bit execute model emits `run_shell`/
+                // `write_file`/`spawn_agent` calls from training memory anyway, and
+                // the engine would otherwise run them (the handlers stay registered).
+                // Reject those calls with a tool result that steers the model back to
+                // the `mcp:` tools. This is what makes S6 (KiCad) deterministic: the
+                // model has no executable path around the domain server's tools.
+                let gatedTools = gatedImprovisationToolNames()
                 var spawnCalls: [ToolCall] = []
                 var regularCalls: [ToolCall] = []
                 for call in calls {
-                    if call.function.name == "spawn_agent" {
+                    if gatedTools.contains(call.function.name) {
+                        let rejection = ToolResult(
+                            toolCallId: call.id,
+                            content: "`\(call.function.name)` is not available for "
+                                + "this task. A domain MCP server is connected — "
+                                + "author every domain file and run every domain "
+                                + "operation through its `mcp:` tools (offered to you "
+                                + "this turn). Do not shell out, hand-write files, or "
+                                + "spawn subagents; call the `mcp:` tools directly.",
+                            isError: true)
+                        continuation.yield(.toolCallResult(rejection))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(rejection.content),
+                            toolCallId: call.id,
+                            timestamp: Date()))
+                    } else if call.function.name == "spawn_agent" {
                         spawnCalls.append(call)
                     } else {
                         regularCalls.append(call)
@@ -2172,6 +2220,45 @@ final class AgenticEngine {
         return config.systemPromptAddendum
     }
 
+    /// Names of the MCP servers whose tools are currently registered (connected),
+    /// parsed from the `mcp:<server>:<tool>` definition names.
+    private func connectedMCPServerNames() -> Set<String> {
+        Set(toolRouter.mcpToolDefinitions().compactMap { def -> String? in
+            let parts = def.function.name.split(separator: ":")
+            return parts.count >= 3 ? String(parts[1]) : nil
+        })
+    }
+
+    /// The improvisation tools currently *withheld* from the model — non-empty only
+    /// when an authoritative domain MCP server (`improvisationGatedMCPServers`) is
+    /// connected. Empty otherwise, so non-domain tasks keep the full tool set.
+    private func gatedImprovisationToolNames() -> Set<String> {
+        connectedMCPServerNames().isDisjoint(with: Self.improvisationGatedMCPServers)
+            ? []
+            : Self.improvisationToolNames
+    }
+
+    /// The tool list offered to the model for one turn: every built-in tool plus
+    /// every connected MCP tool. When an authoritative domain MCP server is
+    /// connected (`improvisationGatedMCPServers`), the improvisation tools
+    /// (`improvisationToolNames`) are filtered out so the model cannot hand-write
+    /// domain files or shell out around the server's verified tools — the lever
+    /// that makes S6 (KiCad) deterministic rather than a coin-flip on tool choice.
+    ///
+    /// Filtering the *offered* list is necessary but not sufficient: the 4-bit
+    /// execute model emits calls to `run_shell`/`write_file`/etc. from training
+    /// memory even when they are absent from the menu. `runLoop` therefore also
+    /// rejects calls to `gatedImprovisationToolNames()` at dispatch time.
+    private func offeredTools() -> [ToolDefinition] {
+        let builtins = ToolRegistry.shared.all()
+        let mcp = toolRouter.mcpToolDefinitions()
+        let gated = gatedImprovisationToolNames()
+        guard !gated.isEmpty else {
+            return builtins + mcp
+        }
+        return builtins.filter { !gated.contains($0.function.name) } + mcp
+    }
+
     private func combinedAddendum(for slot: AgentSlot) async -> String {
         var parts: [String] = []
         let providerAddendum = buildAddendum(for: slot)
@@ -2193,7 +2280,7 @@ final class AgenticEngine {
             return parts.count >= 3 ? String(parts[1]) : nil
         }).sorted()
         if !mcpServers.isEmpty {
-            parts.append("""
+            var steer = """
             Connected MCP tool servers: \(mcpServers.joined(separator: ", ")). Their \
             tools are named `mcp:<server>:*`. When the task is in a connected \
             server's domain (e.g. a `kicad` server covers KiCad schematics, PCB \
@@ -2202,7 +2289,21 @@ final class AgenticEngine {
             .kicad_pcb, netlists) or invoke domain CLIs through run_shell — the MCP \
             tools are the supported, verified path and other approaches will not \
             pass verification.
-            """)
+            """
+            let gated = mcpServers.filter {
+                Self.improvisationGatedMCPServers.contains($0)
+            }
+            if !gated.isEmpty {
+                steer += """
+                \n\nNote: for the \(gated.joined(separator: ", ")) domain the \
+                shell tools (`bash`, `run_shell`), the file-authoring tools \
+                (`write_file`, `create_file`), and `spawn_agent` are intentionally \
+                unavailable this turn — the `mcp:` tools are the only supported way \
+                to do this domain's work. Call them directly yourself; do not look \
+                for a shell or a subagent to do it.
+                """
+            }
+            parts.append(steer)
         }
 
         return parts.joined(separator: "\n\n")
