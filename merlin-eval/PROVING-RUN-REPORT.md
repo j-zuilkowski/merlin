@@ -195,6 +195,12 @@ re-run passed. Worth a reboot before any future full pass.
 | 15 | S6 | model emits withheld tool calls from training memory; engine ran them (handlers still registered) | `runLoop` rejects gated-tool calls at dispatch with an `mcp:`-steer tool result |
 | 16 | S6 | electronics fixture polluted with prior-run output → model saw an existing project, did nothing | `testS6Electronics` runs in a freshly-wiped `s6-workspace` |
 | 17 | DeepSeek live tests | skip-gate called the bare `readAPIKey()` → only read the legacy `deepseek-legacy` Keychain item | gate now reads `DEEPSEEK_API_KEY` + the file key store (`10ca238`) |
+| 18 | S1/S2 | debug fixtures mutated in place → runs inherited prior runs' fixes (false passes) | run on a pristine `git archive` extract (`8cc73f3`) |
+| 19 | S2 | `spawn_agent` stayed on the menu after its budget → 4-bit model thrashed | withhold `spawn_agent` once budget spent (`2c3a3f7`) |
+| 20 | S1 | spawned subagents sent an empty model id → backend rejected `"lmstudio"` | `SubagentEngine` falls back to `modelID(for:)` (`2021234`) |
+| 21 | engine | escalation routed to a configured-but-unstarted `vllm`, and to the *weakest* provider | viable-provider filter + strongest-provider routing (`359567e`, `58c94b0`) |
+| 22 | engine | a degenerate (`usableInputTokens <= 0`) provider budget made every preflight overflow → run died on its first request | `ProviderBudget.preflightSafe` clamp (`802a419`) |
+| — | S4 | eval assertion false-positived on a correct RAG refusal that named the topic | detect a fabricated numeric value, not topic keywords (`fb7138f`) |
 
 Diagnostics added: `EvalHarness` dumps the partial run on a scenario timeout
 (`2f4fb06`) — this is what pinned down the S1 loop.
