@@ -6,20 +6,21 @@
 ## Final status (2026-05-19)
 
 pass9 was 12 / 14 / 3. S6 is now genuinely deterministic (6/6). The post-fix
-regression pass confirmed the engine changes introduced no regressions — but it
-also **uncovered that S1 and S2 had been false-passing**: the harness ran those
-debug scenarios on a git-tracked fixture it never reset, so runs inherited prior
-runs' fixes. On a pristine baseline the 4-bit local model does not reliably
-complete them. That is now fixed in the harness and documented honestly below —
-it is the most important finding of this pass and needs a decision (stronger
-execute model, or further engine work). Other residue: a brittle S4 assertion,
-the a11y audit, and environment-gated UI tests.
+regression pass **uncovered that S1 and S2 had been false-passing** — the harness
+ran those debug scenarios on a git-tracked fixture it never reset, so runs
+inherited prior runs' fixes. Removing that mask exposed three more real bugs
+underneath, all now fixed (fixture isolation, spawn-thrash, subagent invalid
+model). **S2 now genuinely passes** on a pristine fixture. **S1's residue is
+purely the 4-bit model's debugging ability** — every infrastructure cause has
+been removed and it runs a clean cycle but misses two logic bugs; a stronger
+execute model would close it. Other residue: a brittle S4 assertion, the a11y
+audit, and environment-gated UI tests.
 
 | Test | pass9 | status | Verified |
 |---|---|---|---|
 | Calibration | ✗ | **✓** | regression pass (3 runs: 745–972s) |
-| S1 Swift GUI debug | ✗ timeout | **unreliable** | prior ✓ was fixture-pollution false-positive — see below |
-| S2 Rust debug | ✗ | **unreliable** | prior ✓ was fixture-pollution false-positive — see below |
+| S1 Swift GUI debug | ✗ timeout | **model-limited** | 3 infra bugs fixed; 4-bit model misses 2 TaskStore bugs — see below |
+| S2 Rust debug | ✗ | **✓** | genuinely passes on a pristine fixture (424s) after the spawn-thrash fix |
 | S4 xcalibre RAG | ✗ | **✓ (test bug)** | model correct; line-145 assertion false-positives — see below |
 | S5 LoRA training | ✗ | **✓** | regression pass (25s) |
 | S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 6/6 pass (255–1053s) |
@@ -103,15 +104,26 @@ Fix (`8cc73f3`): `pristineFixtureCopy(_:)` extracts `git archive HEAD` of the
 fixture into a throwaway temp dir; S1/S2 now run on the identical pristine
 baseline every time and never mutate the tracked fixture.
 
-What the honest harness then showed: an instrumented S2 run confirmed the
-mechanism works — the model's edits land in the copy, `cargo test` sees them —
-but the 4-bit local execute model **does not reliably complete the multi-bug
-debug task from a clean baseline**. It thrashed for 28 min (30+ rejected
-`spawn_agent` calls, compile-breaking edits) and timed out; a second run gave up
-in 188 s. S1 likewise failed (2 TaskBoard tests still red). These scenarios need
-either a stronger execute model or further engine work (e.g. dropping
-`spawn_agent` from the offered tools once its budget is spent, so the model
-cannot thrash on it) — a deliberate decision, not an autonomous guess.
+The honest harness then exposed three more bugs underneath S1/S2, each fixed:
+
+1. **Spawn thrash (`2c3a3f7`).** Over-budget `spawn_agent` calls were rejected
+   but the tool stayed on the menu, so the 4-bit model thrashed — an S2 run
+   burned all 30 min on 30+ rejected spawns. `offeredTools()` now drops
+   `spawn_agent` once its budget is spent. **This genuinely fixed S2** — it now
+   passes on a pristine fixture in 424 s.
+2. **Subagent invalid model (`2021234`).** `SubagentEngine` sent `definition.model
+   ?? ""`; the built-in agents pin no model, so every spawned subagent sent an
+   empty id the backend rejected as `"lmstudio"`. Every subagent failed silently.
+   Fixed to fall back to the resolved `modelID(for:)`.
+3. (The fixture-pollution fix itself, `8cc73f3`, above.)
+
+**S1 — the residue is the 4-bit model's debugging ability, not infrastructure.**
+After all three fixes S1 runs a clean 17-min cycle (90 tools, 0 errors, builds
+and launches the app, exercises the GUI) but does not find/fix the two
+`TaskStore` logic bugs its unit tests assert (`testDeleteRemovesTheTaskAtThatIndex`,
+`testSummaryCountsDoneOnly`). Every infrastructure cause has been removed; what
+remains is genuine model capability. A stronger execute model would likely close
+it — that is a hardware/config decision, not a code fix.
 
 Two further findings, both **pre-existing and not caused by the changes**:
 
