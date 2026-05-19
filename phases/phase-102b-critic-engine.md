@@ -232,3 +232,16 @@ git add Merlin/Engine/CriticEngine.swift \
         project.yml
 git commit -m "Phase 102b — CriticEngine (Stage 1 domain verification + Stage 2 reason slot, graceful degradation)"
 ```
+
+## Fixes
+
+### LiveShellRunner pipe deadlock + verification timeout (2026-05-19)
+
+LiveShellRunner ran the subprocess with `try process.run(); process.waitUntilExit(); … readDataToEndOfFile()` — two bugs in eight lines:
+
+- **Pipe deadlock.** Reading after wait means a child producing more than the 64KB pipe buffer (anything xcodebuild test or cargo test emits) blocks writing, while the parent blocks waiting for it to exit. The pair deadlocks the moment buffer fills. S1's critic hung the entire 21-minute window between `critic.evaluate.start` and the 1800s test timeout this way.
+- **No timeout.** Even with the pipe deadlock fixed, a wedged child — e.g. an xcodebuild test that deadlocked against a stale `SWBBuildService` or zombie test runners from prior runs — would still hang the critic forever. The critic has no business waiting unbounded on a verification subprocess.
+
+Fix: drain the pipe on a background `DispatchQueue` and wait with a `DispatchSemaphore` deadline (`Self.timeoutSeconds = 300`). On timeout SIGKILL the process and return exit code 124 with a `LiveShellRunner timeout after …s: <command>` message. The blocking work moved out of `Task.detached` into a sync `DispatchQueue.global().async` block — `DispatchSemaphore.wait` is forbidden in async contexts under strict concurrency.
+
+This unblocks the critic's correction → criticExhausted → designated-provider escalation rung (see `EscalationHandler.swift` Fixes): a verification subprocess that wedges now fails fast, the critic returns `.fail`, retries run, and on exhaustion the escalation routes to the stronger provider — instead of the loop dying in a silent xcodebuild deadlock.

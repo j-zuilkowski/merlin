@@ -16,9 +16,27 @@ protocol ShellRunning: Sendable {
 }
 
 struct LiveShellRunner: ShellRunning {
+    /// Mutable output buffer shared with the background reader. Read only after
+    /// the semaphore signals (happens-after barrier), so unchecked-Sendable is
+    /// sound here.
+    private final class OutputBox: @unchecked Sendable {
+        var data = Data()
+    }
+
+    /// Cap on a single verification subprocess. xcodebuild/cargo on a small
+    /// fixture finishes well under 5 minutes; the cap catches a wedged process
+    /// — e.g. an xcodebuild that deadlocked against a stale build service or a
+    /// zombie test runner from a prior run — before it hangs the critic and
+    /// the test through it.
+    static let timeoutSeconds: TimeInterval = 300
+
     func run(_ command: String) async -> (exitCode: Int, output: String) {
         await withCheckedContinuation { continuation in
-            Task.detached {
+            // Dispatch the blocking work to a global queue rather than
+            // Task.detached: DispatchSemaphore.wait is forbidden in async
+            // contexts under strict concurrency. The continuation can resume
+            // from any context.
+            DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
                 let pipe = Pipe()
                 process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -27,13 +45,33 @@ struct LiveShellRunner: ShellRunning {
                 process.standardError = pipe
                 do {
                     try process.run()
-                    process.waitUntilExit()
-                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                    let output = String(data: data, encoding: .utf8) ?? ""
-                    continuation.resume(returning: (Int(process.terminationStatus), output))
                 } catch {
                     continuation.resume(returning: (1, error.localizedDescription))
+                    return
                 }
+                // Drain the pipe on a background thread, bounded by a
+                // semaphore. The previous impl called waitUntilExit BEFORE
+                // readDataToEndOfFile — a deadlock the moment any command
+                // (xcodebuild test, cargo test) writes more than the 64KB
+                // pipe buffer, because the child blocks writing while we
+                // block waiting for it to exit. Reading concurrently fixes
+                // the pipe deadlock; the timeout fixes the (separate) hang
+                // when the child itself is wedged.
+                let done = DispatchSemaphore(value: 0)
+                let box = OutputBox()
+                DispatchQueue.global(qos: .userInitiated).async {
+                    box.data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    done.signal()
+                }
+                if done.wait(timeout: .now() + Self.timeoutSeconds) == .timedOut {
+                    kill(process.processIdentifier, SIGKILL)
+                    continuation.resume(returning: (124,
+                        "LiveShellRunner timeout after \(Int(Self.timeoutSeconds))s: \(command)"))
+                    return
+                }
+                process.waitUntilExit()
+                let output = String(data: box.data, encoding: .utf8) ?? ""
+                continuation.resume(returning: (Int(process.terminationStatus), output))
             }
         }
     }
