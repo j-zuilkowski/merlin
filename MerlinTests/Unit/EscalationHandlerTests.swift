@@ -260,4 +260,22 @@ final class EscalationHandlerTests: XCTestCase {
         }
         XCTAssertEqual(providerID, "remote")
     }
+
+    // MARK: - Escalation handoff context
+
+    /// The handoff context is a clean task framing — the original task plus an
+    /// instruction to ignore the prior conversation — not the stalled model's
+    /// flailing history.
+    func testEscalationHandoffMessagesAreACleanTaskFraming() {
+        let messages = AgenticEngine.escalationHandoffMessages(task: "Fix the failing tests")
+        XCTAssertEqual(messages.count, 2, "handoff = original task + handoff instruction")
+        XCTAssertEqual(messages[0].content.plainText, "Fix the failing tests",
+                       "first message must be the original task, verbatim")
+        let handoff = messages[1].content.plainText.lowercased()
+        XCTAssertTrue(handoff.contains("escalation handoff"))
+        XCTAssertTrue(handoff.contains("not rely on any prior conversation"),
+                      "the escalated model must be told to ignore the stalled history")
+        XCTAssertTrue(handoff.contains("assess"),
+                      "the escalated model must be told to assess the project state itself")
+    }
 }

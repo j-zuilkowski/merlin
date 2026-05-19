@@ -869,16 +869,24 @@ final class AgenticEngine {
         var nearCeilingEmitted = false
         var recentProgressFlags: [Bool] = []
         var didAttemptContextOverrunRecovery = false
-        // Escalation fires near the loop ceiling (its trigger is the near-ceiling
-        // no-progress check). Routing to a stronger provider there leaves it almost
-        // no iterations to act — S1: DeepSeek inherited ~4 of 94 loops and stalled.
-        // When a `.routeToProvider` escalation hands off to a different provider,
-        // grant it a fresh loop budget. Bounded: `EscalationHandler` caps the total
-        // number of provider routes per turn, and each provider is routed once.
-        let grantFreshLoopBudgetAfterEscalation = {
+        // Clean handoff when a `.routeToProvider` escalation hands the task to a
+        // stronger provider. Two problems are fixed together:
+        //  • Budget — escalation fires after a stall, so the routed-to provider
+        //    would otherwise inherit only the dregs of the loop budget.
+        //  • Context — it would inherit the stalled model's flailing history
+        //    (S1: ~90 confused turns), which even a strong model can't debug from.
+        // So: reset the loop budget AND rebuild the context to a clean handoff —
+        // the original task plus an instruction to assess the project state
+        // directly. File-level progress is preserved on disk, so nothing real is
+        // lost; only the confused conversation is dropped. Bounded: EscalationHandler
+        // caps the number of provider routes per turn.
+        let prepareEscalationHandoff = {
             loopCount = 0
             nearCeilingEmitted = false
             self.nearCeilingWarningAddendum = nil
+            recentProgressFlags.removeAll()
+            context.clear()
+            context.load(Self.escalationHandoffMessages(task: userMessage))
         }
         turnLoop: while true {
                 await pauseForReload()
@@ -932,8 +940,12 @@ final class AgenticEngine {
                     complexity: classification.complexity,
                     budget: effectiveBudget(for: provider)
                 )
-                if loopsRemaining <= nearCeilingThreshold,
-                   recentProgressFlags.count >= 3,
+                // Escalate as soon as the model has stalled — three consecutive
+                // turns with no text, no thinking and no file writes. This no
+                // longer waits for the near-ceiling budget to run out: escalating
+                // early means the stronger provider takes over before ~90 turns of
+                // flailing accumulate (and the handoff discards that history anyway).
+                if recentProgressFlags.count >= 3,
                    recentProgressFlags.suffix(3).allSatisfy({ $0 == false }) {
                     let decision = await handleEscalation(
                         currentStep: currentEscalationStep,
@@ -951,7 +963,7 @@ final class AgenticEngine {
                     case .continueWith:
                         continue turnLoop
                     case .routeToProvider:
-                        grantFreshLoopBudgetAfterEscalation()
+                        prepareEscalationHandoff()
                         continue turnLoop
                     case .stop:
                         break turnLoop
@@ -1200,7 +1212,15 @@ final class AgenticEngine {
                                         originalTask: userMessage
                                     )
                                     switch escalationDecision {
-                                    case .continueWith, .routeToProvider:
+                                    case .routeToProvider:
+                                        // Clean handoff: the escalated model gets a
+                                        // fresh context (`prepareEscalationHandoff`),
+                                        // so no critic-correction note is appended —
+                                        // it re-runs the tests and sees the failure.
+                                        criticRetryCount = 0
+                                        prepareEscalationHandoff()
+                                        continue turnLoop
+                                    case .continueWith:
                                         context.append(Message(
                                             role: .user,
                                             content: .text(
@@ -1212,9 +1232,6 @@ final class AgenticEngine {
                                             timestamp: Date()
                                         ))
                                         criticRetryCount = 0
-                                        if case .routeToProvider = escalationDecision {
-                                            grantFreshLoopBudgetAfterEscalation()
-                                        }
                                         continue turnLoop
                                     case .stop:
                                         break turnLoop
@@ -1381,7 +1398,7 @@ final class AgenticEngine {
                         case .continueWith:
                             continue turnLoop
                         case .routeToProvider:
-                            grantFreshLoopBudgetAfterEscalation()
+                            prepareEscalationHandoff()
                             continue turnLoop
                         case .stop:
                             break turnLoop
@@ -1416,7 +1433,7 @@ final class AgenticEngine {
                         case .continueWith:
                             continue turnLoop
                         case .routeToProvider:
-                            grantFreshLoopBudgetAfterEscalation()
+                            prepareEscalationHandoff()
                             continue turnLoop
                         case .stop:
                             break turnLoop
@@ -1757,6 +1774,24 @@ final class AgenticEngine {
         case .criticExhausted(let reason):
             return "critic retries exhausted: \(reason)"
         }
+    }
+
+    /// The clean context handed to a stronger provider on a `.routeToProvider`
+    /// escalation: the original task plus an instruction to assess the project
+    /// state directly rather than trust the stalled prior model's conversation.
+    /// The flailing history is deliberately discarded — file-level progress lives
+    /// on disk, so the escalated model re-assessing loses nothing real.
+    static func escalationHandoffMessages(task: String) -> [Message] {
+        [
+            Message(role: .user, content: .text(task), timestamp: Date()),
+            Message(role: .user, content: .text(
+                "[ESCALATION HANDOFF] A previous model attempted this task and "
+                + "stalled without completing it. You are a more capable model "
+                + "taking over. Do NOT rely on any prior conversation — assess the "
+                + "current state of the project directly (build it, run its tests, "
+                + "read the relevant files) and complete the task from there."),
+                timestamp: Date())
+        ]
     }
 
     private func progressSummary(for messages: [Message]) -> String {
