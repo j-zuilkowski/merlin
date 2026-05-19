@@ -21,7 +21,7 @@ audit, and environment-gated UI tests.
 | Calibration | ✗ | **✓** | regression pass (3 runs: 745–972s) |
 | S1 Swift GUI debug | ✗ timeout | **model-limited** | 3 infra bugs fixed; 4-bit model misses 2 TaskStore bugs — see below |
 | S2 Rust debug | ✗ | **✓** | genuinely passes on a pristine fixture (424s) after the spawn-thrash fix |
-| S4 xcalibre RAG | ✗ | **✓ (test bug)** | model correct; line-145 assertion false-positives — see below |
+| S4 xcalibre RAG | ✗ | **✓** | model correct in live runs; brittle assertion fixed (`fb7138f`) |
 | S5 LoRA training | ✗ | **✓** | regression pass (25s) |
 | S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 6/6 pass (255–1053s) |
 | S6-OCR schematic | ✗ timeout | **✓** | final pass (393s) |
@@ -127,15 +127,15 @@ it — that is a hardware/config decision, not a code fix.
 
 Two further findings, both **pre-existing and not caused by the changes**:
 
-- **S4 — a brittle test assertion, not a defect.** In two live re-runs the model
-  behaved correctly: it retrieved the three grounded facts (47 kPa, 19-min cycle,
-  `TANGERINE-7`) and correctly declined Q4 ("maximum rotational speed"), which is
-  absent from the corpus. But `CapabilityScenarioTests.swift:145` asserts the
-  answer must not contain the substrings `"rotational speed"` *and* `"rpm"` — and
-  a correct refusal *names the topic* ("Maximum rotational speed: Not found … no
-  results for RPM"). The assertion false-positives on the desired behavior. The
-  model is right; the test is wrong. Flagged for a real fix (detect a fabricated
-  numeric value, not topic keywords) — must not be weakened.
+- **S4 — a brittle test assertion, now fixed (`fb7138f`).** In two live re-runs
+  the model behaved correctly: it retrieved the three grounded facts (47 kPa,
+  19-min cycle, `TANGERINE-7`) and correctly declined Q4 ("maximum rotational
+  speed"), absent from the corpus. But the assertion failed if the answer merely
+  contained `"rotational speed"` *and* `"rpm"` — and a correct refusal *names the
+  topic* ("Maximum rotational speed: Not found … no results for RPM"), so it
+  false-positived on the desired behaviour. The assertion now fails only on a
+  fabricated numeric RPM *value* (a digit qualifying `rpm`) — verified strict (a
+  correct refusal passes; `8,000 rpm` / `12000rpm` still fail). Not a weakening.
 
 - **S1 — the documented-flaky scenario.** It failed this pass (24-min run, the
   model struggling with the TaskBoard fixture build). S1 has no MCP server, so the
