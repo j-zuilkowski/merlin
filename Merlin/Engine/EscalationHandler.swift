@@ -47,12 +47,33 @@ actor EscalationHandler {
         viableProviderIDs.isEmpty || viableProviderIDs.contains(id)
     }
 
+    /// The strongest provider (highest budget) wired to a slot and not yet routed
+    /// to this turn — the escalation target. `nil` when none remain.
+    private func strongestUnusedViableProvider() async -> String? {
+        guard let registry else { return nil }
+        let ordered = await registry.providersOrderedByBudget()
+        return ordered.reversed().first(where: {
+            routedProviderIDs.contains($0.id) == false && isViable($0.id)
+        })?.id
+    }
+
     func escalateOrStop(
         currentStep: PlanStep,
         reason: EscalationReason,
         context: [Message]
     ) async -> EscalationDecision {
         guard escalationAttempts < maxRefinementsPerTurn else {
+            // Refinement budget spent. Before giving up, escalate to a stronger
+            // provider not yet tried this turn — a stalled local model often
+            // succeeds on a remote model that doesn't malform tool calls. Stop
+            // only when no viable stronger provider remains.
+            if let provider = await strongestUnusedViableProvider() {
+                routedProviderIDs.insert(provider)
+                escalationAttempts += 1
+                return .routeToProvider(
+                    providerID: provider,
+                    reason: "refinement budget exhausted — escalating to a stronger model")
+            }
             return .stop(message: stopMessage(
                 reason: "refinement budget exhausted",
                 suggestion: "reduce scope before retrying",
@@ -65,16 +86,11 @@ actor EscalationHandler {
         // to the strongest provider not yet tried this turn (typically a remote model
         // far stronger than a local execute model).
         if case .criticExhausted(let why) = reason {
-            if let registry {
-                let orderedProviders = await registry.providersOrderedByBudget()
-                if let provider = orderedProviders.reversed().first(where: {
-                    routedProviderIDs.contains($0.id) == false && isViable($0.id)
-                }) {
-                    routedProviderIDs.insert(provider.id)
-                    escalationAttempts += 1
-                    return .routeToProvider(providerID: provider.id,
-                                            reason: "critic unsatisfied: \(why)")
-                }
+            if let provider = await strongestUnusedViableProvider() {
+                routedProviderIDs.insert(provider)
+                escalationAttempts += 1
+                return .routeToProvider(providerID: provider,
+                                        reason: "critic unsatisfied: \(why)")
             }
             return .stop(message: stopMessage(
                 reason: "critic could not be satisfied: \(why)",
