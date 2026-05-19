@@ -120,6 +120,37 @@ final class CriticEngineTests: XCTestCase {
         XCTAssertTrue(commands[0].command.contains("xcodebuild test -scheme 'App'"))
     }
 
+    func testHasAutoDetectableProjectDetectsBuildSystems() throws {
+        let fm = FileManager.default
+        func tempDir(marker: String?, isDirMarker: Bool = false) throws -> String {
+            let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("critic-detect-\(UUID().uuidString)")
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            if let marker {
+                let m = dir.appendingPathComponent(marker)
+                if isDirMarker {
+                    try fm.createDirectory(at: m, withIntermediateDirectories: true)
+                } else {
+                    try "x".write(to: m, atomically: true, encoding: .utf8)
+                }
+            }
+            return dir.path
+        }
+        let cargo = try tempDir(marker: "Cargo.toml")
+        let spm = try tempDir(marker: "Package.swift")
+        let xcode = try tempDir(marker: "App.xcodeproj", isDirMarker: true)
+        let plain = try tempDir(marker: "README.md")
+        defer { for d in [cargo, spm, xcode, plain] { try? fm.removeItem(atPath: d) } }
+
+        XCTAssertTrue(CriticEngine.hasAutoDetectableProject(at: cargo))
+        XCTAssertTrue(CriticEngine.hasAutoDetectableProject(at: spm))
+        XCTAssertTrue(CriticEngine.hasAutoDetectableProject(at: xcode))
+        XCTAssertFalse(CriticEngine.hasAutoDetectableProject(at: plain),
+                       "a directory with no build system must not be detected")
+        XCTAssertFalse(CriticEngine.hasAutoDetectableProject(at: nil))
+        XCTAssertFalse(CriticEngine.hasAutoDetectableProject(at: ""))
+    }
+
     // MARK: - Stage 2 graceful degradation
 
     func testStage2SkippedWhenReasonProviderNil() async {

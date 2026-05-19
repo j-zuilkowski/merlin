@@ -271,6 +271,22 @@ actor CriticEngine {
         return .pass
     }
 
+    /// True when `projectPath` holds a build/test system the critic can verify
+    /// deterministically — Cargo, SwiftPM, or an Xcode project. The engine uses
+    /// this to force the critic to run for such a project even when the
+    /// write-files/substantial-output heuristic would skip it (the agent may edit
+    /// via `run_shell`, leaving `writtenFilePaths` empty): for a code project the
+    /// deterministic build/test check is exactly what must be run.
+    static func hasAutoDetectableProject(at projectPath: String?) -> Bool {
+        guard let projectPath, !projectPath.isEmpty,
+              let entries = try? FileManager.default.contentsOfDirectory(atPath: projectPath)
+        else { return false }
+        if entries.contains("Cargo.toml") || entries.contains("Package.swift") {
+            return true
+        }
+        return entries.contains { $0.hasSuffix(".xcodeproj") }
+    }
+
     /// Detects the working project's build system and returns its real build/test
     /// as deterministic verification commands. This is what catches a broken edit
     /// (code that does not compile, tests left red) and fails the critic so the

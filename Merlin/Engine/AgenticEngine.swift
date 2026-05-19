@@ -1102,12 +1102,22 @@ final class AgenticEngine {
                         substantial: isSubstantialOutput,
                         complexity: classification.complexity
                     )
-                    let criticDecision = CriticPolicyResolver.resolve(
+                    var criticDecision = CriticPolicyResolver.resolve(
                         skill: nil,
                         step: currentPlanStep,
                         heuristic: criticHeuristic,
                         classifierOverride: classifierOverride != nil
                     )
+                    // A code project with a real build/test is always critiquable —
+                    // the deterministic verification IS the point. The heuristic
+                    // skips it when the agent edited via run_shell (writtenFilePaths
+                    // empty); override that so the critic runs `xcodebuild test` /
+                    // `cargo test`, catches red tests, and triggers a retry/escalation
+                    // instead of the loop silently ending with the task unverified.
+                    if criticDecision == .skip,
+                       CriticEngine.hasAutoDetectableProject(at: currentProjectPath) {
+                        criticDecision = .run
+                    }
                     var shouldRunCritic = false
                     var criticSeedNote: String?
                     switch criticDecision {
