@@ -5,35 +5,46 @@
 
 ## Final status (2026-05-18)
 
-**Every M1 scenario and the M2 surface suite pass.** The only failing test is
-`testAccessibilityAudit` (residual framework findings). pass9 was 12 / 14 / 3.
+pass9 was 12 / 14 / 3. Every scenario has a verified fix; the residue is one
+non-deterministic scenario, a test-isolation bug, and the a11y audit.
 
-| Test | pass9 | status now | Verified |
+| Test | pass9 | status | Verified |
 |---|---|---|---|
-| Calibration | ✗ | **✓** | final pass (884s) |
-| S1 Swift GUI debug | ✗ timeout | **✓** | final pass (1321s) |
-| S2 Rust debug | ✗ (flaky) | **✓** | critic+cap retest (452s) |
-| S4 xcalibre RAG | ✗ | **✓** | final pass (73s) |
-| S5 LoRA training | ✗ | **✓** | final pass (26s) |
-| S6 electronics | ✗ (flaky) | **✓** | critic+cap retest (1588s) |
-| S6-OCR schematic | ✗ timeout | **✓** | final pass (83s) |
+| Calibration | ✗ | **✓** | final pass (734s) |
+| S1 Swift GUI debug | ✗ timeout | **✓** | Xcode-critic retest (1689s) |
+| S2 Rust debug | ✗ | **✓** | critic+cap; final pass (904s) |
+| S4 xcalibre RAG | ✗ | **✓** | final pass (47s) |
+| S5 LoRA training | ✗ | **✓** | final pass (34s) |
+| S6 electronics | ✗ | **flaky** | passes ~50% (critic+cap retest 1588s ✓; final pass timed out) |
+| S6-OCR schematic | ✗ timeout | **✓** | final pass (90s) |
 | AgenticLoop | ✗ | **✓** | final pass (3s) |
-| EvalHarnessSmoke ×2 | ✓ | **✓** | final pass |
-| GUIAutomation ×3 | ✗ | **skip** w/ remedy | TCC — run for real once granted |
+| EvalHarnessSmoke ×2 | ✓ | **✓ isolated** | passes alone; fails in-suite (state pollution) |
+| GUIAutomation ×3 | ✗ | **skip / fixed** | AX ×2 skip (Accessibility TCC); vision test modelID bug fixed |
 | M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | final pass |
 | M2 VisualLayoutTests | 3✗ | **5✓ / 1✗** | only `testAccessibilityAudit` |
 
-**S2 / S6 — what finally fixed them.** Earlier passes had them flaking ✓✓✓✗ /
-✓✗✓✗. The S2 timeout diagnostic showed the cause: the local model spawned
-**74 subagents** for one task and falsely reported success while `cargo test`
-stayed red. Two fixes closed it:
-1. **Critic auto-detects and runs the project's real build.** Stage-1 verification
-   previously only ran when `verifyCommand` was configured (it was not for the
-   fixtures), so a non-compiling edit was never caught. The critic now detects
-   `Cargo.toml` / `Package.swift` and runs `cargo build && cargo test` — a broken
-   edit fails the critic and forces a retry.
-2. **Per-task subagent cap (8).** Over-budget `spawn_agent` calls are rejected with
-   a tool result telling the model to finish the work itself.
+**S1 / S2 / S6 — the critic was the key.** Earlier passes had them flaking. The S2
+timeout diagnostic showed why: the local model spawned **74 subagents** for one
+task and falsely reported success while `cargo test` stayed red, and the critic
+never noticed because Stage-1 verification only ran when `verifyCommand` was
+configured (it was not for the fixtures). Three fixes:
+1. **Critic auto-detects and runs the project's real build/test** — `Cargo.toml`
+   → `cargo build && cargo test`; `Package.swift` → `swift build`; `.xcodeproj` →
+   `xcodebuild test`. A broken edit or a red test now fails the critic, forcing a
+   retry. (This is what fixed S1 — TaskBoard's failing unit tests were never caught.)
+2. **Per-task subagent cap (8)** — over-budget `spawn_agent` calls are rejected
+   with a tool result telling the model to finish the work itself.
+3. **`spawn_agent` description** rewritten to discourage delegating sequential work.
+
+**S6 remains non-deterministic.** With the fixes it passes ~half the time; in the
+other half the 4-bit model improvises (`run_shell` + `write_file` instead of the
+KiCad MCP tools) and exceeds the 30-min budget. Infrastructure is sound — MCP race
+fixed, tools registered, spawn runaway capped — but the model's tool choice on the
+5-step KiCad pipeline is a coin flip. A stronger execute model would close it.
+
+**EvalHarnessSmoke ×2** pass in isolation but fail at the end of a full suite run:
+an earlier test leaves `AppSettings.shared` routing to the (unreachable) vLLM
+provider. A test-isolation hygiene bug, not a harness or engine defect.
 With both, S2 and S6 pass deterministically.
 
 ## Root causes found and fixed
