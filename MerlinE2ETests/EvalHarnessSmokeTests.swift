@@ -19,10 +19,16 @@ final class EvalHarnessSmokeTests: XCTestCase {
             prompt: "Reply with exactly the single word: READY",
             timeout: 300)
 
+        // Surface the captured run in the failure message — this test fails only
+        // when an earlier test pollutes process-global state, and a bare assertion
+        // gives nothing to diagnose it with.
+        let diag = " [errors=\(run.errors) | systemNotes=\(run.systemNotes) "
+            + "| toolCalls=\(run.toolCalls.map(\.name)) | events=\(run.allEvents.count) "
+            + "| assistantText=\"\(run.assistantText.prefix(200))\"]"
         XCTAssertFalse(run.assistantText.isEmpty,
-                       "the harness must capture the assistant's response")
+                       "the harness must capture the assistant's response\(diag)")
         XCTAssertTrue(run.errors.isEmpty,
-                      "a trivial scenario must not produce engine errors")
+                      "a trivial scenario must not produce engine errors\(diag)")
     }
 
     /// HARNESS-5 regression: a scenario whose event stream stalls (here the agent runs

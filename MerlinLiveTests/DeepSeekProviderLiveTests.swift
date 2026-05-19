@@ -7,8 +7,14 @@ final class DeepSeekProviderLiveTests: XCTestCase {
 
     override func setUpWithError() throws {
         try skipUnlessLiveEnvironment()
+        // Match the key lookup the live E2E suite uses (CalibrationLiveTests,
+        // AgenticLoopE2ETests): the env var first, then the file-backed key store
+        // under both DeepSeek provider ids. The bare `readAPIKey()` only consulted
+        // the legacy `deepseek-legacy` Keychain item, so these tests skipped even
+        // when a valid key was present in `~/.merlin/api-keys.json`.
         guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"]
-            ?? KeychainManager.readAPIKey()
+            ?? KeychainManager.readAPIKey(for: "deepseek")
+            ?? KeychainManager.readAPIKey(for: "deepseek-flash")
         else {
             throw XCTSkip("No DeepSeek API key")
         }
