@@ -5,16 +5,21 @@
 
 ## Final status (2026-05-19)
 
-pass9 was 12 / 14 / 3. S6 is now deterministic (6/6). A post-fix regression pass
-of the non-S6 scenarios confirms the engine changes (tool-gating, `offeredTools()`
-dedup) introduced no regressions. The residue is two pre-existing non-code issues
-(a brittle S4 assertion, the a11y audit) plus environment-gated UI tests.
+pass9 was 12 / 14 / 3. S6 is now genuinely deterministic (6/6). The post-fix
+regression pass confirmed the engine changes introduced no regressions — but it
+also **uncovered that S1 and S2 had been false-passing**: the harness ran those
+debug scenarios on a git-tracked fixture it never reset, so runs inherited prior
+runs' fixes. On a pristine baseline the 4-bit local model does not reliably
+complete them. That is now fixed in the harness and documented honestly below —
+it is the most important finding of this pass and needs a decision (stronger
+execute model, or further engine work). Other residue: a brittle S4 assertion,
+the a11y audit, and environment-gated UI tests.
 
 | Test | pass9 | status | Verified |
 |---|---|---|---|
 | Calibration | ✗ | **✓** | regression pass (3 runs: 745–972s) |
-| S1 Swift GUI debug | ✗ timeout | **flaky** | documented-flaky; engine changes are a no-op for it (no MCP) |
-| S2 Rust debug | ✗ | **✓** | regression pass (447s) |
+| S1 Swift GUI debug | ✗ timeout | **unreliable** | prior ✓ was fixture-pollution false-positive — see below |
+| S2 Rust debug | ✗ | **unreliable** | prior ✓ was fixture-pollution false-positive — see below |
 | S4 xcalibre RAG | ✗ | **✓ (test bug)** | model correct; line-145 assertion false-positives — see below |
 | S5 LoRA training | ✗ | **✓** | regression pass (25s) |
 | S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 6/6 pass (255–1053s) |
@@ -83,7 +88,32 @@ re-run to confirm no regression: **AgenticLoop ✓, S2 ✓, S5 ✓, Calibration 
 The dedup and the tool-gating are no-ops for any scenario that does not connect a
 `kicad` MCP server, so S1 (no MCP) is provably unaffected by the engine changes.
 
-Two findings from that pass, both **pre-existing and not caused by the changes**:
+### S1 / S2 were false-passing — fixture pollution (the significant finding)
+
+`testS1SwiftGUIDebugCycle` and `testS2RustDebugCycle` are *debug* scenarios: Merlin
+edits the buggy sources to fix them. The harness ran them **directly on the
+git-tracked fixture and never reset it**, so each run started from the previous
+run's leftover edits — after a successful run the bugs were already gone and the
+next run "passed" trivially without doing the work; after a failed run the tree
+was half-broken. Both fixtures were caught dirty (`git status`) after the
+regression batch. This means **S1/S2's green history is not trustworthy** — an
+unknown share of those passes were on already-fixed fixtures.
+
+Fix (`8cc73f3`): `pristineFixtureCopy(_:)` extracts `git archive HEAD` of the
+fixture into a throwaway temp dir; S1/S2 now run on the identical pristine
+baseline every time and never mutate the tracked fixture.
+
+What the honest harness then showed: an instrumented S2 run confirmed the
+mechanism works — the model's edits land in the copy, `cargo test` sees them —
+but the 4-bit local execute model **does not reliably complete the multi-bug
+debug task from a clean baseline**. It thrashed for 28 min (30+ rejected
+`spawn_agent` calls, compile-breaking edits) and timed out; a second run gave up
+in 188 s. S1 likewise failed (2 TaskBoard tests still red). These scenarios need
+either a stronger execute model or further engine work (e.g. dropping
+`spawn_agent` from the offered tools once its budget is spent, so the model
+cannot thrash on it) — a deliberate decision, not an autonomous guess.
+
+Two further findings, both **pre-existing and not caused by the changes**:
 
 - **S4 — a brittle test assertion, not a defect.** In two live re-runs the model
   behaved correctly: it retrieved the three grounded facts (47 kPa, 19-min cycle,
