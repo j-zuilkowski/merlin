@@ -2182,6 +2182,27 @@ final class AgenticEngine {
             parts.append(domainAddendum)
         }
 
+        // When MCP tool servers are connected, the model must be told to use them —
+        // a coding model otherwise hand-writes domain files (.kicad_sch) or shells
+        // out instead of calling the `mcp:<server>:*` tools, which is what made S6
+        // (KiCad) non-deterministic.
+        let mcpServers = Set(toolRouter.mcpToolDefinitions().compactMap { def -> String? in
+            let parts = def.function.name.split(separator: ":")
+            return parts.count >= 3 ? String(parts[1]) : nil
+        }).sorted()
+        if !mcpServers.isEmpty {
+            parts.append("""
+            Connected MCP tool servers: \(mcpServers.joined(separator: ", ")). Their \
+            tools are named `mcp:<server>:*`. When the task is in a connected \
+            server's domain (e.g. a `kicad` server covers KiCad schematics, PCB \
+            layout, routing, and simulation), you MUST use that server's `mcp:` \
+            tools to do the work. Do NOT hand-write domain files (.kicad_sch, \
+            .kicad_pcb, netlists) or invoke domain CLIs through run_shell — the MCP \
+            tools are the supported, verified path and other approaches will not \
+            pass verification.
+            """)
+        }
+
         return parts.joined(separator: "\n\n")
     }
 
