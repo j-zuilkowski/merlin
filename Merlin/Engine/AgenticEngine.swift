@@ -2250,15 +2250,24 @@ final class AgenticEngine {
     /// memory even when they are absent from the menu. `runLoop` therefore also
     /// rejects calls to `gatedImprovisationToolNames()` at dispatch time.
     ///
+    /// Once the per-task subagent budget (`maxSpawnsPerTask`) is spent, `spawn_agent`
+    /// is also withheld. Over-budget spawns are rejected anyway, but leaving the tool
+    /// on the menu lets the 4-bit model *thrash* — an S2 run burned its entire 30-min
+    /// budget emitting 30+ rejected `spawn_agent` calls. Removing it from the menu
+    /// forces the model to do the remaining work itself, the same lever as S6.
+    ///
     /// The result is deduplicated by tool name: `MCPBridge.start` registers each
     /// MCP tool into BOTH `ToolRegistry.shared` and the `toolRouter`, so a raw
     /// `ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()` would list
     /// every `mcp:*` tool twice and bloat every request's tool array.
     private func offeredTools() -> [ToolDefinition] {
-        let gated = gatedImprovisationToolNames()
-        let builtins = gated.isEmpty
+        var withheld = gatedImprovisationToolNames()
+        if spawnedSubagentCount >= maxSpawnsPerTask {
+            withheld.insert("spawn_agent")
+        }
+        let builtins = withheld.isEmpty
             ? ToolRegistry.shared.all()
-            : ToolRegistry.shared.all().filter { !gated.contains($0.function.name) }
+            : ToolRegistry.shared.all().filter { !withheld.contains($0.function.name) }
         var seen = Set<String>()
         return (builtins + toolRouter.mcpToolDefinitions())
             .filter { seen.insert($0.function.name).inserted }
