@@ -23,9 +23,16 @@ final class CapabilityScenarioTests: XCTestCase {
         let dest = NSTemporaryDirectory() + "eval-fixture-\(name)-\(UUID().uuidString)"
         try FileManager.default.createDirectory(
             atPath: dest, withIntermediateDirectories: true)
+        // cwd is `dest` (a temp dir), NOT `repoRoot`: git and tar both take
+        // explicit `-C` paths, so the subprocess never needs the repo as its
+        // working directory — and resolving a cwd under ~/Documents wedges the
+        // shell. The test-host app is rebuilt (new cdhash) every run, so its
+        // TCC "Documents folder" grant is dropped each time; the child shell's
+        // getcwd() then blocks indefinitely on the unanswered TCC check. A temp
+        // cwd lives under /private/var/folders and needs no TCC at all.
         let out = EvalShell.run("/bin/zsh", ["-c",
             "git -C '\(repoRoot)' archive HEAD '\(rel)' | tar -x -C '\(dest)'"],
-            cwd: repoRoot)
+            cwd: dest)
         let copied = "\(dest)/\(rel)"
         guard FileManager.default.fileExists(atPath: copied) else {
             throw XCTSkip("could not extract pristine fixture '\(name)': \(out)")
@@ -56,8 +63,20 @@ final class CapabilityScenarioTests: XCTestCase {
             ["-scheme", "TaskBoard", "test", "-destination", "platform=macOS",
              "CODE_SIGN_IDENTITY=", "CODE_SIGNING_REQUIRED=NO", "CODE_SIGNING_ALLOWED=NO"],
             cwd: fixture)
+        // DIAGNOSTIC: capture the critic's activity — did it run the xcodebuild
+        // verification and catch the red TaskBoardTests, and how many retries?
+        let criticEvents = run.allEvents.compactMap { event -> String? in
+            if case .systemNote(let n) = event,
+               n.lowercased().contains("critic") || n.lowercased().contains("unverified") {
+                return n
+            }
+            return nil
+        }
         EvalLog.write(scenario: "S1", summary: "tools \(run.toolCalls.count) "
-            + "errors \(run.errors.count)\n\(testOut.suffix(600))\n\(run.assistantText)")
+            + "errors \(run.errors.count)\n"
+            + "--- critic/systemNotes ---\n\(run.systemNotes.joined(separator: "\n"))\n"
+            + "--- critic events ---\n\(criticEvents.joined(separator: "\n"))\n"
+            + "--- xcodebuild test ---\n\(testOut.suffix(600))\n\(run.assistantText)")
         XCTAssertTrue(testOut.contains("TEST SUCCEEDED"),
                       "S1: TaskBoardTests must pass after Merlin's fixes")
     }
