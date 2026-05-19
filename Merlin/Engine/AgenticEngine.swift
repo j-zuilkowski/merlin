@@ -769,9 +769,16 @@ final class AgenticEngine {
         // those are configured and reachable. The registry also carries merely-
         // configured providers (e.g. a `vllm` entry with no server running);
         // routing an escalation to one of those kills the turn.
+        //
+        // `provider(for:)` yields compound ids (`backend:model`), but
+        // `EscalationHandler` matches against `providersOrderedByBudget()`, which
+        // keys on the bare backend id — so reduce each to its backend before the
+        // colon, otherwise the viability set never intersects and escalation can
+        // never route.
         let viableEscalationProviders = Set(
             [AgentSlot.execute, .reason, .orchestrate, .vision]
-                .compactMap { provider(for: $0)?.id })
+                .compactMap { provider(for: $0)?.id }
+                .map { String($0.split(separator: ":", maxSplits: 1).first ?? Substring($0)) })
         let escalation = EscalationHandler(
             planner: planner, registry: registry,
             viableProviderIDs: viableEscalationProviders)
