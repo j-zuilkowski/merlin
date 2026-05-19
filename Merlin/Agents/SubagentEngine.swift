@@ -4,6 +4,12 @@ actor SubagentEngine {
     private let definition: AgentDefinition
     private let prompt: String
     private let provider: any LLMProvider
+    /// Model id to send when the agent definition pins no model of its own.
+    /// Must be the *resolved* id for `provider` (e.g. `qwen/qwen3-coder-next`),
+    /// never a provider id — an empty/garbage model makes the request go out as
+    /// the bare provider id ("lmstudio"), which the backend rejects and which
+    /// silently broke every spawned subagent (observed sabotaging S1).
+    private let fallbackModel: String
     private let hookEngine: HookEngine
     private let depth: Int
 
@@ -15,12 +21,14 @@ actor SubagentEngine {
         definition: AgentDefinition,
         prompt: String,
         provider: any LLMProvider,
+        fallbackModel: String = "",
         hookEngine: HookEngine,
         depth: Int
     ) {
         self.definition = definition
         self.prompt = prompt
         self.provider = provider
+        self.fallbackModel = fallbackModel
         self.hookEngine = hookEngine
         self.depth = depth
     }
@@ -90,7 +98,7 @@ actor SubagentEngine {
 
         do {
             var request = CompletionRequest(
-                model: definition.model ?? "",
+                model: definition.model ?? fallbackModel,
                 messages: await context.messagesForProvider(),
                 tools: await toolDefinitions(),
                 stream: true,

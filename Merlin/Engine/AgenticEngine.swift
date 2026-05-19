@@ -1994,10 +1994,12 @@ final class AgenticEngine {
             let agentID = UUID()
             continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
 
+            let subagentProvider = resolvedProvider(for: .orchestrate)
             let subagent = SubagentEngine(
                 definition: definition,
                 prompt: args.prompt,
-                provider: resolvedProvider(for: .orchestrate),
+                provider: subagentProvider,
+                fallbackModel: modelID(for: subagentProvider),
                 hookEngine: HookEngine(hooks: AppSettings.shared.hooks),
                 depth: depth + 1
             )
