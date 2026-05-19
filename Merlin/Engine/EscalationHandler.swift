@@ -137,16 +137,17 @@ actor EscalationHandler {
             escalationAttempts += 1
             return .continueWith(replacementSteps: replacementSteps)
         case .cannotDecompose(let explanation):
-            if let registry {
-                let orderedProviders = await registry.providersOrderedByBudget()
-                if let provider = orderedProviders.reversed().first(where: {
-                    $0.budget.usableInputTokens >= currentStep.minContextRequired
-                        && routedProviderIDs.contains($0.id) == false
-                        && isViable($0.id)
-                }) {
-                    routedProviderIDs.insert(provider.id)
+            // The step can't be split — hand off to a stronger provider. Prefer the
+            // designated reason slot (a capable remote model with a large context,
+            // so it satisfies a context-overflow escalation too); fall back to the
+            // strongest viable provider by budget. Routing by raw budget alone
+            // picked a bare backend id whose config had no model set — the request
+            // then went out as the provider id and the backend rejected it.
+            if registry != nil {
+                if let provider = await capabilityEscalationTarget() {
+                    routedProviderIDs.insert(provider)
                     escalationAttempts += 1
-                    return .routeToProvider(providerID: provider.id, reason: explanation)
+                    return .routeToProvider(providerID: provider, reason: explanation)
                 }
                 return .stop(message: "step requires \(currentStep.minContextRequired) tokens; no configured provider supports that budget")
             }
