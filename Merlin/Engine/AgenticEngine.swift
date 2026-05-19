@@ -191,7 +191,9 @@ final class AgenticEngine {
     /// tends to delegate compulsively instead of doing the work; once this hits
     /// `maxSpawnsPerTask`, further spawn_agent calls are rejected. Resets per task.
     private var spawnedSubagentCount = 0
-    /// Hard per-task cap on subagent spawns.
+    /// Hard per-task cap on subagent spawns — stops the 74-spawn runaway seen on
+    /// S2. (A spawned subagent runs a single LLM completion and does not execute
+    /// tools, so heavy delegation does no real work regardless.)
     private let maxSpawnsPerTask = 8
     private var activeContinuation: AsyncStream<AgentEvent>.Continuation?
 
