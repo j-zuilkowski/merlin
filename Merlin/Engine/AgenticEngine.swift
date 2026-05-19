@@ -2249,14 +2249,19 @@ final class AgenticEngine {
     /// execute model emits calls to `run_shell`/`write_file`/etc. from training
     /// memory even when they are absent from the menu. `runLoop` therefore also
     /// rejects calls to `gatedImprovisationToolNames()` at dispatch time.
+    ///
+    /// The result is deduplicated by tool name: `MCPBridge.start` registers each
+    /// MCP tool into BOTH `ToolRegistry.shared` and the `toolRouter`, so a raw
+    /// `ToolRegistry.shared.all() + toolRouter.mcpToolDefinitions()` would list
+    /// every `mcp:*` tool twice and bloat every request's tool array.
     private func offeredTools() -> [ToolDefinition] {
-        let builtins = ToolRegistry.shared.all()
-        let mcp = toolRouter.mcpToolDefinitions()
         let gated = gatedImprovisationToolNames()
-        guard !gated.isEmpty else {
-            return builtins + mcp
-        }
-        return builtins.filter { !gated.contains($0.function.name) } + mcp
+        let builtins = gated.isEmpty
+            ? ToolRegistry.shared.all()
+            : ToolRegistry.shared.all().filter { !gated.contains($0.function.name) }
+        var seen = Set<String>()
+        return (builtins + toolRouter.mcpToolDefinitions())
+            .filter { seen.insert($0.function.name).inserted }
     }
 
     private func combinedAddendum(for slot: AgentSlot) async -> String {
