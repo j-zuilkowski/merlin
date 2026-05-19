@@ -177,8 +177,18 @@ final class CapabilityScenarioTests: XCTestCase {
         let answer = run.assistantText.lowercased()
         XCTAssertTrue(answer.contains("47") && answer.contains("tangerine"),
                       "S4: grounded facts (47 kPa, TANGERINE-7) must be retrieved")
-        XCTAssertFalse(answer.contains("rotational speed") && answer.contains("rpm"),
-                       "S4: Q4 is absent from the corpus - Merlin must not hallucinate it")
+        // Q4 (max rotational speed) is absent from the corpus — Merlin must not
+        // fabricate it. The model SHOULD still name the topic when correctly
+        // declining ("rotational speed: not found … no results for RPM"), so a
+        // bare substring check on "rotational speed"+"rpm" false-positives on the
+        // *desired* behaviour. Assert instead that no numeric RPM *value* is
+        // stated: a digit immediately qualifying "rpm". A correct refusal has no
+        // digit before "rpm"; a hallucination ("8,000 rpm") trips it — still strict.
+        let fabricatedRPM = answer.range(
+            of: #"\d[\d,.]*\s*rpm"#, options: .regularExpression) != nil
+        XCTAssertFalse(fabricatedRPM,
+                       "S4: Q4 is absent from the corpus - Merlin must not state a "
+                       + "fabricated rotational-speed value (answer: \(answer.prefix(300)))")
     }
 
     // MARK: - S5 - LoRA pipeline (harness seeds pairs + auto-trains)
