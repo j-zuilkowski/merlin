@@ -5,19 +5,21 @@
 
 ## Final status (2026-05-19)
 
-pass9 was 12 / 14 / 3. Every scenario has a verified fix — including S6, which is
-now deterministic (5/5). The residue is a test-isolation bug and the a11y audit.
+pass9 was 12 / 14 / 3. S6 is now deterministic (6/6). A post-fix regression pass
+of the non-S6 scenarios confirms the engine changes (tool-gating, `offeredTools()`
+dedup) introduced no regressions. The residue is two pre-existing non-code issues
+(a brittle S4 assertion, the a11y audit) plus environment-gated UI tests.
 
 | Test | pass9 | status | Verified |
 |---|---|---|---|
-| Calibration | ✗ | **✓** | final pass (734s) |
-| S1 Swift GUI debug | ✗ timeout | **✓** | Xcode-critic retest (1689s) |
-| S2 Rust debug | ✗ | **✓** | critic+cap; final pass (904s) |
-| S4 xcalibre RAG | ✗ | **✓** | final pass (47s) |
-| S5 LoRA training | ✗ | **✓** | final pass (34s) |
-| S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 5/5 pass (255–1053s) |
-| S6-OCR schematic | ✗ timeout | **✓** | final pass (90s) |
-| AgenticLoop | ✗ | **✓** | final pass (3s) |
+| Calibration | ✗ | **✓** | regression pass (3 runs: 745–972s) |
+| S1 Swift GUI debug | ✗ timeout | **flaky** | documented-flaky; engine changes are a no-op for it (no MCP) |
+| S2 Rust debug | ✗ | **✓** | regression pass (447s) |
+| S4 xcalibre RAG | ✗ | **✓ (test bug)** | model correct; line-145 assertion false-positives — see below |
+| S5 LoRA training | ✗ | **✓** | regression pass (25s) |
+| S6 electronics | ✗ | **✓** | tool-gating + dispatch-rejection; 6/6 pass (255–1053s) |
+| S6-OCR schematic | ✗ timeout | **✓** | final pass (393s) |
+| AgenticLoop | ✗ | **✓** | regression pass (4s) |
 | EvalHarnessSmoke ×2 | ✓ | **✓** | 1 transient fail in 4 runs; not reproducible — instrumented |
 | GUIAutomation ×3 | ✗ | **skip / fixed** | AX ×2 skip (Accessibility TCC); vision test modelID bug fixed |
 | M2 SurfaceUITests ×6 | 3✗ | **6 ✓** | final pass |
@@ -72,6 +74,37 @@ provider hiccup on a fresh session's first request, not deterministic pollution.
 advisor emits advisories — it emitted none, so it wrote nothing to shared state.
 The smoke test's failure message now dumps `run.errors`/`systemNotes`/`toolCalls`
 (`10ca238`) so the next occurrence, if any, is fully diagnosable.
+
+## Post-fix regression pass
+
+After the S6 fix and the `offeredTools()` dedup (`466841e` — MCP tools were sent
+to the model twice per request; deduped by name), the non-S6 scenarios were
+re-run to confirm no regression: **AgenticLoop ✓, S2 ✓, S5 ✓, Calibration ✓**.
+The dedup and the tool-gating are no-ops for any scenario that does not connect a
+`kicad` MCP server, so S1 (no MCP) is provably unaffected by the engine changes.
+
+Two findings from that pass, both **pre-existing and not caused by the changes**:
+
+- **S4 — a brittle test assertion, not a defect.** In two live re-runs the model
+  behaved correctly: it retrieved the three grounded facts (47 kPa, 19-min cycle,
+  `TANGERINE-7`) and correctly declined Q4 ("maximum rotational speed"), which is
+  absent from the corpus. But `CapabilityScenarioTests.swift:145` asserts the
+  answer must not contain the substrings `"rotational speed"` *and* `"rpm"` — and
+  a correct refusal *names the topic* ("Maximum rotational speed: Not found … no
+  results for RPM"). The assertion false-positives on the desired behavior. The
+  model is right; the test is wrong. Flagged for a real fix (detect a fabricated
+  numeric value, not topic keywords) — must not be weakened.
+
+- **S1 — the documented-flaky scenario.** It failed this pass (24-min run, the
+  model struggling with the TaskBoard fixture build). S1 has no MCP server, so the
+  engine changes are a literal no-op for it; this is the same inherent S1
+  variance the suite has seen throughout (originally `✗ timeout`, fixed via the
+  Xcode critic, historically borderline).
+
+A `testmanagerd` wedge (12 h uptime over ~2 days of continuous runs) caused a
+false batch failure mid-pass — *"test runner hung before establishing
+connection"*; `SIGKILL`-ing the daemon (launchd respawns it) recovered it and the
+re-run passed. Worth a reboot before any future full pass.
 
 ## Root causes found and fixed
 
