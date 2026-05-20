@@ -7,13 +7,21 @@ struct DiscoveredTool: Codable, Sendable {
 }
 
 enum ToolDiscovery {
-    static func scan() async -> [DiscoveredTool] {
+    /// When `summarize` is true (default, production behavior), each discovered
+    /// executable is probed with `--help` (2 s timeout each) to populate
+    /// `helpSummary`. On a developer machine this is fast enough; on CI's
+    /// macos-15 runner `$PATH` carries hundreds of binaries — many of which
+    /// ignore `--help` and burn the full 2 s — so a contract-level test that
+    /// just needs the tool list spent 5–15 minutes per call. Pass `false` from
+    /// tests to skip the probe and return discovery-only results in
+    /// milliseconds.
+    static func scan(summarize: Bool = true) async -> [DiscoveredTool] {
         let uniqueTools = discoverExecutablesOnPath()
         var results: [DiscoveredTool] = []
         results.reserveCapacity(uniqueTools.count)
 
         for tool in uniqueTools {
-            let summary = await helpSummary(for: tool.path)
+            let summary = summarize ? await helpSummary(for: tool.path) : nil
             results.append(DiscoveredTool(name: tool.name, path: tool.path, helpSummary: summary))
         }
 
