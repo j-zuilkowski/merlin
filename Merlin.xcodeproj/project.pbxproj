@@ -277,6 +277,7 @@
 		5C2D153D7209CDFEB83DCB6F /* StubMarkerScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33B323B36CDABDA08D870F75 /* StubMarkerScannerTests.swift */; };
 		5C3717699D7507C8F2B1855D /* CompactSlashCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 282F5184FFE8F96E947FE04C /* CompactSlashCommandTests.swift */; };
 		5CF34BFFA24F05ECBC3259E8 /* DisciplineWiringTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0185100C935F15E5E9955C53 /* DisciplineWiringTests.swift */; };
+		5D034E9C2674F80BA4DD2485 /* RedundantDocstringScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D283D087CDE54C1212F231B /* RedundantDocstringScanner.swift */; };
 		5D0C618739A84BF558DB2DCD /* ProviderConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D19D5CD81074A713BFBE26 /* ProviderConfig.swift */; };
 		5D5B8655E0EB3BC0C0F8308F /* CalibrationFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4684727E5DF2B5B405CA78C /* CalibrationFlowView.swift */; };
 		5DCA3DA91A4AB5EFF236842F /* CGEventTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FE6BC176D952AA94622B45 /* CGEventTool.swift */; };
@@ -424,6 +425,7 @@
 		895907D02B84CFE58FCD5676 /* NullKAGPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE842CAC22A23705E836EE90 /* NullKAGPluginTests.swift */; };
 		89EEA017C05C812B03517C69 /* LoRASettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E6FB41E80811F714059A39 /* LoRASettingsTests.swift */; };
 		89F37DE06F881757B54932FE /* DocReferenceGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7013A8BC625A83D38AF562CB /* DocReferenceGraphTests.swift */; };
+		8A8155870F6B91FDD938B6D1 /* RedundantDocstringScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D283D087CDE54C1212F231B /* RedundantDocstringScanner.swift */; };
 		8AE8D54B85DFA9D9AB94C278 /* ContextBudgetResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A61A1FCDB118CC773B5C843 /* ContextBudgetResolverTests.swift */; };
 		8B2D85CFECAB592ACBE1E98B /* TokenEstimatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34891F5580C332770CBF01D7 /* TokenEstimatorTests.swift */; };
 		8B474257A5B7C90468CD0591 /* PerStepPreflightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22E3837D70E40B9E73C67AF /* PerStepPreflightTests.swift */; };
@@ -855,6 +857,7 @@
 		2C69F7514B700C96AF0D03D2 /* ValeStyleWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ValeStyleWriter.swift; sourceTree = "<group>"; };
 		2C90671064F342278AEEC0F6 /* SlackConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlackConnector.swift; sourceTree = "<group>"; };
 		2CC2DE6BBD3111E153605E48 /* HelpWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpWindowView.swift; sourceTree = "<group>"; };
+		2D283D087CDE54C1212F231B /* RedundantDocstringScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedundantDocstringScanner.swift; sourceTree = "<group>"; };
 		2D668025EC8FF40063C869BB /* MockProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProvider.swift; sourceTree = "<group>"; };
 		2D9B7244ED6927FB1386B6AD /* KiCadArtifacts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KiCadArtifacts.swift; sourceTree = "<group>"; };
 		2EC4CB8B4FF6C3B01F423342 /* ComponentsFootprintsBOMTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentsFootprintsBOMTests.swift; sourceTree = "<group>"; };
@@ -2203,6 +2206,7 @@
 				1C2C4AE323463FB930C46110 /* ProseGate.swift */,
 				86B31E5E4010F6A3F70705B5 /* ProseReadabilityChecker.swift */,
 				59EC2B42AF30F3BB2FCC13A8 /* ReachabilityScanner.swift */,
+				2D283D087CDE54C1212F231B /* RedundantDocstringScanner.swift */,
 				B26042D0020FD057FED0774A /* ScanReport.swift */,
 				D79DBAA3A963C881C0BD4A5D /* StubMarkerScanner.swift */,
 				AB2E31BC7ED64738DD20248E /* TargetGateScanner.swift */,
@@ -2712,6 +2716,7 @@
 				0912FB5E9857B9FE1951D616 /* ProseGate.swift in Sources */,
 				9DD53182ED3521FF965BD0BD /* ProseReadabilityChecker.swift in Sources */,
 				253315EB628B6197633E62D6 /* ReachabilityScanner.swift in Sources */,
+				5D034E9C2674F80BA4DD2485 /* RedundantDocstringScanner.swift in Sources */,
 				3521EA4A8295B50E9C64C814 /* ScanReport.swift in Sources */,
 				3DE83FD2F428394A3DA7558C /* StubMarkerScanner.swift in Sources */,
 				8483128D0F14BD0376993B7C /* TOMLAdapterParser.swift in Sources */,
@@ -3279,6 +3284,7 @@
 				456CABC0851E73CA7F0D09FF /* ReasoningEffort.swift in Sources */,
 				2A7676334673AF6FD9C7CDE8 /* RecentProjectsStore.swift in Sources */,
 				5EE2FDB7E5F209D7B3B48C9C /* RedactedString.swift in Sources */,
+				8A8155870F6B91FDD938B6D1 /* RedundantDocstringScanner.swift in Sources */,
 				F63F8B2033EBCC1B8DBBFABE /* RelativeTimestampFormatter.swift in Sources */,
 				16F62F0FD12C468FB9448954 /* RewindCommand.swift in Sources */,
 				27394302AC89476792EED94B /* RoleSlotSettingsView.swift in Sources */,
