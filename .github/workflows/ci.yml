@@ -25,6 +25,18 @@ jobs:
           sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)/Contents/Developer"
           xcodebuild -version
 
+      - name: Regenerate Xcode project from project.yml
+        run: |
+          # The committed Merlin.xcodeproj/project.pbxproj predates xcodegen
+          # adoption and is .gitignored (the rule was added later but doesn't
+          # untrack the existing file). It drifts whenever a source file is
+          # added, renamed, or deleted on main without a manual pbxproj
+          # commit — that has broken CI on multiple prior pushes. project.yml
+          # is the single source of truth; regenerate from it so CI always
+          # sees the same file-graph as a fresh local build.
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen generate
+
       - name: Build (Release)
         run: |
           set -o pipefail
