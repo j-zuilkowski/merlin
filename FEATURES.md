@@ -514,14 +514,24 @@ After every assistant turn (when `kagEnabled = true` in Settings → Agent):
 
 ## LoRA Self-Training (MLX-format base models)
 
-Merlin can fine-tune a local MLX-format model on your own accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory. Automatic training requires an MLX base — `mlx_lm.lora` cannot train GGUF or HF-safetensors bases directly. A trained adapter can be fused and exported to GGUF after training for use with the other local providers (Ollama, Jan.ai, LocalAI, Mistral.rs), but that conversion is a manual step today.
+Merlin can fine-tune a local MLX-format model on your own accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory. Automatic training requires an MLX base — `mlx_lm.lora` cannot train GGUF or HF-safetensors bases directly.
+
+The trained adapter is served by an **MLX-native runtime**. Three runtimes serve MLX format directly:
+
+| Runtime | How to deploy the trained adapter |
+|---|---|
+| `mlx_lm.server` | Direct: `--adapter-path <adapter>` on top of the base (default Merlin routing target) |
+| **LM Studio** | Direct: load adapter via the LM Studio UI |
+| **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required |
+
+GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**) require an additional step: fuse the adapter, then convert to GGUF via `llama.cpp/convert_hf_to_gguf.py`. **Mistral.rs cannot serve Qwen3-MoE on Metal** today regardless of fine-tuning (see Per-Provider Notes below) — fine-tuning targeting Mistral.rs is only useful for non-MoE base models.
 
 **How it works**
 
 1. `ModelPerformanceTracker` accumulates `OutcomeRecord` entries after each session turn, storing the user prompt and the model's response.
 2. `LoRATrainer.exportJSONL()` serialises records above the score threshold as MLX-LM chat-format JSONL: `{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}` (filtering is upstream — see `exportTrainingData(minScore:)` above).
 3. `LoRATrainer.train()` shells out to `python -m mlx_lm.lora --train` with the exported JSONL and writes the adapter to `loraAdapterPath`.
-4. When `loraAutoLoad` is true and the adapter file exists, `AppState` constructs a `loraProvider` pointing at `mlx_lm.server` and routes the execute slot through it.
+4. When `loraAutoLoad` is true and the adapter file exists, `AppState` constructs a `loraProvider` pointing at `mlx_lm.server` and routes the execute slot through it. (Future: routing to vLLM-Metal or LM Studio as alternative MLX runtimes is a Settings-level choice rather than a fixed default.)
 5. `LoRACoordinator` handles threshold-gating (`loraMinSamples`, default 1000) and prevents concurrent training runs via `isTraining`.
 
 **Activation**

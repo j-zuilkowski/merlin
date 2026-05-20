@@ -615,7 +615,7 @@ Merlin can fine-tune a local language model on your accepted sessions using MLX-
 
 ### What it does
 
-After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served via `mlx_lm.server`, which exposes an OpenAI-compatible API. Merlin then routes execute-slot messages through that server instead of the base provider.
+After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served by an MLX-native runtime — `mlx_lm.server` (the default Merlin routes through), or alternatively LM Studio or vLLM-Metal. The other local providers (Ollama, Jan.ai, LocalAI) can also serve the fine-tuned model after a manual `mlx_lm.fuse` + `convert_hf_to_gguf.py` step. **Mistral.rs cannot serve MoE models on Metal** (`candle-core 0.10.2` lacks the kernel); fine-tuning targeting Mistral.rs only applies to non-MoE base models.
 
 ### Requirements
 
