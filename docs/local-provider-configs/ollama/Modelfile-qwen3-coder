@@ -4,7 +4,7 @@ FROM /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
 # and Merlin's typical agentic loop. Bump up if running on prompts past 24 K tokens.
 PARAMETER num_ctx 32768
 
-# Offload as many layers as fit into GPU/Metal memory; 99 means "all".
+# Offload as many layers as fit into Metal memory; 99 means "all".
 # On a 128 GB M4, the full 32 GB Q8_0 model fits with headroom.
 PARAMETER num_gpu 99
 
@@ -16,13 +16,61 @@ PARAMETER stop "<|im_start|>"
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|endoftext|>"
 
-TEMPLATE """{{ if .System }}<|im_start|>system
+# Tool-call-aware ChatML template — Ollama gates `tools` support on the template
+# rendering `.Tools` and `.ToolCalls` blocks. The earlier "simple ChatML" template
+# made Ollama reject `tools` payloads with HTTP 400 "model does not support tools".
+# This is the canonical Qwen3 tool template; emits OpenAI-compatible tool_calls.
+TEMPLATE """{{- if .Messages }}
+{{- if or .System .Tools }}<|im_start|>system
+{{- if .System }}
+{{ .System }}
+{{- end }}
+{{- if .Tools }}
+
+# Tools
+
+You may call one or more functions to assist with the user query.
+
+You are provided with function signatures within <tools></tools> XML tags:
+<tools>
+{{- range .Tools }}
+{"type": "function", "function": {{ .Function }}}
+{{- end }}
+</tools>
+
+For each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:
+<tool_call>
+{"name": <function-name>, "arguments": <args-json-object>}
+</tool_call>
+{{- end }}<|im_end|>
+{{ end }}
+{{- range $i, $_ := .Messages }}
+{{- $last := eq (len (slice $.Messages $i)) 1 -}}
+{{- if eq .Role "user" }}<|im_start|>user
+{{ .Content }}<|im_end|>
+{{ else if eq .Role "assistant" }}<|im_start|>assistant
+{{ if .Content }}{{ .Content }}
+{{- else if .ToolCalls }}<tool_call>
+{{ range .ToolCalls }}{"name": "{{ .Function.Name }}", "arguments": {{ .Function.Arguments }}}
+{{ end }}</tool_call>
+{{- end }}{{ if not $last }}<|im_end|>
+{{ end }}
+{{- else if eq .Role "tool" }}<|im_start|>user
+<tool_response>
+{{ .Content }}
+</tool_response><|im_end|>
+{{ end }}
+{{- if and (ne .Role "assistant") $last }}<|im_start|>assistant
+{{ end }}
+{{- end }}
+{{- else }}
+{{- if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{ if .Prompt }}<|im_start|>user
 {{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant
-{{ .Response }}<|im_end|>
-"""
+{{ end }}{{ .Response }}{{ if .Response }}<|im_end|>
+{{ end }}"""
 
 # Register with:
 #   ollama create qwen3-coder-30b-a3b-instruct -f ollama/Modelfile-qwen3-coder

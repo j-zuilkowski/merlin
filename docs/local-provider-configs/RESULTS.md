@@ -14,16 +14,16 @@ Run order per provider:
 5. Locate the report at `merlin-eval/results/CALIBRATION-harness-<timestamp>.md`
 6. Record `overallLocalScore` and the per-category breakdown below
 
-## Smoke matrix — 2026-05-20 first pass
+## Smoke matrix — 2026-05-20 final
 
 | Provider | Reachable | Completion | Streaming | Tool call | Notes |
 |---|---|---|---|---|---|
 | **lmstudio** (baseline) | ✓ | ✓ | ✓ (8 chunks) | ✓ | MLX-8bit; `:1234`; 2 models reported by `/v1/models` |
-| **ollama** | ⚠ blocked | — | — | — | App running but daemon not bound — first-launch flow needs interactive click on the menubar icon (license accept). Re-run smoke once daemon is bound. |
-| **jan** | ⚠ blocked | — | — | — | Daemon needs Jan UI → Settings → Local Server → Start. GUI step. |
+| **ollama** | ✓ | ✓ | ✓ (9 chunks) | ✓ | Unblocked: `mkdir -p ~/.ollama/{models,logs}` + `ollama serve` bypassed the GUI first-launch flow. Tool-aware Modelfile template needed for tool_calls — see commit |
+| **jan** | ✓ | ✓ | ✓ (10 chunks) | ✓ | Unblocked: `jan-cli serve --model-path <gguf> --bin $(which llama-server)`. Required `brew install llama.cpp` (Jan ships the CLI but not the backend binary). Port rebound to 1337 to match Merlin's `ProviderConfig.swift` default. |
 | **localai** (native) | ✓ | ✓ ("pong") | ✓ (12 chunks) | ✓ | Homebrew install + Metal + `metal-llama-cpp` backend. Docker version retired. |
-| **mistralrs** | ✓ | ✗ HTTP 500 | ⚠ 0 chunks | ✗ HTTP 500 | Server binds and `/v1/models` returns, but inference panics: `indexed_moe_forward is not implemented in this platform!` — Mistral.rs's `candle-core 0.10.2` does not yet implement MoE forward pass on Metal. **Qwen3-Coder-A3B is MoE; cannot serve from this provider on Apple Silicon today.** |
-| **vllm** (vLLM-Metal) | ✗ never bound | — | — | — | Engine init fails with `HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name'` when fed a local GGUF path. vLLM 0.21.0's GGUF loader passes the path through HF validation. **FP8 safetensors fallback (~30 GB, `Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8`) is the documented next step but not yet attempted.** |
+| **mistralrs** | — DROPPED — | | | | Per user direction (2026-05-20): retired from the testing matrix. `candle-core 0.10.2` doesn't implement MoE forward on Metal; Qwen3-Coder-A3B can't serve from this provider on Apple Silicon today. Revisit when upstream lands the kernel. |
+| **vllm** (vLLM-Metal) | ✗ both paths | — | — | — | GGUF path fails with `HFValidationError` (vLLM 0.21.0's loader rejects local file paths). FP8 safetensors fallback **also fails**: `ValueError: Received 18624 parameters not in model: ...weight_scale_inv` — MLX doesn't handle FP8 per-tensor scale params for MoE models. Both upstream-blocked for Qwen3-MoE on Apple Silicon. |
 
 Mark each cell: ✓ pass / ⚠ warn / ✗ fail. Add details under Notes.
 
@@ -57,17 +57,30 @@ _baseline_ — passes all four axes. Two models exposed via `/v1/models`
 (`qwen3-coder-30b-a3b-instruct-mlx`, `qwen3-vl-8b-instruct-mlx`).
 
 ### ollama
-2026-05-20: app installed at `/Applications/Ollama.app`. `open -a Ollama` launches
-the GUI process but the daemon never binds to `:11434` — Ollama on macOS requires
-the user to click through a first-launch dialog (terms / "Start" prompt) in the
-menubar before the daemon initializes. `~/.ollama/` never gets created without
-that interaction. **Unblocked by user action**: open Ollama from Spotlight, click
-through the welcome screen, then `ollama create qwen3-coder-30b-a3b-instruct -f
-docs/local-provider-configs/ollama/Modelfile-qwen3-coder`, then re-run smoke.
+**Resolved 2026-05-20.** Initially looked blocked — `open -a Ollama` launched the
+GUI process but the daemon never bound. The unblocker: pre-create `~/.ollama/`
+manually, then run `ollama serve` directly from `/Applications/Ollama.app/Contents/Resources/ollama`.
+That bypasses the menubar first-launch flow entirely. Once the daemon is up:
+`ollama create qwen3-coder-30b-a3b-instruct -f docs/local-provider-configs/ollama/Modelfile-qwen3-coder`
+imports the GGUF into Ollama's blob store (32 GB copy, not symlinked — Ollama's
+blob store is opaque).
+
+The first Modelfile version used a plain ChatML template, which Ollama
+**rejected as not tool-capable** (HTTP 400: "model does not support tools").
+Ollama gates tool support on the template rendering `.Tools` and `.ToolCalls`
+blocks. The Modelfile now uses the canonical Qwen3 tool-aware template — fixed
+the tool-call axis without re-importing the GGUF.
 
 ### jan
-Same pattern — app installed, daemon needs Jan UI → Settings → Local Server →
-Start. GUI step. Unblocked by user action.
+**Resolved 2026-05-20.** Jan ships `/Applications/Jan.app/Contents/MacOS/jan-cli`
+which bypasses the GUI entirely: `jan-cli serve --model-path <gguf> --port 1337
+--n-gpu-layers=-1 --ctx-size 32768 --detach`. The catch: `jan-cli` doesn't ship
+the inference backend, only the CLI wrapper. Needed `brew install llama.cpp` to
+provide `llama-server`, then `--bin $(which llama-server)` in the `jan-cli serve`
+invocation. Default port is 6767, rebound to 1337 to match Merlin's
+`ProviderConfig.swift`. Hybrid `/v1/models` response (both `models` and `data`
+keys) confused the smoke test on first read but the OpenAI-compat surface works
+correctly.
 
 ### localai (native)
 ✓ Passes all four axes. Native install via `brew install localai` + the
@@ -76,57 +89,60 @@ Desktop's Linux VM has no GPU access). Single completion returns "pong";
 streaming yields 12 SSE chunks; tool_calls present in the response.
 
 ### mistralrs
-✗ Inference panics on Metal. Server binds; `/v1/models` returns; but every chat
-completion request hits:
-```
-thread '<unnamed>' panicked at candle-core-0.10.2/src/quantized/mod.rs:680:17:
-indexed_moe_forward is not implemented in this platform!
-```
-This is a `candle-core` Metal backend limitation, not a configuration issue.
-Qwen3-Coder-A3B is a Mixture-of-Experts model; the MoE forward pass for Metal
-isn't yet implemented in candle 0.10.2.
-
-**Options to revisit:** wait for upstream Mistral.rs / candle-core to ship the
-Metal MoE op, OR switch to a non-MoE model for this provider only, OR retire
-Mistral.rs from the active testing matrix until the upstream lands.
+**Dropped from matrix per user direction (2026-05-20).** Inference panics on
+Metal: `indexed_moe_forward is not implemented in this platform!`
+`candle-core 0.10.2` doesn't implement MoE forward pass for Metal. Server
+binds and `/v1/models` returns, but every chat completion errors. Cannot serve
+Qwen3-Coder-A3B from this provider on Apple Silicon today. Revisit when
+upstream candle lands the Metal MoE op.
 
 ### vllm (vLLM-Metal)
-✗ Engine init fails before the server binds:
+**Both load paths fail upstream.**
+
+GGUF (Q8_0):
 ```
 huggingface_hub.errors.HFValidationError: Repo id must be in the form
 'repo_name' or 'namespace/repo_name': '/Users/.../Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf'.
 ```
-vLLM 0.21.0 (the venv `+cpu` build per `local-llm-provider-tested` memory) passes
-the local GGUF path through HF repo-id validation at `model_lifecycle.py:126`,
-which rejects file paths. This is the documented MoE-GGUF fragility flagged in
-the original launch script comment.
+vLLM 0.21.0's loader passes the local GGUF path through HF repo-id validation
+at `model_lifecycle.py:126`.
 
-**FP8 safetensors fallback is the documented next step.** Requires:
-```bash
-huggingface-cli download Qwen/Qwen3-Coder-30B-A3B-Instruct-FP8 \
-    --local-dir ~/Models/hf/Qwen3-Coder-30B-A3B-Instruct-FP8
+FP8 safetensors (downloaded 2026-05-20, ~29 GB at `~/Models/hf/Qwen3-Coder-30B-A3B-Instruct-FP8/`):
 ```
-(~30 GB download). Then uncomment the FP8 block in
-`docs/local-provider-configs/vllm-metal/launch-qwen3-coder.sh`.
-Not started in this pass — pending user approval given the disk + bandwidth cost.
+ValueError: Received 18624 parameters not in model:
+  model.layers.0.mlp.experts.0.down_proj.weight_scale_inv, ...
+```
+MLX (the Apple Silicon ML framework that vLLM-Metal uses) doesn't handle the
+FP8 per-tensor scale params (`weight_scale_inv`) that accompany FP8-quantized
+MoE models.
+
+Both paths blocked upstream. **Recommendation: drop vLLM-Metal from the active
+testing matrix** for the same reason Mistral.rs was dropped — Qwen3-MoE on
+Apple Silicon is the common failure surface. The FP8 download stays on disk as
+documentation of the attempt; revisit if vLLM-Metal's MLX integration improves.
 
 
-## Takeaways — 2026-05-20 first pass
+## Takeaways — 2026-05-20 final
 
-**Passing smoke today (2/6):** LM Studio (MLX-8bit baseline), LocalAI native (Q8 GGUF + Metal).
+**Passing smoke (4/6):** LM Studio (MLX-8bit baseline), Ollama (Q8 GGUF), Jan.ai (Q8 GGUF), LocalAI native (Q8 GGUF). All four pass all four wire-format axes (reachable, completion, streaming, tool_calls).
 
-**Blocked on user action (2/6):** Ollama and Jan.ai — both have GUI-only first-launch flows that can't be driven from the shell. Once each is brought up by hand once, both should work end-to-end with the existing Modelfile / model.json artifacts.
+**Out of the matrix (2/6):**
+- **Mistral.rs** — dropped per user direction. `candle-core 0.10.2` lacks `indexed_moe_forward` for Metal; can't serve Qwen3-MoE.
+- **vLLM-Metal** — both GGUF and FP8 load paths fail upstream on Qwen3-MoE + MLX (HFValidationError on GGUF; `weight_scale_inv` mismatch on FP8). FP8 safetensors stay on disk in case vLLM-Metal's MLX integration improves.
 
-**Failed on Metal compatibility (2/6):**
-- **Mistral.rs** — `candle-core 0.10.2` doesn't implement MoE forward on Metal. Qwen3-MoE can't serve from this provider today regardless of how the loader is configured. Blocked upstream until candle lands the kernel.
-- **vLLM-Metal** — vLLM 0.21.0's GGUF loader treats local file paths as HF repo IDs. Same Qwen3-MoE-via-GGUF combo is fragile here too. The documented workaround is FP8 safetensors (~30 GB download, not attempted yet).
+**Calibration matrix is 4 providers** — meaningful llama.cpp-vs-MLX comparison even without Mistral.rs and vLLM-Metal:
+- LM Studio = MLX-8bit (different inference path)
+- Ollama / Jan / LocalAI = llama.cpp family on Q8_0 GGUF (same kernel; provides a 3-way convergence sanity check)
 
-**Implication for the calibration matrix:** the planned "calibrate all 5" comparison cannot complete today. The realistic data set is:
-- LM Studio (baseline) — runnable now
-- LocalAI native — runnable now
-- Ollama — runnable after one menubar click
-- Jan.ai — runnable after Jan UI toggle
-- Mistral.rs — **out** until upstream MoE-on-Metal lands
-- vLLM-Metal — **out** unless FP8 fallback is pursued (separate decision)
+Calibration outcomes should show:
+- Ollama / Jan / LocalAI converging within ~1–2% of each other (same kernel; differences are wrapper overhead and parameter defaults)
+- LM Studio differing more because it's a different precision (MLX-8bit vs Q8_0 GGUF) and a different runtime (MLX vs llama.cpp)
+- Larger gaps on the llama.cpp trio than ~2% would suggest a tokenizer or parameter-default mismatch worth investigating.
 
-**Recommendation:** complete calibration on the four providers that can run (LM Studio, LocalAI, Ollama, Jan) — that already gives a meaningful llama.cpp-family-vs-MLX comparison. Defer Mistral.rs until upstream catches up. Defer vLLM-Metal until you decide whether the FP8 download is worth it.
+**Daemons running at end of pass:**
+- LM Studio (`:1234`) — yours, leave alone
+- LocalAI native (`:8080`) — restart with `bash docs/local-provider-configs/localai/launch-native.sh`
+- Ollama (`:11434`) — restart with `OLLAMA_HOST=127.0.0.1:11434 /Applications/Ollama.app/Contents/Resources/ollama serve`
+- Jan (`:1337`, via `jan-cli` + Homebrew `llama-server`) — restart with the `jan-cli serve` command in this file's Jan section
+
+All four are ready for `/calibrate` runs from Merlin against DeepSeek as the reference remote.
