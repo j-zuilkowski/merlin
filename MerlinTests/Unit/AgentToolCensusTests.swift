@@ -8,9 +8,11 @@ import XCTest
 final class AgentToolCensusTests: XCTestCase {
 
     /// Every tool in `ToolDefinitions.all` - the built-in set `registerBuiltins()`
-    /// registers. `.all` concatenates the core tools, `spawn_agent`, and the 23
-    /// `kicad_*` tools. `web_search` is the only conditional tool (registered via
-    /// `registerWebSearchIfAvailable` when a key is present) and is therefore excluded.
+    /// registers: the core tools plus `spawn_agent`. `web_search` is conditional
+    /// (registered via `registerWebSearchIfAvailable` when a key is present) and is
+    /// excluded. The `kicad_*` domain is served by the `kicad` MCP server's
+    /// `mcp:kicad:*` tools, registered at runtime by MCPBridge — the bare `kicad_*`
+    /// definitions are not built in, so they are excluded here too.
     private static let expectedBuiltins: Set<String> = [
         // Core
         "read_file", "write_file", "create_file", "delete_file", "list_directory",
@@ -26,15 +28,6 @@ final class AgentToolCensusTests: XCTestCase {
         "ui_scroll", "ui_screenshot", "vision_query", "rag_search", "rag_list_books",
         // Subagent
         "spawn_agent",
-        // KiCad / electronics
-        "kicad_check_version", "kicad_ingest_schematic", "kicad_answer_clarification",
-        "kicad_build_intent_model", "kicad_select_components", "kicad_prepare_libraries",
-        "kicad_assign_footprints", "kicad_compile_project", "kicad_apply_board_profile",
-        "kicad_generate_net_classes", "kicad_place_components", "kicad_route_pass",
-        "kicad_check_connectivity", "kicad_run_erc", "kicad_run_drc", "kicad_check_parity",
-        "kicad_run_spice", "kicad_evaluate_simulation", "kicad_visual_inspect",
-        "kicad_export_fab", "kicad_prepare_vendor_order", "kicad_submit_vendor_order",
-        "kicad_package_release",
     ]
 
     func testEveryBuiltinToolIsRegistered() {

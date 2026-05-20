@@ -1,4 +1,9 @@
 enum ToolDefinitions {
+    // The KiCad domain is served by the `kicad` MCP server — its `mcp:kicad:*`
+    // tools are registered at runtime by MCPBridge. The bare `kicad_*`
+    // definitions in `KiCadToolDefinitions` are deliberately NOT built in:
+    // production registers no handler for them, and offering them next to the
+    // `mcp:kicad:*` versions duplicated the KiCad surface in every request.
     static let all: [ToolDefinition] = [
         readFile, writeFile, createFile, deleteFile,
         listDirectory, moveFile, searchFiles,
@@ -17,7 +22,6 @@ enum ToolDefinitions {
         ragSearch, ragListBooks,
         generateAPIDocs, generateDevGuide,
         writeValeStyles, scaffoldManualCoverage,
-    ] + KiCadToolDefinitions.all + [
         .spawnAgent,
     ]
 

@@ -194,3 +194,25 @@ the first context-overflow 400, **persisting it to `ProviderConfig.budget` in
 survives restarts and the 400 is never paid twice. Phase 286's universal guard consumes
 this resolver (and feeds `recordObservedLimit` on a 400), so enforcement is correct on
 every model and provider with no user configuration.
+
+### Fix (2026-05-19) — reject a degenerate learned context window
+
+`ProviderRegistry.recordLearnedContextWindow(_:for:)` persisted whatever context-token
+count it was handed, with no lower bound. LM Studio's `/api/v0/models` reports
+`loaded_context_length: 0` for a model that is registered but not yet fully loaded, so a
+discovery call that landed during model load wrote `ProviderBudget(maxInputTokens: 0,
+reservedOutputTokens: 4_096)` — `usableInputTokens` of −4 096 — into `providers.json`.
+Every later run then read that degenerate budget and died at its first preflight check
+(`preflight overflow (5642 > 0)`), which is why S1 failed intermittently with `tools 0`.
+
+`recordLearnedContextWindow` now builds the candidate `ProviderBudget` and persists it
+only when `usableInputTokens > 0`; a non-positive observation is dropped, leaving the
+existing persisted budget intact. This is the persistence-path root-cause fix that
+commit `802a419` (the `ProviderBudget.preflightSafe` read-side clamp) flagged for
+separate root-causing — the two together close the bug at both the write and read
+boundaries.
+
+`recordLearnedContextWindow(_:for:persistURL:)` and `persistedBudget(for:persistURL:)`
+overloads were added as test seams so the persistence path can be verified
+deterministically against a temp file (`ProviderRegistryTests`); the no-`persistURL`
+forms delegate to them with `defaultPersistURL`.

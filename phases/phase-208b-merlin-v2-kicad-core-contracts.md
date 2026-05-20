@@ -562,6 +562,9 @@ private extension JSONSchema {
 
 ## Edit: Merlin/Tools/ToolDefinitions.swift
 
+> **Superseded — see "## Fixes" at the end of this file.** The bare `kicad_*`
+> schemas are no longer concatenated into `ToolDefinitions.all`.
+
 Change `ToolDefinitions.all` so the KiCad tool schemas are included before `.spawnAgent`.
 Use this array-concatenation form so the final type remains `[ToolDefinition]`:
 
@@ -611,3 +614,27 @@ git add Merlin/Electronics/KiCadV2Core.swift \
         Merlin/Tools/ToolDefinitions.swift
 git commit -m "Phase 208b — Merlin v2.0 KiCad core contracts"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-19 — Bare `kicad_*` tools removed from `ToolDefinitions.all`
+
+The KiCad domain is served exclusively by the `kicad` MCP server, whose
+`mcp:kicad:*` tools MCPBridge registers at runtime. The bare `kicad_*`
+definitions were still concatenated into `ToolDefinitions.all` (the
+`] + KiCadToolDefinitions.all + [` form above), so `registerBuiltins()`
+offered both copies of every KiCad tool in every request's tool array — the
+bare set plus the `mcp:kicad:*` set — bloating context and inviting tool-choice
+confusion. Production never wires `ToolRouter.registerKiCadTools(executor:)`, so
+the bare names also had no handler and would fail if called.
+
+`ToolDefinitions.all` now ends with `.spawnAgent` directly — no
+`KiCadToolDefinitions.all` concatenation. `KiCadToolDefinitions` itself is
+unchanged; it is still consumed by `ToolRouter.registerKiCadTools` and by the
+contract tests.
+
+`KiCadV2CoreContractsTests.test_registerBuiltins_registersKiCadTools` was
+inverted to `test_registerBuiltins_doesNotRegisterBareKiCadTools` — it now
+asserts the bare names are absent from `ToolRegistry` after `registerBuiltins()`.

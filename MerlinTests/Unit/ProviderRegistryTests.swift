@@ -110,4 +110,54 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNil(registry.primaryProvider)
     }
 
+    // MARK: Learned context window persistence
+
+    private func tempPersistURL() -> URL {
+        URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString + ".json")
+    }
+
+    func testRecordLearnedContextWindowPersistsAValidObservation() {
+        let tmp = tempPersistURL()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // Seed providers.json on disk (lmstudio default carries no budget).
+        ProviderRegistry(persistURL: tmp).setEnabled(true, for: "lmstudio")
+
+        ProviderRegistry.recordLearnedContextWindow(32_768, for: "lmstudio", persistURL: tmp)
+
+        let budget = ProviderRegistry.persistedBudget(for: "lmstudio", persistURL: tmp)
+        XCTAssertEqual(budget?.maxInputTokens, 32_768)
+        XCTAssertGreaterThan(budget?.usableInputTokens ?? 0, 0)
+    }
+
+    func testRecordLearnedContextWindowRejectsAZeroObservation() {
+        let tmp = tempPersistURL()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // Seed a healthy persisted budget for lmstudio.
+        let healthy = ProviderBudget(maxInputTokens: 32_768, reservedOutputTokens: 4_096)
+        ProviderRegistry(persistURL: tmp).updateBudget(healthy, for: "lmstudio")
+
+        // LM Studio reporting loaded_context_length 0 must not overwrite a healthy budget.
+        ProviderRegistry.recordLearnedContextWindow(0, for: "lmstudio", persistURL: tmp)
+
+        XCTAssertEqual(ProviderRegistry.persistedBudget(for: "lmstudio", persistURL: tmp), healthy,
+                       "a zero observation must not corrupt the persisted budget")
+    }
+
+    func testRecordLearnedContextWindowRejectsAnObservationBelowReservedOutput() {
+        let tmp = tempPersistURL()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // No prior budget — existingReserved defaults to 4096; an observation of 4096
+        // leaves zero usable input and must be rejected, leaving the budget unset.
+        ProviderRegistry(persistURL: tmp).setEnabled(true, for: "lmstudio")
+
+        ProviderRegistry.recordLearnedContextWindow(4_096, for: "lmstudio", persistURL: tmp)
+
+        XCTAssertNil(ProviderRegistry.persistedBudget(for: "lmstudio", persistURL: tmp),
+                     "an observation that yields zero usable input must not be persisted")
+    }
+
 }

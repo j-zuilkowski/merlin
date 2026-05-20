@@ -51,6 +51,20 @@
          </BuildActionEntry>
          <BuildActionEntry
             buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7B9279B6F7094929F0CB4972"
+               BuildableName = "MerlinUITests.xctest"
+               BlueprintName = "MerlinUITests"
+               ReferencedContainer = "container:Merlin.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
             buildForRunning = "YES"
             buildForProfiling = "YES"
             buildForArchiving = "YES"
@@ -103,13 +117,24 @@
                ReferencedContainer = "container:Merlin.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7B9279B6F7094929F0CB4972"
+               BuildableName = "MerlinUITests.xctest"
+               BlueprintName = "MerlinUITests"
+               ReferencedContainer = "container:Merlin.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "RUN_LIVE_TESTS"
-            value = "[&quot;value&quot;: &quot;1&quot;, &quot;isEnabled&quot;: true]"
+            value = "1"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>

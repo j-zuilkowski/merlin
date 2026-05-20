@@ -46,10 +46,17 @@ class ToolRouter {
         handlers[name] = handler
     }
 
+    // Idempotent by tool name: re-registering a tool (e.g. an MCP server that
+    // reconnects) replaces the existing definition rather than appending a
+    // duplicate, so `mcpToolDefinitions()` never lists the same tool twice.
     func registerMCPTool(_ definition: ToolDefinition,
                          handler: @MainActor @escaping ([String: Any]) async -> String) {
         let name = definition.function.name
-        mcpDefinitions.append(definition)
+        if let existing = mcpDefinitions.firstIndex(where: { $0.function.name == name }) {
+            mcpDefinitions[existing] = definition
+        } else {
+            mcpDefinitions.append(definition)
+        }
         mcpHandlers[name] = { arguments in
             await handler(Self.dictionary(from: arguments))
         }

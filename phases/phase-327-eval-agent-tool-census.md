@@ -35,9 +35,11 @@ import XCTest
 final class AgentToolCensusTests: XCTestCase {
 
     /// Every tool in `ToolDefinitions.all` — the built-in set `registerBuiltins()`
-    /// registers. `.all` concatenates the core tools, `spawn_agent`, and the 23
-    /// `kicad_*` tools. `web_search` is the only conditional tool (registered via
-    /// `registerWebSearchIfAvailable` when a key is present) and is therefore excluded.
+    /// registers: the core tools plus `spawn_agent`. `web_search` is conditional
+    /// (registered via `registerWebSearchIfAvailable` when a key is present) and is
+    /// excluded. The `kicad_*` domain is served by the `kicad` MCP server's
+    /// `mcp:kicad:*` tools at runtime — the bare `kicad_*` definitions are not built
+    /// in, so they are excluded here too.
     private static let expectedBuiltins: Set<String> = [
         // Core
         "read_file", "write_file", "create_file", "delete_file", "list_directory",
@@ -53,15 +55,6 @@ final class AgentToolCensusTests: XCTestCase {
         "ui_scroll", "ui_screenshot", "vision_query", "rag_search", "rag_list_books",
         // Subagent
         "spawn_agent",
-        // KiCad / electronics
-        "kicad_check_version", "kicad_ingest_schematic", "kicad_answer_clarification",
-        "kicad_build_intent_model", "kicad_select_components", "kicad_prepare_libraries",
-        "kicad_assign_footprints", "kicad_compile_project", "kicad_apply_board_profile",
-        "kicad_generate_net_classes", "kicad_place_components", "kicad_route_pass",
-        "kicad_check_connectivity", "kicad_run_erc", "kicad_run_drc", "kicad_check_parity",
-        "kicad_run_spice", "kicad_evaluate_simulation", "kicad_visual_inspect",
-        "kicad_export_fab", "kicad_prepare_vendor_order", "kicad_submit_vendor_order",
-        "kicad_package_release",
     ]
 
     func testEveryBuiltinToolIsRegistered() {
@@ -125,3 +118,16 @@ test doing its job.)
 git add MerlinTests/Unit/AgentToolCensusTests.swift phases/phase-327-eval-agent-tool-census.md
 git commit -m "Phase 327 — Eval agent-tool census (S18)"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-19 — Census drops the 23 bare `kicad_*` tools
+
+The 23 bare `kicad_*` names were removed from `ToolDefinitions.all` (see
+phase-208b "## Fixes") — the `kicad` MCP server provides the `mcp:kicad:*` tools
+at runtime instead. `expectedBuiltins` no longer lists the `kicad_*` block, so
+`testToolDefinitionsAllMatchesTheCensus` and `testEveryBuiltinToolIsRegistered`
+match the trimmed built-in set. `SURFACE-CENSUS.md` §3.1 must drop the same 23
+names to stay in sync.

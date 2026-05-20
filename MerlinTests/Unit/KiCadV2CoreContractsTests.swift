@@ -138,12 +138,17 @@ final class KiCadV2CoreContractsTests: XCTestCase {
         XCTAssertNotNil(tool.function.parameters.properties?["extraction_profile"])
     }
 
-    func test_registerBuiltins_registersKiCadTools() async {
+    /// The bare `kicad_*` definitions are deliberately not built in. The `kicad`
+    /// MCP server supplies the `mcp:kicad:*` tools at runtime; offering both
+    /// duplicated the KiCad surface in every request's tool list, and production
+    /// registers no handler for the bare names.
+    func test_registerBuiltins_doesNotRegisterBareKiCadTools() async {
         await MainActor.run {
             ToolRegistry.shared.registerBuiltins()
 
-            for requiredName in KiCadToolDefinitions.requiredToolNames {
-                XCTAssertTrue(ToolRegistry.shared.contains(named: requiredName), "ToolRegistry missing: \(requiredName)")
+            for bareName in KiCadToolDefinitions.requiredToolNames {
+                XCTAssertFalse(ToolRegistry.shared.contains(named: bareName),
+                               "bare KiCad tool unexpectedly built in: \(bareName)")
             }
         }
     }

@@ -366,6 +366,10 @@ to decode the full JSON-RPC response inline — adjust `pending` type to
 
 ## Modify: Merlin/Engine/ToolRouter.swift
 
+> **`registerMCPTool` is idempotent — see "## Fixes" at the end of this file.**
+> It replaces an existing definition with the same `function.name` rather than
+> appending a duplicate.
+
 Add `registerMCPTool` method:
 
 ```swift
@@ -444,3 +448,16 @@ git add Merlin/MCP/MCPConfig.swift \
         project.yml
 git commit -m "Phase 40b — MCPBridge: stdio transport + tool registration"
 ```
+
+---
+
+## Fixes
+
+### 2026-05-19 — `registerMCPTool` made idempotent by tool name
+
+`registerMCPTool` appended to `mcpDefinitions` unconditionally. If a server were
+ever registered twice (e.g. a reconnect), `mcpToolDefinitions()` would list each
+of its tools more than once. It now replaces the existing definition when one
+with the same `function.name` is already present, and only appends otherwise —
+matching the existing name-keyed idempotency of `ToolRegistry.register`.
+`mcpHandlers` is a dictionary keyed by name, so it already replaced.

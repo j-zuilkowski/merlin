@@ -212,7 +212,7 @@ override-log.jsonl, memory.sqlite, worktrees/.
 
 # Part 3 — Agent capability surface
 
-## 3.1 — Built-in tools — ~67 (+ MCP dynamic)
+## 3.1 — Built-in tools — ~45 (+ web_search conditional, + MCP dynamic)
 - **File system (7):** read_file, write_file, create_file, delete_file, list_directory,
   move_file, search_files
 - **Shell (2):** run_shell, bash
@@ -229,14 +229,10 @@ override-log.jsonl, memory.sqlite, worktrees/.
 - **RAG (2):** rag_search, rag_list_books
 - **Subagent (1):** spawn_agent
 - **Web (1, conditional):** web_search
-- **KiCad / electronics (23):** kicad_check_version, kicad_ingest_schematic,
-  kicad_answer_clarification, kicad_build_intent_model, kicad_select_components,
-  kicad_prepare_libraries, kicad_assign_footprints, kicad_compile_project,
-  kicad_apply_board_profile, kicad_generate_net_classes, kicad_place_components,
-  kicad_route_pass, kicad_check_connectivity, kicad_run_erc, kicad_run_drc,
-  kicad_check_parity, kicad_run_spice, kicad_evaluate_simulation, kicad_visual_inspect,
-  kicad_export_fab, kicad_prepare_vendor_order, kicad_submit_vendor_order,
-  kicad_package_release
+- **KiCad / electronics (23, not built-in):** served by the `kicad` MCP server as
+  `mcp:kicad:*` tools, registered at runtime by MCPBridge — not part of
+  `ToolDefinitions.all`. The bare `kicad_*` names (`KiCadToolDefinitions`) are kept
+  only for `ToolRouter.registerKiCadTools` and the contract tests.
 - **MCP-registered:** dynamic, per configured server.
 
 ## 3.2 — Built-in skills — 13
