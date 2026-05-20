@@ -26,15 +26,17 @@ if [ ! -f "$MODEL" ]; then
     exit 1
 fi
 
-# Serve under the canonical Merlin name so /calibrate's model field resolves.
-# --num-device-layers 999: offload everything to Metal on Apple Silicon.
-exec "$MISTRALRS" \
-    --port "$PORT" \
-    --serve-model-name qwen3-coder-30b-a3b-instruct \
-    gguf \
-    --quantized-model-id "$(dirname "$MODEL")" \
-    --quantized-filename "$(basename "$MODEL")" \
-    --tok-model-id Qwen/Qwen3-Coder-30B-A3B-Instruct
+# mistralrs CLI uses the new `serve` subcommand (≥ 0.6).
+# --model-id Qwen/Qwen3-Coder-30B-A3B-Instruct: HF ID used to fetch the tokenizer
+#   (small download, < 5 MB). The GGUF on disk carries the weights; only the
+#   tokenizer.json comes from HF cache.
+# --format gguf: explicit quantized format.
+# --quantized-file: local GGUF path.
+exec "$MISTRALRS" serve \
+    -p "$PORT" \
+    --model-id Qwen/Qwen3-Coder-30B-A3B-Instruct \
+    --format gguf \
+    --quantized-file "$MODEL"
 
 # Verify after launch (in another shell):
 #   curl -s http://localhost:1235/v1/models | jq '.data[].id'
