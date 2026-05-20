@@ -42,6 +42,7 @@
 		0ADE7AA0AE21307C0EB1FD45 /* ReleaseNotes223Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77FF7975A85136FA14AD7FC4 /* ReleaseNotes223Tests.swift */; };
 		0B30F220D7E6B844D1D586F4 /* ProjectRef.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBE91528B70860D12EC1079B /* ProjectRef.swift */; };
 		0B40DF85EA78B044C01AC2EF /* SubagentBlockViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 780C9155D3371C4648AFD217 /* SubagentBlockViewModel.swift */; };
+		0B6E1F7D0C162297FF036AED /* LoRAServingTargetSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CEFD3554F2269CF94A90A16 /* LoRAServingTargetSettingsTests.swift */; };
 		0C1768883C840EFEDA8D62AB /* ReachabilityScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BB2966A87360ED741DC4D09 /* ReachabilityScannerTests.swift */; };
 		0C2B8B52A8E2C902965BDA2A /* CalibrationProviderPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38C8A2B7237A4C6BF14084E /* CalibrationProviderPickerView.swift */; };
 		0C3A4609C9717267AA2ED716 /* TelemetryTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D501FAEB789C93F0650523 /* TelemetryTestSupport.swift */; };
@@ -819,6 +820,7 @@
 		1C07A06E404659EA74281294 /* ProviderRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistryTests.swift; sourceTree = "<group>"; };
 		1C21FDA72563FEE392D0E2A6 /* ToolDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolDiscovery.swift; sourceTree = "<group>"; };
 		1C2C4AE323463FB930C46110 /* ProseGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProseGate.swift; sourceTree = "<group>"; };
+		1CEFD3554F2269CF94A90A16 /* LoRAServingTargetSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRAServingTargetSettingsTests.swift; sourceTree = "<group>"; };
 		1D346174A6A0E86C7CA26312 /* AtMentionPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtMentionPicker.swift; sourceTree = "<group>"; };
 		1DCE99FA72471FE095637908 /* SubagentSidebarEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentSidebarEntry.swift; sourceTree = "<group>"; };
 		1DFF52425CEB09558498FAE5 /* ManualBaselineDecayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualBaselineDecayTests.swift; sourceTree = "<group>"; };
@@ -1839,6 +1841,7 @@
 				335BC7A48AEA390D361A1594 /* LoopContinuationTests.swift */,
 				8C3D806AA4833BFECA8ADE52 /* LoRACoordinatorTests.swift */,
 				5DED0D738772FAA340FE8920 /* LoRAProviderRoutingTests.swift */,
+				1CEFD3554F2269CF94A90A16 /* LoRAServingTargetSettingsTests.swift */,
 				56E6FB41E80811F714059A39 /* LoRASettingsTests.swift */,
 				EA984C160727658DFC5F3BD0 /* LoRASettingsUITests.swift */,
 				4CE3E6B611505F4A46D94198 /* LoRATrainerTests.swift */,
@@ -2902,6 +2905,7 @@
 				BF0737A93EFF366194AC189F /* LivenessGateTests.swift in Sources */,
 				F07CA005D9EF157B9FFFE855 /* LoRACoordinatorTests.swift in Sources */,
 				1AF487899B31AD33C2430881 /* LoRAProviderRoutingTests.swift in Sources */,
+				0B6E1F7D0C162297FF036AED /* LoRAServingTargetSettingsTests.swift in Sources */,
 				89EEA017C05C812B03517C69 /* LoRASettingsTests.swift in Sources */,
 				B074154F934A8E616C2C48E3 /* LoRASettingsUITests.swift in Sources */,
 				2CB8F80D2FAEDBBAAEC33384 /* LoRATrainerTests.swift in Sources */,
