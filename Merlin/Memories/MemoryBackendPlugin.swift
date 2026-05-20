@@ -11,19 +11,14 @@ import Foundation
 /// All fields except `id`, `content`, and `chunkType` are optional so both cases can
 /// share the same storage schema.
 struct MemoryChunk: Sendable, Equatable {
-    /// Stable UUID string assigned at creation time.
     let id: String
-    /// The text content of the memory.
     let content: String
-    /// Semantic category: "factual" for approved memories, "episodic" for auto-summaries.
+    /// `"factual"` for approved memories, `"episodic"` for auto-summaries.
     let chunkType: String
-    /// Optional labels for filtering (e.g. ["session-memory"]).
+    /// E.g. `["session-memory"]`.
     let tags: [String]
-    /// ID of the session that produced this chunk, if known.
     let sessionID: String?
-    /// File-system project path active when this chunk was written, if known.
     let projectPath: String?
-    /// Creation timestamp — set to Date() at write time.
     let createdAt: Date
 
     init(
@@ -87,22 +82,20 @@ struct MemorySearchResult: Sendable {
 /// Conforming types are actors so storage operations are serialized. `pluginID` and
 /// `displayName` are `nonisolated` so the registry can read them without an `await`.
 protocol MemoryBackendPlugin: Actor {
-    /// Stable identifier used to persist the active plugin choice in AppSettings.
     nonisolated var pluginID: String { get }
-    /// Human-readable name shown in Settings.
     nonisolated var displayName: String { get }
 
-    /// Persist a memory chunk. Implementations should embed the content asynchronously
-    /// if embedding is expensive, so this call returns quickly.
+    /// Implementations should embed the content asynchronously if embedding is expensive,
+    /// so this call returns quickly.
     func write(_ chunk: MemoryChunk) async throws
 
-    /// Return up to `topK` chunks most relevant to `query`, sorted descending by score.
+    /// Returns up to `topK` chunks sorted descending by score.
     func search(query: String, topK: Int) async throws -> [MemorySearchResult]
 
-    /// Return results scoped to `projectPath` when provided.
+    /// Scoped variant — confines retrieval to memories with matching `projectPath`.
     func search(query: String, topK: Int, projectPath: String?) async throws -> [MemorySearchResult]
 
-    /// Remove the chunk with `id`. Silent no-op if not found.
+    /// Silent no-op if `id` is not found.
     func delete(id: String) async throws
 }
 

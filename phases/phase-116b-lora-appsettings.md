@@ -27,7 +27,7 @@ Phase 116a complete: LoRASettingsTests (failing) in place.
 @Published var loraEnabled: Bool = false
 @Published var loraAutoTrain: Bool = false
 @Published var loraAutoLoad: Bool = false
-@Published var loraMinSamples: Int = 50
+@Published var loraMinSamples: Int = 1000
 @Published var loraBaseModel: String = ""
 @Published var loraAdapterPath: String = ""
 @Published var loraServerURL: String = ""
@@ -75,7 +75,7 @@ if loraEnabled {
     if loraAutoLoad {
         lines.append("lora_auto_load = true")
     }
-    if loraMinSamples != 50 {
+    if loraMinSamples != 1000 {
         lines.append("lora_min_samples = \(loraMinSamples)")
     }
     if !loraBaseModel.isEmpty {
@@ -121,3 +121,25 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift
 git commit -m "Phase 116b — LoRA AppSettings (loraEnabled + 6 sub-settings, [lora] TOML section)"
 ```
+
+---
+
+## Fixes
+
+**2026-05-20 — `loraMinSamples` default raised from 50 → 1000.**
+
+The original `50` was a pipeline-testing convenience (small enough to fire during phase
+development) but is well below the LoRA-fine-tuning literature's noise floor. At 50
+training samples a LoRA on a 30B-class base typically memorizes specific exchanges
+rather than generalizing — frequently producing a measurable regression on out-of-sample
+prompts. `1000` is the smallest number defensible-by-evidence for 30B-class bases:
+roughly 1–2 months of active Merlin use to accumulate (after the critic ≥ 0.8 filter),
+where the first training cycle has a realistic chance of producing a usable adapter.
+
+Affected: `AppSettings.swift` (default literal at the property declaration and at the
+TOML-omission guard); `LoRASettingsTests.swift` (default-value assertions and inline
+comments).
+
+Also tightened the production `exportTrainingData(minScore:)` default from `0.7` to
+`0.8` in `LoRACoordinator.swift` so the kept samples are higher-quality at the cost of
+a slightly slower accumulation rate. See phase-119b's Fixes section for that change.

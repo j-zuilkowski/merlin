@@ -48,7 +48,7 @@ actor LoRACoordinator {
         guard !isTraining else { return }
         guard !baseModel.isEmpty else { return }
 
-        let records = await tracker.exportTrainingData(minScore: 0.7)
+        let records = await tracker.exportTrainingData(minScore: 0.8)
         guard records.count >= minSamples else { return }
 
         isTraining = true
@@ -139,3 +139,25 @@ git add Merlin/Engine/LoRACoordinator.swift \
         Merlin/App/AppState.swift
 git commit -m "Phase 119b — LoRACoordinator (threshold-gated auto-train trigger, concurrent-safe)"
 ```
+
+---
+
+## Fixes
+
+**2026-05-20 — `exportTrainingData(minScore:)` callsite raised from 0.7 → 0.8.**
+
+The 0.7 score threshold was the docstring's "recommended minimum" but is permissive
+enough to admit mediocre exchanges into the LoRA training set. 0.8 keeps higher-quality
+samples and pairs with the simultaneous bump of `loraMinSamples` 50 → 1000 (see
+phase-116b's Fixes section): together they shift the auto-train trigger from
+"fire as soon as something runs end-to-end" toward "fire when there's a real chance the
+adapter improves the execute slot."
+
+Affected: `LoRACoordinator.swift` (only production callsite); `ModelPerformanceTracker.swift`
+(docstring "recommended minimum" updated from 0.7 → 0.8). Test-side callers passing
+explicit `0.7` are unaffected — they test the filter, not the coordinator's choice.
+
+**Constraint clarified across user-facing docs:** automatic training fires only when the
+configured base model is in MLX format. `mlx_lm.lora` cannot train GGUF or HF-safetensors
+bases; the doc claim was over-broad before. Affected docs: `README.md`, `FEATURES.md`,
+`Requirements.md`, `codex-gap.md`, `claude-code-gap.md`.

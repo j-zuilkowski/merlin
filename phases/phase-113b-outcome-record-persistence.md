@@ -59,7 +59,7 @@ func records(for modelID: String, taskType: DomainTaskType) async -> [OutcomeRec
 ```swift
 /// Returns all OutcomeRecords with score >= minScore across all models and task types.
 /// The caller formats these as instruction/response pairs for LoRA fine-tuning.
-/// minScore: 0.0–1.0; recommended minimum 0.7 to exclude poor-quality examples.
+/// minScore: 0.0–1.0; recommended minimum 0.8 to exclude poor-quality examples.
 func exportTrainingData(minScore: Double) async -> [OutcomeRecord] {
     records.values
         .flatMap { $0 }

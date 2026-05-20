@@ -2,14 +2,8 @@ import Foundation
 
 // MARK: - DPOPendingEntry
 
-/// A single DPO (Direct Preference Optimization) training pair awaiting user review.
-/// Stored as JSON at `~/.merlin/lora/pending/<uuid>.json`.
-///
-/// - `prompt`    — the user message that triggered the model response
-/// - `chosen`    — the preferred (user-corrected) response; empty until user fills in via review queue
-/// - `rejected`  — the original model response that was corrected
-/// - `modelID`   — provider model identifier at time of generation
-/// - `timestamp` — when the pair was captured
+/// A DPO (Direct Preference Optimization) training pair awaiting user review.
+/// `chosen` is empty until the user fills it in via the review queue.
 struct DPOPendingEntry: Codable, Sendable, Identifiable {
     var id: String
     var prompt: String
@@ -46,16 +40,13 @@ struct DPOPendingEntry: Codable, Sendable, Identifiable {
 
 // MARK: - DPOQueue
 
-/// Manages the `~/.merlin/lora/pending/` queue of proposed DPO training pairs.
-///
-/// Each entry is stored as a separate JSON file named `<uuid>.json`.
-/// This mirrors the memories `pending/` pattern — items wait for user approval
-/// before entering the training corpus.
+/// Queue of proposed DPO training pairs at `~/.merlin/lora/pending/` — one JSON file
+/// per entry, awaiting user approval before entering the training corpus (mirrors the
+/// `memories/pending/` pattern).
 actor DPOQueue {
 
     private let pendingDirectory: URL
 
-    /// Default init using `~/.merlin/lora/pending/`
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         self.pendingDirectory = home
@@ -64,15 +55,13 @@ actor DPOQueue {
             .appendingPathComponent("pending")
     }
 
-    /// Test init accepting an arbitrary directory.
     init(pendingDirectory: URL) {
         self.pendingDirectory = pendingDirectory
     }
 
     // MARK: - Write
 
-    /// Persist `entry` as `<entry.id>.json` in the pending directory.
-    /// Creates the directory if it does not exist.
+    /// Creates `pendingDirectory` if missing, then writes `<entry.id>.json` atomically.
     func propose(entry: DPOPendingEntry) throws {
         if !FileManager.default.fileExists(atPath: pendingDirectory.path) {
             try FileManager.default.createDirectory(
@@ -92,7 +81,6 @@ actor DPOQueue {
 
     // MARK: - Read
 
-    /// Load and return all valid pending entries from the directory.
     /// Silently skips files that cannot be decoded.
     func pendingEntries() -> [DPOPendingEntry] {
         guard let files = try? FileManager.default.contentsOfDirectory(

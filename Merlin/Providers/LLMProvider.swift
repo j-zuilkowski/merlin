@@ -248,6 +248,7 @@ struct ToolDefinition: Codable, Sendable {
     }
 }
 
+/// `@unchecked Sendable` rationale: recursive tree built once during tool registration; never mutated thereafter.
 final class JSONSchema: Codable, @unchecked Sendable {
     var type: String
     var properties: [String: JSONSchema]?

@@ -2254,7 +2254,7 @@ actor MistralRSModelManager: LocalModelManagerProtocol {
 ```swift
 import Foundation
 
-/// Manages model config for vLLM. vLLM is a GPU-focused inference server started
+/// Manages model config for vLLM-Metal. vLLM-Metal is a GPU-focused inference server started
 /// with CLI flags — load-time parameters cannot be changed without a server restart.
 ///
 /// This manager generates a ready-to-paste `python -m vllm.entrypoints.openai.api_server`
@@ -2309,7 +2309,7 @@ actor VLLMModelManager: LocalModelManagerProtocol {
         return RestartInstructions(
             shellCommand: args.joined(separator: " \\\n  "),
             configSnippet: nil,
-            explanation: "vLLM does not support runtime model reloading. "
+            explanation: "vLLM-Metal does not support runtime model reloading. "
                 + "Stop the server and restart with the command above. "
                 + "Note: --tensor-parallel-size sets the number of GPUs, not layer count."
         )
@@ -3297,7 +3297,7 @@ Find the existing sections for:
   the `[inference]` TOML section with `applyInferenceDefaults`.
 - **Local Model Management** — if not present, add a section describing:
   - Per-provider load parameter editing in Settings → Providers
-  - Runtime reload (LM Studio, Ollama, Jan) vs restart instructions (LocalAI, Mistral.rs, vLLM)
+  - Runtime reload (LM Studio, Ollama, Jan) vs restart instructions (LocalAI, Mistral.rs, vLLM-Metal)
   - Parameter advisory auto-detection (truncation, variance, repetition, context overflow)
   - One-tap fix via PerformanceDashboard "Fix this" button
 - **AI-Generated Memories** — confirm the dual-path (file injection + xcalibre RAG) bullet is present.
@@ -3365,7 +3365,7 @@ git add Merlin/Providers/LocalModelManager/JanModelManager.swift
 git add Merlin/Providers/LocalModelManager/LocalAIModelManager.swift
 git add Merlin/Providers/LocalModelManager/MistralRSModelManager.swift
 git add Merlin/Providers/LocalModelManager/VLLMModelManager.swift
-git commit -m "Phase 126b — Jan, LocalAI, Mistral.rs, vLLM model managers"
+git commit -m "Phase 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal model managers"
 
 git add MerlinTests/Unit/ModelManagerWiringTests.swift
 git commit -m "Phase 127a — ModelManagerWiringTests (failing)"

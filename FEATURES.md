@@ -21,7 +21,7 @@ Merlin connects to remote and local providers interchangeably. Switch mid-sessio
 - Jan.ai
 - LocalAI
 - Mistral.rs
-- vLLM
+- vLLM-Metal
 
 All providers share a single configuration surface (Settings → Providers). API keys are stored in macOS Keychain — never written to disk. Local providers are auto-probed for availability at launch.
 
@@ -33,7 +33,7 @@ All providers share a single configuration surface (Settings → Providers). API
 - **Parallel tool calls** — multiple tools dispatched concurrently via Swift structured concurrency.
 - **Interrupt at any time** — Stop button cancels the active turn cleanly; the session remains in a valid state.
 - **Error retry** — first failure retries silently; second failure surfaces to the user with Retry / Skip / Abort options.
-- **Context compaction** — old tool results are summarised automatically at three trigger points: (1) pre-run when estimated tokens exceed 10,000, (2) mid-loop every time tool results push past 40,000 tokens within a single turn, and (3) emergency overflow at 800,000 tokens. Mid-loop summarisation uses the active LLM to produce a narrative digest of removed exchanges rather than a static truncation marker, so the model retains a meaningful summary of what it already did. Type `/compact` in the chat bar or use Session → Compact Context (⌘⇧K) to compact on demand.
+- **Context compaction** — old tool results are summarised automatically at three trigger points: (1) pre-run when estimated tokens exceed 6,000, (2) mid-loop every time tool results push past 20,000 tokens within a single turn, and (3) emergency overflow at 800,000 tokens. Mid-loop summarisation uses the active LLM to produce a narrative digest of removed exchanges rather than a static truncation marker, so the model retains a meaningful summary of what it already did. Type `/compact` in the chat bar or use Session → Compact Context (⌘⇧K) to compact on demand. (Authoritative values in `ContextManager.swift`; see CLAUDE.md → Canonical Defaults.)
 - **Context-length recovery** — when the provider rejects a prompt as too long (HTTP 400 "context_length_exceeded"), Merlin compacts automatically and retries the failed turn once rather than stopping.
 - **Thinking mode** — automatically enabled for reasoning-heavy prompts (architecture, debugging, analysis) when the active provider supports it. Suppressed for simple operations.
 - **Reasoning effort** — configurable per provider; overridable per session.
@@ -49,7 +49,7 @@ Agentic loops accumulate context quadratically — every step sends the full his
 
 ### Mid-loop compaction
 
-`ContextManager` tracks estimated tokens after every tool result is appended to the context. When tokens exceed the **mid-loop threshold** (40,000 by default), compaction fires immediately — inside the `while true` execute loop, before the next LLM request is built. This prevents a long tool chain from silently growing the context window across dozens of iterations without the model (or the user) realising.
+`ContextManager` tracks estimated tokens after every tool result is appended to the context. When tokens exceed the **mid-loop threshold** (20,000 by default), compaction fires immediately — inside the `while true` execute loop, before the next LLM request is built. This prevents a long tool chain from silently growing the context window across dozens of iterations without the model (or the user) realising.
 
 The threshold is intentionally well below the provider's context window so there is always ample headroom for the next LLM response. Compaction removes the oldest complete tool-exchange groups (an assistant message with `tool_calls` together with all its `tool` result messages) so the context never violates the OpenAI wire format.
 
@@ -57,7 +57,7 @@ The threshold is intentionally well below the provider's context window so there
 
 When mid-loop compaction fires, the removed tool exchanges are passed to the active LLM provider as a compact one-shot summarisation request (no tools, temperature 0). The model produces a short narrative digest — "read `Engine.swift`, found the run loop at line 550, patched lines 711–715, ran tests: 3 passed" — which is inserted as a `system` message in place of the raw exchanges.
 
-This contrasts with the overflow path (800 K tokens) and the pre-run path (10 K tokens), which both use a static truncation marker rather than an LLM call. The mid-loop path spends one cheap summarisation call to preserve task continuity across hundreds of tool steps.
+This contrasts with the overflow path (800 K tokens) and the pre-run path (6 K tokens), which both use a static truncation marker rather than an LLM call. The mid-loop path spends one cheap summarisation call to preserve task continuity across hundreds of tool steps.
 
 ### Instruction distillation
 
@@ -74,7 +74,7 @@ Enable dynamic distillation in **Settings → Agent → Prompt Compression** or 
 
 | Technique | Trigger | Savings mechanism |
 |---|---|---|
-| Mid-loop compaction | 40,000 tokens within a turn | Removes old tool exchanges; keeps context linear |
+| Mid-loop compaction | 20,000 tokens within a turn | Removes old tool exchanges; keeps context linear |
 | LLM summarisation | Mid-loop compaction path | Preserves task continuity with a narrative digest |
 | Instruction distillation | Per session (dynamic) or static | Shrinks system prompt sent on every request |
 
@@ -97,7 +97,7 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 
 - `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
 - LM Studio, Ollama, and Jan.ai can reload at runtime.
-- LocalAI, Mistral.rs, and vLLM are restart-only and surface a copyable command plus any config snippet they need.
+- LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - The Performance Dashboard automatically detects truncation, critic-score variance, trigram repetition, and context-overflow markers.
 - Each advisory has a one-tap `Fix this` action that routes through the same `applyAdvisory(_:)` path used by the engine.
 
@@ -146,7 +146,7 @@ On first launch, a setup wizard lets you pick and configure any provider. You ca
 - **Auto-title** — after the first turn completes, the session title is automatically generated from the first 50 characters of the user's message, matching Claude app and Codex behaviour. No manual rename required. (v1.8.1: each new session is registered in `SessionStore` on init so title generation works from the very first turn.)
 - **Session isolation** — each new session gets its own `ContextManager`, message history, and `AppState`. Switching sessions switches the entire view tree; no state bleeds between sessions. (v1.8.1: `.id(session.id)` on `ContentView` forces SwiftUI to fully recreate the view when the active session changes.)
 - **Activity indicator** — a small dot in the sidebar row shows when a session's engine is running. Clears automatically when the engine finishes, even if the session is not the active view. (v1.8.1: `AppState` observes `engine.isRunning` via Combine and resets `toolActivityState` directly, so the dot always clears.)
-- **Context compaction** — old tool-result groups are removed automatically at three points: pre-run (10,000 tokens), mid-loop (40,000 tokens, with LLM summarisation), and overflow (800,000 tokens). Session → Compact Context (⌘⇧K) forces immediate compaction. When the context has no tool-exchange groups, compaction hard-truncates to the last 20 messages instead of appending a no-op sentinel.
+- **Context compaction** — old tool-result groups are removed automatically at three points: pre-run (6,000 tokens), mid-loop (20,000 tokens, with LLM summarisation), and overflow (800,000 tokens). Session → Compact Context (⌘⇧K) forces immediate compaction. When the context has no tool-exchange groups, compaction hard-truncates to the last 20 messages instead of appending a no-op sentinel.
 - **Archive & recall** — sessions can be archived (hidden from the main list) via right-click context menu. Archived sessions are revealed under "Show archived…" and can be recalled to active status at any time.
 - **Session restore** — clicking a prior session restores it as a live session with its full message history. If the restored history exceeds 10 000 estimated tokens, context compaction runs automatically before the next prompt.
 - **Git worktree isolation** — each session works in its own git worktree so parallel sessions never conflict on disk.
@@ -303,12 +303,6 @@ Merlin stores approved memories and session summaries in a local SQLite database
 - `None` disables memory persistence for ephemeral sessions.
 - xcalibre-server remains available as an optional book-content source; it is no longer used for Merlin session memory.
 
-**Behavioral reliability:**
-
-- **Circuit breaker** — after `agentCircuitBreakerThreshold` consecutive critic `.fail` verdicts (default: 3), the engine activates. In `halt` mode (default) it stops the next turn cleanly and emits a `systemNote` directing the user to act. In `warn` mode it emits a warning but lets the turn proceed. The counter resets to zero on any `.pass` or `.skipped` verdict, and on every new session. Addresses the *silent partial failure* pattern — sustained degradation that accumulates below any single-turn alert threshold. Configure in Settings → Agent or via `agent_circuit_breaker_threshold` / `agent_circuit_breaker_mode` in `~/.merlin/config.toml`.
-
-- **Grounding confidence** — every turn emits a `GroundingReport` as an `AgentEvent`, even when no chunks were retrieved. The report contains: `totalChunks` (chunks injected this turn), `averageScore` (mean cosine similarity, 0–1), `hasStaleMemory` (true when any injected memory chunk is older than `ragFreshnessThresholdDays`, default 90), and `isWellGrounded` (true when `totalChunks > 0` and `averageScore ≥ ragMinGroundingScore`, default 0.30). Both thresholds are configurable in Settings → Agent or via `rag_freshness_threshold_days` / `rag_min_grounding_score` in `~/.merlin/config.toml`. Addresses the *context degradation* pattern — the model reasoning confidently over stale or thin retrieval in a way invisible to the user.
-
 ---
 
 ## Behavioral Reliability
@@ -397,7 +391,7 @@ All connectors are opt-in. Credentials in Keychain.
 
 ## Web Search
 
-Brave Search integration. When a Brave API key is configured (Settings → Search), a `web_search` tool is registered and available to the agent. Disabled entirely when no key is present.
+Brave Search integration. When a Brave API key is configured in **Settings → Search** (see [Settings reference](#settings-reference) — `Search` row), a `web_search` tool is registered and available to the agent. Disabled entirely when no key is present.
 
 ---
 
@@ -418,114 +412,9 @@ Tasks are classified by complexity and routed to the most appropriate LLM slot. 
 
 ### V2.0 Electronics Domain (KiCad)
 
-KiCad integration is defined as a first-class domain extension with deterministic completion gates.
+KiCad integration is a first-class domain extension with deterministic completion gates: raster/PDF schematic ingestion, KiCad CLI as primary authority, the Merlin-owned `merlin-kicad-mcp` server for structured operations (schematic, board, placement, routing, library, simulation), FreeRouting-backed auto-route, ERC/DRC/parity/SPICE/fab gates, and vendor-native BOM/order workflows for JLCPCB / PCBWay / OSHPark / custom. High-stakes designs (hazardous energy, isolation, mission-critical) require explicit user sign-off; visual QA can block on presentation issues but cannot override electrical or fabrication gates.
 
-**Locked v2.0 decisions**
-- Raster/PDF schematic ingestion is in scope.
-- Merlin owns the `merlin-kicad-mcp` server.
-- Extraction confidence is measured from geometry, OCR, library, net-graph, and cross-pass agreement.
-- Ambiguity resolution uses targeted user clarification.
-- First MVP board profile is `jlcpcb_2layer_default`, followed by `pcbway_2layer`, `oshpark_2layer`, and `custom`.
-- Ethernet/control designs may use IoT/component modules to reduce custom high-speed layout risk.
-- Vendor integration includes BOM export, pricing/availability lookup, order preparation, and order submission.
-- Layer-count and fabrication-profile changes require user approval.
-- Routing uses FreeRouting first through `merlin-kicad-mcp` and KiCad DSN/SES interchange.
-- Schematic mutation uses a Merlin-owned `.kicad_sch` parser/writer with round-trip tests.
-
-**Supported intents**
-- "Draw me a PCB from this schematic (`.pdf` / `.png` / native KiCad input)."
-- "Design a control circuit from requirements and produce schematic + PCB + fab package."
-
-**Execution model (hybrid)**
-- KiCad CLI (`>= 10.0.0`) is the primary authority for pass/fail gates.
-- Merlin-owned `merlin-kicad-mcp` tools provide structured schematic, board, placement, routing, library, and simulation operations.
-- GUI automation + screenshot vision are fallback/QA only and cannot be sole success criteria.
-
-**Schematic extraction**
-- PDF/raster extraction uses image preprocessing, geometry tracing, symbol recognition, OCR, junction detection, net graph construction, power-symbol inference, and off-sheet/hierarchical label handling.
-- Confidence is computed from weighted geometry, OCR, library matches, net graph plausibility, and cross-pass agreement rather than LLM self-report; contradictions force ambiguity instead of being averaged away.
-- Ambiguous nets/components trigger targeted clarification before PCB synthesis.
-- Hand-drawn, whiteboard, and paper sketches are treated as conceptual requirements input unless they meet the same extraction thresholds as machine-drawn schematics.
-
-**Footprints and libraries**
-- Every schematic symbol must resolve to a footprint before board synthesis.
-- Footprints are assigned from existing KiCad fields, exact MPN/vendor metadata, package constraints, project defaults, or user clarification.
-- Missing symbols/footprints are handled through project-local library creation/import with pin, pad, package, and field verification.
-
-**Board rules and net classes**
-- Routing requires an explicit board profile: outline, fabricator, layer count, stackup, copper weight, trace/space, vias, edge clearance, silkscreen/mask rules, and impedance constraints when needed.
-- Net classes are generated before routing for power, ground, Ethernet differential pairs, clocks/reset, control nets, and isolation-boundary nets.
-- Board-house profiles are required immediately, starting with JLCPCB, PCBWay, OSHPark, and custom.
-- Default Ethernet rules include 100BASE-TX intra-pair skew <= 10 mm and 1000BASE-T intra-pair skew <= 5 mm, overridden by cited vendor/module layout guidance.
-
-**Placement and routing recovery**
-- Placement is a required optimization stage before routing: mechanical items, safety regions, power, Ethernet, controller, I/O, then DFT/silkscreen.
-- Router failure triggers congestion analysis, placement repair, net-class correction, seed routes/via changes, and constraint review before returning blocked status.
-
-**Hard gates for `COMPLETE`**
-- `unrouted_nets == 0`
-- ERC error count = 0
-- DRC error count = 0
-- schematic/PCB parity pass
-- fab export sanity pass (Gerber + drill artifacts present and valid)
-- required simulation scenarios pass (for applicable designs)
-- explicit human sign-off in high-stakes designs
-
-**Input quality policy**
-- Raster schematic inputs must be at least 300 DPI.
-- Extraction confidence thresholds:
-  - overall `>= 0.985`
-  - critical fields (RefDes, net labels, connector pins) `>= 0.995`
-- `ambiguous_nets == 0` and `unknown_components == 0` before PCB synthesis.
-
-**Routing/simulation defaults**
-- Route loop cap: 15 iterations, early stop after 3 no-improvement iterations.
-- SPICE-required design classes: analog, power, timing-critical control, protection circuits.
-- SPICE uses KiCad/ngspice-compatible netlist extraction, model provenance tracking, structured measurement parsing, and tolerance comparison.
-- Manufacturer SPICE models are cached locally with license/source metadata and are not redistributed unless the license permits it; legally unobtainable models produce a warning and generic-model suggestion when an acceptable substitute is available.
-- Default simulation tolerances:
-  - rails `±3%`
-  - analog setpoints `±5%`
-  - timing windows `±10%`
-  - protection thresholds `±7%`
-
-**Requirement-driven design**
-- Requirement-to-circuit workflows produce functional decomposition, known-good topology selection, component/module selection matrix, captured constraints, design rationale, and verification plan before schematic synthesis.
-- If no defensible topology/component set exists, the workflow returns `BLOCKED_ENGINEERING_DECISION`.
-
-**High-stakes boundary (mandatory user sign-off)**
-- Engine/generator start-stop/shutdown control
-- Hazardous energy (`>60VDC` or `>30VAC RMS`)
-- Current path above 5A
-- Isolation/interlock/protection function present
-- Military or mission-critical industrial usage
-
-**Distributor/BOM feature requirement**
-- Vendor-native BOM import/export adapters per distributor, backed by a canonical internal BOM model.
-- Initial vendor set: Digi-Key, Mouser, Arrow, Newark/Farnell/element14, LCSC, Parts Express.
-- Vendors lacking public API support use authenticated portal automation fallback.
-- KiCad fields map to canonical BOM fields: RefDes, value, footprint, manufacturer, MPN, vendor SKUs, quantity, DNP, lifecycle, and substitutions.
-- Order submission requires explicit user approval, final vendor/cart review, and a recorded order summary.
-
-**Fabrication and assembly outputs**
-- Gerbers, Excellon drills, drill map/report, BOM, pick-and-place/centroid file, assembly drawing, fabrication notes, STEP/3D output when available, and verification report.
-- Fabricator profiles define file naming and acceptance checks for JLCPCB, PCBWay, OSHPark, Eurocircuits, and custom board houses.
-- STEP models come from KiCad libraries, vendor/manufacturer downloads, generated package envelopes, or user-supplied files; omitted models are listed in the final report.
-
-**Visual QA**
-- Flags silkscreen overlap, RefDes legibility, polarity/pin-1 markings, connector orientation, front-panel label consistency, test point accessibility, keepout/enclosure visibility, and orientation anomalies.
-- Visual QA can block release for presentation/mechanical-readability issues but cannot override electrical, simulation, parity, or fabrication gates.
-
-**Terminal statuses**
-- `COMPLETE`
-- `BLOCKED`
-- `BLOCKED_INPUT_QUALITY`
-- `BLOCKED_VERSION`
-- `BLOCKED_SIMULATION`
-- `BLOCKED_TOOLING`
-- `BLOCKED_LIBRARY`
-- `BLOCKED_ENGINEERING_DECISION`
-- `IN_PROGRESS`
+Requires KiCad `>= 10.0.0`. Full design (locked v2.0 decisions, extraction-confidence thresholds, board-rule defaults, BOM canonical model, fab acceptance checks, terminal status codes) is specified in [architecture.md → V2.0 Electronics/KiCad Domain](architecture.md#v20-electronics-domain). See also [Requirements.md §6](Requirements.md#6-kicad--electronics-domain) for tooling versions.
 
 **Complexity Classification** — `PlannerEngine` classifies each message into one of three tiers:
 
@@ -623,17 +512,17 @@ After every assistant turn (when `kagEnabled = true` in Settings → Agent):
 
 ---
 
-## LoRA Self-Training
+## LoRA Self-Training (MLX-format base models)
 
-Merlin can fine-tune a local model on your own accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory.
+Merlin can fine-tune a local MLX-format model on your own accepted sessions using MLX-LM on an M4 Mac with 128GB unified memory. Automatic training requires an MLX base — `mlx_lm.lora` cannot train GGUF or HF-safetensors bases directly. A trained adapter can be fused and exported to GGUF after training for use with the other local providers (Ollama, Jan.ai, LocalAI, Mistral.rs), but that conversion is a manual step today.
 
 **How it works**
 
 1. `ModelPerformanceTracker` accumulates `OutcomeRecord` entries after each session turn, storing the user prompt and the model's response.
-2. `LoRATrainer.exportJSONL()` serialises records above the score threshold as MLX-LM chat-format JSONL: `{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}`. Records with empty prompt or response are silently skipped.
+2. `LoRATrainer.exportJSONL()` serialises records above the score threshold as MLX-LM chat-format JSONL: `{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}` (filtering is upstream — see `exportTrainingData(minScore:)` above).
 3. `LoRATrainer.train()` shells out to `python -m mlx_lm.lora --train` with the exported JSONL and writes the adapter to `loraAdapterPath`.
 4. When `loraAutoLoad` is true and the adapter file exists, `AppState` constructs a `loraProvider` pointing at `mlx_lm.server` and routes the execute slot through it.
-5. `LoRACoordinator` handles threshold-gating (`loraMinSamples`, default 50) and prevents concurrent training runs via `isTraining`.
+5. `LoRACoordinator` handles threshold-gating (`loraMinSamples`, default 1000) and prevents concurrent training runs via `isTraining`.
 
 **Activation**
 
@@ -796,78 +685,11 @@ Discipline rules are language-aware. Adapters (TOML files in `~/.merlin/adapters
 
 Merlin, OpenAI Codex, and Anthropic Claude Code are all agentic coding tools with autonomous loop execution, file operations, and shell access. They diverge significantly in architecture, provider strategy, and target use case.
 
-### At a Glance
+The detailed side-by-side analysis lives in two dedicated documents that stay current with the latest Codex / Claude Code releases:
 
-| Capability | Merlin | Codex (OpenAI) | Claude Code (Anthropic) |
-|---|---|---|---|
-| **Interface** | macOS native SwiftUI app | Desktop app + CLI + web | CLI (terminal-first) |
-| **LLM providers** | Any — Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, vLLM, + more | OpenAI models only (GPT-5.5 / GPT-5.4 family) | Anthropic models only (Opus/Sonnet/Haiku) |
-| **Local model support** | Full — LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM | CLI supports custom endpoints (workaround); app is cloud-first | Primarily Anthropic cloud; limited Ollama workaround |
-| **Execution environment** | Local machine, non-sandboxed | Cloud sandboxes (tasks run remotely) or local CLI | Local machine |
-| **Multi-LLM routing** | Yes — execute / reason / orchestrate / vision slots with automatic complexity routing | No | No |
-| **Vision / GUI automation** | AX tree + ScreenCaptureKit + CGEvent (3 strategies, auto-selected) | Computer use (desktop control) | Computer use (added March 2026) |
-| **Xcode integration** | Deep — build, test, clean, xcresult parsing, open-at-line, simulator control | IDE plugin only | IDE plugin only |
-| **RAG / persistent memory** | Yes — local SQLite memory store (vector search, project-scoped, critic-gated per-turn writes + accepted memories indexed as factual chunks); optional xcalibre-server for book content only | No | No (uses agentic grep/search instead) |
-| **Prompt compression** | Yes — mid-loop LLM summarisation + instruction distillation; context cost stays linear across long tool chains | No | No |
-| **LoRA self-training** | Yes — MLX-LM on M4 Mac; adapts execute slot to your own sessions | No | No |
-| **Diff review layer** | Yes — all writes staged; accept/reject per change; inline comments | No (direct writes) | No (direct writes) |
-| **Auth gate** | Yes — glob-pattern permission gate on every tool call, per session mode | No | No |
-| **Permission modes** | Ask / Auto-accept / Plan (read-only) | No equivalent | No equivalent |
-| **Parallel sessions** | Yes — each in its own git worktree, independent context | Yes — background agents in cloud | Yes — up to 10 subagents |
-| **Subagents** | Yes — up to 4 concurrent, 2 nesting levels | Yes — multiple parallel agents | Yes — up to 10 parallel |
-| **Skills / slash commands** | Yes — Markdown files, personal + project-scoped, auto-reload | No | Yes — built-in and custom |
-| **Project discipline enforcement** | Yes — TDD gating, manual coverage, WHY-comment scanner, prose readability, phase drift detection (v2.2) | No | No |
-| **Hooks** | Yes — PreToolUse, PostToolUse, UserPromptSubmit, Stop | No | Yes — PreToolUse, PostToolUse |
-| **MCP support** | Yes | No | Yes |
-| **Scheduling** | Local scheduler (cron-like, macOS notifications) | Cloud-managed (runs when computer is off) | Cloud-managed routines |
-| **PR / CI monitor** | Yes — GitHub PR polling, auto-merge on CI pass | Yes — PR review built-in | Limited |
-| **External connectors** | GitHub, Slack, Linear | GitHub, SSH to remote devboxes | GitHub |
-| **Web search** | Brave Search integration | Yes | Yes |
-| **In-app browser / preview** | WKWebView preview pane | In-app browser | No |
-| **Voice dictation** | Yes (SFSpeechRecognizer) | No | No |
-| **IDE integration** | No (standalone app) | VS Code, JetBrains, Xcode, Eclipse | VS Code, JetBrains, Xcode, Eclipse |
-| **Cost** | Self-hosted; no subscription fee (pay per API call or free for local models) | Pro $100/mo (OpenAI subscription) | Max plan $100–200/mo (Anthropic subscription) |
-| **Distribution** | Personal use (not distributed) | Public — macOS app + CLI | Public — CLI |
-| **Platform** | macOS 14+ only | macOS (desktop app), cross-platform (CLI) | macOS and Linux (CLI) |
+- [**codex-gap.md**](codex-gap.md) — Merlin vs. OpenAI Codex App
+- [**claude-code-gap.md**](claude-code-gap.md) — Merlin vs. Anthropic Claude Code
 
----
+Both documents cover the per-feature comparison table, Merlin's advantages (provider freedom, multi-LLM routing, MLX LoRA self-training, prompt compression, persistent RAG memory, staged diff review, auth gate, deep Xcode integration, project discipline enforcement, native macOS integration), and the gaps Merlin doesn't close (cloud-side sandbox execution, remote devbox SSH, plugin marketplaces, IDE integrations).
 
-### Where Merlin goes further
-
-**Provider freedom.** Merlin is the only tool in this group that routes work across genuinely different providers — switching between DeepSeek for reasoning, a local Qwen model for fast iteration, and a vision model for GUI work — all within the same session. Codex is GPT-only. Claude Code is Claude-only. Merlin has no lock-in.
-
-**Supervisor-worker multi-LLM routing.** Merlin classifies each task by complexity tier and routes it to the most appropriate LLM slot. Routine file operations go to the execute slot (fast/cheap); architecture decisions go to the reason slot (most capable). Neither Codex nor Claude Code do this — they use a single model for all task types.
-
-**LoRA self-training.** Merlin is unique in being able to fine-tune a local model on your own accepted session data using MLX-LM on an M4 Mac. Over time, the execute slot adapts to your coding patterns and project conventions. This is not a feature Codex or Claude Code offer.
-
-**Prompt compression.** Agentic loops accumulate context quadratically — without intervention, a 100-step run costs far more than 100× the cost of a single step. Merlin applies mid-loop LLM summarisation (replacing old tool exchanges with a narrative digest before the next request) and instruction distillation (caching a token-efficient version of `CLAUDE.md` and the core system prompt). The result is linear cost growth regardless of session length. Neither Codex nor Claude Code have an equivalent compression pipeline.
-
-**Persistent RAG memory.** Merlin stores project knowledge in a local SQLite-backed vector store and injects relevant context into every prompt. Memory writes are critic-gated — only outputs that passed the quality check enter the memory store. xcalibre-server remains available for book content, but it no longer stores Merlin session memory. Claude Code explicitly chose not to do RAG, relying on agentic grep/search instead. Codex has no RAG layer.
-
-**Diff review + inline comments.** In Ask and Plan modes, every file write is staged rather than applied. You review a unified diff, accept or reject per change, and can attach inline comments that feed back to the agent for revision — without leaving the app. Both Codex and Claude Code apply writes directly with no staging step.
-
-**Auth gate.** Merlin intercepts every tool call — including MCP tools — through a pattern-matching permission gate before execution. You can allow or deny by glob pattern, and decisions persist. This gives fine-grained, auditable control over what the agent can touch. Neither Codex nor Claude Code have an equivalent mechanism.
-
-**Deep Xcode integration.** Merlin parses `.xcresult` bundles, extracts structured errors and coverage, controls simulators, and can jump Xcode to an exact file and line via AppleScript. IDE plugins (the approach both Codex and Claude Code take) are shallower — they don't parse build artifacts or own the build loop.
-
-**Project discipline enforcement.** Merlin is the only tool in this group that mechanically enforces construction discipline — TDD phase pairs, comprehensive manual coverage, WHY-comments where warranted, prose readability, and phase-file/code sync — through a combination of automatic scanners, session-start reminders, and hard git-hook gates. Neither Codex nor Claude Code have an enforcement layer; discipline is left to the user's memory.
-
-**macOS-native, non-sandboxed.** As a native SwiftUI app, Merlin integrates with the macOS Accessibility tree, ScreenCaptureKit, CGEvent, SFSpeechRecognizer, and macOS Keychain in ways a CLI or Electron app cannot. GUI automation uses three complementary strategies and auto-selects the best one per target app.
-
----
-
-### Where Codex and Claude Code have advantages
-
-**Codex** runs tasks in cloud sandboxes, which means agents can execute long-running jobs without tying up your machine. Remote devbox SSH support makes it practical for teams with shared infrastructure. Codex is embedded in the broader ChatGPT + OpenAI ecosystem, which benefits users already on that platform. GPT-5.5 is the current flagship model for complex reasoning and coding tasks.
-
-**Claude Code** has a lower barrier to entry — it is a single CLI install with no configuration required. Scheduled routines run on Anthropic-managed infrastructure and continue even when your laptop is off. The ultrareview subcommand integrates into CI pipelines without a running desktop session. Claude's models consistently perform at the top of coding benchmarks, and the tool benefits from continuous Anthropic investment.
-
-**Both** are publicly distributed, actively maintained by large engineering teams, and have broad ecosystem support (IDE plugins, CI integrations, community plugins). Merlin is a personal tool maintained by one person and is not distributed.
-
----
-
-### Summary
-
-Merlin is built for a specific workflow: a single developer on Apple Silicon who wants full control over every layer — which models run, what they can touch, how outputs are reviewed, and how the system improves over time from their own data. It trades distribution breadth and zero-setup convenience for depth of integration, provider flexibility, and long-term self-improvement via LoRA.
-
-Codex is best for teams embedded in the OpenAI ecosystem who want cloud-isolated execution and a polished multi-platform app. Claude Code is best for developers who want a capable, low-friction CLI agent and are comfortable with Anthropic's model portfolio.
+**Short version:** Merlin is built for a single developer on Apple Silicon who wants full control over every layer — which models run, what they can touch, how outputs are reviewed, and how the system improves over time from their own data. Codex is built for teams in the OpenAI ecosystem who want cloud-isolated execution. Claude Code is built for developers who want a capable, low-friction CLI agent in the Anthropic ecosystem.

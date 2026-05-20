@@ -4,7 +4,7 @@ External dependencies needed to build, run, and fully use Merlin. Merlin itself 
 **no third-party Swift packages** — every dependency below is an external tool, service,
 model, or system framework.
 
-Current version: **2.2.4** (build 21). Target platform: **macOS 14+**, Apple Silicon.
+Current version: **2.2.5** (build 24). Target platform: **macOS 14+**, Apple Silicon.
 
 ---
 
@@ -51,9 +51,11 @@ Optional alternative to cloud providers. No API key; all expose an OpenAI-compat
 | Jan.ai | `http://localhost:1337/v1` | https://jan.ai/ |
 | LocalAI | `http://localhost:8080/v1` | https://localai.io/ — repo: https://github.com/mudler/LocalAI |
 | Mistral.rs | `http://localhost:1234/v1` | https://github.com/EricLBuehler/mistral.rs |
-| vLLM | `http://localhost:8000/v1` | https://docs.vllm.ai/ — repo: https://github.com/vllm-project/vllm |
+| vLLM-Metal | `http://localhost:8000/v1` | https://docs.vllm.ai/ — repo: https://github.com/vllm-project/vllm |
 
 LM Studio is first-class: REST model management plus a CLI fallback at `~/.lmstudio/bin/lms`.
+
+> **Port-collision note.** LM Studio and Mistral.rs share the same default port (`1234`). Only one of the two can run at a time on the defaults; to use both, rebind one of them (`mistralrs --port 1235` and update the matching `baseURL` in Settings → Providers).
 
 ---
 
@@ -64,15 +66,16 @@ Models are downloaded through the runner (e.g. LM Studio's in-app search), not b
 
 | Use | Model | Source |
 |---|---|---|
-| General / execute slot | `qwen/qwen3.6-27b` (or any capable instruct model) | https://huggingface.co/Qwen |
+| Default cloud execute slot | `deepseek-v4-flash` (per `ProviderConfig.swift` default) | https://platform.deepseek.com/ |
+| General / execute slot (local) | `qwen/qwen3.6-27b` (or any capable instruct model) | https://huggingface.co/Qwen |
 | Vision slot | `Qwen2.5-VL-72B-Instruct` (Q4_K_M GGUF, ~47 GB) | https://huggingface.co/Qwen — GGUF quants via LM Studio search |
-| LoRA base model | Any local GGUF / MLX instruct model | User-provided (e.g. https://huggingface.co/models) |
+| LoRA base model | Local MLX-format instruct model (GGUF cannot be trained by mlx-lm) | User-provided (e.g. https://huggingface.co/models — convert to MLX via `mlx_lm.convert` if downloading HF format) |
 
 ---
 
 ## 5. LoRA Self-Training Pipeline
 
-Optional — fine-tunes a local model on your accepted session data. Apple Silicon only.
+Optional — fine-tunes a local MLX-format model on your accepted session data. Apple Silicon only; `mlx_lm.lora` cannot train GGUF or HF-safetensors bases.
 
 | Dependency | Version | Required | Source |
 |---|---|---|---|
@@ -80,7 +83,7 @@ Optional — fine-tunes a local model on your accepted session data. Apple Silic
 | mlx_lm (MLX-LM) | any recent | Yes (for LoRA) | https://github.com/ml-explore/mlx-lm — pip: https://pypi.org/project/mlx-lm/ |
 | MLX (underlying framework) | bundled with mlx_lm | Yes (for LoRA) | https://github.com/ml-explore/mlx |
 | `mlx_lm.server` (adapter inference) | part of mlx_lm | Optional | https://github.com/ml-explore/mlx-lm |
-| Base model file | — | Yes (for LoRA) | User-provided GGUF/MLX model |
+| Base model file | — | Yes (for LoRA) | User-provided MLX-format model |
 
 Adapters are written to `~/.merlin/lora/`.
 
@@ -93,7 +96,7 @@ Optional — required only for the v2.0 Electronics (PCB/schematic) workflows.
 | Dependency | Version | Required for electronics | Source |
 |---|---|---|---|
 | KiCad | **>= 10.0.0** (lower versions rejected) | Yes | https://www.kicad.org/ |
-| merlin-kicad-mcp | — | Yes | Internal — Merlin-owned MCP server; no public source |
+| merlin-kicad-mcp | — | Yes (Apple Silicon only) | Internal — Merlin-owned MCP server; no public source |
 | FreeRouting | any recent | Yes (auto-routing) | https://github.com/freerouting/freerouting — site: https://www.freerouting.app/ |
 | ngspice / SPICE | any recent | Yes (simulation) | https://ngspice.sourceforge.io/ |
 
@@ -179,10 +182,10 @@ Keychain and FSEvents, neither of which needs a separate prompt.
 | **Run the agent (software dev)** | macOS 14+, one LLM provider (cloud key **or** a local runner), git |
 | **Build Merlin from source** | Xcode 15.4+, Swift 5.10, xcodegen, signing identity |
 | **Use cloud models** | An API key for DeepSeek / OpenAI / Anthropic / Qwen / OpenRouter |
-| **Use local models** | LM Studio (or Ollama / Jan.ai / LocalAI / Mistral.rs / vLLM) + a downloaded model |
+| **Use local models** | LM Studio (or Ollama / Jan.ai / LocalAI / Mistral.rs / vLLM-Metal) + a downloaded model |
 | **Vision / GUI automation** | A vision model + Accessibility & Screen Recording permissions |
 | **Voice dictation** | Speech Recognition permission |
-| **LoRA self-training** | Apple Silicon, Python 3.9+, mlx_lm, a base model |
+| **LoRA self-training** | Apple Silicon, Python 3.9+, mlx_lm, an MLX-format base model |
 | **Electronics / PCB design** | KiCad >= 10.0.0, merlin-kicad-mcp, FreeRouting, ngspice |
 | **Project Discipline docs** | Vale; DocC (Swift) or rustdoc (Rust) |
 | **Web search** | Brave Search API key |

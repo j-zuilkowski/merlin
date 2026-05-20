@@ -24,13 +24,13 @@ struct OutcomeRecord: Codable, Sendable {
     var score: Double
     var addendumHash: String
     var timestamp: Date
-    /// The user message that triggered this session. Empty for records created before phase 117b.
+    /// The user message that triggered this session. Empty on older records (predates prompt capture); guarded by `legacyTrainingRecord`.
     var prompt: String
-    /// The model's final text response. Empty for records created before phase 117b.
+    /// The model's final text response. Empty on older records; guarded by `legacyTrainingRecord`.
     var response: String
     /// Marks records created via the legacy 3-argument record() path.
     var legacyTrainingRecord: Bool
-    /// finish_reason from the last chunk. nil for records created before phase 124b.
+    /// finish_reason from the last chunk. nil on older records that predate streaming-state capture.
     var finishReason: String?
 
     init(
@@ -214,8 +214,6 @@ actor ModelPerformanceTracker {
         Array(profiles.values)
     }
 
-    /// Returns all persisted OutcomeRecords for a given model + task type.
-    /// Used by V6 LoRA training to build the fine-tuning dataset.
     func records(for modelID: String, taskType: DomainTaskType) async -> [OutcomeRecord] {
         records.values
             .flatMap { $0 }
@@ -228,7 +226,7 @@ actor ModelPerformanceTracker {
     ///   - legacyTrainingRecord == true (created before V6 prompt/response capture), OR
     ///   - both prompt and response are non-empty (standard V6 records)
     /// This ensures the LoRA JSONL export always has valid user/assistant pairs.
-    /// minScore: 0.0–1.0; recommended minimum 0.7 to exclude poor-quality examples.
+    /// minScore: 0.0–1.0; recommended minimum 0.8 to exclude poor-quality examples.
     func exportTrainingData(minScore: Double) async -> [OutcomeRecord] {
         return records.values
             .flatMap { $0 }

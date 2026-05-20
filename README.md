@@ -1,8 +1,8 @@
 # Merlin
 
-A personal, non-sandboxed agentic development assistant for macOS. Merlin connects to multiple LLM providers — remote and local — and gives an AI agent full access to your file system, shell, Xcode, GUI automation, and external services to work through development tasks autonomously. It includes a supervisor-worker multi-LLM routing layer and LoRA self-training to improve on your own hardware over time.
+A personal, non-sandboxed agentic development assistant for macOS. Merlin connects to multiple LLM providers — remote and local — and gives an AI agent full access to your file system, shell, Xcode, GUI automation, and external services to work through development tasks autonomously. It includes a supervisor-worker multi-LLM routing layer and MLX LoRA self-training (MLX-format base models on Apple Silicon) to improve the execute slot on your own accepted sessions over time.
 
-Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed.
+Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed; build from source via the steps in [`Requirements.md`](Requirements.md).
 
 **Version 2.2.5** (build 24, tag v2.2.5)
 
@@ -28,7 +28,7 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Budget-Aware Execution** (v2.1) — every LLM request is sized to the active provider's context window before it is sent. A pre-flight estimator gates each call; working-set caps bound the system prompt, RAG injection, recent turns, and tool-call bursts independently. Oversized work is decomposed into smaller substeps first, with cross-provider routing to a larger-context model only as a last resort.
 
-**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local model (via MLX-LM) on your own accepted sessions. The trained adapter is loaded into `mlx_lm.server` and Merlin routes the execute slot through it automatically.
+**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is loaded into `mlx_lm.server` and Merlin routes the execute slot through it automatically. A trained adapter can be fused and exported to GGUF for use with Ollama / Jan.ai / LocalAI / Mistral.rs as a manual post-training step.
 
 **Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD phase pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and phase-file/code sync. Five `/project:*` skills (`init`, `phase`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
 
@@ -40,7 +40,7 @@ See [`architecture.md`](architecture.md) for implementation details and design d
 ## Providers
 
 Remote: **Anthropic**, **DeepSeek**, **OpenAI**, **Qwen**, **OpenRouter**  
-Local: **LM Studio**, **Ollama**, **Jan.ai**, **LocalAI**, **Mistral.rs**, **vLLM**
+Local: **LM Studio**, **Ollama**, **Jan.ai**, **LocalAI**, **Mistral.rs**, **vLLM-Metal**
 
 Switch providers per-session from the toolbar. API keys stored in macOS Keychain.
 

@@ -77,9 +77,9 @@ actor DocReferenceGraph {
                 }
                 // High-precision check only: an enum `case` declared inside a fenced
                 // code block that names no real source symbol is a genuinely stale doc
-                // example. The former loose backticked-identifier check was dropped in
-                // phase 319 — it could not tell a stale Merlin reference from a mention
-                // of an Apple or standard-library type, and ran ~95% false positive.
+                // example. A looser backticked-identifier check ran ~95% false positive
+                // because it could not distinguish a stale Merlin reference from a
+                // mention of an Apple or standard-library type.
                 if inFence {
                     for caseName in extractEnumCaseNames(from: trimmed)
                     where caseName.count >= 4 && !symbolSet.contains(caseName) {

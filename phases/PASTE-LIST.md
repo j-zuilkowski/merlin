@@ -1102,7 +1102,7 @@ cat phases/phase-122b-memory-xcalibre-index.md
 
 # ── V7 Local Model Management ─────────────────────────────────────────────────
 # Unified LocalModelManagerProtocol across all 6 local providers (LM Studio, Ollama,
-# Jan, LocalAI, Mistral.rs, vLLM). Runtime reload where supported; restart instructions
+# Jan, LocalAI, Mistral.rs, vLLM-Metal). Runtime reload where supported; restart instructions
 # where not. AppState registry + ApplyAdvisory routing. ModelControlView UI.
 
 # ── PHASE 125a — LocalModelManagerProtocol Tests ─────────────────────────────
@@ -1120,10 +1120,10 @@ cat phases/phase-126a-local-model-manager-extended-tests.md
 # Verify: BUILD FAILED — JanModelManager, LocalAIModelManager, MistralRSModelManager, VLLMModelManager not defined (expected)
 # Commit: Phase 126a — LocalModelManagerExtendedTests (failing)
 
-# ── PHASE 126b — Jan, LocalAI, MistralRS, vLLM Managers ─────────────────────
+# ── PHASE 126b — Jan, LocalAI, MistralRS, vLLM-Metal Managers ─────────────────────
 cat phases/phase-126b-local-model-manager-extended.md
 # Verify: BUILD SUCCEEDED; LocalModelManagerExtendedTests → 20 pass; all prior tests pass
-# Commit: Phase 126b — Jan/LocalAI/MistralRS/vLLM model managers
+# Commit: Phase 126b — Jan/LocalAI/MistralRS/vLLM-Metal model managers
 
 # ── PHASE 127a — Model Manager Wiring Tests ──────────────────────────────────
 cat phases/phase-127a-model-manager-wiring-tests.md

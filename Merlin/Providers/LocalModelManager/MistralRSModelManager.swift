@@ -4,6 +4,7 @@ import Foundation
 ///
 /// This provider is restart-only. The restart command maps each supported
 /// `LoadParam` to the corresponding `mistralrs-server` CLI flag.
+/// `@unchecked Sendable` rationale: stateless restart-instruction generator; no mutable shared state.
 final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "mistralrs"

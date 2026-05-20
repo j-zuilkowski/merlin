@@ -24,6 +24,8 @@ enum AppControlTools {
             throw AppControlError.applicationNotFound(bundleID)
         }
 
+        // @unchecked Sendable rationale: function-local; written on the launch-completion
+        // thread, read on this thread after `semaphore.wait()` (happens-after barrier).
         final class LaunchState: @unchecked Sendable {
             var error: Error?
         }

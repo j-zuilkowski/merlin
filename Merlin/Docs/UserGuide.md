@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 2.2.4**
+**Version 2.2.5**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -201,7 +201,7 @@ Available providers:
 | Jan.ai | Local | Must be running on localhost:1337. |
 | LocalAI | Local | Must be running on localhost:8080. |
 | Mistral.rs | Local | Must be running on localhost:1234. |
-| vLLM | Local | Must be running on localhost:8000. |
+| vLLM-Metal | Local | Must be running on localhost:8000. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |
 
 Configure API keys, base URLs, and model names in **Settings → Providers**.
@@ -615,7 +615,7 @@ Merlin can fine-tune a local language model on your accepted sessions using MLX-
 
 ### What it does
 
-After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 50), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served via `mlx_lm.server`, which exposes an OpenAI-compatible API. Merlin then routes execute-slot messages through that server instead of the base provider.
+After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served via `mlx_lm.server`, which exposes an OpenAI-compatible API. Merlin then routes execute-slot messages through that server instead of the base provider.
 
 ### Requirements
 

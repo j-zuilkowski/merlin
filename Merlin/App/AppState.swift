@@ -395,7 +395,7 @@ final class AppState: ObservableObject {
         if !projectPath.isEmpty {
             startDisciplineEventPolling(projectPath: projectPath)
             // Auto-arm the discipline pre-commit gate for projects that opt into the
-            // pre_commit layer - no Settings toggle required (phase 313).
+            // pre_commit layer; no Settings toggle required.
             Task {
                 await DisciplineGateInstaller.installIfConfigured(projectPath: projectPath)
             }
@@ -669,12 +669,10 @@ final class AppState: ObservableObject {
         await engine.setMemoryBackend(active)
     }
 
-    /// Returns the local model manager for a providerID, if one exists.
     func manager(for providerID: String) -> (any LocalModelManagerProtocol)? {
         localModelManagers[providerID]
     }
 
-    /// Returns the registered provider instance for a provider ID.
     func provider(for providerID: String) -> (any LLMProvider)? {
         registry.provider(for: providerID)
     }

@@ -104,6 +104,7 @@ enum ScreenCaptureTool {
     }
 }
 
+/// `@unchecked Sendable` rationale: all mutable state guarded by `lock`; SCStreamOutput delegate runs on a stream queue.
 private final class FirstFrameCollector: NSObject, SCStreamOutput, @unchecked Sendable {
     private let lock = NSLock()
     private let ciContext = CIContext()

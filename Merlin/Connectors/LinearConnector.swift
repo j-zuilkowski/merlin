@@ -1,5 +1,6 @@
 import Foundation
 
+/// `@unchecked Sendable` rationale: URLSession-backed REST client; mutable state confined to async tasks.
 final class LinearConnector: Connector, @unchecked Sendable {
     let token: String
 

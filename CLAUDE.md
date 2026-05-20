@@ -320,3 +320,32 @@ Backing stores:
   skills/              — personal SKILL.md files
   agents/              — custom subagent TOML definitions (v4)
 ```
+
+---
+
+## Canonical Defaults
+
+Source-of-truth values that user-facing docs (`README.md`, `FEATURES.md`, `Requirements.md`,
+`Merlin/Docs/UserGuide.md`, `Merlin/Docs/DeveloperManual.md`) must match. When changing any
+of these, update **this table first**, then propagate to the docs in the same commit. The
+runtime literal in source is authoritative — if a doc disagrees, the doc is wrong.
+
+| Setting | Default | Source of truth | Notes |
+|---|---|---|---|
+| `loraMinSamples` | `1000` | `AppSettings.swift:73` | Min OutcomeRecords before `LoRACoordinator.considerTraining` fires |
+| `LoRACoordinator` minScore | `0.8` | `LoRACoordinator.swift:38` | Critic score threshold for inclusion in the training set |
+| `loraEnabled` / `loraAutoTrain` / `loraAutoLoad` | `false` / `false` / `false` | `AppSettings.swift:70-72` | Master + auto-train + auto-load all opt-in |
+| `ragChunkLimit` | `3` | `AppSettings.swift:55` | Top-K RAG chunks per turn |
+| `ragRerank` | `false` | `AppSettings.swift:53` | xcalibre rerank pass (off by default — RTX 2070 friendly) |
+| `ragFreshnessThresholdDays` | `90` | `AppSettings.swift:60` | Chunks older than this trip the `isStale` flag on `GroundingReport` |
+| `ragMinGroundingScore` | `0.30` | `AppSettings.swift:62` | Cosine threshold below which `isWellGrounded == false` |
+| `agentCircuitBreakerThreshold` | `3` | `AppSettings.swift:64` | Consecutive critic failures before the breaker fires |
+| `agentCircuitBreakerMode` | `"halt"` | `AppSettings.swift:66` | `halt` or `warn` |
+| `preRunCompactionThreshold` | `6_000` | `ContextManager.swift:83` | Tokens at run start that trigger pre-run compaction |
+| `midLoopCompactionThreshold` | `20_000` | `ContextManager.swift:88` | Mid-loop trigger; `var` so tests can lower it |
+| `compactionThreshold` (emergency) | `800_000` | `ContextManager.swift:20` | Hard overflow ceiling |
+| `compactionKeepRecentTurns` | `20` | `ContextManager.swift:21` | Sentinel-truncate floor when no tool-exchange groups exist |
+| `skillBudgetTokens` (total) | `25_000` | `ContextManager.swift:22` | Working-set cap for skill injection |
+| `skillBudgetPerSkill` | `5_000` | `ContextManager.swift:23` | Per-skill cap |
+| `maxCeilingContinuations` | `10` | `AgenticEngine.swift:225` | Loop-ceiling continuation cap per turn |
+| `nearCeilingThreshold` | `8` | `AgenticEngine.swift:237` | Remaining-steps count that fires the near-ceiling warning |

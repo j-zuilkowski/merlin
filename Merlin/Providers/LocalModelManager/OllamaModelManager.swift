@@ -14,6 +14,7 @@ import Foundation
 ///   POST /api/show          - { "name": "<model>" } -> model info including params
 ///   POST /api/create        - { "name": "<name>", "modelfile": "<content>" }
 ///   POST /api/generate      - { "model": "...", "keep_alive": 0 } -> force unload
+/// `@unchecked Sendable` rationale: URLSession-backed REST client; mutable state confined to async tasks.
 final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "ollama"

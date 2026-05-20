@@ -1,5 +1,6 @@
 import Foundation
 
+/// `@unchecked Sendable` rationale: URLSession-backed streaming provider; mutable state confined to async tasks.
 final class AnthropicProvider: LLMProvider, @unchecked Sendable {
 
     let id: String = "anthropic"

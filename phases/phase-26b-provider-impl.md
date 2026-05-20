@@ -138,7 +138,7 @@ final class ProviderRegistry: ObservableObject {
                        isEnabled: false, isLocal: true,
                        supportsThinking: false, supportsVision: false,
                        kind: .openAICompatible),
-        ProviderConfig(id: "vllm",       displayName: "vLLM",
+        ProviderConfig(id: "vllm",       displayName: "vLLM-Metal",
                        baseURL: "http://localhost:8000/v1",
                        model: "",
                        isEnabled: false, isLocal: true,
@@ -288,7 +288,7 @@ final class ProviderRegistry: ObservableObject {
 import Foundation
 
 // Single class covering all OpenAI-compatible endpoints:
-// DeepSeek, OpenAI, Qwen, OpenRouter, Ollama, LM Studio, Jan.ai, LocalAI, Mistral.rs, vLLM
+// DeepSeek, OpenAI, Qwen, OpenRouter, Ollama, LM Studio, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal
 
 final class OpenAICompatibleProvider: LLMProvider, @unchecked Sendable {
 

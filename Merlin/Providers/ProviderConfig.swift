@@ -7,13 +7,11 @@ enum ProviderKind: String, Codable, Sendable {
     case anthropic
 }
 
-/// A single selectable entry in the role-slot assignment picker.
 struct SlotPickerEntry: Identifiable, Equatable, Sendable {
-    /// The provider ID stored in `slotAssignments` — either a plain ID or `"backendID:modelID"`.
+    /// Plain provider ID or `"backendID:modelID"` for a virtual entry.
     let id: String
-    /// Human-readable label shown in the picker.
     let displayName: String
-    /// True for virtual `"backendID:modelID"` entries derived from loaded local models.
+    /// `true` for virtual `"backendID:modelID"` entries derived from loaded local models.
     let isVirtual: Bool
 }
 
@@ -279,7 +277,7 @@ final class ProviderRegistry: ObservableObject {
                        supportsVision: false,
                        kind: .openAICompatible),
         ProviderConfig(id: "vllm",
-                       displayName: "vLLM",
+                       displayName: "vLLM-Metal",
                        baseURL: "http://localhost:8000/v1",
                        model: "",
                        isEnabled: false,

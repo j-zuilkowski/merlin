@@ -215,7 +215,7 @@ public enum AccessibilityID {
     public static let calibrationDoneButton = "calibration-done-button"
     public static let calibrationApplyAllButton = "calibration-apply-all-button"
 
-    // MARK: - Surface-census gap fill (phase 325)
+    // MARK: - Workspace pane toggle buttons
 
     public static let workspaceToggleDiffButton = "workspace-toggle-diff-button"
     public static let workspaceToggleFileButton = "workspace-toggle-file-button"

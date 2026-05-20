@@ -1,6 +1,6 @@
 # Merlin — Developer Manual
 
-**Version 2.2.4**
+**Version 2.2.5**
 
 This manual covers the complete architecture, development workflow, and code organisation of Merlin. It is intended for contributors working on the codebase. Code references use the format `File.swift:ClassName.method()` matching the comments embedded throughout the source.
 
@@ -446,7 +446,7 @@ protocol ShellRunnerProtocol: Sendable {
 **File:** `Merlin/Engine/LoRACoordinator.swift`
 
 `actor` that sits between `AgenticEngine` and `LoRATrainer`. Responsibilities:
-- Threshold gate: only fires training when `exportTrainingData(minScore: 0.7)` returns `>= minSamples` records
+- Threshold gate: only fires training when `exportTrainingData(minScore: 0.8)` returns `>= minSamples` records
 - Concurrency guard: `isTraining` prevents overlapping training runs
 - Result storage: `lastResult: LoRATrainingResult?` for display in `LoRASettingsSection`
 

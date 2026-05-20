@@ -17,7 +17,7 @@ no-op fallback), `LocalModelManagerSupport` (two free functions), and
 ### Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift
 
 Defines the full type surface used by all concrete local model managers
-(LMStudio, Ollama, Jan, LocalAI, Mistral.rs, vLLM) and by the null fallback.
+(LMStudio, Ollama, Jan, LocalAI, Mistral.rs, vLLM-Metal) and by the null fallback.
 
 Key design decisions:
 - `LocalModelConfig` — all fields optional; `nil` means "don't change this parameter"

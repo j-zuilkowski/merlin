@@ -5,6 +5,7 @@ import Foundation
 /// Jan stores per-model configuration under `~/jan/models/<id>/model.json`,
 /// but this manager talks to the OpenAI-compatible runtime endpoint and only
 /// forwards the load-time fields Jan accepts at reload time.
+/// `@unchecked Sendable` rationale: URLSession-backed REST client; mutable state confined to async tasks.
 final class JanModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "jan"

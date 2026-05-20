@@ -17,9 +17,15 @@ class ContextManager: ObservableObject {
     private(set) var recentlyInvokedSkills: [Skill] = []
     private(set) var workingSetBudget: WorkingSetBudget = .derive(from: .conservative)
 
+    /// Emergency-overflow ceiling — well above any modern provider's context window so this
+    /// fires only when something has gone catastrophically wrong (looped tool storm, runaway append).
     private let compactionThreshold = 800_000
+    /// Hard-truncate floor: when no removable tool-exchange groups exist, keep the last 20
+    /// messages plus a sentinel rather than appending a no-op marker.
     private let compactionKeepRecentTurns = 20
+    /// Working-set budget for skill prompts across a single request.
     private let skillBudgetTokens = 25_000
+    /// Per-skill cap inside the working-set budget; prevents one verbose skill from eating the whole budget.
     private let skillBudgetPerSkill = 5_000
 
     func append(_ message: Message) {
@@ -83,7 +89,7 @@ class ContextManager: ObservableObject {
     let preRunCompactionThreshold = 6_000
 
     /// Token threshold that triggers compaction mid-loop, inside the `while true` execute loop.
-    /// A `var` so tests can lower it without mocking. Default: 40 000 tokens —
+    /// A `var` so tests can lower it without mocking. Default: 20 000 tokens —
     /// well below a typical 32 K model context, giving the next LLM call ample output headroom.
     var midLoopCompactionThreshold: Int = 20_000
 
@@ -351,6 +357,8 @@ class ContextManager: ObservableObject {
                 }
             }.joined(separator: " ")
         }
+        // 3.5 bytes/token is an empirical fit for English+code through cl100k_base / Qwen / Llama
+        // tokenizers; tighter than the conservative 4.0 so the estimator does not under-report.
         return Int(Double(text.utf8.count) / 3.5)
     }
 

@@ -5,26 +5,26 @@ import Foundation
 /// Load-time parameters that can be edited for a local model provider.
 enum LoadParam: String, Hashable, Sendable, CaseIterable {
     /// Context window size: LM Studio `contextLength`, Ollama `num_ctx`, Jan `contextLength`,
-    /// LocalAI `context_size`, Mistral.rs `--max-seq-len`, vLLM `--max-model-len`.
+    /// LocalAI `context_size`, Mistral.rs `--max-seq-len`, vLLM-Metal `--max-model-len`.
     case contextLength
     /// GPU offload depth: LM Studio `gpuLayers`, Ollama `num_gpu`, Jan `gpuLayers`,
-    /// LocalAI `gpu_layers`, Mistral.rs `--gpu-layers`, vLLM `--gpu-layers`.
+    /// LocalAI `gpu_layers`, Mistral.rs `--gpu-layers`, vLLM-Metal `--gpu-layers`.
     case gpuLayers
     /// CPU thread count: LM Studio `cpuThreads`, Ollama `num_thread`, Jan `cpuThreads`,
     /// LocalAI `threads`, Mistral.rs `--cpu-threads`.
     case cpuThreads
     /// Flash-attention toggle: LM Studio `flashAttention`, Mistral.rs `--flash-attn`.
     case flashAttention
-    /// K-side KV cache type: LM Studio `cacheTypeK`, vLLM `--kv-cache-dtype`.
+    /// K-side KV cache type: LM Studio `cacheTypeK`, vLLM-Metal `--kv-cache-dtype`.
     case cacheTypeK
     /// V-side KV cache type: LM Studio `cacheTypeV`.
     case cacheTypeV
     /// RoPE frequency base: LM Studio `ropeFrequencyBase`, Ollama `rope_frequency_base`,
     /// LocalAI `rope_frequency_base`, Mistral.rs `--rope-frequency-base`,
-    /// vLLM `--rope-frequency-base`.
+    /// vLLM-Metal `--rope-frequency-base`.
     case ropeFrequencyBase
     /// Micro-batch size: LM Studio `numBatch`, Ollama `num_batch`, LocalAI `batch_size`,
-    /// Mistral.rs `--batch-size`, vLLM `--max-num-batched-tokens`.
+    /// Mistral.rs `--batch-size`, vLLM-Metal `--max-num-batched-tokens`.
     case batchSize
     /// Persistent mmap toggle: Ollama `use_mmap`, LocalAI `use_mmap`.
     case useMmap

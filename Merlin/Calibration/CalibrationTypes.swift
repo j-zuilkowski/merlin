@@ -45,7 +45,6 @@ struct CalibrationResponse: Sendable {
     let localScore: Double
     let referenceScore: Double
 
-    /// Positive means reference was better; negative means local was better.
     var scoreDelta: Double { referenceScore - localScore }
 }
 
@@ -71,12 +70,9 @@ struct CalibrationReport: Sendable {
         return responses.map(\.referenceScore).reduce(0, +) / Double(responses.count)
     }
 
-    /// Positive values mean the reference provider is better overall and this
-    /// is the primary signal CalibrationAdvisor uses for contextLengthTooSmall.
+    /// Positive ⇒ reference better; negative ⇒ local better.
     var overallDelta: Double { overallReferenceScore - overallLocalScore }
 
-    /// Convenience grouping used by CalibrationReportView for the category
-    /// breakdown table.
     var responsesByCategory: [CalibrationCategory: [CalibrationResponse]] {
         Dictionary(grouping: responses, by: \.prompt.category)
     }

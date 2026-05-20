@@ -1,5 +1,6 @@
 import Foundation
 
+/// `@unchecked Sendable` rationale: URLSession-backed streaming provider; mutable state confined to async tasks.
 final class DeepSeekProvider: LLMProvider, @unchecked Sendable {
     let apiKey: String
     let model: String

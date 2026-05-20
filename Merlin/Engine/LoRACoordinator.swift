@@ -35,7 +35,7 @@ actor LoRACoordinator {
         guard !isTraining else { return }
         guard !baseModel.isEmpty else { return }
 
-        let records = await tracker.exportTrainingData(minScore: 0.7)
+        let records = await tracker.exportTrainingData(minScore: 0.8)
         guard records.count >= minSamples else { return }
 
         isTraining = true

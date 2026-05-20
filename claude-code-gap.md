@@ -1,8 +1,8 @@
 # Gap Analysis: Merlin vs Claude Code
 
 Reference: https://code.claude.com/docs/en
-Date: 2026-04-30
-Merlin version: v9
+Date: 2026-05-20
+Merlin version: v2.2.5
 
 ---
 
@@ -10,8 +10,8 @@ Merlin version: v9
 
 | Feature | Notes |
 |---|---|
-| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM — API key only, no subscription lock-in. Claude Code is Anthropic-only; no local model support beyond a limited Ollama workaround |
-| **Local model support (full)** | LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM with zero API cost; model picker switches provider per session |
+| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal — API key only, no subscription lock-in. Claude Code is Anthropic-only; no local model support beyond a limited Ollama workaround |
+| **Local model support (full)** | LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal with zero API cost; model picker switches provider per session |
 | **Local vision model** | LM Studio + Qwen2.5-VL for on-device screenshot analysis — no cloud dependency |
 | **Auth sandbox + pattern memory** | Per-tool glob ACL with an interactive Allow/Deny popup (Allow Once / Allow Always / Deny Once / Deny Always) and persistent allow/deny patterns per tool. Claude Code uses a classifier (auto mode) and static allowlists — no per-turn interactive popup or per-tool glob pattern memory |
 | **Accessibility tree inspection** | Full AX API integration for reading live UI state; finds, reads, and interacts with AX elements — Claude Code has no AX equivalent |
@@ -21,7 +21,7 @@ Merlin version: v9
 | **Critic engine** | Two-stage per-turn evaluation: (1) domain verification backend (e.g. `xcodebuild` for Swift tasks), (2) LLM scoring on a 0–1 scale. Results gate memory writes and drive automatic correction loops. No equivalent in Claude Code |
 | **Staged diff review with inline agent feedback** | All writes intercepted and queued in Ask and Plan modes; unified colour-coded diff per file; Accept/Reject per change or all at once; inline comments on any diff line fed back to the agent for in-place revision. Claude Code applies writes directly; the VS Code extension shows diffs after the fact with no staged write workflow |
 | **Persistent local RAG memory (v9)** | SQLite + Apple NLContextualEmbedding (512-dim, on-device, no external dependencies); factual + episodic chunks; top-5 cosine retrieval per turn; critic-gated writes; fully local. Anthropic explicitly chose not to add RAG to Claude Code — they rely on agentic grep/search instead |
-| **LoRA self-training** | MLX-LM fine-tuning on accepted session data on an M4 Mac; auto-train at sample threshold; routes execute slot through the trained adapter; quality-gated export. No equivalent in Claude Code |
+| **LoRA self-training** | MLX-LM fine-tuning on accepted session data on an M4 Mac (MLX-format base required); auto-train at sample threshold; routes execute slot through the trained adapter; quality-gated export. No equivalent in Claude Code |
 | **Model calibration (/calibrate)** | 18-prompt benchmark across four categories (reasoning, coding, instruction-following, summarization) against any reference provider; identifies context length, temperature, truncation, and repetition issues; one-tap "Apply All Suggestions" via advisory pipeline |
 | **Performance tracking dashboard** | `ModelPerformanceTracker` records per-model × task-type outcomes; exponential decay success rate; trend detection (improving / stable / declining); feeds LoRA training data export |
 | **Circuit breaker (v9)** | Surfaces sustained quality degradation after N consecutive critic failures via `systemNote`; configurable threshold and halt vs. warn mode; prevents silent accumulation of bad outputs |
@@ -62,18 +62,6 @@ Merlin version: v9
 |---|---|---|
 | **Claude in Chrome extension** | Opens tabs in the user's browser, tests UI interactions, takes screenshots, and iterates on frontend designs with visual verification — paired with VS Code extension for full round-trip feedback | Medium |
 
-### Minor
-
-> All three minor gaps are now closed (Phases 202b, 203b, 204b).
-
-| Gap | Status |
-|---|---|
-| **Scroll lock** | ✅ Implemented — Phase 202b |
-| **Checkpoint restoration (/rewind)** | ✅ Implemented — Phase 203b |
-| **/btw (side questions)** | ✅ Implemented — Phase 204b |
-
----
-
 ## Key takeaways
 
 **The biggest structural gap from the original (2026-04-26) analysis is now closed.** The original document identified the lack of sessions-as-worktrees and a diff review layer as the core deficit. Merlin now has full git worktree isolation per session, a staged diff review layer with inline commenting and agent revision, parallel sessions, and subagents. All five "most impactful daily use" gaps from the original doc (diff pane, stop button, @filename, CLAUDE.md, MCP) are implemented.
@@ -91,7 +79,7 @@ Merlin version: v9
 - **Multi-LLM routing** — complexity-based dispatch to specialised slots vs. single model for all tasks
 - **Staged diff review with inline agent feedback** — intercepted writes with per-change accept/reject and agent revision loop vs. direct writes with after-the-fact VS Code diffs
 - **Local RAG memory** — on-device SQLite vector store with critic-gating vs. agentic grep
-- **LoRA self-training** — unique to Merlin; adapts the local model to your own accepted sessions over time
+- **LoRA self-training** — unique to Merlin; adapts the local MLX-format model to your own accepted sessions over time
 - **Deep macOS integration** — AX tree, CGEvent, native Xcode toolchain, SFSpeechRecognizer
 - **Behavioral reliability** — critic engine, circuit breaker, grounding confidence, performance tracking
 

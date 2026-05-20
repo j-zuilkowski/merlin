@@ -12,7 +12,7 @@ is set at creation and never exposed for editing in the UI.
 Design:
 - Providers with a known fixed model list (DeepSeek, OpenAI, Anthropic, Qwen) → Picker
 - Providers whose models depend on local installation (Ollama, LM Studio, Jan.ai, LocalAI,
-  Mistral.rs, vLLM) → TextField (free text, commits on Return)
+  Mistral.rs, vLLM-Metal) → TextField (free text, commits on Return)
 - OpenRouter → TextField (routing service, model is arbitrary string)
 - Known model list is static metadata; it must NOT be added to ProviderConfig (Codable) —
   store it as a static lookup on ProviderRegistry instead.

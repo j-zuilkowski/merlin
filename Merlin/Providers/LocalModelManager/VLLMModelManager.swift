@@ -1,10 +1,11 @@
 import Foundation
 
-/// vLLM manager.
+/// vLLM-Metal manager.
 ///
 /// This provider is restart-only. The restart instruction uses the OpenAI
 /// compatible API server entry point and maps supported `LoadParam` values to
 /// the corresponding `python -m vllm.entrypoints.openai.api_server` flags.
+/// `@unchecked Sendable` rationale: stateless restart-instruction generator; no mutable shared state.
 final class VLLMModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "vllm"
@@ -36,7 +37,7 @@ final class VLLMModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     func reload(modelID: String, config: LocalModelConfig) async throws {
         guard let instructions = restartInstructions(modelID: modelID, config: config) else {
-            throw ModelManagerError.reloadFailed("vLLM restart instructions unavailable for \(modelID)")
+            throw ModelManagerError.reloadFailed("vLLM-Metal restart instructions unavailable for \(modelID)")
         }
         throw ModelManagerError.requiresRestart(instructions)
     }
@@ -46,7 +47,7 @@ final class VLLMModelManager: LocalModelManagerProtocol, @unchecked Sendable {
         return RestartInstructions(
             shellCommand: shellCommand,
             configSnippet: nil,
-            explanation: "vLLM reads these settings at server startup, so applying them requires a restart."
+            explanation: "vLLM-Metal reads these settings at server startup, so applying them requires a restart."
         )
     }
 

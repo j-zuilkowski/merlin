@@ -122,10 +122,10 @@ final class LoRASettingsTests: XCTestCase {
     func testLoRAMinSamplesOmittedWhenDefault() {
         let settings = AppSettings()
         settings.loraEnabled = true
-        // loraMinSamples is 50 (default) — omit it
+        // loraMinSamples is 1000 (default) — omit it
         let toml = settings.serializedTOML()
         XCTAssertFalse(toml.contains("lora_min_samples"),
-                       "lora_min_samples must be omitted when value is 50 (default)")
+                       "lora_min_samples must be omitted when value is 1000 (default)")
     }
 
     func testLoRABaseModelRoundTrip() {

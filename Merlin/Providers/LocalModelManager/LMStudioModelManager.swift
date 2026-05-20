@@ -10,6 +10,7 @@ import Foundation
 ///   GET  /api/v1/models            - list loaded models
 ///   POST /api/v1/unload            - { "identifier": "<model>" }
 ///   POST /api/v1/load              - { "identifier": "<model>", "config": { ... } }
+/// `@unchecked Sendable` rationale: URLSession-backed REST + CLI shell-out; mutable state confined to async tasks.
 final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "lmstudio"

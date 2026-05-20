@@ -1,24 +1,4 @@
-// AgenticEngine — the central agentic loop for Merlin.
-//
-// Owns the LLM providers, ContextManager, and ToolRouter.
-// Every user message enters via send() or invokeSkill(), which
-// drive the recursive runLoop(). The loop streams AgentEvent
-// values: text deltas, thinking blocks, tool call start/result
-// pairs, subagent events, system notes, and RAG source attributions.
-//
-// V5+: runLoop() classifies task complexity, routes to the correct
-// AgentSlot, runs the CriticEngine on final responses, records
-// OutcomeSignals (including real diffAccepted/diffEditedOnAccept
-// values from StagingBuffer), and gates local memory writes on
-// the critic verdict.
-//
-// V6: calls LoRACoordinator.considerTraining() after each record();
-// captures lastResponseText for OutcomeRecord prompt/response fields;
-// loraProvider routes the execute slot through mlx_lm.server when
-// a LoRA adapter is loaded.
-//
-// See: Developer Manual § "Engine — The Agentic Loop" and
-//      § "Supervisor-Worker Engine" and § "LoRA Training Pipeline"
+// AgenticEngine — the central agentic loop. See Developer Manual § "Engine — The Agentic Loop".
 import Foundation
 import CryptoKit
 
@@ -172,7 +152,7 @@ final class AgenticEngine {
         onTitleUpdate?(generated)
     }
 
-    // MARK: - Loop continuation state (Fix 1)
+    // MARK: - Loop continuation state
 
     /// Steps deferred from a batch-split plan. Written as a [CONTINUATION] inject
     /// after the current turn finishes. Cleared in schedulePendingContinuation().
@@ -224,7 +204,7 @@ final class AgenticEngine {
     /// engine gives up and stops. Each continuation gets its own full loop budget.
     private let maxCeilingContinuations = 10
 
-    // MARK: - Near-ceiling warning (Fix 2)
+    // MARK: - Near-ceiling warning
 
     /// Non-nil while the engine is within nearCeilingThreshold iterations of the ceiling.
     /// Appended to the system prompt so the LLM knows to commit and wrap up.
@@ -843,7 +823,7 @@ final class AgenticEngine {
             }
         }
 
-        // Phase 151b — compact before appending if session has grown large.
+        // Compact before appending if session has grown large.
         // Skip for continuations: they depend on recent tool results staying intact.
         context.compactIfNeededBeforeRun(isContinuation: isContinuation)
         if contextOverride == nil {
@@ -920,7 +900,7 @@ final class AgenticEngine {
                 }
                 loopCount += 1
 
-                // Fix 2: Warn the LLM (via system prompt addendum + visible note) when
+                // Warn the LLM (via system prompt addendum + visible note) when
                 // the loop budget is nearly exhausted so it commits and wraps up.
                 let loopsRemaining = maxIterations - loopCount
                 if loopsRemaining <= nearCeilingThreshold && !nearCeilingEmitted {
@@ -1053,6 +1033,9 @@ final class AgenticEngine {
                 if let manager = localModelManagers[baseProviderID] {
                     let bodyBytes = (try? encodeRequest(request, baseURL: provider.baseURL,
                                                         model: provider.resolvedModelID))?.count ?? 0
+                    // Conservative pre-flight estimate: 4.0 bytes/token (looser than
+                    // ContextManager's 3.5 because this gates a context-length reload — over-reserve
+                    // is cheap, under-reserve forces a re-load mid-turn), +20% headroom, +512-token floor.
                     let estimatedTokens = Int(Double(bodyBytes) / 4.0 * 1.2) + 512
                     try? await manager.ensureContextLength(
                         modelID: provider.resolvedModelID,
@@ -1413,7 +1396,7 @@ final class AgenticEngine {
                     context: context,
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
-                // Prompt compression: mid-loop LLM summarisation (Phase 206b).
+                // Prompt compression: mid-loop LLM summarisation.
                 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
                 // A turn that made tool calls IS progress — the model acted, even
                 // if it produced no prose. Omitting `calls` here made a model that
@@ -1668,10 +1651,10 @@ final class AgenticEngine {
             kagEngine.scheduleExtraction(from: lastResponseText, domain: domain.id)
         }
 
-        // Fix 2: Reset near-ceiling addendum so it doesn't bleed into the next turn.
+        // Reset near-ceiling addendum so it doesn't bleed into the next turn.
         nearCeilingWarningAddendum = nil
 
-        // Fix 1: If this turn processed a batch-split plan, write the remaining steps
+        // If this turn processed a batch-split plan, write the remaining steps
         // as a [CONTINUATION] inject so the engine picks them up automatically.
         // Abort guard: if the model signalled [STEP_ALREADY_DONE], skip scheduling
         // so no further continuation turns fire for already-completed work.

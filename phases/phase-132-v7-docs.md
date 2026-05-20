@@ -119,7 +119,7 @@ Find the existing sections for:
   the `[inference]` TOML section with `applyInferenceDefaults`.
 - **Local Model Management** — if not present, add a section describing:
   - Per-provider load parameter editing in Settings → Providers
-  - Runtime reload (LM Studio, Ollama, Jan) vs restart instructions (LocalAI, Mistral.rs, vLLM)
+  - Runtime reload (LM Studio, Ollama, Jan) vs restart instructions (LocalAI, Mistral.rs, vLLM-Metal)
   - Parameter advisory auto-detection (truncation, variance, repetition, context overflow)
   - One-tap fix via PerformanceDashboard "Fix this" button
 - **AI-Generated Memories** — confirm the dual-path (file injection + xcalibre RAG) bullet is present.

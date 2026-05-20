@@ -1,4 +1,4 @@
-# Phase 126a — Local Model Manager Extended Tests (Jan, LocalAI, Mistral.rs, vLLM)
+# Phase 126a — Local Model Manager Extended Tests (Jan, LocalAI, Mistral.rs, vLLM-Metal)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.

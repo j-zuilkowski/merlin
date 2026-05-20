@@ -46,7 +46,7 @@ additions. The current source is `Merlin/Config/AppSettings.swift`.
 | `loraEnabled` | `Bool` | `false` | `lora_enabled` |
 | `loraAutoTrain` | `Bool` | `false` | `lora_auto_train` |
 | `loraAutoLoad` | `Bool` | `false` | `lora_auto_load` |
-| `loraMinSamples` | `Int` | `50` | `lora_min_samples` |
+| `loraMinSamples` | `Int` | `1000` | `lora_min_samples` |
 | `loraBaseModel` | `String` | `""` | `lora_base_model` |
 | `loraAdapterPath` | `String` | `""` | `lora_adapter_path` |
 | `loraServerURL` | `String` | `""` | `lora_server_url` |

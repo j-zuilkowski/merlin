@@ -70,7 +70,7 @@ final class AppSettings: ObservableObject {
     @Published var loraEnabled: Bool = false
     @Published var loraAutoTrain: Bool = false
     @Published var loraAutoLoad: Bool = false
-    @Published var loraMinSamples: Int = 50
+    @Published var loraMinSamples: Int = 1000
     @Published var loraBaseModel: String = ""
     @Published var loraAdapterPath: String = ""
     @Published var loraServerURL: String = ""
@@ -457,7 +457,7 @@ final class AppSettings: ObservableObject {
             if loraAutoLoad {
                 lines.append("lora_auto_load = true")
             }
-            if loraMinSamples != 50 {
+            if loraMinSamples != 1000 {
                 lines.append("lora_min_samples = \(loraMinSamples)")
             }
             if loraBaseModel.isEmpty == false {
