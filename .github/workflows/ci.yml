@@ -53,8 +53,20 @@ jobs:
             | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED'
 
       - name: Run Unit Tests
+        timeout-minutes: 25
         run: |
           set -o pipefail
+          # -test-timeouts-enabled / -default-test-execution-time-allowance:
+          # cap any single test at 60s so a hung test fails fast with a clear
+          # name instead of burning the 6h runner cap (which happened once
+          # already: testProviderAddendumAppearsInSystemPrompt wedged the
+          # whole job for 6h on a macos-15 runner while passing locally in
+          # 0.5s).
+          # -maximum-concurrent-test-simulator-destinations 1 and
+          # -disable-concurrent-destination-testing: deterministic serial
+          # execution removes the most plausible source of the wedge —
+          # XCTest concurrency interacting with the actor entry points in
+          # DomainRegistry / AppSettings under the runner's specific load.
           xcodebuild \
             -scheme MerlinTests \
             -configuration Debug \
@@ -64,5 +76,10 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=YES \
             ENABLE_HARDENED_RUNTIME=NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 60 \
+            -maximum-test-execution-time-allowance 120 \
+            -maximum-concurrent-test-simulator-destinations 1 \
+            -disable-concurrent-destination-testing \
             test \
-            | grep -E 'error:|Test Suite|Test Case|passed|failed|BUILD SUCCEEDED|BUILD FAILED'
+            | grep -E 'error:|Test Suite|Test Case|passed|failed|exceeded|BUILD SUCCEEDED|BUILD FAILED'
