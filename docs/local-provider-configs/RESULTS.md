@@ -23,7 +23,7 @@ Run order per provider:
 | **jan** | ✓ | ✓ | ✓ (10 chunks) | ✓ | Unblocked: `jan-cli serve --model-path <gguf> --bin $(which llama-server)`. Required `brew install llama.cpp` (Jan ships the CLI but not the backend binary). Port rebound to 1337 to match Merlin's `ProviderConfig.swift` default. |
 | **localai** (native) | ✓ | ✓ ("pong") | ✓ (12 chunks) | ✓ | Homebrew install + Metal + `metal-llama-cpp` backend. Docker version retired. |
 | **mistralrs** | — DROPPED — | | | | Per user direction (2026-05-20): retired from the testing matrix. `candle-core 0.10.2` doesn't implement MoE forward on Metal; Qwen3-Coder-A3B can't serve from this provider on Apple Silicon today. Revisit when upstream lands the kernel. |
-| **vllm** (vLLM-Metal) | ✗ both paths | — | — | — | GGUF path fails with `HFValidationError` (vLLM 0.21.0's loader rejects local file paths). FP8 safetensors fallback **also fails**: `ValueError: Received 18624 parameters not in model: ...weight_scale_inv` — MLX doesn't handle FP8 per-tensor scale params for MoE models. Both upstream-blocked for Qwen3-MoE on Apple Silicon. |
+| **vllm** (vLLM-Metal) | ✓ | ✓ | ✓ (10 chunks) | ✓ | **Resolved 2026-05-20**: vLLM-Metal uses `mlx_lm.load`, not the standard vLLM weight loaders. Wants an MLX-format model directory (HF layout: `config.json` + `model-*.safetensors` + tokenizer). Pointing it at LM Studio's `~/.lmstudio/models/.../Qwen3-Coder-30B-A3B-Instruct-MLX-8bit/` directly works — no extra download. Requires `--enable-auto-tool-choice --tool-call-parser qwen3_coder` for tool_calls. GGUF and FP8 paths are dead ends for this provider; **MLX is its native format**. |
 
 Mark each cell: ✓ pass / ⚠ warn / ✗ fail. Add details under Notes.
 
@@ -97,52 +97,64 @@ Qwen3-Coder-A3B from this provider on Apple Silicon today. Revisit when
 upstream candle lands the Metal MoE op.
 
 ### vllm (vLLM-Metal)
-**Both load paths fail upstream.**
+**Resolved 2026-05-20.** The earlier failures were format-choice errors, not
+upstream limitations:
 
-GGUF (Q8_0):
-```
-huggingface_hub.errors.HFValidationError: Repo id must be in the form
-'repo_name' or 'namespace/repo_name': '/Users/.../Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf'.
-```
-vLLM 0.21.0's loader passes the local GGUF path through HF repo-id validation
-at `model_lifecycle.py:126`.
+- GGUF path failed because vLLM-Metal's loader is `mlx_lm.load`, not vLLM's
+  standard GGUF loader. `mlx_lm` doesn't read `.gguf` files — it reads HF-layout
+  model directories. The `HFValidationError` at
+  `vllm_metal/v1/model_lifecycle.py:126` came from `mlx_lm` running my path
+  through HF repo-id validation, which rejects single files.
+- FP8 path failed because MLX's MoE backend doesn't consume the FP8 per-tensor
+  scale params (`weight_scale_inv`).
 
-FP8 safetensors (downloaded 2026-05-20, ~29 GB at `~/Models/hf/Qwen3-Coder-30B-A3B-Instruct-FP8/`):
-```
-ValueError: Received 18624 parameters not in model:
-  model.layers.0.mlp.experts.0.down_proj.weight_scale_inv, ...
-```
-MLX (the Apple Silicon ML framework that vLLM-Metal uses) doesn't handle the
-FP8 per-tensor scale params (`weight_scale_inv`) that accompany FP8-quantized
-MoE models.
+The **correct input is an MLX-format model directory** — which is exactly what
+LM Studio already has at
+`~/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit/`.
+Pointing `vllm serve` at that directory works out of the box. **No additional
+download required** — vLLM-Metal and LM Studio share the same on-disk MLX file.
 
-Both paths blocked upstream. **Recommendation: drop vLLM-Metal from the active
-testing matrix** for the same reason Mistral.rs was dropped — Qwen3-MoE on
-Apple Silicon is the common failure surface. The FP8 download stays on disk as
-documentation of the attempt; revisit if vLLM-Metal's MLX integration improves.
+Tool calls require `--enable-auto-tool-choice --tool-call-parser qwen3_coder`;
+without them, vLLM returns HTTP 400 on any request with `tools` set.
+
+**Memory caveat**: vLLM-Metal allocates the model into Metal-shared memory at
+startup. Running it concurrently with the three GGUF-using providers (Ollama,
+Jan, LocalAI, each carrying ~32 GB of Metal allocation for the same model) OOMs
+the GPU on a 128 GB M4 Max. The earlier smoke sweep hit
+`kIOGPUCommandBufferCallbackErrorOutOfMemory`. In practice this is fine — only
+one provider serves the active Merlin request at a time. For the smoke-test
+sweep, shut down the other GGUF daemons before launching vLLM-Metal.
+
+The 29 GB FP8 download stays on disk for now; can be deleted (vLLM-Metal won't
+use it).
 
 
 ## Takeaways — 2026-05-20 final
 
-**Passing smoke (4/6):** LM Studio (MLX-8bit baseline), Ollama (Q8 GGUF), Jan.ai (Q8 GGUF), LocalAI native (Q8 GGUF). All four pass all four wire-format axes (reachable, completion, streaming, tool_calls).
+**Passing smoke (5/6):** LM Studio (MLX-8bit baseline), Ollama (Q8 GGUF), Jan.ai (Q8 GGUF), LocalAI native (Q8 GGUF), vLLM-Metal (MLX-8bit, sharing LM Studio's on-disk dir). All five pass all four wire-format axes when run in isolation.
 
-**Out of the matrix (2/6):**
+**Out of the matrix (1/6):**
 - **Mistral.rs** — dropped per user direction. `candle-core 0.10.2` lacks `indexed_moe_forward` for Metal; can't serve Qwen3-MoE.
-- **vLLM-Metal** — both GGUF and FP8 load paths fail upstream on Qwen3-MoE + MLX (HFValidationError on GGUF; `weight_scale_inv` mismatch on FP8). FP8 safetensors stay on disk in case vLLM-Metal's MLX integration improves.
 
-**Calibration matrix is 4 providers** — meaningful llama.cpp-vs-MLX comparison even without Mistral.rs and vLLM-Metal:
-- LM Studio = MLX-8bit (different inference path)
-- Ollama / Jan / LocalAI = llama.cpp family on Q8_0 GGUF (same kernel; provides a 3-way convergence sanity check)
+**Calibration matrix is 5 providers** — covers both inference paths:
+- **MLX family**: LM Studio (LM Studio's own MLX runtime), vLLM-Metal (uses `mlx_lm` against the same on-disk model directory).
+- **llama.cpp family**: Ollama, Jan, LocalAI — same kernel, same Q8_0 GGUF.
 
 Calibration outcomes should show:
-- Ollama / Jan / LocalAI converging within ~1–2% of each other (same kernel; differences are wrapper overhead and parameter defaults)
-- LM Studio differing more because it's a different precision (MLX-8bit vs Q8_0 GGUF) and a different runtime (MLX vs llama.cpp)
-- Larger gaps on the llama.cpp trio than ~2% would suggest a tokenizer or parameter-default mismatch worth investigating.
+- LM Studio ≈ vLLM-Metal — same MLX file, near-identical outputs. Any gap is server-side scheduling overhead.
+- Ollama / Jan / LocalAI converging within ~1–2% of each other (same llama.cpp kernel; differences are wrapper overhead + parameter defaults).
+- MLX family vs llama.cpp family — different precision (MLX-8bit vs Q8_0 GGUF) and different runtime; meaningful gap is the interesting signal.
+
+**Memory note**: vLLM-Metal and LM Studio share Metal allocation when both load
+the same MLX model — running both simultaneously is borderline on a 128 GB M4.
+The other GGUF providers each carry their own ~32 GB Metal allocation. **For
+calibration: run one provider at a time** (enable in Merlin, run `/calibrate`,
+disable, switch). The smoke sweep saw `kIOGPUCommandBufferCallbackErrorOutOfMemory`
+when all five tried to coexist.
 
 **Daemons running at end of pass:**
 - LM Studio (`:1234`) — yours, leave alone
-- LocalAI native (`:8080`) — restart with `bash docs/local-provider-configs/localai/launch-native.sh`
-- Ollama (`:11434`) — restart with `OLLAMA_HOST=127.0.0.1:11434 /Applications/Ollama.app/Contents/Resources/ollama serve`
-- Jan (`:1337`, via `jan-cli` + Homebrew `llama-server`) — restart with the `jan-cli serve` command in this file's Jan section
+- vLLM-Metal (`:8000`, PID 62965, MLX-8bit from LM Studio dir)
+- The other three (Ollama / Jan / LocalAI) were stopped to free Metal memory for vLLM-Metal. Restart commands in this file's per-provider sections.
 
-All four are ready for `/calibrate` runs from Merlin against DeepSeek as the reference remote.
+All five are ready for `/calibrate` runs from Merlin against DeepSeek as the reference remote, one at a time.
