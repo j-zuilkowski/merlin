@@ -225,7 +225,7 @@ gh release create vX.Y.Z \
 ```
 Tags alone do not update the "Latest" release on GitHub — the `gh release create` step is mandatory.
 
-**Current version: 2.2.4** (build 21, tag v2.2.4)
+**Current version: 2.2.5** (build 24, tag v2.2.5)
 
 ---
 
