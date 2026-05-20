@@ -195,12 +195,15 @@ final class LoopContinuationTests: XCTestCase {
     func testNearCeilingWarningEmittedOnce() async throws {
         // maxIterations=6, threshold=4: warning fires at loop 2 (remaining=4).
         // 4 tool calls + text: loops 2,3,4,5 are all within the warning window,
-        // but the note must only appear once.
+        // but the note must only appear once. Args VARY per call so the
+        // repetition-stall detector doesn't read 4 identical-signature calls
+        // as a loop and escalate mid-test (escalation handoff would reset
+        // `nearCeilingEmitted` and the warning would fire a second time).
         let provider = MockProvider(responses: [
-            MockLLMResponse.toolCall(id: "t1", name: "noop", args: "{}"),
-            MockLLMResponse.toolCall(id: "t2", name: "noop", args: "{}"),
-            MockLLMResponse.toolCall(id: "t3", name: "noop", args: "{}"),
-            MockLLMResponse.toolCall(id: "t4", name: "noop", args: "{}"),
+            MockLLMResponse.toolCall(id: "t1", name: "noop", args: #"{"i":1}"#),
+            MockLLMResponse.toolCall(id: "t2", name: "noop", args: #"{"i":2}"#),
+            MockLLMResponse.toolCall(id: "t3", name: "noop", args: #"{"i":3}"#),
+            MockLLMResponse.toolCall(id: "t4", name: "noop", args: #"{"i":4}"#),
             MockLLMResponse.text("done"),
         ])
         let engine = makeEngine(provider: provider)

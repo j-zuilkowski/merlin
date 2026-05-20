@@ -87,6 +87,22 @@ actor EscalationHandler {
         return await strongestUnusedViableProvider()
     }
 
+    /// The target for a *budget* escalation (`cannotDecompose` on a preflight
+    /// overflow) — a provider whose usable context actually fits the step.
+    /// `capabilityEscalationTarget` is wrong here because it returns the
+    /// designated reason slot or the largest-budget provider regardless of
+    /// whether either fits: a small-model-only registry would otherwise route
+    /// a 64k-min step to a 28k-budget provider and silently fail at the wire.
+    private func budgetFittingProvider(for step: PlanStep) async -> String? {
+        guard let registry else { return nil }
+        let ordered = await registry.providersOrderedByBudget()
+        return ordered.first(where: {
+            routedProviderIDs.contains($0.id) == false
+                && isViable($0.id)
+                && $0.budget.usableInputTokens >= step.minContextRequired
+        })?.id
+    }
+
     func escalateOrStop(
         currentStep: PlanStep,
         reason: EscalationReason,
@@ -163,14 +179,22 @@ actor EscalationHandler {
             escalationAttempts += 1
             return .continueWith(replacementSteps: replacementSteps)
         case .cannotDecompose(let explanation):
-            // The step can't be split — hand off to a stronger provider. Prefer the
-            // designated reason slot (a capable remote model with a large context,
-            // so it satisfies a context-overflow escalation too); fall back to the
-            // strongest viable provider by budget. Routing by raw budget alone
-            // picked a bare backend id whose config had no model set — the request
-            // then went out as the provider id and the backend rejected it.
+            // The step can't be split. The right target depends on *why* we got
+            // here: a preflight overflow needs a bigger context window (route
+            // only to a provider whose usable input fits `minContextRequired`),
+            // while a capability/iteration failure needs a smarter model (route
+            // to the designated reason slot). Routing by raw budget alone once
+            // picked a bare backend id with no model set, and routing by the
+            // capability target alone would send a 64k-min step to a 28k-budget
+            // provider; the two selectors are not interchangeable.
             if registry != nil {
-                if let provider = await capabilityEscalationTarget() {
+                let target: String?
+                if case .preflightOverflow = reason {
+                    target = await budgetFittingProvider(for: currentStep)
+                } else {
+                    target = await capabilityEscalationTarget()
+                }
+                if let provider = target {
                     routedProviderIDs.insert(provider)
                     escalationAttempts += 1
                     return .routeToProvider(providerID: provider, reason: explanation)

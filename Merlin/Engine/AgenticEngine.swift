@@ -1248,8 +1248,16 @@ final class AgenticEngine {
                                 } else {
                                     // Retry budget on the current model is spent.
                                     // Escalate the correction to a stronger provider
-                                    // rather than abandoning the task.
-                                    consecutiveCriticFailures += 1
+                                    // rather than abandoning the task. The
+                                    // consecutive-failure counter is bumped ONLY when
+                                    // escalation truly gives up — `.stop`. Bumping it
+                                    // here unconditionally double-counted: a routed
+                                    // provider that also exhausted its retries hit
+                                    // this branch a second time, so a single failed
+                                    // user-message turn could increment the counter
+                                    // multiple times and trip the circuit breaker
+                                    // (CircuitBreakerTests.testCounterIncrementsOn-
+                                    // ConsecutiveFails caught this).
                                     continuation.yield(.systemNote(
                                         "[Critic: \(maxRetries) retries exhausted — escalating: \(reason)]"
                                     ))
@@ -1285,6 +1293,7 @@ final class AgenticEngine {
                                         criticRetryCount = 0
                                         continue turnLoop
                                     case .stop:
+                                        consecutiveCriticFailures += 1
                                         break turnLoop
                                     }
                                 }
@@ -1416,16 +1425,25 @@ final class AgenticEngine {
                 if recentProgressFlags.count > 3 {
                     recentProgressFlags.removeFirst(recentProgressFlags.count - 3)
                 }
-                // Record this turn's prose fingerprint for repetition-stall
-                // detection. Only the prose intro is fingerprinted: a productive
-                // model never narrates an 80-char prefix verbatim three times,
-                // whereas a looping model re-introduces itself every turn. An
-                // empty prefix (tool-only turn) is recorded but ignored by the
-                // detector's `key.isEmpty == false` filter — distinct shell work
-                // with no narration must not read as repetition.
-                let turnFingerprint = String(
+                // Record this turn's fingerprint for repetition-stall detection.
+                // Combines the prose prefix and the tool-call signature so we
+                // catch both kinds of loop: a model re-introducing itself
+                // verbatim each turn AND a model stuck running the same tool
+                // call over and over (the latter previously slipped past
+                // `recentProgressFlags` because tool calls register as
+                // progress). A productive model varies *either* its narration
+                // or its tool-call args; only a genuinely stuck loop repeats
+                // both. Args are truncated to 200 chars to bound the key size
+                // and tolerate trivial whitespace drift.
+                let textKey = String(
                     fullText.trimmingCharacters(in: .whitespacesAndNewlines)
                         .lowercased().prefix(80))
+                let toolKey = calls
+                    .map { "\($0.function.name):\(String($0.function.arguments.prefix(200)))" }
+                    .sorted()
+                    .joined(separator: "|")
+                let turnFingerprint = textKey.isEmpty && toolKey.isEmpty
+                    ? "" : "\(textKey)##\(toolKey)"
                 recentTurnFingerprints.append(turnFingerprint)
                 if recentTurnFingerprints.count > 6 {
                     recentTurnFingerprints.removeFirst(recentTurnFingerprints.count - 6)
