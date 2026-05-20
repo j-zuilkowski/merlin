@@ -74,6 +74,19 @@ final class AppSettings: ObservableObject {
     @Published var loraBaseModel: String = ""
     @Published var loraAdapterPath: String = ""
     @Published var loraServerURL: String = ""
+    /// Selects which MLX-native runtime serves the trained LoRA adapter. The
+    /// existing `loraServerURL` still carries the actual HTTP endpoint; this
+    /// field is the user's named choice, used by `LoRASettingsSection` for
+    /// tailored launch instructions per runtime. Canonical values:
+    /// `mlx_lm_server` (historic default), `vllm_metal`, `lm_studio`, `custom`.
+    @Published var loraServingTarget: String = "mlx_lm_server"
+
+    /// Canonical set of recognised LoRA serving targets. The picker UI lists
+    /// these; AppSettings TOML round-trips any string but the UI clamps.
+    static let knownLoRAServingTargets: [String] = [
+        "mlx_lm_server", "vllm_metal", "lm_studio", "custom",
+    ]
+
     // MARK: - Inference defaults
     /// TOML key `temperature` inside `[inference]`; default `nil` keeps provider behavior.
     @Published var inferenceTemperature: Double? = nil
@@ -193,6 +206,7 @@ final class AppSettings: ObservableObject {
         var loraBaseModel: String?
         var loraAdapterPath: String?
         var loraServerURL: String?
+        var loraServingTarget: String?
         var inference: InferenceConfig?
         var xcalibreToken: String?
         var slots: [String: String]?
@@ -233,6 +247,7 @@ final class AppSettings: ObservableObject {
             var loraBaseModel: String?
             var loraAdapterPath: String?
             var loraServerURL: String?
+            var loraServingTarget: String?
 
             enum CodingKeys: String, CodingKey {
                 case loraEnabled = "lora_enabled"
@@ -242,6 +257,7 @@ final class AppSettings: ObservableObject {
                 case loraBaseModel = "lora_base_model"
                 case loraAdapterPath = "lora_adapter_path"
                 case loraServerURL = "lora_server_url"
+                case loraServingTarget = "lora_serving_target"
             }
         }
 
@@ -327,6 +343,7 @@ final class AppSettings: ObservableObject {
             case loraBaseModel = "lora_base_model"
             case loraAdapterPath = "lora_adapter_path"
             case loraServerURL = "lora_server_url"
+            case loraServingTarget = "lora_serving_target"
             case inference
             case xcalibreToken = "xcalibre_token"
             case slots
@@ -468,6 +485,9 @@ final class AppSettings: ObservableObject {
             }
             if loraServerURL.isEmpty == false {
                 lines.append("lora_server_url = \(quoted(loraServerURL))")
+            }
+            if loraServingTarget != "mlx_lm_server" {
+                lines.append("lora_serving_target = \(quoted(loraServingTarget))")
             }
         }
         var inferenceLines: [String] = []
@@ -842,6 +862,9 @@ final class AppSettings: ObservableObject {
             if let value = lora.loraServerURL {
                 loraServerURL = value
             }
+            if let value = lora.loraServingTarget {
+                loraServingTarget = value
+            }
         }
         if let inference = config.inference {
             if let value = inference.temperature {
@@ -964,6 +987,8 @@ final class AppSettings: ObservableObject {
                 loraAdapterPath = value
             } else if let value = parsedStringValue(from: line, key: "lora_server_url") {
                 loraServerURL = value
+            } else if let value = parsedStringValue(from: line, key: "lora_serving_target") {
+                loraServingTarget = value
             }
         }
     }

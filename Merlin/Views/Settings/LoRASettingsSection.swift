@@ -74,14 +74,27 @@ struct LoRASettingsSection: View {
 
             Section("Inference") {
                 Toggle("Auto-load adapter after training", isOn: $settings.loraAutoLoad)
-                    .help("Route the execute slot through mlx_lm.server when an adapter is available.")
+                    .help("Route the execute slot through the chosen MLX runtime when an adapter is available.")
                     .accessibilityIdentifier(AccessibilityID.settingsLoRAAutoLoadToggle)
 
-                LabeledContent("MLX-LM server URL") {
-                    TextField("http://localhost:8080", text: $settings.loraServerURL)
+                LabeledContent("Serving runtime") {
+                    Picker("", selection: $settings.loraServingTarget) {
+                        Text("mlx_lm.server").tag("mlx_lm_server")
+                        Text("vLLM-Metal").tag("vllm_metal")
+                        Text("LM Studio").tag("lm_studio")
+                        Text("Custom").tag("custom")
+                    }
+                    .labelsHidden()
+                    .disabled(!settings.loraAutoLoad)
+                    .help(loraServingTargetHelp(for: settings.loraServingTarget))
+                }
+
+                LabeledContent("Server URL") {
+                    TextField(loraServingTargetURLPlaceholder(for: settings.loraServingTarget),
+                              text: $settings.loraServerURL)
                         .textFieldStyle(.roundedBorder)
                         .disabled(!settings.loraAutoLoad)
-                        .help("OpenAI-compatible endpoint of your mlx_lm.server running with the adapter loaded.\nStart with: python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080")
+                        .help(loraServingTargetURLHelp(for: settings.loraServingTarget))
                         .accessibilityIdentifier(AccessibilityID.settingsLoRAServerURLField)
                 }
             }
@@ -108,6 +121,47 @@ struct LoRASettingsSection: View {
         panel.canCreateDirectories = true
         panel.prompt = "Select"
         return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    /// Per-runtime guidance shown on the Picker's tooltip — explains what each
+    /// target needs to be running and which adapter-load strategy it uses.
+    private func loraServingTargetHelp(for target: String) -> String {
+        switch target {
+        case "mlx_lm_server":
+            return "Default. Run: python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080. Direct adapter load — no fuse step."
+        case "vllm_metal":
+            return "vLLM-Metal serves MLX format. Fuse the adapter first: python -m mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>. Then: vllm serve <merged> --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_coder."
+        case "lm_studio":
+            return "Load the base model in LM Studio, then attach the adapter via the LM Studio UI. Direct adapter load — no fuse step."
+        case "custom":
+            return "Custom MLX-compatible runtime. Set the Server URL to its /v1 endpoint."
+        default:
+            return ""
+        }
+    }
+
+    private func loraServingTargetURLPlaceholder(for target: String) -> String {
+        switch target {
+        case "mlx_lm_server": return "http://localhost:8080/v1"
+        case "vllm_metal":    return "http://localhost:8000/v1"
+        case "lm_studio":     return "http://localhost:1234/v1"
+        default:              return "http://localhost:PORT/v1"
+        }
+    }
+
+    private func loraServingTargetURLHelp(for target: String) -> String {
+        switch target {
+        case "mlx_lm_server":
+            return "OpenAI-compatible endpoint of mlx_lm.server. Default port 8080."
+        case "vllm_metal":
+            return "OpenAI-compatible endpoint of vLLM-Metal serving the fused MLX model. Default port 8000."
+        case "lm_studio":
+            return "OpenAI-compatible endpoint of LM Studio's local server. Default port 1234."
+        case "custom":
+            return "OpenAI-compatible endpoint of your custom MLX runtime."
+        default:
+            return ""
+        }
     }
 }
 

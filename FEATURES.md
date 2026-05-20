@@ -541,9 +541,16 @@ GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**) require an additional step:
 3. Open Settings → LoRA and enable **LoRA Self-Training**
 4. Set **Base Model** to the model path or Hugging Face ID
 5. Set **Adapter Path** to a local directory for the trained adapter
-6. Set **Server URL** to `http://localhost:8080/v1` (or the port `mlx_lm.server` is listening on)
-7. Enable **Auto-Train** to trigger training automatically once the sample threshold is reached
-8. Enable **Auto-Load** to route the execute slot through the trained adapter
+6. Pick **Serving runtime** (Settings → LoRA → Inference):
+   - **mlx_lm.server** (default) — direct adapter load. Launch with
+     `python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080`
+   - **vLLM-Metal** — fuse first via `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>`,
+     then `vllm serve <merged> --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_coder`
+   - **LM Studio** — load the base + attach the adapter via the LM Studio UI; endpoint `:1234/v1`
+   - **Custom** — any other MLX-compatible OpenAI-compat endpoint
+7. Set **Server URL** to match the chosen runtime (the picker pre-fills sensible defaults)
+8. Enable **Auto-Train** to trigger training automatically once the sample threshold is reached
+9. Enable **Auto-Load** to route the execute slot through the trained adapter
 
 **Recommended models**
 

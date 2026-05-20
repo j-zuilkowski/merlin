@@ -631,10 +631,15 @@ After each session turn, Merlin records the user prompt and the model's response
 3. Open **Settings → LoRA** and enable **LoRA Self-Training** (master toggle)
 4. Set **Base Model** to the path of your downloaded MLX model
 5. Set **Adapter Path** to a directory where the trained adapter will be written (e.g. `~/.merlin/adapters/qwen32b`)
-6. Set **Server URL** to the address where `mlx_lm.server` will run (default: `http://localhost:8080/v1`)
-7. Enable **Auto-Train** to start training automatically once the sample threshold is met
-8. Enable **Auto-Load** to automatically route the execute slot through the trained adapter
-9. Start the server: `python -m mlx_lm.server --model <model-path> --adapter-path <adapter-path> --port 8080`
+6. Pick **Serving runtime** — which MLX-native runtime serves the trained adapter:
+   - `mlx_lm.server` (default) — direct adapter load via `--adapter-path`
+   - `vLLM-Metal` — fuse with `mlx_lm.fuse` first, then `vllm serve <merged>`
+   - `LM Studio` — load via the LM Studio UI
+   - `Custom` — any other MLX-compatible OpenAI-compat endpoint
+7. Set **Server URL** to match the chosen runtime (the picker pre-fills the default port)
+8. Enable **Auto-Train** to start training automatically once the sample threshold is met
+9. Enable **Auto-Load** to automatically route the execute slot through the trained adapter
+10. Start the chosen runtime (commands vary per Serving runtime — see the picker's tooltip)
 
 Once Auto-Load is enabled and an adapter file exists, Merlin automatically switches the execute slot to your local fine-tuned model. The reason and critic slots always use the unmodified base provider.
 
