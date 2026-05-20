@@ -133,3 +133,41 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
 xcodebuild -scheme MerlinTests-Live build-for-testing  ... (same flags)
 xcodegen generate   # after any project.yml change
 ```
+
+---
+
+## Running proving-suite scenarios locally (S1, S2, …)
+
+The compile gates above force ad-hoc signing (`CODE_SIGNING_ALLOWED=NO`) so they
+stay CI-portable. For **executing** a live scenario locally you MUST drop those
+three flags, so the project's `Merlin Dev Signing` identity (from `project.yml`)
+is actually used. Without it the test host re-signs ad-hoc on every rebuild, and
+macOS TCC silently invalidates the `Merlin.app` Full Disk Access grant — every
+`~/Documents`-touching subprocess then hangs forever (see runbook note below).
+
+```bash
+# Local proving-suite invocation — signed
+xcodebuild -scheme MerlinTests-Live test \
+  -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived \
+  -only-testing:MerlinE2ETests/CapabilityScenarioTests/testS1SwiftGUIDebugCycle 2>&1 \
+  | grep -E 'Test Case|TEST (EXECUTE )?(SUCCEEDED|FAILED)|passed \(|failed \(|skipped \('
+```
+
+**First-time setup (per machine, once):**
+
+1. Build the live scheme once to materialise the signed app:
+   `xcodebuild -scheme MerlinTests-Live build-for-testing -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived` (no signing-disable flags).
+2. `System Settings → Privacy & Security → Full Disk Access → +` and add
+   `/private/tmp/merlin-derived/Build/Products/Debug/Merlin.app`. Toggle on.
+
+TCC keys the grant on the designated requirement (`identifier "com.merlin.app"
+AND certificate leaf = "Merlin Dev Signing"`) — both stable across rebuilds. The
+grant persists as long as the cert isn't regenerated. **Never** re-add this flag
+set to a `git push` / CI pipeline; the dev cert is local-only and CI builds will
+fail signing.
+
+**Symptom of an unsigned (ad-hoc) test host:** `pristineFixtureCopy` times out
+after 600s with `EvalShell timeout`, no LM Studio activity, telemetry shows the
+test method never entered the agentic loop. The fix is always: rebuild with
+signing, re-toggle the FDA entry. See `phases/phase-239b` Fixes for the full
+post-mortem.

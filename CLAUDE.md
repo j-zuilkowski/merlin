@@ -138,6 +138,44 @@ xcodegen generate
 > compiled by neither scheme rots silently - `TargetGateScanner` (Project Discipline)
 > flags that condition, but compiling the scheme every phase is the real prevention.
 
+### Local E2E test execution (proving suite)
+
+For actually *running* the E2E proving-suite scenarios (`MerlinTests-Live test`,
+e.g. `CapabilityScenarioTests/testS1SwiftGUIDebugCycle`), the build must be **signed
+with the local `Merlin Dev Signing` identity** — NOT ad-hoc. The four compile/unit-test
+commands above force ad-hoc by passing `CODE_SIGN_IDENTITY=""`, `CODE_SIGNING_REQUIRED=NO`,
+and `CODE_SIGNING_ALLOWED=NO`. That's correct for those commands — they're compile-only
+or pure-Swift unit tests with no TCC surface, and the flags also let CI / `git push` runs
+succeed on machines that don't have the dev cert. But for E2E:
+
+- The test host launches `Merlin.app` as a real GUI process whose subprocesses (the
+  fixture extractor, the critic's `xcodebuild test`, etc.) traverse `~/Documents` — so
+  the app needs a macOS TCC "Full Disk Access" grant.
+- macOS TCC keys the grant on the app's **designated requirement** — `identifier
+  "com.merlin.app" AND certificate leaf = "Merlin Dev Signing"`. With ad-hoc signing
+  the requirement falls back to the binary cdhash, so every rebuild silently invalidates
+  the grant.
+- `project.yml` already configures `CODE_SIGN_IDENTITY: "Merlin Dev Signing"`. The
+  three disable-flags above override it — dropping them lets the project's signing
+  config take effect.
+
+```bash
+# Local E2E proving-suite invocation — signed, used for live test runs
+xcodebuild -scheme MerlinTests-Live test \
+    -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived \
+    -only-testing:MerlinE2ETests/CapabilityScenarioTests/<scenario> 2>&1 \
+    | grep -E 'Test Case|TEST (EXECUTE )?(SUCCEEDED|FAILED)|passed \(|failed \(|skipped \(' | head -40
+```
+
+**First-time setup:** grant `Full Disk Access` to `/private/tmp/merlin-derived/Build/Products/Debug/Merlin.app`
+in `System Settings → Privacy & Security → Full Disk Access`. Once granted to the
+signed identity, the grant persists across rebuilds. Re-grant only if the
+`Merlin Dev Signing` cert itself is regenerated.
+
+**Do NOT use signing for CI / `git push` / compile gates.** The dev cert is local-only;
+CI machines don't have it. Keep `CODE_SIGN_IDENTITY=""`, `CODE_SIGNING_REQUIRED=NO`,
+`CODE_SIGNING_ALLOWED=NO` on the four commands above so they remain CI-portable.
+
 ---
 
 ## Test Target Layout
