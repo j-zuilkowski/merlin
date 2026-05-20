@@ -877,3 +877,31 @@ git add Merlin/Providers/ProviderConfig.swift \
         Merlin/App/AppState.swift
 git commit -m "Phase 26b — multi-provider: OpenAICompatibleProvider + AnthropicProvider + ProviderRegistry"
 ```
+
+---
+
+## Fixes
+
+**2026-05-20 — Stale `ollama` model default cleared; calibration picker contract pinned.**
+
+`ollama` defaulted to `model: "llama3.3"`, an irrelevant placeholder. The other
+four untested local providers (`jan`, `localai`, `mistralrs`, `vllm`) already
+defaulted to `""`. The picker UI in `ProviderSettingsView` (populated at runtime
+by `registry.fetchAllModels()` probing each provider's `/v1/models`) is the
+source of truth for model selection per local provider — Merlin does not
+hardcode a per-provider model. `ollama`'s default is now `""` to match the
+others and let the picker take over.
+
+Per-provider setup artifacts live in `docs/local-provider-configs/` (Ollama
+Modelfile, Jan model.json, LocalAI YAML, Mistral.rs / vLLM-Metal launch
+scripts). Each registers its model under whatever name the user chooses; the
+example artifacts use `qwen3-coder-30b-a3b-instruct` for convenience, but the
+name is not enforced in code.
+
+**Mistral.rs port collision with LM Studio resolved.** Both daemons defaulted to
+`localhost:1234`; whichever started second silently failed to bind. `mistralrs`
+baseURL rebound to `:1235`, and the matching launch script invokes the daemon
+with `--port 1235`.
+
+Covered by `MerlinTests/Unit/ProviderConfigCalibrationDefaultsTests.swift`
+(4 tests, picker-contract + port invariants).

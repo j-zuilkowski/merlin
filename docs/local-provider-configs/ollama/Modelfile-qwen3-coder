@@ -1,0 +1,31 @@
+FROM /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+
+# 32 K context — well below the 256 K native, but sized for the calibration battery
+# and Merlin's typical agentic loop. Bump up if running on prompts past 24 K tokens.
+PARAMETER num_ctx 32768
+
+# Offload as many layers as fit into GPU/Metal memory; 99 means "all".
+# On a 128 GB M4, the full 32 GB Q8_0 model fits with headroom.
+PARAMETER num_gpu 99
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+
+# Qwen ChatML stop tokens.
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>
+"""
+
+# Register with:
+#   ollama create qwen3-coder-30b-a3b-instruct -f ollama/Modelfile-qwen3-coder
+# Verify:
+#   ollama list | grep qwen3-coder
+#   curl -s http://localhost:11434/v1/models | jq '.data[].id'

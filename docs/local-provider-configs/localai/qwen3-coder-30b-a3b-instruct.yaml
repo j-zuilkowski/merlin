@@ -1,0 +1,43 @@
+# LocalAI model config — Qwen3-Coder-30B-A3B-Instruct Q8_0
+#
+# Mount path inside container: /models/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+# If running the standard docker-compose, add a host volume bind:
+#   -v /Users/jonzuilkowski/Models/gguf:/models
+#
+# Then drop this YAML into the same /models/ directory (alongside the GGUF), or
+# install via the LocalAI gallery API.
+
+name: qwen3-coder-30b-a3b-instruct
+backend: llama-cpp
+
+parameters:
+  model: Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+  temperature: 0.7
+  top_p: 0.9
+  top_k: 40
+
+context_size: 32768
+gpu_layers: 99
+threads: 8
+f16: true
+mmap: true
+mlock: false
+
+template:
+  chat_message: |
+    <|im_start|>{{ .RoleName }}
+    {{ if .FunctionCall }}{{ toJson .FunctionCall }}{{ else if .Content }}{{ .Content }}{{ end }}<|im_end|>
+  chat: |
+    {{.Input}}
+    <|im_start|>assistant
+
+stopwords:
+  - "<|im_start|>"
+  - "<|im_end|>"
+  - "<|endoftext|>"
+
+# Verify after install:
+#   curl -s http://localhost:8080/v1/models | jq '.data[].id'
+#   curl -s http://localhost:8080/v1/chat/completions \
+#     -H 'Content-Type: application/json' \
+#     -d '{"model":"qwen3-coder-30b-a3b-instruct","messages":[{"role":"user","content":"ping"}]}'

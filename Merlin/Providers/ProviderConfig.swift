@@ -234,7 +234,7 @@ final class ProviderRegistry: ObservableObject {
         ProviderConfig(id: "ollama",
                        displayName: "Ollama",
                        baseURL: "http://localhost:11434/v1",
-                       model: "llama3.3",
+                       model: "",
                        isEnabled: false,
                        isLocal: true,
                        supportsThinking: false,
@@ -269,7 +269,9 @@ final class ProviderRegistry: ObservableObject {
                        kind: .openAICompatible),
         ProviderConfig(id: "mistralrs",
                        displayName: "Mistral.rs",
-                       baseURL: "http://localhost:1234/v1",
+                       // Port 1235, not 1234 — LM Studio defaults to :1234 and the two
+                       // would collide. mistralrs is invoked with `--port 1235` to match.
+                       baseURL: "http://localhost:1235/v1",
                        model: "",
                        isEnabled: false,
                        isLocal: true,
