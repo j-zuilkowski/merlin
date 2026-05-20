@@ -9,9 +9,9 @@ A complete reference of everything Merlin can do. For implementation details see
 Merlin connects to remote and local providers interchangeably. Switch mid-session from the toolbar.
 
 **Remote**
-- Anthropic (Claude Opus, Sonnet, Haiku)
+- Anthropic
 - DeepSeek
-- OpenAI (GPT-5.5, GPT-5.4, GPT-5.4 mini, GPT-5.4 nano)
+- OpenAI
 - Qwen
 - OpenRouter
 
