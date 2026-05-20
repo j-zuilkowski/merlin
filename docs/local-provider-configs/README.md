@@ -29,10 +29,20 @@ with whatever each one actually reports. No model name is hardcoded in `Provider
 - Enable: Jan UI → Settings → Local Server → Start
 - Endpoint: `http://localhost:1337/v1`
 
-### LocalAI
-- File: `localai/qwen3-coder-30b-a3b-instruct.yaml`
-- Install: copy YAML into the container's `/models/` volume (or mount `~/Models/` and the YAML directly)
+### LocalAI (native — Docker version retired)
+- Files: `localai/qwen3-coder-30b-a3b-instruct.yaml`, `localai/launch-native.sh`
+- Install: `brew install localai` (Homebrew bottle, native arm64 binary; ~138 MB)
+- One-time setup:
+  ```bash
+  mkdir -p ~/.localai/{models,backends}
+  ln -sf ~/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf ~/.localai/models/
+  cp localai/qwen3-coder-30b-a3b-instruct.yaml ~/.localai/models/
+  LOCALAI_BACKENDS_PATH=~/.localai/backends \
+      local-ai backends install localai@metal-llama-cpp
+  ```
+- Launch: `bash localai/launch-native.sh`
 - Endpoint: `http://localhost:8080/v1`
+- **Why native, not Docker:** Docker Desktop's Linux VM on macOS has no Metal access, so a 30 B Q8 GGUF inside Docker runs CPU-only at ~1–3 tok/s. The native Homebrew binary uses llama.cpp's Metal backend directly and runs at full Apple-Silicon speed.
 
 ### Mistral.rs
 - File: `mistralrs/launch-qwen3-coder.sh`
