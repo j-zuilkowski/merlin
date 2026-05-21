@@ -130,9 +130,11 @@ final class CalibrationCoordinator: ObservableObject {
                 wallClockSeconds: elapsed
             )
             sheet = .report(report)
-            // try? — saving is best-effort; a disk-write failure must not
-            // hide the report from the user.
-            try? await reportSaver.save(report)
+            // Best-effort save — a disk-write failure must not hide the
+            // report from the user. `_ =` discards the Optional<URL> result
+            // that `try?` produces (@discardableResult applies to the URL,
+            // not its Optional wrapper).
+            _ = try? await reportSaver.save(report)
         } catch {
             sheet = nil
         }
