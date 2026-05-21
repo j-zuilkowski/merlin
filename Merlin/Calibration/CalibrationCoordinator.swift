@@ -57,9 +57,11 @@ final class CalibrationCoordinator: ObservableObject {
     private weak var appState: AppState?
     private var localProviderID: String = ""
     private var localModelID: String = ""
+    private let reportSaver: CalibrationReportSaver
 
-    init(appState: AppState) {
+    init(appState: AppState, reportSaver: CalibrationReportSaver = CalibrationReportSaver()) {
         self.appState = appState
+        self.reportSaver = reportSaver
     }
 
     // MARK: - Public API
@@ -84,6 +86,11 @@ final class CalibrationCoordinator: ObservableObject {
             localProviderID: localProviderID,
             referenceProviderID: referenceProviderID
         ))
+
+        // Start the wall-clock here so wallClockSeconds reflects the full
+        // run (battery + scoring + advisory analysis) — what a CLI consumer
+        // would otherwise have to instrument by hand.
+        let startedAt = Date()
 
         do {
             let localClosure = makeProviderClosure(providerID: localProviderID)
@@ -113,14 +120,19 @@ final class CalibrationCoordinator: ObservableObject {
                 localProviderID: localProviderID
             )
 
+            let elapsed = Date().timeIntervalSince(startedAt)
             let report = CalibrationReport(
                 localProviderID: localProviderID,
                 referenceProviderID: referenceProviderID,
                 responses: responses,
                 advisories: advisories,
-                generatedAt: Date()
+                generatedAt: Date(),
+                wallClockSeconds: elapsed
             )
             sheet = .report(report)
+            // try? — saving is best-effort; a disk-write failure must not
+            // hide the report from the user.
+            try? await reportSaver.save(report)
         } catch {
             sheet = nil
         }

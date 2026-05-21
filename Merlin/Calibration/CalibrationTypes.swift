@@ -38,7 +38,7 @@ struct CalibrationPrompt: Sendable, Codable, Identifiable, Hashable {
 /// critic scores so later reporting can show both the raw text and the derived
 /// signal. `scoreDelta` is signed: negative means local beat the reference on
 /// that prompt.
-struct CalibrationResponse: Sendable {
+struct CalibrationResponse: Sendable, Codable {
     let prompt: CalibrationPrompt
     let localResponse: String
     let referenceResponse: String
@@ -53,12 +53,32 @@ struct CalibrationResponse: Sendable {
 /// The full result of a calibration run: responses, derived advisories, and a
 /// timestamp so the UI can present a deterministic report after the runner
 /// finishes scoring every prompt pair.
-struct CalibrationReport: Sendable {
+struct CalibrationReport: Sendable, Codable {
     let localProviderID: String
     let referenceProviderID: String
     let responses: [CalibrationResponse]
     let advisories: [ParameterAdvisory]
     let generatedAt: Date
+    /// Wall-clock seconds from `CalibrationRunner.run(...)` start to the
+    /// final advisory analysis. Captured so a CLI consumer reading the saved
+    /// report can compare provider throughput without re-instrumenting.
+    /// Defaults to 0 — pre-337b tests that don't care about timing remain
+    /// compilable.
+    let wallClockSeconds: TimeInterval
+
+    init(localProviderID: String,
+         referenceProviderID: String,
+         responses: [CalibrationResponse],
+         advisories: [ParameterAdvisory],
+         generatedAt: Date,
+         wallClockSeconds: TimeInterval = 0) {
+        self.localProviderID = localProviderID
+        self.referenceProviderID = referenceProviderID
+        self.responses = responses
+        self.advisories = advisories
+        self.generatedAt = generatedAt
+        self.wallClockSeconds = wallClockSeconds
+    }
 
     var overallLocalScore: Double {
         guard !responses.isEmpty else { return 0 }

@@ -18,7 +18,7 @@ enum ParameterAdvisoryKind: String, Codable, Sendable, Equatable {
 /// A model-specific tuning recommendation surfaced from either a single turn or
 /// a recent batch of outcomes. `Equatable` compares only `kind + modelID` so
 /// repeated detections for the same issue collapse into one advisory.
-struct ParameterAdvisory: Sendable, Equatable, Identifiable {
+struct ParameterAdvisory: Sendable, Equatable, Identifiable, Codable {
     var kind: ParameterAdvisoryKind
     var parameterName: String
     var currentValue: String

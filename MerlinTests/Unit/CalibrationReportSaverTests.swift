@@ -88,7 +88,8 @@ final class CalibrationReportSaverTests: XCTestCase {
         XCTAssertEqual(decoded.referenceProviderID, "deepseek")
         XCTAssertEqual(decoded.wallClockSeconds, 42.7, accuracy: 0.01)
         XCTAssertEqual(decoded.responses.count, 1)
-        XCTAssertEqual(decoded.responses.first?.localScore, 0.8, accuracy: 0.001)
+        let first = try XCTUnwrap(decoded.responses.first)
+        XCTAssertEqual(first.localScore, 0.8, accuracy: 0.001)
     }
 
     // MARK: - Multiple runs don't collide

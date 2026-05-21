@@ -419,6 +419,7 @@
 		86876F632F330BA6BBDC603B /* ContextManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D70896CAA2B15470C27B1C84 /* ContextManagerTests.swift */; };
 		86BF382BED79E3D519FD38AD /* WHYCommentGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E55F5AB293E0E1E68716EE1A /* WHYCommentGateTests.swift */; };
 		86C2D231E8B5D5BECB0F105B /* DeveloperManual.md in Resources */ = {isa = PBXBuildFile; fileRef = C325F9BF492C4FAE381739B1 /* DeveloperManual.md */; };
+		871A15857AD68B902750F084 /* CalibrationReportSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BB457F9BD5F2462F6247E8 /* CalibrationReportSaver.swift */; };
 		884C2E490796510F00E8DC0A /* DisciplineGateInstallerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BF23DA3A90CDDB49843305 /* DisciplineGateInstallerTests.swift */; };
 		887A5264964D7B9CD5DD5FEA /* SettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB061C53577B6EB93699AFB /* SettingsSection.swift */; };
 		887C57BB7D00106F457F20A9 /* CriticEngineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CA7E6A1BC038C97DD9DCE1 /* CriticEngineProtocol.swift */; };
@@ -1285,6 +1286,7 @@
 		D618333C226998B947B39EA5 /* SkillsPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsPicker.swift; sourceTree = "<group>"; };
 		D68DF90F638AEABE20362678 /* AppStateSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateSessionTests.swift; sourceTree = "<group>"; };
 		D6B3E09C412968677127E8F7 /* CircuitBreakerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircuitBreakerTests.swift; sourceTree = "<group>"; };
+		D6BB457F9BD5F2462F6247E8 /* CalibrationReportSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationReportSaver.swift; sourceTree = "<group>"; };
 		D70896CAA2B15470C27B1C84 /* ContextManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContextManagerTests.swift; sourceTree = "<group>"; };
 		D79DBAA3A963C881C0BD4A5D /* StubMarkerScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubMarkerScanner.swift; sourceTree = "<group>"; };
 		D817F3FD1F961E50D157C3EB /* ThinkingModeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThinkingModeDetector.swift; sourceTree = "<group>"; };
@@ -2121,6 +2123,7 @@
 			children = (
 				785134489CA6D336F33BD26F /* CalibrationAdvisor.swift */,
 				BEA23F54842937B95DFEECB0 /* CalibrationCoordinator.swift */,
+				D6BB457F9BD5F2462F6247E8 /* CalibrationReportSaver.swift */,
 				9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */,
 				377D24125CA1E78926B4B4BC /* CalibrationSuite.swift */,
 				26B899E94DE350B70B073A72 /* CalibrationTypes.swift */,
@@ -3154,6 +3157,7 @@
 				5D5B8655E0EB3BC0C0F8308F /* CalibrationFlowView.swift in Sources */,
 				A02E74415AF7ACD9447864EE /* CalibrationProgressView.swift in Sources */,
 				0C2B8B52A8E2C902965BDA2A /* CalibrationProviderPickerView.swift in Sources */,
+				871A15857AD68B902750F084 /* CalibrationReportSaver.swift in Sources */,
 				55E888720C73A18912E33D31 /* CalibrationReportView.swift in Sources */,
 				AD357A18591C5A9EA6ECCE93 /* CalibrationRunner.swift in Sources */,
 				47A136A3280A8AF7478C7110 /* CalibrationSuite.swift in Sources */,
