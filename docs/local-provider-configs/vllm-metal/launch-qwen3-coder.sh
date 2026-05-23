@@ -16,8 +16,14 @@
 set -euo pipefail
 
 VLLM="${VLLM:-$HOME/.venv-vllm-metal/bin/vllm}"
-MODEL_DIR="$HOME/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit"
-PORT=8000
+MODEL_DIR="${MODEL_DIR:-$HOME/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit}"
+SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-qwen3-coder-30b-a3b-instruct}"
+PORT="${PORT:-8000}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
+GPU_LAYERS="${GPU_LAYERS:-}"
+ROPE_FREQUENCY_BASE="${ROPE_FREQUENCY_BASE:-}"
+MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-}"
+KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-}"
 
 if [ ! -x "$VLLM" ]; then
     echo "error: vllm binary not found at $VLLM"
@@ -42,13 +48,30 @@ fi
 # concurrently with the other GGUF-using providers (Ollama + Jan + LocalAI each
 # at ~32 GB Metal) can OOM the GPU. Single-provider use is fine; in the
 # smoke-test sweep, shut down the others before launching vLLM-Metal.
-exec "$VLLM" serve "$MODEL_DIR" \
-    --served-model-name qwen3-coder-30b-a3b-instruct \
-    --port "$PORT" \
-    --max-model-len 32768 \
-    --enforce-eager \
-    --enable-auto-tool-choice \
+ARGS=(
+    serve "$MODEL_DIR"
+    --served-model-name "$SERVED_MODEL_NAME"
+    --port "$PORT"
+    --max-model-len "$MAX_MODEL_LEN"
+    --enforce-eager
+    --enable-auto-tool-choice
     --tool-call-parser qwen3_coder
+)
+
+if [ -n "$GPU_LAYERS" ]; then
+    ARGS+=(--gpu-layers "$GPU_LAYERS")
+fi
+if [ -n "$ROPE_FREQUENCY_BASE" ]; then
+    ARGS+=(--rope-frequency-base "$ROPE_FREQUENCY_BASE")
+fi
+if [ -n "$MAX_NUM_BATCHED_TOKENS" ]; then
+    ARGS+=(--max-num-batched-tokens "$MAX_NUM_BATCHED_TOKENS")
+fi
+if [ -n "$KV_CACHE_DTYPE" ]; then
+    ARGS+=(--kv-cache-dtype "$KV_CACHE_DTYPE")
+fi
+
+exec "$VLLM" "${ARGS[@]}"
 
 # Verify after launch:
 #   curl -s http://localhost:8000/v1/models | jq '.data[].id'

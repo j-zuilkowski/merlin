@@ -1,10 +1,36 @@
 import Foundation
 import SwiftUI
 
+@MainActor
+final class SettingsSessionContext: ObservableObject {
+    static let shared = SettingsSessionContext()
+
+    @Published private(set) var activeAppState: AppState?
+
+    init() {}
+
+    var activeRegistry: ProviderRegistry? {
+        activeAppState?.registry
+    }
+
+    func bind(appState: AppState?) {
+        activeAppState = appState
+    }
+
+    func bind(to session: LiveSession?) {
+        bind(appState: session?.appState)
+    }
+
+    func clearIfMatching(_ appState: AppState?) {
+        guard let appState else { return }
+        guard activeAppState === appState else { return }
+        activeAppState = nil
+    }
+}
+
 struct SettingsWindowView: View {
     @StateObject private var settings = AppSettings.shared
-    @StateObject private var registry = ProviderRegistry()
-    @StateObject private var appState = AppState(projectPath: "")
+    @StateObject private var sessionContext = SettingsSessionContext.shared
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
@@ -18,8 +44,6 @@ struct SettingsWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .navigationTitle(selectedSection.label)
         }
-        .environmentObject(appState)
-        .environment(\.merlinAppState, appState)
         .frame(minWidth: 640, minHeight: 480)
     }
 
@@ -31,14 +55,24 @@ struct SettingsWindowView: View {
         case .appearance:
             AppearanceSettingsView(settings: settings)
         case .providers:
-            ProvidersSettingsView()
-                .environmentObject(registry)
+            runtimeBackedSettingsView("Open or select a workspace session to manage providers.") { appState in
+                ProvidersSettingsView()
+                    .environmentObject(appState)
+                    .environmentObject(appState.registry)
+                    .environment(\.merlinAppState, appState)
+            }
         case .roleSlots:
-            RoleSlotSettingsView()
-                .environmentObject(registry)
+            runtimeBackedSettingsView("Open or select a workspace session to configure live provider slots.") { appState in
+                RoleSlotSettingsView()
+                    .environmentObject(appState.registry)
+                    .environment(\.merlinAppState, appState)
+            }
         case .agents:
-            AgentSettingsView(settings: settings)
-                .environmentObject(registry)
+            runtimeBackedSettingsView("Open or select a workspace session to inspect provider-backed agent settings.") { appState in
+                AgentSettingsView(settings: settings)
+                    .environmentObject(appState.registry)
+                    .environment(\.merlinAppState, appState)
+            }
         case .hooks:
             HooksSettingsView()
         case .scheduler:
@@ -46,7 +80,11 @@ struct SettingsWindowView: View {
         case .memories:
             MemoriesSettingsView(settings: settings)
         case .library:
-            MemoryBrowserView()
+            runtimeBackedSettingsView("Open or select a workspace session to browse project-scoped memory.") { appState in
+                MemoryBrowserView()
+                    .environmentObject(appState)
+                    .environment(\.merlinAppState, appState)
+            }
         case .mcp:
             MCPSettingsView()
         case .skills:
@@ -58,11 +96,32 @@ struct SettingsWindowView: View {
         case .connectors:
             ConnectorsSettingsView()
         case .performance:
-            PerformanceDashboardView()
+            runtimeBackedSettingsView("Open or select a workspace session to view live performance advisories.") { appState in
+                PerformanceDashboardView()
+                    .environmentObject(appState)
+                    .environment(\.merlinAppState, appState)
+            }
         case .lora:
             LoRASettingsSection()
+                .environment(\.merlinAppState, sessionContext.activeAppState)
         case .advanced:
             AdvancedSettingsView()
+        }
+    }
+
+    @ViewBuilder
+    private func runtimeBackedSettingsView<Content: View>(
+        _ message: String,
+        @ViewBuilder content: (AppState) -> Content
+    ) -> some View {
+        if let appState = sessionContext.activeAppState {
+            content(appState)
+        } else {
+            ContentUnavailableView(
+                "No active session",
+                systemImage: "rectangle.on.rectangle.slash",
+                description: Text(message)
+            )
         }
     }
 }
@@ -106,13 +165,15 @@ private struct GeneralSettingsView: View {
 
             Section("Subagents") {
                 Stepper(value: $settings.maxSubagentThreads, in: 1...16, step: 1) {
-                    Text("Max parallel threads: \(settings.maxSubagentThreads)")
+                    Text("Max parallel threads (reserved): \(settings.maxSubagentThreads)")
                 }
+                .disabled(true)
                 .accessibilityIdentifier(AccessibilityID.settingsGeneralMaxSubagentThreadsStepper)
                 Stepper(value: $settings.maxSubagentDepth, in: 1...8, step: 1) {
                     Text("Max spawn depth: \(settings.maxSubagentDepth)")
                 }
                 .accessibilityIdentifier(AccessibilityID.settingsGeneralMaxSubagentDepthStepper)
+                SettingsScopeNote("`Max parallel threads` is persisted for future scheduler work, but the live subagent runtime does not consult it yet. `Max spawn depth` is live.")
             }
         }
         .formStyle(.grouped)
@@ -242,7 +303,7 @@ struct HooksSettingsView: View {
     @State private var disciplineHooksInstalled = false
     @State private var disciplineHooksBusy = false
 
-    private let eventTypes = ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop"]
+    private let eventTypes = HookEvent.allCases.map(\.rawValue)
 
     var body: some View {
         List {
@@ -320,6 +381,8 @@ struct HooksSettingsView: View {
                         .padding(.horizontal)
                         .accessibilityIdentifier(AccessibilityID.settingsHooksAddButton)
                 }
+                SettingsScopeNote("Hook changes are saved immediately. `SessionStart` hooks run when a session opens; other hook changes are picked up on the next matching event.")
+                    .padding(.horizontal)
                 Text("Scripts receive JSON on stdin; return JSON on stdout. Non-zero exit = deny (PreToolUse).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -330,6 +393,9 @@ struct HooksSettingsView: View {
     }
 
     private func saveHooks() {
+        Task {
+            await HookEngine.shared.configure(hooks: settings.hooks)
+        }
         Task {
             let home = FileManager.default.homeDirectoryForCurrentUser
             let url = home.appendingPathComponent(".merlin/config.toml")
@@ -409,6 +475,7 @@ struct MemoriesSettingsView: View {
                 Text("After this idle period, Merlin summarises the conversation into memory files for your review.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                SettingsScopeNote("These settings are persisted immediately, but current sessions keep their existing memory idle timer and backend binding until reopened.")
             }
             .formStyle(.grouped)
             .frame(maxHeight: 180)
@@ -476,6 +543,10 @@ struct MCPSettingsView: View {
             }
 
             Divider()
+
+            SettingsScopeNote("MCP server changes are saved to `~/.merlin/mcp.json`. Existing MCP sessions are not restarted here; reopen the workspace session to reload them.")
+                .padding(.horizontal)
+                .padding(.top, 8)
 
             if isAddingServer {
                 VStack(alignment: .leading, spacing: 8) {
@@ -703,6 +774,11 @@ struct PermissionsSettingsView: View {
         .onAppear {
             memory = AuthMemory(storePath: Self.defaultStorePath)
         }
+        .safeAreaInset(edge: .bottom) {
+            SettingsScopeNote("Permission pattern changes are written immediately, but already-running sessions may continue using in-memory auth state until reopened.")
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+        }
     }
 
     @ViewBuilder
@@ -782,6 +858,7 @@ private struct ConnectorsSettingsView: View {
                 Text("Token for the Xcalibre semantic search service.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                SettingsScopeNote("GitHub token changes take effect live. Slack, Linear, and Xcalibre token changes are persisted for future calls and may require reopening the current session to fully rebind clients.")
             }
 
             if !saveStatus.isEmpty {
@@ -881,27 +958,33 @@ private struct AdvancedSettingsView: View {
     }
 
     private func resetToDefaults() {
-        settings.autoCompact = false
-        settings.maxTokens = 8_192
-        settings.keepAwake = false
-        settings.providerName = "anthropic"
-        settings.modelID = ""
-        settings.defaultPermissionMode = .ask
-        settings.notificationsEnabled = true
-        settings.messageDensity = .comfortable
-        settings.standingInstructions = ""
-        settings.hooks = []
-        settings.appearance = AppearanceSettings()
-        settings.reasoningEnabledOverrides = [:]
-        settings.maxSubagentThreads = 4
-        settings.maxSubagentDepth = 2
-        settings.memoriesEnabled = false
-        settings.memoryIdleTimeout = 300
-        settings.disabledSkillNames = []
+        settings.resetToDefaultsPreservingConnectorSecrets()
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let mcpConfig = home.appendingPathComponent(".merlin/mcp.json")
+        let authStore = home.appendingPathComponent(".merlin/auth.json")
+        try? FileManager.default.removeItem(at: mcpConfig)
+        try? FileManager.default.removeItem(at: authStore)
         Task {
-            let home = FileManager.default.homeDirectoryForCurrentUser
+            await HookEngine.shared.configure(hooks: [])
+        }
+        Task {
             let url = home.appendingPathComponent(".merlin/config.toml")
             try? await settings.save(to: url)
         }
+    }
+}
+
+private struct SettingsScopeNote: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

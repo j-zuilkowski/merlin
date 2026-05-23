@@ -4,6 +4,11 @@ import UniformTypeIdentifiers
 import SwiftUI
 
 struct ChatView: View {
+    private struct PendingDomainActivation: Equatable {
+        var message: String
+        var suggestion: DomainActivationSuggestion
+    }
+
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var skillsRegistry: SkillsRegistry
     @FocusedObject private var sessionManager: SessionManager?
@@ -20,6 +25,7 @@ struct ChatView: View {
     @State private var shouldResumeScroll: Bool = false
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""
+    @State private var pendingDomainActivation: PendingDomainActivation?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,6 +90,44 @@ struct ChatView: View {
             }
         }
         .animation(.spring(duration: 0.18), value: showBtwOverlay)
+        .confirmationDialog(
+            pendingDomainActivation.map { "Switch to \($0.suggestion.displayName) for this session?" } ?? "",
+            isPresented: Binding(
+                get: { pendingDomainActivation != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingDomainActivation = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Switch and Send") {
+                guard let pending = pendingDomainActivation else { return }
+                pendingDomainActivation = nil
+                Task { @MainActor in
+                    await appState.setActiveDomains([pending.suggestion.domainID], persistAsDefault: false)
+                    submitPreparedMessage(pending.message)
+                }
+            }
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationSwitchButton)
+
+            Button("Send Without Switching") {
+                guard let pending = pendingDomainActivation else { return }
+                pendingDomainActivation = nil
+                submitPreparedMessage(pending.message)
+            }
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationStayButton)
+
+            Button("Cancel", role: .cancel) {
+                pendingDomainActivation = nil
+            }
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationCancelButton)
+        } message: {
+            if let pending = pendingDomainActivation {
+                Text("\(pending.suggestion.reason) Switch domains before sending?")
+            }
+        }
     }
 
     private var header: some View {
@@ -208,9 +252,15 @@ struct ChatView: View {
                     .accessibilityIdentifier(AccessibilityID.chatAtMentionPicker)
                 }
                 .popover(isPresented: $showSkillsPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    SkillsPicker(query: $skillQuery) { skill in
-                        insertSelectedSkill(skill)
-                    }
+                    SkillsPicker(
+                        query: $skillQuery,
+                        onSelect: { skill in
+                            insertSelectedSkill(skill)
+                        },
+                        onSelectBuiltin: { cmd in
+                            insertSelectedBuiltin(cmd)
+                        }
+                    )
                     .environmentObject(skillsRegistry)
                     .padding(10)
                     .accessibilityIdentifier(AccessibilityID.chatSkillsPicker)
@@ -294,6 +344,18 @@ struct ChatView: View {
             model.draft = ""
             return
         }
+        if let suggestion = appState.suggestedDomainActivation(for: message) {
+            pendingDomainActivation = PendingDomainActivation(
+                message: message,
+                suggestion: suggestion
+            )
+            return
+        }
+        submitPreparedMessage(message)
+    }
+
+    private func submitPreparedMessage(_ message: String) {
+        model.draft = message
         // Always re-enable auto-scroll when the user sends a new message so a
         // previously locked view tracks the incoming response from the start.
         autoScrollEnabled = true
@@ -465,6 +527,15 @@ struct ChatView: View {
                 }
             }
         }
+    }
+
+    /// Picker-tap callback for built-in slash commands. Replaces the draft
+    /// with `/<name>` (no args) and dismisses the popover; the user can then
+    /// type any arguments and hit Return to dispatch.
+    private func insertSelectedBuiltin(_ cmd: BuiltinSlashCommand) {
+        model.draft = "/\(cmd.name)"
+        skillQuery = ""
+        showSkillsPicker = false
     }
 
     private func insertSelectedSkill(_ skill: Skill) {

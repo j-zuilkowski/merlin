@@ -44,10 +44,24 @@ final class LocalAIModelManager: LocalModelManagerProtocol, @unchecked Sendable 
 
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? {
         RestartInstructions(
-            shellCommand: "sudo systemctl restart local-ai",
+            shellCommand: buildShellCommand(config: config),
             configSnippet: yamlConfigSnippet(for: config),
-            explanation: "LocalAI requires a server restart after editing its YAML configuration."
+            explanation: "LocalAI runs as a native macOS process in this repo. Update the model YAML if needed, then relaunch it with the native command below."
         )
+    }
+
+    private func buildShellCommand(config: LocalModelConfig) -> String {
+        let contextSize = config.contextLength ?? 32_768
+        return [
+            "LOCALAI_BACKENDS_PATH=\"$HOME/.localai/backends\"",
+            "LOCALAI_MODELS_PATH=\"$HOME/.localai/models\"",
+            "/opt/homebrew/bin/local-ai run",
+            "--backends-path \"$HOME/.localai/backends\"",
+            "--models-path \"$HOME/.localai/models\"",
+            "--address \":8080\"",
+            "--context-size \(contextSize)",
+            "--f16"
+        ].joined(separator: " ")
     }
 
     private func yamlConfigSnippet(for config: LocalModelConfig) -> String? {

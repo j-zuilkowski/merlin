@@ -18,7 +18,11 @@ final class MockToolRouter: ToolRouter {
         calls.map { ToolResult(toolCallId: $0.id, content: "ok", isError: false) }
     }
 
-    override func dispatch(_ calls: [ToolCall]) async -> [ToolResult] {
+    override func dispatch(
+        _ calls: [ToolCall],
+        stagingBufferOverride: StagingBuffer? = nil,
+        permissionModeOverride: PermissionMode? = nil
+    ) async -> [ToolResult] {
         dispatchRecords.append(DispatchRecord(calls: calls, timestamp: Date()))
         return resultFactory(calls)
     }

@@ -30,6 +30,27 @@ struct CalibrationPrompt: Sendable, Codable, Identifiable, Hashable {
     let systemPrompt: String?
 }
 
+// MARK: - CalibrationScoreResult
+
+/// One scorer outcome for a single response.
+///
+/// A score can be either normal (`degraded == false`) or a fallback score that
+/// kept the run moving while preserving enough diagnostics for the report UI to
+/// tell the user the critic path degraded.
+struct CalibrationScoreResult: Sendable, Hashable {
+    let score: Double
+    let degraded: Bool
+    let note: String?
+
+    static func scored(_ score: Double) -> CalibrationScoreResult {
+        CalibrationScoreResult(score: score, degraded: false, note: nil)
+    }
+
+    static func fallback(_ score: Double = 0.5, note: String) -> CalibrationScoreResult {
+        CalibrationScoreResult(score: score, degraded: true, note: note)
+    }
+}
+
 // MARK: - CalibrationResponse
 
 /// The scored output pair for one calibration prompt.
@@ -44,6 +65,32 @@ struct CalibrationResponse: Sendable, Codable {
     let referenceResponse: String
     let localScore: Double
     let referenceScore: Double
+    let localScoreDegraded: Bool
+    let referenceScoreDegraded: Bool
+    let localScoreNote: String?
+    let referenceScoreNote: String?
+
+    init(
+        prompt: CalibrationPrompt,
+        localResponse: String,
+        referenceResponse: String,
+        localScore: Double,
+        referenceScore: Double,
+        localScoreDegraded: Bool = false,
+        referenceScoreDegraded: Bool = false,
+        localScoreNote: String? = nil,
+        referenceScoreNote: String? = nil
+    ) {
+        self.prompt = prompt
+        self.localResponse = localResponse
+        self.referenceResponse = referenceResponse
+        self.localScore = localScore
+        self.referenceScore = referenceScore
+        self.localScoreDegraded = localScoreDegraded
+        self.referenceScoreDegraded = referenceScoreDegraded
+        self.localScoreNote = localScoreNote
+        self.referenceScoreNote = referenceScoreNote
+    }
 
     var scoreDelta: Double { referenceScore - localScore }
 }
@@ -95,5 +142,27 @@ struct CalibrationReport: Sendable, Codable {
 
     var responsesByCategory: [CalibrationCategory: [CalibrationResponse]] {
         Dictionary(grouping: responses, by: \.prompt.category)
+    }
+
+    var degradedScoreCount: Int {
+        responses.reduce(into: 0) { count, response in
+            if response.localScoreDegraded { count += 1 }
+            if response.referenceScoreDegraded { count += 1 }
+        }
+    }
+
+    var hasDegradedScores: Bool { degradedScoreCount > 0 }
+
+    var degradedScoreNotes: [String] {
+        var notes: [String] = []
+        for response in responses {
+            if let note = response.localScoreNote, response.localScoreDegraded {
+                notes.append("\(response.prompt.id) local: \(note)")
+            }
+            if let note = response.referenceScoreNote, response.referenceScoreDegraded {
+                notes.append("\(response.prompt.id) reference: \(note)")
+            }
+        }
+        return Array(NSOrderedSet(array: notes)) as? [String] ?? notes
     }
 }

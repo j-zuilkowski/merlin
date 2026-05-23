@@ -144,6 +144,67 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    func resetToDefaultsPreservingConnectorSecrets() {
+        autoCompact = false
+        maxTokens = 8_192
+        keepAwake = false
+        providerName = "anthropic"
+        modelID = ""
+        defaultPermissionMode = .ask
+        notificationsEnabled = true
+        messageDensity = .comfortable
+        standingInstructions = ""
+        hooks = []
+        appearance = AppearanceSettings()
+        providers = ProviderRegistry.defaultProviders
+        reasoningEnabledOverrides = [:]
+        maxSubagentThreads = 4
+        maxSubagentDepth = 2
+        disabledSkillNames = []
+        memoriesEnabled = false
+        memoryIdleTimeout = 300
+        memoryBackendID = "local-vector"
+        projectPath = ""
+        ragRerank = false
+        ragChunkLimit = 3
+        kagEnabled = false
+        kagHops = 2
+        kagXcalibreURL = ""
+        ragFreshnessThresholdDays = 90
+        ragMinGroundingScore = 0.30
+        agentCircuitBreakerThreshold = 3
+        agentCircuitBreakerMode = "halt"
+        loraEnabled = false
+        loraAutoTrain = false
+        loraAutoLoad = false
+        loraMinSamples = 1000
+        loraBaseModel = ""
+        loraAdapterPath = ""
+        loraServerURL = ""
+        loraServingTarget = "mlx_lm_server"
+        inferenceTemperature = nil
+        inferenceMaxTokens = nil
+        inferenceTopP = nil
+        inferenceTopK = nil
+        inferenceMinP = nil
+        inferenceRepeatPenalty = nil
+        inferenceFrequencyPenalty = nil
+        inferencePresencePenalty = nil
+        inferenceSeed = nil
+        inferenceStop = []
+        slotAssignments = [:]
+        verifyCommand = ""
+        checkCommand = ""
+        activeDomainID = SoftwareDomain.defaultID
+        activeDomainIDs = SoftwareDomain.defaultActiveDomainIDs
+        maxPlanRetries = 2
+        maxLoopIterations = 100
+        criticEnabled = true
+        maxCriticRetries = 2
+        dpoEnabled = true
+        promptCompressionEnabled = false
+    }
+
     struct InferenceDefaults: Sendable {
         var temperature: Double?
         var maxTokens: Int?
@@ -546,7 +607,7 @@ final class AppSettings: ObservableObject {
                 let quotedDomains = activeDomainIDs.map { quoted($0) }.joined(separator: ", ")
                 lines.append("active_domains = [\(quotedDomains)]")
             }
-            lines.append("active_domain = \(quoted(activeDomainIDs.first ?? activeDomainID))")
+            lines.append("active_domain = \(quoted(primaryConfiguredActiveDomainID(from: activeDomainIDs)))")
             if verifyCommand.isEmpty == false {
                 lines.append("verify_command = \(quoted(verifyCommand))")
             }
@@ -994,15 +1055,20 @@ final class AppSettings: ObservableObject {
     }
 
     private func normalizeConfiguredActiveDomainIDs(_ ids: [String]) -> [String] {
-        var normalized: [String] = []
+        var extras: [String] = []
         for rawID in ids {
             let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !id.isEmpty else { continue }
-            if !normalized.contains(id) {
-                normalized.append(id)
+            if id == SoftwareDomain.defaultID { continue }
+            if !extras.contains(id) {
+                extras.append(id)
             }
         }
-        return normalized.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : normalized
+        return [SoftwareDomain.defaultID] + extras
+    }
+
+    private func primaryConfiguredActiveDomainID(from ids: [String]) -> String {
+        ids.first(where: { $0 != SoftwareDomain.defaultID }) ?? SoftwareDomain.defaultID
     }
 
     private func syncActiveDomainIDs(from id: String) {
@@ -1012,7 +1078,8 @@ final class AppSettings: ObservableObject {
         if activeDomainIDs != normalized {
             activeDomainIDs = normalized
         }
-        if let primary = normalized.first, activeDomainID != primary {
+        let primary = primaryConfiguredActiveDomainID(from: normalized)
+        if activeDomainID != primary {
             activeDomainID = primary
         }
         isSynchronizingActiveDomains = false
@@ -1025,7 +1092,8 @@ final class AppSettings: ObservableObject {
         if activeDomainIDs != normalized {
             activeDomainIDs = normalized
         }
-        if let primary = normalized.first, activeDomainID != primary {
+        let primary = primaryConfiguredActiveDomainID(from: normalized)
+        if activeDomainID != primary {
             activeDomainID = primary
         }
         isSynchronizingActiveDomains = false

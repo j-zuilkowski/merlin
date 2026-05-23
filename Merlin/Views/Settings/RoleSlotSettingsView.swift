@@ -5,6 +5,7 @@ import SwiftUI
 struct RoleSlotSettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
     @EnvironmentObject private var registry: ProviderRegistry
+    @Environment(\.merlinAppState) private var appState
 
     var body: some View {
         Form {
@@ -123,10 +124,6 @@ struct RoleSlotSettingsView: View {
         .navigationTitle("Providers & Slots")
         .task {
             await registry.fetchAllModels()
-            await applyActiveDomain()
-        }
-        .onChange(of: settings.activeDomainID) { _, _ in
-            Task { await applyActiveDomain() }
         }
         .onChange(of: settings.slotAssignments) { _, _ in
             Task { await saveSlots() }
@@ -177,20 +174,21 @@ struct RoleSlotSettingsView: View {
             Picker(
                 "",
                 selection: Binding(
-                    get: { settings.activeDomainID },
-                    set: { settings.activeDomainID = $0 }
+                    get: { appState?.currentActiveDomainID ?? settings.activeDomainID },
+                    set: { newValue in
+                        Task { @MainActor in
+                            await appState?.setActiveDomains([newValue], persistAsDefault: true)
+                        }
+                    }
                 )
             ) {
                 Text("Software Development").tag(SoftwareDomain.defaultID)
+                Text("Electronics").tag(ElectronicsDomain.defaultID)
             }
             .labelsHidden()
             .frame(maxWidth: 260)
             .accessibilityIdentifier(AccessibilityID.settingsRoleActiveDomainPicker)
         }
-    }
-
-    private func applyActiveDomain() async {
-        await DomainRegistry.shared.setActiveDomains(ids: settings.activeDomainIDs)
     }
 
     private func saveSlots() async {

@@ -65,6 +65,56 @@ final class SubagentEngineTests: XCTestCase {
         XCTAssertFalse(chunks.isEmpty)
     }
 
+    func test_toolCall_executesAndLoopsResultBackIntoModel() async throws {
+        let mockProvider = MockProvider(responses: [
+            .toolCall(
+                id: "call-1",
+                name: "read_file",
+                args: #"{"path":"/tmp/example.txt"}"#
+            ),
+            .text("I read the file successfully.")
+        ])
+        let engine = SubagentEngine(
+            definition: .builtinExplorer,
+            prompt: "Inspect the file.",
+            provider: mockProvider,
+            hookEngine: HookEngine(),
+            depth: 0,
+            toolExecutor: { call in
+                XCTAssertEqual(call.function.name, "read_file")
+                return ToolResult(
+                    toolCallId: call.id,
+                    content: "line 1: hello",
+                    isError: false
+                )
+            }
+        )
+
+        var sawStarted = false
+        var sawCompleted = false
+        var summary: String?
+        for await event in engine.events {
+            switch event {
+            case .toolCallStarted(let toolName, let input):
+                sawStarted = (toolName == "read_file")
+                XCTAssertEqual(input["path"], "/tmp/example.txt")
+            case .toolCallCompleted(let toolName, let result):
+                sawCompleted = (toolName == "read_file" && result == "line 1: hello")
+            case .completed(let finalSummary):
+                summary = finalSummary
+            case .failed(let error):
+                XCTFail("Unexpected failure: \(error)")
+            case .messageChunk:
+                break
+            }
+        }
+
+        XCTAssertTrue(sawStarted)
+        XCTAssertTrue(sawCompleted)
+        XCTAssertEqual(summary, "I read the file successfully.")
+        XCTAssertEqual(mockProvider.callCount, 2)
+    }
+
     // MARK: - Depth enforcement
 
     func test_depthLimit_preventsSpawnAtMaxDepth() async throws {

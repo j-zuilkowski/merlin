@@ -16,12 +16,18 @@ Merlin connects to remote and local providers interchangeably. Switch mid-sessio
 - OpenRouter
 
 **Local (no API key required)**
-- LM Studio
-- Ollama
-- Jan.ai
-- LocalAI
-- Mistral.rs
-- vLLM-Metal
+
+| Provider | Status | Notes |
+|---|---|---|
+| LM Studio | Fully supported | Recommended. General + vision pair passed live calibration. |
+| Jan.ai | Fully supported | Recommended. General + vision pair passed live calibration. |
+| LocalAI | Fully supported | Recommended. General + vision pair passed live calibration. |
+| Ollama | Not recommended | General model works, but the tested vision model crashes the runner on real image requests. |
+| vLLM-Metal | Not recommended | General model works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
+| Mistral.rs | Currently unusable | The tested Qwen3 MoE GGUF model fails on first inference on Metal. |
+
+Upstream issue tracking for the malfunctioning local providers is recorded in
+[`docs/local-provider-configs/RESULTS.md`](docs/local-provider-configs/RESULTS.md).
 
 All providers share a single configuration surface (Settings → Providers). API keys are stored in macOS Keychain — never written to disk. Local providers are auto-probed for availability at launch.
 
@@ -98,6 +104,10 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 - `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
 - LM Studio, Ollama, and Jan.ai can reload at runtime.
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
+- LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.
+- Recommended local providers for full general+vision use are LM Studio, Jan.ai, and LocalAI.
+- Ollama and vLLM-Metal remain available for general-model use, but are not recommended for pair calibration because the tested vision path failed live.
+- Mistral.rs remains listed for completeness, but is currently unusable for the tested Qwen3 MoE model on Apple Metal.
 - The Performance Dashboard automatically detects truncation, critic-score variance, trigram repetition, and context-overflow markers.
 - Each advisory has a one-tap `Fix this` action that routes through the same `applyAdvisory(_:)` path used by the engine.
 
@@ -107,14 +117,14 @@ Type `/calibrate` in the chat bar to benchmark the active local model against an
 remote provider (Anthropic, OpenAI, DeepSeek, etc.).
 
 **What it does:**
-- Sends an 18-prompt battery (reasoning, coding, instruction-following, summarization) to both
-  the local and reference provider simultaneously.
+- Runs an 18-prompt battery (reasoning, coding, instruction-following, summarization). For each prompt, the local and reference provider run in parallel; prompts themselves run sequentially to avoid saturating local backends.
 - Critic-scores every response pair and computes per-category and overall score gaps.
 - Identifies up to four parameter issues: context length too small, temperature too high,
   output truncation, and repetitive output.
 - Shows a report with a side-by-side score breakdown and one-tap "Apply All Suggestions"
   that routes fixes through the existing advisory pipeline (runtime reload where supported,
   restart instructions where not).
+- Surfaces degraded critic fallback explicitly in the report instead of quietly treating it as a normal score.
 
 **What it cannot fix:**
 - Model weight quality - use the LoRA self-training pipeline (`/lora`) for that.
@@ -357,13 +367,13 @@ Shell scripts that intercept the agentic lifecycle. Defined in `~/.merlin/config
 
 ## Scheduler
 
-Set recurring agent sessions on a cron-like schedule. Each scheduled task specifies a project, a prompt or skill, a time, and a permission mode. On fire, Merlin opens a background session, runs the prompt to completion, and posts a macOS notification with a summary.
+Set recurring agent sessions on an hourly, daily, or weekly schedule. Each scheduled task specifies a project, a prompt or skill, a time, and a permission mode. On fire, Merlin opens a background session, waits for MCP startup, runs the prompt to completion, and posts a macOS notification with a summary.
 
 ---
 
 ## Thread Automations
 
-Trigger prompts automatically within an open session on a schedule (e.g. "check CI status every 15 minutes"). Different from the Scheduler — automations run inside an existing live session rather than opening a new one.
+Legacy internal scheduling scaffolding for per-session follow-up prompts. This is not a supported user-facing feature in the current product surface.
 
 ---
 
@@ -408,7 +418,13 @@ Tasks are classified by complexity and routed to the most appropriate LLM slot. 
 | `orchestrate` | Multi-step planning and subagent coordination. Falls back to `reason` if unassigned. |
 | `vision` | GUI screenshot analysis, UI element localization. |
 
-**Domain System** — `DomainRegistry` holds pluggable `DomainPlugin` instances that supply domain-specific verification commands and task types. The built-in `SoftwareDomain` covers Swift/Xcode workflows. Domains inject a `systemPromptAddendum` into the system prompt for the active slot.
+Unassigned slot fallback is runtime-based:
+- `execute` → active provider
+- `reason` → active provider
+- `orchestrate` → `reason`, then active provider
+- `vision` → active provider unless a dedicated vision-capable provider is assigned
+
+**Domain System** — `DomainRegistry` holds pluggable `DomainPlugin` instances that supply domain-specific verification commands and task types. Built-in domains are `SoftwareDomain` and `ElectronicsDomain`; external MCP domain manifests register through `MCPDomainAdapter`. Domains inject a `systemPromptAddendum` into the system prompt for the active slot.
 
 ### V2.0 Electronics Domain (KiCad)
 
@@ -522,7 +538,7 @@ The trained adapter is served by an **MLX-native runtime**. Three runtimes serve
 |---|---|
 | `mlx_lm.server` | Direct: `--adapter-path <adapter>` on top of the base (default Merlin routing target) |
 | **LM Studio** | Direct: load adapter via the LM Studio UI |
-| **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required |
+| **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required, but not recommended for the current general+vision pair workflow |
 
 GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**) require an additional step: fuse the adapter, then convert to GGUF via `llama.cpp/convert_hf_to_gguf.py`. **Mistral.rs cannot serve Qwen3-MoE on Metal** today regardless of fine-tuning (see Per-Provider Notes below) — fine-tuning targeting Mistral.rs is only useful for non-MoE base models.
 
@@ -546,6 +562,7 @@ GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**) require an additional step:
      `python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080`
    - **vLLM-Metal** — fuse first via `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>`,
      then `vllm serve <merged> --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_coder`
+     (text-only use is the safer assumption; not recommended for the current general+vision pair workflow)
    - **LM Studio** — load the base + attach the adapter via the LM Studio UI; endpoint `:1234/v1`
    - **Custom** — any other MLX-compatible OpenAI-compat endpoint
 7. Set **Server URL** to match the chosen runtime (the picker pre-fills sensible defaults)
@@ -647,6 +664,7 @@ The model can spawn child agents to work in parallel using the `spawn_agent` too
 
 - Up to 4 concurrent subagents (configurable)
 - Up to 2 levels of nesting (configurable)
+- Nested `spawn_agent` from inside a subagent is currently rejected explicitly rather than supported recursively.
 - Hooks apply to all subagent tool calls
 - Custom agent definitions in `~/.merlin/agents/*.toml`
 

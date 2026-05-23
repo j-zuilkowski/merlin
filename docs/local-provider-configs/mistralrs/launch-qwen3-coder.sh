@@ -12,8 +12,15 @@
 set -euo pipefail
 
 MISTRALRS="${MISTRALRS:-$HOME/.cargo/bin/mistralrs}"
-MODEL="$HOME/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf"
-PORT=1235
+MODEL="${GGUF_PATH:-$HOME/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf}"
+HF_MODEL_ID="${HF_MODEL_ID:-Qwen/Qwen3-Coder-30B-A3B-Instruct}"
+PORT="${PORT:-1235}"
+CONTEXT_LENGTH="${CONTEXT_LENGTH:-}"
+GPU_LAYERS="${GPU_LAYERS:-}"
+CPU_THREADS="${CPU_THREADS:-}"
+ROPE_FREQUENCY_BASE="${ROPE_FREQUENCY_BASE:-}"
+FLASH_ATTENTION="${FLASH_ATTENTION:-}"
+BATCH_SIZE="${BATCH_SIZE:-}"
 
 if [ ! -x "$MISTRALRS" ]; then
     echo "error: mistralrs binary not found at $MISTRALRS"
@@ -32,11 +39,34 @@ fi
 #   tokenizer.json comes from HF cache.
 # --format gguf: explicit quantized format.
 # --quantized-file: local GGUF path.
-exec "$MISTRALRS" serve \
-    -p "$PORT" \
-    --model-id Qwen/Qwen3-Coder-30B-A3B-Instruct \
-    --format gguf \
+ARGS=(
+    serve
+    -p "$PORT"
+    --model-id "$HF_MODEL_ID"
+    --format gguf
     --quantized-file "$MODEL"
+)
+
+if [ -n "$CONTEXT_LENGTH" ]; then
+    ARGS+=(--max-seq-len "$CONTEXT_LENGTH")
+fi
+if [ -n "$GPU_LAYERS" ]; then
+    ARGS+=(--gpu-layers "$GPU_LAYERS")
+fi
+if [ -n "$CPU_THREADS" ]; then
+    ARGS+=(--cpu-threads "$CPU_THREADS")
+fi
+if [ -n "$ROPE_FREQUENCY_BASE" ]; then
+    ARGS+=(--rope-frequency-base "$ROPE_FREQUENCY_BASE")
+fi
+if [ "$FLASH_ATTENTION" = "1" ] || [ "$FLASH_ATTENTION" = "true" ]; then
+    ARGS+=(--flash-attn)
+fi
+if [ -n "$BATCH_SIZE" ]; then
+    ARGS+=(--batch-size "$BATCH_SIZE")
+fi
+
+exec "$MISTRALRS" "${ARGS[@]}"
 
 # Verify after launch (in another shell):
 #   curl -s http://localhost:1235/v1/models | jq '.data[].id'

@@ -486,16 +486,19 @@ actor CriticEngine {
         """
 
         // Auto-resize the reason slot's context window when needed (e.g. LM Studio defaults to 4096).
+        let requestModel: String
         if let manager = modelManager {
             let estimatedTokens = prompt.count / 4 + 512
-            try? await manager.ensureContextLength(
+            requestModel = (try? await manager.ensureContextLength(
                 modelID: provider.resolvedModelID,
                 minimumTokens: estimatedTokens
-            )
+            )) ?? provider.resolvedModelID
+        } else {
+            requestModel = provider.resolvedModelID
         }
 
         var request = CompletionRequest(
-            model: provider.resolvedModelID,
+            model: requestModel,
             messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
             thinking: nil
         )

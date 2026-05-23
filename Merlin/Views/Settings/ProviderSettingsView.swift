@@ -16,9 +16,10 @@ struct ProviderSettingsView: View {
                             config: config,
                             availableModels: registry.modelsByProviderID[config.id] ?? [],
                             isActive: registry.activeProviderID == config.id,
-                            hasKey: config.isLocal
+                            hasCredential: config.isLocal
                                 ? registry.availabilityByID[config.id] == true
-                                : registry.keyedProviderIDs.contains(config.id),
+                                : registry.hasCredential(for: config.id),
+                            isReady: registry.isReadyForUse(config.id),
                             onActivate: { registry.activeProviderID = config.id },
                             onToggle: { registry.setEnabled(!config.isEnabled, for: config.id) },
                             onEditKey: {
@@ -33,6 +34,7 @@ struct ProviderSettingsView: View {
                             Divider()
                             ModelControlSectionView(
                                 manager: manager,
+                                providerID: config.id,
                                 modelID: config.model
                             )
                         }
@@ -87,7 +89,8 @@ private struct ProviderRow: View {
     let config: ProviderConfig
     let availableModels: [String]
     let isActive: Bool
-    let hasKey: Bool
+    let hasCredential: Bool
+    let isReady: Bool
     let onActivate: () -> Void
     let onToggle: () -> Void
     let onEditKey: () -> Void
@@ -150,7 +153,7 @@ private struct ProviderRow: View {
                 Button(action: onEditKey) {
                     HStack(spacing: 4) {
                         Circle()
-                            .fill(hasKey ? Color.green : Color(nsColor: .tertiaryLabelColor))
+                            .fill(hasCredential ? Color.green : Color(nsColor: .tertiaryLabelColor))
                             .frame(width: 6, height: 6)
                         Text("Key")
                     }
@@ -162,17 +165,17 @@ private struct ProviderRow: View {
 
             Toggle("", isOn: Binding(get: { config.isEnabled }, set: { _ in onToggle() }))
                 .labelsHidden()
-                .disabled(!hasKey && !config.isLocal)
+                .disabled(!hasCredential && !config.isLocal)
                 .accessibilityIdentifier(AccessibilityID.settingsProviderEnabledTogglePrefix + config.id)
 
             Button(isActive ? "Active" : "Use") {
-                if config.isEnabled {
+                if isReady {
                     onActivate()
                 }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
-            .disabled(!config.isEnabled || isActive)
+            .disabled(!isReady || isActive)
             .accessibilityIdentifier(AccessibilityID.settingsProviderUseButtonPrefix + config.id)
         }
         .padding(.vertical, 4)

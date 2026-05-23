@@ -12,6 +12,12 @@
 actor MCPBridge {
     private var sessions: [String: any MCPTransportSession] = [:]
     private var registeredToolNames: Set<String> = []
+    private var registeredDomainIDs: Set<String> = []
+
+    private struct RegisteredDomainScope: Sendable {
+        var canonicalDomainID: String
+        var scopedToolNames: Set<String>
+    }
 
     static func resolvedTransportKind(for config: MCPServerConfig) -> MCPTransportKind {
         config.transportKind
@@ -29,12 +35,20 @@ actor MCPBridge {
             sessions[serverName] = session
 
             let tools = try await session.listTools()
+            let domainScope = await registerDomainManifestIfPresent(
+                from: session,
+                serverName: serverName,
+                toolNames: tools.map(\.name)
+            )
             for tool in tools {
                 let definition = Self.toolDefinition(serverName: serverName, tool: tool)
                 registeredToolNames.insert(definition.function.name)
                 await ToolRegistry.shared.register(definition)
                 await MainActor.run {
-                    toolRouter.registerMCPTool(definition) { arguments in
+                    let scopeID = domainScope?.scopedToolNames.contains(tool.name) == true
+                        ? domainScope?.canonicalDomainID
+                        : nil
+                    toolRouter.registerMCPTool(definition, scopedToDomainID: scopeID) { arguments in
                         do {
                             return try await self.call(server: serverName,
                                                        tool: tool.name,
@@ -117,16 +131,26 @@ actor MCPBridge {
         return try await session.callTool(name: tool, argumentsJSON: argumentsJSON)
     }
 
-    func stop() async {
+    func stop(toolRouter: ToolRouter? = nil) async {
         for session in sessions.values {
             await session.terminate()
         }
         sessions.removeAll()
 
-        for name in registeredToolNames {
+        let toolNames = registeredToolNames
+        if let toolRouter {
+            await MainActor.run {
+                toolRouter.unregisterMCPTools(named: toolNames)
+            }
+        }
+        for name in toolNames {
             await ToolRegistry.shared.unregister(named: name)
         }
         registeredToolNames.removeAll()
+        for id in registeredDomainIDs {
+            await DomainRegistry.shared.unregister(id: id)
+        }
+        registeredDomainIDs.removeAll()
     }
 
     private func expandEnvironment(in config: MCPServerConfig) -> MCPServerConfig {
@@ -150,6 +174,43 @@ actor MCPBridge {
             }
             return MCPSSETransport(endpoint: endpoint)
         }
+    }
+
+    private func registerDomainManifestIfPresent(
+        from session: any MCPTransportSession,
+        serverName: String,
+        toolNames: [String]
+    ) async -> RegisteredDomainScope? {
+        guard let manifest = try? await Self.readDomainManifest(from: session) else {
+            return nil
+        }
+        let scopedNames = Set(
+            manifest.mcpToolNames?.isEmpty == false
+                ? (manifest.mcpToolNames ?? [])
+                : toolNames
+        )
+        let prefixedNames = scopedNames.map { Self.prefixedToolName(server: serverName, tool: $0) }
+        let adapter = await MainActor.run {
+            MCPDomainAdapter(
+                manifest: manifest,
+                mcpServerID: serverName,
+                mcpToolNames: prefixedNames
+            )
+        }
+        await DomainRegistry.shared.register(adapter)
+        registeredDomainIDs.insert(adapter.id)
+        return RegisteredDomainScope(
+            canonicalDomainID: adapter.canonicalDomainID,
+            scopedToolNames: scopedNames
+        )
+    }
+
+    private static func readDomainManifest(from session: any MCPTransportSession) async throws -> DomainManifest? {
+        guard let body = try await session.readResourceText(uri: "merlin://domain/manifest"),
+              !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return try JSONDecoder().decode(DomainManifest.self, from: Data(body.utf8))
     }
 
     private static func toolDefinition(serverName: String, tool: MCPToolDefinition) -> ToolDefinition {

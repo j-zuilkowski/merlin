@@ -25,8 +25,10 @@ final class SessionManager: ObservableObject {
 
     @discardableResult
     func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
+        let configuredDomainIDs = AppSettings.shared.activeDomainIDs
+        let requestedDomainIDs = inferredSessionDomainIDs(defaults: configuredDomainIDs)
         let activeDomainIDs = await DomainRegistry.shared.normalizedActiveDomainIDs(
-            ids: AppSettings.shared.activeDomainIDs
+            ids: requestedDomainIDs
         )
         let session = LiveSession(
             projectRef: projectRef,
@@ -80,5 +82,46 @@ final class SessionManager: ObservableObject {
         if activeSessionID == id {
             activeSessionID = liveSessions.last?.id
         }
+    }
+
+    private func inferredSessionDomainIDs(defaults: [String]) -> [String] {
+        guard projectLooksLikeElectronics(projectRef.path) else { return defaults }
+        var ids = defaults
+        if !ids.contains(ElectronicsDomain.defaultID) {
+            ids.append(ElectronicsDomain.defaultID)
+        }
+        return ids
+    }
+
+    private func projectLooksLikeElectronics(_ path: String) -> Bool {
+        let rootURL = URL(fileURLWithPath: path)
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: rootURL.path) else { return false }
+
+        if let entries = try? fm.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil) {
+            if entries.contains(where: { $0.pathExtension == "kicad_pro" }) {
+                return true
+            }
+        }
+
+        guard let enumerator = fm.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
+            return false
+        }
+
+        var scanned = 0
+        for case let url as URL in enumerator {
+            scanned += 1
+            if url.pathExtension == "kicad_pro" {
+                return true
+            }
+            if scanned >= 500 {
+                break
+            }
+        }
+        return false
     }
 }

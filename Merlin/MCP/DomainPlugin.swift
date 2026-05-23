@@ -16,6 +16,8 @@ struct DomainTaskType: Hashable, Codable, Sendable {
 /// when wrapping an external MCP domain server.
 protocol DomainPlugin: Sendable {
     var id: String { get }
+    var canonicalDomainID: String { get }
+    var isUserSelectable: Bool { get }
     var displayName: String { get }
     var taskTypes: [DomainTaskType] { get }
     var verificationBackend: any VerificationBackend { get }
@@ -24,6 +26,11 @@ protocol DomainPlugin: Sendable {
     var systemPromptAddendum: String? { get }
     /// MCP tool names contributed by this domain (used by ToolRegistry at domain activation).
     var mcpToolNames: [String] { get }
+}
+
+extension DomainPlugin {
+    var canonicalDomainID: String { id }
+    var isUserSelectable: Bool { true }
 }
 
 // MARK: - DomainManifest (MCP wire format)
@@ -35,6 +42,7 @@ struct DomainManifest: Decodable, Sendable {
     var taskTypes: [DomainTaskType]
     var highStakesKeywords: [String]
     var systemPromptAddendum: String?
+    var mcpToolNames: [String]?
     /// Key = task type name, value = list of verification commands for that type.
     var verificationCommands: [String: [ManifestVerificationCommand]]
 
@@ -71,6 +79,8 @@ struct DomainManifest: Decodable, Sendable {
 /// into the DomainPlugin protocol by reading its DomainManifest resource.
 struct MCPDomainAdapter: DomainPlugin {
     let id: String
+    let canonicalDomainID: String
+    let isUserSelectable = false
     let displayName: String
     let taskTypes: [DomainTaskType]
     let highStakesKeywords: [String]
@@ -80,15 +90,25 @@ struct MCPDomainAdapter: DomainPlugin {
     let mcpServerID: String
 
     @MainActor
-    init(manifest: DomainManifest, mcpServerID: String) {
-        self.id = manifest.id
+    init(manifest: DomainManifest, mcpServerID: String, mcpToolNames: [String]) {
+        self.id = "mcp:\(mcpServerID):\(manifest.id)"
+        self.canonicalDomainID = Self.normalizeCanonicalDomainID(manifest.id)
         self.displayName = manifest.displayName
         self.taskTypes = manifest.taskTypes
         self.highStakesKeywords = manifest.highStakesKeywords
         self.systemPromptAddendum = manifest.systemPromptAddendum
-        self.mcpToolNames = []
+        self.mcpToolNames = mcpToolNames
         self.verificationBackend = ManifestVerificationBackend(commands: manifest.verificationCommands)
         self.mcpServerID = mcpServerID
+    }
+
+    private static func normalizeCanonicalDomainID(_ rawID: String) -> String {
+        switch rawID.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "electronics", "pcb", "kicad":
+            return ElectronicsDomain.defaultID
+        default:
+            return rawID
+        }
     }
 }
 

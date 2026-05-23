@@ -70,6 +70,7 @@ final class AppState: ObservableObject {
     @Published var toolbarActionsList: [ToolbarAction] = []
     /// Published so the UI can present a restart-instructions sheet after a reload request requires it.
     @Published var pendingRestartInstructions: RestartInstructions? = nil
+    @Published private(set) var activeDomainDisplayName: String = SoftwareDomain().displayName
 
     @Published var activeProviderID: String = "deepseek" {
         didSet {
@@ -109,6 +110,7 @@ final class AppState: ObservableObject {
     private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
     private var cancellables: Set<AnyCancellable> = []
     private var disciplineEventPollTask: Task<Void, Never>?
+    private var calibrationCoordinatorCancellable: AnyCancellable?
 
     init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.projectPath = projectPath
@@ -183,6 +185,7 @@ final class AppState: ObservableObject {
         registerAllTools(
             router: toolRouter,
             visionProvider: { [weak self] in self?.engine?.provider(for: .vision) })
+        configureCalibrationCoordinatorObservation()
 
         toolRouter.register(name: "run_shell") { [weak self] args in
             struct RunShellArgs: Decodable {
@@ -496,6 +499,15 @@ final class AppState: ObservableObject {
         MerlinAppIntentsSupport.install(appState: self)
     }
 
+    private func configureCalibrationCoordinatorObservation() {
+        _ = calibrationCoordinator
+        calibrationCoordinatorCancellable = calibrationCoordinator.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+    }
+
     private func startDisciplineEventPolling(projectPath: String) {
         guard !projectPath.isEmpty else { return }
         disciplineEventPollTask?.cancel()
@@ -622,6 +634,33 @@ final class AppState: ObservableObject {
         syncEngineProviders()
     }
 
+    var currentActiveDomainIDs: [String] {
+        activeDomainIDs
+    }
+
+    var currentActiveDomainID: String {
+        activeDomainIDs.first(where: { $0 != SoftwareDomain.defaultID }) ?? SoftwareDomain.defaultID
+    }
+
+    func suggestedDomainActivation(for message: String) -> DomainActivationSuggestion? {
+        ElectronicsDomain.suggestedActivation(
+            for: message,
+            currentActiveDomainIDs: activeDomainIDs
+        )
+    }
+
+    func setActiveDomains(_ ids: [String], persistAsDefault: Bool = false) async {
+        let normalized = await DomainRegistry.shared.normalizedActiveDomainIDs(ids: ids)
+        activeDomainIDs = normalized
+        engine.activeDomainIDs = normalized
+        activeDomainDisplayName = Self.fallbackDomainDisplayName(for: normalized)
+        let domain = await DomainRegistry.shared.activeDomain(ids: normalized)
+        activeDomainDisplayName = domain.displayName
+        if persistAsDefault {
+            AppSettings.shared.activeDomainIDs = normalized
+        }
+    }
+
     static func installBuiltinSkills() {
         let resourceURL = Bundle.main.resourceURL?.appendingPathComponent("Builtin")
             ?? builtinSkillsSourceURL()
@@ -645,6 +684,13 @@ final class AppState: ObservableObject {
             .appendingPathComponent("Skills/Builtin")
     }
 
+    private static func fallbackDomainDisplayName(for ids: [String]) -> String {
+        if ids.contains(ElectronicsDomain.defaultID) {
+            return ElectronicsDomain().displayName
+        }
+        return SoftwareDomain().displayName
+    }
+
     private func syncEngineProviders(activeDomainIDs: [String]? = nil) {
         rebuildLocalModelManagers()
         engine.registry = registry
@@ -659,7 +705,13 @@ final class AppState: ObservableObject {
             self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
         }
         engine.activeDomainIDs = self.activeDomainIDs
-        Task { [weak self] in await self?.refreshParameterAdvisories() }
+        activeDomainDisplayName = Self.fallbackDomainDisplayName(for: self.activeDomainIDs)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let domain = await DomainRegistry.shared.activeDomain(ids: self.activeDomainIDs)
+            self.activeDomainDisplayName = domain.displayName
+            await self.refreshParameterAdvisories()
+        }
     }
 
     private func syncMemoryBackend() async {
@@ -725,6 +777,9 @@ final class AppState: ObservableObject {
             pendingRestartInstructions = nil
             do {
                 try await manager.reload(modelID: advisory.modelID, config: config)
+                let reloadedModelID = manager.reloadedModelID(afterApplying: config, to: advisory.modelID)
+                registry.updateModel(reloadedModelID, for: providerID)
+                await refreshParameterAdvisories(for: reloadedModelID)
             } catch ModelManagerError.requiresRestart(let instructions) {
                 pendingRestartInstructions = instructions
                 throw ModelManagerError.requiresRestart(instructions)

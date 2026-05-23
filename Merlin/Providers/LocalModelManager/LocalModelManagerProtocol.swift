@@ -118,11 +118,17 @@ protocol LocalModelManagerProtocol: Sendable {
     nonisolated func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions?
 
     /// Checks the model's loaded context length and reloads with a larger context if
-    /// `minimumTokens` exceeds what is currently loaded. No-op for providers that do
-    /// not support runtime context inspection.
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws
+    /// `minimumTokens` exceeds what is currently loaded. Returns the model ID callers
+    /// should use for the current request after any reload-side retagging.
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String
+
+    /// Returns the model ID Merlin should use after a successful reload. Most
+    /// providers keep the same model identifier; managers that materialize a new
+    /// runtime tag (for example, Ollama Modelfile variants) override this.
+    nonisolated func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String
 }
 
 extension LocalModelManagerProtocol {
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {}
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String { modelID }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }

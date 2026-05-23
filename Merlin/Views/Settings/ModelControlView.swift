@@ -12,7 +12,9 @@ import SwiftUI
 struct ModelControlView: View {
 
     let manager: any LocalModelManagerProtocol
+    let providerID: String
     let modelID: String
+    @EnvironmentObject private var appState: AppState
 
     @State private var config = LocalModelConfig()
     @State private var isReloading = false
@@ -143,6 +145,11 @@ struct ModelControlView: View {
         reloadError = nil
         do {
             try await manager.reload(modelID: modelID, config: config)
+            let reloadedModelID = manager.reloadedModelID(afterApplying: config, to: modelID)
+            if reloadedModelID != modelID {
+                appState.registry.updateModel(reloadedModelID, for: providerID)
+                appState.reloadProviders()
+            }
         } catch ModelManagerError.requiresRestart(let instr) {
             // Restart-required errors are surfaced as a sheet so the user can copy the command.
             restartInstructions = instr
@@ -219,10 +226,11 @@ private struct DoubleField: View {
 @MainActor
 struct ModelControlSectionView: View {
     let manager: any LocalModelManagerProtocol
+    let providerID: String
     let modelID: String
 
     var body: some View {
-        ModelControlView(manager: manager, modelID: modelID)
+        ModelControlView(manager: manager, providerID: providerID, modelID: modelID)
     }
 }
 

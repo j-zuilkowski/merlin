@@ -5,7 +5,16 @@
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 BIN="$DIR/.build/release/merlin-kicad-mcp"
+needs_build=0
 if [ ! -x "$BIN" ]; then
+  needs_build=1
+elif [ "$DIR/Package.swift" -nt "$BIN" ]; then
+  needs_build=1
+elif find "$DIR/Sources" -type f -newer "$BIN" -print -quit 2>/dev/null | grep -q .; then
+  needs_build=1
+fi
+
+if [ "$needs_build" -eq 1 ]; then
   swift build -c release --package-path "$DIR" 1>&2
 fi
 exec "$BIN" "$@"

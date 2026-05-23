@@ -13,6 +13,7 @@ private struct StubRuntimeManager: LocalModelManagerProtocol {
     func loadedModels() async throws -> [LoadedModelInfo] { [] }
     func reload(modelID: String, config: LocalModelConfig) async throws {}
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? { nil }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 private struct StubRestartOnlyManager: LocalModelManagerProtocol {
@@ -35,6 +36,7 @@ private struct StubRestartOnlyManager: LocalModelManagerProtocol {
             explanation: "Stub provider requires restart."
         )
     }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 // MARK: - Tests
@@ -175,4 +177,189 @@ final class LocalModelManagerProtocolTests: XCTestCase {
         let manager = OllamaModelManager(baseURL: URL(string: "http://localhost:11434")!)
         XCTAssertFalse(manager.capabilities.supportedLoadParams.contains(.flashAttention))
     }
+
+    func testOllamaReloadedModelIDUsesMerlinVariant() {
+        let manager = OllamaModelManager(baseURL: URL(string: "http://localhost:11434")!)
+        XCTAssertEqual(
+            manager.reloadedModelID(afterApplying: LocalModelConfig(contextLength: 8192), to: "qwen3-coder"),
+            "qwen3-coder-merlin"
+        )
+        XCTAssertEqual(
+            manager.reloadedModelID(afterApplying: LocalModelConfig(contextLength: 8192), to: "qwen3-coder-merlin"),
+            "qwen3-coder-merlin"
+        )
+    }
+
+    func testOllamaLoadedModelsPrefersRunningModelsEndpoint() async throws {
+        let session = Self.makeMockSession { request in
+            switch request.url?.path {
+            case "/api/ps":
+                return Self.okResponse(
+                    for: request,
+                    data: Data(#"{"models":[{"name":"qwen3-coder-merlin"}]}"#.utf8)
+                )
+            case "/api/show":
+                return Self.okResponse(
+                    for: request,
+                    data: Data(#"{"parameters":"num_ctx 8192\nnum_gpu -1\nuse_mmap true"}"#.utf8)
+                )
+            case "/api/tags":
+                return Self.okResponse(
+                    for: request,
+                    data: Data(#"{"models":[{"name":"downloaded-only"}]}"#.utf8)
+                )
+            default:
+                return Self.okResponse(for: request, data: Data(#"{"models":[]}"#.utf8))
+            }
+        }
+        let manager = OllamaModelManager(
+            baseURL: URL(string: "http://localhost:11434")!,
+            session: session
+        )
+        let models = try await manager.loadedModels()
+        XCTAssertEqual(models.map(\.modelID), ["qwen3-coder-merlin"])
+        XCTAssertEqual(models.first?.knownConfig.contextLength, 8192)
+        XCTAssertEqual(models.first?.knownConfig.gpuLayers, -1)
+        XCTAssertEqual(models.first?.knownConfig.useMmap, true)
+    }
+
+    func testOllamaLoadedModelsFallsBackToTags() async throws {
+        let session = Self.makeMockSession { request in
+            switch request.url?.path {
+            case "/api/ps":
+                return (
+                    HTTPURLResponse(
+                        url: request.url ?? URL(string: "http://localhost")!,
+                        statusCode: 404,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )!,
+                    Data()
+                )
+            case "/api/tags":
+                return Self.okResponse(
+                    for: request,
+                    data: Data(#"{"models":[{"name":"qwen3-coder"}]}"#.utf8)
+                )
+            default:
+                return Self.okResponse(for: request, data: Data(#"{"models":[]}"#.utf8))
+            }
+        }
+        let manager = OllamaModelManager(
+            baseURL: URL(string: "http://localhost:11434")!,
+            session: session
+        )
+        let models = try await manager.loadedModels().map(\.modelID)
+        XCTAssertEqual(models, ["qwen3-coder"])
+    }
+
+    func testOllamaEnsureContextLengthReloadsWithNextPowerOf2() async throws {
+        let capturedModelfile = CapturedStringBox()
+        let session = Self.makeMockSession { request in
+            switch request.url?.path {
+            case "/api/show":
+                return Self.okResponse(
+                    for: request,
+                    data: Data(#"{"parameters":"num_ctx 4096\nnum_gpu -1\nnum_thread 8"}"#.utf8)
+                )
+            case "/api/create":
+                if let body = request.httpBody,
+                   let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+                   let modelfile = json["modelfile"] as? String {
+                    capturedModelfile.set(modelfile)
+                }
+                return Self.okResponse(for: request)
+            case "/api/generate":
+                return Self.okResponse(for: request)
+            default:
+                return Self.okResponse(for: request)
+            }
+        }
+        let manager = OllamaModelManager(
+            baseURL: URL(string: "http://localhost:11434")!,
+            session: session
+        )
+        let reloadedModelID = try await manager.ensureContextLength(modelID: "qwen3-coder", minimumTokens: 20000)
+        XCTAssertEqual(reloadedModelID, "qwen3-coder-merlin")
+        XCTAssertTrue(capturedModelfile.value?.contains("PARAMETER num_ctx 32768") == true)
+        XCTAssertTrue(capturedModelfile.value?.contains("PARAMETER num_gpu -1") == true)
+        XCTAssertTrue(capturedModelfile.value?.contains("PARAMETER num_thread 8") == true)
+    }
+}
+
+extension LocalModelManagerProtocolTests {
+    private static func makeMockSession(
+        handler: @escaping @Sendable (URLRequest) throws -> (HTTPURLResponse, Data)
+    ) -> URLSession {
+        LocalManagerMockURLProtocol.handler = handler
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [LocalManagerMockURLProtocol.self]
+        return URLSession(configuration: config)
+    }
+
+    private static func okResponse(for request: URLRequest, data: Data = Data()) -> (HTTPURLResponse, Data) {
+        (
+            HTTPURLResponse(
+                url: request.url ?? URL(string: "http://localhost")!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!,
+            data
+        )
+    }
+}
+
+private final class CapturedStringBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: String?
+
+    func set(_ value: String) {
+        lock.lock()
+        storage = value
+        lock.unlock()
+    }
+
+    var value: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+}
+
+final class LocalManagerMockURLProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var handler: (@Sendable (URLRequest) throws -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = LocalManagerMockURLProtocol.handler else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        do {
+            var hydrated = request
+            if hydrated.httpBody == nil, let stream = hydrated.httpBodyStream {
+                var bodyData = Data()
+                stream.open()
+                let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: 65_536)
+                defer { buf.deallocate() }
+                while stream.hasBytesAvailable {
+                    let n = stream.read(buf, maxLength: 65_536)
+                    if n > 0 { bodyData.append(buf, count: n) }
+                }
+                stream.close()
+                hydrated.httpBody = bodyData
+            }
+            let (response, data) = try handler(hydrated)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: data)
+            client?.urlProtocolDidFinishLoading(self)
+        } catch {
+            client?.urlProtocol(self, didFailWithError: error)
+        }
+    }
+
+    override func stopLoading() {}
 }

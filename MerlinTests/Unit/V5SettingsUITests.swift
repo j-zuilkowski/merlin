@@ -52,6 +52,17 @@ final class V5SettingsUITests: XCTestCase {
         XCTAssertEqual(settings.activeDomainID, "data-science")
     }
 
+    func testLiveAppSettingsSelectingElectronicsKeepsSoftwareInActiveDomains() async {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("settings-\(UUID().uuidString).toml")
+        let settings = AppSettings(configURL: url)
+
+        settings.activeDomainID = ElectronicsDomain.defaultID
+
+        XCTAssertEqual(settings.activeDomainID, ElectronicsDomain.defaultID)
+        XCTAssertEqual(settings.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+    }
+
     // MARK: verifyCommand / checkCommand
 
     func testVerifyCommandDefaultsEmpty() async {
@@ -82,6 +93,54 @@ final class V5SettingsUITests: XCTestCase {
     func testPerformanceDashboardViewTypeExists() {
         guard ProcessInfo.processInfo.environment["RUN_VIEW_INSTANTIATION"] == "1" else { return }
         _ = PerformanceDashboardView()
+    }
+
+    func testSettingsSessionContextBindsMatchingRegistry() {
+        let context = SettingsSessionContext()
+        let appState = AppState(projectPath: "/tmp/merlin-settings-context")
+
+        context.bind(appState: appState)
+
+        XCTAssertTrue(context.activeAppState === appState)
+        XCTAssertTrue(context.activeRegistry === appState.registry)
+    }
+
+    func testSettingsSessionContextClearIfMatchingDoesNotClearDifferentAppState() {
+        let context = SettingsSessionContext()
+        let first = AppState(projectPath: "/tmp/merlin-settings-context-a")
+        let second = AppState(projectPath: "/tmp/merlin-settings-context-b")
+
+        context.bind(appState: first)
+        context.clearIfMatching(second)
+
+        XCTAssertTrue(context.activeAppState === first)
+    }
+
+    func testSettingsSessionContextClearIfMatchingClearsBoundAppState() {
+        let context = SettingsSessionContext()
+        let appState = AppState(projectPath: "/tmp/merlin-settings-context-c")
+
+        context.bind(appState: appState)
+        context.clearIfMatching(appState)
+
+        XCTAssertNil(context.activeAppState)
+        XCTAssertNil(context.activeRegistry)
+    }
+
+    func testAppStateSuggestedDomainActivationUsesSessionDomainState() async {
+        let appState = AppState(projectPath: "/tmp/merlin-electronics-suggestion")
+
+        let initial = appState.suggestedDomainActivation(
+            for: "Please create a PCB schematic and footprint plan."
+        )
+        XCTAssertEqual(initial?.domainID, ElectronicsDomain.defaultID)
+
+        await appState.setActiveDomains([ElectronicsDomain.defaultID], persistAsDefault: false)
+
+        let afterSwitch = appState.suggestedDomainActivation(
+            for: "Please create a PCB schematic and footprint plan."
+        )
+        XCTAssertNil(afterSwitch)
     }
 }
 

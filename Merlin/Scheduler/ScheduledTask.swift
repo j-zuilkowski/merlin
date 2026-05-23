@@ -71,6 +71,7 @@ struct ScheduledTask: Identifiable, Codable, Sendable {
     var permissionMode: PermissionMode
     var prompt: String
     var isEnabled: Bool
+    var lastRunAt: Date?
 
     init(id: UUID = UUID(),
          name: String,
@@ -79,7 +80,8 @@ struct ScheduledTask: Identifiable, Codable, Sendable {
          projectPath: String,
          permissionMode: PermissionMode,
          prompt: String,
-         isEnabled: Bool) {
+         isEnabled: Bool,
+         lastRunAt: Date? = nil) {
         self.id = id
         self.name = name
         self.cadence = cadence
@@ -88,5 +90,6 @@ struct ScheduledTask: Identifiable, Codable, Sendable {
         self.permissionMode = permissionMode
         self.prompt = prompt
         self.isEnabled = isEnabled
+        self.lastRunAt = lastRunAt
     }
 }

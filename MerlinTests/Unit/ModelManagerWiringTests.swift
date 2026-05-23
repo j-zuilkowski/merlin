@@ -25,6 +25,7 @@ private final class StubReloadableManager: LocalModelManagerProtocol, @unchecked
     }
 
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? { nil }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 private final class StubRestartRequiredManager: LocalModelManagerProtocol, @unchecked Sendable {
@@ -45,6 +46,7 @@ private final class StubRestartRequiredManager: LocalModelManagerProtocol, @unch
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? {
         RestartInstructions(shellCommand: "server --ctx 8192", configSnippet: nil, explanation: "restart")
     }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 // MARK: - Tests

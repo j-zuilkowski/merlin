@@ -1,7 +1,39 @@
 import XCTest
 @testable import Merlin
 
+@MainActor
+private final class TestSchedulerSession: SchedulerSession {
+    var permissionMode: PermissionMode = .ask
+    private(set) var awaitMCPReadyCallCount = 0
+    private(set) var prompts: [String] = []
+    private(set) var closeCallCount = 0
+    private let summary: String
+    private let error: Error?
+
+    init(summary: String = "completed", error: Error? = nil) {
+        self.summary = summary
+        self.error = error
+    }
+
+    func awaitMCPReady() async {
+        awaitMCPReadyCallCount += 1
+    }
+
+    func runScheduledPrompt(_ prompt: String) async throws -> String {
+        prompts.append(prompt)
+        if let error {
+            throw error
+        }
+        return summary
+    }
+
+    func close() async {
+        closeCallCount += 1
+    }
+}
+
 final class SchedulerEngineTests: XCTestCase {
+    private struct SchedulerTestError: Error {}
 
     // MARK: - ScheduledTask round-trip
 
@@ -115,11 +147,121 @@ final class SchedulerEngineTests: XCTestCase {
         XCTAssertEqual(engine2.tasks.first?.name, "Persisted")
     }
 
+    @MainActor
+    func testEvaluateDueTasksRunsSessionOncePerSlotAndHonorsPermissionMode() async throws {
+        let path = "/tmp/schedules-fire-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let now = makeDate(minute: 5, hour: 9, day: 1, month: 1, year: 2026)
+        let session = TestSchedulerSession(summary: "scheduled summary")
+        let notificationExpectation = expectation(description: "scheduler posts notification")
+        var notifications: [(String, String, String)] = []
+
+        let engine = SchedulerEngine(
+            configPath: path,
+            nowProvider: { now },
+            startTimer: false,
+            sessionFactory: { _ in session },
+            notificationPoster: { title, body, identifier in
+                notifications.append((title, body, identifier))
+                notificationExpectation.fulfill()
+            }
+        )
+
+        let task = ScheduledTask(
+            name: "Daily review",
+            cadence: .daily,
+            time: "09:00",
+            projectPath: "/tmp",
+            permissionMode: .plan,
+            prompt: "/review",
+            isEnabled: true
+        )
+        engine.addTask(task)
+
+        engine.evaluateDueTasks(now: now)
+        await fulfillment(of: [notificationExpectation], timeout: 1.0)
+
+        XCTAssertEqual(session.permissionMode, .plan)
+        XCTAssertEqual(session.awaitMCPReadyCallCount, 1)
+        XCTAssertEqual(session.prompts, ["/review"])
+        XCTAssertEqual(session.closeCallCount, 1)
+        XCTAssertEqual(notifications.count, 1)
+        XCTAssertEqual(notifications.first?.0, "Merlin - Daily review")
+        XCTAssertEqual(notifications.first?.1, "scheduled summary")
+        XCTAssertEqual(engine.tasks.first?.lastRunAt, makeDate(minute: 0, hour: 9, day: 1, month: 1, year: 2026))
+
+        engine.evaluateDueTasks(now: now.addingTimeInterval(30))
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(session.awaitMCPReadyCallCount, 1)
+        XCTAssertEqual(session.prompts.count, 1)
+        XCTAssertEqual(notifications.count, 1)
+    }
+
+    @MainActor
+    func testEvaluateDueTasksDoesNotAdvanceLastRunAtOnFailure() async throws {
+        let path = "/tmp/schedules-fire-failure-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let now = makeDate(minute: 5, hour: 9, day: 1, month: 1, year: 2026)
+        let session = TestSchedulerSession(error: SchedulerTestError())
+        var notifications: [(String, String, String)] = []
+
+        let engine = SchedulerEngine(
+            configPath: path,
+            nowProvider: { now },
+            startTimer: false,
+            sessionFactory: { _ in session },
+            notificationPoster: { title, body, identifier in
+                notifications.append((title, body, identifier))
+            }
+        )
+
+        let task = ScheduledTask(
+            name: "Failing review",
+            cadence: .daily,
+            time: "09:00",
+            projectPath: "/tmp",
+            permissionMode: .plan,
+            prompt: "/review",
+            isEnabled: true
+        )
+        engine.addTask(task)
+
+        engine.evaluateDueTasks(now: now)
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(session.awaitMCPReadyCallCount, 1)
+        XCTAssertEqual(session.prompts, ["/review"])
+        XCTAssertEqual(session.closeCallCount, 1)
+        XCTAssertNil(engine.tasks.first?.lastRunAt)
+        XCTAssertTrue(notifications.isEmpty)
+
+        engine.evaluateDueTasks(now: now.addingTimeInterval(30))
+        try await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertEqual(session.awaitMCPReadyCallCount, 2)
+        XCTAssertEqual(session.prompts, ["/review", "/review"])
+        XCTAssertNil(engine.tasks.first?.lastRunAt)
+    }
+
     // MARK: - Helpers
 
     private func futureTimeString() -> String {
         let future = Date().addingTimeInterval(3600)
         let c = Calendar.current.dateComponents([.hour, .minute], from: future)
         return String(format: "%02d:%02d", c.hour ?? 23, c.minute ?? 59)
+    }
+
+    private func makeDate(minute: Int, hour: Int, day: Int, month: Int, year: Int) -> Date {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        return Calendar(identifier: .gregorian).date(from: components)!
     }
 }

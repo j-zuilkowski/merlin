@@ -160,15 +160,16 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
         return entry?.loaded_context_length
     }
 
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {
-        guard let entry = try await loadedV0Entry(modelID: modelID) else { return }
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String {
+        guard let entry = try await loadedV0Entry(modelID: modelID) else { return modelID }
 
         let loadedCtx = entry.loaded_context_length ?? 0
-        guard minimumTokens > loadedCtx else { return }
+        guard minimumTokens > loadedCtx else { return modelID }
 
         let maxCtx = entry.max_context_length ?? 131_072
         let target = min(nextPowerOf2(minimumTokens), maxCtx)
         try await reload(modelID: modelID, config: LocalModelConfig(contextLength: target))
+        return modelID
     }
 
     private struct V0Entry: Decodable {

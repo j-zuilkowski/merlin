@@ -1,5 +1,41 @@
 import Foundation
 
+typealias SubagentToolDefinitionsProvider = @MainActor @Sendable () -> [ToolDefinition]
+typealias SubagentToolExecutor = @MainActor @Sendable (ToolCall) async -> ToolResult
+
+struct StreamedToolCallAssembler {
+    private var entries: [Int: (id: String, name: String, args: String)] = [:]
+
+    mutating func append(_ deltas: [CompletionChunk.Delta.ToolCallDelta]) {
+        for delta in deltas {
+            var entry = entries[delta.index] ?? (id: "", name: "", args: "")
+            if let id = delta.id, id.isEmpty == false {
+                entry.id = id
+            }
+            if let name = delta.function?.name, name.isEmpty == false {
+                entry.name = name
+            }
+            entry.args += delta.function?.arguments ?? ""
+            entries[delta.index] = entry
+        }
+    }
+
+    var calls: [ToolCall] {
+        entries
+            .sorted { $0.key < $1.key }
+            .compactMap { _, entry in
+                guard entry.id.isEmpty == false, entry.name.isEmpty == false else {
+                    return nil
+                }
+                return ToolCall(
+                    id: entry.id,
+                    type: "function",
+                    function: FunctionCall(name: entry.name, arguments: entry.args)
+                )
+            }
+    }
+}
+
 actor SubagentEngine {
     private let definition: AgentDefinition
     private let prompt: String
@@ -12,6 +48,8 @@ actor SubagentEngine {
     private let fallbackModel: String
     private let hookEngine: HookEngine
     private let depth: Int
+    private let toolDefinitionsProvider: SubagentToolDefinitionsProvider
+    private let toolExecutor: SubagentToolExecutor
 
     private var continuation: AsyncStream<SubagentEvent>.Continuation?
     private var runTask: Task<Void, Never>?
@@ -23,7 +61,15 @@ actor SubagentEngine {
         provider: any LLMProvider,
         fallbackModel: String = "",
         hookEngine: HookEngine,
-        depth: Int
+        depth: Int,
+        toolDefinitionsProvider: @escaping SubagentToolDefinitionsProvider = { ToolRegistry.shared.all() },
+        toolExecutor: @escaping SubagentToolExecutor = { call in
+            ToolResult(
+                toolCallId: call.id,
+                content: "Unknown tool: \(call.function.name)",
+                isError: true
+            )
+        }
     ) {
         self.definition = definition
         self.prompt = prompt
@@ -31,6 +77,8 @@ actor SubagentEngine {
         self.fallbackModel = fallbackModel
         self.hookEngine = hookEngine
         self.depth = depth
+        self.toolDefinitionsProvider = toolDefinitionsProvider
+        self.toolExecutor = toolExecutor
     }
 
     nonisolated var events: AsyncStream<SubagentEvent> {
@@ -96,45 +144,71 @@ actor SubagentEngine {
         await context.append(Message(role: .system, content: .text(buildSystemPrompt()), timestamp: Date()))
         await context.append(Message(role: .user, content: .text(prompt), timestamp: Date()))
 
+        var iterations = 0
+        let maxIterations = 30
+
         do {
-            var request = CompletionRequest(
-                model: definition.model ?? fallbackModel,
-                messages: await context.messagesForProvider(),
-                tools: await toolDefinitions(),
-                stream: true,
-                thinking: nil,
-                maxTokens: nil,
-                temperature: nil
-            )
-            let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
-            inferenceDefaults.apply(to: &request)
-            let stream = try await PreflightGuard.complete(request, provider: provider)
-            var accumulated = ""
-            for try await chunk in stream {
-                if Task.isCancelled {
-                    break
-                }
-                if let text = chunk.delta?.content, text.isEmpty == false {
-                    accumulated += text
-                    continuation?.yield(.messageChunk(text))
-                }
-                if let toolCalls = chunk.delta?.toolCalls {
-                    for call in toolCalls {
-                        guard let function = call.function,
-                              let name = function.name,
-                              let arguments = function.arguments else {
-                            continue
-                        }
-                        let input = inputDictionary(from: arguments)
-                        continuation?.yield(.toolCallStarted(toolName: name, input: input))
-                        continuation?.yield(.toolCallCompleted(toolName: name, result: arguments))
+            while Task.isCancelled == false, iterations < maxIterations {
+                iterations += 1
+
+                var request = CompletionRequest(
+                    model: definition.model ?? fallbackModel,
+                    messages: await context.messagesForProvider(),
+                    tools: await toolDefinitions(),
+                    stream: true,
+                    thinking: nil,
+                    maxTokens: nil,
+                    temperature: nil
+                )
+                let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
+                inferenceDefaults.apply(to: &request)
+
+                let stream = try await PreflightGuard.complete(request, provider: provider)
+                var accumulated = ""
+                var accumulatedThinking = ""
+                var assembler = StreamedToolCallAssembler()
+
+                for try await chunk in stream {
+                    if Task.isCancelled {
+                        break
+                    }
+                    if let text = chunk.delta?.content, text.isEmpty == false {
+                        accumulated += text
+                        continuation?.yield(.messageChunk(text))
+                    }
+                    if let thinking = chunk.delta?.thinkingContent, thinking.isEmpty == false {
+                        accumulatedThinking += thinking
+                    }
+                    if let toolCalls = chunk.delta?.toolCalls {
+                        assembler.append(toolCalls)
                     }
                 }
-                if chunk.finishReason != nil {
-                    break
+
+                let calls = assembler.calls
+                if calls.isEmpty == false {
+                    await context.append(Message(
+                        role: .assistant,
+                        content: .text(accumulated),
+                        toolCalls: calls,
+                        thinkingContent: accumulatedThinking.isEmpty ? nil : accumulatedThinking,
+                        timestamp: Date()
+                    ))
+                    await executeToolCalls(calls, into: context)
+                    continue
                 }
+
+                await context.append(Message(
+                    role: .assistant,
+                    content: .text(accumulated),
+                    thinkingContent: accumulatedThinking.isEmpty ? nil : accumulatedThinking,
+                    timestamp: Date()
+                ))
+                continuation?.yield(.completed(summary: accumulated))
+                continuation?.finish()
+                return
             }
-            continuation?.yield(.completed(summary: accumulated))
+
+            continuation?.yield(.completed(summary: "Subagent reached iteration limit."))
             continuation?.finish()
         } catch {
             continuation?.yield(.failed(error))
@@ -150,9 +224,55 @@ actor SubagentEngine {
     }
 
     private func toolDefinitions() async -> [ToolDefinition] {
-        let names = availableToolNames()
-        let tools = await ToolRegistry.shared.all()
+        let names = Set(availableToolNames())
+        let tools = await toolDefinitionsProvider()
         return tools.filter { names.contains($0.function.name) }
+    }
+
+    private func executeToolCalls(_ calls: [ToolCall], into context: ContextManager) async {
+        for call in calls {
+            let input = inputDictionary(from: call.function.arguments)
+            continuation?.yield(.toolCallStarted(toolName: call.function.name, input: input))
+
+            let result: ToolResult
+            if call.function.name == "spawn_agent" {
+                result = ToolResult(
+                    toolCallId: call.id,
+                    content: "spawn_agent is not supported from inside a subagent yet. Complete the remaining work yourself.",
+                    isError: true
+                )
+            } else {
+                let hookDecision = await hookEngine.runPreToolUse(
+                    toolName: call.function.name,
+                    input: input
+                )
+                switch hookDecision {
+                case .allow:
+                    result = await toolExecutor(call)
+                case .deny(let reason):
+                    result = ToolResult(
+                        toolCallId: call.id,
+                        content: "Tool blocked by hook: \(reason)",
+                        isError: true
+                    )
+                }
+            }
+
+            continuation?.yield(.toolCallCompleted(toolName: call.function.name, result: result.content))
+            await context.append(Message(
+                role: .tool,
+                content: .text(result.content),
+                toolCallId: call.id,
+                timestamp: Date()
+            ))
+
+            if let note = await hookEngine.runPostToolUse(
+                toolName: call.function.name,
+                result: result.content
+            ) {
+                await context.append(Message(role: .system, content: .text(note), timestamp: Date()))
+            }
+        }
     }
 
     private func inputDictionary(from arguments: String) -> [String: String] {

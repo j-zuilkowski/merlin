@@ -1,5 +1,7 @@
 # Local Provider Testing Matrix — Results
 
+Validated against live runs on **May 22, 2026**.
+
 Compare each local provider's calibration output against the LM Studio MLX-8bit
 baseline. All five serve the same `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` (or
 the equivalent MLX-8bit in LM Studio's case) so engine overhead is the only
@@ -14,38 +16,27 @@ Run order per provider:
 5. Locate the report at `merlin-eval/results/CALIBRATION-harness-<timestamp>.md`
 6. Record `overallLocalScore` and the per-category breakdown below
 
-## Smoke matrix — 2026-05-20 final
+## Support matrix — 2026-05-22
 
-| Provider | Reachable | Completion | Streaming | Tool call | Notes |
+| Provider | General model | Vision model | Timed calibration | Status | Notes |
 |---|---|---|---|---|---|
-| **lmstudio** (baseline) | ✓ | ✓ | ✓ (8 chunks) | ✓ | MLX-8bit; `:1234`; 2 models reported by `/v1/models` |
-| **ollama** | ✓ | ✓ | ✓ (9 chunks) | ✓ | Unblocked: `mkdir -p ~/.ollama/{models,logs}` + `ollama serve` bypassed the GUI first-launch flow. Tool-aware Modelfile template needed for tool_calls — see commit |
-| **jan** | ✓ | ✓ | ✓ (10 chunks) | ✓ | Unblocked: `jan-cli serve --model-path <gguf> --bin $(which llama-server)`. Required `brew install llama.cpp` (Jan ships the CLI but not the backend binary). Port rebound to 1337 to match Merlin's `ProviderConfig.swift` default. |
-| **localai** (native) | ✓ | ✓ ("pong") | ✓ (12 chunks) | ✓ | Homebrew install + Metal + `metal-llama-cpp` backend. Docker version retired. |
-| **mistralrs** | — DROPPED — | | | | Per user direction (2026-05-20): retired from the testing matrix. `candle-core 0.10.2` doesn't implement MoE forward on Metal; Qwen3-Coder-A3B can't serve from this provider on Apple Silicon today. Revisit when upstream lands the kernel. |
-| **vllm** (vLLM-Metal) | ✓ | ✓ | ✓ (10 chunks) | ✓ | **Resolved 2026-05-20**: vLLM-Metal uses `mlx_lm.load`, not the standard vLLM weight loaders. Wants an MLX-format model directory (HF layout: `config.json` + `model-*.safetensors` + tokenizer). Pointing it at LM Studio's `~/.lmstudio/models/.../Qwen3-Coder-30B-A3B-Instruct-MLX-8bit/` directly works — no extra download. Requires `--enable-auto-tool-choice --tool-call-parser qwen3_coder` for tool_calls. GGUF and FP8 paths are dead ends for this provider; **MLX is its native format**. |
+| **lmstudio** | ✓ | ✓ | ✓ | Fully supported | Best-known complete local pair |
+| **jan** | ✓ | ✓ | ✓ | Fully supported | Pair passed after correcting first vision-path launch mistake |
+| **localai** | ✓ | ✓ | ✓ | Fully supported | Pair served successfully from one LocalAI instance |
+| **ollama** | ✓ | ✗ | general only | Not recommended | Vision requests crashed the runner with `EOF` / `exit status 2` |
+| **vllm** (vLLM-Metal) | ✓ | ✗ | general only | Not recommended | Vision failed upstream with `NotImplementedError` on Metal |
+| **mistralrs** | ✗ | not pursued | — | Currently unusable | Tested Qwen3 MoE GGUF loads, then fails on first inference on Metal |
 
-Mark each cell: ✓ pass / ⚠ warn / ✗ fail. Add details under Notes.
+## Timed calibration matrix — 2026-05-22
 
-## Calibration matrix
-
-DeepSeek (`deepseek-v4-flash`) is the reference remote — it's the only enabled
-remote provider in `~/.merlin/config.toml`. Each row records the local provider's
-overall score and the per-category breakdown (Reasoning / Coding / Instruction-
-Following / Summarization) from its CalibrationReport.
-
-| Provider | Overall | Reasoning | Coding | Instr-Follow | Summarize | tok/s observed | Report file |
-|---|---|---|---|---|---|---|---|
-| **lmstudio** (baseline) | | | | | | | |
-| **ollama** | | | | | | | |
-| **jan** | | | | | | | |
-| **localai** (native) | | | | | | | |
-| **mistralrs** | | | | | | | |
-| **vllm** (vLLM-Metal) | | | | | | | |
-
-`Overall`: `overallLocalScore` from the report (mean of all 18 prompt scores).
-`tok/s observed`: approximate generation rate during the run — useful for
-distinguishing engine overhead between providers serving the same model.
+| Provider | Wall clock seconds | Local score | Reference score | Report file |
+|---|---|---|---|---|
+| **lmstudio** | `600.442` | `0.8056` | `0.8333` | `codex-calibration-logs/lmstudio/calibration-report.json` |
+| **jan** | `501.843` | `0.8056` | `0.8056` | `codex-calibration-logs/jan/calibration-report.json` |
+| **localai** | `494.966` | `0.8056` | `0.8611` | `codex-calibration-logs/localai/calibration-report.json` |
+| **ollama** | `520.890` | `0.8611` | `0.8056` | `codex-calibration-logs/ollama/calibration-report.json` |
+| **vllm** (vLLM-Metal) | `592.440` | `0.8889` | `0.7778` | `codex-calibration-logs/vllm/calibration-report.json` |
+| **mistralrs** | — | — | — | No successful calibration run |
 
 ## Provider-specific outcomes
 
@@ -53,108 +44,71 @@ For each provider that surfaces something interesting (failure, surprising
 score, performance anomaly, format quirk), drop a one-paragraph note here:
 
 ### lmstudio
-_baseline_ — passes all four axes. Two models exposed via `/v1/models`
-(`qwen3-coder-30b-a3b-instruct-mlx`, `qwen3-vl-8b-instruct-mlx`).
+Fully supported. General + vision pair passed live testing and the uncapped
+timed calibration run.
 
 ### ollama
-**Resolved 2026-05-20.** Initially looked blocked — `open -a Ollama` launched the
-GUI process but the daemon never bound. The unblocker: pre-create `~/.ollama/`
-manually, then run `ollama serve` directly from `/Applications/Ollama.app/Contents/Resources/ollama`.
-That bypasses the menubar first-launch flow entirely. Once the daemon is up:
-`ollama create qwen3-coder-30b-a3b-instruct -f docs/local-provider-configs/ollama/Modelfile-qwen3-coder`
-imports the GGUF into Ollama's blob store (32 GB copy, not symlinked — Ollama's
-blob store is opaque).
-
-The first Modelfile version used a plain ChatML template, which Ollama
-**rejected as not tool-capable** (HTTP 400: "model does not support tools").
-Ollama gates tool support on the template rendering `.Tools` and `.ToolCalls`
-blocks. The Modelfile now uses the canonical Qwen3 tool-aware template — fixed
-the tool-call axis without re-importing the GGUF.
+Not recommended. General calibration succeeded, but the tested vision model
+failed on both `/v1/chat/completions` and `/api/chat` with the runner exiting
+`EOF` / `exit status 2`. This is a runtime failure under real image load, not a
+Merlin wiring problem.
 
 ### jan
-**Resolved 2026-05-20.** Jan ships `/Applications/Jan.app/Contents/MacOS/jan-cli`
-which bypasses the GUI entirely: `jan-cli serve --model-path <gguf> --port 1337
---n-gpu-layers=-1 --ctx-size 32768 --detach`. The catch: `jan-cli` doesn't ship
-the inference backend, only the CLI wrapper. Needed `brew install llama.cpp` to
-provide `llama-server`, then `--bin $(which llama-server)` in the `jan-cli serve`
-invocation. Default port is 6767, rebound to 1337 to match Merlin's
-`ProviderConfig.swift`. Hybrid `/v1/models` response (both `models` and `data`
-keys) confused the smoke test on first read but the OpenAI-compat surface works
-correctly.
+Fully supported. General + vision pair passed live testing and timed
+calibration. A first vision launch used the wrong GGUF filename, then passed
+cleanly after correction.
 
 ### localai (native)
-✓ Passes all four axes. Native install via `brew install localai` + the
-`metal-llama-cpp` backend resolves the Docker-on-macOS Metal problem (Docker
-Desktop's Linux VM has no GPU access). Single completion returns "pong";
-streaming yields 12 SSE chunks; tool_calls present in the response.
+Fully supported. General + vision pair passed live testing and timed
+calibration from one LocalAI instance.
 
 ### mistralrs
-**Dropped from matrix per user direction (2026-05-20).** Inference panics on
-Metal: `indexed_moe_forward is not implemented in this platform!`
-`candle-core 0.10.2` doesn't implement MoE forward pass for Metal. Server
-binds and `/v1/models` returns, but every chat completion errors. Cannot serve
-Qwen3-Coder-A3B from this provider on Apple Silicon today. Revisit when
-upstream candle lands the Metal MoE op.
+Currently unusable for the tested Qwen3-Coder-A3B GGUF model on Apple Metal.
+Server binds and `/v1/models` returns, but the first real completion fails
+because the MoE path reaches CUDA-only `indexed_moe_forward`. Upstream bug
+filed: `EricLBuehler/mistral.rs#2160`.
 
 ### vllm (vLLM-Metal)
-**Resolved 2026-05-20.** The earlier failures were format-choice errors, not
-upstream limitations:
+Not recommended. The general MLX model calibrated successfully, but the tested
+vision runtime failed on the first real image request with:
+`NotImplementedError: Multimodal encoder execution is not wired on Metal yet`.
+That is an upstream runtime limitation, not a Merlin configuration issue.
 
-- GGUF path failed because vLLM-Metal's loader is `mlx_lm.load`, not vLLM's
-  standard GGUF loader. `mlx_lm` doesn't read `.gguf` files — it reads HF-layout
-  model directories. The `HFValidationError` at
-  `vllm_metal/v1/model_lifecycle.py:126` came from `mlx_lm` running my path
-  through HF repo-id validation, which rejects single files.
-- FP8 path failed because MLX's MoE backend doesn't consume the FP8 per-tensor
-  scale params (`weight_scale_inv`).
+## Upstream issue tracking — 2026-05-22
 
-The **correct input is an MLX-format model directory** — which is exactly what
-LM Studio already has at
-`~/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit/`.
-Pointing `vllm serve` at that directory works out of the box. **No additional
-download required** — vLLM-Metal and LM Studio share the same on-disk MLX file.
+### Ollama
+- [ollama/ollama#16264](https://github.com/ollama/ollama/issues/16264) — imported `Qwen3-VL-8B` GGUF + `mmproj` registers as vision-capable on Apple Silicon, then crashes on the first real image request with `EOF` / `exit status 2`
+- [ollama/ollama#13150](https://github.com/ollama/ollama/issues/13150) — Qwen3-VL crashes with a nil-pointer dereference in the vision path and returns `500` / `EOF`
+- [ollama/ollama#13113](https://github.com/ollama/ollama/issues/13113) — Qwen3-VL crashes on small images before inference
+- [ollama/ollama#13187](https://github.com/ollama/ollama/issues/13187) — custom Qwen3-VL-MoE models fail even when they validate and run in other runtimes
+- [ollama/ollama#15898](https://github.com/ollama/ollama/issues/15898) — dual-`FROM` GGUF + `mmproj` loading fails for a related Qwen vision/MoE path because Ollama's vendored `llama.cpp` lacks the architecture support
 
-Tool calls require `--enable-auto-tool-choice --tool-call-parser qwen3_coder`;
-without them, vLLM returns HTTP 400 on any request with `tools` set.
+### vllm-metal
+- [vllm-project/vllm-metal#319](https://github.com/vllm-project/vllm-metal/issues/319) — RFC to add end-to-end vision-language model support
+- [vllm-project/vllm-metal#333](https://github.com/vllm-project/vllm-metal/issues/333) — RFC to add the missing non-causal encoder-attention primitive needed for vision towers on Metal
 
-**Memory caveat**: vLLM-Metal allocates the model into Metal-shared memory at
-startup. Running it concurrently with the three GGUF-using providers (Ollama,
-Jan, LocalAI, each carrying ~32 GB of Metal allocation for the same model) OOMs
-the GPU on a 128 GB M4 Max. The earlier smoke sweep hit
-`kIOGPUCommandBufferCallbackErrorOutOfMemory`. In practice this is fine — only
-one provider serves the active Merlin request at a time. For the smoke-test
-sweep, shut down the other GGUF daemons before launching vLLM-Metal.
-
-The 29 GB FP8 download stays on disk for now; can be deleted (vLLM-Metal won't
-use it).
+### Mistral.rs
+- [EricLBuehler/mistral.rs#2160](https://github.com/EricLBuehler/mistral.rs/issues/2160) — tested GGUF Qwen3 MoE model loads on Metal, then fails on the first real inference via CUDA-only `indexed_moe_forward`
+- [EricLBuehler/mistral.rs#2032](https://github.com/EricLBuehler/mistral.rs/issues/2032) — related Qwen3.5 MoE Metal path still has shader and `indexed_moe_forward` gaps
 
 
-## Takeaways — 2026-05-20 final
+## Takeaways — 2026-05-22
 
-**Passing smoke (5/6):** LM Studio (MLX-8bit baseline), Ollama (Q8 GGUF), Jan.ai (Q8 GGUF), LocalAI native (Q8 GGUF), vLLM-Metal (MLX-8bit, sharing LM Studio's on-disk dir). All five pass all four wire-format axes when run in isolation.
+**Fully supported local providers:**
+- **LM Studio**
+- **Jan.ai**
+- **LocalAI**
 
-**Out of the matrix (1/6):**
-- **Mistral.rs** — dropped per user direction. `candle-core 0.10.2` lacks `indexed_moe_forward` for Metal; can't serve Qwen3-MoE.
+Each of those passed both model roles in a general+vision pair and completed a
+timed calibration run.
 
-**Calibration matrix is 5 providers** — covers both inference paths:
-- **MLX family**: LM Studio (LM Studio's own MLX runtime), vLLM-Metal (uses `mlx_lm` against the same on-disk model directory).
-- **llama.cpp family**: Ollama, Jan, LocalAI — same kernel, same Q8_0 GGUF.
+**Not recommended local providers:**
+- **Ollama** — general works, vision runner crashes on real image requests
+- **vLLM-Metal** — general works, vision is upstream-blocked on Metal
 
-Calibration outcomes should show:
-- LM Studio ≈ vLLM-Metal — same MLX file, near-identical outputs. Any gap is server-side scheduling overhead.
-- Ollama / Jan / LocalAI converging within ~1–2% of each other (same llama.cpp kernel; differences are wrapper overhead + parameter defaults).
-- MLX family vs llama.cpp family — different precision (MLX-8bit vs Q8_0 GGUF) and different runtime; meaningful gap is the interesting signal.
+**Currently unusable for the tested model:**
+- **Mistral.rs** — the tested Qwen3 MoE GGUF path fails on first inference on
+  Apple Metal
 
-**Memory note**: vLLM-Metal and LM Studio share Metal allocation when both load
-the same MLX model — running both simultaneously is borderline on a 128 GB M4.
-The other GGUF providers each carry their own ~32 GB Metal allocation. **For
-calibration: run one provider at a time** (enable in Merlin, run `/calibrate`,
-disable, switch). The smoke sweep saw `kIOGPUCommandBufferCallbackErrorOutOfMemory`
-when all five tried to coexist.
-
-**Daemons running at end of pass:**
-- LM Studio (`:1234`) — yours, leave alone
-- vLLM-Metal (`:8000`, PID 62965, MLX-8bit from LM Studio dir)
-- The other three (Ollama / Jan / LocalAI) were stopped to free Metal memory for vLLM-Metal. Restart commands in this file's per-provider sections.
-
-All five are ready for `/calibrate` runs from Merlin against DeepSeek as the reference remote, one at a time.
+**Memory rule remains strict:** run one provider at a time, then shut it down.
+Concurrent local daemons caused avoidable failures earlier in the sweep.

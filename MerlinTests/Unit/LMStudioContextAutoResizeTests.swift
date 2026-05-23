@@ -18,7 +18,8 @@ final class LMStudioContextAutoResizeTests: XCTestCase {
             baseURL: URL(string: "http://localhost:1234")!,
             session: session
         )
-        try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 8192)
+        let reloadedModelID = try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 8192)
+        XCTAssertEqual(reloadedModelID, "qwen/qwen3.6-27b")
         XCTAssertEqual(reloadCallCount.value, 0, "reload must not be called when loaded context is sufficient")
     }
 
@@ -37,7 +38,8 @@ final class LMStudioContextAutoResizeTests: XCTestCase {
             baseURL: URL(string: "http://localhost:1234")!,
             session: session
         )
-        try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 32768)
+        let reloadedModelID = try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 32768)
+        XCTAssertEqual(reloadedModelID, "qwen/qwen3.6-27b")
         XCTAssertGreaterThan(reloadCallCount.value, 0, "reload must be called when loaded context is insufficient")
     }
 
@@ -60,7 +62,8 @@ final class LMStudioContextAutoResizeTests: XCTestCase {
             baseURL: URL(string: "http://localhost:1234")!,
             session: session
         )
-        try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 20000)
+        let reloadedModelID = try await manager.ensureContextLength(modelID: "qwen/qwen3.6-27b", minimumTokens: 20000)
+        XCTAssertEqual(reloadedModelID, "qwen/qwen3.6-27b")
         XCTAssertEqual(capturedContextLength.value, 32768,
                        "context length target must be next power-of-2 above minimumTokens")
     }

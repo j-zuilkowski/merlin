@@ -26,18 +26,74 @@ final class CalibrationSkillTests: XCTestCase {
 
     func testCalibrationCoordinatorBeginSetsSheet() {
         let appState = AppState()
+        appState.registry.apiKeysOverride = ["deepseek": "test-key"]
         appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
         XCTAssertNotNil(appState.calibrationCoordinator.sheet)
     }
 
     func testCalibrationCoordinatorBeginShowsProviderPicker() {
         let appState = AppState()
+        appState.registry.apiKeysOverride = ["deepseek": "test-key"]
         appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
         if case .pickProvider(let providers) = appState.calibrationCoordinator.sheet {
             XCTAssertFalse(providers.isEmpty, "Provider picker must list at least one reference provider")
+            XCTAssertEqual(providers, ["deepseek"])
         } else {
             XCTFail("Expected .pickProvider sheet after begin()")
         }
+    }
+
+    func testCalibrationCoordinatorChangesRelayThroughAppStateObjectWillChange() {
+        let appState = AppState()
+        appState.registry.apiKeysOverride = ["deepseek": "test-key"]
+        let expectation = expectation(description: "AppState relays calibration coordinator changes")
+        let cancellable = appState.objectWillChange.sink {
+            expectation.fulfill()
+        }
+
+        appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
+
+        wait(for: [expectation], timeout: 1.0)
+        _ = cancellable
+    }
+
+    func testCalibrationCoordinatorBeginDismissesFirstLaunchSetup() {
+        let appState = AppState()
+        appState.registry.apiKeysOverride = ["deepseek": "test-key"]
+        appState.showFirstLaunchSetup = true
+
+        appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
+
+        XCTAssertFalse(appState.showFirstLaunchSetup)
+    }
+
+    func testCalibrationCoordinatorBeginWithNoReadyProvidersKeepsPickerAndSetsError() {
+        let appState = AppState()
+        appState.registry.apiKeysOverride = [:]
+
+        appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
+
+        if case .pickProvider(let providers) = appState.calibrationCoordinator.sheet {
+            XCTAssertTrue(providers.isEmpty)
+        } else {
+            XCTFail("Expected .pickProvider sheet after begin()")
+        }
+        XCTAssertNotNil(appState.calibrationCoordinator.errorMessage)
+    }
+
+    func testCalibrationCoordinatorStartWithUnreadyProviderReturnsToPickerWithError() async {
+        let appState = AppState()
+        appState.registry.apiKeysOverride = [:]
+        appState.calibrationCoordinator.begin(localProviderID: "lmstudio", localModelID: "qwen-72b")
+
+        await appState.calibrationCoordinator.start(referenceProviderID: "anthropic")
+
+        if case .pickProvider(let providers) = appState.calibrationCoordinator.sheet {
+            XCTAssertTrue(providers.isEmpty)
+        } else {
+            XCTFail("Expected .pickProvider sheet after failed start()")
+        }
+        XCTAssertNotNil(appState.calibrationCoordinator.errorMessage)
     }
 
     func testCalibrationSheetEnumCases() {
@@ -77,6 +133,7 @@ final class CalibrationSkillTests: XCTestCase {
     func testCalibrationProviderPickerViewExists() {
         let view = CalibrationProviderPickerView(
             availableProviders: ["anthropic", "openai", "deepseek"],
+            errorMessage: nil,
             onStart: { _ in }
         )
         let host = NSHostingController(rootView: view)
@@ -132,5 +189,87 @@ final class CalibrationSkillTests: XCTestCase {
         let host = NSHostingController(rootView: view)
         host.loadView()
         XCTAssertNotNil(host.view)
+    }
+
+    func testCalibrationReportTracksDegradedScoring() {
+        let prompt = CalibrationPrompt(id: "r1", category: .reasoning, prompt: "Q?", systemPrompt: nil)
+        let response = CalibrationResponse(
+            prompt: prompt,
+            localResponse: "local",
+            referenceResponse: "reference",
+            localScore: 0.5,
+            referenceScore: 1.0,
+            localScoreDegraded: true,
+            referenceScoreDegraded: false,
+            localScoreNote: "Critic request failed",
+            referenceScoreNote: nil
+        )
+        let report = CalibrationReport(
+            localProviderID: "lmstudio",
+            referenceProviderID: "deepseek",
+            responses: [response],
+            advisories: [],
+            generatedAt: Date()
+        )
+
+        XCTAssertTrue(report.hasDegradedScores)
+        XCTAssertEqual(report.degradedScoreCount, 1)
+        XCTAssertEqual(report.degradedScoreNotes, ["r1 local: Critic request failed"])
+    }
+
+    func testCalibrationApplyAllFailureKeepsReportVisibleAndSetsError() async {
+        let appState = AppState()
+        let advisory = ParameterAdvisory(
+            kind: .contextLengthTooSmall,
+            parameterName: "contextLength",
+            currentValue: "4096",
+            suggestedValue: "32768",
+            explanation: "Large gap detected.",
+            modelID: "qwen-72b",
+            detectedAt: Date()
+        )
+        let report = CalibrationReport(
+            localProviderID: "lmstudio",
+            referenceProviderID: "deepseek",
+            responses: [],
+            advisories: [advisory],
+            generatedAt: Date()
+        )
+
+        appState.calibrationCoordinator.sheet = .report(report)
+        await appState.calibrationCoordinator.applyAll()
+
+        if case .report = appState.calibrationCoordinator.sheet {
+            XCTAssertNotNil(appState.calibrationCoordinator.errorMessage)
+        } else {
+            XCTFail("Report sheet should stay visible when applyAll() fails")
+        }
+    }
+
+    func testCalibrationApplyAllFailureReportsFailureSummary() async {
+        let appState = AppState()
+        let advisory = ParameterAdvisory(
+            kind: .contextLengthTooSmall,
+            parameterName: "contextLength",
+            currentValue: "4096",
+            suggestedValue: "32768",
+            explanation: "Large gap detected.",
+            modelID: "qwen-72b",
+            detectedAt: Date()
+        )
+        let report = CalibrationReport(
+            localProviderID: "lmstudio",
+            referenceProviderID: "deepseek",
+            responses: [],
+            advisories: [advisory],
+            generatedAt: Date()
+        )
+
+        appState.calibrationCoordinator.sheet = .report(report)
+        await appState.calibrationCoordinator.applyAll()
+
+        XCTAssertTrue(
+            appState.calibrationCoordinator.errorMessage?.contains("Failed to apply 1 calibration change") == true
+        )
     }
 }

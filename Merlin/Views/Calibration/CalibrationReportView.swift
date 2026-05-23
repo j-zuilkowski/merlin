@@ -43,6 +43,10 @@ struct CalibrationReportView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     overallScoreSection
 
+                    if report.hasDegradedScores {
+                        degradedScoringSection
+                    }
+
                     if !report.responses.isEmpty {
                         categoryBreakdownSection
                     }
@@ -68,7 +72,6 @@ struct CalibrationReportView: View {
                     Spacer()
                     Button("Apply All Suggestions") {
                         onApplyAll()
-                        dismiss()
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier(AccessibilityID.calibrationApplyAllButton)
@@ -132,6 +135,26 @@ struct CalibrationReportView: View {
         }
         .padding(14)
         .background(Color(nsColor: .controlBackgroundColor))
+        .cornerRadius(10)
+    }
+
+    private var degradedScoringSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(
+                "Calibration completed with degraded critic scoring on \(report.degradedScoreCount) response\(report.degradedScoreCount == 1 ? "" : "s").",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.orange)
+
+            ForEach(Array(report.degradedScoreNotes.prefix(3)), id: \.self) { note in
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(Color.orange.opacity(0.08))
         .cornerRadius(10)
     }
 

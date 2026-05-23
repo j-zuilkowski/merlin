@@ -47,14 +47,24 @@ final class VLLMModelManager: LocalModelManagerProtocol, @unchecked Sendable {
         return RestartInstructions(
             shellCommand: shellCommand,
             configSnippet: nil,
-            explanation: "vLLM-Metal reads these settings at server startup, so applying them requires a restart."
+            explanation: "vLLM-Metal reads these settings at server startup, so applying them requires a restart. The defaults below match Merlin's documented native launch path."
         )
     }
 
     private func buildShellCommand(modelID: String, config: LocalModelConfig) -> String {
+        let servedModelName = modelID.isEmpty ? "qwen3-coder-30b-a3b-instruct" : modelID
         var parts = [
-            "python -m vllm.entrypoints.openai.api_server",
-            "--model", shellQuote(modelID)
+            "VLLM=\"${VLLM:-$HOME/.venv-vllm-metal/bin/vllm}\"",
+            "MODEL_DIR=\"${MODEL_DIR:-$HOME/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit}\"",
+            "SERVED_MODEL_NAME=\"${SERVED_MODEL_NAME:-\(servedModelName)}\"",
+            "\"$VLLM\"",
+            "serve",
+            "\"$MODEL_DIR\"",
+            "--served-model-name", "\"$SERVED_MODEL_NAME\"",
+            "--port", "8000",
+            "--enforce-eager",
+            "--enable-auto-tool-choice",
+            "--tool-call-parser", "qwen3_coder"
         ]
         if let value = config.contextLength {
             parts += ["--max-model-len", "\(value)"]

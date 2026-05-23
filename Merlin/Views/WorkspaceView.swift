@@ -4,6 +4,7 @@ struct WorkspaceView: View {
     @EnvironmentObject private var recents: RecentProjectsStore
     @ObservedObject private var settings = AppSettings.shared
     @StateObject private var coordinator = WorkspaceCoordinator()
+    @StateObject private var settingsSessionContext = SettingsSessionContext.shared
 
     @State private var layout: WorkspaceLayout = WorkspaceLayoutManager.defaultLayout
     @State private var selectedFileURL: URL? = nil
@@ -17,6 +18,87 @@ struct WorkspaceView: View {
     }
 
     var body: some View {
+        workspaceLifecycleView
+    }
+
+    private var workspaceLifecycleView: some View {
+        workspacePresentationView
+            .task {
+                let home = FileManager.default.homeDirectoryForCurrentUser
+                let configURL = home.appendingPathComponent(".merlin/config.toml")
+                try? await AppSettings.shared.load(from: configURL)
+                AppSettings.shared.startWatching(url: configURL)
+                layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
+                didLoadLayout = true
+
+                // UI-test hook: open a throwaway project so a session is active and the
+                // chat/tool-log surfaces actually render (without a session WorkspaceView
+                // only shows placeholderContent). Used by MerlinUITests.
+                if ProcessInfo.processInfo.arguments.contains("--open-test-project"),
+                   coordinator.activeSession == nil {
+                    let dir = NSTemporaryDirectory()
+                        + "merlin-uitest-project-\(UUID().uuidString)"
+                    try? FileManager.default.createDirectory(
+                        atPath: dir, withIntermediateDirectories: true)
+                    _ = await coordinator.addProject(
+                        ProjectRef(path: dir, displayName: "UITest", lastOpenedAt: Date()))
+                }
+            }
+        .onAppear {
+            settingsSessionContext.bind(to: coordinator.activeSession)
+        }
+        .onChange(of: coordinator.activeSession?.id) { _, _ in
+            settingsSessionContext.bind(to: coordinator.activeSession)
+        }
+        .onDisappear {
+            settingsSessionContext.clearIfMatching(coordinator.activeSession?.appState)
+        }
+    }
+
+    private var workspacePresentationView: some View {
+        workspaceSheetView
+            .preferredColorScheme(settings.appearance.theme.colorScheme)
+    }
+
+    private var workspaceSheetView: some View {
+        workspaceEventView
+            .sheet(isPresented: $coordinator.showingProjectPicker) {
+                projectPickerSheet
+            }
+            .sheet(isPresented: $showMemoriesWindow) {
+                memoryReviewSheet
+            }
+    }
+
+    private var workspaceEventView: some View {
+        workspaceNavigationView
+            .onChange(of: layout.showDiffPane)     { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showFilePane)     { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
+            .onReceive(NotificationCenter.default.publisher(for: .merlinToggleTerminal)) { _ in
+                layout.showTerminalPane.toggle()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .merlinToggleSideChat)) { _ in
+                layout.showSideChat.toggle()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .merlinReviewMemories)) { _ in
+                showMemoriesWindow = true
+            }
+    }
+
+    private var workspaceNavigationView: some View {
+        workspaceRoot
+            .navigationTitle(
+                coordinator.activeSession?.title
+                ?? coordinator.activeProjectManager?.projectRef.displayName
+                ?? "Merlin"
+            )
+            .toolbar { toolbarContent }
+    }
+
+    private var workspaceRoot: some View {
         HStack(spacing: 0) {
             SessionSidebar()
                 .environmentObject(coordinator)
@@ -30,59 +112,19 @@ struct WorkspaceView: View {
                 placeholderContent
             }
         }
-        .task {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let configURL = home.appendingPathComponent(".merlin/config.toml")
-            try? await AppSettings.shared.load(from: configURL)
-            AppSettings.shared.startWatching(url: configURL)
-            layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
-            didLoadLayout = true
+    }
 
-            // UI-test hook: open a throwaway project so a session is active and the
-            // chat/tool-log surfaces actually render (without a session WorkspaceView
-            // only shows placeholderContent). Used by MerlinUITests.
-            if ProcessInfo.processInfo.arguments.contains("--open-test-project"),
-               coordinator.activeSession == nil {
-                let dir = NSTemporaryDirectory()
-                    + "merlin-uitest-project-\(UUID().uuidString)"
-                try? FileManager.default.createDirectory(
-                    atPath: dir, withIntermediateDirectories: true)
-                _ = await coordinator.addProject(
-                    ProjectRef(path: dir, displayName: "UITest", lastOpenedAt: Date()))
-            }
-        }
-        .navigationTitle(
-            coordinator.activeSession?.title
-            ?? coordinator.activeProjectManager?.projectRef.displayName
-            ?? "Merlin"
-        )
-        .toolbar { toolbarContent }
-        .onChange(of: layout.showDiffPane)     { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showFilePane)     { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
-        .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
-        .onReceive(NotificationCenter.default.publisher(for: .merlinToggleTerminal)) { _ in
-            layout.showTerminalPane.toggle()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .merlinToggleSideChat)) { _ in
-            layout.showSideChat.toggle()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .merlinReviewMemories)) { _ in
-            showMemoriesWindow = true
-        }
-        .preferredColorScheme(settings.appearance.theme.colorScheme)
-        .sheet(isPresented: $coordinator.showingProjectPicker) {
-            ProjectPickerView(onSelect: { ref in
-                Task { await coordinator.addProject(ref) }
-            })
-            .environmentObject(recents)
-        }
-        .sheet(isPresented: $showMemoriesWindow) {
-            MemoryReviewView()
-                .environment(\.merlinAppState, coordinator.activeSession?.appState)
-                .frame(minWidth: 600, minHeight: 400)
-        }
+    private var projectPickerSheet: some View {
+        ProjectPickerView(onSelect: { ref in
+            Task { await coordinator.addProject(ref) }
+        })
+        .environmentObject(recents)
+    }
+
+    private var memoryReviewSheet: some View {
+        MemoryReviewView()
+            .environment(\.merlinAppState, coordinator.activeSession?.appState)
+            .frame(minWidth: 600, minHeight: 400)
     }
 
     @ViewBuilder

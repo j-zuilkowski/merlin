@@ -256,7 +256,7 @@ final class ProviderRegistry: ObservableObject {
                        isEnabled: false,
                        isLocal: true,
                        supportsThinking: false,
-                       supportsVision: false,
+                       supportsVision: true,
                        kind: .openAICompatible),
         ProviderConfig(id: "localai",
                        displayName: "LocalAI",
@@ -265,7 +265,7 @@ final class ProviderRegistry: ObservableObject {
                        isEnabled: false,
                        isLocal: true,
                        supportsThinking: false,
-                       supportsVision: false,
+                       supportsVision: true,
                        kind: .openAICompatible),
         ProviderConfig(id: "mistralrs",
                        displayName: "Mistral.rs",
@@ -411,6 +411,31 @@ final class ProviderRegistry: ObservableObject {
         return providers.first { $0.id == baseID }
     }
 
+    func hasCredential(for id: String) -> Bool {
+        guard let config = config(for: id), !config.isLocal else { return false }
+        guard let apiKey = readAPIKey(for: config.id) else { return false }
+        return apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    func isReadyForUse(_ id: String) -> Bool {
+        guard let config = config(for: id), config.isEnabled else { return false }
+
+        if config.isLocal, availabilityByID[config.id] != true {
+            return false
+        }
+        if !config.isLocal, !hasCredential(for: id) {
+            return false
+        }
+
+        return hasUsableModelSelection(for: id)
+    }
+
+    func readyRemoteProviderIDs(excluding excludedID: String? = nil) -> [String] {
+        providers
+            .filter { !$0.isLocal && $0.id != excludedID && isReadyForUse($0.id) }
+            .map(\.id)
+    }
+
     func provider(for id: String) -> (any LLMProvider)? {
         if let live = liveProviders[id] { return live }
 
@@ -455,6 +480,27 @@ final class ProviderRegistry: ObservableObject {
             return "\(backendName) — \(modelID)"
         }
         return providers.first(where: { $0.id == id })?.displayName ?? id
+    }
+
+    private func hasUsableModelSelection(for id: String) -> Bool {
+        if id.contains(":") {
+            let parts = id.split(separator: ":", maxSplits: 1)
+            guard parts.count == 2 else { return false }
+            let backendID = String(parts[0])
+            let modelID = String(parts[1])
+            guard !modelID.isEmpty else { return false }
+            if let knownModels = modelsByProviderID[backendID], !knownModels.isEmpty {
+                return knownModels.contains(modelID)
+            }
+            return true
+        }
+
+        guard let config = providers.first(where: { $0.id == id }) else { return false }
+        guard config.model.isEmpty == false else { return false }
+        if let knownModels = modelsByProviderID[config.id], !knownModels.isEmpty {
+            return knownModels.contains(config.model)
+        }
+        return true
     }
 
     // MARK: Mutation

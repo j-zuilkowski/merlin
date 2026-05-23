@@ -58,6 +58,20 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertTrue(oa!.supportsVision)
     }
 
+    func testJanSupportsVision() {
+        let registry = makeRegistry()
+        let jan = registry.providers.first { $0.id == "jan" }
+        XCTAssertNotNil(jan)
+        XCTAssertTrue(jan!.supportsVision)
+    }
+
+    func testLocalAISupportsVision() {
+        let registry = makeRegistry()
+        let localai = registry.providers.first { $0.id == "localai" }
+        XCTAssertNotNil(localai)
+        XCTAssertTrue(localai!.supportsVision)
+    }
+
     // MARK: Mutation
 
     func testToggleEnabled() {
@@ -158,6 +172,55 @@ final class ProviderRegistryTests: XCTestCase {
 
         XCTAssertNil(ProviderRegistry.persistedBudget(for: "lmstudio", persistURL: tmp),
                      "an observation that yields zero usable input must not be persisted")
+    }
+
+    // MARK: Readiness
+
+    func testRemoteProviderReadinessRequiresCredential() {
+        let registry = makeRegistry()
+        registry.setEnabled(true, for: "anthropic")
+        XCTAssertFalse(registry.isReadyForUse("anthropic"))
+
+        registry.apiKeysOverride = ["anthropic": "test-key"]
+        XCTAssertTrue(registry.isReadyForUse("anthropic"))
+    }
+
+    func testLocalProviderReadinessRequiresAvailabilityAndSelectedModel() {
+        let registry = makeRegistry()
+        registry.setEnabled(true, for: "jan")
+        registry.updateModel("qwen3-vl-8b-instruct", for: "jan")
+
+        XCTAssertFalse(registry.isReadyForUse("jan"))
+
+        registry.availabilityByID["jan"] = true
+        XCTAssertTrue(registry.isReadyForUse("jan"))
+    }
+
+    func testLocalProviderWithoutSelectedModelIsNotReadyEvenIfRunning() {
+        let registry = makeRegistry()
+        registry.setEnabled(true, for: "localai")
+        registry.availabilityByID["localai"] = true
+        registry.modelsByProviderID["localai"] = ["qwen3-coder", "qwen3-vl"]
+
+        XCTAssertFalse(registry.isReadyForUse("localai"))
+    }
+
+    func testVirtualLocalProviderIsReadyWhenRunningAndKnownModelMatches() {
+        let registry = makeRegistry()
+        registry.setEnabled(true, for: "lmstudio")
+        registry.availabilityByID["lmstudio"] = true
+        registry.modelsByProviderID["lmstudio"] = ["phi-4"]
+
+        XCTAssertTrue(registry.isReadyForUse("lmstudio:phi-4"))
+        XCTAssertFalse(registry.isReadyForUse("lmstudio:qwen3"))
+    }
+
+    func testReadyRemoteProviderIDsOnlyIncludesUsableRemoteProviders() {
+        let registry = makeRegistry()
+        registry.setEnabled(true, for: "anthropic")
+        registry.apiKeysOverride = ["deepseek": "deepseek-key"]
+
+        XCTAssertEqual(registry.readyRemoteProviderIDs(), ["deepseek"])
     }
 
 }

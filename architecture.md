@@ -12,7 +12,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded — LM Studio and vLLM-Metal are alternative MLX-native serving targets), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
-**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (parallel local + reference provider dispatch with critic scoring), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
+**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
 **[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. (phases 181–184)
@@ -272,7 +272,7 @@ Local Model Management [v7]:
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads,
                                                   ropeFrequencyBase, batchSize, useMmap, useMlock
 
-    JanModelManager        — OpenAI-compatible reload endpoint; Jan stores model config on disk at `~/jan/models/<id>/model.json`
+    JanModelManager        — OpenAI-compatible reload endpoint; reads and rewrites Jan model config at `~/jan/models/<id>/model.json`
                              canReloadAtRuntime = true
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads
 
@@ -286,7 +286,7 @@ Local Model Management [v7]:
                              supportedLoadParams: contextLength, gpuLayers, cpuThreads,
                                                   flashAttention, ropeFrequencyBase, batchSize
 
-    VLLMModelManager       — python -m vllm.entrypoints.openai.api_server CLI (restart only)
+    VLLMModelManager       — native `vllm serve` CLI (restart only)
                              canReloadAtRuntime = false
                              supportedLoadParams: contextLength, gpuLayers, cacheTypeK,
                                                   ropeFrequencyBase, batchSize
@@ -335,6 +335,11 @@ Every supported local provider has a different mechanism for changing load-time 
 | LocalAI | ❌ restart | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | Mistral.rs | ❌ restart | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | vLLM-Metal | ❌ restart | ✅ | ✅ | ❌ | ❌ | ✅ K | ✅ | ✅ | ❌ |
+
+Runtime notes:
+- LM Studio, Ollama, and Jan all participate in `ensureContextLength(...)`.
+- Ollama enriches running-model state via `/api/show`.
+- Jan enriches `knownConfig` from `~/jan/models/<id>/model.json`.
 
 ### Advisory → Action Routing
 
@@ -400,12 +405,12 @@ CalibrationCoordinator.start(referenceProviderID:)
   → builds scorerClosure    with makeScorerClosure()
         │
         ▼
-CalibrationRunner.run(suite: .default)           ← TaskGroup: all 18 prompts in parallel
+CalibrationRunner.run(suite: .default)           ← prompts run sequentially; local + reference run concurrently per prompt
   for each prompt:
     async let local     = localClosure(prompt.prompt)
     async let reference = referenceClosure(prompt.prompt)
-    async let localScore     = scorer(prompt.prompt, local)
-    async let referenceScore = scorer(prompt.prompt, reference)
+    localScore     = scorer(prompt.prompt, local)
+    referenceScore = scorer(prompt.prompt, reference)
   → [CalibrationResponse]  (sorted by prompt.id)
         │
         ▼
@@ -426,6 +431,7 @@ CalibrationSheet.report(report)
   → CalibrationReportView:
       overall score gauges  (local % vs reference %)
       per-category bar chart (reasoning / coding / instruction-following / summarization)
+      degraded-scoring warning block when critic fallback was used
       advisory list with suggested values
       "Apply All Suggestions" → applyAdvisory() for each advisory
                                 (runtime reload or restart instructions — same path as v7)
@@ -446,7 +452,7 @@ CalibrationSheet.report(report)
 Merlin/Calibration/
   CalibrationTypes.swift       — CalibrationCategory, CalibrationPrompt, CalibrationResponse, CalibrationReport
   CalibrationSuite.swift       — CalibrationSuite + default 18-prompt battery
-  CalibrationRunner.swift      — actor; parallel dispatch via TaskGroup
+  CalibrationRunner.swift      — actor; sequential prompt battery, concurrent local/reference per prompt
   CalibrationAdvisor.swift     — CalibrationAdvisor + CategoryScores; maps gaps to ParameterAdvisory
   CalibrationCoordinator.swift — @MainActor ObservableObject; CalibrationSheet enum; registerSkill()
 
@@ -857,7 +863,7 @@ final class ProviderRegistry: ObservableObject {
     func makeLLMProvider(for config: ProviderConfig) -> any LLMProvider
     func probeLocalProviders() async                  // fires at app launch
     var primaryProvider: any LLMProvider              // active provider as LLMProvider
-    var visionProvider: any LLMProvider               // first local vision-capable provider
+    var visionProvider: any LLMProvider               // explicit vision assignment, else active-provider fallback
 }
 ```
 
@@ -872,12 +878,12 @@ final class ProviderRegistry: ObservableObject {
 | OpenRouter | OAI-compat | `openrouter.ai/api/v1` | No | No | No | No |
 | Ollama | OAI-compat | `localhost:11434/v1` | Yes | No | No | No |
 | LM Studio | OAI-compat | `localhost:1234/v1` | Yes | No | Yes | Yes |
-| Jan.ai | OAI-compat | `localhost:1337/v1` | Yes | No | No | No |
-| LocalAI | OAI-compat | `localhost:8080/v1` | Yes | No | No | No |
-| Mistral.rs | OAI-compat | `localhost:1234/v1` | Yes | No | No | No |
+| Jan.ai | OAI-compat | `localhost:1337/v1` | Yes | No | Yes | No |
+| LocalAI | OAI-compat | `localhost:8080/v1` | Yes | No | Yes | No |
+| Mistral.rs | OAI-compat | `localhost:1235/v1` | Yes | No | No | No |
 | vLLM-Metal | OAI-compat | `localhost:8000/v1` | Yes | No | No | No |
 
-All base URLs are user-configurable in `ProviderSettingsView`. LM Studio and Mistral.rs share the same default port — enable at most one at a time unless the port is overridden.
+All base URLs are user-configurable in `ProviderSettingsView`.
 
 ### Thinking Mode Auto-Detection [v1]
 
@@ -894,7 +900,7 @@ Thinking mode is enabled when `ThinkingModeDetector` fires AND the active provid
 ```
 User message arrives
 │
-├── GUI screenshot task?   → registry.visionProvider (first local vision-capable)
+├── GUI screenshot task?   → explicit vision assignment, else active provider
 └── All other tasks        → registry.primaryProvider (user-selected active provider)
 ```
 
@@ -933,14 +939,13 @@ On launch with no existing windows, `ProjectPickerView` was shown. In v1.6 this 
 
 `LiveSession` (`Sessions/LiveSession.swift`) wraps one `AppState` together with all per-session subsystems. It is created by `SessionManager` and torn down via `close() async`.
 
-**Startup sequence** — `init` wires four background tasks stored in `lifecycleTasks: [Task<Void, Never>]`:
+**Startup sequence** — `init` wires three background tasks stored in `lifecycleTasks: [Task<Void, Never>]`:
 
 1. `MCPBridge.start(config:toolRouter:)` — merges global + project MCP configs and launches configured servers
-2. `ThreadAutomationEngine.start(store:)` — begins cron-based automation polling
-3. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s and posts `merlinInjectMessage` notifications
-4. `MemoryEngine.startIdleTimer(timeout:)` — starts the idle timer if `AppSettings.memoriesEnabled`
+2. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s and posts `merlinInjectMessage` notifications
+3. `MemoryEngine.startIdleTimer(timeout:)` — starts the idle timer if `AppSettings.memoriesEnabled`
 
-**Shutdown** — `close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, calls `appState.stopEngine()`, `mcpBridge.stop()`, `automationEngine.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks if `close()` was not called.
+**Shutdown** — `close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, calls `appState.stopEngine()`, `mcpBridge.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks if `close()` was not called.
 
 **Domain scoping** — `LiveSession.init` carries `activeDomainIDs: [String]` and assigns them directly to `appState.engine.activeDomainIDs`. The shared `DomainRegistry` is queried via stateless helpers (`activeDomain(ids:)`, `taskTypes(ids:)`) so no global mutable state is touched when switching sessions.
 
@@ -1213,7 +1218,7 @@ stdio transport only in v2. HTTP/SSE deferred to v3.
 
 ## Scheduler [v2]
 
-`SchedulerEngine` uses `BackgroundTasks` framework to fire recurring sessions. Config at `~/Library/Application Support/Merlin/schedules.json`.
+`SchedulerEngine` is the supported scheduled-task path. It persists recurring tasks in `~/Library/Application Support/Merlin/schedules.json`, opens a background session at fire time, applies the task's permission mode, waits for MCP readiness, runs the prompt, closes the session, and posts a macOS notification with a summary. Legacy `ThreadAutomation*` types remain internal-only and are not the supported user-facing scheduling surface.
 
 ```json
 {
@@ -1231,7 +1236,7 @@ stdio transport only in v2. HTTP/SSE deferred to v3.
 }
 ```
 
-On fire: opens a background session, runs the prompt to completion, posts a macOS notification with a summary. Scheduled sessions run in Plan mode by default.
+On fire: opens a background session, runs the prompt to completion, posts a macOS notification with a summary.
 
 ---
 
@@ -2037,6 +2042,10 @@ Each `SubagentEngine`:
 - Uses a tool set gated by the agent's role (explorer = read-only, worker = full)
 - Respects `AppSettings.maxSubagentDepth` — refuses to spawn further children beyond the limit
 - Runs within the parent's `TaskGroup` slot — `AppSettings.maxSubagentThreads` controls concurrency
+- Executes real tool calls and feeds their actual results back into the child model loop before completion
+
+Current hard limit:
+- nested `spawn_agent` from inside a subagent is explicitly rejected rather than emulated
 
 ### Explorer tool set (V4a read-only)
 
@@ -2127,7 +2136,7 @@ Every domain implements this contract:
 
 ```swift
 protocol DomainPlugin {
-    var id: String { get }                          // e.g. "software", "pcb", "construction"
+    var id: String { get }                          // e.g. "software", "electronics", "construction"
     var displayName: String { get }
     var taskTypes: [DomainTaskType] { get }         // domain-specific task classifications
     var verificationBackend: VerificationBackend { get }
@@ -2157,7 +2166,7 @@ struct DomainManifest: Decodable {
 }
 ```
 
-The built-in `SoftwareDomain` conforms directly to `DomainPlugin` in Swift. All external domains (PCB, construction, etc.) arrive via `MCPDomainAdapter`.
+The built-in `SoftwareDomain` and `ElectronicsDomain` conform directly to `DomainPlugin` in Swift. External domains arrive via `MCPDomainAdapter`; manifest IDs such as `pcb` or `kicad` are canonicalised to the product-facing `electronics` domain where appropriate.
 
 ### DomainTaskType
 
@@ -2879,14 +2888,19 @@ Merlin currently targets software development but the supervisor-worker mechanis
 | `vision` | Image / screenshot analysis | Image present in context |
 | `memory` | Background memory generation | Internal only — no user override |
 
-Each slot maps to a configured provider in `AppSettings`. A slot with no distinct assignment falls through to the next available provider.
+Each slot maps to a configured provider in `AppSettings`. A slot with no distinct assignment falls through according to runtime routing:
+
+- `execute` → active provider
+- `reason` → active provider
+- `orchestrate` → `reason`, then active provider
+- `vision` → active provider unless a dedicated vision-capable provider is assigned
 
 ### Routing Priority Stack
 
 ```
 1. Declarative override  — @role in message, or skill frontmatter `role: <slot>`
 2. Structural routing    — engine infers role from task shape (image → vision, etc.)
-3. Active provider       — unresolved slot uses the globally active provider
+3. Active provider       — unresolved slot uses the runtime fallback above
 ```
 
 **Declarative syntax:**

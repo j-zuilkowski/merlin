@@ -22,8 +22,9 @@ actor CalibrationRunner {
 
     /// Completes a single prompt against one provider and returns the raw text.
     typealias ProviderClosure = @Sendable (String) async throws -> String
-    /// Scores one prompt/response pair on a 0...1 scale.
-    typealias ScorerClosure = @Sendable (String, String) async throws -> Double
+    /// Scores one prompt/response pair on a 0...1 scale, preserving whether
+    /// the score is a true critic result or a degraded fallback.
+    typealias ScorerClosure = @Sendable (String, String) async throws -> CalibrationScoreResult
     /// Called on MainActor after each prompt completes with the running total.
     typealias ProgressClosure = @MainActor @Sendable (Int) -> Void
 
@@ -76,8 +77,12 @@ actor CalibrationRunner {
                 prompt: prompt,
                 localResponse: local,
                 referenceResponse: ref,
-                localScore: localScore,
-                referenceScore: refScore
+                localScore: localScore.score,
+                referenceScore: refScore.score,
+                localScoreDegraded: localScore.degraded,
+                referenceScoreDegraded: refScore.degraded,
+                localScoreNote: localScore.note,
+                referenceScoreNote: refScore.note
             ))
 
             let completed = index + 1

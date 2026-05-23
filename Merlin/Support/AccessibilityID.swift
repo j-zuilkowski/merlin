@@ -23,6 +23,9 @@ public enum AccessibilityID {
     public static let chatResumeScrollButton = "chat-resume-scroll-button"
     public static let chatAtMentionPicker = "chat-at-mention-picker"
     public static let chatSkillsPicker = "chat-skills-picker"
+    public static let chatDomainActivationSwitchButton = "chat-domain-activation-switch-button"
+    public static let chatDomainActivationStayButton = "chat-domain-activation-stay-button"
+    public static let chatDomainActivationCancelButton = "chat-domain-activation-cancel-button"
 
     // MARK: - Session sidebar
 
@@ -41,6 +44,7 @@ public enum AccessibilityID {
     public static let providerHUD = "provider-hud"
     /// Settings gear button in the window toolbar.
     public static let settingsButton = "settings-button"
+    public static let activeDomainIndicator = "active-domain-indicator"
 
     // MARK: - Settings / provider picker
 

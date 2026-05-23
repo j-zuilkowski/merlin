@@ -13,6 +13,12 @@ final class DomainRegistryTests: XCTestCase {
         XCTAssertEqual(domain.id, "software")
     }
 
+    func testElectronicsDomainIsRegisteredByDefault() async {
+        let registry = DomainRegistry()
+        let electronics = await registry.plugin(for: ElectronicsDomain.defaultID)
+        XCTAssertEqual(electronics?.displayName, "Electronics")
+    }
+
     func testRegisterAndActivateDomain() async {
         let registry = DomainRegistry()
         let pcb = StubDomain(id: "pcb", displayName: "PCB Design")
@@ -64,6 +70,69 @@ final class DomainRegistryTests: XCTestCase {
         let missing = await registry.plugin(for: "nonexistent")
         XCTAssertNil(missing)
     }
+
+    func testScopedDomainsIncludeExternalAdapterForCanonicalElectronics() async throws {
+        let registry = DomainRegistry()
+        let manifest = try JSONDecoder().decode(DomainManifest.self, from: Data("""
+        {
+            "id": "kicad",
+            "displayName": "KiCad MCP",
+            "taskTypes": [],
+            "highStakesKeywords": [],
+            "mcpToolNames": ["route_board"],
+            "verificationCommands": {}
+        }
+        """.utf8))
+        let adapter = await MainActor.run {
+            MCPDomainAdapter(manifest: manifest, mcpServerID: "kicad", mcpToolNames: ["mcp:kicad:route_board"])
+        }
+
+        await registry.register(adapter)
+
+        let scoped = await registry.scopedDomains(ids: ["electronics"]).map(\.id)
+        XCTAssertTrue(scoped.contains(ElectronicsDomain.defaultID))
+        XCTAssertTrue(scoped.contains(adapter.id))
+
+        let available = await registry.availableDomains().map(\.id)
+        XCTAssertFalse(available.contains(adapter.id))
+    }
+
+    func testElectronicsActivationSuggestionTriggersForKiCadPrompt() {
+        let suggestion = ElectronicsDomain.suggestedActivation(
+            for: "Please route this KiCad PCB and export Gerbers.",
+            currentActiveDomainIDs: SoftwareDomain.defaultActiveDomainIDs
+        )
+
+        XCTAssertEqual(suggestion?.domainID, ElectronicsDomain.defaultID)
+        XCTAssertEqual(suggestion?.displayName, "Electronics")
+    }
+
+    func testElectronicsActivationSuggestionTriggersForBoardDesignIntent() {
+        let suggestion = ElectronicsDomain.suggestedActivation(
+            for: "Design a board layout for this sensor breakout and place the components.",
+            currentActiveDomainIDs: SoftwareDomain.defaultActiveDomainIDs
+        )
+
+        XCTAssertEqual(suggestion?.domainID, ElectronicsDomain.defaultID)
+    }
+
+    func testElectronicsActivationSuggestionDoesNotTriggerForNormalSoftwarePrompt() {
+        let suggestion = ElectronicsDomain.suggestedActivation(
+            for: "Design a dashboard layout for the settings screen and route the button actions.",
+            currentActiveDomainIDs: SoftwareDomain.defaultActiveDomainIDs
+        )
+
+        XCTAssertNil(suggestion)
+    }
+
+    func testElectronicsActivationSuggestionDoesNotTriggerWhenAlreadyActive() {
+        let suggestion = ElectronicsDomain.suggestedActivation(
+            for: "Open the schematic and update the footprint assignments.",
+            currentActiveDomainIDs: [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        )
+
+        XCTAssertNil(suggestion)
+    }
 }
 
 @MainActor
@@ -79,6 +148,7 @@ final class DomainManifestTests: XCTestCase {
             ],
             "highStakesKeywords": ["power routing", "impedance"],
             "systemPromptAddendum": "Always follow IPC-2221 spacing rules.",
+            "mcpToolNames": ["route_board"],
             "verificationCommands": {}
         }
         """.data(using: .utf8)!
@@ -88,6 +158,7 @@ final class DomainManifestTests: XCTestCase {
         XCTAssertEqual(manifest.taskTypes[0].name, "schematic")
         XCTAssertEqual(manifest.highStakesKeywords, ["power routing", "impedance"])
         XCTAssertEqual(manifest.systemPromptAddendum, "Always follow IPC-2221 spacing rules.")
+        XCTAssertEqual(manifest.mcpToolNames, ["route_board"])
     }
 
     func testMCPDomainAdapterAdoptsDomainPlugin() throws {
@@ -97,14 +168,21 @@ final class DomainManifestTests: XCTestCase {
             "displayName": "PCB Design",
             "taskTypes": [],
             "highStakesKeywords": [],
+            "mcpToolNames": ["route_board"],
             "verificationCommands": {}
         }
         """.data(using: .utf8)!
         let manifest = try JSONDecoder().decode(DomainManifest.self, from: json)
-        let adapter = MCPDomainAdapter(manifest: manifest, mcpServerID: "pcb-server")
-        XCTAssertEqual(adapter.id, "pcb")
+        let adapter = MCPDomainAdapter(
+            manifest: manifest,
+            mcpServerID: "pcb-server",
+            mcpToolNames: ["mcp:pcb-server:route_board"]
+        )
+        XCTAssertEqual(adapter.id, "mcp:pcb-server:pcb")
+        XCTAssertEqual(adapter.canonicalDomainID, ElectronicsDomain.defaultID)
         XCTAssertEqual(adapter.displayName, "PCB Design")
         XCTAssertNil(adapter.systemPromptAddendum)
+        XCTAssertEqual(adapter.mcpToolNames, ["mcp:pcb-server:route_board"])
     }
 }
 

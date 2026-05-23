@@ -13,6 +13,7 @@ private struct StubRuntimeManagerForUI: LocalModelManagerProtocol {
     func loadedModels() async throws -> [LoadedModelInfo] { [] }
     func reload(modelID: String, config: LocalModelConfig) async throws {}
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? { nil }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 private struct StubRestartManagerForUI: LocalModelManagerProtocol {
@@ -30,6 +31,7 @@ private struct StubRestartManagerForUI: LocalModelManagerProtocol {
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? {
         RestartInstructions(shellCommand: "vllm serve model", configSnippet: nil, explanation: "restart needed")
     }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }
 
 // MARK: - Tests
@@ -40,12 +42,13 @@ final class ModelControlViewTests: XCTestCase {
     func testModelControlViewExists() {
         // Compile-time proof the type exists.
         let manager = StubRuntimeManagerForUI()
-        let _ = ModelControlView(manager: manager, modelID: "qwen2.5-vl-72b")
+        let _ = ModelControlView(manager: manager, providerID: "lmstudio", modelID: "qwen2.5-vl-72b")
     }
 
     func testModelControlViewRendersWithoutCrash() {
         let manager = StubRuntimeManagerForUI()
-        let view = ModelControlView(manager: manager, modelID: "qwen2.5-vl-72b")
+        let view = ModelControlView(manager: manager, providerID: "lmstudio", modelID: "qwen2.5-vl-72b")
+            .environmentObject(AppState())
         let host = NSHostingController(rootView: view)
         host.loadView()
         XCTAssertNotNil(host.view)
@@ -75,12 +78,13 @@ final class ModelControlViewTests: XCTestCase {
     func testModelControlSectionViewExists() {
         // Compile-time: ModelControlSectionView must exist for the settings integration.
         let manager = StubRuntimeManagerForUI()
-        let _ = ModelControlSectionView(manager: manager, modelID: "test-model")
+        let _ = ModelControlSectionView(manager: manager, providerID: "lmstudio", modelID: "test-model")
     }
 
     func testModelControlSectionViewRendersWithoutCrash() {
         let manager = StubRuntimeManagerForUI()
-        let view = ModelControlSectionView(manager: manager, modelID: "test-model")
+        let view = ModelControlSectionView(manager: manager, providerID: "lmstudio", modelID: "test-model")
+            .environmentObject(AppState())
         let host = NSHostingController(rootView: view)
         host.loadView()
         XCTAssertNotNil(host.view)

@@ -24,6 +24,21 @@ final class CriticEngineContextAutoResizeTests: XCTestCase {
                        "Model ID must be the resolved (non-prefixed) ID")
     }
 
+    func testCriticUsesReturnedModelIDAfterResize() async {
+        let spy = CtxResizeSpy(returnedModelID: "qwen/qwen3.6-27b-merlin")
+        let provider = CtxCapturingProvider(id: "lmstudio:qwen/qwen3.6-27b", response: "PASS: ok")
+        let engine = CriticEngine(
+            verificationBackend: NullVerificationBackend(),
+            reasonProvider: provider,
+            modelManager: spy
+        )
+        _ = await engine.evaluate(
+            taskType: taskType, output: "Some output to verify.",
+            context: [], writtenFiles: []
+        )
+        XCTAssertEqual(provider.capturedRequestModel, "qwen/qwen3.6-27b-merlin")
+    }
+
     func testCriticProceedsEvenIfEnsureContextLengthThrows() async {
         let failManager = CtxResizeFailingManager()
         let provider = CtxCapturingProvider(id: "lmstudio:qwen/qwen3.6-27b", response: "PASS: ok")
@@ -66,14 +81,20 @@ private final class CtxResizeSpy: @unchecked Sendable, LocalModelManagerProtocol
     nonisolated(unsafe) var ensureCalled = false
     nonisolated(unsafe) var capturedModelID: String?
     nonisolated(unsafe) var capturedMinimumTokens: Int?
+    private let returnedModelID: String?
+
+    init(returnedModelID: String? = nil) {
+        self.returnedModelID = returnedModelID
+    }
 
     func loadedModels() async throws -> [LoadedModelInfo] { [] }
     func reload(modelID: String, config: LocalModelConfig) async throws {}
     nonisolated func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? { nil }
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String {
         ensureCalled = true
         capturedModelID = modelID
         capturedMinimumTokens = minimumTokens
+        return returnedModelID ?? modelID
     }
 }
 
@@ -85,7 +106,7 @@ private final class CtxResizeFailingManager: @unchecked Sendable, LocalModelMana
     func loadedModels() async throws -> [LoadedModelInfo] { [] }
     func reload(modelID: String, config: LocalModelConfig) async throws {}
     nonisolated func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? { nil }
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String {
         throw ModelManagerError.providerUnavailable
     }
 }
@@ -93,9 +114,11 @@ private final class CtxResizeFailingManager: @unchecked Sendable, LocalModelMana
 private final class CtxCapturingProvider: @unchecked Sendable, LLMProvider {
     let id: String
     let response: String
+    nonisolated(unsafe) var capturedRequestModel: String?
     init(id: String, response: String) { self.id = id; self.response = response }
     let baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        capturedRequestModel = request.model
         let text = response
         return AsyncThrowingStream { c in
             c.yield(CompletionChunk(

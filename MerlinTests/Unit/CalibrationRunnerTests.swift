@@ -139,7 +139,7 @@ final class CalibrationRunnerTests: XCTestCase {
         let runner = CalibrationRunner(
             localProvider: { _ in "local" },
             referenceProvider: { _ in "ref" },
-            scorer: { _, _ in 0.8 }
+            scorer: { _, _ in .scored(0.8) }
         )
         XCTAssertNotNil(runner)
     }
@@ -148,7 +148,7 @@ final class CalibrationRunnerTests: XCTestCase {
         let runner = CalibrationRunner(
             localProvider: { _ in "local" },
             referenceProvider: { _ in "ref" },
-            scorer: { _, _ in 0.75 }
+            scorer: { _, _ in .scored(0.75) }
         )
         let suite = CalibrationSuite(prompts: [
             CalibrationPrompt(id: "p1", category: .reasoning, prompt: "Q1", systemPrompt: nil),
@@ -162,7 +162,7 @@ final class CalibrationRunnerTests: XCTestCase {
         let runner = CalibrationRunner(
             localProvider: { _ in "local answer" },
             referenceProvider: { _ in "ref answer" },
-            scorer: { _, _ in 0.8 }
+            scorer: { _, _ in .scored(0.8) }
         )
         let suite = CalibrationSuite(prompts: [
             CalibrationPrompt(id: "p1", category: .reasoning, prompt: "Q1", systemPrompt: nil),
@@ -181,7 +181,7 @@ final class CalibrationRunnerTests: XCTestCase {
             referenceProvider: { _ in "ref" },
             scorer: { _, _ in
                 await counter.inc()
-                return 0.7
+                return .scored(0.7)
             }
         )
         let suite = CalibrationSuite(prompts: [
@@ -197,7 +197,7 @@ final class CalibrationRunnerTests: XCTestCase {
         let runner = CalibrationRunner(
             localProvider: { _ in "local" },
             referenceProvider: { _ in "ref" },
-            scorer: { _, _ in 0.8 }
+            scorer: { _, _ in .scored(0.8) }
         )
         let suite = CalibrationSuite(prompts: [
             CalibrationPrompt(id: "z9", category: .coding, prompt: "Q", systemPrompt: nil),
@@ -207,5 +207,25 @@ final class CalibrationRunnerTests: XCTestCase {
         let responses = try await runner.run(suite: suite)
         let ids = responses.map(\.prompt.id)
         XCTAssertEqual(ids, ids.sorted(), "Results must be sorted by prompt ID for deterministic UI display")
+    }
+
+    func testCalibrationRunnerCapturesDegradedScoreMetadata() async throws {
+        let runner = CalibrationRunner(
+            localProvider: { _ in "local" },
+            referenceProvider: { _ in "ref" },
+            scorer: { _, answer in
+                answer == "local"
+                    ? .fallback(note: "critic unavailable")
+                    : .scored(1.0)
+            }
+        )
+        let suite = CalibrationSuite(prompts: [
+            CalibrationPrompt(id: "p1", category: .reasoning, prompt: "Q1", systemPrompt: nil),
+        ])
+        let responses = try await runner.run(suite: suite)
+        let response = try XCTUnwrap(responses.first)
+        XCTAssertTrue(response.localScoreDegraded)
+        XCTAssertEqual(response.localScoreNote, "critic unavailable")
+        XCTAssertFalse(response.referenceScoreDegraded)
     }
 }
