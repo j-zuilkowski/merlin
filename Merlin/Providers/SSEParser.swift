@@ -1,5 +1,78 @@
 import Foundation
 
+enum ToolNameCodec {
+    private static let encodedPrefix = "__merlin_tool_name_encoded__"
+
+    static func wireName(for name: String) -> String {
+        var result = ""
+        var changed = false
+        for scalar in name.unicodeScalars {
+            if isAllowedWireScalar(scalar) {
+                result.unicodeScalars.append(scalar)
+            } else {
+                changed = true
+                result += "_u\(String(format: "%04X", scalar.value))_"
+            }
+        }
+        return changed ? encodedPrefix + result : name
+    }
+
+    static func canonicalName(from name: String) -> String {
+        guard name.hasPrefix(encodedPrefix) else { return name }
+        let encoded = String(name.dropFirst(encodedPrefix.count))
+        var result = ""
+        var index = encoded.startIndex
+        while index < encoded.endIndex {
+            if encoded[index] == "_",
+               encoded.distance(from: index, to: encoded.endIndex) >= 4 {
+                let markerIndex = encoded.index(after: index)
+                if markerIndex < encoded.endIndex, encoded[markerIndex] == "u",
+                   let endIndex = encoded[encoded.index(after: markerIndex)...].firstIndex(of: "_") {
+                    let hexStart = encoded.index(after: markerIndex)
+                    let hex = String(encoded[hexStart..<endIndex])
+                    if !hex.isEmpty,
+                       let value = UInt32(hex, radix: 16),
+                       let scalar = UnicodeScalar(value) {
+                        result.unicodeScalars.append(scalar)
+                        index = encoded.index(after: endIndex)
+                        continue
+                    }
+                }
+            }
+            result.append(encoded[index])
+            index = encoded.index(after: index)
+        }
+        return result
+    }
+
+    static func wireToolDefinitions(_ tools: [ToolDefinition]?) -> [ToolDefinition]? {
+        tools?.map { tool in
+            var copy = tool
+            copy.function.name = wireName(for: tool.function.name)
+            return copy
+        }
+    }
+
+    static func wireToolCalls(_ calls: [ToolCall]?) -> [ToolCall]? {
+        calls?.map { call in
+            var copy = call
+            copy.function.name = wireName(for: call.function.name)
+            return copy
+        }
+    }
+
+    private static func isAllowedWireScalar(_ scalar: UnicodeScalar) -> Bool {
+        switch scalar.value {
+        case 48...57, 65...90, 97...122:
+            return true
+        case 45, 95:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
 enum SSEParser {
     static func parseChunk(_ line: String) throws -> CompletionChunk? {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -20,7 +93,7 @@ enum SSEParser {
                         id: $0.id,
                         function: $0.function.map {
                             CompletionChunk.Delta.ToolCallDelta.FunctionDelta(
-                                name: $0.name,
+                                name: $0.name.map(ToolNameCodec.canonicalName),
                                 arguments: $0.arguments
                             )
                         }
@@ -105,7 +178,7 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
             // and no text). All other roles — user, system, tool — must be a string.
             wc.requiresStringContent = (message.role != .assistant)
             self.content = wc
-            self.toolCalls = message.toolCalls
+            self.toolCalls = ToolNameCodec.wireToolCalls(message.toolCalls)
             self.toolCallId = message.toolCallId
             self.thinkingContent = message.thinkingContent
         }
@@ -197,7 +270,7 @@ func encodeRequest(_ request: CompletionRequest, baseURL: URL, model: String, in
         // Callers that need a different model should pass it via the `model` parameter.
         model: model.isEmpty ? request.model : model,
         messages: request.messages.map(WireMessage.init),
-        tools: request.tools,
+        tools: ToolNameCodec.wireToolDefinitions(request.tools),
         stream: request.stream,
         thinking: includeThinking ? request.thinking : nil,
         maxTokens: request.maxTokens,

@@ -1422,7 +1422,12 @@ final class AgenticEngine {
                             timestamp: Date()))
                     }
                 }
-                await handleSpawnAgents(allowedSpawnCalls, depth: depth, continuation: continuation)
+                await handleSpawnAgents(
+                    allowedSpawnCalls,
+                    depth: depth,
+                    continuation: continuation,
+                    context: context
+                )
                 await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
@@ -2171,9 +2176,11 @@ final class AgenticEngine {
     func handleSpawnAgents(
         _ calls: [ToolCall],
         depth: Int,
-        continuation: AsyncStream<AgentEvent>.Continuation
+        continuation: AsyncStream<AgentEvent>.Continuation,
+        context: ContextManager? = nil
     ) async {
         guard !calls.isEmpty else { return }
+        let targetContext = context ?? contextManager
 
         struct SpawnArgs: Decodable {
             var agent: String
@@ -2206,6 +2213,7 @@ final class AgenticEngine {
         }
 
         struct SubagentPlan: Sendable {
+            let toolCallId: String
             let agentID: UUID
             let agentName: String
             let events: AsyncStream<SubagentEvent>
@@ -2215,14 +2223,23 @@ final class AgenticEngine {
         func forwardSubagentEvents(
             _ plan: SubagentPlan,
             continuation: AsyncStream<AgentEvent>.Continuation
-        ) async throws {
+        ) async throws -> ToolResult {
+            var summary = ""
             await plan.start()
             for await event in plan.events {
                 if case .failed(let error) = event {
                     throw error
                 }
+                if case .completed(let text) = event {
+                    summary = text
+                }
                 continuation.yield(.subagentUpdate(id: plan.agentID, event: event))
             }
+            return ToolResult(
+                toolCallId: plan.toolCallId,
+                content: summary.isEmpty ? "Subagent completed." : summary,
+                isError: false
+            )
         }
 
         var plans: [SubagentPlan] = []
@@ -2306,6 +2323,7 @@ final class AgenticEngine {
                     }
                 )
                 plans.append(SubagentPlan(
+                    toolCallId: call.id,
                     agentID: agentID,
                     agentName: args.agent,
                     events: worker.events,
@@ -2323,6 +2341,7 @@ final class AgenticEngine {
                     toolExecutor: regularToolExecutor
                 )
                 plans.append(SubagentPlan(
+                    toolCallId: call.id,
                     agentID: agentID,
                     agentName: args.agent,
                     events: subagent.events,
@@ -2331,19 +2350,34 @@ final class AgenticEngine {
             }
         }
 
-        await withTaskGroup(of: Void.self) { group in
+        await withTaskGroup(of: ToolResult.self) { group in
             for plan in plans {
                 group.addTask { [continuation] in
                     do {
-                        try await forwardSubagentEvents(plan, continuation: continuation)
+                        return try await forwardSubagentEvents(plan, continuation: continuation)
                     } catch {
                         continuation.yield(.systemNote(
                             "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)"
                         ))
-                                }
-                            }
-                        }
+                        return ToolResult(
+                            toolCallId: plan.toolCallId,
+                            content: "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)",
+                            isError: true
+                        )
                     }
+                }
+            }
+
+            for await result in group {
+                continuation.yield(.toolCallResult(result))
+                targetContext.append(Message(
+                    role: .tool,
+                    content: .text(result.content),
+                    toolCallId: result.toolCallId,
+                    timestamp: Date()
+                ))
+            }
+        }
     }
 
     func shouldUseThinking(for message: String) -> Bool {
