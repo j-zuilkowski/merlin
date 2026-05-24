@@ -44,8 +44,9 @@ to a `.environmentObject(...)` injection on a reachable ancestor in the live vie
 - `ChatView` consumes `AppState`/`SkillsRegistry`/`ChatViewModel` ← inherited through
   `ContentView`; also independently injected at `FloatingWindowManager.swift:146-150`
   and `SideChatPane.swift:28-32` (the two other `ChatView` instantiation sites).
-- `ProviderHUD` (`AppState`+`ProviderRegistry`), `ToolLogView` (`AppState`),
-  `ScreenPreviewView` (`AppState`) — all descend from `ChatView`/`ContentView`. ✓
+- `SlotStatusPanel` (explicit slot assignments + registry display-name resolver),
+  `ToolLogView` (`AppState`), `ScreenPreviewView` (`AppState`) — all descend from
+  `ChatView`/`ContentView` or the workspace sidebar. ✓
 - `SkillsPicker` consumes `SkillsRegistry` ← injected `ChatView.swift:213`.
 - `ProjectPickerView` consumes `RecentProjectsStore` ← injected on its sheet
   `WorkspaceView.swift:66`. `FirstLaunchSetupView` consumes `AppState` ← injected on its

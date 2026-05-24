@@ -1130,7 +1130,7 @@ The primary chat interface. Key responsibilities:
 - Submit button doubles as stop button when engine is running (red stop icon)
 - Toolbar actions row (quick-access shell shortcuts)
 
-Provider routing status is no longer displayed in the top-of-chat area. Routing
+Provider routing status is no longer displayed in the chat header area. Routing
 state is represented in the sidebar slot panel instead.
 
 ### SlotStatusPanel

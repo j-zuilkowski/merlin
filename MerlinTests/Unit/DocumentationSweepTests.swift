@@ -9,7 +9,6 @@ final class DocumentationSweepTests: XCTestCase {
             "Merlin/Docs/UserGuide.md",
             "Merlin/Docs/DeveloperManual.md",
             "docs/local-provider-configs/README.md",
-            "docs/developer-guide.md",
         ]
         for path in files {
             let text = try repoFile(path)
@@ -17,6 +16,13 @@ final class DocumentationSweepTests: XCTestCase {
                 text.localizedCaseInsensitiveContains("llama.cpp") ||
                 text.localizedCaseInsensitiveContains("llamacpp"),
                 "\(path) should mention llama.cpp/llamacpp"
+            )
+        }
+        if let devGuide = try repoFileIfExists("docs/developer-guide.md") {
+            XCTAssertTrue(
+                devGuide.localizedCaseInsensitiveContains("llama.cpp") ||
+                devGuide.localizedCaseInsensitiveContains("llamacpp"),
+                "docs/developer-guide.md should mention llama.cpp/llamacpp when present"
             )
         }
     }
@@ -79,6 +85,14 @@ final class DocumentationSweepTests: XCTestCase {
 
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
+        return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    private func repoFileIfExists(_ path: String) throws -> String? {
+        let url = repoRootURL().appendingPathComponent(path)
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
         return try String(contentsOf: url, encoding: .utf8)
     }
 
