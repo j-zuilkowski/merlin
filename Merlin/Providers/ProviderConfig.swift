@@ -345,13 +345,13 @@ final class ProviderRegistry: ObservableObject {
     // MARK: Computed
 
     var activeConfig: ProviderConfig? {
-        providers.first { $0.id == activeProviderID && $0.isEnabled }
+        guard let config = config(for: activeProviderID), config.isEnabled else { return nil }
+        return config
     }
 
     var primaryProvider: (any LLMProvider)? {
-        guard let config = activeConfig else { return nil }
-        if let live = liveProviders[config.id] { return live }
-        return makeLLMProvider(for: config)
+        guard activeConfig != nil else { return nil }
+        return provider(for: activeProviderID)
     }
 
     /// Providers ordered from largest usable input budget to smallest.
