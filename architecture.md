@@ -2,7 +2,7 @@
 
 ## Overview
 
-Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
+Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, llama.cpp) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
@@ -11,7 +11,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v4]** Subagents (Explorer + Worker), WorktreeManager, SubagentEngine, SubagentStreamUI, full settings surface (all 12 sections), WorkspaceLayoutManager, wired panes (FilePane, TerminalPane, PreviewPane, SideChat), DisabledSkillNames enforcement, keep-awake (IOPMAssertion), AgentRegistry, HookEngine wiring, tool registry launch.
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded — LM Studio and vLLM-Metal are alternative MLX-native serving targets), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
-**[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
+**[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 shipped provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
 **[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
@@ -29,6 +29,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
 **[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `phase`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
+**[v2.3 planned]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -255,8 +256,13 @@ Local Model Management [v7]:
   LocalModelManagerProtocol
     ├── capabilities: ModelManagerCapabilities
     │     ├── canReloadAtRuntime: Bool
-    │     └── supportedLoadParams: Set<LoadParam>
+    │     ├── supportedLoadParams: Set<LoadParam>
+    │     ├── supportsRouterMode: Bool
+    │     ├── supportsRuntimeModelLoad: Bool
+    │     └── supportsRuntimeModelUnload: Bool
     ├── loadedModels() → [LoadedModelInfo]
+    ├── ensureModelLoaded(modelID:) async throws       — no-op unless router/load API exists
+    ├── unloadModel(modelID:) async throws             — no-op/unsupported unless router/unload API exists
     ├── reload(modelID:config:) async throws   — ModelManagerError.requiresRestart if unsupported
     └── restartInstructions(modelID:config:)   — shell command + config snippet
 
@@ -290,6 +296,14 @@ Local Model Management [v7]:
                              canReloadAtRuntime = false
                              supportedLoadParams: contextLength, gpuLayers, cacheTypeK,
                                                   ropeFrequencyBase, batchSize
+
+    LlamaCppModelManager   — llama-server; single-model mode = restart only,
+                             router mode = runtime load/unload via /models/load + /models/unload
+                             canReloadAtRuntime = true only when router mode is detected
+                             supportsRouterMode = true
+                             supportedLoadParams: contextLength, gpuLayers, cpuThreads,
+                                                  flashAttention, cacheTypeK/V, ropeFrequencyBase,
+                                                  batchSize, useMmap, useMlock
 
     NullModelManager       — no-op; used for unrecognised local providers
 
@@ -325,21 +339,25 @@ Memory dual-path [v7]:
 
 Every supported local provider has a different mechanism for changing load-time parameters. Rather than adding per-provider branches throughout the codebase, all management is routed through `LocalModelManagerProtocol`. Callers (AppState, ModelControlView, ModelParameterAdvisor wiring) are fully decoupled from provider details.
 
+Router/load-unload capability flags default to `false` so existing provider managers do not gain accidental behavior. A manager must opt in explicitly before AppState or ProviderRegistry calls runtime load/unload APIs.
+
 ### Capability Matrix
 
-| Provider | Runtime Reload | Context Length | GPU Layers | CPU Threads | Flash Attn | KV Cache Type | Rope Base | Batch Size | mmap/mlock |
-|---|---|---|---|---|---|---|---|---|---|
-| LM Studio | ✅ REST + CLI | ✅ | ✅ | ✅ | ✅ | ✅ K/V | ✅ | ✅ | ❌ |
-| Ollama | ✅ Modelfile | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Jan.ai | ✅ reload API | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| LocalAI | ❌ restart | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Mistral.rs | ❌ restart | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| vLLM-Metal | ❌ restart | ✅ | ✅ | ❌ | ❌ | ✅ K | ✅ | ✅ | ❌ |
+| Provider | Runtime Reload | Router Mode | Context Length | GPU Layers | CPU Threads | Flash Attn | KV Cache Type | Rope Base | Batch Size | mmap/mlock |
+|---|---|---|---|---|---|---|---|---|---|---|
+| LM Studio | ✅ REST + CLI | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ K/V | ✅ | ✅ | ❌ |
+| Ollama | ✅ Modelfile | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Jan.ai | ✅ reload API | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| LocalAI | ❌ restart | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Mistral.rs | ❌ restart | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| vLLM-Metal | ❌ restart | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ K | ✅ | ✅ | ❌ |
+| llama.cpp | ✅ router / ❌ single-model | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ K/V | ✅ | ✅ | ✅ |
 
 Runtime notes:
 - LM Studio, Ollama, and Jan all participate in `ensureContextLength(...)`.
 - Ollama enriches running-model state via `/api/show`.
 - Jan enriches `knownConfig` from `~/jan/models/<id>/model.json`.
+- llama.cpp participates in runtime model load/unload only when `llama-server` runs in router mode. In single-model mode it remains restart-only and returns `RestartInstructions`.
 
 ### Advisory → Action Routing
 
@@ -371,11 +389,196 @@ Merlin/Providers/LocalModelManager/
   LocalAIModelManager.swift
   MistralRSModelManager.swift
   VLLMModelManager.swift
+  LlamaCppModelManager.swift
   NullModelManager.swift
 
 Merlin/Views/Settings/
   ModelControlView.swift            — ModelControlView + ModelControlSectionView + RestartInstructionsSheet
 ```
+
+---
+
+## llama.cpp First-Class Local Provider [v2.3 planned]
+
+### Design Decision: Router Capability on the Local Manager, Not a New Provider Wire Format
+
+llama.cpp's `llama-server` remains an OpenAI-compatible chat provider. Merlin should not add a new `ProviderKind` for it. The first-class work is local runtime management: model discovery, model load/unload, GGUF launch parameters, and general+vision pairing. Those concerns belong in `LocalModelManagerProtocol` and `LlamaCppModelManager`.
+
+`/router` is treated as a capability shorthand for llama-server router mode. The HTTP chat path remains `/v1/chat/completions`; the router management path is the model catalog/load/unload API exposed by llama-server when launched without a single fixed `--model` and with `--models-dir`, `--models-preset`, or the llama cache as the model source.
+
+### Default Provider
+
+```swift
+ProviderConfig(
+    id: "llamacpp",
+    displayName: "llama.cpp",
+    localModelManagerID: "llamacpp",
+    baseURL: "http://localhost:8081/v1",
+    model: "",
+    isEnabled: false,
+    isLocal: true,
+    supportsThinking: false,
+    supportsVision: true,
+    kind: .openAICompatible
+)
+```
+
+Port `8081` is intentional. Upstream llama-server defaults to `8080`, but Merlin already reserves `8080` for LocalAI. A first-class llama.cpp provider must not collide with LocalAI during the local-provider pair workflow.
+
+### General + Vision Pairing
+
+Merlin already supports virtual local provider IDs of the form `backend:model`. llama.cpp router mode should use that existing mechanism:
+
+```toml
+[slots]
+execute = "llamacpp:qwen3-coder-30b-a3b-instruct-q8_0"
+vision = "llamacpp:qwen3-vl-8b-instruct-q8_0"
+```
+
+Both slots resolve to the same base URL (`http://localhost:8081/v1`) but send different `model` values in the OpenAI-compatible request. Router mode owns loading the requested model. The execute model can be a GGUF coding/general model; the vision model can be a GGUF VLM plus `mmproj`.
+
+This is the preferred Merlin design over two separate llama-server processes because it preserves the existing slot picker, keeps one provider backend in Settings, and lets one local manager account for loaded/unloaded state. Two-process mode remains a fallback for debugging or for upstream router regressions.
+
+### LlamaCppModelManager Contract
+
+```swift
+final class LlamaCppModelManager: LocalModelManagerProtocol {
+    let providerID = "llamacpp"
+
+    let capabilities = ModelManagerCapabilities(
+        canReloadAtRuntime: true,              // true only when router mode is detected
+        supportedLoadParams: [
+            .contextLength, .gpuLayers, .cpuThreads,
+            .flashAttention, .cacheTypeK, .cacheTypeV,
+            .ropeFrequencyBase, .batchSize, .useMmap, .useMlock
+        ],
+        supportsRouterMode: true,
+        supportsRuntimeModelLoad: true,
+        supportsRuntimeModelUnload: true
+    )
+
+    func loadedModels() async throws -> [LoadedModelInfo]
+    func ensureModelLoaded(modelID: String) async throws
+    func unloadModel(modelID: String) async throws
+    func reload(modelID: String, config: LocalModelConfig) async throws
+    func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions?
+}
+```
+
+Required behavior:
+
+1. Detect router mode by probing `/models` or `/v1/models` and checking for router model state metadata when available. If the server only exposes the single loaded model, downgrade to restart-only behavior.
+2. `loadedModels()` returns all addressable router models so `ProviderRegistry.allSlotPickerEntries` can expose `llamacpp:<model-id>` entries.
+3. `ensureModelLoaded(modelID:)` calls `POST /models/load` when the router reports the model as unloaded, sleeping, or absent from active memory but available in the catalog.
+4. `unloadModel(modelID:)` calls `POST /models/unload` for explicit user unloads and for future memory-pressure policy.
+5. `reload(modelID:config:)` in router mode unloads and reloads the same model with the selected load parameters. In single-model mode it throws `.requiresRestart`.
+6. `restartInstructions(...)` generates either a router-mode launch command or a single-model launch command, depending on the user's selected local runtime mode.
+7. Provider creation remains synchronous. Runtime autoload happens in an async preflight immediately before the request, not inside `ProviderRegistry.provider(for:)`.
+
+### Load Parameter Mapping
+
+| Merlin `LoadParam` | llama-server flag |
+|---|---|
+| `contextLength` | `--ctx-size` |
+| `gpuLayers` | `--n-gpu-layers` |
+| `cpuThreads` | `--threads` |
+| `flashAttention` | `--flash-attn` |
+| `cacheTypeK` | `--cache-type-k` |
+| `cacheTypeV` | `--cache-type-v` |
+| `ropeFrequencyBase` | `--rope-freq-base` |
+| `batchSize` | `--batch-size` |
+| `useMmap` | `--mmap` / `--no-mmap` |
+| `useMlock` | `--mlock` |
+
+Additional first-class llama.cpp runtime settings are required because they are not generic load parameters:
+
+| Setting | Purpose |
+|---|---|
+| `serverPath` | Path to `llama-server`; default `llama-server` on `PATH`, Homebrew path acceptable |
+| `routerEnabled` | Start without a fixed `--model`; enables catalog + runtime load/unload |
+| `modelsDir` | Directory scanned by router mode for GGUF files |
+| `modelsPresetPath` | Optional llama-server `.ini` preset file for per-model config |
+| `modelPath` | Single-model fallback path when router mode is off |
+| `modelAlias` | Stable model ID exposed by `/v1/models` for single-model mode |
+| `mmprojPath` | Vision projector path for a VLM in single-model mode or per-model preset |
+| `parallelSlots` | llama-server `--parallel` concurrency setting |
+| `ubatchSize` | llama-server micro-batch setting |
+| `chatTemplate` | Explicit chat template override when GGUF metadata is insufficient |
+| `apiKey` | Optional local bearer token if the user starts llama-server with auth |
+| `autoloadModels` | Whether Merlin should call `ensureModelLoaded` before the first request |
+
+These should be persisted as provider-specific local runtime configuration, not added directly to the generic `ProviderConfig` unless they apply to every provider. `ProviderConfig` should continue to hold the wire identity (`id`, `baseURL`, `model`, flags). llama.cpp launch/runtime details belong in a local manager settings record keyed by `providerID`.
+
+### Router Preset Shape
+
+Router mode should be documented and generated as an `.ini` file when the user wants Merlin-managed launch commands:
+
+```ini
+[server]
+host = 127.0.0.1
+port = 8081
+models-dir = /Users/you/Models/gguf
+parallel = 2
+
+[model.qwen3-coder-30b-a3b-instruct-q8_0]
+model = /Users/you/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+ctx-size = 32768
+n-gpu-layers = -1
+
+[model.qwen3-vl-8b-instruct-q8_0]
+model = /Users/you/Models/gguf/Qwen3-VL-8B-Instruct-Q8_0.gguf
+mmproj = /Users/you/Models/gguf/mmproj-Qwen3-VL-8B-Instruct-f16.gguf
+ctx-size = 16384
+n-gpu-layers = -1
+```
+
+The exact upstream preset syntax must be validated during implementation against the installed llama.cpp version. The architectural contract is stable: one Merlin provider, one base URL, many addressable model IDs.
+
+### Request Flow
+
+```text
+RoleSlotSettingsView
+  └── user assigns execute = llamacpp:<general-model>
+      user assigns vision  = llamacpp:<vision-model>
+        │
+        ▼
+AgenticEngine request preparation
+  ├── async preflight: LlamaCppModelManager.ensureModelLoaded("<model>")
+  └── ProviderRegistry.provider(for: "llamacpp:<model>")
+        │
+        └── returns OpenAICompatibleProvider(baseURL: http://localhost:8081/v1,
+                                             modelID: "<model>")
+              │
+              ▼
+        llama-server router selects the loaded model by request.model
+```
+
+### LoRA / Fine-Tuning Boundary
+
+llama.cpp is a serving target for Merlin's LoRA output, not the primary training backend. The V6 path remains:
+
+```text
+OutcomeRecord corpus
+  → mlx_lm.lora training
+  → optional mlx_lm.fuse
+  → convert/fuse output to GGUF
+  → serve through llama-server router as a normal GGUF model
+```
+
+If llama.cpp adapter loading is used later, treat it as an inference-time optimization for compatible GGUF/PEFT adapter formats. It must not replace `LoRATrainer` until it supports Merlin's current MLX training workflow at the same quality and reliability level.
+
+### Validation Requirements
+
+First-class support is not complete until all of these pass:
+
+1. `ProviderRegistry.defaultProviders` contains disabled-by-default `llamacpp`.
+2. `AppState.makeManager(for:)` resolves `llamacpp` to `LlamaCppModelManager`.
+3. `/v1/models` or `/models` discovery populates slot picker entries for both general and vision models.
+4. Assigning `execute = llamacpp:<general>` and `vision = llamacpp:<vision>` routes both slots through one base URL with different request model IDs.
+5. Router `POST /models/load` and `POST /models/unload` are covered by unit tests with mocked URLSession responses.
+6. Single-model fallback returns restart instructions instead of pretending runtime reload is available.
+7. Live smoke test covers text completion, tool-call prompt shape, vision image request, `/health`, `/v1/models`, and no HTTP 400 responses.
+8. Local-provider docs state the one-local-provider-pair-at-a-time rule: do not run llama.cpp router beside LM Studio/Jan/LocalAI pairs during calibration unless memory pressure has been measured.
 
 ---
 
@@ -816,7 +1019,7 @@ protocol LLMProvider: AnyObject, Sendable {
 
 ### Provider Implementations
 
-**`OpenAICompatibleProvider`** [v1] — single class covering all OpenAI-compatible endpoints. Parameterised by `baseURL`, `apiKey` (nil = no auth header for local providers), and `model`. Handles SSE via `SSEParser`. Used for: DeepSeek, OpenAI, Qwen, OpenRouter, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, LM Studio.
+**`OpenAICompatibleProvider`** [v1] — single class covering all OpenAI-compatible endpoints. Parameterised by `baseURL`, `apiKey` (nil = no auth header for local providers), and `model`. Handles SSE via `SSEParser`. Used for: DeepSeek, OpenAI, Qwen, OpenRouter, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, LM Studio, llama.cpp.
 
 **`AnthropicProvider`** [v1] — separate implementation for the Anthropic Messages API. Differences from OpenAI-compatible:
 - Auth: `x-api-key` + `anthropic-version: 2023-06-01` headers
@@ -837,6 +1040,7 @@ enum ProviderKind: String, Codable, Sendable {
 struct ProviderConfig: Codable, Sendable, Identifiable {
     var id: String               // "openai", "anthropic", "ollama", etc.
     var displayName: String
+    var localModelManagerID: String?
     var baseURL: String          // user-configurable; local providers default to localhost
     var model: String            // model ID sent in requests
     var isEnabled: Bool
@@ -844,6 +1048,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
     var supportsThinking: Bool   // guards ThinkingConfig injection
     var supportsVision: Bool     // used by vision routing in AgenticEngine
     var kind: ProviderKind
+    var budget: ProviderBudget?
 }
 ```
 
@@ -854,7 +1059,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
 ```swift
 @MainActor
 final class ProviderRegistry: ObservableObject {
-    @Published var providers: [ProviderConfig]        // all nine + LM Studio
+    @Published var providers: [ProviderConfig]        // remote + local provider configs
     @Published var activeProviderID: String
     @Published var availabilityByID: [String: Bool]   // live probe results for local providers
 
@@ -882,8 +1087,59 @@ final class ProviderRegistry: ObservableObject {
 | LocalAI | OAI-compat | `localhost:8080/v1` | Yes | No | Yes | No |
 | Mistral.rs | OAI-compat | `localhost:1235/v1` | Yes | No | No | No |
 | vLLM-Metal | OAI-compat | `localhost:8000/v1` | Yes | No | No | No |
+| llama.cpp | OAI-compat | `localhost:8081/v1` | Yes | No | Yes | No |
 
 All base URLs are user-configurable in `ProviderSettingsView`.
+
+### Main Workspace Slot Status [v2.3 planned]
+
+Providers are inventory; slots are routing. The main workspace must show routing state, not provider inventory. Enabling or configuring a provider in `ProviderSettingsView` must not create any visible workspace status badge unless a role slot is explicitly assigned to that provider.
+
+The old top-of-window `ProviderHUD` is retired for provider display. Its provider/auto badge was ambiguous because it showed a single effective provider even though Merlin routes across four slots. Replacement is a collapsed slot-status panel at the bottom of the left session sidebar, below the session list and above the `New Project Workspace` button.
+
+The panel always renders four rows:
+
+```text
+Slots
+Execute       DeepSeek V4 Flash
+Reason        DeepSeek V4 Pro
+Orchestrate   Not configured
+Vision        Not configured
+```
+
+Rules:
+
+1. Rows are driven only by `AppSettings.slotAssignments`.
+2. `ProviderRegistry.activeProviderID`, `ProviderRegistry.primaryProvider`, enabled provider state, and runtime fallback rules must not populate a row.
+3. Every slot is always present. Unassigned slots render disabled/secondary with a grey status dot and the label `Not configured`.
+4. Configured slots render the resolved provider/model display name from `ProviderRegistry.displayName(for:)`.
+5. Virtual local model IDs (`backend:model`) render as the backend display name plus model name, consistent with the Settings picker.
+6. Orchestrate may still fall back to reason internally, but the UI row must remain `Not configured` unless `slotAssignments[.orchestrate]` is set.
+7. Vision may fall back internally for legacy behavior, but the UI row must remain `Not configured` unless `slotAssignments[.vision]` is set.
+8. Later health states attach to the same rows: `Missing key`, `Provider offline`, `No model selected`, `Model unavailable`, or `Ready`.
+
+Implementation surface:
+
+```text
+Merlin/Views/
+  SlotStatusPanel.swift        — collapsed four-row slot routing summary
+  ProviderHUD.swift            — no longer shows provider routing; keep only non-provider status if still needed
+  SessionSidebar.swift         — embeds SlotStatusPanel in sidebar footer area
+
+Data dependencies:
+  AppSettings.slotAssignments
+  ProviderRegistry.displayName(for:)
+  ProviderRegistry.isReadyForUse(_:)      — health only; never determines assignment
+```
+
+Acceptance criteria:
+
+1. Enabling/configuring DeepSeek, LM Studio, llama.cpp, or any provider does not change the sidebar slot panel when all `slotAssignments` are nil.
+2. With no slot assignments, the sidebar shows all four rows as `Not configured`.
+3. Assigning only `execute` updates only the Execute row; Reason, Orchestrate, and Vision remain `Not configured`.
+4. Assigning `execute = "llamacpp:qwen3-coder"` and `vision = "llamacpp:qwen3-vl"` shows both rows using the same provider backend with distinct model names.
+5. The top main-screen provider badge is absent.
+6. Unit/UI tests cover provider-enabled-without-slot, partial slot assignment, virtual provider display, and orchestrate/vision fallback not leaking into the panel.
 
 ### Thinking Mode Auto-Detection [v1]
 
@@ -1567,7 +1823,7 @@ Once the WKWebView renderer exists, adding image kinds to the parser and passing
 
 **[v1] AuthPopupView** — modal, non-dismissable via background click.
 
-**[v1] ProviderHUD** — toolbar indicator showing active provider and thinking/tool state.
+**[v1] ProviderHUD** — toolbar indicator showing active provider and thinking/tool state. Superseded for provider display in v2.3: main-window routing status moves to the left-sidebar `SlotStatusPanel`, and the top HUD must not show provider inventory or fallback-derived routing.
 
 **[v1] FirstLaunchSetupView** — Keychain setup on first run. Calls `appState.reloadProviders(apiKey:)` after saving.
 
@@ -3766,6 +4022,7 @@ The previous `WindowGroup(for: ProjectRef.self)` (per-project windows) and `Wind
 WorkspaceView
   ├── coordinator: WorkspaceCoordinator
   ├── SessionSidebar()                        (environmentObject: coordinator)
+  │   └── SlotStatusPanel()                   (v2.3; explicit slot assignments only)
   ├── ContentView()                           (focusedObject: coordinator)
   ├── TerminalPane(workingDirectory: coordinator.activeProjectManager?.projectRef.path ?? "")
   ├── SideChatPane(isVisible:, projectPath: coordinator.activeProjectManager?.projectRef.path ?? "")
@@ -3788,6 +4045,12 @@ WorkspaceView
 │   ▸ Add CHM support    3d    │
 │   ▸ Stage 6 cleanup    1w    │
 │   Show archived…             │
+├──────────────────────────────┤
+│  Slots                       │  ← v2.3 collapsed routing summary
+│   Execute      DeepSeek V4…  │
+│   Reason       Not configured│
+│   Orchestrate  Not configured│
+│   Vision       Not configured│
 ├──────────────────────────────┤
 │ ● merlin               [···] │  ← second project
 │                              │
