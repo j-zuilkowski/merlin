@@ -1130,6 +1130,22 @@ The primary chat interface. Key responsibilities:
 - Submit button doubles as stop button when engine is running (red stop icon)
 - Toolbar actions row (quick-access shell shortcuts)
 
+Provider routing status is no longer displayed in the top-of-chat area. Routing
+state is represented in the sidebar slot panel instead.
+
+### SlotStatusPanel
+
+**File:** `Merlin/Views/SlotStatusPanel.swift`
+
+`SlotStatusPanel` renders four persistent rows (Execute, Reason, Orchestrate,
+Vision) from explicit `AppSettings.slotAssignments` only.
+
+- Resolver: `SlotStatusResolver`
+- Row model: `SlotStatusRowModel`
+- Unassigned rows remain visible and show `Not configured`
+- Provider enablement, active provider selection, and fallback rules do not
+  populate rows
+
 ---
 
 ## Configuration System

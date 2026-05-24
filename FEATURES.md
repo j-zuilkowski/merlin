@@ -6,7 +6,8 @@ A complete reference of everything Merlin can do. For implementation details see
 
 ## LLM Providers
 
-Merlin connects to remote and local providers interchangeably. Switch mid-session from the toolbar.
+Merlin connects to remote and local providers interchangeably. Routing is controlled by
+explicit slot assignments, not by selecting a provider from the chat header.
 
 **Remote**
 - Anthropic
@@ -103,6 +104,8 @@ Merlin persists default sampling values in the `[inference]` TOML section and ap
 Local providers expose load-time controls in Settings → Providers. The editor only shows fields that the provider manager advertises through `supportedLoadParams`.
 
 - `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
+- The lower-left sidebar `SlotStatusPanel` always shows Execute, Reason, Orchestrate, and Vision rows from explicit slot assignments.
+- Unassigned rows remain visible and are labelled `Not configured`; enabling a provider by itself does not populate slot rows.
 - LM Studio, Ollama, Jan.ai, and llama.cpp router mode can reload model presence at runtime.
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.

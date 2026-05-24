@@ -37,6 +37,8 @@ public enum AccessibilityID {
     public static let sessionProjectNewButton = "session-project-new-button"
     public static let sessionProjectCloseButton = "session-project-close-button"
     public static let sessionArchivedTogglePrefix = "session-archived-toggle-"
+    public static let slotStatusPanel = "slot-status-panel"
+    public static let slotStatusRowPrefix = "slot-status-row-"
 
     // MARK: - Toolbar / HUD
 

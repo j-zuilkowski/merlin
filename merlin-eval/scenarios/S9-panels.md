@@ -27,8 +27,8 @@ source, assert the panel shows the data, toggle it off.
 - **PreviewPane** — open an HTML file; assert the WKWebView renders it.
 - **SideChatPane** — open it; assert it is an independent chat session (regression for
   the SideChatPane crash fixed earlier this effort).
-- **ProviderHUD** — assert provider name, context-usage bar colour thresholds, the
-  popover provider list + status dots.
+- **SlotStatusPanel** — assert four persistent rows (Execute/Reason/Orchestrate/Vision),
+  `Not configured` defaults, and explicit-slot-only population.
 - **PendingAttentionChip / Panel** — with findings queued, assert the chip shows the
   true count (regression for phase 304) and the panel lists + dismisses findings.
 

@@ -25,7 +25,7 @@ Every `struct … : View`. M3 host-render smoke must instantiate **all 76**.
   `PriorSessionRow`, `SubagentSection`, `ProjectHeaderPopover`, `PermissionModeBadge`,
   `SectionLabel`
 - **Panels:** `ToolLogView`, `TerminalPane`, `ScreenPreviewView`, `DiffPane` +
-  `DiffLineView` + `StagedChangeView`, `FilePane`, `PreviewPane`, `ProviderHUD`,
+  `DiffLineView` + `StagedChangeView`, `FilePane`, `PreviewPane`, `SlotStatusPanel`,
   `WorkerDiffView`, `SubagentSidebarRowView`, `PendingAttentionChipView`,
   `PendingAttentionPanelView` + `FindingRowView`, `AdvisoryRow`
 - **Chat surface:** `VoiceDictationButton`, `AtMentionPicker`, `SkillsPicker`,
@@ -60,7 +60,7 @@ control must round-trip a value (set → effect → persist → reload). The 158
 chatPermissionModeButton chatStopButton chatToolbarActionPrefix chatResumeScrollButton
 chatAtMentionPicker chatSkillsPicker sessionList newSessionButton
 sessionProjectHeaderPrefix sessionProjectNewButton sessionProjectCloseButton
-sessionArchivedTogglePrefix providerHUD settingsButton providerSelector
+sessionArchivedTogglePrefix slotStatusPanel slotStatusRowPrefix settingsButton providerSelector
 settingsProvidersRefreshButton settingsProviderModelFieldPrefix
 settingsProviderMaxTokensFieldPrefix settingsProviderKeyButtonPrefix
 settingsProviderEnabledTogglePrefix settingsProviderUseButtonPrefix
@@ -127,7 +127,7 @@ phase-325{a,b}-accessibility-id-gap*`) — adds all 12 constants + applies them.
 auth popup · first-launch · project picker · memory review · API-key entry ·
 add-scheduled-task · restart-instructions · tool-requirement · calibration flow ·
 dismiss-rationale · reset-settings confirm · @-mention popover · skills popover ·
-project-header popover · Provider-HUD popover · project-dir file importer · session
+project-header popover · project-dir file importer · session
 context menus · BTW overlay · scroll-lock banner.
 
 ## 1.4 — Scenes & windows — 9
@@ -246,11 +246,11 @@ read_file/list_directory/search_files/bash/web_search/rag_search). + custom TOML
 (`~/.merlin/agents/`). Slots (4): execute, reason, orchestrate, vision.
 
 ## 3.4 — Providers
-**11 provider configs** (`ProviderRegistry.defaultProviders`): deepseek, openai,
-anthropic, qwen, openrouter, ollama, lmstudio, jan, localai, mistralrs, vllm.
+**12 provider configs** (`ProviderRegistry.defaultProviders`): deepseek, openai,
+anthropic, qwen, openrouter, ollama, lmstudio, jan, localai, mistralrs, vllm, llamacpp.
 **4 provider classes:** AnthropicProvider, OpenAICompatibleProvider, DeepSeekProvider,
-NullProvider. **7 local model managers:** Ollama, LMStudio, LocalAI, MistralRS, VLLM,
-Jan, Null.
+NullProvider. **8 local model managers:** Ollama, LMStudio, LocalAI, MistralRS, VLLM,
+Jan, LlamaCpp, Null.
 
 ## 3.5 — Connectors — 5
 GitHub (PR/issue/file/createPR/comment/merge), Slack (list/post), Linear
@@ -296,7 +296,7 @@ click/drag/type/key/scroll) · vision query (`VisionQueryTool`).
 | hooks · MCP · inject · automations · env | S12 | covered |
 | AppIntents (3) | S16 | covered (incl. MerlinMetadataIntent — add) |
 | ~/.merlin tree | S12/S15/S14 | covered |
-| 11 providers · 5 connectors · keys | S13 | covered |
+| 12 providers · 5 connectors · keys | S13 | covered |
 | 13 skills · 3 agents · 4 slots | S14 | covered |
 | memories · notifications | S15 / S17 | covered |
 | ~67 agent tools | **S18** | covered — S18 authored |

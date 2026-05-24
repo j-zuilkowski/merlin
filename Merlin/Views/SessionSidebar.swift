@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SessionSidebar: View {
     @EnvironmentObject private var coordinator: WorkspaceCoordinator
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -14,6 +15,15 @@ struct SessionSidebar: View {
                 }
             }
             .accessibilityIdentifier(AccessibilityID.sessionList)
+
+            Divider()
+
+            SlotStatusPanel(
+                slotAssignments: settings.slotAssignments,
+                displayNameForProviderID: { providerID in
+                    coordinator.activeSession?.appState.registry.displayName(for: providerID) ?? providerID
+                }
+            )
 
             Divider()
 

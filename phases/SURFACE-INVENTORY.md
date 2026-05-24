@@ -60,7 +60,7 @@ sheet), Esc (btw overlay). In-chat ⌘⇧M (cycle permission mode). †= current
 ## D. Workspace panels & toolbar toggles — `[S9]` · M2/M3
 SessionSidebar, ChatView, ToolLogView (tool log), TerminalPane (terminal), ScreenPreview
 View (screen capture), DiffPane (staged changes), FilePane (file viewer), PreviewPane
-(web preview), SideChatPane, ProviderHUD, PendingAttentionChip/Panel. Six toolbar toggles
+(web preview), SideChatPane, SlotStatusPanel, PendingAttentionChip/Panel. Six toolbar toggles
 (`WorkspaceView.swift`): Staged Changes, File Viewer, Terminal, Preview, Side Chat,
 Memories. Each panel: open it, drive its data, assert it reflects state, screenshot.
 
@@ -87,7 +87,7 @@ interactive elements (thinking toggle, tool-row toggle, scroll-lock).
 ## H. Modal / transient UI — `[S11]` · M2
 ~20 sheets/popovers/dialogs/overlays: auth popup, first-launch setup, calibration flow
 (3 steps), API-key entry, restart-instructions, tool-requirement, project picker, memory
-review, add-scheduled-task, dismiss-rationale; Provider-HUD popover, project-header
+review, add-scheduled-task, dismiss-rationale; project-header
 popover, @-mention/skills popovers; reset-settings confirmation; btw overlay, scroll-lock
 banner, pending-attention panel.
 
@@ -117,7 +117,7 @@ MCP servers (`~/.merlin/mcp.json` + `<project>/.mcp.json`, stdio/sse/http,
 scheduled automations (5-field cron, `ThreadAutomationEngine`).
 
 ## N. Providers, keys, connectors — `[S13]` · M2/M4
-11 providers; API keys in `~/.merlin/api-keys.json` (0600); connectors GitHub / Slack /
+12 providers; API keys in `~/.merlin/api-keys.json` (0600); connectors GitHub / Slack /
 Linear / Brave-search (Keychain) + xcalibre (config). Each: configure, authenticate,
 exercise a connector tool.
 

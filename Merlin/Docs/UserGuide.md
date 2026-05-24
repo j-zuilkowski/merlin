@@ -185,10 +185,15 @@ You can also trigger compaction on demand at any time by typing `/compact` in th
 
 ## Providers
 
-Merlin supports multiple LLM backends. Switch providers using:
+Merlin supports multiple LLM backends. Configure providers in **Settings → Providers**
+and assign routing in **Settings → Role Slots**.
 
-- The **Provider menu** in the menu bar
-- The **ProviderHUD** widget at the top of the chat view (click it to see a popover)
+The lower-left sidebar includes a **Slot Status** panel with four persistent rows:
+**Execute**, **Reason**, **Orchestrate**, and **Vision**.
+
+- Rows are driven only by explicit slot assignments.
+- Unassigned rows remain visible and are labelled **Not configured**.
+- Enabling a provider in Settings does not populate slot rows until a slot is assigned.
 
 Available providers:
 

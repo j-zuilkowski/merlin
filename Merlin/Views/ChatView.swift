@@ -173,7 +173,6 @@ struct ChatView: View {
             .help("Cycle permission mode (⌘⇧M)")
             .accessibilityIdentifier(AccessibilityID.chatPermissionModeButton)
 
-            ProviderHUD()
             PendingAttentionChipView(viewModel: appState.pendingAttention)
             Spacer(minLength: 0)
         }

@@ -58,7 +58,10 @@ Upstream blocker tracking for the malfunctioning local providers lives in
 
 `/calibrate` is live-validated in the app against the supported local providers. The GUI flow now completes picker → running → report, surfaces scorer failures materially better than before, and reports degraded critic fallback explicitly when it occurs.
 
-Switch providers per-session from the toolbar. API keys stored in macOS Keychain.
+Routing is driven by explicit slot assignments (Execute, Reason, Orchestrate, Vision) in
+Settings → Role Slots. The sidebar slot-status panel reflects those assignments directly;
+enabled provider inventory alone does not configure routing. API keys are stored in
+macOS Keychain.
 
 ---
 

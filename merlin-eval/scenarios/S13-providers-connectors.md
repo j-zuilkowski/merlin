@@ -9,10 +9,11 @@ M2 (Settings → Providers / Connectors) + M4 (key storage on disk / Keychain) +
 
 ## What is exercised
 
-**Providers (N):** for the 11 defined providers — confirm each can be enabled, given a
+**Providers (N):** for the 12 defined providers — confirm each can be enabled, given a
 model, and activated. Confirm a remote provider rejects requests cleanly with no key and
 works with one. Confirm a local provider (LM Studio) connects. Confirm the
-slot→provider mapping (`[slots]`) routes correctly.
+slot→provider mapping (`[slots]`) routes correctly. Confirm provider inventory state by
+itself does not populate sidebar slot-status rows unless slots are explicitly assigned.
 
 **API keys:** add a key via the `APIKeyEntrySheet`; assert it is written to
 `~/.merlin/api-keys.json` with `0600` permissions; assert it is read back; delete it;
@@ -30,14 +31,14 @@ config for xcalibre-server), then exercise the connector through the agent:
 Each connector with NO token configured must fail gracefully (clear error, no crash).
 
 ## Scoring rubric
-- [ ] Each of the 11 providers enables/configures/activates correctly.
+- [ ] Each of the 12 providers enables/configures/activates correctly.
 - [ ] A remote provider: clean failure without a key, success with one.
 - [ ] API keys persist to `~/.merlin/api-keys.json` at `0600`, read back, and delete.
 - [ ] Keys/tokens never leak into logs, telemetry, or generated memories.
 - [ ] Each of the 5 connectors authenticates and performs one real operation.
 - [ ] Each connector degrades gracefully when unconfigured.
 
-**Score:** providers / 11 + connectors / 5 + the key-handling checks.
+**Score:** providers / 12 + connectors / 5 + the key-handling checks.
 
 ## Runsheet
 1. Phases B–D, 301–306 merged; Merlin built. Use test/throwaway tokens where possible.
