@@ -130,6 +130,57 @@ final class WorkerSubagentEngineTests: XCTestCase {
         XCTAssertTrue(rewritten.hasPrefix("/tmp/wt/abc123"))
     }
 
+    func test_rewritePath_projectAbsolutePathBecomesWorktreeRelative() async throws {
+        let worktreePath = URL(fileURLWithPath: "/tmp/wt/abc123")
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: ".",
+            provider: MockProvider(),
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL
+        )
+        await engine.setWorktreePath(worktreePath)
+        let original = repoURL.appendingPathComponent("Sources/Foo.swift").path
+        let rewritten = await engine.rewrite(path: original)
+        XCTAssertEqual(rewritten, "/tmp/wt/abc123/Sources/Foo.swift")
+    }
+
+    func test_startEmitsWorkerReadyWithWorktreeAndStagingBuffer() async throws {
+        let mock = MockProvider(response: "Done.")
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: "Do something.",
+            provider: mock,
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL
+        )
+
+        var readyPath: URL?
+        var readyBuffer: StagingBuffer?
+        let stream = engine.events
+        Task { await engine.start() }
+        for await event in stream {
+            switch event {
+            case .workerReady(let path, let buffer):
+                readyPath = path
+                readyBuffer = buffer
+            case .completed:
+                break
+            case .failed(let error):
+                XCTFail("Unexpected failure: \(error)")
+            case .toolCallStarted, .toolCallCompleted, .messageChunk:
+                break
+            }
+        }
+
+        XCTAssertNotNil(readyPath)
+        XCTAssertNotNil(readyBuffer)
+    }
+
     func test_toolCall_executesRealWriteInsideWorktree() async throws {
         let mock = MockProvider(responses: [
             .toolCall(
@@ -183,7 +234,7 @@ final class WorkerSubagentEngineTests: XCTestCase {
                 summary = finalSummary
             case .failed(let error):
                 XCTFail("Unexpected failure: \(error)")
-            case .toolCallStarted, .messageChunk:
+            case .toolCallStarted, .messageChunk, .workerReady:
                 break
             }
         }

@@ -35,6 +35,8 @@ final class SubagentBlockViewModel: ObservableObject {
 
     func apply(_ event: SubagentEvent) {
         switch event {
+        case .workerReady:
+            break
         case .toolCallStarted(let name, _):
             toolEvents.append(SubagentToolEvent(toolName: name, status: .running))
         case .toolCallCompleted(let name, let result):

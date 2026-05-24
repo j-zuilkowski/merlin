@@ -2177,7 +2177,32 @@ final class AgenticEngine {
 
         struct SpawnArgs: Decodable {
             var agent: String
-            var prompt: String
+            var task: String
+            var context: String?
+
+            enum CodingKeys: String, CodingKey {
+                case agent
+                case task
+                case prompt
+                case context
+            }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                agent = try container.decode(String.self, forKey: .agent)
+                if let taskValue = try container.decodeIfPresent(String.self, forKey: .task) {
+                    task = taskValue
+                } else {
+                    task = try container.decode(String.self, forKey: .prompt)
+                }
+                context = try container.decodeIfPresent(String.self, forKey: .context)
+            }
+
+            var prompt: String {
+                let trimmedContext = context?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard trimmedContext.isEmpty == false else { return task }
+                return "\(trimmedContext)\n\n\(task)"
+            }
         }
 
         struct SubagentPlan: Sendable {
@@ -2250,6 +2275,7 @@ final class AgenticEngine {
                     ))
                     continue
                 }
+                let workerStagingBuffer = StagingBuffer()
                 let worker = WorkerSubagentEngine(
                     definition: definition,
                     prompt: args.prompt,
@@ -2259,6 +2285,7 @@ final class AgenticEngine {
                     depth: depth + 1,
                     worktreeManager: WorktreeManager.shared,
                     repoURL: URL(fileURLWithPath: projectPath),
+                    stagingBuffer: workerStagingBuffer,
                     toolDefinitionsProvider: toolDefinitionsProvider,
                     toolExecutor: { [weak self] call in
                         guard let self else {
@@ -2270,7 +2297,7 @@ final class AgenticEngine {
                         }
                         return await self.toolRouter.dispatch(
                             [call],
-                            stagingBufferOverride: nil
+                            stagingBufferOverride: workerStagingBuffer
                         ).first ?? ToolResult(
                             toolCallId: call.id,
                             content: "Tool dispatch returned no result.",

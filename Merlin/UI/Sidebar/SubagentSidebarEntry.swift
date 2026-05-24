@@ -17,6 +17,9 @@ struct SubagentSidebarEntry: Identifiable, Sendable {
 
     mutating func apply(_ event: SubagentEvent) {
         switch event {
+        case .workerReady(let path, let buffer):
+            worktreePath = path
+            stagingBuffer = buffer
         case .completed:
             status = .completed
         case .failed:

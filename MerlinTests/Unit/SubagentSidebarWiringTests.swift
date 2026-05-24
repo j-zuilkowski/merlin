@@ -25,4 +25,22 @@ final class SubagentSidebarWiringTests: XCTestCase {
         model.applyEngineEvent(.subagentUpdate(id: id, event: .completed(summary: "done")))
         XCTAssertEqual(sidebar.workerEntries.first?.status, .completed)
     }
+
+    func testWorkerReadyAttachesWorktreeAndStagingBufferToSidebarEntry() {
+        let model = ChatViewModel()
+        let sidebar = SubagentSidebarViewModel(parentSessionID: UUID())
+        model.subagentSidebar = sidebar
+        let id = UUID()
+        let worktreePath = URL(fileURLWithPath: "/tmp/worker")
+        let buffer = StagingBuffer()
+
+        model.applyEngineEvent(.subagentStarted(id: id, agentName: "worker"))
+        model.applyEngineEvent(.subagentUpdate(
+            id: id,
+            event: .workerReady(worktreePath: worktreePath, stagingBuffer: buffer)
+        ))
+
+        XCTAssertEqual(sidebar.workerEntries.first?.worktreePath, worktreePath)
+        XCTAssertTrue(sidebar.workerEntries.first?.stagingBuffer === buffer)
+    }
 }

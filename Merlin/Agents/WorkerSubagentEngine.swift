@@ -15,10 +15,11 @@ actor WorkerSubagentEngine {
 
     private(set) var worktreePath: URL?
     private(set) var sessionID: UUID?
-    let stagingBuffer = StagingBuffer()
+    let stagingBuffer: StagingBuffer
 
     private var runTask: Task<Void, Never>?
     private var continuation: AsyncStream<SubagentEvent>.Continuation?
+    private var pendingEvents: [SubagentEvent] = []
 
     init(
         definition: AgentDefinition,
@@ -29,6 +30,7 @@ actor WorkerSubagentEngine {
         depth: Int,
         worktreeManager: WorktreeManager,
         repoURL: URL,
+        stagingBuffer: StagingBuffer = StagingBuffer(),
         toolDefinitionsProvider: @escaping SubagentToolDefinitionsProvider = { ToolRegistry.shared.all() },
         toolExecutor: @escaping SubagentToolExecutor = { call in
             ToolResult(
@@ -46,6 +48,7 @@ actor WorkerSubagentEngine {
         self.depth = depth
         self.worktreeManager = worktreeManager
         self.repoURL = repoURL
+        self.stagingBuffer = stagingBuffer
         self.toolDefinitionsProvider = toolDefinitionsProvider
         self.toolExecutor = toolExecutor
     }
@@ -58,6 +61,10 @@ actor WorkerSubagentEngine {
 
     private func setContinuation(_ continuation: AsyncStream<SubagentEvent>.Continuation) {
         self.continuation = continuation
+        for event in pendingEvents {
+            continuation.yield(event)
+        }
+        pendingEvents.removeAll()
     }
 
     func start() async {
@@ -68,8 +75,9 @@ actor WorkerSubagentEngine {
             let worktree = try await worktreeManager.create(sessionID: sessionID, in: repoURL)
             worktreePath = worktree
             try await worktreeManager.lock(sessionID: sessionID)
+            yield(.workerReady(worktreePath: worktree, stagingBuffer: stagingBuffer))
         } catch {
-            continuation?.yield(.failed(error))
+            yield(.failed(error))
             continuation?.finish()
             return
         }
@@ -94,6 +102,11 @@ actor WorkerSubagentEngine {
         }
 
         if path.hasPrefix("/") {
+            let repoPrefix = repoURL.path.hasSuffix("/") ? repoURL.path : repoURL.path + "/"
+            if path.hasPrefix(repoPrefix) {
+                let relativeToRepo = String(path.dropFirst(repoPrefix.count))
+                return worktreePath.appendingPathComponent(relativeToRepo).path
+            }
             let relative = path.trimmingPrefix("/")
             return worktreePath.appendingPathComponent(relative).path
         }
@@ -153,7 +166,7 @@ actor WorkerSubagentEngine {
                 for try await chunk in stream {
                     if let text = chunk.delta?.content, text.isEmpty == false {
                         responseText += text
-                        continuation?.yield(.messageChunk(text))
+                        yield(.messageChunk(text))
                     }
                     if let thinking = chunk.delta?.thinkingContent, thinking.isEmpty == false {
                         thinkingText += thinking
@@ -183,17 +196,17 @@ actor WorkerSubagentEngine {
                     thinkingContent: thinkingText.isEmpty ? nil : thinkingText,
                     timestamp: Date()
                 ))
-                continuation?.yield(.completed(summary: responseText))
+                yield(.completed(summary: responseText))
                 continuation?.finish()
                 return
             } catch {
-                continuation?.yield(.failed(error))
+                yield(.failed(error))
                 continuation?.finish()
                 return
             }
         }
 
-        continuation?.yield(.completed(summary: "Worker reached iteration limit."))
+        yield(.completed(summary: "Worker reached iteration limit."))
         continuation?.finish()
     }
 
@@ -203,6 +216,14 @@ actor WorkerSubagentEngine {
                 await worktreeManager.unlock(sessionID: sessionID)
             }
             continuation?.finish()
+        }
+    }
+
+    private func yield(_ event: SubagentEvent) {
+        if let continuation {
+            continuation.yield(event)
+        } else {
+            pendingEvents.append(event)
         }
     }
 
@@ -236,7 +257,7 @@ actor WorkerSubagentEngine {
     private func executeToolCalls(_ calls: [ToolCall], into context: ContextManager) async {
         for call in calls {
             let input = inputDictionary(from: call.function.arguments)
-            continuation?.yield(.toolCallStarted(toolName: call.function.name, input: input))
+            yield(.toolCallStarted(toolName: call.function.name, input: input))
 
             let result: ToolResult
             if call.function.name == "spawn_agent" {
@@ -262,7 +283,7 @@ actor WorkerSubagentEngine {
                 }
             }
 
-            continuation?.yield(.toolCallCompleted(toolName: call.function.name, result: result.content))
+            yield(.toolCallCompleted(toolName: call.function.name, result: result.content))
             await context.append(Message(
                 role: .tool,
                 content: .text(result.content),

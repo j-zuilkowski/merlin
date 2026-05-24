@@ -17,12 +17,20 @@ extension ToolDefinition {
                         type: "string",
                         description: "Agent name. Built-ins: 'explorer', 'worker', 'default'. Custom agents from ~/.merlin/agents/."
                     ),
-                    "prompt": JSONSchema(
+                    "task": JSONSchema(
                         type: "string",
                         description: "The task prompt to send to the subagent."
-                    )
+                    ),
+                    "prompt": JSONSchema(
+                        type: "string",
+                        description: "Deprecated alias for task."
+                    ),
+                    "context": JSONSchema(
+                        type: "string",
+                        description: "Optional extra context to prepend before the task."
+                    ),
                 ],
-                required: ["agent", "prompt"]
+                required: ["agent", "task"]
             )
         )
     )

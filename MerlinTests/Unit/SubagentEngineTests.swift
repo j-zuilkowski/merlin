@@ -104,7 +104,7 @@ final class SubagentEngineTests: XCTestCase {
                 summary = finalSummary
             case .failed(let error):
                 XCTFail("Unexpected failure: \(error)")
-            case .messageChunk:
+            case .messageChunk, .workerReady:
                 break
             }
         }
