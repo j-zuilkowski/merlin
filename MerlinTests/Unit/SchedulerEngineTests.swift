@@ -9,14 +9,19 @@ private final class TestSchedulerSession: SchedulerSession {
     private(set) var closeCallCount = 0
     private let summary: String
     private let error: Error?
+    private let mcpReadyDelay: Duration?
 
-    init(summary: String = "completed", error: Error? = nil) {
+    init(summary: String = "completed", error: Error? = nil, mcpReadyDelay: Duration? = nil) {
         self.summary = summary
         self.error = error
+        self.mcpReadyDelay = mcpReadyDelay
     }
 
     func awaitMCPReady() async {
         awaitMCPReadyCallCount += 1
+        if let mcpReadyDelay {
+            try? await Task.sleep(for: mcpReadyDelay)
+        }
     }
 
     func runScheduledPrompt(_ prompt: String) async throws -> String {
@@ -244,6 +249,48 @@ final class SchedulerEngineTests: XCTestCase {
         XCTAssertEqual(session.awaitMCPReadyCallCount, 2)
         XCTAssertEqual(session.prompts, ["/review", "/review"])
         XCTAssertNil(engine.tasks.first?.lastRunAt)
+    }
+
+    @MainActor
+    func testEvaluateDueTasksDoesNotHangForeverWaitingForMCPReady() async throws {
+        let path = "/tmp/schedules-mcp-timeout-\(UUID().uuidString).json"
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let now = makeDate(minute: 5, hour: 9, day: 1, month: 1, year: 2026)
+        let session = TestSchedulerSession(
+            summary: "scheduled summary",
+            mcpReadyDelay: .seconds(30)
+        )
+        let notificationExpectation = expectation(description: "scheduler posts notification after readiness timeout")
+
+        let engine = SchedulerEngine(
+            configPath: path,
+            nowProvider: { now },
+            startTimer: false,
+            sessionFactory: { _ in session },
+            notificationPoster: { _, _, _ in
+                notificationExpectation.fulfill()
+            },
+            mcpReadyTimeout: 0.01
+        )
+
+        let task = ScheduledTask(
+            name: "Daily review",
+            cadence: .daily,
+            time: "09:00",
+            projectPath: "/tmp",
+            permissionMode: .plan,
+            prompt: "/review",
+            isEnabled: true
+        )
+        engine.addTask(task)
+
+        engine.evaluateDueTasks(now: now)
+        await fulfillment(of: [notificationExpectation], timeout: 1.0)
+
+        XCTAssertEqual(session.awaitMCPReadyCallCount, 1)
+        XCTAssertEqual(session.prompts, ["/review"])
+        XCTAssertEqual(engine.tasks.first?.lastRunAt, makeDate(minute: 0, hour: 9, day: 1, month: 1, year: 2026))
     }
 
     // MARK: - Helpers

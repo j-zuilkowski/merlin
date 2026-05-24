@@ -12,6 +12,7 @@ final class SchedulerEngine: ObservableObject, @unchecked Sendable {
     private let nowProvider: NowProvider
     private let sessionFactory: SessionFactory
     private let notificationPosterOverride: NotificationPoster?
+    private let mcpReadyTimeout: TimeInterval
     private var timer: Timer?
     private var runningIDs: Set<UUID> = []
     private let notificationEngine = NotificationEngine()
@@ -21,12 +22,14 @@ final class SchedulerEngine: ObservableObject, @unchecked Sendable {
         nowProvider: @escaping NowProvider = { Date() },
         startTimer: Bool = true,
         sessionFactory: @escaping SessionFactory = { LiveSession(projectRef: $0) },
-        notificationPoster: NotificationPoster? = nil
+        notificationPoster: NotificationPoster? = nil,
+        mcpReadyTimeout: TimeInterval = 30
     ) {
         self.configPath = configPath
         self.nowProvider = nowProvider
         self.sessionFactory = sessionFactory
         self.notificationPosterOverride = notificationPoster
+        self.mcpReadyTimeout = mcpReadyTimeout
         load()
         if startTimer {
             startTimerLoop()
@@ -114,10 +117,15 @@ final class SchedulerEngine: ObservableObject, @unchecked Sendable {
     }
 
     private func startTimerLoop() {
-        timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.evaluateDueTasks()
             }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+        Task { @MainActor [weak self] in
+            self?.evaluateDueTasks()
         }
     }
 
@@ -147,7 +155,7 @@ final class SchedulerEngine: ObservableObject, @unchecked Sendable {
             let session = self.sessionFactory(projectRef)
             session.permissionMode = task.permissionMode
             do {
-                await session.awaitMCPReady()
+                await waitForMCPReady(session)
                 let summary = try await session.runScheduledPrompt(task.prompt)
                 await session.close()
                 markTaskCompleted(id: task.id, at: scheduledAt)
@@ -160,6 +168,24 @@ final class SchedulerEngine: ObservableObject, @unchecked Sendable {
             } catch {
                 await session.close()
             }
+        }
+    }
+
+    private func waitForMCPReady(_ session: any SchedulerSession) async {
+        guard mcpReadyTimeout > 0 else {
+            await session.awaitMCPReady()
+            return
+        }
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                await session.awaitMCPReady()
+            }
+            group.addTask { [mcpReadyTimeout] in
+                try? await Task.sleep(for: .seconds(mcpReadyTimeout))
+            }
+            await group.next()
+            group.cancelAll()
         }
     }
 
