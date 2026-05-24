@@ -15,7 +15,7 @@ final class ProviderRegistryTests: XCTestCase {
 
     func testDefaultProvidersCount() {
         let registry = makeRegistry()
-        XCTAssertEqual(registry.providers.count, 11)
+        XCTAssertEqual(registry.providers.count, 12)
     }
 
     func testDefaultActiveProvider() {

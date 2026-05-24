@@ -29,7 +29,7 @@ final class ProviderConfigCalibrationDefaultsTests: XCTestCase {
     // MARK: - No hardcoded model defaults (Settings picker is the source of truth)
 
     func testEveryUntestedLocalProviderHasEmptyModelDefault() {
-        for id in ["ollama", "jan", "localai", "mistralrs", "vllm"] {
+        for id in ["ollama", "jan", "localai", "mistralrs", "vllm", "llamacpp"] {
             guard let p = provider(id) else {
                 XCTFail("Provider \(id) missing from defaultProviders")
                 continue

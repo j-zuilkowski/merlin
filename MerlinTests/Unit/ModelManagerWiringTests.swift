@@ -76,6 +76,13 @@ final class ModelManagerWiringTests: XCTestCase {
         XCTAssertNil(manager)
     }
 
+    func testAppStateResolvesLlamaCppManagerForLlamaCppProviderID() {
+        let appState = AppState()
+        let manager = appState.manager(for: "llamacpp")
+        XCTAssertNotNil(manager)
+        XCTAssertTrue(manager is LlamaCppModelManager)
+    }
+
     // MARK: applyAdvisory routing
 
     func testApplyAdvisoryContextLengthCallsReload() async throws {
