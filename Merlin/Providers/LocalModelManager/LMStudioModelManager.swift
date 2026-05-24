@@ -53,7 +53,7 @@ final class LMStudioModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
         return decoded.data.map {
-            LoadedModelInfo(modelID: $0.identifier, knownConfig: LocalModelConfig())
+            LoadedModelInfo(modelID: $0.identifier, knownConfig: LocalModelConfig(), exposure: .runtimeLoaded)
         }
     }
 

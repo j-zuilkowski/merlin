@@ -15,14 +15,16 @@ final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendabl
     )
 
     private let baseURL: URL
+    private let session: URLSession
 
-    init(baseURL: URL) {
+    init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
+        self.session = session
     }
 
     func loadedModels() async throws -> [LoadedModelInfo] {
         let url = normalizedOpenAICompatibleBaseURL(baseURL).appendingPathComponent("models")
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.providerUnavailable
         }
@@ -31,7 +33,9 @@ final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendabl
         struct Response: Decodable { let data: [ModelEntry] }
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
-        return decoded.data.map { LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig()) }
+        return decoded.data.map {
+            LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig(), exposure: .serverExposed)
+        }
     }
 
     func reload(modelID: String, config: LocalModelConfig) async throws {

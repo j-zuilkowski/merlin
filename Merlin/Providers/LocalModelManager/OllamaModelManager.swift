@@ -40,10 +40,10 @@ final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
     // MARK: - loadedModels
 
     func loadedModels() async throws -> [LoadedModelInfo] {
-        if let running = try await loadModels(from: "api/ps", enrichKnownConfig: true), !running.isEmpty {
+        if let running = try await loadModels(from: "api/ps", enrichKnownConfig: true, exposure: .runtimeLoaded), !running.isEmpty {
             return running
         }
-        if let tags = try await loadModels(from: "api/tags", enrichKnownConfig: false) {
+        if let tags = try await loadModels(from: "api/tags", enrichKnownConfig: false, exposure: .catalogFallback) {
             return tags
         }
         throw ModelManagerError.providerUnavailable
@@ -109,7 +109,11 @@ final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
         modelID.hasSuffix("-merlin") ? modelID : "\(modelID)-merlin"
     }
 
-    private func loadModels(from path: String, enrichKnownConfig: Bool) async throws -> [LoadedModelInfo]? {
+    private func loadModels(
+        from path: String,
+        enrichKnownConfig: Bool,
+        exposure: LoadedModelExposure
+    ) async throws -> [LoadedModelInfo]? {
         let url = baseURL.appendingPathComponent(path)
         let (data, response) = try await session.data(from: url)
         guard let status = (response as? HTTPURLResponse)?.statusCode else {
@@ -125,7 +129,7 @@ final class OllamaModelManager: LocalModelManagerProtocol, @unchecked Sendable {
         let decoded = try JSONDecoder().decode(TagsResponse.self, from: data)
         return await decoded.models.asyncMap { entry in
             let knownConfig = enrichKnownConfig ? ((try? await showModelConfig(modelID: entry.name)) ?? LocalModelConfig()) : LocalModelConfig()
-            return LoadedModelInfo(modelID: entry.name, knownConfig: knownConfig)
+            return LoadedModelInfo(modelID: entry.name, knownConfig: knownConfig, exposure: exposure)
         }
     }
 

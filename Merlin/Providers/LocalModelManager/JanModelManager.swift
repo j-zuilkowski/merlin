@@ -46,7 +46,7 @@ final class JanModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
         return decoded.data.map {
-            LoadedModelInfo(modelID: $0.id, knownConfig: readKnownConfig(modelID: $0.id))
+            LoadedModelInfo(modelID: $0.id, knownConfig: readKnownConfig(modelID: $0.id), exposure: .runtimeLoaded)
         }
     }
 

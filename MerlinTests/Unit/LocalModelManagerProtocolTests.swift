@@ -86,6 +86,7 @@ final class LocalModelManagerProtocolTests: XCTestCase {
     func testLoadedModelInfoFieldsExist() {
         let info = LoadedModelInfo(modelID: "qwen2.5-coder:32b", knownConfig: LocalModelConfig())
         XCTAssertEqual(info.modelID, "qwen2.5-coder:32b")
+        XCTAssertEqual(info.exposure, .serverExposed)
     }
 
     func testRestartInstructionsFieldsExist() {
@@ -221,6 +222,7 @@ final class LocalModelManagerProtocolTests: XCTestCase {
         XCTAssertEqual(models.first?.knownConfig.contextLength, 8192)
         XCTAssertEqual(models.first?.knownConfig.gpuLayers, -1)
         XCTAssertEqual(models.first?.knownConfig.useMmap, true)
+        XCTAssertEqual(models.first?.exposure, .runtimeLoaded)
     }
 
     func testOllamaLoadedModelsFallsBackToTags() async throws {
@@ -249,8 +251,9 @@ final class LocalModelManagerProtocolTests: XCTestCase {
             baseURL: URL(string: "http://localhost:11434")!,
             session: session
         )
-        let models = try await manager.loadedModels().map(\.modelID)
-        XCTAssertEqual(models, ["qwen3-coder"])
+        let models = try await manager.loadedModels()
+        XCTAssertEqual(models.map(\.modelID), ["qwen3-coder"])
+        XCTAssertEqual(models.first?.exposure, .catalogFallback)
     }
 
     func testOllamaEnsureContextLengthReloadsWithNextPowerOf2() async throws {

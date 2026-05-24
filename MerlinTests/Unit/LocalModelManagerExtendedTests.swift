@@ -49,9 +49,22 @@ final class LocalModelManagerExtendedTests: XCTestCase {
         )
         let models = try await manager.loadedModels()
         let model = try XCTUnwrap(models.first)
+        XCTAssertEqual(model.exposure, .runtimeLoaded)
         XCTAssertEqual(model.knownConfig.contextLength, 8192)
         XCTAssertEqual(model.knownConfig.gpuLayers, -1)
         XCTAssertEqual(model.knownConfig.cpuThreads, 10)
+    }
+
+    func testLocalAIServedModelsAreMarkedServerExposed() async throws {
+        let session = Self.makeMockSession { request in
+            Self.okResponse(
+                for: request,
+                data: Data(#"{"data":[{"id":"qwen3-coder"}]}"#.utf8)
+            )
+        }
+        let manager = LocalAIModelManager(baseURL: URL(string: "http://localhost:8080")!, session: session)
+        let models = try await manager.loadedModels()
+        XCTAssertEqual(models.first?.exposure, .serverExposed)
     }
 
     func testJanEnsureContextLengthReloadsWithNextPowerOf2() async throws {
@@ -201,6 +214,18 @@ final class LocalModelManagerExtendedTests: XCTestCase {
     func testVLLMManagerSupportsCacheTypeK() {
         let manager = VLLMModelManager(baseURL: URL(string: "http://localhost:8000")!)
         XCTAssertTrue(manager.capabilities.supportedLoadParams.contains(.cacheTypeK))
+    }
+
+    func testVLLMServedModelsAreMarkedServerExposed() async throws {
+        let session = Self.makeMockSession { request in
+            Self.okResponse(
+                for: request,
+                data: Data(#"{"data":[{"id":"qwen3-coder"}]}"#.utf8)
+            )
+        }
+        let manager = VLLMModelManager(baseURL: URL(string: "http://localhost:8000")!, session: session)
+        let models = try await manager.loadedModels()
+        XCTAssertEqual(models.first?.exposure, .serverExposed)
     }
 }
 
