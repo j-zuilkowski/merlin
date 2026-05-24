@@ -24,6 +24,8 @@ final class AccessibilityIDCoverageTests: XCTestCase {
             AccessibilityID.workerDiffFileList,
             AccessibilityID.workerDiffEmptyState,
             AccessibilityID.memoryBrowserSearchField,
+            AccessibilityID.slotStatusPanel,
+            AccessibilityID.slotStatusRowPrefix,
         ]
         // Every identifier is non-empty and unique.
         XCTAssertTrue(ids.allSatisfy { !$0.isEmpty })
