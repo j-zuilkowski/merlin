@@ -196,8 +196,7 @@ actor WorkerSubagentEngine {
                     thinkingContent: thinkingText.isEmpty ? nil : thinkingText,
                     timestamp: Date()
                 ))
-                yield(.completed(summary: responseText))
-                continuation?.finish()
+                await complete(summary: responseText)
                 return
             } catch {
                 yield(.failed(error))
@@ -206,7 +205,12 @@ actor WorkerSubagentEngine {
             }
         }
 
-        yield(.completed(summary: "Worker reached iteration limit."))
+        await complete(summary: "Worker reached iteration limit.")
+    }
+
+    private func complete(summary: String) async {
+        await stageWorktreeDiff()
+        yield(.completed(summary: summary))
         continuation?.finish()
     }
 
@@ -302,18 +306,6 @@ actor WorkerSubagentEngine {
 
     private func executeToolCall(_ call: ToolCall) async -> ToolResult {
         let rewrittenArguments = await rewriteArguments(call.function.arguments, for: call.function.name)
-        let rewrittenInput = inputDictionary(from: rewrittenArguments)
-
-        if isWriteTool(call.function.name), let path = rewrittenInput["path"] {
-            await stagingBuffer.record(StagingEntry(path: path, operation: call.function.name))
-        }
-        if let source = rewrittenInput["src"] ?? rewrittenInput["source_path"] {
-            await stagingBuffer.record(StagingEntry(path: source, operation: call.function.name))
-        }
-        if let destination = rewrittenInput["dst"] ?? rewrittenInput["destination_path"] {
-            await stagingBuffer.record(StagingEntry(path: destination, operation: call.function.name))
-        }
-
         let rewrittenCall = ToolCall(
             id: call.id,
             type: call.type,
@@ -333,10 +325,13 @@ actor WorkerSubagentEngine {
                 object[key] = await rewrite(path: value)
             }
         }
-        if (toolName == "run_shell" || toolName == "bash"),
-           object["cwd"] == nil,
-           let worktreePath {
-            object["cwd"] = worktreePath.path
+        if isShellTool(toolName), let worktreePath {
+            if object["cwd"] == nil {
+                object["cwd"] = worktreePath.path
+            }
+            if let command = object["command"] as? String {
+                object["command"] = rewriteShellCommand(command, worktreePath: worktreePath)
+            }
         }
 
         guard let rewritten = try? JSONSerialization.data(withJSONObject: object),
@@ -358,8 +353,71 @@ actor WorkerSubagentEngine {
         }
     }
 
-    private func isWriteTool(_ name: String) -> Bool {
-        ["write_file", "create_file", "delete_file", "move_file", "apply_diff"].contains(name)
+    private func isShellTool(_ name: String) -> Bool {
+        name == "run_shell" || name == "bash"
+    }
+
+    private func rewriteShellCommand(_ command: String, worktreePath: URL) -> String {
+        let repoPath = repoURL.path
+        guard command.contains(repoPath) else {
+            return command
+        }
+        return command.replacingOccurrences(of: repoPath, with: worktreePath.path)
+    }
+
+    private func stageWorktreeDiff() async {
+        guard let worktreePath else { return }
+        let result = await shell(
+            "git -C \(shellEscape(worktreePath.path)) status --porcelain -z --untracked-files=all"
+        )
+        guard result.exitCode == 0, result.output.isEmpty == false else { return }
+
+        for path in changedPaths(fromPorcelainZ: result.output) {
+            let worktreeFile = worktreePath.appendingPathComponent(path)
+            let repoFile = repoURL.appendingPathComponent(path)
+            let beforeExists = FileManager.default.fileExists(atPath: repoFile.path)
+            let afterExists = FileManager.default.fileExists(atPath: worktreeFile.path)
+            let before = beforeExists ? try? String(contentsOf: repoFile, encoding: .utf8) : nil
+            let after = afterExists ? try? String(contentsOf: worktreeFile, encoding: .utf8) : nil
+            let kind: ChangeKind
+            if beforeExists == false, afterExists {
+                kind = .create
+            } else if beforeExists, afterExists == false {
+                kind = .delete
+            } else {
+                kind = .write
+            }
+            await stagingBuffer.stage(StagedChange(
+                path: repoFile.path,
+                kind: kind,
+                before: before,
+                after: after,
+                destinationPath: nil
+            ))
+        }
+    }
+
+    private func changedPaths(fromPorcelainZ output: String) -> [String] {
+        let fields = output.split(separator: "\0", omittingEmptySubsequences: true)
+        var paths: [String] = []
+        var index = 0
+        while index < fields.count {
+            let entry = String(fields[index])
+            let status = String(entry.prefix(2))
+            let path = String(entry.dropFirst(3))
+            if status.contains("R") || status.contains("C") {
+                if index + 1 < fields.count {
+                    paths.append(String(fields[index + 1]))
+                    index += 2
+                    continue
+                }
+            }
+            if path.isEmpty == false {
+                paths.append(path)
+            }
+            index += 1
+        }
+        return Array(Set(paths)).sorted()
     }
 
     private func shell(_ command: String) async -> (output: String, exitCode: Int) {

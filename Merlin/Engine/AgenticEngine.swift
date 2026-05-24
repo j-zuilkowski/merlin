@@ -2314,7 +2314,8 @@ final class AgenticEngine {
                         }
                         return await self.toolRouter.dispatch(
                             [call],
-                            stagingBufferOverride: workerStagingBuffer
+                            stagingBufferOverride: workerStagingBuffer,
+                            permissionModeOverride: .autoAccept
                         ).first ?? ToolResult(
                             toolCallId: call.id,
                             content: "Tool dispatch returned no result.",
