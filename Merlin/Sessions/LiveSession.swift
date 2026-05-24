@@ -17,7 +17,7 @@ import Foundation
 import SwiftUI
 
 @MainActor
-protocol SchedulerSession: AnyObject {
+protocol SchedulerSession: AnyObject, Sendable {
     var permissionMode: PermissionMode { get set }
     func awaitMCPReady() async
     func runScheduledPrompt(_ prompt: String) async throws -> String
@@ -58,7 +58,10 @@ final class LiveSession: ObservableObject, Identifiable {
         self.subagentSidebar = SubagentSidebarViewModel(parentSessionID: self.id)
         self.title = "New Session"
         self.createdAt = Date()
-        self.activeDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
+        self.activeDomainIDs = Self.inferredActiveDomainIDs(
+            requested: activeDomainIDs,
+            projectPath: projectRef.path
+        )
         self.appState = AppState(projectPath: projectRef.path, activeDomainIDs: self.activeDomainIDs)
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry
@@ -195,6 +198,18 @@ final class LiveSession: ObservableObject, Identifiable {
 
     deinit {
         lifecycleTasks.forEach { $0.cancel() }
+    }
+
+    private static func inferredActiveDomainIDs(
+        requested ids: [String],
+        projectPath: String
+    ) -> [String] {
+        var resolved = ids.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : ids
+        if ElectronicsDomain.projectLooksLikeElectronics(projectPath),
+           !resolved.contains(ElectronicsDomain.defaultID) {
+            resolved.append(ElectronicsDomain.defaultID)
+        }
+        return resolved
     }
 }
 

@@ -107,6 +107,15 @@ final class DomainRegistryTests: XCTestCase {
         XCTAssertEqual(suggestion?.displayName, "Electronics")
     }
 
+    func testElectronicsActivationSuggestionHandlesPunctuation() {
+        let suggestion = ElectronicsDomain.suggestedActivation(
+            for: "Use KiCad, PCB, schematic, BOM, and Gerber outputs.",
+            currentActiveDomainIDs: SoftwareDomain.defaultActiveDomainIDs
+        )
+
+        XCTAssertEqual(suggestion?.domainID, ElectronicsDomain.defaultID)
+    }
+
     func testElectronicsActivationSuggestionTriggersForBoardDesignIntent() {
         let suggestion = ElectronicsDomain.suggestedActivation(
             for: "Design a board layout for this sensor breakout and place the components.",

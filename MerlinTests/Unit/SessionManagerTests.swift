@@ -48,6 +48,30 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(session.appState.activeDomainDisplayName, "Electronics")
     }
 
+    func testLiveSessionAutoActivatesElectronicsForKiCadProjects() async throws {
+        let mgr = try makeElectronicsManager()
+
+        let session = LiveSession(projectRef: mgr.projectRef)
+
+        XCTAssertEqual(session.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+        await session.close()
+    }
+
+    func testRestoreAutoActivatesElectronicsForLegacySoftwareOnlySession() async throws {
+        let mgr = try makeElectronicsManager()
+        let stored = Session(
+            title: "Legacy electronics project",
+            messages: [],
+            activeDomainIDs: [SoftwareDomain.defaultID]
+        )
+
+        let session = await mgr.restore(session: stored)
+
+        XCTAssertEqual(session.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+    }
+
     func testMemoryGenerationProviderUsesExecuteSlotProvider() async {
         let session = LiveSession(projectRef: ProjectRef(
             path: "/tmp/live-session-memory-\(UUID().uuidString)",
@@ -55,18 +79,18 @@ final class SessionManagerTests: XCTestCase {
             lastOpenedAt: Date()
         ))
 
-        let executeProvider = SessionManagerRoutingProvider(providerID: "lmstudio")
-        let reasonProvider = SessionManagerRoutingProvider(providerID: "deepseek")
+        let executeProvider = SessionManagerRoutingProvider(providerID: "memory-execute")
+        let reasonProvider = SessionManagerRoutingProvider(providerID: "memory-reason")
         session.appState.registry.add(executeProvider)
         session.appState.registry.add(reasonProvider)
         session.appState.engine.slotAssignments = [
-            .execute: "lmstudio",
-            .reason: "deepseek"
+            .execute: "memory-execute",
+            .reason: "memory-reason"
         ]
-        session.appState.activeProviderID = "deepseek"
+        session.appState.activeProviderID = "memory-reason"
 
         let resolved = session.resolveMemoryGenerationProvider()
-        XCTAssertEqual(resolved.id, "lmstudio")
+        XCTAssertEqual(resolved.id, "memory-execute")
 
         await session.close()
     }

@@ -79,7 +79,7 @@ struct ElectronicsDomain: DomainPlugin {
             return nil
         }
 
-        let normalized = " \(message.lowercased()) "
+        let normalized = normalizedActivationText(message)
         for phrase in explicitTriggerPhrases {
             if normalized.contains(phrase) {
                 return DomainActivationSuggestion(
@@ -109,6 +109,38 @@ struct ElectronicsDomain: DomainPlugin {
         }
 
         return nil
+    }
+
+    static func projectLooksLikeElectronics(_ path: String) -> Bool {
+        let rootURL = URL(fileURLWithPath: path)
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: rootURL.path) else { return false }
+
+        if let entries = try? fm.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil) {
+            if entries.contains(where: { $0.pathExtension == "kicad_pro" }) {
+                return true
+            }
+        }
+
+        guard let enumerator = fm.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
+            options: [.skipsHiddenFiles, .skipsPackageDescendants]
+        ) else {
+            return false
+        }
+
+        var scanned = 0
+        for case let url as URL in enumerator {
+            scanned += 1
+            if url.pathExtension == "kicad_pro" {
+                return true
+            }
+            if scanned >= 1_000 {
+                break
+            }
+        }
+        return false
     }
 
     private static let explicitTriggerPhrases: [String] = [
@@ -147,6 +179,19 @@ struct ElectronicsDomain: DomainPlugin {
 
     private static func containsAnyWord(in normalizedMessage: String, words: [String]) -> Bool {
         words.contains { normalizedMessage.contains(" \($0) ") }
+    }
+
+    private static func normalizedActivationText(_ message: String) -> String {
+        let scalars = message.lowercased().unicodeScalars.map { scalar -> Character in
+            if CharacterSet.alphanumerics.contains(scalar) || scalar == "." || scalar == "_" {
+                return Character(scalar)
+            }
+            return " "
+        }
+        let collapsed = String(scalars)
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        return " \(collapsed) "
     }
 }
 

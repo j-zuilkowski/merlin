@@ -85,43 +85,11 @@ final class SessionManager: ObservableObject {
     }
 
     private func inferredSessionDomainIDs(defaults: [String]) -> [String] {
-        guard projectLooksLikeElectronics(projectRef.path) else { return defaults }
+        guard ElectronicsDomain.projectLooksLikeElectronics(projectRef.path) else { return defaults }
         var ids = defaults
         if !ids.contains(ElectronicsDomain.defaultID) {
             ids.append(ElectronicsDomain.defaultID)
         }
         return ids
-    }
-
-    private func projectLooksLikeElectronics(_ path: String) -> Bool {
-        let rootURL = URL(fileURLWithPath: path)
-        let fm = FileManager.default
-        guard fm.fileExists(atPath: rootURL.path) else { return false }
-
-        if let entries = try? fm.contentsOfDirectory(at: rootURL, includingPropertiesForKeys: nil) {
-            if entries.contains(where: { $0.pathExtension == "kicad_pro" }) {
-                return true
-            }
-        }
-
-        guard let enumerator = fm.enumerator(
-            at: rootURL,
-            includingPropertiesForKeys: [.isRegularFileKey, .isDirectoryKey],
-            options: [.skipsHiddenFiles, .skipsPackageDescendants]
-        ) else {
-            return false
-        }
-
-        var scanned = 0
-        for case let url as URL in enumerator {
-            scanned += 1
-            if url.pathExtension == "kicad_pro" {
-                return true
-            }
-            if scanned >= 500 {
-                break
-            }
-        }
-        return false
     }
 }
