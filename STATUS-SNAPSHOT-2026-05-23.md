@@ -68,3 +68,67 @@ This repair wave covered the architecture-conformance investigation follow-up an
    - subagent write/accept cycle
    - Electronics workflow with external MCP server attached
 3. Residual documentation cleanup only where claims still over-simplify repaired runtime behavior
+
+### Live validation update — 2026-05-23 afternoon
+
+The final product-level live validation pass was resumed under a cleaned machine
+state and found several concrete runtime failures:
+
+- Provider/runtime cleanup continued and passed:
+  - `loadedModels()` is now classified as `runtimeLoaded`,
+    `serverExposed`, or `catalogFallback`
+  - focused parity sweep passed: `60` tests, `0` failures
+- Worker subagent live validation failed:
+  - forcing `spawn_agent` against a clean LM Studio session produced a visible
+    `spawn_agent` error in the UI
+  - no worker diff appeared
+  - no `LIVE_SUBAGENT_CHECK.txt` file was created under
+    `/Users/jonzuilkowski/Documents/localProject/xcalibre-server`
+- Scheduler live validation failed:
+  - fresh task `live scheduler check 2` was created for `13:49`
+  - at `2026-05-23 13:49:18 EDT` and `2026-05-23 13:50:39 EDT`,
+    `~/Library/Application Support/Merlin/schedules.json` still contained no
+    `lastRunAt`
+  - no visible scheduled session or execution artifact appeared
+- Electronics auto-activation failed in live behavior:
+  - opening
+    `/Users/jonzuilkowski/Documents/localProject/merlin/kicad-projects/astable-led-blinker`
+    created workspace session state under
+    `~/Library/Application Support/Merlin/sessions/Documents_localProject_merlin_kicad-projects_astable-led-blinker/`
+  - that session persisted with `activeDomainIDs: ["software"]`
+  - automatic Electronics activation did not occur
+- Prompt-triggered Electronics switching also failed in live behavior:
+  - a prompt explicitly mentioning KiCad, PCB, schematic, BOM, and Gerber did
+    not surface any Electronics-switch confirmation
+  - the model simply began a normal plan
+- The first-launch provider sheet resurfaced during live tests until it was
+  explicitly switched to `LM Studio (local)`
+
+### Follow-up update — 2026-05-24
+
+- Live `spawn_agent` request failure is resolved:
+  - OpenAI-incompatible tool names are encoded at the provider boundary and decoded before Merlin executes tools.
+  - `spawn_agent` now returns a matching tool result to the parent provider turn.
+  - A DeepSeek live run completed without the prior HTTP 400.
+- Scheduler firing/completion recording is resolved:
+  - scheduled runs now fire through `SchedulerEngine`
+  - completion is recorded after successful execution
+  - live validation observed `lastRunAt` being written
+- Subagent presentation follow-up is now addressed in this branch:
+  - older assistant bubbles refresh when delayed tool results arrive, so `spawn_agent` moves from `running...` to `done`
+  - worker sidebar entries auto-select, exposing the worker diff path as soon as the worker is available
+
+### Current immediate backlog
+
+1. Fix `.kicad_pro` Electronics auto-activation in the live session path
+2. Fix prompt-driven Electronics switch confirmation in the live chat path
+3. Fix repeated first-launch provider sheet resurfacing
+4. Run one final live worker write/accept pass after the UI refresh and worker-diff selection fixes land
+
+### Current machine state at handoff
+
+- `LM Studio` was left running on `127.0.0.1:1234`
+- `Merlin` was left open
+- no shell command, test run, or calibration harness was still running
+- the additional provider/runtime parity code changes are still uncommitted in
+  the worktree

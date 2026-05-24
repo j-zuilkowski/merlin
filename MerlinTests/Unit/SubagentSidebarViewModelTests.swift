@@ -46,6 +46,24 @@ final class SubagentSidebarViewModelTests: XCTestCase {
         XCTAssertEqual(vm.workerEntries.count, 1)
     }
 
+    func test_viewModel_addEntryAutoSelectsWorker() {
+        let vm = SubagentSidebarViewModel(parentSessionID: UUID())
+        let first = SubagentSidebarEntry(
+            id: UUID(), parentSessionID: vm.parentSessionID,
+            agentName: "worker", label: "Task A"
+        )
+        let second = SubagentSidebarEntry(
+            id: UUID(), parentSessionID: vm.parentSessionID,
+            agentName: "worker", label: "Task B"
+        )
+
+        vm.add(first)
+        XCTAssertEqual(vm.selectedEntryID, first.id)
+
+        vm.add(second)
+        XCTAssertEqual(vm.selectedEntryID, second.id)
+    }
+
     func test_viewModel_removeEntryDisappears() {
         let vm = SubagentSidebarViewModel(parentSessionID: UUID())
         let id = UUID()

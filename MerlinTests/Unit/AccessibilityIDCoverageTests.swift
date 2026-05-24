@@ -20,6 +20,9 @@ final class AccessibilityIDCoverageTests: XCTestCase {
             AccessibilityID.terminalPaneInput,
             AccessibilityID.toolLogClearButton,
             AccessibilityID.diffPaneAcceptAllButton,
+            AccessibilityID.subagentSidebarRowPrefix,
+            AccessibilityID.workerDiffFileList,
+            AccessibilityID.workerDiffEmptyState,
             AccessibilityID.memoryBrowserSearchField,
         ]
         // Every identifier is non-empty and unique.

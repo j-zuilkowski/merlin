@@ -61,6 +61,30 @@ final class SubagentChatIntegrationTests: XCTestCase {
         XCTAssertEqual(toolEvents[0].status, .done)
     }
 
+    func testToolResultUpdatesOriginalAssistantEntryAfterSubagentBlock() {
+        let vm = ChatViewModel()
+        let agentID = UUID()
+        let call = ToolCall(
+            id: "call_spawn",
+            type: "function",
+            function: FunctionCall(name: "spawn_agent", arguments: "{}")
+        )
+
+        vm.applyEngineEvent(.toolCallStarted(call))
+        vm.applyEngineEvent(.subagentStarted(id: agentID, agentName: "worker"))
+        vm.applyEngineEvent(.subagentUpdate(id: agentID, event: .completed(summary: "done")))
+        vm.applyEngineEvent(.toolCallResult(ToolResult(
+            toolCallId: "call_spawn",
+            content: "Worker completed",
+            isError: false
+        )))
+
+        XCTAssertEqual(vm.items.count, 2)
+        XCTAssertEqual(vm.items[0].toolCalls.first?.name, "spawn_agent")
+        XCTAssertEqual(vm.items[0].toolCalls.first?.result, "Worker completed")
+        XCTAssertEqual(vm.items[1].subagentID, agentID)
+    }
+
     func testUnknownSubagentUpdateIgnored() {
         let vm = ChatViewModel()
         let agentID = UUID()

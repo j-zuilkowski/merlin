@@ -631,12 +631,12 @@ final class ChatViewModel: ObservableObject {
             case .thinking(let text):
                 appendThinking(text)
                 appState.toolActivityState = .streaming
-            case .toolCallStarted(let call):
+            case .toolCallStarted:
                 appState.toolActivityState = .toolExecuting
-                appendToolCall(call)
-            case .toolCallResult(let result):
+                applyEngineEvent(event)
+            case .toolCallResult:
                 appState.toolActivityState = .toolExecuting
-                updateToolResult(result)
+                applyEngineEvent(event)
             case .ragSources(let chunks):
                 lastRAGSources = chunks
                 if let index = assistantIndex, items.indices.contains(index) {
@@ -758,6 +758,10 @@ final class ChatViewModel: ObservableObject {
 
     func applyEngineEvent(_ event: AgentEvent) {
         switch event {
+        case .toolCallStarted(let call):
+            appendToolCall(call)
+        case .toolCallResult(let result):
+            updateToolResult(result)
         case .subagentStarted(let id, let agentName):
             let vm = SubagentBlockViewModel(agentName: agentName)
             subagentVMs[id] = vm

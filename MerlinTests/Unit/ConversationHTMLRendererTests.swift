@@ -112,6 +112,20 @@ final class ConversationHTMLRendererTests: XCTestCase {
         XCTAssertTrue(html.contains("file contents here"))
     }
 
+    func testToolResultChangesRunningStatusToDone() {
+        var entry = ChatEntry(role: .assistant, text: "")
+        entry.toolCalls = [ToolCallEntry(id: "c1", name: "spawn_agent")]
+        let runningHTML = ConversationHTMLRenderer.messageHTML(for: entry)
+
+        entry.toolCalls[0].result = "completed"
+        let completedHTML = ConversationHTMLRenderer.messageHTML(for: entry)
+
+        XCTAssertTrue(runningHTML.contains("running…"))
+        XCTAssertFalse(runningHTML.contains(">done<"))
+        XCTAssertTrue(completedHTML.contains(">done<"))
+        XCTAssertFalse(completedHTML.contains("running…"))
+    }
+
     func testToolArgumentsAppear() {
         var entry = ChatEntry(role: .assistant, text: "")
         entry.toolCalls = [ToolCallEntry(id: "c1", name: "write_file", arguments: "{\"path\": \"/tmp/out.txt\"}")]
