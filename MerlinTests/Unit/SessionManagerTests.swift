@@ -72,6 +72,16 @@ final class SessionManagerTests: XCTestCase {
         XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
     }
 
+    func testSessionDomainSwitchPersistsToSessionStore() async throws {
+        let mgr = makeManager()
+        let session = await mgr.newSession()
+
+        await session.appState.setActiveDomains([ElectronicsDomain.defaultID], persistAsDefault: false)
+
+        let stored = try XCTUnwrap(mgr.sessionStore.sessions.first { $0.id == session.id })
+        XCTAssertEqual(stored.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+    }
+
     func testMemoryGenerationProviderUsesExecuteSlotProvider() async {
         let session = LiveSession(projectRef: ProjectRef(
             path: "/tmp/live-session-memory-\(UUID().uuidString)",
@@ -83,10 +93,15 @@ final class SessionManagerTests: XCTestCase {
         let reasonProvider = SessionManagerRoutingProvider(providerID: "memory-reason")
         session.appState.registry.add(executeProvider)
         session.appState.registry.add(reasonProvider)
-        session.appState.engine.slotAssignments = [
+
+        let previousSlotAssignments = AppSettings.shared.slotAssignments
+        defer { AppSettings.shared.slotAssignments = previousSlotAssignments }
+
+        AppSettings.shared.slotAssignments = [
             .execute: "memory-execute",
             .reason: "memory-reason"
         ]
+        session.appState.engine.slotAssignments = AppSettings.shared.slotAssignments
         session.appState.activeProviderID = "memory-reason"
 
         let resolved = session.resolveMemoryGenerationProvider()

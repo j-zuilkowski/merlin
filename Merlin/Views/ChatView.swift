@@ -42,6 +42,11 @@ struct ChatView: View {
                 Divider()
             }
 
+            if let pendingDomainActivation {
+                domainActivationBar(pendingDomainActivation)
+                Divider()
+            }
+
             inputBar
         }
         .background(
@@ -90,44 +95,47 @@ struct ChatView: View {
             }
         }
         .animation(.spring(duration: 0.18), value: showBtwOverlay)
-        .confirmationDialog(
-            pendingDomainActivation.map { "Switch to \($0.suggestion.displayName) for this session?" } ?? "",
-            isPresented: Binding(
-                get: { pendingDomainActivation != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        pendingDomainActivation = nil
-                    }
-                }
-            ),
-            titleVisibility: .visible
-        ) {
+    }
+
+    private func domainActivationBar(_ pending: PendingDomainActivation) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "cpu")
+                .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Switch to \(pending.suggestion.displayName)?")
+                    .font(.callout.weight(.semibold))
+                Text(pending.suggestion.reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Button("Cancel") {
+                pendingDomainActivation = nil
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationCancelButton)
+
+            Button("Send Without Switching") {
+                pendingDomainActivation = nil
+                submitPreparedMessage(pending.message)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationStayButton)
+
             Button("Switch and Send") {
-                guard let pending = pendingDomainActivation else { return }
                 pendingDomainActivation = nil
                 Task { @MainActor in
                     await appState.setActiveDomains([pending.suggestion.domainID], persistAsDefault: false)
                     submitPreparedMessage(pending.message)
                 }
             }
+            .buttonStyle(.borderedProminent)
             .accessibilityIdentifier(AccessibilityID.chatDomainActivationSwitchButton)
-
-            Button("Send Without Switching") {
-                guard let pending = pendingDomainActivation else { return }
-                pendingDomainActivation = nil
-                submitPreparedMessage(pending.message)
-            }
-            .accessibilityIdentifier(AccessibilityID.chatDomainActivationStayButton)
-
-            Button("Cancel", role: .cancel) {
-                pendingDomainActivation = nil
-            }
-            .accessibilityIdentifier(AccessibilityID.chatDomainActivationCancelButton)
-        } message: {
-            if let pending = pendingDomainActivation {
-                Text("\(pending.suggestion.reason) Switch domains before sending?")
-            }
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.bar)
     }
 
     private var header: some View {

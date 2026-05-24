@@ -114,7 +114,11 @@ final class AppState: ObservableObject {
 
     init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.projectPath = projectPath
-        self.initialActiveDomainIDs = activeDomainIDs.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : activeDomainIDs
+        let resolvedActiveDomainIDs = Self.inferredActiveDomainIDs(
+            requested: activeDomainIDs,
+            projectPath: projectPath
+        )
+        self.initialActiveDomainIDs = resolvedActiveDomainIDs
         self.activeDomainIDs = self.initialActiveDomainIDs
         // --- v2.2 Project Discipline Subsystem ---
         // Built early so the non-optional stored properties are initialised before any
@@ -480,7 +484,7 @@ final class AppState: ObservableObject {
             return await RAGTools.listBooks(client: client)
         }
 
-        if registry.primaryProvider == nil {
+        if registry.primaryProvider == nil && registry.firstLaunchSetupCompleted == false {
             showFirstLaunchSetup = true
         }
 
@@ -659,6 +663,12 @@ final class AppState: ObservableObject {
         if persistAsDefault {
             AppSettings.shared.activeDomainIDs = normalized
         }
+        persistActiveDomainsToCurrentSession(normalized)
+    }
+
+    func completeFirstLaunchSetup() {
+        registry.markFirstLaunchSetupCompleted()
+        showFirstLaunchSetup = false
     }
 
     static func installBuiltinSkills() {
@@ -689,6 +699,30 @@ final class AppState: ObservableObject {
             return ElectronicsDomain().displayName
         }
         return SoftwareDomain().displayName
+    }
+
+    private static func inferredActiveDomainIDs(
+        requested ids: [String],
+        projectPath: String
+    ) -> [String] {
+        var resolved = ids.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : ids
+        if ElectronicsDomain.projectLooksLikeElectronics(projectPath),
+           !resolved.contains(ElectronicsDomain.defaultID) {
+            resolved.append(ElectronicsDomain.defaultID)
+        }
+        return resolved
+    }
+
+    private func persistActiveDomainsToCurrentSession(_ ids: [String]) {
+        guard let sessionStore,
+              let id = engine.sessionID ?? sessionStore.activeSessionID,
+              let session = sessionStore.sessions.first(where: { $0.id == id }) else {
+            return
+        }
+        var updated = session
+        updated.activeDomainIDs = ids
+        updated.updatedAt = Date()
+        try? sessionStore.save(updated)
     }
 
     private func syncEngineProviders(activeDomainIDs: [String]? = nil) {

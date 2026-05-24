@@ -124,6 +124,19 @@ final class ProviderRegistryTests: XCTestCase {
         XCTAssertNil(registry.primaryProvider)
     }
 
+    func testFirstLaunchCompletionPersists() {
+        let tmp = tempPersistURL()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let registry = ProviderRegistry(persistURL: tmp)
+        XCTAssertFalse(registry.firstLaunchSetupCompleted)
+
+        registry.markFirstLaunchSetupCompleted()
+
+        let reloaded = ProviderRegistry(persistURL: tmp)
+        XCTAssertTrue(reloaded.firstLaunchSetupCompleted)
+    }
+
     // MARK: Learned context window persistence
 
     private func tempPersistURL() -> URL {

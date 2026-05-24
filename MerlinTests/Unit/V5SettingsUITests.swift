@@ -142,6 +142,23 @@ final class V5SettingsUITests: XCTestCase {
         )
         XCTAssertNil(afterSwitch)
     }
+
+    func testAppStateAutoActivatesElectronicsForKiCadProjectPath() throws {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("merlin-appstate-electronics-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        try "{}".write(
+            to: url.appendingPathComponent("board.kicad_pro"),
+            atomically: true,
+            encoding: .utf8
+        )
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let appState = AppState(projectPath: url.path)
+
+        XCTAssertEqual(appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+        XCTAssertTrue(appState.currentActiveDomainIDs.contains(ElectronicsDomain.defaultID))
+    }
 }
 
 // MARK: - TestAppSettings

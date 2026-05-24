@@ -117,13 +117,14 @@ state and found several concrete runtime failures:
 - Subagent presentation follow-up is now addressed in this branch:
   - older assistant bubbles refresh when delayed tool results arrive, so `spawn_agent` moves from `running...` to `done`
   - worker sidebar entries auto-select, exposing the worker diff path as soon as the worker is available
+- Domain and first-launch follow-up is now addressed in this branch:
+  - `.kicad_pro` projects infer Electronics directly when `AppState` is created, covering live session paths that bypass `SessionManager`
+  - prompt-triggered Electronics switching uses an inline chat confirmation bar before submit, making the switch action visible in the live chat path
+  - first-launch setup completion is persisted in provider config, and Continue enables the selected provider before closing the sheet
 
 ### Current immediate backlog
 
-1. Fix `.kicad_pro` Electronics auto-activation in the live session path
-2. Fix prompt-driven Electronics switch confirmation in the live chat path
-3. Fix repeated first-launch provider sheet resurfacing
-4. Run one final live worker write/accept pass after the UI refresh and worker-diff selection fixes land
+1. Run one final live worker write/accept pass after the UI refresh, worker-diff selection, domain activation, and first-launch fixes land
 
 ### Current machine state at handoff
 
