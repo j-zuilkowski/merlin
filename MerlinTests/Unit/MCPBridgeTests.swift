@@ -104,4 +104,51 @@ final class MCPBridgeTests: XCTestCase {
         let config = try MCPConfig.load(from: "/tmp/nonexistent-mcp.json")
         XCTAssertTrue(config.mcpServers.isEmpty)
     }
+
+    @MainActor
+    func testRealKiCadServerRegistersManifestBackedElectronicsDomain() async throws {
+        let pluginID = "mcp:kicad:kicad"
+        await DomainRegistry.shared.unregister(id: pluginID)
+
+        let memory = AuthMemory(storePath: "/tmp/auth-mcp-bridge-domain-integration.json")
+        let router = ToolRouter(authGate: AuthGate(memory: memory, presenter: NullAuthPresenter()))
+        let bridge = MCPBridge()
+
+        let config = MCPConfig(mcpServers: [
+            "kicad": MCPServerConfig(
+                command: Self.kicadRunScriptPath,
+                transportKind: .stdio
+            )
+        ])
+
+        try await bridge.start(config: config, toolRouter: router)
+
+        let plugin = await DomainRegistry.shared.plugin(for: pluginID)
+        XCTAssertNotNil(plugin)
+        XCTAssertEqual(plugin?.canonicalDomainID, ElectronicsDomain.defaultID)
+        XCTAssertEqual(plugin?.displayName, "Electronics (KiCad MCP)")
+        XCTAssertFalse(plugin?.isUserSelectable ?? true)
+        XCTAssertTrue(plugin?.mcpToolNames.contains("mcp:kicad:kicad_check_version") == true)
+
+        let softwareScoped = router.mcpToolDefinitions(activeDomainIDs: SoftwareDomain.defaultActiveDomainIDs)
+            .map(\.function.name)
+        XCTAssertFalse(softwareScoped.contains("mcp:kicad:kicad_check_version"))
+
+        let electronicsScoped = router.mcpToolDefinitions(
+            activeDomainIDs: [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        ).map(\.function.name)
+        XCTAssertTrue(electronicsScoped.contains("mcp:kicad:kicad_check_version"))
+
+        await bridge.stop(toolRouter: router)
+        await DomainRegistry.shared.unregister(id: pluginID)
+    }
+
+    private static var kicadRunScriptPath: String {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // Unit
+            .deletingLastPathComponent() // MerlinTests
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("plugins/merlin-kicad-mcp/run")
+            .path
+    }
 }

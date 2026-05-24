@@ -130,6 +130,179 @@ final class WorkerSubagentEngineTests: XCTestCase {
         XCTAssertTrue(rewritten.hasPrefix("/tmp/wt/abc123"))
     }
 
+    func test_rewritePath_projectAbsolutePathBecomesWorktreeRelative() async throws {
+        let worktreePath = URL(fileURLWithPath: "/tmp/wt/abc123")
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: ".",
+            provider: MockProvider(),
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL
+        )
+        await engine.setWorktreePath(worktreePath)
+        let original = repoURL.appendingPathComponent("Sources/Foo.swift").path
+        let rewritten = await engine.rewrite(path: original)
+        XCTAssertEqual(rewritten, "/tmp/wt/abc123/Sources/Foo.swift")
+    }
+
+    func test_startEmitsWorkerReadyWithWorktreeAndStagingBuffer() async throws {
+        let mock = MockProvider(response: "Done.")
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: "Do something.",
+            provider: mock,
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL
+        )
+
+        var readyPath: URL?
+        var readyBuffer: StagingBuffer?
+        let stream = engine.events
+        Task { await engine.start() }
+        for await event in stream {
+            switch event {
+            case .workerReady(let path, let buffer):
+                readyPath = path
+                readyBuffer = buffer
+            case .completed:
+                break
+            case .failed(let error):
+                XCTFail("Unexpected failure: \(error)")
+            case .toolCallStarted, .toolCallCompleted, .messageChunk:
+                break
+            }
+        }
+
+        XCTAssertNotNil(readyPath)
+        XCTAssertNotNil(readyBuffer)
+    }
+
+    func test_toolCall_executesRealWriteInsideWorktree() async throws {
+        let mock = MockProvider(responses: [
+            .toolCall(
+                id: "call-1",
+                name: "write_file",
+                args: #"{"path":"Notes/out.txt","content":"hello from worker"}"#
+            ),
+            .text("done")
+        ])
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: "Write the file.",
+            provider: mock,
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL,
+            toolExecutor: { call in
+                guard let data = call.function.arguments.data(using: .utf8),
+                      let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let path = object["path"] as? String,
+                      let content = object["content"] as? String else {
+                    XCTFail("Worker tool executor did not receive rewritten JSON arguments")
+                    return ToolResult(toolCallId: call.id, content: "bad arguments", isError: true)
+                }
+                do {
+                    try FileManager.default.createDirectory(
+                        atPath: (path as NSString).deletingLastPathComponent,
+                        withIntermediateDirectories: true
+                    )
+                    try content.write(toFile: path, atomically: true, encoding: .utf8)
+                    return ToolResult(toolCallId: call.id, content: "wrote \(path)", isError: false)
+                } catch {
+                    XCTFail("Worker tool executor failed to write file: \(error)")
+                    return ToolResult(toolCallId: call.id, content: String(describing: error), isError: true)
+                }
+            }
+        )
+
+        var sawRealResult = false
+        var summary: String?
+        let stream = engine.events
+        Task { await engine.start() }
+        for await event in stream {
+            switch event {
+            case .toolCallCompleted(let toolName, let result):
+                if toolName == "write_file", result.contains("wrote ") {
+                    sawRealResult = true
+                }
+            case .completed(let finalSummary):
+                summary = finalSummary
+            case .failed(let error):
+                XCTFail("Unexpected failure: \(error)")
+            case .toolCallStarted, .messageChunk, .workerReady:
+                break
+            }
+        }
+
+        let resolvedWorktreePath = await engine.worktreePath
+        let worktreePath = try XCTUnwrap(resolvedWorktreePath)
+        let writtenPath = worktreePath.appendingPathComponent("Notes/out.txt")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: writtenPath.path))
+        XCTAssertEqual(try String(contentsOf: writtenPath, encoding: .utf8), "hello from worker")
+        let pendingChanges = await engine.stagingBuffer.pendingChanges
+        XCTAssertEqual(pendingChanges.count, 1)
+        XCTAssertEqual(pendingChanges.first?.path, repoURL.appendingPathComponent("Notes/out.txt").path)
+        XCTAssertEqual(pendingChanges.first?.kind, .create)
+        XCTAssertEqual(pendingChanges.first?.after, "hello from worker")
+        XCTAssertTrue(sawRealResult)
+        XCTAssertEqual(summary, "done")
+        XCTAssertEqual(mock.callCount, 2)
+    }
+
+    func test_shellToolRewritesProjectAbsolutePathsToWorktree() async throws {
+        let absoluteProjectPath = repoURL.appendingPathComponent("leak.txt").path
+        let mock = MockProvider(responses: [
+            .toolCall(
+                id: "call-1",
+                name: "bash",
+                args: #"{"command":"mkdir -p \#(repoURL.path) && echo leaked > \#(absoluteProjectPath)"}"#
+            ),
+            .text("done")
+        ])
+
+        var observedCommand: String?
+        var observedCWD: String?
+        let engine = WorkerSubagentEngine(
+            definition: .builtinWorker,
+            prompt: "Write through shell.",
+            provider: mock,
+            hookEngine: HookEngine(),
+            depth: 0,
+            worktreeManager: worktreeManager,
+            repoURL: repoURL,
+            toolExecutor: { call in
+                guard let data = call.function.arguments.data(using: .utf8),
+                      let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    XCTFail("Worker shell executor did not receive JSON arguments")
+                    return ToolResult(toolCallId: call.id, content: "bad arguments", isError: true)
+                }
+                observedCommand = object["command"] as? String
+                observedCWD = object["cwd"] as? String
+                return ToolResult(toolCallId: call.id, content: "ok", isError: false)
+            }
+        )
+
+        let stream = engine.events
+        Task { await engine.start() }
+        for await event in stream {
+            if case .failed(let error) = event {
+                XCTFail("Unexpected failure: \(error)")
+            }
+        }
+
+        let resolvedWorktreePath = await engine.worktreePath
+        let worktreePath = try XCTUnwrap(resolvedWorktreePath)
+        XCTAssertEqual(observedCWD, worktreePath.path)
+        XCTAssertNotNil(observedCommand)
+        XCTAssertFalse(observedCommand?.contains(repoURL.path) ?? true)
+        XCTAssertTrue(observedCommand?.contains(worktreePath.path) ?? false)
+    }
+
     // MARK: - Helper
 
     private func shell(_ cmd: String) async throws -> String {

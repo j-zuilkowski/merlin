@@ -23,6 +23,9 @@ public enum AccessibilityID {
     public static let chatResumeScrollButton = "chat-resume-scroll-button"
     public static let chatAtMentionPicker = "chat-at-mention-picker"
     public static let chatSkillsPicker = "chat-skills-picker"
+    public static let chatDomainActivationSwitchButton = "chat-domain-activation-switch-button"
+    public static let chatDomainActivationStayButton = "chat-domain-activation-stay-button"
+    public static let chatDomainActivationCancelButton = "chat-domain-activation-cancel-button"
 
     // MARK: - Session sidebar
 
@@ -41,6 +44,7 @@ public enum AccessibilityID {
     public static let providerHUD = "provider-hud"
     /// Settings gear button in the window toolbar.
     public static let settingsButton = "settings-button"
+    public static let activeDomainIndicator = "active-domain-indicator"
 
     // MARK: - Settings / provider picker
 
@@ -168,6 +172,9 @@ public enum AccessibilityID {
     public static let diffPaneRejectAllButton = "diff-pane-reject-all-button"
     public static let filePaneOpenButton = "file-pane-open-button"
     public static let filePaneCloseButton = "file-pane-close-button"
+    public static let subagentSidebarRowPrefix = "subagent-sidebar-row-"
+    public static let workerDiffFileList = "worker-diff-file-list"
+    public static let workerDiffEmptyState = "worker-diff-empty-state"
     public static let workerDiffRejectAllButton = "worker-diff-reject-all-button"
     public static let workerDiffAcceptMergeButton = "worker-diff-accept-merge-button"
     public static let pendingAttentionCloseButton = "pending-attention-close-button"

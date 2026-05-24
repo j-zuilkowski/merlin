@@ -10,8 +10,8 @@ Merlin version: v2.2.5
 
 | Feature | Notes |
 |---|---|
-| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal — API key only, no subscription lock-in; in-app model picker switches provider per session. Codex is GPT-only |
-| **Local model support** | LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal with zero API cost. Codex is cloud-first; no local model support |
+| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, plus local runtimes. Fully supported local providers today are LM Studio, Jan.ai, and LocalAI; Ollama and vLLM-Metal remain available but are not recommended for the tested pair workflow; Mistral.rs is currently unusable for the tested Qwen3 MoE model on Metal. Codex is GPT-only |
+| **Local model support** | Merlin supports fully local inference with zero API cost. The currently validated local providers are LM Studio, Jan.ai, and LocalAI, with additional experimental or limited paths for Ollama and vLLM-Metal. Codex is cloud-first; no local model support |
 | **Local vision model** | LM Studio + Qwen2.5-VL for on-device screenshot analysis — no cloud dependency |
 | **Auth sandbox + pattern memory** | Per-tool glob ACL with an interactive Allow/Deny popup (Allow Once / Allow Always / Deny Once / Deny Always) and persistent allow/deny patterns per tool. Codex has configurable sandboxing and permission profiles but no per-tool glob pattern ACL with interactive per-turn memory |
 | **Accessibility tree inspection** | Reads live AX element hierarchy, attributes, and focus state — Codex Computer Use sees only screenshots |
@@ -22,7 +22,7 @@ Merlin version: v2.2.5
 | **Critic engine** | Two-stage per-turn evaluation: (1) domain verification backend (e.g. `xcodebuild`), (2) LLM scoring on a 0–1 scale. Drives correction loops and gates memory writes. Codex has no critic layer |
 | **Staged diff review with inline agent feedback** | All writes intercepted and queued in Ask and Plan modes; unified diff per file; Accept/Reject per change or all at once; inline comments on any diff line fed back to the agent for in-place revision. Codex has a diff review UI (final-step, open in VS Code) but applies writes directly — no staged write workflow and no agent feedback from inline comments |
 | **Persistent local RAG memory (v9)** | SQLite + Apple NLContextualEmbedding (512-dim, on-device, no external dependencies); factual + episodic chunks; top-5 cosine retrieval per turn; critic-gated writes; fully local. Codex has no RAG layer |
-| **LoRA self-training** | MLX-LM fine-tuning on accepted session data on an M4 Mac (MLX-format base required); auto-train at sample threshold; routes execute slot through the trained adapter; quality-gated export. Trained adapter served natively by any MLX runtime — `mlx_lm.server` (default), LM Studio, or vLLM-Metal. No equivalent in Codex |
+| **LoRA self-training** | MLX-LM fine-tuning on accepted session data on an M4 Mac (MLX-format base required); auto-train at sample threshold; routes execute slot through the trained adapter; quality-gated export. Trained adapter served natively by any MLX runtime — `mlx_lm.server` (default), LM Studio, or vLLM-Metal for text-oriented fallback use. No equivalent in Codex |
 | **Model calibration (/calibrate)** | 18-prompt benchmark across four categories against any reference provider; parameter advisories (context length, temperature, truncation, repetition); one-tap "Apply All Suggestions" |
 | **Performance tracking dashboard** | Per-model × task-type empirical profiles; exponential decay success rate; trend detection; training data export for LoRA |
 | **Circuit breaker (v9)** | Surfaces sustained quality degradation after N consecutive critic failures via `systemNote`; configurable halt vs. warn mode; prevents silent accumulation |

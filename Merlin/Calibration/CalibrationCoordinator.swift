@@ -53,6 +53,7 @@ extension CalibrationSheet: Identifiable {
 final class CalibrationCoordinator: ObservableObject {
 
     @Published var sheet: CalibrationSheet? = nil
+    @Published var errorMessage: String? = nil
 
     private weak var appState: AppState?
     private var localProviderID: String = ""
@@ -71,7 +72,15 @@ final class CalibrationCoordinator: ObservableObject {
     func begin(localProviderID: String, localModelID: String) {
         self.localProviderID = localProviderID
         self.localModelID = localModelID
-        sheet = .pickProvider(availableReferenceProviders())
+        appState?.showFirstLaunchSetup = false
+
+        let providers = availableReferenceProviders()
+        if providers.isEmpty {
+            errorMessage = "No ready reference providers are available. Enable a remote provider and add its API key in Settings before running calibration."
+        } else {
+            errorMessage = nil
+        }
+        sheet = .pickProvider(providers)
     }
 
     /// Starts the calibration run after the user chooses a reference provider.
@@ -79,6 +88,14 @@ final class CalibrationCoordinator: ObservableObject {
     /// This builds the provider and scorer closures, runs the suite, publishes
     /// the report state, and dismisses the sheet on error.
     func start(referenceProviderID: String) async {
+        errorMessage = nil
+        let providers = availableReferenceProviders()
+        guard providers.contains(referenceProviderID) else {
+            errorMessage = "Reference provider '\(referenceProviderID)' is not ready. Choose a configured remote provider with a valid API key."
+            sheet = .pickProvider(providers)
+            return
+        }
+
         let total = CalibrationSuite.default.prompts.count
         sheet = .running(CalibrationProgressInfo(
             completed: 0,
@@ -136,24 +153,46 @@ final class CalibrationCoordinator: ObservableObject {
             // not its Optional wrapper).
             _ = try? await reportSaver.save(report)
         } catch {
-            sheet = nil
+            errorMessage = humanReadableError(error, referenceProviderID: referenceProviderID)
+            sheet = .pickProvider(availableReferenceProviders())
         }
     }
 
     /// Applies every advisory from the current report through
-    /// `AppState.applyAdvisory(_:)`, then dismisses the sheet.
+    /// `AppState.applyAdvisory(_:)`.
     ///
-    /// `try?` keeps one failed advisory from blocking later suggestions.
+    /// Successful runs dismiss the sheet. Partial failures keep the report
+    /// visible and surface a summary so the user can see what still needs
+    /// manual work.
     func applyAll() async {
         guard let appState,
               case .report(let report) = sheet else { return }
+        errorMessage = nil
+        var failures: [String] = []
+        var appliedCount = 0
         for advisory in report.advisories {
-            try? await appState.applyAdvisory(advisory)
+            do {
+                try await appState.applyAdvisory(advisory)
+                appliedCount += 1
+            } catch {
+                failures.append("\(advisory.parameterName): \(error.localizedDescription)")
+            }
         }
-        sheet = nil
+        if failures.isEmpty {
+            sheet = nil
+            return
+        }
+        let details = failures.prefix(3).joined(separator: "; ")
+        let prefix = appliedCount > 0
+            ? "Applied \(appliedCount) of \(report.advisories.count) calibration changes. "
+            : ""
+        errorMessage = prefix + (failures.count == 1
+            ? "Failed to apply 1 calibration change: \(details)"
+            : "Failed to apply \(failures.count) calibration changes: \(details)")
     }
 
     func dismiss() {
+        errorMessage = nil
         sheet = nil
     }
 
@@ -182,10 +221,11 @@ final class CalibrationCoordinator: ObservableObject {
     /// Filters enabled non-local providers so the picker only shows valid
     /// reference targets.
     private func availableReferenceProviders() -> [String] {
-        guard let appState else { return [] }
-        return appState.configuredProviders
-            .filter { !$0.isLocal && $0.id != localProviderID }
-            .map(\.id)
+        appState?.registry.readyRemoteProviderIDs(excluding: localProviderID) ?? []
+    }
+
+    private func referenceProviderIsReady(_ providerID: String) -> Bool {
+        appState?.registry.isReadyForUse(providerID) == true
     }
 
     /// Builds a single streamed completion request for one provider.
@@ -222,11 +262,16 @@ final class CalibrationCoordinator: ObservableObject {
         }
     }
 
-    /// Wraps the judge-provider scoring request and returns 1.0 for PASS,
-    /// 0.0 for FAIL, or 0.5 when the scorer cannot produce a confident result.
+    /// Wraps the judge-provider scoring request.
+    ///
+    /// Missing scorer-provider wiring now fails loudly. A malformed judge reply
+    /// or transient scorer request error returns a degraded fallback result so
+    /// the report can tell the user the battery completed with softer scoring.
     private func makeScorerClosure() -> CalibrationRunner.ScorerClosure {
         { [weak appState] prompt, response in
-            guard let appState else { return 0.5 }
+            guard let appState else {
+                throw CalibrationError.scorerUnavailable("Calibration app state no longer exists.")
+            }
 
             let lookup = await MainActor.run { () -> (any LLMProvider, ProviderConfig)? in
                 let candidate = appState.engine.provider(for: .reason) ?? appState.engine.provider(for: .orchestrate)
@@ -238,7 +283,9 @@ final class CalibrationCoordinator: ObservableObject {
             }
 
             guard let (provider, config) = lookup else {
-                return 0.5
+                throw CalibrationError.scorerUnavailable(
+                    "No critic provider is available on the reason or orchestrate slot."
+                )
             }
 
             let reviewPrompt = """
@@ -267,16 +314,34 @@ final class CalibrationCoordinator: ObservableObject {
                 let judged = try await calibrationCompleteText(provider: provider, request: request)
                 let trimmed = judged.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if trimmed.hasPrefix("PASS") {
-                    return 1.0
+                    return .scored(1.0)
                 }
                 if trimmed.hasPrefix("FAIL") {
-                    return 0.0
+                    return .scored(0.0)
                 }
-                return 0.5
+                return .fallback(note: "Critic returned neither PASS nor FAIL.")
             } catch {
-                return 0.5
+                return .fallback(note: "Critic request failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func humanReadableError(_ error: Error, referenceProviderID: String) -> String {
+        if let calibrationError = error as? CalibrationError {
+            switch calibrationError {
+            case .providerNotFound(let providerID):
+                return "Calibration could not start because provider '\(providerID)' is unavailable or not configured."
+            case .scorerUnavailable(let message):
+                return "Calibration could not score results: \(message)"
+            case .runnerFailed(let message):
+                return "Calibration failed: \(message)"
+            }
+        }
+        let description = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        if description.isEmpty || description == "The operation couldn’t be completed." {
+            return "Calibration failed while using reference provider '\(referenceProviderID)'. Check the provider configuration and try again."
+        }
+        return "Calibration failed while using reference provider '\(referenceProviderID)': \(description)"
     }
 
 }
@@ -286,6 +351,7 @@ final class CalibrationCoordinator: ObservableObject {
 /// Errors produced while building providers or running the calibration suite.
 enum CalibrationError: Error, Sendable {
     case providerNotFound(String)
+    case scorerUnavailable(String)
     case runnerFailed(String)
 }
 

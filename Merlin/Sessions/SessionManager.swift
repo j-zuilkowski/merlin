@@ -25,8 +25,10 @@ final class SessionManager: ObservableObject {
 
     @discardableResult
     func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
+        let configuredDomainIDs = AppSettings.shared.activeDomainIDs
+        let requestedDomainIDs = inferredSessionDomainIDs(defaults: configuredDomainIDs)
         let activeDomainIDs = await DomainRegistry.shared.normalizedActiveDomainIDs(
-            ids: AppSettings.shared.activeDomainIDs
+            ids: requestedDomainIDs
         )
         let session = LiveSession(
             projectRef: projectRef,
@@ -80,5 +82,14 @@ final class SessionManager: ObservableObject {
         if activeSessionID == id {
             activeSessionID = liveSessions.last?.id
         }
+    }
+
+    private func inferredSessionDomainIDs(defaults: [String]) -> [String] {
+        guard ElectronicsDomain.projectLooksLikeElectronics(projectRef.path) else { return defaults }
+        var ids = defaults
+        if !ids.contains(ElectronicsDomain.defaultID) {
+            ids.append(ElectronicsDomain.defaultID)
+        }
+        return ids
     }
 }

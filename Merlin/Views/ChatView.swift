@@ -4,6 +4,11 @@ import UniformTypeIdentifiers
 import SwiftUI
 
 struct ChatView: View {
+    private struct PendingDomainActivation: Equatable {
+        var message: String
+        var suggestion: DomainActivationSuggestion
+    }
+
     @EnvironmentObject var appState: AppState
     @EnvironmentObject private var skillsRegistry: SkillsRegistry
     @FocusedObject private var sessionManager: SessionManager?
@@ -20,6 +25,7 @@ struct ChatView: View {
     @State private var shouldResumeScroll: Bool = false
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""
+    @State private var pendingDomainActivation: PendingDomainActivation?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,6 +39,11 @@ struct ChatView: View {
                 toolbarActionsBar
                 Divider()
             } else {
+                Divider()
+            }
+
+            if let pendingDomainActivation {
+                domainActivationBar(pendingDomainActivation)
                 Divider()
             }
 
@@ -84,6 +95,47 @@ struct ChatView: View {
             }
         }
         .animation(.spring(duration: 0.18), value: showBtwOverlay)
+    }
+
+    private func domainActivationBar(_ pending: PendingDomainActivation) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "cpu")
+                .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Switch to \(pending.suggestion.displayName)?")
+                    .font(.callout.weight(.semibold))
+                Text(pending.suggestion.reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Button("Cancel") {
+                pendingDomainActivation = nil
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationCancelButton)
+
+            Button("Send Without Switching") {
+                pendingDomainActivation = nil
+                submitPreparedMessage(pending.message)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationStayButton)
+
+            Button("Switch and Send") {
+                pendingDomainActivation = nil
+                Task { @MainActor in
+                    await appState.setActiveDomains([pending.suggestion.domainID], persistAsDefault: false)
+                    submitPreparedMessage(pending.message)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(AccessibilityID.chatDomainActivationSwitchButton)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(.bar)
     }
 
     private var header: some View {
@@ -208,9 +260,15 @@ struct ChatView: View {
                     .accessibilityIdentifier(AccessibilityID.chatAtMentionPicker)
                 }
                 .popover(isPresented: $showSkillsPicker, attachmentAnchor: .rect(.bounds), arrowEdge: .bottom) {
-                    SkillsPicker(query: $skillQuery) { skill in
-                        insertSelectedSkill(skill)
-                    }
+                    SkillsPicker(
+                        query: $skillQuery,
+                        onSelect: { skill in
+                            insertSelectedSkill(skill)
+                        },
+                        onSelectBuiltin: { cmd in
+                            insertSelectedBuiltin(cmd)
+                        }
+                    )
                     .environmentObject(skillsRegistry)
                     .padding(10)
                     .accessibilityIdentifier(AccessibilityID.chatSkillsPicker)
@@ -294,6 +352,18 @@ struct ChatView: View {
             model.draft = ""
             return
         }
+        if let suggestion = appState.suggestedDomainActivation(for: message) {
+            pendingDomainActivation = PendingDomainActivation(
+                message: message,
+                suggestion: suggestion
+            )
+            return
+        }
+        submitPreparedMessage(message)
+    }
+
+    private func submitPreparedMessage(_ message: String) {
+        model.draft = message
         // Always re-enable auto-scroll when the user sends a new message so a
         // previously locked view tracks the incoming response from the start.
         autoScrollEnabled = true
@@ -467,6 +537,15 @@ struct ChatView: View {
         }
     }
 
+    /// Picker-tap callback for built-in slash commands. Replaces the draft
+    /// with `/<name>` (no args) and dismisses the popover; the user can then
+    /// type any arguments and hit Return to dispatch.
+    private func insertSelectedBuiltin(_ cmd: BuiltinSlashCommand) {
+        model.draft = "/\(cmd.name)"
+        skillQuery = ""
+        showSkillsPicker = false
+    }
+
     private func insertSelectedSkill(_ skill: Skill) {
         let rendered = skillsRegistry.render(skill: skill, arguments: "")
         if model.draft.hasPrefix("/") {
@@ -560,12 +639,12 @@ final class ChatViewModel: ObservableObject {
             case .thinking(let text):
                 appendThinking(text)
                 appState.toolActivityState = .streaming
-            case .toolCallStarted(let call):
+            case .toolCallStarted:
                 appState.toolActivityState = .toolExecuting
-                appendToolCall(call)
-            case .toolCallResult(let result):
+                applyEngineEvent(event)
+            case .toolCallResult:
                 appState.toolActivityState = .toolExecuting
-                updateToolResult(result)
+                applyEngineEvent(event)
             case .ragSources(let chunks):
                 lastRAGSources = chunks
                 if let index = assistantIndex, items.indices.contains(index) {
@@ -687,6 +766,10 @@ final class ChatViewModel: ObservableObject {
 
     func applyEngineEvent(_ event: AgentEvent) {
         switch event {
+        case .toolCallStarted(let call):
+            appendToolCall(call)
+        case .toolCallResult(let result):
+            updateToolResult(result)
         case .subagentStarted(let id, let agentName):
             let vm = SubagentBlockViewModel(agentName: agentName)
             subagentVMs[id] = vm

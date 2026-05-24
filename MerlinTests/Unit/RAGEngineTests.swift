@@ -26,6 +26,22 @@ final class CapturingProvider: LLMProvider, @unchecked Sendable {
 
 @MainActor
 final class RAGEngineTests: XCTestCase {
+    private var savedKAGEnabled = false
+    private var savedKAGHops = 2
+
+    override func setUp() async throws {
+        try await super.setUp()
+        savedKAGEnabled = AppSettings.shared.kagEnabled
+        savedKAGHops = AppSettings.shared.kagHops
+        KAGBackendRegistry.shared.register(NullKAGPlugin())
+    }
+
+    override func tearDown() async throws {
+        AppSettings.shared.kagEnabled = savedKAGEnabled
+        AppSettings.shared.kagHops = savedKAGHops
+        KAGBackendRegistry.shared.register(NullKAGPlugin())
+        try await super.tearDown()
+    }
 
     private let chunkJSON = """
     {
@@ -146,5 +162,55 @@ final class RAGEngineTests: XCTestCase {
             "plain question",
             "Message should be unchanged when xcalibreClient is nil"
         )
+    }
+
+    func testAutoInjectIncludesKnowledgeGraphWhenKAGEnabled() async throws {
+        AppSettings.shared.kagEnabled = true
+        AppSettings.shared.kagHops = 3
+        let kag = RecordingKAGPlugin(triples: [
+            KAGTriple(subject: "U4", predicate: "shares_net", object: "VCC",
+                      domainId: "electronics", source: .session, confidence: 0.9)
+        ])
+        KAGBackendRegistry.shared.register(kag)
+
+        let (engine, _, ctx) = makeEngine(xcalibreClient: nil)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+
+        for await _ in engine.send(userMessage: "Where should U4 decouple VCC?") {}
+
+        guard case .text(let content) = ctx.messages.first(where: { $0.role == .user })?.content else {
+            return XCTFail("Expected text content")
+        }
+
+        XCTAssertTrue(content.contains("## Knowledge Graph"))
+        XCTAssertTrue(content.contains("U4 shares_net VCC [electronics]"))
+        XCTAssertTrue(content.hasSuffix("Where should U4 decouple VCC?"))
+
+        let recordedAnchor = await kag.recordedAnchor
+        let recordedHops = await kag.recordedHops
+        let recordedDomainID = await kag.recordedDomainID
+        XCTAssertEqual(recordedAnchor, "Where should U4 decouple VCC?")
+        XCTAssertEqual(recordedHops, 3)
+        XCTAssertEqual(recordedDomainID, ElectronicsDomain.defaultID)
+    }
+}
+
+private actor RecordingKAGPlugin: KAGBackendPlugin {
+    let triples: [KAGTriple]
+    private(set) var recordedAnchor: String?
+    private(set) var recordedHops: Int?
+    private(set) var recordedDomainID: String?
+
+    init(triples: [KAGTriple]) {
+        self.triples = triples
+    }
+
+    func writeTriples(_ triples: [KAGTriple]) async throws {}
+
+    func traverse(anchor: String, hops: Int, domainId: String?) async throws -> [KAGTriple] {
+        recordedAnchor = anchor
+        recordedHops = hops
+        recordedDomainID = domainId
+        return triples
     }
 }

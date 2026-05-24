@@ -14,6 +14,7 @@ final class SubagentSidebarViewModel: ObservableObject {
 
     func add(_ entry: SubagentSidebarEntry) {
         workerEntries.append(entry)
+        selectedEntryID = entry.id
     }
 
     func remove(id: UUID) {

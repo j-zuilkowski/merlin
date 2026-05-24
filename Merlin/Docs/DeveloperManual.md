@@ -61,7 +61,7 @@ merlin/
 │   ├── Agents/               # Subagent definitions, registry, engines
 │   ├── App/                  # Entry point, AppState, Commands, FocusedValues
 │   ├── Auth/                 # AuthGate, AuthMemory, PatternMatcher
-│   ├── Automations/          # ThreadAutomation structs and scheduling engine
+│   ├── Automations/          # Legacy/internal ThreadAutomation types
 │   ├── Config/               # AppSettings, TOMLParser, HookConfig, AppearanceSettings
 │   ├── Connectors/           # GitHub, Linear, Slack connectors; PRMonitor
 │   ├── Docs/                 # Bundled UserGuide.md and DeveloperManual.md (this file)
@@ -355,7 +355,12 @@ enum AgentSlot: String, CaseIterable, Codable, Sendable {
 }
 ```
 
-`AgenticEngine.provider(for:)` resolves the LLM provider for a slot. `orchestrate` falls back to `reason` when not explicitly assigned. The execute slot uses `loraProvider` when a LoRA adapter is loaded; otherwise uses `proProvider`.
+`AgenticEngine.provider(for:)` resolves the LLM provider for a slot. The runtime fallback layers are:
+
+- `execute` → `loraProvider` when loaded, otherwise the active provider assignment
+- `reason` → active provider when not explicitly assigned
+- `orchestrate` → `reason`, then active provider
+- `vision` → active provider unless a dedicated vision-capable provider is assigned
 
 ### DomainRegistry / DomainPlugin
 
@@ -751,16 +756,15 @@ Wraps an `AppState` with all the per-session subsystems that don't belong on `Ap
 - `MCPBridge` — MCP server connections
 - `StagingBuffer` — pending file changes
 - `MemoryEngine` — idle-triggered memory generation
-- `ThreadAutomationStore` + `ThreadAutomationEngine` — cron-based automations
+- `SchedulerEngine` — persisted background scheduled-task runner (the supported automation path)
 
-**Lifecycle** — `init` launches four background tasks collected in `lifecycleTasks: [Task<Void, Never>]`:
+**Lifecycle** — `init` launches three background tasks collected in `lifecycleTasks: [Task<Void, Never>]`:
 
 1. `MCPBridge.start(config:toolRouter:)` — merges global + project MCP configs, launches servers
-2. `ThreadAutomationEngine.start(store:)` — cron-based automation polling
-3. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s, posts `merlinInjectMessage`
-4. `MemoryEngine.startIdleTimer(timeout:)` — idle-triggered memory generation
+2. Inject-file polling — watches `~/.merlin/inject.txt` every 2 s, posts `merlinInjectMessage`
+3. `MemoryEngine.startIdleTimer(timeout:)` — idle-triggered memory generation
 
-`close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, then calls `appState.stopEngine()`, `mcpBridge.stop()`, `automationEngine.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks in case `close()` was not called (e.g. the session was force-deallocated).
+`close() async` is guarded by `isClosed: Bool` to prevent double-teardown. It cancels all `lifecycleTasks`, then calls `appState.stopEngine()`, `mcpBridge.stop()`, and `memoryEngine.stopIdleTimer()`. A `deinit` fallback cancels tasks in case `close()` was not called (e.g. the session was force-deallocated).
 
 **Domain scoping** — `activeDomainIDs: [String]` is carried per `LiveSession` and applied directly to `appState.engine.activeDomainIDs`. `DomainRegistry` is queried via stateless helpers; no global mutable state changes when switching sessions.
 
@@ -954,13 +958,14 @@ Seven verification results block forward progress until they return `PASS` or th
 
 ### Domain Plugin Registration
 
-`KiCadDomain` conforms to `DomainPlugin` and is registered at app launch:
+`ElectronicsDomain` is built in and registered at app launch:
 
 ```swift
-DomainRegistry.shared.register(KiCadDomain())
+DomainRegistry.shared.register(SoftwareDomain())
+DomainRegistry.shared.register(ElectronicsDomain())
 ```
 
-Electronics sessions set `activeDomainIDs = ["software", "kicad"]` so the software domain's tools remain available alongside the KiCad tools.
+External MCP domain manifests can also register into `DomainRegistry` through `MCPDomainAdapter`. KiCad/PCB manifests are canonicalised to the product-facing `electronics` domain. Electronics sessions carry `activeDomainIDs = ["software", "electronics"]` so the software domain's tools remain available alongside the electronics tools.
 
 ### Key Schema Types
 
@@ -1008,8 +1013,9 @@ Environment variable placeholders (`${VAR}`) are expanded from the process envir
 `actor` that:
 1. Launches each configured MCP server as a child process
 2. Uses JSON-RPC over stdio to call `tools/list` and retrieves tool schemas
-3. Registers each tool with `ToolRouter.registerMCPTool()`, wrapping the JSON-RPC call as a handler
-4. Unregisters all tools on `stop()`
+3. Optionally reads `merlin://domain/manifest` and registers any manifest-backed domain through `MCPDomainAdapter`
+4. Registers each tool with `ToolRouter.registerMCPTool()`, wrapping the JSON-RPC call as a handler
+5. Unregisters all tools and manifest-backed domains on `stop()`
 
 ---
 
@@ -1021,17 +1027,19 @@ Environment variable placeholders (`${VAR}`) are expanded from the process envir
 
 **File:** `Merlin/Agents/SubagentEngine.swift`
 
-An `actor` that runs a scoped agentic loop with a filtered tool set. Used for **explorer** agents (read-only).
+An `actor` that runs a scoped agentic loop with a filtered tool set. Used for **explorer** and **default** agents.
 
 Tool filtering by role:
 - `explorer` — file read, list directory, search, shell read-only commands
-- `worker` — all tools (writes go through a dedicated `StagingBuffer`)
+- `default` / `worker` — all tools (worker writes go through a dedicated `StagingBuffer` / worktree path)
+
+The current implementation executes real tool calls and loops their actual results back into the child model before completion.
 
 ### WorkerSubagentEngine
 
 **File:** `Merlin/Agents/WorkerSubagentEngine.swift`
 
-Extends the worker role with git worktree isolation via `WorktreeManager`. Worker file writes are captured in the worker's own `StagingBuffer`, visible in the sidebar `WorkerDiffView`.
+Extends the worker role with git worktree isolation via `WorktreeManager`. Worker file writes are executed against the isolated worktree, recorded in the worker's own `StagingBuffer`, and shown in the sidebar `WorkerDiffView`.
 
 ### AgentRegistry
 
@@ -1049,7 +1057,7 @@ allowed_tools = ["read_file", "list_directory"]
 
 ### spawn_agent Tool
 
-When the engine calls `spawn_agent`, `SpawnAgentTool` resolves the agent definition from `AgentRegistry`, creates a `SubagentEngine` or `WorkerSubagentEngine`, and fires it. Results flow back as `AgentEvent.subagentUpdate` events that the parent engine yields to the UI.
+When the engine calls `spawn_agent`, `SpawnAgentTool` resolves the agent definition from `AgentRegistry`, creates a `SubagentEngine` or `WorkerSubagentEngine`, and fires it. Results flow back as `AgentEvent.subagentUpdate` events that the parent engine yields to the UI. Nested `spawn_agent` calls from inside a subagent are currently rejected explicitly.
 
 ---
 
@@ -1061,9 +1069,8 @@ When the engine calls `spawn_agent`, `SpawnAgentTool` resolves the agent definit
 
 ```
 MerlinApp (@main)
-  ├── WindowGroup("picker") → ProjectPickerView
-  ├── WindowGroup(for: ProjectRef.self) → WorkspaceView
-  │     └── mainLayout(session:)
+  ├── WindowGroup("Merlin", id: "workspace") → WorkspaceView
+  │     └── WorkspaceCoordinator-driven layout
   │           ├── SessionSidebar
   │           ├── ContentView
   │           │     ├── ChatView
@@ -1071,7 +1078,7 @@ MerlinApp (@main)
   │           ├── DiffPane (optional)
   │           ├── FilePane (optional)
   │           ├── PreviewPane (optional)
-  │           └── SideChatPane (optional)
+  │           ├── SideChatPane (optional)
   │           └── TerminalPane (optional)
   ├── WindowGroup("help") → HelpWindowView
   └── Settings → SettingsWindowView

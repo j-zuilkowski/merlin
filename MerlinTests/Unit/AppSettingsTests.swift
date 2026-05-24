@@ -149,4 +149,24 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(AppTheme(rawValue: "dark"), .dark)
         XCTAssertNil(AppTheme(rawValue: "unknown"))
     }
+
+    func test_resetToDefaultsPreservingConnectorSecrets_resetsExtendedSettings() {
+        settings.ragRerank = true
+        settings.kagEnabled = true
+        settings.kagXcalibreURL = "http://xcalibre.local"
+        settings.loraEnabled = true
+        settings.promptCompressionEnabled = true
+        settings.slotAssignments[.execute] = "lmstudio:phi-4"
+        settings.xcalibreToken = "keep-me"
+
+        settings.resetToDefaultsPreservingConnectorSecrets()
+
+        XCTAssertFalse(settings.ragRerank)
+        XCTAssertFalse(settings.kagEnabled)
+        XCTAssertEqual(settings.kagXcalibreURL, "")
+        XCTAssertFalse(settings.loraEnabled)
+        XCTAssertFalse(settings.promptCompressionEnabled)
+        XCTAssertTrue(settings.slotAssignments.isEmpty)
+        XCTAssertEqual(settings.xcalibreToken, "keep-me")
+    }
 }

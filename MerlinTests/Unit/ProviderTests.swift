@@ -60,4 +60,64 @@ final class ProviderTests: XCTestCase {
         XCTAssertNil(try SSEParser.parseChunk(": keep-alive"))
         XCTAssertNil(try SSEParser.parseChunk("data: [DONE]"))
     }
+
+    func testRequestEncodesUnsafeToolNamesForOpenAIWireFormat() throws {
+        let canonicalName = "mcp:kicad:route_board"
+        let wireName = "__merlin_tool_name_encoded__mcp_u003A_kicad_u003A_route_board"
+        let req = CompletionRequest(
+            model: "deepseek-v4-flash",
+            messages: [
+                Message(
+                    role: .assistant,
+                    content: .text(""),
+                    toolCalls: [
+                        ToolCall(
+                            id: "call_1",
+                            type: "function",
+                            function: .init(name: canonicalName, arguments: #"{"net":"GND"}"#)
+                        )
+                    ],
+                    timestamp: Date()
+                )
+            ],
+            tools: [
+                ToolDefinition(
+                    function: .init(
+                        name: canonicalName,
+                        description: "Route a board.",
+                        parameters: JSONSchema(type: "object")
+                    )
+                )
+            ]
+        )
+
+        let data = try encodeRequest(
+            req,
+            baseURL: URL(string: "https://api.deepseek.com/v1")!,
+            model: "deepseek-v4-flash"
+        )
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let tools = json["tools"] as! [[String: Any]]
+        let toolFunction = tools[0]["function"] as! [String: Any]
+        XCTAssertEqual(toolFunction["name"] as? String, wireName)
+
+        let messages = json["messages"] as! [[String: Any]]
+        let toolCalls = messages[0]["tool_calls"] as! [[String: Any]]
+        let callFunction = toolCalls[0]["function"] as! [String: Any]
+        XCTAssertEqual(callFunction["name"] as? String, wireName)
+    }
+
+    func testSSEParserDecodesWireToolNameToCanonicalName() throws {
+        let line = #"data: {"id":"1","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"__merlin_tool_name_encoded__mcp_u003A_kicad_u003A_route_board","arguments":"{}"}}]},"finish_reason":null}]}"#
+        let chunk = try SSEParser.parseChunk(line)
+        let function = chunk?.delta?.toolCalls?.first?.function
+        XCTAssertEqual(function?.name, "mcp:kicad:route_board")
+        XCTAssertEqual(function?.arguments, "{}")
+    }
+
+    func testSSEParserLeavesValidLookalikeToolNamesUnchanged() throws {
+        let line = #"data: {"id":"1","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"mcp_u003A_kicad","arguments":"{}"}}]},"finish_reason":null}]}"#
+        let chunk = try SSEParser.parseChunk(line)
+        XCTAssertEqual(chunk?.delta?.toolCalls?.first?.function?.name, "mcp_u003A_kicad")
+    }
 }

@@ -5,6 +5,7 @@ import SwiftUI
 /// Sheet step 1 of 3 for `/calibrate`: choose a reference provider, then tap Start.
 struct CalibrationProviderPickerView: View {
     let availableProviders: [String]
+    let errorMessage: String?
     /// Called with the selected providerID when the user taps Start.
     let onStart: (String) -> Void
 
@@ -35,24 +36,38 @@ struct CalibrationProviderPickerView: View {
             Text("Reference provider")
                 .font(.subheadline.weight(.semibold))
 
-            Picker("Reference provider", selection: $selectedProvider) {
-                Text("Select...").tag("")
-                ForEach(availableProviders, id: \.self) { id in
-                    Text(id.capitalized).tag(id)
+            if availableProviders.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("No ready reference providers")
+                        .font(.subheadline.weight(.semibold))
+                    Text(errorMessage ?? "Enable a remote provider and add its API key in Settings.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .pickerStyle(.radioGroup)
-            .accessibilityIdentifier(AccessibilityID.calibrationProviderPicker)
-            .onChange(of: availableProviders) { _, providers in
-                if selectedProvider.isEmpty, let first = providers.first {
-                    selectedProvider = first
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .cornerRadius(8)
+            } else {
+                Picker("Reference provider", selection: $selectedProvider) {
+                    Text("Select...").tag("")
+                    ForEach(availableProviders, id: \.self) { id in
+                        Text(id.capitalized).tag(id)
+                    }
                 }
-            }
-            // onAppear seeds the first selection immediately; onChange handles
-            // asynchronous provider-list updates after the sheet is already open.
-            .onAppear {
-                if selectedProvider.isEmpty, let first = availableProviders.first {
-                    selectedProvider = first
+                .pickerStyle(.radioGroup)
+                .accessibilityIdentifier(AccessibilityID.calibrationProviderPicker)
+                .onChange(of: availableProviders) { _, providers in
+                    if selectedProvider.isEmpty, let first = providers.first {
+                        selectedProvider = first
+                    }
+                }
+                // onAppear seeds the first selection immediately; onChange handles
+                // asynchronous provider-list updates after the sheet is already open.
+                .onAppear {
+                    if selectedProvider.isEmpty, let first = availableProviders.first {
+                        selectedProvider = first
+                    }
                 }
             }
 

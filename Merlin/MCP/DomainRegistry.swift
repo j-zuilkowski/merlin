@@ -1,7 +1,6 @@
 import Foundation
 
-/// Runtime registry of domain plugins. One active domain at a time.
-/// Multi-domain sessions are deferred.
+/// Runtime registry of domain plugins.
 actor DomainRegistry {
 
     static let shared = DomainRegistry()
@@ -10,9 +9,11 @@ actor DomainRegistry {
     private var activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs
 
     init() {
-        // SoftwareDomain is always registered and cannot be removed.
+        // Built-in domains are always registered and cannot be removed.
         let software = SoftwareDomain()
         plugins[software.id] = software
+        let electronics = ElectronicsDomain()
+        plugins[electronics.id] = electronics
     }
 
     func register(_ plugin: any DomainPlugin) {
@@ -42,6 +43,24 @@ actor DomainRegistry {
         normalizeActiveDomainIDs(ids).compactMap { plugins[$0] }
     }
 
+    /// Returns plugins relevant to the active product domains, including
+    /// non-selectable external adapters whose canonical domain matches.
+    func scopedDomains(ids: [String]) -> [any DomainPlugin] {
+        let normalizedIDs = normalizeActiveDomainIDs(ids)
+        let allowed = Set(normalizedIDs)
+        return plugins.values
+            .filter { plugin in
+                allowed.contains(plugin.id) || allowed.contains(plugin.canonicalDomainID)
+            }
+            .sorted { lhs, rhs in
+                let leftIndex = normalizedIDs.firstIndex(of: lhs.canonicalDomainID) ?? Int.max
+                let rightIndex = normalizedIDs.firstIndex(of: rhs.canonicalDomainID) ?? Int.max
+                if leftIndex != rightIndex { return leftIndex < rightIndex }
+                if lhs.isUserSelectable != rhs.isUserSelectable { return lhs.isUserSelectable }
+                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
+    }
+
     func normalizedActiveDomainIDs(ids: [String]) -> [String] {
         normalizeActiveDomainIDs(ids)
     }
@@ -67,6 +86,17 @@ actor DomainRegistry {
 
     func plugin(for id: String) -> (any DomainPlugin)? {
         plugins[id]
+    }
+
+    func availableDomains() -> [(id: String, displayName: String)] {
+        plugins.values
+            .filter(\.isUserSelectable)
+            .map { ($0.id, $0.displayName) }
+            .sorted { lhs, rhs in
+                if lhs.id == SoftwareDomain.defaultID { return true }
+                if rhs.id == SoftwareDomain.defaultID { return false }
+                return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+            }
     }
 
     private func normalizeActiveDomainIDs(_ ids: [String]) -> [String] {

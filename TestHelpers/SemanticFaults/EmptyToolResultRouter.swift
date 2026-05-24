@@ -6,8 +6,16 @@ import Foundation
 /// semantically empty or useless data.
 @MainActor
 final class EmptyToolResultRouter: ToolRouter {
-    override func dispatch(_ calls: [ToolCall]) async -> [ToolResult] {
-        let results = await super.dispatch(calls)
+    override func dispatch(
+        _ calls: [ToolCall],
+        stagingBufferOverride: StagingBuffer? = nil,
+        permissionModeOverride: PermissionMode? = nil
+    ) async -> [ToolResult] {
+        let results = await super.dispatch(
+            calls,
+            stagingBufferOverride: stagingBufferOverride,
+            permissionModeOverride: permissionModeOverride
+        )
         return results.map { result in
             ToolResult(toolCallId: result.toolCallId, content: "", isError: false)
         }

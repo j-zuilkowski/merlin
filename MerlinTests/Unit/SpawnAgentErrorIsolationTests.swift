@@ -80,6 +80,40 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
         XCTAssertTrue(true)
     }
 
+    func test_spawnAgent_acceptsDocumentedTaskAndContextArguments() async {
+        let provider = MockProvider(response: "subagent done")
+        let engine = EngineFactory.makeEngine(provider: provider)
+
+        let call = ToolCall(
+            id: UUID().uuidString,
+            type: "function",
+            function: .init(
+                name: "spawn_agent",
+                arguments: #"{"agent":"explorer","task":"search for files","context":"repo: merlin"}"#
+            )
+        )
+
+        var events: [AgentEvent] = []
+        let stream = AsyncStream<AgentEvent> { continuation in
+            Task {
+                await engine.handleSpawnAgents([call], depth: 0, continuation: continuation)
+                continuation.finish()
+            }
+        }
+        for await event in stream { events.append(event) }
+
+        XCTAssertTrue(events.contains { if case .subagentStarted(_, "explorer") = $0 { return true }; return false })
+        XCTAssertTrue(events.contains { if case .subagentUpdate(_, .completed(summary: "subagent done")) = $0 { return true }; return false })
+
+        let results = events.compactMap { event -> ToolResult? in
+            if case .toolCallResult(let result) = event { return result }
+            return nil
+        }
+        XCTAssertEqual(results.first?.toolCallId, call.id)
+        XCTAssertEqual(results.first?.content, "subagent done")
+        XCTAssertEqual(results.first?.isError, false)
+    }
+
     // MARK: - Subagent failure → systemNote, parent continues
 
     func test_spawnAgent_subagentProviderError_emitsSystemNote_notError() async {
@@ -114,5 +148,12 @@ final class SpawnAgentErrorIsolationTests: XCTestCase {
         // Must contain at least one systemNote describing what went wrong.
         let notes = events.compactMap { if case .systemNote(let s) = $0 { return s } else { return nil } }
         XCTAssertFalse(notes.isEmpty, "must emit systemNote on subagent failure; got events: \(events)")
+
+        let results = events.compactMap { event -> ToolResult? in
+            if case .toolCallResult(let result) = event { return result }
+            return nil
+        }
+        XCTAssertEqual(results.first?.toolCallId, call.id)
+        XCTAssertEqual(results.first?.isError, true)
     }
 }

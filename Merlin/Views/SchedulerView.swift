@@ -56,6 +56,9 @@ private struct ScheduledTaskRow: View {
                 Text(cadenceDescription)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Text("Permission: \(task.permissionMode.label)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             Spacer()
             if !task.isEnabled {
@@ -80,21 +83,47 @@ private struct ScheduledTaskRow: View {
 }
 
 private struct AddScheduledTaskView: View {
+    private enum CadenceChoice: String, CaseIterable {
+        case hourly
+        case daily
+        case weekly
+    }
+
     @EnvironmentObject private var scheduler: SchedulerEngine
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
+    @State private var cadenceChoice: CadenceChoice = .daily
+    @State private var weeklyDay: Weekday = .monday
     @State private var time = "09:00"
     @State private var projectPath = ""
+    @State private var permissionMode: PermissionMode = .plan
     @State private var prompt = ""
 
     var body: some View {
         Form {
             TextField("Name", text: $name)
                 .accessibilityIdentifier(AccessibilityID.schedulerNameField)
+            Picker("Cadence", selection: $cadenceChoice) {
+                Text("Hourly").tag(CadenceChoice.hourly)
+                Text("Daily").tag(CadenceChoice.daily)
+                Text("Weekly").tag(CadenceChoice.weekly)
+            }
+            if cadenceChoice == .weekly {
+                Picker("Weekday", selection: $weeklyDay) {
+                    ForEach(Weekday.allCases, id: \.self) { day in
+                        Text(day.displayName).tag(day)
+                    }
+                }
+            }
             TextField("Time (HH:mm)", text: $time)
                 .accessibilityIdentifier(AccessibilityID.schedulerTimeField)
             TextField("Project path", text: $projectPath)
                 .accessibilityIdentifier(AccessibilityID.schedulerProjectPathField)
+            Picker("Permission mode", selection: $permissionMode) {
+                ForEach(PermissionMode.allCases, id: \.self) { mode in
+                    Text(mode.label.capitalized).tag(mode)
+                }
+            }
             TextField("Prompt", text: $prompt)
                 .accessibilityIdentifier(AccessibilityID.schedulerPromptField)
         }
@@ -104,10 +133,10 @@ private struct AddScheduledTaskView: View {
                 Button("Add") {
                     let task = ScheduledTask(
                         name: name,
-                        cadence: .daily,
+                        cadence: selectedCadence,
                         time: time,
                         projectPath: projectPath,
-                        permissionMode: .plan,
+                        permissionMode: permissionMode,
                         prompt: prompt,
                         isEnabled: true
                     )
@@ -125,5 +154,16 @@ private struct AddScheduledTaskView: View {
             }
         }
         .frame(width: 360)
+    }
+
+    private var selectedCadence: ScheduleCadence {
+        switch cadenceChoice {
+        case .hourly:
+            return .hourly
+        case .daily:
+            return .daily
+        case .weekly:
+            return .weekly(weeklyDay)
+        }
     }
 }

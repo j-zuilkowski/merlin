@@ -23,7 +23,8 @@ set -euo pipefail
 LOCALAI_BIN="${LOCALAI_BIN:-/opt/homebrew/bin/local-ai}"
 MODELS_DIR="${LOCALAI_MODELS_PATH:-$HOME/.localai/models}"
 BACKENDS_DIR="${LOCALAI_BACKENDS_PATH:-$HOME/.localai/backends}"
-PORT=8080
+PORT="${PORT:-8080}"
+CONTEXT_SIZE="${CONTEXT_SIZE:-32768}"
 
 if [ ! -x "$LOCALAI_BIN" ]; then
     echo "error: local-ai binary not found at $LOCALAI_BIN"
@@ -48,5 +49,5 @@ exec "$LOCALAI_BIN" run \
     --backends-path "$BACKENDS_DIR" \
     --models-path "$MODELS_DIR" \
     --address ":$PORT" \
-    --context-size 32768 \
+    --context-size "$CONTEXT_SIZE" \
     --f16

@@ -10,20 +10,38 @@ struct CalibrationFlowView: View {
     @ObservedObject var coordinator: CalibrationCoordinator
 
     var body: some View {
-        Group {
-            switch coordinator.sheet {
-            case .pickProvider(let providers):
-                CalibrationProviderPickerView(availableProviders: providers) { selected in
-                    Task { await coordinator.start(referenceProviderID: selected) }
+        VStack(spacing: 0) {
+            if let errorMessage = coordinator.errorMessage, !errorMessage.isEmpty {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 0)
                 }
-            case .running(let info):
-                CalibrationProgressView(info: info)
-            case .report(let report):
-                CalibrationReportView(report: report) {
-                    Task { await coordinator.applyAll() }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+            }
+
+            Group {
+                switch coordinator.sheet {
+                case .pickProvider(let providers):
+                    CalibrationProviderPickerView(
+                        availableProviders: providers,
+                        errorMessage: coordinator.errorMessage
+                    ) { selected in
+                        Task { await coordinator.start(referenceProviderID: selected) }
+                    }
+                case .running(let info):
+                    CalibrationProgressView(info: info)
+                case .report(let report):
+                    CalibrationReportView(report: report) {
+                        Task { await coordinator.applyAll() }
+                    }
+                case nil:
+                    EmptyView()
                 }
-            case nil:
-                EmptyView()
             }
         }
     }

@@ -17,6 +17,7 @@ class ToolRouter {
     private var handlers: [String: (String) async throws -> String] = [:]
     private var mcpHandlers: [String: (String) async throws -> String] = [:]
     private var mcpDefinitions: [ToolDefinition] = []
+    private var mcpDomainScopes: [String: String?] = [:]
     var stagingBuffer: StagingBuffer?
     var permissionMode: PermissionMode = .ask
 
@@ -24,11 +25,19 @@ class ToolRouter {
         self.authGate = authGate
     }
 
-    func dispatch(_ calls: [ToolCall]) async -> [ToolResult] {
+    func dispatch(
+        _ calls: [ToolCall],
+        stagingBufferOverride: StagingBuffer? = nil,
+        permissionModeOverride: PermissionMode? = nil
+    ) async -> [ToolResult] {
         await withTaskGroup(of: (Int, ToolResult).self) { group in
             for (index, call) in calls.enumerated() {
                 group.addTask {
-                    let result = await self.dispatchSingle(call)
+                    let result = await self.dispatchSingle(
+                        call,
+                        stagingBufferOverride: stagingBufferOverride,
+                        permissionModeOverride: permissionModeOverride
+                    )
                     return (index, result)
                 }
             }
@@ -50,6 +59,7 @@ class ToolRouter {
     // reconnects) replaces the existing definition rather than appending a
     // duplicate, so `mcpToolDefinitions()` never lists the same tool twice.
     func registerMCPTool(_ definition: ToolDefinition,
+                         scopedToDomainID domainID: String? = nil,
                          handler: @MainActor @escaping ([String: Any]) async -> String) {
         let name = definition.function.name
         if let existing = mcpDefinitions.firstIndex(where: { $0.function.name == name }) {
@@ -57,8 +67,18 @@ class ToolRouter {
         } else {
             mcpDefinitions.append(definition)
         }
+        mcpDomainScopes[name] = domainID
         mcpHandlers[name] = { arguments in
             await handler(Self.dictionary(from: arguments))
+        }
+    }
+
+    func unregisterMCPTools(named names: some Sequence<String>) {
+        let nameSet = Set(names)
+        mcpDefinitions.removeAll { nameSet.contains($0.function.name) }
+        for name in nameSet {
+            mcpHandlers.removeValue(forKey: name)
+            mcpDomainScopes.removeValue(forKey: name)
         }
     }
 
@@ -76,13 +96,43 @@ class ToolRouter {
         mcpDefinitions
     }
 
-    private func dispatchSingle(_ call: ToolCall) async -> ToolResult {
-        if shouldStage(call.function.name) {
-            return await stageFileWrite(call: call)
+    func mcpToolDefinitions(activeDomainIDs: [String]) -> [ToolDefinition] {
+        mcpDefinitions.filter { isAllowedMCPTool(named: $0.function.name, activeDomainIDs: activeDomainIDs) }
+    }
+
+    func connectedMCPServerNames(activeDomainIDs: [String]) -> Set<String> {
+        Set(mcpToolDefinitions(activeDomainIDs: activeDomainIDs).compactMap { definition in
+            Self.mcpServerName(fromToolName: definition.function.name)
+        })
+    }
+
+    func isAllowedMCPTool(named toolName: String, activeDomainIDs: [String]) -> Bool {
+        guard let scope = mcpDomainScopes[toolName] else { return true }
+        guard let scope else { return true }
+        return activeDomainIDs.contains(scope)
+    }
+
+    func hasScopedMCPTools(activeDomainIDs: [String]) -> Bool {
+        mcpDefinitions.contains { mcpDomainScopes[$0.function.name] != nil }
+            && !mcpToolDefinitions(activeDomainIDs: activeDomainIDs).isEmpty
+    }
+
+    private func dispatchSingle(
+        _ call: ToolCall,
+        stagingBufferOverride: StagingBuffer?,
+        permissionModeOverride: PermissionMode?
+    ) async -> ToolResult {
+        let effectiveStagingBuffer = stagingBufferOverride ?? stagingBuffer
+        let effectivePermissionMode = permissionModeOverride ?? permissionMode
+
+        if shouldStage(call.function.name,
+                       stagingBuffer: effectiveStagingBuffer,
+                       permissionMode: effectivePermissionMode) {
+            return await stageFileWrite(call: call, buffer: effectiveStagingBuffer)
         }
 
         let argument = primaryArgument(from: call.function.arguments)
-        if permissionMode != .autoAccept {
+        if effectivePermissionMode != .autoAccept {
             let decision = await authGate.check(tool: call.function.name, argument: argument)
             guard decision == .allow else {
                 return ToolResult(toolCallId: call.id, content: "Denied by user", isError: true)
@@ -136,14 +186,18 @@ class ToolRouter {
     // Stage instead of execute when: a staging buffer is attached (Plan mode) AND
     // the tool mutates the file system. The buffer shows the diff in the DiffPane
     // for user review before any bytes hit disk.
-    private func shouldStage(_ toolName: String) -> Bool {
+    private func shouldStage(
+        _ toolName: String,
+        stagingBuffer: StagingBuffer?,
+        permissionMode: PermissionMode
+    ) -> Bool {
         guard stagingBuffer != nil else { return false }
         guard permissionMode == .ask || permissionMode == .plan else { return false }
         return isFileWriteTool(toolName)
     }
 
-    private func stageFileWrite(call: ToolCall) async -> ToolResult {
-        guard let buffer = stagingBuffer else {
+    private func stageFileWrite(call: ToolCall, buffer: StagingBuffer?) async -> ToolResult {
+        guard let buffer else {
             return ToolResult(toolCallId: call.id, content: "error: no staging buffer", isError: true)
         }
 
@@ -201,5 +255,10 @@ class ToolRouter {
             return [:]
         }
         return dictionary
+    }
+
+    private static func mcpServerName(fromToolName name: String) -> String? {
+        let parts = name.split(separator: ":")
+        return parts.count >= 3 ? String(parts[1]) : nil
     }
 }

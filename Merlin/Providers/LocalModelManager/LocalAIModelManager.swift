@@ -16,14 +16,16 @@ final class LocalAIModelManager: LocalModelManagerProtocol, @unchecked Sendable 
     )
 
     private let baseURL: URL
+    private let session: URLSession
 
-    init(baseURL: URL) {
+    init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
+        self.session = session
     }
 
     func loadedModels() async throws -> [LoadedModelInfo] {
         let url = normalizedOpenAICompatibleBaseURL(baseURL).appendingPathComponent("models")
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.providerUnavailable
         }
@@ -32,7 +34,9 @@ final class LocalAIModelManager: LocalModelManagerProtocol, @unchecked Sendable 
         struct Response: Decodable { let data: [ModelEntry] }
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
-        return decoded.data.map { LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig()) }
+        return decoded.data.map {
+            LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig(), exposure: .serverExposed)
+        }
     }
 
     func reload(modelID: String, config: LocalModelConfig) async throws {
@@ -44,10 +48,24 @@ final class LocalAIModelManager: LocalModelManagerProtocol, @unchecked Sendable 
 
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? {
         RestartInstructions(
-            shellCommand: "sudo systemctl restart local-ai",
+            shellCommand: buildShellCommand(config: config),
             configSnippet: yamlConfigSnippet(for: config),
-            explanation: "LocalAI requires a server restart after editing its YAML configuration."
+            explanation: "LocalAI runs as a native macOS process in this repo. Update the model YAML if needed, then relaunch it with the native command below."
         )
+    }
+
+    private func buildShellCommand(config: LocalModelConfig) -> String {
+        let contextSize = config.contextLength ?? 32_768
+        return [
+            "LOCALAI_BACKENDS_PATH=\"$HOME/.localai/backends\"",
+            "LOCALAI_MODELS_PATH=\"$HOME/.localai/models\"",
+            "/opt/homebrew/bin/local-ai run",
+            "--backends-path \"$HOME/.localai/backends\"",
+            "--models-path \"$HOME/.localai/models\"",
+            "--address \":8080\"",
+            "--context-size \(contextSize)",
+            "--f16"
+        ].joined(separator: " ")
     }
 
     private func yamlConfigSnippet(for config: LocalModelConfig) -> String? {

@@ -67,4 +67,15 @@ final class SessionStartHookTests: XCTestCase {
         let note = await hookEngine.runSessionStart(projectPath: proj.path)
         XCTAssertNil(note, "Expected no note when queue is empty")
     }
+
+    func testCustomSessionStartHookOutputIsIncluded() async throws {
+        let proj = try makeTmpProject()
+        defer { try? FileManager.default.removeItem(at: proj) }
+
+        let script = "/bin/echo 'custom session note'"
+        let hookEngine = HookEngine(hooks: [HookConfig(event: .sessionStart, command: script)])
+        let note = await hookEngine.runSessionStart(projectPath: proj.path)
+
+        XCTAssertEqual(note, "custom session note")
+    }
 }

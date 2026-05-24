@@ -72,7 +72,7 @@ struct FirstLaunchSetupView: View {
 
             HStack {
                 Button("Skip for now") {
-                    appState.showFirstLaunchSetup = false
+                    appState.completeFirstLaunchSetup()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
@@ -87,10 +87,11 @@ struct FirstLaunchSetupView: View {
                     if !trimmed.isEmpty {
                         appState.registry.setAPIKey(trimmed, for: selectedID)
                     }
+                    appState.registry.setEnabled(true, for: selectedID)
                     appState.registry.activeProviderID = selectedID
                     appState.activeProviderID = selectedID
                     appState.reloadProviders()
-                    appState.showFirstLaunchSetup = false
+                    appState.completeFirstLaunchSetup()
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier(AccessibilityID.firstLaunchContinueButton)

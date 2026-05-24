@@ -71,6 +71,43 @@ final class SystemPromptAddendumTests: XCTestCase {
         let hash = await engine.currentAddendumHash(for: .execute)
         XCTAssertEqual(hash, "00000000")
     }
+
+    func testInactiveElectronicsMCPServerIsNotAdvertisedOrOffered() async {
+        let engine = makeEngineWithAddendum(nil, slot: .execute)
+        engine.toolRouter.registerMCPTool(
+            ToolDefinition(function: .init(
+                name: "mcp:kicad:route_board",
+                description: "Route board",
+                parameters: JSONSchema(type: "object")
+            )),
+            scopedToDomainID: ElectronicsDomain.defaultID
+        ) { _ in "ok" }
+
+        let prompt = await engine.buildSystemPromptForTesting(slot: .execute)
+        let offered = engine.offeredToolNamesForTesting()
+
+        XCTAssertFalse(prompt.contains("kicad"))
+        XCTAssertFalse(offered.contains("mcp:kicad:route_board"))
+    }
+
+    func testActiveElectronicsMCPServerIsAdvertisedAndOffered() async {
+        let engine = makeEngineWithAddendum(nil, slot: .execute)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.toolRouter.registerMCPTool(
+            ToolDefinition(function: .init(
+                name: "mcp:kicad:route_board",
+                description: "Route board",
+                parameters: JSONSchema(type: "object")
+            )),
+            scopedToDomainID: ElectronicsDomain.defaultID
+        ) { _ in "ok" }
+
+        let prompt = await engine.buildSystemPromptForTesting(slot: .execute)
+        let offered = engine.offeredToolNamesForTesting()
+
+        XCTAssertTrue(prompt.contains("kicad"))
+        XCTAssertTrue(offered.contains("mcp:kicad:route_board"))
+    }
 }
 
 // MARK: - Helpers

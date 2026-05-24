@@ -7,33 +7,43 @@ struct WorkerDiffView: View {
     @State private var selectedPath: String?
 
     var body: some View {
-        HSplitView {
-            List(stagingEntries, id: \.path, selection: $selectedPath) { stagingEntry in
-                HStack {
-                    Image(systemName: iconFor(stagingEntry.operation))
-                        .foregroundStyle(colorFor(stagingEntry.operation))
-                        .font(.caption)
-                    Text(stagingEntry.path)
-                        .font(.system(.callout, design: .monospaced))
-                        .lineLimit(1)
-                }
-            }
-            .frame(minWidth: 180)
+        Group {
+            if stagingEntries.isEmpty {
+                Text("No worker changes")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier(AccessibilityID.workerDiffEmptyState)
+            } else {
+                HSplitView {
+                    List(stagingEntries, id: \.path, selection: $selectedPath) { stagingEntry in
+                        HStack {
+                            Image(systemName: iconFor(stagingEntry.operation))
+                                .foregroundStyle(colorFor(stagingEntry.operation))
+                                .font(.caption)
+                            Text(stagingEntry.path)
+                                .font(.system(.callout, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                    }
+                    .frame(minWidth: 180)
+                    .accessibilityIdentifier(AccessibilityID.workerDiffFileList)
 
-            VStack {
-                if let path = selectedPath {
-                    Text("Diff: \(path)")
-                        .font(.system(.body, design: .monospaced))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .padding()
-                } else {
-                    Text("Select a file to review changes.")
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    VStack {
+                        if let path = selectedPath {
+                            Text("Diff: \(path)")
+                                .font(.system(.body, design: .monospaced))
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                                .padding()
+                        } else {
+                            Text("Select a file to review changes.")
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    }
                 }
             }
         }
-        .task { await loadEntries() }
+        .task(id: entry.status) { await loadEntries() }
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button("Reject All") {

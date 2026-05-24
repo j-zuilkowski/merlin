@@ -62,10 +62,23 @@ struct ModelManagerCapabilities: Sendable {
 
 // MARK: - LoadedModelInfo
 
+enum LoadedModelExposure: String, Sendable {
+    /// The model is confirmed loaded in the current runtime process.
+    case runtimeLoaded
+    /// The model is being served by the current provider instance, but the backend
+    /// does not distinguish "loaded now" from "servable now" at the API layer.
+    case serverExposed
+    /// The model came from a broader provider catalog/listing fallback rather than
+    /// a runtime-loaded view.
+    case catalogFallback
+}
+
 struct LoadedModelInfo: Sendable {
     var modelID: String
     /// Config fields the provider reported - unknown fields are nil.
     var knownConfig: LocalModelConfig
+    /// Best-effort truth classification for what this provider is actually reporting.
+    var exposure: LoadedModelExposure = .serverExposed
 }
 
 // MARK: - RestartInstructions
@@ -105,7 +118,9 @@ protocol LocalModelManagerProtocol: Sendable {
     nonisolated var providerID: String { get }
     nonisolated var capabilities: ModelManagerCapabilities { get }
 
-    /// Returns currently loaded models with whatever config the provider reports.
+    /// Returns the models the provider can currently account for, plus a best-effort
+    /// `exposure` value describing whether they are truly loaded, merely exposed by
+    /// the running server instance, or coming from a broader catalog fallback.
     func loadedModels() async throws -> [LoadedModelInfo]
 
     /// Unloads the model and reloads it with the given config. Only params in
@@ -118,11 +133,17 @@ protocol LocalModelManagerProtocol: Sendable {
     nonisolated func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions?
 
     /// Checks the model's loaded context length and reloads with a larger context if
-    /// `minimumTokens` exceeds what is currently loaded. No-op for providers that do
-    /// not support runtime context inspection.
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws
+    /// `minimumTokens` exceeds what is currently loaded. Returns the model ID callers
+    /// should use for the current request after any reload-side retagging.
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String
+
+    /// Returns the model ID Merlin should use after a successful reload. Most
+    /// providers keep the same model identifier; managers that materialize a new
+    /// runtime tag (for example, Ollama Modelfile variants) override this.
+    nonisolated func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String
 }
 
 extension LocalModelManagerProtocol {
-    func ensureContextLength(modelID: String, minimumTokens: Int) async throws {}
+    func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String { modelID }
+    func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
 }

@@ -46,6 +46,10 @@ struct ConversationWebView: NSViewRepresentable {
 
         context.coordinator.webView = webView
         context.coordinator.renderedCount = entries.count
+        context.coordinator.renderedEntryHTML = Dictionary(
+            uniqueKeysWithValues: entries.map { entry in
+                (entry.id, ConversationHTMLRenderer.messageHTML(for: entry))
+            })
 
         return webView
     }
@@ -70,49 +74,43 @@ struct ConversationWebView: NSViewRepresentable {
             webView.loadHTMLString(html,
                                    baseURL: FileManager.default.homeDirectoryForCurrentUser)
             coord.renderedCount = new
-            coord.lastStreamingID = nil
+            coord.renderedEntryHTML = Dictionary(
+                uniqueKeysWithValues: entries.map { entry in
+                    (entry.id, ConversationHTMLRenderer.messageHTML(for: entry))
+                })
             return
         }
+
+        let existingEntries = Array(entries.prefix(old))
 
         if new > old {
             // Append brand-new entries that weren't rendered yet
             let newEntries = Array(entries[old..<new])
             for entry in newEntries {
                 let fragment = ConversationHTMLRenderer.messageHTML(for: entry)
+                coord.renderedEntryHTML[entry.id] = fragment
                 let escaped = jsStringEscape(fragment)
                 webView.evaluateJavaScript("merlin.addMessage('\(escaped)')", completionHandler: nil)
             }
             coord.renderedCount = new
         }
 
-        // Streaming: update the most-recent assistant entry when its content changes.
-        // Use last(where:) so system notes (compaction, near-ceiling warnings, etc.)
-        // at the tail of entries don't prevent tool-call DOM updates for the active
-        // assistant bubble — previously those trailing notes caused appendChunk to be
-        // skipped entirely, leaving the DOM stale and forcing later iterations to
-        // create separate bubbles via addMessage.
-        if let last = entries.last(where: { $0.role == .assistant }) {
-            let currentID = last.id
-            if coord.lastStreamingID == currentID {
-                // Same streaming message — update in place
-                let chunk = ConversationHTMLRenderer.chunkHTML(for: last)
-                let escaped = jsStringEscape(chunk)
-                webView.evaluateJavaScript(
-                    "merlin.appendChunk('\(currentID.uuidString)', '\(escaped)')",
-                    completionHandler: nil
-                )
-            } else if new == old {
-                // Last entry existed before but its text/tool-calls changed (streaming started)
-                coord.lastStreamingID = currentID
-                let chunk = ConversationHTMLRenderer.chunkHTML(for: last)
-                let escaped = jsStringEscape(chunk)
-                webView.evaluateJavaScript(
-                    "merlin.appendChunk('\(currentID.uuidString)', '\(escaped)')",
-                    completionHandler: nil
-                )
+        // Update every previously rendered entry whose HTML changed. Tool-call
+        // results can land on an older assistant bubble after a later subagent
+        // block is appended, so only refreshing the most recent assistant leaves
+        // visible stale states such as "spawn_agent running...".
+        for entry in existingEntries {
+            let fragment = ConversationHTMLRenderer.messageHTML(for: entry)
+            guard coord.renderedEntryHTML[entry.id] != fragment else {
+                continue
             }
-        } else {
-            coord.lastStreamingID = nil
+            coord.renderedEntryHTML[entry.id] = fragment
+            let escaped = jsStringEscape(fragment)
+            let function = entry.role == .assistant ? "appendChunk" : "updateMessage"
+            webView.evaluateJavaScript(
+                "merlin.\(function)('\(entry.id.uuidString)', '\(escaped)')",
+                completionHandler: nil
+            )
         }
 
         if shouldResumeScroll {
@@ -143,7 +141,7 @@ struct ConversationWebView: NSViewRepresentable {
         var onScrollLockChange: (Bool) -> Void
         weak var webView: WKWebView?
         var renderedCount: Int = 0
-        var lastStreamingID: UUID? = nil
+        var renderedEntryHTML: [UUID: String] = [:]
         var lastFrame: CGRect = .zero
 
         init(onToggleThinking: @escaping (UUID) -> Void,

@@ -9,6 +9,16 @@ final class SessionManagerTests: XCTestCase {
         return SessionManager(projectRef: ref)
     }
 
+    private func makeElectronicsManager() throws -> SessionManager {
+        let url = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("merlin-electronics-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        let projectFile = url.appendingPathComponent("board.kicad_pro")
+        try "{}".write(to: projectFile, atomically: true, encoding: .utf8)
+        let ref = ProjectRef(path: url.path, displayName: "electronics-project", lastOpenedAt: Date())
+        return SessionManager(projectRef: ref)
+    }
+
     // MARK: - newSession
 
     func testNewSessionAppendsAndActivates() async {
@@ -26,6 +36,78 @@ final class SessionManagerTests: XCTestCase {
         let mgr = makeManager()
         let session = await mgr.newSession()
         XCTAssertEqual(session.title, "New Session")
+    }
+
+    func testNewSessionAutoActivatesElectronicsForKiCadProjects() async throws {
+        let mgr = try makeElectronicsManager()
+
+        let session = await mgr.newSession()
+
+        XCTAssertEqual(session.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+        XCTAssertEqual(session.appState.activeDomainDisplayName, "Electronics")
+    }
+
+    func testLiveSessionAutoActivatesElectronicsForKiCadProjects() async throws {
+        let mgr = try makeElectronicsManager()
+
+        let session = LiveSession(projectRef: mgr.projectRef)
+
+        XCTAssertEqual(session.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+        await session.close()
+    }
+
+    func testRestoreAutoActivatesElectronicsForLegacySoftwareOnlySession() async throws {
+        let mgr = try makeElectronicsManager()
+        let stored = Session(
+            title: "Legacy electronics project",
+            messages: [],
+            activeDomainIDs: [SoftwareDomain.defaultID]
+        )
+
+        let session = await mgr.restore(session: stored)
+
+        XCTAssertEqual(session.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        XCTAssertEqual(session.appState.currentActiveDomainID, ElectronicsDomain.defaultID)
+    }
+
+    func testSessionDomainSwitchPersistsToSessionStore() async throws {
+        let mgr = makeManager()
+        let session = await mgr.newSession()
+
+        await session.appState.setActiveDomains([ElectronicsDomain.defaultID], persistAsDefault: false)
+
+        let stored = try XCTUnwrap(mgr.sessionStore.sessions.first { $0.id == session.id })
+        XCTAssertEqual(stored.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+    }
+
+    func testMemoryGenerationProviderUsesExecuteSlotProvider() async {
+        let session = LiveSession(projectRef: ProjectRef(
+            path: "/tmp/live-session-memory-\(UUID().uuidString)",
+            displayName: "memory-provider-test",
+            lastOpenedAt: Date()
+        ))
+
+        let executeProvider = SessionManagerRoutingProvider(providerID: "memory-execute")
+        let reasonProvider = SessionManagerRoutingProvider(providerID: "memory-reason")
+        session.appState.registry.add(executeProvider)
+        session.appState.registry.add(reasonProvider)
+
+        let previousSlotAssignments = AppSettings.shared.slotAssignments
+        defer { AppSettings.shared.slotAssignments = previousSlotAssignments }
+
+        AppSettings.shared.slotAssignments = [
+            .execute: "memory-execute",
+            .reason: "memory-reason"
+        ]
+        session.appState.engine.slotAssignments = AppSettings.shared.slotAssignments
+        session.appState.activeProviderID = "memory-reason"
+
+        let resolved = session.resolveMemoryGenerationProvider()
+        XCTAssertEqual(resolved.id, "memory-execute")
+
+        await session.close()
     }
 
     func testMultipleNewSessionsAllAppended() async {
@@ -119,5 +201,20 @@ final class SessionManagerTests: XCTestCase {
     func testActiveSessionIsNilWhenNoSessions() {
         let mgr = makeManager()
         XCTAssertNil(mgr.activeSession)
+    }
+}
+
+private final class SessionManagerRoutingProvider: LLMProvider, @unchecked Sendable {
+    let id: String
+    let baseURL: URL = URL(string: "http://localhost")!
+
+    init(providerID: String) {
+        self.id = providerID
+    }
+
+    func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.finish()
+        }
     }
 }

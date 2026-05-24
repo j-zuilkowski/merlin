@@ -45,7 +45,10 @@ When you first open Merlin you will see the **Project Picker**. Click **Open Pro
 
 Before the AI can respond you need a provider API key. Merlin defaults to **DeepSeek**. Go to **Settings → Providers**, find DeepSeek, and paste your API key. The key is stored in the macOS Keychain — it is never written to disk in plaintext.
 
-If you want to use a local model (Ollama, LM Studio, Jan.ai, etc.) no API key is required. Enable the relevant provider in Settings and make sure its server is running.
+If you want to use a local model no API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 22, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, and **LocalAI**. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
+
+Upstream issue tracking for the malfunctioning local providers is maintained in
+[`docs/local-provider-configs/RESULTS.md`](../../docs/local-provider-configs/RESULTS.md).
 
 ### Opening a Project
 
@@ -160,7 +163,7 @@ Each workspace window can hold multiple sessions. A session is an independent co
 - Context window state
 - Staged changes buffer
 - MCP server connections
-- Thread automations
+- Memory / domain state
 
 ### New Session
 
@@ -196,12 +199,12 @@ Available providers:
 | Anthropic | Remote | Requires API key. Supports thinking mode and vision. |
 | Qwen | Remote | Requires API key. |
 | OpenRouter | Remote | Routes to any model via single API key. |
-| Ollama | Local | Must be running on localhost:11434. |
-| LM Studio | Local | Must be running on localhost:1234. Supports vision. |
-| Jan.ai | Local | Must be running on localhost:1337. |
-| LocalAI | Local | Must be running on localhost:8080. |
-| Mistral.rs | Local | Must be running on localhost:1234. |
-| vLLM-Metal | Local | Must be running on localhost:8000. |
+| Ollama | Local | `localhost:11434`. Not recommended: general works, but the tested vision model crashed on real image requests. |
+| LM Studio | Local | `localhost:1234`. Fully supported. Supports vision and passed live pair calibration. |
+| Jan.ai | Local | `localhost:1337`. Fully supported and passed live pair calibration. |
+| LocalAI | Local | `localhost:8080`. Fully supported and passed live pair calibration. |
+| Mistral.rs | Local | `localhost:1235`. Currently unusable for the tested Qwen3 MoE model on Apple Metal. |
+| vLLM-Metal | Local | `localhost:8000`. Not recommended: general works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |
 
 Configure API keys, base URLs, and model names in **Settings → Providers**.
@@ -343,6 +346,8 @@ When a task is parallelisable, the AI can spawn subagents. There are two kinds:
 
 Subagents appear as collapsible blocks in the parent conversation, showing their tool call events and final result.
 
+Nested subagent spawning is not currently supported. If a subagent tries to call `spawn_agent`, Merlin rejects it explicitly instead of pretending it worked.
+
 ---
 
 ## Multi-LLM Roles
@@ -359,6 +364,13 @@ Merlin routes each message to the most appropriate LLM based on its complexity a
 ### Assigning providers to slots
 
 Open **Settings → Role Slots** and choose which LLM provider handles each slot. You can assign different providers — for example, a local model on the Execute slot and a remote API on the Reason slot.
+
+If you leave a slot unassigned, Merlin falls back in this order:
+
+- **Execute** → active provider
+- **Reason** → active provider
+- **Orchestrate** → Reason slot, then active provider
+- **Vision** → active provider unless a dedicated vision-capable provider is assigned
 
 ### Overriding routing manually
 
@@ -429,7 +441,7 @@ Merlin v2.0 adds a complete electronics workflow for designing PCBs with KiCad. 
 
 ### Starting an Electronics Session
 
-When you open a project that contains a KiCad project file (`.kicad_pro`), or when you tell Merlin you want to design a board, it activates the electronics domain for that session. The domain indicator in the session toolbar shows **Electronics** instead of **Software**.
+When you open a project that contains a KiCad project file (`.kicad_pro`), Merlin activates the electronics domain for that session automatically. If you start from a software session and your next prompt clearly indicates board-design or schematic work, Merlin asks whether to switch the session into **Electronics** before sending the prompt. The domain indicator in the session toolbar shows **Electronics** instead of **Software**.
 
 ### What you can do
 
@@ -599,13 +611,17 @@ Authenticate each connector in **Settings → Connectors**. Tokens are stored in
 
 ## Scheduled Automations
 
-Open **Settings → Scheduler** to create recurring tasks that run automatically on a cron schedule. Each automation has:
+Open **Settings → Scheduler** to create recurring tasks that run automatically on an hourly, daily, or weekly schedule. Each task has:
 
 - A label
-- A cron expression (e.g. `0 9 * * 1-5` = 9 AM on weekdays)
+- A project path
+- A scheduled time
+- A permission mode
 - A prompt to send to the AI
 
-Automations fire against the active session.
+Scheduled tasks run in a background session for the configured project and post a macOS notification with a summary when they finish.
+
+This Scheduler is the supported automation surface in Merlin. Older thread-automation internals still exist in the codebase, but they are not the supported user-facing scheduling path.
 
 ---
 
@@ -615,7 +631,7 @@ Merlin can fine-tune a local language model on your accepted sessions using MLX-
 
 ### What it does
 
-After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served by an MLX-native runtime — `mlx_lm.server` (the default Merlin routes through), or alternatively LM Studio or vLLM-Metal. The other local providers (Ollama, Jan.ai, LocalAI) can also serve the fine-tuned model after a manual `mlx_lm.fuse` + `convert_hf_to_gguf.py` step. **Mistral.rs cannot serve MoE models on Metal** (`candle-core 0.10.2` lacks the kernel); fine-tuning targeting Mistral.rs only applies to non-MoE base models.
+After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served by an MLX-native runtime — `mlx_lm.server` (the default Merlin routes through), or alternatively LM Studio or vLLM-Metal. vLLM-Metal remains a text-oriented fallback rather than a recommended pair runtime in the current local-provider sweep. The other local providers (Ollama, Jan.ai, LocalAI) can also serve the fine-tuned model after a manual `mlx_lm.fuse` + `convert_hf_to_gguf.py` step. **Mistral.rs cannot serve MoE models on Metal** (`candle-core 0.10.2` lacks the kernel); fine-tuning targeting Mistral.rs only applies to non-MoE base models.
 
 ### Requirements
 
@@ -633,7 +649,7 @@ After each session turn, Merlin records the user prompt and the model's response
 5. Set **Adapter Path** to a directory where the trained adapter will be written (e.g. `~/.merlin/adapters/qwen32b`)
 6. Pick **Serving runtime** — which MLX-native runtime serves the trained adapter:
    - `mlx_lm.server` (default) — direct adapter load via `--adapter-path`
-   - `vLLM-Metal` — fuse with `mlx_lm.fuse` first, then `vllm serve <merged>`
+   - `vLLM-Metal` — fuse with `mlx_lm.fuse` first, then `vllm serve <merged>` (not recommended for the current general+vision pair workflow)
    - `LM Studio` — load via the LM Studio UI
    - `Custom` — any other MLX-compatible OpenAI-compat endpoint
 7. Set **Server URL** to match the chosen runtime (the picker pre-fills the default port)
@@ -658,7 +674,7 @@ Access via **Merlin → Settings…** (⌘,).
 | **Performance** | Per-model performance dashboard, trend, calibration status, export training data |
 | **Agents** | Custom subagent definitions loaded from `~/.merlin/agents/` |
 | **Hooks** | Lifecycle hooks with event, command, and enabled toggle |
-| **Scheduler** | Cron-based task automations |
+| **Scheduler** | Hourly, daily, and weekly task scheduling |
 | **Memories** | Enable/disable memory generation, configure idle timeout, browse local memory store, select memory backend |
 | **LoRA** | Master toggle, auto-train, sample threshold, base model path, adapter path, auto-load, server URL |
 

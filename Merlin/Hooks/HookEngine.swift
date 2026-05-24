@@ -177,9 +177,27 @@ actor HookEngine {
     }
 
     /// Called when a session opens with a project path loaded.
-    /// Reads pending.json and injects the top-3 findings as a system note.
-    /// Returns the formatted note string, or nil if the queue is empty.
+    /// Reads pending.json and injects the top-3 findings as a system note, then
+    /// runs any enabled custom `SessionStart` hooks and appends their non-empty output.
+    /// Returns the combined note string, or nil if nothing produced output.
     func runSessionStart(projectPath: String) async -> String? {
+        let disciplineNote = await makeSessionStartDisciplineNote(projectPath: projectPath)
+        let hookNote = await runSessionStartHooks(
+            projectPath: projectPath,
+            disciplineNote: disciplineNote
+        )
+
+        let notes = [disciplineNote, hookNote]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        guard notes.isEmpty == false else {
+            return nil
+        }
+        return notes.joined(separator: "\n\n")
+    }
+
+    private func makeSessionStartDisciplineNote(projectPath: String) async -> String? {
         let storePath = projectPath + "/.merlin/pending.json"
         let queue = PendingAttentionQueue(storePath: storePath)
         let top = await queue.top(n: 3)
@@ -208,6 +226,40 @@ actor HookEngine {
         TelemetryEmitter.shared.emit("discipline.session-start.injected",
             data: ["findings_count": top.count])
         return note
+    }
+
+    private func runSessionStartHooks(projectPath: String, disciplineNote: String?) async -> String? {
+        let relevant = hooks.filter { $0.event == HookEvent.sessionStart.rawValue && $0.enabled }
+        guard relevant.isEmpty == false else {
+            return nil
+        }
+
+        let payload: [String: Any] = [
+            "projectPath": projectPath,
+            "disciplineNote": disciplineNote as Any
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        var notes: [String] = []
+        for hook in relevant {
+            let output = await runScript(hook.command, stdin: json)
+            guard output.exitCode == 0 else {
+                continue
+            }
+            let text = output.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                continue
+            }
+            notes.append(text)
+        }
+
+        guard notes.isEmpty == false else {
+            return nil
+        }
+        return notes.joined(separator: "\n\n")
     }
 
     func hasStopHooks() -> Bool {

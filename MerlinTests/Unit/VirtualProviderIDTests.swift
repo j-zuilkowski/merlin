@@ -54,6 +54,26 @@ final class VirtualProviderIDTests: XCTestCase {
         XCTAssertEqual(provider?.id, "lmstudio:Qwen2.5-VL-72B")
     }
 
+    func testVirtualActiveProviderResolvesActiveConfigToBackend() throws {
+        let registry = makeRegistry()
+        registry.modelsByProviderID["lmstudio"] = ["phi-4"]
+
+        registry.activeProviderID = "lmstudio:phi-4"
+
+        XCTAssertEqual(registry.activeConfig?.id, "lmstudio")
+    }
+
+    func testVirtualActiveProviderBecomesPrimaryProvider() throws {
+        let registry = makeRegistry()
+        registry.modelsByProviderID["lmstudio"] = ["phi-4"]
+
+        registry.activeProviderID = "lmstudio:phi-4"
+
+        let provider = registry.primaryProvider
+        XCTAssertNotNil(provider)
+        XCTAssertEqual(provider?.id, "lmstudio:phi-4")
+    }
+
     func testVirtualIDReturnsNilForUnknownBackend() throws {
         let registry = makeRegistry()
 

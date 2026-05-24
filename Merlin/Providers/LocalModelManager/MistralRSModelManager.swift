@@ -15,14 +15,16 @@ final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendabl
     )
 
     private let baseURL: URL
+    private let session: URLSession
 
-    init(baseURL: URL) {
+    init(baseURL: URL, session: URLSession = .shared) {
         self.baseURL = baseURL
+        self.session = session
     }
 
     func loadedModels() async throws -> [LoadedModelInfo] {
         let url = normalizedOpenAICompatibleBaseURL(baseURL).appendingPathComponent("models")
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await session.data(from: url)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ModelManagerError.providerUnavailable
         }
@@ -31,7 +33,9 @@ final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendabl
         struct Response: Decodable { let data: [ModelEntry] }
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
-        return decoded.data.map { LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig()) }
+        return decoded.data.map {
+            LoadedModelInfo(modelID: $0.id, knownConfig: LocalModelConfig(), exposure: .serverExposed)
+        }
     }
 
     func reload(modelID: String, config: LocalModelConfig) async throws {
@@ -46,14 +50,21 @@ final class MistralRSModelManager: LocalModelManagerProtocol, @unchecked Sendabl
         return RestartInstructions(
             shellCommand: shellCommand,
             configSnippet: nil,
-            explanation: "Mistral.rs is configured at startup and requires a restart to apply load-time model parameters."
+            explanation: "Mistral.rs is configured at startup and requires a restart to apply load-time model parameters. The defaults below match Merlin's documented native launch path."
         )
     }
 
     private func buildShellCommand(modelID: String, config: LocalModelConfig) -> String {
         var parts = [
-            "mistralrs-server",
-            "--model", shellQuote(modelID)
+            "MISTRALRS=\"${MISTRALRS:-$HOME/.cargo/bin/mistralrs}\"",
+            "HF_MODEL_ID=\"${HF_MODEL_ID:-Qwen/Qwen3-Coder-30B-A3B-Instruct}\"",
+            "GGUF_PATH=\"${GGUF_PATH:-$HOME/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf}\"",
+            "\"$MISTRALRS\"",
+            "serve",
+            "-p", "1235",
+            "--model-id", "\"$HF_MODEL_ID\"",
+            "--format", "gguf",
+            "--quantized-file", "\"$GGUF_PATH\""
         ]
         if let value = config.contextLength {
             parts += ["--max-seq-len", "\(value)"]

@@ -59,6 +59,11 @@ extension MCPTransportSession {
                       encoding: .utf8) ?? ""
     }
 
+    func readResourceText(uri: String) async throws -> String? {
+        let response = try await call(method: "resources/read", params: ["uri": uri])
+        return Self.extractResourceText(from: response)
+    }
+
     private static func decodeArguments(from json: String) -> [String: Any] {
         guard let data = json.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
@@ -66,6 +71,24 @@ extension MCPTransportSession {
             return [:]
         }
         return dictionary
+    }
+
+    private static func extractResourceText(from response: [String: Any]) -> String? {
+        if let text = response["text"] as? String, !text.isEmpty {
+            return text
+        }
+        guard let contents = response["contents"] as? [[String: Any]] else {
+            return nil
+        }
+        for item in contents {
+            if let text = item["text"] as? String, !text.isEmpty {
+                return text
+            }
+            if let blob = item["blob"] as? String, !blob.isEmpty {
+                return blob
+            }
+        }
+        return nil
     }
 }
 

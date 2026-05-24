@@ -28,6 +28,7 @@ struct SubagentSidebarRowView: View {
         .padding(.vertical, 3)
         .background(isSelected ? Color.accentColor.opacity(0.15) : .clear)
         .clipShape(RoundedRectangle(cornerRadius: 4))
+        .accessibilityIdentifier(AccessibilityID.subagentSidebarRowPrefix + entry.id.uuidString)
     }
 
     @ViewBuilder

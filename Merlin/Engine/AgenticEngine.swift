@@ -344,6 +344,10 @@ final class AgenticEngine {
         await combinedAddendum(for: slot).addendumHash
     }
 
+    func offeredToolNamesForTesting() -> [String] {
+        offeredTools().map { $0.function.name }
+    }
+
     var currentModelID: String {
         modelID(for: resolvedProvider(for: .execute))
     }
@@ -693,8 +697,22 @@ final class AgenticEngine {
             "budget_cap": workingSet.ragInjectionCap
         ])
 
-        if !selectedRAGChunks.isEmpty {
+        let kagEnabled = AppSettings.shared.kagEnabled
+        let kagHops = max(1, AppSettings.shared.kagHops)
+
+        if kagEnabled {
+            effectiveMessage = await RAGTools.buildEnrichedMessage(
+                query: userMessage,
+                chunks: selectedRAGChunks,
+                registry: KAGBackendRegistry.shared,
+                hops: kagHops,
+                domainId: domain.id
+            )
+        } else if !selectedRAGChunks.isEmpty {
             effectiveMessage = RAGTools.buildEnrichedMessage(userMessage, chunks: selectedRAGChunks)
+        }
+
+        if !selectedRAGChunks.isEmpty {
             continuation.yield(.ragSources(selectedRAGChunks))
         }
 
@@ -1037,10 +1055,14 @@ final class AgenticEngine {
                     // ContextManager's 3.5 because this gates a context-length reload — over-reserve
                     // is cheap, under-reserve forces a re-load mid-turn), +20% headroom, +512-token floor.
                     let estimatedTokens = Int(Double(bodyBytes) / 4.0 * 1.2) + 512
-                    try? await manager.ensureContextLength(
+                    let resizedModelID = (try? await manager.ensureContextLength(
                         modelID: provider.resolvedModelID,
                         minimumTokens: estimatedTokens
-                    )
+                    )) ?? provider.resolvedModelID
+                    request.model = resizedModelID
+                    if resizedModelID != provider.resolvedModelID {
+                        registry?.updateModel(resizedModelID, for: baseProviderID)
+                    }
                 }
 
                 // Pre-flight budget gate. Working-set caps are applied inside the
@@ -1355,6 +1377,20 @@ final class AgenticEngine {
                             content: .text(rejection.content),
                             toolCallId: call.id,
                             timestamp: Date()))
+                    } else if call.function.name.hasPrefix("mcp:"),
+                              !toolRouter.isAllowedMCPTool(named: call.function.name, activeDomainIDs: activeDomainIDs) {
+                        let rejection = ToolResult(
+                            toolCallId: call.id,
+                            content: "`\(call.function.name)` is not available for the active domain set. "
+                                + "Switch to the matching domain before calling this MCP tool, or use "
+                                + "the tools offered for the current session domain.",
+                            isError: true)
+                        continuation.yield(.toolCallResult(rejection))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(rejection.content),
+                            toolCallId: call.id,
+                            timestamp: Date()))
                     } else if call.function.name == "spawn_agent" {
                         spawnCalls.append(call)
                     } else {
@@ -1386,7 +1422,12 @@ final class AgenticEngine {
                             timestamp: Date()))
                     }
                 }
-                await handleSpawnAgents(allowedSpawnCalls, depth: depth, continuation: continuation)
+                await handleSpawnAgents(
+                    allowedSpawnCalls,
+                    depth: depth,
+                    continuation: continuation,
+                    context: context
+                )
                 await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
@@ -2135,33 +2176,70 @@ final class AgenticEngine {
     func handleSpawnAgents(
         _ calls: [ToolCall],
         depth: Int,
-        continuation: AsyncStream<AgentEvent>.Continuation
+        continuation: AsyncStream<AgentEvent>.Continuation,
+        context: ContextManager? = nil
     ) async {
         guard !calls.isEmpty else { return }
+        let targetContext = context ?? contextManager
 
         struct SpawnArgs: Decodable {
             var agent: String
-            var prompt: String
+            var task: String
+            var context: String?
+
+            enum CodingKeys: String, CodingKey {
+                case agent
+                case task
+                case prompt
+                case context
+            }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                agent = try container.decode(String.self, forKey: .agent)
+                if let taskValue = try container.decodeIfPresent(String.self, forKey: .task) {
+                    task = taskValue
+                } else {
+                    task = try container.decode(String.self, forKey: .prompt)
+                }
+                context = try container.decodeIfPresent(String.self, forKey: .context)
+            }
+
+            var prompt: String {
+                let trimmedContext = context?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard trimmedContext.isEmpty == false else { return task }
+                return "\(trimmedContext)\n\n\(task)"
+            }
         }
 
         struct SubagentPlan: Sendable {
+            let toolCallId: String
             let agentID: UUID
             let agentName: String
-            let subagent: SubagentEngine
+            let events: AsyncStream<SubagentEvent>
+            let start: @Sendable () async -> Void
         }
 
         func forwardSubagentEvents(
             _ plan: SubagentPlan,
             continuation: AsyncStream<AgentEvent>.Continuation
-        ) async throws {
-            let stream = plan.subagent.events
-            await plan.subagent.start()
-            for await event in stream {
+        ) async throws -> ToolResult {
+            var summary = ""
+            await plan.start()
+            for await event in plan.events {
                 if case .failed(let error) = event {
                     throw error
                 }
+                if case .completed(let text) = event {
+                    summary = text
+                }
                 continuation.yield(.subagentUpdate(id: plan.agentID, event: event))
             }
+            return ToolResult(
+                toolCallId: plan.toolCallId,
+                content: summary.isEmpty ? "Subagent completed." : summary,
+                isError: false
+            )
         }
 
         var plans: [SubagentPlan] = []
@@ -2186,30 +2264,121 @@ final class AgenticEngine {
             continuation.yield(.subagentStarted(id: agentID, agentName: args.agent))
 
             let subagentProvider = resolvedProvider(for: .orchestrate)
-            let subagent = SubagentEngine(
-                definition: definition,
-                prompt: args.prompt,
-                provider: subagentProvider,
-                fallbackModel: modelID(for: subagentProvider),
-                hookEngine: HookEngine(hooks: AppSettings.shared.hooks),
-                depth: depth + 1
-            )
-            plans.append(SubagentPlan(agentID: agentID, agentName: args.agent, subagent: subagent))
+            let fallbackModel = modelID(for: subagentProvider)
+            let hookEngine = HookEngine(hooks: AppSettings.shared.hooks)
+            let toolDefinitionsProvider: SubagentToolDefinitionsProvider = { [weak self] in
+                self?.offeredTools() ?? ToolRegistry.shared.all()
+            }
+            let regularToolExecutor: SubagentToolExecutor = { [weak self] call in
+                guard let self else {
+                    return ToolResult(
+                        toolCallId: call.id,
+                        content: "Parent engine is unavailable.",
+                        isError: true
+                    )
+                }
+                return await self.toolRouter.dispatch([call]).first ?? ToolResult(
+                    toolCallId: call.id,
+                    content: "Tool dispatch returned no result.",
+                    isError: true
+                )
+            }
+
+            switch definition.role {
+            case .worker:
+                guard let projectPath = currentProjectPath, projectPath.isEmpty == false else {
+                    continuation.yield(.systemNote(
+                        "[subagent '\(args.agent)' failed] worker agents require an active project path."
+                    ))
+                    continue
+                }
+                let workerStagingBuffer = StagingBuffer()
+                let worker = WorkerSubagentEngine(
+                    definition: definition,
+                    prompt: args.prompt,
+                    provider: subagentProvider,
+                    fallbackModel: fallbackModel,
+                    hookEngine: hookEngine,
+                    depth: depth + 1,
+                    worktreeManager: WorktreeManager.shared,
+                    repoURL: URL(fileURLWithPath: projectPath),
+                    stagingBuffer: workerStagingBuffer,
+                    toolDefinitionsProvider: toolDefinitionsProvider,
+                    toolExecutor: { [weak self] call in
+                        guard let self else {
+                            return ToolResult(
+                                toolCallId: call.id,
+                                content: "Parent engine is unavailable.",
+                                isError: true
+                            )
+                        }
+                        return await self.toolRouter.dispatch(
+                            [call],
+                            stagingBufferOverride: workerStagingBuffer,
+                            permissionModeOverride: .autoAccept
+                        ).first ?? ToolResult(
+                            toolCallId: call.id,
+                            content: "Tool dispatch returned no result.",
+                            isError: true
+                        )
+                    }
+                )
+                plans.append(SubagentPlan(
+                    toolCallId: call.id,
+                    agentID: agentID,
+                    agentName: args.agent,
+                    events: worker.events,
+                    start: { await worker.start() }
+                ))
+            case .explorer, .default:
+                let subagent = SubagentEngine(
+                    definition: definition,
+                    prompt: args.prompt,
+                    provider: subagentProvider,
+                    fallbackModel: fallbackModel,
+                    hookEngine: hookEngine,
+                    depth: depth + 1,
+                    toolDefinitionsProvider: toolDefinitionsProvider,
+                    toolExecutor: regularToolExecutor
+                )
+                plans.append(SubagentPlan(
+                    toolCallId: call.id,
+                    agentID: agentID,
+                    agentName: args.agent,
+                    events: subagent.events,
+                    start: { await subagent.start() }
+                ))
+            }
         }
 
-        await withTaskGroup(of: Void.self) { group in
+        await withTaskGroup(of: ToolResult.self) { group in
             for plan in plans {
                 group.addTask { [continuation] in
                     do {
-                        try await forwardSubagentEvents(plan, continuation: continuation)
+                        return try await forwardSubagentEvents(plan, continuation: continuation)
                     } catch {
                         continuation.yield(.systemNote(
                             "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)"
                         ))
-                                }
-                            }
-                        }
+                        return ToolResult(
+                            toolCallId: plan.toolCallId,
+                            content: "[subagent '\(plan.agentName)' failed] \(error.localizedDescription)",
+                            isError: true
+                        )
                     }
+                }
+            }
+
+            for await result in group {
+                continuation.yield(.toolCallResult(result))
+                targetContext.append(Message(
+                    role: .tool,
+                    content: .text(result.content),
+                    toolCallId: result.toolCallId,
+                    timestamp: Date()
+                ))
+            }
+        }
     }
 
     func shouldUseThinking(for message: String) -> Bool {
@@ -2416,10 +2585,7 @@ final class AgenticEngine {
     /// Names of the MCP servers whose tools are currently registered (connected),
     /// parsed from the `mcp:<server>:<tool>` definition names.
     private func connectedMCPServerNames() -> Set<String> {
-        Set(toolRouter.mcpToolDefinitions().compactMap { def -> String? in
-            let parts = def.function.name.split(separator: ":")
-            return parts.count >= 3 ? String(parts[1]) : nil
-        })
+        toolRouter.connectedMCPServerNames(activeDomainIDs: activeDomainIDs)
     }
 
     /// The improvisation tools currently *withheld* from the model — non-empty only
@@ -2462,7 +2628,7 @@ final class AgenticEngine {
             ? ToolRegistry.shared.all()
             : ToolRegistry.shared.all().filter { !withheld.contains($0.function.name) }
         var seen = Set<String>()
-        return (builtins + toolRouter.mcpToolDefinitions())
+        return (builtins + toolRouter.mcpToolDefinitions(activeDomainIDs: activeDomainIDs))
             .filter { seen.insert($0.function.name).inserted }
     }
 
@@ -2473,8 +2639,14 @@ final class AgenticEngine {
             parts.append(providerAddendum)
         }
 
-        let domain = await activeDomain()
-        if let domainAddendum = domain.systemPromptAddendum, !domainAddendum.isEmpty {
+        let scopedDomains = await DomainRegistry.shared.scopedDomains(ids: activeDomainIDs)
+        var seenDomainAddenda = Set<String>()
+        for domain in scopedDomains {
+            guard let domainAddendum = domain.systemPromptAddendum,
+                  !domainAddendum.isEmpty,
+                  seenDomainAddenda.insert(domainAddendum).inserted else {
+                continue
+            }
             parts.append(domainAddendum)
         }
 
@@ -2482,10 +2654,7 @@ final class AgenticEngine {
         // a coding model otherwise hand-writes domain files (.kicad_sch) or shells
         // out instead of calling the `mcp:<server>:*` tools, which is what made S6
         // (KiCad) non-deterministic.
-        let mcpServers = Set(toolRouter.mcpToolDefinitions().compactMap { def -> String? in
-            let parts = def.function.name.split(separator: ":")
-            return parts.count >= 3 ? String(parts[1]) : nil
-        }).sorted()
+        let mcpServers = Array(connectedMCPServerNames()).sorted()
         if !mcpServers.isEmpty {
             var steer = """
             Connected MCP tool servers: \(mcpServers.joined(separator: ", ")). Their \

@@ -86,9 +86,8 @@ private struct ProjectSection: View {
                 }
 
                 if let active = coordinator.activeSession,
-                   mgr.liveSessions.contains(where: { $0.id == active.id }),
-                   !active.subagentSidebar.workerEntries.isEmpty {
-                    SubagentSection(sidebar: active.subagentSidebar)
+                   mgr.liveSessions.contains(where: { $0.id == active.id }) {
+                    SubagentSectionHost(sidebar: active.subagentSidebar)
                         .padding(.top, 6)
                 }
 
@@ -182,6 +181,16 @@ private struct ProjectSection: View {
 }
 
 // MARK: - Subagents
+
+private struct SubagentSectionHost: View {
+    @ObservedObject var sidebar: SubagentSidebarViewModel
+
+    var body: some View {
+        if !sidebar.workerEntries.isEmpty {
+            SubagentSection(sidebar: sidebar)
+        }
+    }
+}
 
 private struct SubagentSection: View {
     @ObservedObject var sidebar: SubagentSidebarViewModel
