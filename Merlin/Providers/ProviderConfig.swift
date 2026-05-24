@@ -160,7 +160,7 @@ final class ProviderRegistry: ObservableObject {
             providers = initialProviders
             activeProviderID = initialProviders.first?.id ?? "deepseek"
         } else if let loaded = Self.load(from: persistURL) {
-            providers = loaded.providers
+            providers = Self.mergingMissingDefaults(into: loaded.providers)
             activeProviderID = loaded.activeProviderID
             firstLaunchSetupCompleted = loaded.firstLaunchSetupCompleted ?? false
         } else {
@@ -289,7 +289,26 @@ final class ProviderRegistry: ObservableObject {
                        supportsThinking: false,
                        supportsVision: false,
                        kind: .openAICompatible),
+        ProviderConfig(id: "llamacpp",
+                       displayName: "llama.cpp",
+                       baseURL: "http://localhost:8081/v1",
+                       model: "",
+                       localModelManagerID: "llamacpp",
+                       isEnabled: false,
+                       isLocal: true,
+                       supportsThinking: false,
+                       supportsVision: true,
+                       kind: .openAICompatible),
     ]
+
+    private static func mergingMissingDefaults(into persisted: [ProviderConfig]) -> [ProviderConfig] {
+        var merged = persisted
+        let existingIDs = Set(persisted.map(\.id))
+        for config in defaultProviders where existingIDs.contains(config.id) == false {
+            merged.append(config)
+        }
+        return merged
+    }
 
     // MARK: Static persistence helpers (used by MerlinCommands, which has no EnvironmentObject access)
 

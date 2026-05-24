@@ -2,8 +2,8 @@
 
 Validated against live runs on **May 22, 2026**.
 
-Per-provider artifacts and configuration notes for the five local providers
-Merlin can route to (LM Studio is the always-on baseline; the other five are
+Per-provider artifacts and configuration notes for the local providers
+Merlin can route to (LM Studio is the always-on baseline; the others are
 exercised via this directory). Each provider serves the same model class —
 `Qwen3-Coder-30B-A3B-Instruct` — but the runtime, format, and feature set vary.
 
@@ -27,6 +27,7 @@ name is hardcoded in `ProviderConfig`.**
 | LM Studio | Fully supported | Pass | Pass | Use freely |
 | Jan.ai | Fully supported | Pass | Pass | Use freely |
 | LocalAI | Fully supported | Pass | Pass | Use freely |
+| llama.cpp (router mode) | Pending fresh sweep | Pending | Pending | First-class provider at `http://localhost:8081/v1`; calibrate before recommending |
 | Ollama | Not recommended | Pass | Fail | Keep available only for text-only fallback |
 | vLLM-Metal | Not recommended | Pass | Fail | Keep available only for text-only fallback |
 | Mistral.rs | Currently unusable | Fail | Not pursued | Do not use for the tested Qwen3 MoE model |
@@ -47,6 +48,18 @@ configuration tips, known limitations.
 - **Tool calling:** OpenAI-compatible; works out of the box for tool-capable models.
 - **Vision:** supported (the MLX-VL models load with their projector bundled in the directory).
 - **Notes:** the live baseline against which other providers are calibrated. General + vision pair passed end to end in live testing and completed the timed calibration run successfully.
+
+### llama.cpp (router mode, pending fresh sweep)
+
+- **Endpoint:** `http://localhost:8081/v1`
+- **Install:** `brew install llama.cpp` (provides `/opt/homebrew/bin/llama-server`)
+- **Launch:** one router-mode process on port `8081` (do not run separate general/vision servers)
+- **Formats:** GGUF (+ optional mmproj for VL models)
+- **Architectures:** anything the installed `llama.cpp` build supports
+- **LoRA serving:** **fuse + convert** — `mlx_lm.fuse`, then `llama.cpp/convert_hf_to_gguf.py`, then serve the converted GGUF
+- **Tool calling:** OpenAI-compatible via llama-server router mode
+- **Vision:** router mode can host a paired general + vision catalog in one process
+- **Notes:** Merlin treats router mode as first-class (`llamacpp` provider + `LlamaCppModelManager`). Runtime load/unload uses `/models/load` and `/models/unload` when available; plain single-model `/v1/models` servers fall back to restart guidance.
 
 ### Ollama (not recommended)
 
@@ -132,7 +145,7 @@ for the tested Qwen3 MoE path on Apple Metal.**
 ## Memory model
 
 Each provider loading the Q8_0 / MLX-8bit model takes ~32 GB of Metal-shared
-memory on Apple Silicon. The full 5-provider sweep is borderline-OOM on a 128 GB
+memory on Apple Silicon. The full multi-provider sweep is borderline-OOM on a 128 GB
 M4 Max — saw `kIOGPUCommandBufferCallbackErrorOutOfMemory` when all five tried to
 coexist. **For calibration: enable one provider at a time in Merlin Settings,
 run `/calibrate`, disable, switch.** The smoke-test script

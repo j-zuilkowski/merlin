@@ -680,7 +680,7 @@ Defined in `LLMProvider.swift`:
 | `OpenAICompatibleProvider.swift` | Handles all OpenAI-compatible endpoints (OpenAI, DeepSeek, Qwen, Ollama, LM Studio, etc.) |
 | `AnthropicProvider.swift` | Translates to Anthropic's native format. SSE parsing in `AnthropicSSEParser.swift`. |
 | `DeepSeekProvider.swift` | Thin wrapper over OpenAICompatibleProvider with reasoning effort headers. |
-| `LMStudioProvider.swift` | Discovers the running model name from the LM Studio `/v1/models` endpoint. |
+| `LocalModelManager/*.swift` | Per-backend local manager layer for model discovery/reload/restart guidance (includes `LlamaCppModelManager`). |
 
 ### ProviderRegistry
 
@@ -689,6 +689,21 @@ Defined in `LLMProvider.swift`:
 `@MainActor ObservableObject` that holds the list of `ProviderConfig` structs, the `activeProviderID`, and keychain API-key accessors. Persists to `~/Library/Application Support/Merlin/providers.json`.
 
 `makeLLMProvider(for:)` is the factory that converts a `ProviderConfig` to a concrete `LLMProvider` instance.
+
+Current default inventory is 12 providers, including the disabled-by-default `llamacpp` entry:
+
+- `id: "llamacpp"`
+- `displayName: "llama.cpp"`
+- `baseURL: "http://localhost:8081/v1"`
+- `localModelManagerID: "llamacpp"`
+
+Virtual provider IDs (`backendID:modelID`) are first-class for slot assignment and runtime routing. For example, selecting `llamacpp:qwen3-coder` creates an OpenAI-compatible runtime provider that keeps the backend URL and targets that exact model ID.
+
+`LlamaCppModelManager` adds router-mode local manager behavior:
+
+- Router catalog discovery: `GET /models` with fallback `GET /v1/models`
+- Runtime operations: `POST /models/load` and `POST /models/unload`
+- Single-model fallback: when router endpoints are unavailable, runtime swap paths return restart instructions for one router-mode `llama-server` process on `127.0.0.1:8081`
 
 ---
 

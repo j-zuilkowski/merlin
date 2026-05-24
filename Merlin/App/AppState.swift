@@ -901,6 +901,8 @@ final class AppState: ObservableObject {
             return MistralRSModelManager(baseURL: url)
         case "vllm":
             return VLLMModelManager(baseURL: url)
+        case "llamacpp":
+            return LlamaCppModelManager(baseURL: url)
         default:
             // Unknown local provider IDs use a NullModelManager rather than failing the settings UI.
             return NullModelManager(providerID: config.id)

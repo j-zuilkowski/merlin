@@ -58,6 +58,12 @@ struct ModelManagerCapabilities: Sendable {
     var canReloadAtRuntime: Bool
     /// The subset of LoadParam values this provider actually honours.
     var supportedLoadParams: Set<LoadParam>
+    /// True when the manager targets a router-style server that can serve multiple models.
+    var supportsRouterMode: Bool = false
+    /// True when the manager can ask the running server to load a model at runtime.
+    var supportsRuntimeModelLoad: Bool = false
+    /// True when the manager can ask the running server to unload a model at runtime.
+    var supportsRuntimeModelUnload: Bool = false
 }
 
 // MARK: - LoadedModelInfo
@@ -105,6 +111,8 @@ enum ModelManagerError: Error, Sendable {
     case reloadFailed(String)
     /// The provider does not support this parameter at all.
     case parameterNotSupported(LoadParam)
+    /// The selected manager does not implement this operation.
+    case unsupportedOperation(String)
 }
 
 // MARK: - LocalModelManagerProtocol
@@ -141,9 +149,26 @@ protocol LocalModelManagerProtocol: Sendable {
     /// providers keep the same model identifier; managers that materialize a new
     /// runtime tag (for example, Ollama Modelfile variants) override this.
     nonisolated func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String
+
+    /// Ensures the target model is loaded in the running process.
+    func ensureModelLoaded(modelID: String) async throws
+
+    /// Attempts to unload the target model from the running process.
+    func unloadModel(modelID: String) async throws
 }
 
 extension LocalModelManagerProtocol {
     func ensureContextLength(modelID: String, minimumTokens: Int) async throws -> String { modelID }
     func reloadedModelID(afterApplying config: LocalModelConfig, to modelID: String) -> String { modelID }
+    func ensureModelLoaded(modelID: String) async throws {
+        throw ModelManagerError.unsupportedOperation(
+            "\(providerID) does not support runtime model load operations."
+        )
+    }
+
+    func unloadModel(modelID: String) async throws {
+        throw ModelManagerError.unsupportedOperation(
+            "\(providerID) does not support runtime model unload operations."
+        )
+    }
 }

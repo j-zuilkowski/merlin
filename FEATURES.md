@@ -22,6 +22,7 @@ Merlin connects to remote and local providers interchangeably. Switch mid-sessio
 | LM Studio | Fully supported | Recommended. General + vision pair passed live calibration. |
 | Jan.ai | Fully supported | Recommended. General + vision pair passed live calibration. |
 | LocalAI | Fully supported | Recommended. General + vision pair passed live calibration. |
+| llama.cpp (router mode) | Pending calibration | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; run the fresh sweep before production recommendation. |
 | Ollama | Not recommended | General model works, but the tested vision model crashes the runner on real image requests. |
 | vLLM-Metal | Not recommended | General model works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | Mistral.rs | Currently unusable | The tested Qwen3 MoE GGUF model fails on first inference on Metal. |
@@ -102,9 +103,10 @@ Merlin persists default sampling values in the `[inference]` TOML section and ap
 Local providers expose load-time controls in Settings → Providers. The editor only shows fields that the provider manager advertises through `supportedLoadParams`.
 
 - `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
-- LM Studio, Ollama, and Jan.ai can reload at runtime.
+- LM Studio, Ollama, Jan.ai, and llama.cpp router mode can reload model presence at runtime.
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.
+- llama.cpp uses router endpoints (`/models`, `/models/load`, `/models/unload`) when available; single-model `/v1/models` servers fall back to restart guidance.
 - Recommended local providers for full general+vision use are LM Studio, Jan.ai, and LocalAI.
 - Ollama and vLLM-Metal remain available for general-model use, but are not recommended for pair calibration because the tested vision path failed live.
 - Mistral.rs remains listed for completeness, but is currently unusable for the tested Qwen3 MoE model on Apple Metal.
@@ -540,7 +542,7 @@ The trained adapter is served by an **MLX-native runtime**. Three runtimes serve
 | **LM Studio** | Direct: load adapter via the LM Studio UI |
 | **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required, but not recommended for the current general+vision pair workflow |
 
-GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**) require an additional step: fuse the adapter, then convert to GGUF via `llama.cpp/convert_hf_to_gguf.py`. **Mistral.rs cannot serve Qwen3-MoE on Metal** today regardless of fine-tuning (see Per-Provider Notes below) — fine-tuning targeting Mistral.rs is only useful for non-MoE base models.
+GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**, **llama.cpp**) require an additional step: fuse the adapter, then convert to GGUF via `llama.cpp/convert_hf_to_gguf.py`. **Mistral.rs cannot serve Qwen3-MoE on Metal** today regardless of fine-tuning (see Per-Provider Notes below) — fine-tuning targeting Mistral.rs is only useful for non-MoE base models.
 
 **How it works**
 

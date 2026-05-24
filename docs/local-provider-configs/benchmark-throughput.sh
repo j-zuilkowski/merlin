@@ -31,6 +31,7 @@ base_url_for() {
         localai)   echo "http://localhost:8080/v1" ;;
         mistralrs) echo "http://localhost:1235/v1" ;;
         vllm)      echo "http://localhost:8000/v1" ;;
+        llamacpp)  echo "http://localhost:8081/v1" ;;
         *)         echo "" ;;
     esac
 }
@@ -125,7 +126,7 @@ main() {
         # can't run all five simultaneously. The script doesn't manage that —
         # the caller is responsible for ensuring only the targeted provider's
         # daemon is up before each call.
-        for id in lmstudio ollama jan localai mistralrs vllm; do
+        for id in lmstudio ollama jan localai mistralrs vllm llamacpp; do
             bench_provider "$id"
         done
     else

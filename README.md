@@ -28,7 +28,7 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Budget-Aware Execution** (v2.1) — every LLM request is sized to the active provider's context window before it is sent. A pre-flight estimator gates each call; working-set caps bound the system prompt, RAG injection, recent turns, and tool-call bursts independently. Oversized work is decomposed into smaller substeps first, with cross-provider routing to a larger-context model only as a last resort.
 
-**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal (after a one-shot `mlx_lm.fuse`, though vLLM-Metal is not recommended for the current general+vision pair workflow). For GGUF providers (Ollama / Jan.ai / LocalAI), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
+**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal (after a one-shot `mlx_lm.fuse`, though vLLM-Metal is not recommended for the current general+vision pair workflow). For GGUF providers (Ollama / Jan.ai / LocalAI / llama.cpp), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
 
 **Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD phase pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and phase-file/code sync. Five `/project:*` skills (`init`, `phase`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
 
@@ -48,6 +48,7 @@ Local provider status (validated live on May 22, 2026):
 | LM Studio | Fully supported | General + vision pair passed live calibration |
 | Jan.ai | Fully supported | General + vision pair passed live calibration |
 | LocalAI | Fully supported | General + vision pair passed live calibration |
+| llama.cpp (router mode) | Pending calibration | First-class provider at `http://localhost:8081/v1`; pending fresh live sweep |
 | Ollama | Not recommended | General passed; vision runtime crashed on real image requests |
 | vLLM-Metal | Not recommended | General passed; vision unsupported in `vllm-metal` on Metal |
 | Mistral.rs | Currently unusable | Your Qwen3 MoE GGUF model loads, then fails on first inference on Metal |

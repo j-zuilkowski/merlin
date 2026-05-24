@@ -9,7 +9,7 @@
 #   bash smoke-test.sh <provider-id>
 #   bash smoke-test.sh all
 #
-# provider-id ∈ {lmstudio, ollama, jan, localai, mistralrs, vllm}
+# provider-id ∈ {lmstudio, ollama, jan, localai, mistralrs, vllm, llamacpp}
 #
 # Each provider is probed against the baseURL that matches ProviderConfig's
 # defaults — keep in sync with Merlin/Providers/ProviderConfig.swift.
@@ -33,6 +33,7 @@ base_url_for() {
         localai)   echo "http://localhost:8080/v1" ;;
         mistralrs) echo "http://localhost:1235/v1" ;;   # rebound off :1234 to avoid LM Studio
         vllm)      echo "http://localhost:8000/v1" ;;
+        llamacpp)  echo "http://localhost:8081/v1" ;;
         *)         echo "" ;;
     esac
 }
@@ -220,7 +221,7 @@ main() {
         # localai is the Homebrew-native install (`brew install localai`), which uses
         # Metal directly. The previous Docker-on-Mac version was CPU-only and skipped
         # here; the native swap restored it to first-class status.
-        for id in lmstudio ollama jan localai mistralrs vllm; do
+        for id in lmstudio ollama jan localai mistralrs vllm llamacpp; do
             run_provider "$id"
         done
     else

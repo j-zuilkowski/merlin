@@ -45,7 +45,7 @@ When you first open Merlin you will see the **Project Picker**. Click **Open Pro
 
 Before the AI can respond you need a provider API key. Merlin defaults to **DeepSeek**. Go to **Settings → Providers**, find DeepSeek, and paste your API key. The key is stored in the macOS Keychain — it is never written to disk in plaintext.
 
-If you want to use a local model no API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 22, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, and **LocalAI**. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
+If you want to use a local model no API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 24, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, and **LocalAI**. **llama.cpp** is now a first-class local provider (`llamacpp`) at `http://localhost:8081/v1` and is pending a fresh calibration sweep. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
 
 Upstream issue tracking for the malfunctioning local providers is maintained in
 [`docs/local-provider-configs/RESULTS.md`](../../docs/local-provider-configs/RESULTS.md).
@@ -203,6 +203,7 @@ Available providers:
 | LM Studio | Local | `localhost:1234`. Fully supported. Supports vision and passed live pair calibration. |
 | Jan.ai | Local | `localhost:1337`. Fully supported and passed live pair calibration. |
 | LocalAI | Local | `localhost:8080`. Fully supported and passed live pair calibration. |
+| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Pending fresh calibration numbers. |
 | Mistral.rs | Local | `localhost:1235`. Currently unusable for the tested Qwen3 MoE model on Apple Metal. |
 | vLLM-Metal | Local | `localhost:8000`. Not recommended: general works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |
@@ -631,7 +632,7 @@ Merlin can fine-tune a local language model on your accepted sessions using MLX-
 
 ### What it does
 
-After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served by an MLX-native runtime — `mlx_lm.server` (the default Merlin routes through), or alternatively LM Studio or vLLM-Metal. vLLM-Metal remains a text-oriented fallback rather than a recommended pair runtime in the current local-provider sweep. The other local providers (Ollama, Jan.ai, LocalAI) can also serve the fine-tuned model after a manual `mlx_lm.fuse` + `convert_hf_to_gguf.py` step. **Mistral.rs cannot serve MoE models on Metal** (`candle-core 0.10.2` lacks the kernel); fine-tuning targeting Mistral.rs only applies to non-MoE base models.
+After each session turn, Merlin records the user prompt and the model's response alongside a quality score. When enough high-quality samples accumulate (configurable threshold, default 1000), the trainer exports them as a JSONL fine-tuning dataset and runs `python -m mlx_lm.lora --train`. The resulting adapter is served by an MLX-native runtime — `mlx_lm.server` (the default Merlin routes through), or alternatively LM Studio or vLLM-Metal. vLLM-Metal remains a text-oriented fallback rather than a recommended pair runtime in the current local-provider sweep. The GGUF local providers (Ollama, Jan.ai, LocalAI, llama.cpp) can also serve the fine-tuned model after a manual `mlx_lm.fuse` + `convert_hf_to_gguf.py` step. **Mistral.rs cannot serve MoE models on Metal** (`candle-core 0.10.2` lacks the kernel); fine-tuning targeting Mistral.rs only applies to non-MoE base models.
 
 ### Requirements
 

@@ -26,6 +26,7 @@ Run order per provider:
 | **ollama** | ✓ | ✗ | general only | Not recommended | Vision requests crashed the runner with `EOF` / `exit status 2` |
 | **vllm** (vLLM-Metal) | ✓ | ✗ | general only | Not recommended | Vision failed upstream with `NotImplementedError` on Metal |
 | **mistralrs** | ✗ | not pursued | — | Currently unusable | Tested Qwen3 MoE GGUF loads, then fails on first inference on Metal |
+| **llamacpp** | pending | pending | pending | Pending calibration | Router-mode provider landed at `http://localhost:8081/v1`; fresh live sweep not yet recorded |
 
 ## Timed calibration matrix — 2026-05-22
 
@@ -37,6 +38,7 @@ Run order per provider:
 | **ollama** | `520.890` | `0.8611` | `0.8056` | `codex-calibration-logs/ollama/calibration-report.json` |
 | **vllm** (vLLM-Metal) | `592.440` | `0.8889` | `0.7778` | `codex-calibration-logs/vllm/calibration-report.json` |
 | **mistralrs** | — | — | — | No successful calibration run |
+| **llamacpp** | — | — | — | Pending fresh calibration run |
 
 ## Provider-specific outcomes
 
@@ -74,6 +76,12 @@ vision runtime failed on the first real image request with:
 `NotImplementedError: Multimodal encoder execution is not wired on Metal yet`.
 That is an upstream runtime limitation, not a Merlin configuration issue.
 
+### llamacpp
+Pending fresh calibration. Merlin now ships a first-class `llamacpp` provider
+and `LlamaCppModelManager` targeting one router-mode `llama-server` process on
+`http://localhost:8081/v1`. Runtime load/unload is available when `/models`
+router endpoints are present; single-model servers fall back to restart guidance.
+
 ## Upstream issue tracking — 2026-05-22
 
 ### Ollama
@@ -109,6 +117,10 @@ timed calibration run.
 **Currently unusable for the tested model:**
 - **Mistral.rs** — the tested Qwen3 MoE GGUF path fails on first inference on
   Apple Metal
+
+**Pending fresh local sweep:**
+- **llama.cpp** (`llamacpp`) — provider + router runtime support shipped; live
+  calibration numbers not recorded yet
 
 **Memory rule remains strict:** run one provider at a time, then shut it down.
 Concurrent local daemons caused avoidable failures earlier in the sweep.
