@@ -63,7 +63,9 @@ jobs:
       - name: Run Unit Tests
         timeout-minutes: 25
         run: |
-          set -o pipefail
+          set -euo pipefail
+          mkdir -p build/logs build/TestResults
+          rm -rf build/TestResults/MerlinTests.xcresult
           # -test-timeouts-enabled / -default-test-execution-time-allowance:
           # cap any single test at 60s so a hung test fails fast with a clear
           # name instead of burning the 6h runner cap (which happened once
@@ -75,6 +77,7 @@ jobs:
           # execution removes the most plausible source of the wedge —
           # XCTest concurrency interacting with the actor entry points in
           # DomainRegistry / AppSettings under the runner's specific load.
+          set +e
           xcodebuild \
             -scheme MerlinTests \
             -configuration Debug \
@@ -82,12 +85,28 @@ jobs:
             SYMROOT=build \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_ALLOWED=NO \
             ENABLE_HARDENED_RUNTIME=NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 60 \
             -maximum-test-execution-time-allowance 120 \
             -maximum-concurrent-test-simulator-destinations 1 \
             -disable-concurrent-destination-testing \
+            -resultBundlePath build/TestResults/MerlinTests.xcresult \
             test \
-            | grep -E 'error:|Test Suite|Test Case|passed|failed|exceeded|BUILD SUCCEEDED|BUILD FAILED'
+            2>&1 | tee build/logs/unit-tests.log
+          xcodebuild_status=${PIPESTATUS[0]}
+          set -e
+
+          grep -E 'error:|Test Suite|Test Case|Executed |passed|failed|exceeded|Issue recorded|Testing failed|TEST SUCCEEDED|TEST FAILED|BUILD SUCCEEDED|BUILD FAILED' build/logs/unit-tests.log || true
+          exit "$xcodebuild_status"
+
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merlin-test-diagnostics
+          path: |
+            build/logs
+            build/TestResults
+          if-no-files-found: ignore
