@@ -51,6 +51,16 @@ All providers share a single configuration surface (Settings → Providers). API
 
 ---
 
+## CAG — Cache-Augmented Generation
+
+- CAG caches the cold, stable prefix: system prompt, project instructions, domain addenda, and stable tool schemas.
+- RAG/KAG enrichment, tool results, and user turns remain hot suffix content and are not part of the cacheable prefix.
+- Anthropic uses explicit prompt-cache markers (`cache_control`) plus the prompt-caching beta header.
+- OpenAI-compatible, DeepSeek, and local providers do not receive Anthropic-specific fields; they benefit from stable prefix bytes when server-side automatic cache or KV reuse is available.
+- Cache metrics track read, creation, and uncached input token usage through `CAGCacheUsage`.
+
+---
+
 ## Prompt Compression
 
 Agentic loops accumulate context quadratically — every step sends the full history to the model, so a 100-step run with a 5 K-token history costs 500 K tokens in total. Merlin applies three complementary compression strategies to keep per-turn cost linear regardless of session length. The approach is informed by ["Implementing Prompt Compression to Reduce Agentic Loop Costs"](https://machinelearningmastery.com/implementing-prompt-compression-to-reduce-agentic-loop-costs/) (MachineLearningMastery.com).

@@ -712,6 +712,30 @@ Virtual provider IDs (`backendID:modelID`) are first-class for slot assignment a
 
 ---
 
+## CAG (Cache-Augmented Generation)
+
+Merlin ships CAG as a request policy for cache-stable prefixes.
+
+### Core surfaces
+
+- `CAGCachePolicy` (`Merlin/CAG/CachePolicy.swift`) controls request caching mode (`disabled` or `ephemeral`).
+- `CAGToolOrdering` (`Merlin/CAG/CachePolicy.swift`) sorts tool schemas by name and deduplicates duplicate names while keeping the first original definition.
+- `CAGCacheUsage` (`Merlin/CAG/CacheMetrics.swift`) stores read/create/uncached token usage and computes hit rate.
+- `CAGCacheMetricsStore` (`Merlin/CAG/CacheMetrics.swift`) aggregates usage by provider ID.
+- `CompletionRequest.cachePolicy` carries the policy from engine wiring to provider adapters.
+
+### Provider behavior
+
+- `AnthropicProvider` emits explicit prompt-cache markers (`cache_control`) and `anthropic-beta: prompt-caching-2024-07-31` for cacheable requests.
+- `AnthropicSSEParser` reads cache token usage fields from `usage` payloads and surfaces them as `CompletionChunk.cacheUsage`.
+- OpenAI-compatible, DeepSeek, and local providers do not emit Anthropic-specific fields; CAG relies on stable prefix bytes and backend automatic cache/KV reuse when available.
+
+### Invariant
+
+RAG/KAG enrichment remains hot suffix content and must stay outside the cacheable stable prefix.
+
+---
+
 ## Auth & Permission System
 
 ### AuthGate

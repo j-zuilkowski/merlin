@@ -220,6 +220,26 @@ Configure API keys, base URLs, and model names in **Settings → Providers**.
 
 ---
 
+## CAG (Cache-Augmented Generation)
+
+CAG reduces repeat input cost by keeping a cacheable stable prefix for each session request.
+
+- Stable prefix: system prompt, project instructions, domain addenda, and stable tool schemas.
+- Hot suffix: conversation turns, tool results, and all RAG/KAG enrichment.
+- Anthropic requests use explicit `cache_control` prompt-cache markers.
+- OpenAI-compatible, DeepSeek, and local providers rely on stable prefix bytes and automatic cache/KV reuse when supported by their servers.
+
+Enable CAG in config:
+
+```toml
+[cag]
+enabled = true
+```
+
+CAG does not replace RAG/KAG retrieval and does not train or fine-tune a model.
+
+---
+
 ## Skills
 
 Skills are reusable prompt templates that extend what the AI can do in one command.

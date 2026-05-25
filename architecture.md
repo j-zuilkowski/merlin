@@ -29,7 +29,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
 **[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `phase`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
-**[v2.3 planned]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
+**[v2.3]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -398,7 +398,7 @@ Merlin/Views/Settings/
 
 ---
 
-## llama.cpp First-Class Local Provider [v2.3 planned]
+## llama.cpp First-Class Local Provider [v2.3]
 
 ### Design Decision: Router Capability on the Local Manager, Not a New Provider Wire Format
 
@@ -878,126 +878,56 @@ TestHelpers/
 
 ---
 
-## CAG — Cache-Augmented Generation [v11, planned]
+## CAG — Cache-Augmented Generation [v11]
 
-> **Status:** not implemented. This section reserves the design space; phase work is deferred. Today every Merlin turn re-bills the full input prompt — no `cache_control` markers are sent, and prefix instability across turns defeats implicit server-side and local KV reuse.
+### Shipped runtime surface
 
-### Motivation
+CAG is now implemented as a request policy and deterministic prefix discipline, not a separate provider mode:
 
-RAG (v9) and KAG (v10) handle *retrieval* — pulling the right knowledge into context per turn. They do nothing about the cost of the **static** prefix that ships with every request: the system prompt, tool schemas (~30+ tools), CLAUDE.md injections, pinned phase docs, and active domain plugin addenda. On a long agentic loop (Phase 150h sets `maxLoopIterations = 100`), that prefix is re-paid 100 times.
+- `Merlin/CAG/CachePolicy.swift` defines `CAGCachePolicy` and `CAGToolOrdering`.
+- `Merlin/CAG/CacheMetrics.swift` defines `CAGCacheUsage` and `CAGCacheMetricsStore`.
+- `CompletionRequest.cachePolicy` carries per-request cache intent.
+- `AppSettings.cagEnabled`, `AppSettings.cagPinClaudeMD`, and `AppSettings.cagPinnedPhaseDocs` persist under `[cag]`.
 
-CAG splits the prompt into two layers:
+### Cache boundary and invariants
 
-- **Cold layer (cached)** — static, high-value, rarely changing. Cached once, reused across turns.
-- **Hot layer (per-turn)** — conversation history, RAG chunks, KAG triples, tool results, user input.
+CAG keeps stable prefix content cacheable and turn-variant content hot:
 
-The wins are concrete: Anthropic's prompt cache reads at ~10% of input cost; DeepSeek's server-side cache is automatic when prefixes are byte-stable; local LM Studio / vLLM-Metal reuse the KV cache across requests in the same session when the prefix is byte-stable. Claude Code itself reports ~92% cache hit rate using this pattern.
+- **Cacheable stable prefix**: system prompt, project instructions, domain addenda, and stable tool schemas.
+- **Hot suffix**: conversation history, tool results, current user turn, and all RAG/KAG enrichment content.
 
-CAG is complementary to RAG/KAG, not a replacement: cache the *retriever's framing*, retrieve the *content*.
+RAG/KAG remain retrieval features and must stay in the hot suffix. They are never folded into the cacheable system prefix.
 
-### What goes where
+### Provider behavior
 
-| Layer | Contents | Owner | Cache strategy |
-|---|---|---|---|
-| **Cold — system** | Base system prompt, OS/version block, tool registry schemas, permission-mode prelude | `ContextManager` cold-prefix builder | Anthropic `cache_control: ephemeral` on system block; stable byte order for DeepSeek + local KV |
-| **Cold — project** | Active CLAUDE.md, active domain plugin `systemPromptAddendum`, pinned phase docs (manual pin) | `ContextManager` cold-prefix builder | Same cache block as above; flushed on project switch (see `WorkspaceCoordinator`) |
-| **Hot — retrieved** | RAG chunks (v9), KAG subgraph (v10), AI-generated memories injected this turn | `RAGTools.buildEnrichedMessage()` | Never cached — injected *after* the cold prefix so cache stays valid |
-| **Hot — conversational** | Prior turn history, current user message, tool call results | `LiveSession` | Never cached — last block; mutates every turn |
+| Provider family | CAG behavior |
+|---|---|
+| `AnthropicProvider` | Uses explicit prompt cache markers: `anthropic-beta: prompt-caching-2024-07-31`, system text block with `cache_control`, and final tool schema cache marker. Parses cache usage fields from SSE `usage`. |
+| OpenAI-compatible, DeepSeek, local providers (`llama.cpp`, LM Studio, Jan.ai, LocalAI, etc.) | No Anthropic-specific fields are emitted. CAG relies on stable prefix bytes so provider/server-side automatic cache or KV reuse can hit when supported. |
 
-The invariant: the cold layer must be a **byte-identical prefix** across every request in a session. Any mutation (tool reorder, settings change, new injected memory) invalidates the cache. Hot content always appends; never prepends or interleaves.
-
-### Architecture
+### Request flow
 
 ```text
-Turn start — prompt assembly
-        │
-        ▼
-ContextManager.buildPrompt(session:)
-        │
-        ├── coldPrefix() ──────────────────────────────────► cache boundary
-        │     • system prompt                                  (cache_control: ephemeral
-        │     • tool schemas (sorted deterministically)         on Anthropic; stable
-        │     • CLAUDE.md + domain addenda                      bytes for DeepSeek/local)
-        │     • pinned phase docs
-        │
-        └── hotSuffix() ──────────────────────────────────────► (not cached)
-              • RAG/KAG injection block
-              • prior turn history
-              • current user message
-                      │
-                      ▼
-              Provider.send(prompt:)
-                      │
-                      ├── AnthropicProvider     — sets cache_control on system block
-                      ├── DeepSeekProvider      — relies on byte-stable prefix (server auto)
-                      ├── OpenAICompatibleProv. — same (OpenAI cache is automatic)
-                      └── LocalModelManager     — same (llama.cpp/vLLM-Metal KV reuse)
+AgenticEngine.send(userMessage:)
+  ├── buildStablePrefix()                  # cold prefix
+  ├── RAG/KAG enrich user message          # hot suffix only
+  ├── request.cachePolicy = .ephemeral/.disabled
+  ├── request.tools = CAGToolOrdering.stable(...)
+  └── provider.complete(request:)
+         ├── AnthropicProvider emits explicit cache_control markers
+         └── Other providers rely on stable prefix bytes only
 ```
-
-### Cold-prefix discipline
-
-Stabilizing the prefix is most of the work. Concrete rules:
-
-1. **Tool schemas sorted by `name`** before serialization. Today `ToolRegistry.shared.allDefinitions()` returns in registration order, which mutates as MCP tools register/unregister.
-2. **CLAUDE.md content read once at session start**, snapshotted into the cold prefix, and not re-read mid-session. A file-watcher change invalidates the cache and starts a new session prefix (explicit decision: don't try to surgically patch the cached prefix).
-3. **Settings that affect the system prompt** (reasoning effort verbiage, permission mode banner) are pinned at session start. Mid-session toggles take effect on the *next* session, not the current one — same rationale as #2.
-4. **RAG/KAG injections live in the hot suffix**, immediately before the current user message — never folded into the system block.
-5. **Domain plugin addenda** are part of the cold prefix; switching the active plugin starts a new cached prefix.
-
-### Provider implementation surface
-
-| Provider | Mechanism | Required change |
-|---|---|---|
-| `AnthropicProvider` | `cache_control: {type: "ephemeral"}` on system block (and optionally on the last tool definition to cache the entire tool array) | Add `anthropic-beta: prompt-caching-2024-07-31` header; wrap system + tools in cache-marked blocks; emit cache hit/miss metrics from response `usage.cache_read_input_tokens` / `cache_creation_input_tokens` |
-| `DeepSeekProvider` | Automatic server-side cache on stable prefix | None at the wire level; only the prefix-stability discipline above |
-| `OpenAICompatibleProvider` | Automatic on OpenAI; varies on other compat servers | None at the wire level for OpenAI; document that compat servers may not cache |
-| `LMStudioModelManager` / `VLLMModelManager` | Implicit KV cache reuse across same-session requests | None at the wire level. **Distinct from existing `cacheTypeK` / `--kv-cache-dtype`** — those configure cache *quantization*, not reuse |
 
 ### Metrics
 
-Cache effectiveness is invisible without metrics. Add to the existing `ProviderBudget` / token-accounting path:
+`AnthropicSSEParser` maps:
 
-- `cacheReadTokens` — Anthropic `usage.cache_read_input_tokens` (and equivalent from other providers when exposed)
-- `cacheCreationTokens` — Anthropic `usage.cache_creation_input_tokens`
-- `cacheHitRate` — `cacheReadTokens / (cacheReadTokens + cacheCreationTokens + uncachedInputTokens)`, rolling per-session
+- `usage.cache_read_input_tokens` -> `CAGCacheUsage.readTokens`
+- `usage.cache_creation_input_tokens` -> `CAGCacheUsage.creationTokens`
+- `usage.input_tokens` -> `CAGCacheUsage.uncachedInputTokens`
 
-Surface in the same place per-provider spend appears (Settings → Budget). Target after rollout: ≥80% hit rate on multi-turn agentic loops.
+`AnthropicProvider` records parsed usage with `CAGCacheMetricsStore.shared.record(..., providerID: id)` so cache hit/read/create accounting is available for budget surfaces.
 
-### Failure modes
-
-- **Silent cache misses** — without metrics, a reorder or settings mutation kills the cache and costs rise with no visible cause. Mitigation: the metrics above are non-optional.
-- **Cache thrash on project switch** — switching projects starts a new cold prefix every time. Acceptable for now; revisit if users hop projects frequently in a single session.
-- **Tool registry churn from MCP** — MCP tools registering after session start mutate the tool list and invalidate the cache. Mitigation: MCP tool registration is part of session startup; tools registered mid-session don't enter the cached prefix until the next session.
-- **Cache-too-much** — cramming optional content into the cold prefix balloons the per-session cache-write cost. Only pin content that will be referenced repeatedly within the session.
-
-### File layout (planned)
-
-```text
-Merlin/CAG/
-  CachePolicy.swift         — cold/hot classification, stable-sort helpers
-  CacheMetrics.swift        — per-provider hit/miss accounting
-Merlin/Engine/
-  ContextManager.swift      — gains coldPrefix() / hotSuffix() split
-Merlin/Providers/
-  AnthropicProvider.swift   — emits cache_control blocks; reads usage cache fields
-```
-
-### AppSettings additions (planned)
-
-```swift
-/// TOML key `cag_enabled`. Default: `false` until phase work lands.
-@Published var cagEnabled: Bool = false
-/// TOML key `cag_pin_claude_md`. Whether project CLAUDE.md joins the cold prefix.
-@Published var cagPinClaudeMD: Bool = true
-/// TOML key `cag_pinned_phase_docs`. Explicit list of phase doc paths to pin.
-@Published var cagPinnedPhaseDocs: [String] = []
-```
-
-### Open questions (resolve before phase work)
-
-1. **Cache scope: per-session vs. per-project?** Anthropic's ephemeral cache has a 5-minute TTL — per-session is the natural fit. Cross-session reuse would need the longer-TTL beta.
-2. **How does CAG interact with `ContextManager.compactIfNeededBeforeRun` (Phase 151a/b)?** Compaction mutates history — that's hot content, so the cold prefix survives. But if compaction ever touches the system block, cache dies. Decision: compaction is hot-only by contract.
-3. **Worker subagents (V5 supervisor-worker)** — do workers inherit the supervisor's cold prefix, or build their own? Different system prompts argue for separate caches; shared tool schemas argue for shared. Likely answer: separate cold prefix per role, but the tool-schemas sub-block is identical across roles and Anthropic can cache it independently with a second `cache_control` marker.
 
 ---
 
