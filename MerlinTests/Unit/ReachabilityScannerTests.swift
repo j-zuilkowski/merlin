@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 309a — failing tests for ReachabilityScanner.
+/// Task 309a — failing tests for ReachabilityScanner.
 final class ReachabilityScannerTests: XCTestCase {
 
     /// Writes `[filename: content]` into a fresh temp project directory.

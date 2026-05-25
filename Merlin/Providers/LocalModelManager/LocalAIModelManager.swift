@@ -2,7 +2,7 @@ import Foundation
 
 /// LocalAI manager.
 ///
-/// LocalAI cannot be reloaded safely at runtime in this phase, so the manager
+/// LocalAI cannot be reloaded safely at runtime in this task, so the manager
 /// reports restart-only instructions that point to a server restart after YAML
 /// config edits.
 /// `@unchecked Sendable` rationale: stateless restart-instruction generator; no mutable shared state.

@@ -12,7 +12,7 @@ This manual covers the complete architecture, development workflow, and code org
 2. [Repository Layout](#repository-layout)
 3. [Build System](#build-system)
 4. [Development Workflow — TDD Phases](#development-workflow--tdd-phases)
-5. [Phase Sheet Format](#phase-sheet-format)
+5. [Phase Sheet Format](#task-sheet-format)
 6. [Core Architecture](#core-architecture)
 7. [Engine — The Agentic Loop](#engine--the-agentic-loop)
 8. [Supervisor-Worker Engine](#supervisor-worker-engine)
@@ -92,11 +92,11 @@ merlin/
 ├── TestHelpers/              # MockProvider, NullAuthPresenter, EngineFactory (shared)
 │   └── SemanticFaults/       # Fault injection doubles: stale retrieval, truncation, empty tools, context drop
 ├── TestTargetApp/            # Minimal target app for AX/UI tests
-├── phases/                   # Phase sheet Markdown files
-├── architecture.md           # High-level design document
+├── tasks/                   # Task sheet Markdown files
+├── spec.md           # High-level design document
 ├── llm.md                    # Provider wire format details
 ├── project.yml               # XcodeGen project definition
-└── CLAUDE.md                 # Session instructions for AI coding assistants
+└── constitution.md                 # Session instructions for AI coding assistants
 ```
 
 ---
@@ -152,15 +152,15 @@ Every feature is built in two committed phases:
 
 ### Phase NNa — Tests (failing)
 
-1. Read `phases/PASTE-LIST.md` to find the next unused phase number
-2. Write the `phases/phase-NNa-<name>-tests.md` sheet (see format below)
+1. Read `tasks/PASTE-LIST.md` to find the next unused phase number
+2. Write the `tasks/task-NNa-<name>-tests.md` sheet (see format below)
 3. Write the test file(s) — **implementation classes must not exist yet**
 4. Run `xcodebuild` and confirm `BUILD FAILED` with errors naming the missing symbols
 5. Commit: `Phase NNa — <TestNames> (failing)`
 
 ### Phase NNb — Implementation
 
-1. Write the `phases/phase-NNb-<name>.md` sheet
+1. Write the `tasks/task-NNb-<name>.md` sheet
 2. Implement the production code
 3. Run `xcodebuild` and confirm `BUILD SUCCEEDED` with all NNa tests passing
 4. Commit: `Phase NNb — <FeatureName>`
@@ -178,7 +178,7 @@ git commit -m "Phase NNx — <Description>"
 
 ## Phase Sheet Format
 
-### NNa sheet (`phases/phase-NNa-<name>-tests.md`)
+### NNa sheet (`tasks/task-NNa-<name>-tests.md`)
 
 ```markdown
 # Phase NNa — <Feature> Tests
@@ -210,7 +210,7 @@ git add MerlinTests/Unit/TestFile.swift
 git commit -m "Phase NNa — TestName (failing)"
 ```
 
-### NNb sheet (`phases/phase-NNb-<name>.md`)
+### NNb sheet (`tasks/task-NNb-<name>.md`)
 
 ```markdown
 # Phase NNb — <Feature> Implementation
@@ -300,7 +300,7 @@ AgenticEngine.runLoop()       ← parse tool calls
 
 `runLoop` is the recursive core. At each depth:
 
-1. Builds a `CompletionRequest` from context, system prompt (CLAUDE.md + memories), tools, and optional vision attachment
+1. Builds a `CompletionRequest` from context, system prompt (constitution.md + memories), tools, and optional vision attachment
 2. Calls `proProvider.complete()` and streams events
 3. On `toolCallStarted` — fires `HookEngine.runPreToolUse()`, then dispatches via `ToolRouter`
 4. On `toolCallResult` — optionally runs `HookEngine.runPostToolUse()` to let hooks rewrite results
@@ -483,7 +483,7 @@ Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train option
 actor DisciplineEngine {
     init(
         adapter: ProjectAdapter,
-        phaseScanner: PhaseScanner,
+        taskScanner: TaskScanner,
         manualCoverageScanner: ManualCoverageScanner,
         docReferenceGraph: DocReferenceGraph,
         whyCommentScanner: WhyCommentScanner,
@@ -501,11 +501,11 @@ Circuit breaker: three consecutive scan failures disable the engine for the sess
 
 Per-language config consumed by all scanners. Declared in `~/.merlin/adapters/<name>.toml`. Key fields: `build_command`, `test_command`, `versioning_file`, `versioning_field`, `[why_comment_triggers]` patterns, `[manual_coverage] surface_patterns`. Seed adapters: `swift-xcode.toml`, `rust-cargo.toml`.
 
-Per-project config lives in `<project>/.merlin/project.toml`: adapter selection, active discipline layers, `manual_coverage_baseline`, and optional phase-scan baseline settings.
+Per-project config lives in `<project>/.merlin/project.toml`: adapter selection, active discipline layers, `manual_coverage_baseline`, and optional task-scan baseline settings.
 
 ### Scanners
 
-**`PhaseScanner`** — reads `phases/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration). Projects with historical phase archives can set `phase_scan_min_number` to scan only the active baseline forward, and `phase_scan_public_undeclared = false` to avoid retroactive orange findings for public symbols that predate the baseline.
+**`TaskScanner`** — reads `tasks/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration). Projects with historical phase archives can set `task_scan_min_number` to scan only the active baseline forward, and `task_scan_public_undeclared = false` to avoid retroactive orange findings for public symbols that predate the baseline.
 
 **`ManualCoverageScanner`** — enumerates user-facing surfaces via adapter regex patterns, cross-checks against `<!-- covers: ... -->` markers in doc files. Gaps and stale references become findings. Surfaces escape the requirement via `// manual: not-user-facing — <rationale>` (logged to override audit).
 
@@ -513,7 +513,7 @@ Per-project config lives in `<project>/.merlin/project.toml`: adapter selection,
 
 **`WhyCommentScanner`** — for each adapter-declared trigger pattern (e.g. `try?`, `@unchecked Sendable`, `.unwrap()`), checks for an explanatory comment within 3 lines. Missing → finding. Override: `// rationale-not-needed: <reason>` (logged).
 
-**`ProseReadabilityChecker`** — calls `vale` with the Merlin style folder. Per-file grade targets from the adapter `doc_target_grade` table. Default targets: `user-manual.md` grade 9, `developer-guide.md` grade 9, `architecture.md` grade 11.
+**`ProseReadabilityChecker`** — calls `vale` with the Merlin style folder. Per-file grade targets from the adapter `doc_target_grade` table. Default targets: `user-manual.md` grade 9, `developer-guide.md` grade 9, `spec.md` grade 11.
 
 ### PendingAttention queue
 
@@ -546,8 +546,8 @@ Every override appended to `<project>/.merlin/override-log.jsonl`. Weekly review
 |---|---|---|
 | `SessionStart` | Session opens | Inject top-N findings from `pending.json` as system reminder |
 | `Stop` | After every Claude turn | `DisciplineEngine.scan(diff:)` against changed files |
-| `UserPromptSubmit` | Before user message | Flag if prompt looks like a feature request without a phase file |
-| `PostCommit` | After git commit | Run `PhaseScanner` if commit touched source files |
+| `UserPromptSubmit` | Before user message | Flag if prompt looks like a feature request without a task file |
+| `PostCommit` | After git commit | Run `TaskScanner` if commit touched source files |
 | `PrePush` | Before git push | Verify version-tag consistency |
 
 ### Project skills
@@ -557,7 +557,7 @@ Five `~/.merlin/skills/project-*/SKILL.md` files implement the user-facing layer
 | Skill | Phases | Concern |
 |---|---|---|
 | `project:init` | 259a/b | Scaffold new project; install hooks |
-| `project:phase` | 260a/b | Build NNa/NNb phase pair |
+| `project:phase` | 260a/b | Build NNa/NNb task pair |
 | `project:revise` | 261a/b | Interactive finding review |
 | `project:release` | 262a/b | Consolidated release gate |
 | `project:adopt` | 263a/b | Adopt existing project; record baseline |
@@ -724,8 +724,8 @@ Merlin ships CAG as a request policy for cache-stable prefixes.
 - `CAGCacheMetricsStore` (`Merlin/CAG/CacheMetrics.swift`) aggregates usage by provider ID.
 - `CompletionRequest.cachePolicy` carries the policy from engine wiring to provider adapters.
 - `CompletionRequest.systemPromptSegments` carries split cacheable/hot system blocks for providers that support block-level cache markers.
-- `buildStablePrefix()` honors `[cag] pin_claude_md` and includes files listed in `pinned_phase_docs` when CAG is enabled.
-- `buildCAGSystemPromptSegments()` keeps CLAUDE.md in the hot system block when `pin_claude_md = false`; the content remains in the request but outside Anthropic's cache-marked block.
+- `buildStablePrefix()` honors `[cag] pin_constitution` and includes files listed in `pinned_task_docs` when CAG is enabled.
+- `buildCAGSystemPromptSegments()` keeps constitution.md in the hot system block when `pin_constitution = false`; the content remains in the request but outside Anthropic's cache-marked block.
 
 ### Provider behavior
 
@@ -916,7 +916,7 @@ When the user types `/skill-name arg`, `ChatView` matches the skill name, retrie
 4. Posts a `UNUserNotification` prompting the user to review
 5. Writes the summary as an `episodic` chunk to `MemoryBackendPlugin` (v9)
 
-`CLAUDEMDLoader.defaultMemoriesBlock()` reads all approved memory files from `~/.merlin/memories/` at session init and injects them into the system prompt.
+`ConstitutionLoader.defaultMemoriesBlock()` reads all approved memory files from `~/.merlin/memories/` at session init and injects them into the system prompt.
 
 ### Local Vector Store (v9)
 
@@ -1414,7 +1414,7 @@ For project-scoped skills that should not be shared across projects, put them in
 
 ## Non-Negotiable Rules
 
-These rules apply to every code change in this repository. They are enforced in `CLAUDE.md` and must not be bypassed.
+These rules apply to every code change in this repository. They are enforced in `constitution.md` and must not be bypassed.
 
 1. **TDD always.** Tests first, failing commit, then implementation.
 2. **Git commit after every phase.** No exceptions, no batching.

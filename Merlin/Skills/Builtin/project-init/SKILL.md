@@ -6,11 +6,11 @@ Scaffold a new project with full Merlin v2.2 Project Discipline Subsystem suppor
 
 Every project Merlin manages flows through four artifacts, upstream to downstream:
 
-    vision.md  →  architecture.md  →  phases/  →  code
+    vision.md  →  spec.md  →  tasks/  →  code
      (intent)      (committed design)  (specs)     (implementation)
 
 `vision.md` is the launchpad — every new idea is captured there first, then promoted to
-`architecture.md` once it is a committed design decision, broken into TDD phase files,
+`spec.md` once it is a committed design decision, broken into TDD task files,
 and implemented. `project:init` seeds `vision.md` with the project's founding idea;
 later ideas are added or promoted with `project:revise`.
 
@@ -31,7 +31,7 @@ User says any of:
      derive it from the one-line description.
    - Language — present supported options: `swift`, `rust`
    - License (MIT / Apache-2.0 / proprietary)
-   - Doc-set choice: `full` (all docs) or `minimal` (README + CLAUDE.md + vision.md)
+   - Doc-set choice: `full` (all docs) or `minimal` (README + constitution.md + vision.md)
    - Discipline Layer 2 (soft prompts)? Default yes.
    - Discipline Layer 3 (pre-commit hooks)? Default yes.
 
@@ -45,24 +45,24 @@ User says any of:
 
 4. **Write `.merlin/project.toml`** using `ProjectConfigLoader.defaultConfig(adapter:)`.
 
-5. **Write `CLAUDE.md`** from `~/.merlin/templates/docs/CLAUDE.md.template`,
+5. **Write `constitution.md`** from `~/.merlin/templates/docs/constitution.md.template`,
    substituting `{project_name}`, `{language}`, `{adapter}`.
 
 6. **Write `vision.md`** — the idea launchpad. Two sections:
    - `## Active` — seed it with the Initial vision paragraph from step 1 as the first
-     entry. These are ideas awaiting promotion to `architecture.md`.
+     entry. These are ideas awaiting promotion to `spec.md`.
    - `## Deferred` — a placeholder line for now. Ideas consciously parked later, each
      with a "reconsider when".
    `vision.md` is written for **both** doc-set tiers — it is the launchpad, so even a
    minimal project gets it.
 
 7. **Write doc set** from `~/.merlin/templates/docs/`:
-   - Full: README.md, architecture.md, api.md, developer-guide.md, user-manual.md,
+   - Full: README.md, spec.md, api.md, developer-guide.md, user-manual.md,
      FEATURES.md, CHANGELOG.md
    - Minimal: README.md
-   (`CLAUDE.md` from step 5 and `vision.md` from step 6 are written in both tiers.)
+   (`constitution.md` from step 5 and `vision.md` from step 6 are written in both tiers.)
 
-8. **Write `phases/` directory** with `phase-00-scaffold.md` documenting the initial state.
+8. **Write `tasks/` directory** with `task-00-scaffold.md` documenting the initial state.
 
 9. **Install git hooks** (if Layer 3 opted in):
    Call `GitHookInstaller.install(projectPath:)` — writes `post-commit` and `pre-push`.
@@ -86,7 +86,7 @@ User says any of:
 
 14. **Report to user**: project path, adapter chosen, baseline coverage gap (0 for new
     project), installed hooks, doc set, `vision.md` seeded with the founding idea, next
-    step (`/project:phase` to start TDD, or `/project:revise` to grow the vision).
+    step (`/project:task` to start TDD, or `/project:revise` to grow the vision).
 
 ## Output
 
@@ -95,12 +95,12 @@ User says any of:
 - `.merlin/project.toml` with adapter selection and zero baseline.
 - Git hooks installed (if opted in).
 - Doc set present (full or minimal); `vision.md` present in either tier.
-- `phases/phase-00-scaffold.md` committed.
+- `tasks/task-00-scaffold.md` committed.
 
 ## Constraints
 
 - Never run `git push` — only local commit.
-- Never overwrite an existing `CLAUDE.md` — append a "Project Discipline" section if absent.
+- Never overwrite an existing `constitution.md` — append a "Project Discipline" section if absent.
 - Never overwrite an existing `vision.md` — if present, leave it untouched.
 - If the project path already exists and is non-empty, abort and suggest `/project:adopt`.
 - Adapter selection is the only irreversible decision. Confirm before proceeding.

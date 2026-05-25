@@ -69,7 +69,7 @@ final class ContinuationAbortTests: XCTestCase {
             to: injectURL,
             completedCount: 1,
             steps: ["Run cargo test", "Run clippy", "Commit"],
-            originalTask: "Phase 22c fix"
+            originalTask: "Task 22c fix"
         )
 
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
@@ -96,8 +96,8 @@ final class ContinuationAbortTests: XCTestCase {
 
         let engine = makeEngine(injectURL: injectURL)
         let longResponse = """
-        I checked the repository state. The phase doc already exists at \
-        docs/phase-22c-fix-user-token-regression.md and the commit 573ae7b is present. \
+        I checked the repository state. The task doc already exists at \
+        docs/task-22c-fix-user-token-regression.md and the commit 573ae7b is present. \
         [STEP_ALREADY_DONE] No further action required.
         """
         let mock = MockProvider(responses: [.text(longResponse)])
@@ -106,8 +106,8 @@ final class ContinuationAbortTests: XCTestCase {
         writeContinuationInject(
             to: injectURL,
             completedCount: 2,
-            steps: ["Write phase doc"],
-            originalTask: "Phase 22c fix"
+            steps: ["Write task doc"],
+            originalTask: "Task 22c fix"
         )
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
         for await _ in engine.send(userMessage: msg) {}
@@ -157,7 +157,7 @@ final class ContinuationAbortTests: XCTestCase {
             to: injectURL,
             completedCount: 1,
             steps: ["Run cargo test", "Run clippy"],
-            originalTask: "Phase 22c fix"
+            originalTask: "Task 22c fix"
         )
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
         for await _ in engine.send(userMessage: msg) {}

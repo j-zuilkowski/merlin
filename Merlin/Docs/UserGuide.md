@@ -54,7 +54,7 @@ Upstream issue tracking for the malfunctioning local providers is maintained in
 
 Each workspace window is bound to one project directory. Merlin automatically loads:
 
-- `CLAUDE.md` from the project root (and any parent directories up to `~`) — this becomes part of the system prompt
+- `constitution.md` from the project root (and any parent directories up to `~`) — this becomes part of the system prompt
 - Skill files from `~/.merlin/skills/` and `<project>/.merlin/skills/`
 - MCP server configuration from `~/.merlin/config.toml` and `<project>/.claude/mcp.json`
 
@@ -225,7 +225,7 @@ Configure API keys, base URLs, and model names in **Settings → Providers**.
 CAG reduces repeat input cost by keeping a cacheable stable prefix for each session request.
 
 - Stable prefix: system prompt, project instructions, domain addenda, and stable tool schemas.
-- Hot suffix: conversation turns, tool results, all RAG/KAG enrichment, and CLAUDE.md when `pin_claude_md = false`.
+- Hot suffix: conversation turns, tool results, all RAG/KAG enrichment, and constitution.md when `pin_constitution = false`.
 - Anthropic requests use explicit `cache_control` prompt-cache markers.
 - OpenAI-compatible, DeepSeek, and local providers rely on stable prefix bytes and automatic cache/KV reuse when supported by their servers.
 - Pinned CAG docs must be regular files inside the current project and no larger than 64 KiB each.
@@ -235,8 +235,8 @@ Enable CAG in config:
 ```toml
 [cag]
 enabled = true
-pin_claude_md = true
-pinned_phase_docs = ["phases/phase-341b-cag-foundation.md"]
+pin_constitution = true
+pinned_task_docs = ["tasks/task-341b-cag-foundation.md"]
 ```
 
 Provider settings show per-provider CAG read/create/uncached token counters and hit rate when providers report cache usage. The workspace toolbar also has a **CAG Metrics** panel, similar to the file viewer, with refresh and reset controls.
@@ -540,16 +540,16 @@ Merlin can enforce construction discipline on any project through a `DisciplineE
 Scaffolds a new project. Asks for project name, language, doc-set preference, and which enforcement layers to install. Produces:
 
 - Language-native scaffold (`cargo new`, `xcodegen`, etc.)
-- `CLAUDE.md` customised to the chosen language and adapter
-- Full doc set (`README.md`, `architecture.md`, `api.md`, `developer-guide.md`, `user-manual.md`, `FEATURES.md`, `CHANGELOG.md`)
-- `phases/` directory with a `phase-00` documenting the initial state
+- `constitution.md` customised to the chosen language and adapter
+- Full doc set (`README.md`, `spec.md`, `api.md`, `developer-guide.md`, `user-manual.md`, `FEATURES.md`, `CHANGELOG.md`)
+- `tasks/` directory with a `task-00` documenting the initial state
 - `.merlin/project.toml` with adapter selection
 - Git hooks (`pre-commit`, `pre-push`)
 - Initial git commit
 
-### /project:phase
+### /project:task
 
-Builds a TDD phase pair for one new surface. Asks structuring questions — what the abstraction is, what prior phase it depends on, what surfaces NNb introduces — and produces both the NNa (failing tests) and NNb (implementation) phase files, plus a `PASTE-LIST.md` update.
+Builds a TDD task pair for one new surface. Asks structuring questions — what the abstraction is, what prior phase it depends on, what surfaces NNb introduces — and produces both the NNa (failing tests) and NNb (implementation) task files, plus a `PASTE-LIST.md` update.
 
 ### /project:revise
 
@@ -569,7 +569,7 @@ The consolidated release gate. Checks before releasing:
 - All tests pass
 - API docs regenerated and committed
 - Manual coverage: no new gaps; baseline reduced since last release
-- Phase files in sync with code (no red drift)
+- Task files in sync with code (no red drift)
 - WHY-comment violations clear or all overridden with rationale
 - Prose readability at target grade for all doc files
 - `RELEASE-vX.Y.Z.md` present with required sections
@@ -583,8 +583,8 @@ On a clean pass: commits the version bump, creates the git tag, pushes, and crea
 Applies discipline to an existing project without rewriting its history.
 
 1. Detects language and selects an adapter (or asks).
-2. Reads existing `CLAUDE.md` / `architecture.md` — preserves them, adds a "Project Discipline" section if absent.
-3. Scans the codebase: surfaces, doc coverage gaps, WHY-comment violations, prose readability failures, phase drift.
+2. Reads existing `constitution.md` / `spec.md` — preserves them, adds a "Project Discipline" section if absent.
+3. Scans the codebase: surfaces, doc coverage gaps, WHY-comment violations, prose readability failures, task drift.
 4. Records the current coverage gap count as the baseline in `.merlin/project.toml`.
 5. Installs git hooks (with per-layer confirmation).
 6. Prints a one-page adoption report: baseline count, releases needed to close it at default decay, violations by category.
@@ -597,7 +597,7 @@ The `DisciplineEngine` runs without you doing anything:
 
 - **After every turn** (`Stop` hook) — scans the diff for new violations, updates the pending queue.
 - **At session start** (`SessionStart` hook) — injects the top findings into context as a system reminder.
-- **Before each message** (`UserPromptSubmit` hook) — flags if a feature request has no corresponding phase file.
+- **Before each message** (`UserPromptSubmit` hook) — flags if a feature request has no corresponding task file.
 - **Git hooks** — block commits on hard violations; block pushes on version-tag mismatches.
 
 Findings have three severity levels:

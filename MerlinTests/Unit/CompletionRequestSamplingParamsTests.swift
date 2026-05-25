@@ -17,7 +17,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
-    // MARK: - Field existence (compile-time failures without phase 123b)
+    // MARK: - Field existence (compile-time failures without task 123b)
 
     func testTopKFieldExists() {
         var req = makeRequest()
@@ -140,7 +140,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
     // MARK: - AppSettings inference defaults
 
     func testAppSettingsInferenceTopKExists() {
-        // Compile-time proof — fails to build without phase 123b.
+        // Compile-time proof — fails to build without task 123b.
         let _ = AppSettings.shared.inferenceTopK
     }
 

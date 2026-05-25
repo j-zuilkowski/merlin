@@ -119,8 +119,8 @@ calibrationDoneButton calibrationApplyAllButton`
 (Staged Changes, File Viewer, Terminal, Preview, Side Chat, Memories), the
 `ScreenPreviewView` expand/collapse button, the `PreviewPane` close button, the 3
 `ToolRequirementSheet` buttons (Install/Cancel/Done), and the `AdvisoryRow` "Fix this"
-button (the performance pane's only control). → **Phase 325 authored** (`phases/
-phase-325{a,b}-accessibility-id-gap*`) — adds all 12 constants + applies them.
+button (the performance pane's only control). → **Phase 325 authored** (`tasks/
+task-325{a,b}-accessibility-id-gap*`) — adds all 12 constants + applies them.
 
 ## 1.3 — Modal / overlay surfaces — 18
 11 `.sheet` · 4 `.popover` · 1 `.confirmationDialog` · 1 `.fileImporter` · `.contextMenu` ×4.
@@ -202,7 +202,7 @@ auth popup for UI testing. The only launch argument the app parses.
 
 ## 2.9 — `~/.merlin/` tree
 Files: config.toml, mcp.json, api-keys.json, inject.txt, auth.json, telemetry.jsonl,
-workspace.json, toolbar-actions.json, layout-workspace.json, CLAUDE.md.
+workspace.json, toolbar-actions.json, layout-workspace.json, constitution.md.
 Dirs (9): memories/ (+pending/), skills/, agents/, adapters/, bin/ (merlin-discipline),
 lora/ (+pending/, reviewed.jsonl), kag/ (graph.sqlite), performance/, electronics/.
 Project `.merlin/`: project.toml, pending.json, discipline-events.jsonl,
@@ -237,7 +237,7 @@ override-log.jsonl, memory.sqlite, worktrees/.
 
 ## 3.2 — Built-in skills — 13
 commit, debug, explain, plan, refactor, review, summarise, test, project-init,
-project-adopt, project-phase, project-revise, project-release. + personal
+project-adopt, project-task, project-revise, project-release. + personal
 (`~/.merlin/skills/`) + project (`<project>/.merlin/skills/`).
 
 ## 3.3 — Agents & slots

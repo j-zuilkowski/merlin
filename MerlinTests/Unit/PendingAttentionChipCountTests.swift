@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 304a - failing test: the discipline chip count must reflect the true number of
+/// Task 304a - failing test: the discipline chip count must reflect the true number of
 /// queued findings, not the capped top-3 panel subset.
 final class PendingAttentionChipCountTests: XCTestCase {
 
@@ -15,7 +15,7 @@ final class PendingAttentionChipCountTests: XCTestCase {
     private func makeEngine(storePath: String) -> DisciplineEngine {
         DisciplineEngine(
             adapter: .makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -24,7 +24,7 @@ final class PendingAttentionChipCountTests: XCTestCase {
     }
 
     private func makeFinding(_ n: Int) -> Finding {
-        Finding(id: UUID(), category: .phaseDrift, severity: .nudge,
+        Finding(id: UUID(), category: .taskDrift, severity: .nudge,
                 summary: "Finding-\(n)", detail: "d", suggestedAction: "fix",
                 createdAt: Date(), lastSeenAt: Date())
     }

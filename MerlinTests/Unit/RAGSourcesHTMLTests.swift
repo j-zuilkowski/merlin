@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 294a — failing tests for RAG-sources HTML rendering.
+/// Task 294a — failing tests for RAG-sources HTML rendering.
 final class RAGSourcesHTMLTests: XCTestCase {
 
     private func makeChunk(source: String = "books",

@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 165 — DPO auto-filter: what sessions get proposed
+// Tests for Task 165 — DPO auto-filter: what sessions get proposed
 //
 // Covers:
 //   - AppSettings.dpoEnabled default is true

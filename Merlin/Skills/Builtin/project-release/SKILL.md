@@ -33,7 +33,7 @@ failing check. The user must fix or dismiss with rationale before re-running.
 □  LocalOnlyFileGate: no tracked `api-keys.json`, `.env*`, or `secrets.json` files
 □  RELEASE-vX.Y.Z.md present and non-empty
 □  CHANGELOG.md updated (section for vX.Y.Z present)
-□  PhaseScanner: no red/orange drift findings
+□  TaskScanner: no red/orange drift findings
 □  project.yml / Cargo.toml version field matches intended release version
 □  CURRENT_PROJECT_VERSION incremented by 1
 ```

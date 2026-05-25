@@ -138,7 +138,7 @@ final class AppState: ObservableObject {
         let disciplineAdapter = ProjectAdapter.makeStub(language: "swift")
         disciplineEngine = DisciplineEngine(
             adapter: disciplineAdapter,
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -294,7 +294,7 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
         // After every turn, run a discipline scan and refresh the pending-attention
-        // chip. No-op for projects without a phases/ or .merlin/ tree.
+        // chip. No-op for projects without a tasks/ or .merlin/ tree.
         engine.$isRunning
             .filter { !$0 }
             .receive(on: RunLoop.main)

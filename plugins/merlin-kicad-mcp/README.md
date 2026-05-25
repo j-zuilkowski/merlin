@@ -35,7 +35,7 @@ project's `.mcp.json`:
 - `Sources/KiCadMCPKit/` — protocol core (`MCPServer`, `StdioTransport`), tool registry,
   the `kicad_*` tool surface (`KiCadTools`), `kicad-cli` wrapper, project materializer.
 - `Sources/merlin-kicad-mcp/` — thin executable entry point.
-- `phases/ROADMAP.md` — the TDD phase decomposition.
+- `tasks/ROADMAP.md` — the TDD phase decomposition.
 
 `kicad-cli` is expected inside the KiCad 10 app bundle at
 `/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli`.

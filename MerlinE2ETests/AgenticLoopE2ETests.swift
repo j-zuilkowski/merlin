@@ -35,7 +35,7 @@ final class AgenticLoopE2ETests: XCTestCase {
         // tool and just answers in prose. Register read_file's definition too.
         ToolRegistry.shared.register(ToolDefinitions.readFile)
 
-        // Post-phase-145b: AgenticEngine resolves providers from a ProviderRegistry
+        // Post-task-145b: AgenticEngine resolves providers from a ProviderRegistry
         // via slot assignments - it no longer takes pro/flash/vision arguments.
         // See TestHelpers/EngineFactory.swift for the same construction with mocks.
         let pro = DeepSeekProvider(apiKey: key, model: "deepseek-v4-flash")

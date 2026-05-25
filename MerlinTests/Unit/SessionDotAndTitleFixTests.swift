@@ -1,5 +1,5 @@
 // SessionDotAndTitleFixTests.swift
-// Phase 194a — failing tests for session dot and auto-title bugs.
+// Task 194a — failing tests for session dot and auto-title bugs.
 //
 // Bug A: LiveSessionRow reads session.appState.toolActivityState but only
 //   observes `session` (not `appState`), so dot never updates.

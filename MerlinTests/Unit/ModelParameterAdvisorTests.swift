@@ -6,7 +6,7 @@ final class ModelParameterAdvisorTests: XCTestCase {
     // MARK: - Compile-time existence checks
 
     func testParameterAdvisoryKindExists() {
-        // Fails to build without phase 124b.
+        // Fails to build without task 124b.
         let _: ParameterAdvisoryKind = .maxTokensTooLow
         let _: ParameterAdvisoryKind = .temperatureUnstable
         let _: ParameterAdvisoryKind = .repetitiveOutput

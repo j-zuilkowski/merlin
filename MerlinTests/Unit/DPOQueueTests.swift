@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 165 — DPOQueue pending entry persistence
+// Tests for Task 165 — DPOQueue pending entry persistence
 //
 // Covers:
 //   - DPOPendingEntry is Codable round-trips correctly

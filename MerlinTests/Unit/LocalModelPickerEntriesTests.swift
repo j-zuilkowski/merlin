@@ -66,7 +66,7 @@ final class LocalModelPickerEntriesTests: XCTestCase {
     }
 
     /// A remote provider always keeps its plain base entry - its base config carries a
-    /// real model name. (Behaviour unchanged by phase 283b.)
+    /// real model name. (Behaviour unchanged by task 283b.)
     func testRemoteProviderKeepsBaseEntry() {
         let registry = makeRegistry()
 

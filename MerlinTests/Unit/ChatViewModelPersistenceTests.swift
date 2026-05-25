@@ -1,5 +1,5 @@
 // ChatViewModelPersistenceTests.swift
-// Phase 195a — failing tests for ChatViewModel persistence across session switches.
+// Task 195a — failing tests for ChatViewModel persistence across session switches.
 //
 // Before 195b: ChatViewModel is a @StateObject inside ChatView — destroyed on every
 //   .id(session.id) teardown, clearing all chat items.

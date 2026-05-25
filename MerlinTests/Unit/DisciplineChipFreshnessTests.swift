@@ -22,23 +22,23 @@ final class DisciplineChipFreshnessTests: XCTestCase {
 
     @MainActor
     func testChipReflectsFindingsFromEngineScan() async throws {
-        let phasesDir = projectRoot.appendingPathComponent("phases")
+        let tasksDir = projectRoot.appendingPathComponent("tasks")
         try FileManager.default.createDirectory(
-            at: phasesDir, withIntermediateDirectories: true)
-        let phaseDoc = """
-        # Phase 001b — Example
+            at: tasksDir, withIntermediateDirectories: true)
+        let taskDoc = """
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
-        try phaseDoc.write(
-            to: phasesDir.appendingPathComponent("phase-001b-example.md"),
+        try taskDoc.write(
+            to: tasksDir.appendingPathComponent("task-001b-example.md"),
             atomically: true, encoding: .utf8)
 
         let storePath = projectRoot.appendingPathComponent(".merlin/pending.json").path
         let engine = DisciplineEngine(
             adapter: ProjectAdapter.makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

@@ -29,7 +29,7 @@ final class SurfaceUITests: XCTestCase {
                       "command-comma must open the Settings scene")
     }
 
-    /// The three View-menu commands that were dead before phase 305 now fire.
+    /// The three View-menu commands that were dead before task 305 now fire.
     /// Regression net for the dead-control bug class.
     func testFormerlyDeadViewMenuCommands() {
         let app = launchMerlin()
@@ -73,7 +73,7 @@ final class SurfaceUITests: XCTestCase {
 
     // MARK: - S9 - workspace panels
 
-    /// The six workspace toolbar toggles (AX-IDs added in phase 325) each show a panel.
+    /// The six workspace toolbar toggles (AX-IDs added in task 325) each show a panel.
     func testAllSixWorkspaceToggles() {
         let app = launchMerlin()
         defer { app.terminate() }

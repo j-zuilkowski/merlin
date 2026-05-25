@@ -112,7 +112,7 @@ actor GitHookInstaller {
         #!/bin/sh
         \(marker)
         # Installed by Merlin /project:init. Remove via /project:adopt --uninstall-hooks.
-        # Runs PhaseScanner when a commit touches source files.
+        # Runs TaskScanner when a commit touches source files.
         BIN="$HOME/.merlin/bin/merlin-discipline"
         if [ -x "$BIN" ]; then
             "$BIN" post-commit "$PWD"

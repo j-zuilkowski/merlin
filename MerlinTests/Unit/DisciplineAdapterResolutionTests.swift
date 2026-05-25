@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 290a — failing tests for real adapter selection.
+/// Task 290a — failing tests for real adapter selection.
 ///
 /// `DisciplineEngine` is constructed with `ProjectAdapter.makeStub` and the loaded
 /// `AdapterRegistry` is never read. These tests pin the new surface that makes the
@@ -18,7 +18,7 @@ final class DisciplineAdapterResolutionTests: XCTestCase {
     private func makeEngine(projectRoot: URL) -> DisciplineEngine {
         DisciplineEngine(
             adapter: .makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 297a — failing tests for the merlin-discipline CLI command dispatcher.
+/// Task 297a — failing tests for the merlin-discipline CLI command dispatcher.
 final class DisciplineCLITests: XCTestCase {
 
     private func makeTmpProject() -> URL {

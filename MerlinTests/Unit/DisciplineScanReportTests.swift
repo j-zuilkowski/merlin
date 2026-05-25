@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 315a — failing tests for the `merlin-discipline scan` report formatter.
+/// Task 315a — failing tests for the `merlin-discipline scan` report formatter.
 final class DisciplineScanReportTests: XCTestCase {
 
     private func finding(_ category: FindingCategory,

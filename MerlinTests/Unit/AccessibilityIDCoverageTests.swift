@@ -1,8 +1,8 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 306a — failing tests for the accessibility-identifier namespace.
-/// Phase 325a extends it for the 12 controls the phase-306 pass missed.
+/// Task 306a — failing tests for the accessibility-identifier namespace.
+/// Task 325a extends it for the 12 controls the task-306 pass missed.
 final class AccessibilityIDCoverageTests: XCTestCase {
 
     /// One representative identifier per settings pane + per panel.
@@ -32,10 +32,10 @@ final class AccessibilityIDCoverageTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count, "identifiers must be unique")
     }
 
-    /// Phase 325 — the 12 controls the phase-306 pass missed (W5 surface-census §1.2):
+    /// Task 325 — the 12 controls the task-306 pass missed (W5 surface-census §1.2):
     /// the 6 WorkspaceView toolbar toggles, the ScreenPreview + PreviewPane buttons,
     /// the 3 ToolRequirementSheet buttons, and the performance-dashboard advisory button.
-    func testPhase325IdentifiersAreDeclared() {
+    func testTask325IdentifiersAreDeclared() {
         let ids: [String] = [
             AccessibilityID.workspaceToggleDiffButton,
             AccessibilityID.workspaceToggleFileButton,

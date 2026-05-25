@@ -7,7 +7,7 @@ actor DisciplineEngine {
     // MARK: - Dependencies
 
     private var adapter: ProjectAdapter
-    private let phaseScanner: PhaseScanner
+    private let taskScanner: TaskScanner
     private let manualCoverageScanner: ManualCoverageScanner
     private let docReferenceGraph: DocReferenceGraph
     private let whyCommentScanner: WhyCommentScanner
@@ -32,7 +32,7 @@ actor DisciplineEngine {
 
     init(
         adapter: ProjectAdapter,
-        phaseScanner: PhaseScanner,
+        taskScanner: TaskScanner,
         manualCoverageScanner: ManualCoverageScanner,
         docReferenceGraph: DocReferenceGraph,
         whyCommentScanner: WhyCommentScanner,
@@ -44,7 +44,7 @@ actor DisciplineEngine {
         forceErrorForTesting: Bool = false
     ) {
         self.adapter = adapter
-        self.phaseScanner = phaseScanner
+        self.taskScanner = taskScanner
         self.manualCoverageScanner = manualCoverageScanner
         self.docReferenceGraph = docReferenceGraph
         self.whyCommentScanner = whyCommentScanner
@@ -77,7 +77,7 @@ actor DisciplineEngine {
                 throw DisciplineError.scanFailed("forced error for testing")
             }
 
-            async let driftFindings = phaseScanner.scan(projectPath: projectPath)
+            async let driftFindings = taskScanner.scan(projectPath: projectPath)
             async let coverageGaps = manualCoverageScanner.scan(
                 projectPath: projectPath, adapter: adapter)
             async let docRefs = docReferenceGraph.danglingReferences(projectPath: projectPath)
@@ -98,13 +98,13 @@ actor DisciplineEngine {
 
             // Convert drift findings to queue findings. Surface red (absent),
             // yellow (signature-drift) and orange (undeclared) drift — all as nudges.
-            // Phase drift is advisory: a symbol declared many phases ago and since
+            // Task drift is advisory: a symbol declared many phases ago and since
             // refactored is normal evolution, not a commit-blocker. green = no-op.
             for d in drift where d.severity == .red
                 || d.severity == .yellow || d.severity == .orange {
                 let f = Finding(
                     id: UUID(),
-                    category: .phaseDrift,
+                    category: .taskDrift,
                     severity: .nudge,
                     summary: d.surface,
                     detail: d.evidence,

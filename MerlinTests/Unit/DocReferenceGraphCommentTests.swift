@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 321a — failing test for DocReferenceGraph comment-aware enum-case parsing.
+/// Task 321a — failing test for DocReferenceGraph comment-aware enum-case parsing.
 final class DocReferenceGraphCommentTests: XCTestCase {
 
     /// Writes `[relativePath: content]`, creating intermediate directories.

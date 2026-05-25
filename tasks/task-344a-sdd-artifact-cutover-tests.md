@@ -12,8 +12,8 @@ Canonical artifacts after the migration:
 - `tasks/`
 - `tasks/task-*`
 
-No compatibility layer is allowed for `CLAUDE.md`, `architecture.md`, `phases/`, or
-`phase-*` as canonical project artifacts.
+No compatibility layer is allowed for `constitution.md`, `spec.md`, `tasks/`, or
+`task-*` as canonical project artifacts.
 
 ## Behavior
 
@@ -24,7 +24,7 @@ WHEN the repository is checked after the migration THE system SHALL NOT retain l
 canonical root files or the legacy phase directory.
 
 WHEN Merlin loads project instructions THE system SHALL use constitution vocabulary and
-symbols, not `CLAUDEMD` vocabulary.
+symbols, not `Constitution` vocabulary.
 
 WHEN the discipline scanner reads implementation history THE system SHALL scan `tasks/`
 and `task-*` files as the canonical source of declared surfaces.
@@ -36,11 +36,11 @@ Write failing tests in `MerlinTests/Unit/SDDArtifactCutoverTests.swift`.
 The tests must assert:
 
 - root artifact names are `constitution.md`, `spec.md`, and `tasks/`;
-- `CLAUDE.md`, `architecture.md`, and `phases/` are no longer present as canonical root
+- `constitution.md`, `spec.md`, and `tasks/` are no longer present as canonical root
   artifacts;
-- `ConstitutionLoader.swift` exists and `CLAUDEMDLoader.swift` does not;
-- `TaskScanner.swift` exists and `PhaseScanner.swift` does not;
-- the source tree does not contain `CLAUDEMDLoader` as a symbol.
+- `ConstitutionLoader.swift` exists and `ConstitutionLoader.swift` does not;
+- `TaskScanner.swift` exists and `TaskScanner.swift` does not;
+- the source tree does not contain `ConstitutionLoader` as a symbol.
 
 ## Verify
 

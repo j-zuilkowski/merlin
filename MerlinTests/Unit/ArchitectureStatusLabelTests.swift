@@ -3,13 +3,13 @@ import XCTest
 final class ArchitectureStatusLabelTests: XCTestCase {
 
     func testArchitectureDoesNotMarkV23BuiltFeaturesAsPlanned() throws {
-        let text = try repoFile("architecture.md")
+        let text = try repoFile("spec.md")
         XCTAssertFalse(text.contains("v2.3 planned"))
         XCTAssertTrue(text.contains("## llama.cpp First-Class Local Provider [v2.3]"))
     }
 
     func testArchitectureMarksCAGAsBuilt() throws {
-        let text = try repoFile("architecture.md")
+        let text = try repoFile("spec.md")
         XCTAssertTrue(text.contains("## CAG — Cache-Augmented Generation [v11]"))
     }
 
@@ -17,7 +17,7 @@ final class ArchitectureStatusLabelTests: XCTestCase {
         let cag = try cagSection()
         XCTAssertFalse(cag.localizedCaseInsensitiveContains("not implemented"))
         XCTAssertFalse(cag.localizedCaseInsensitiveContains("planned"))
-        XCTAssertFalse(cag.localizedCaseInsensitiveContains("phase work is deferred"))
+        XCTAssertFalse(cag.localizedCaseInsensitiveContains("task work is deferred"))
     }
 
     func testArchitectureMentionsCAGRuntimeFiles() throws {
@@ -30,7 +30,7 @@ final class ArchitectureStatusLabelTests: XCTestCase {
     }
 
     private func cagSection() throws -> String {
-        let text = try repoFile("architecture.md")
+        let text = try repoFile("spec.md")
         let header = "## CAG — Cache-Augmented Generation"
         guard let start = text.range(of: header)?.lowerBound else {
             XCTFail("CAG section missing")

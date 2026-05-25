@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 310a — failing test: a stale enum case inside a fenced doc code block must be
+/// Task 310a — failing test: a stale enum case inside a fenced doc code block must be
 /// reported as a dangling reference.
 final class DocReferenceGraphFencedBlockTests: XCTestCase {
 

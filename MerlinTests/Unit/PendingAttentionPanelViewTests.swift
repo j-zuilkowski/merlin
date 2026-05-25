@@ -17,7 +17,7 @@ final class PendingAttentionPanelViewTests: XCTestCase {
             .appendingPathComponent("papv-\(UUID())")
         let engine = DisciplineEngine(
             adapter: ProjectAdapter.makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -29,7 +29,7 @@ final class PendingAttentionPanelViewTests: XCTestCase {
 
     private func makeFinding() -> Finding {
         Finding(
-            id: UUID(), category: .phaseDrift, severity: .nudge,
+            id: UUID(), category: .taskDrift, severity: .nudge,
             summary: "Test finding", detail: "Detail",
             suggestedAction: "Fix it", createdAt: Date(), lastSeenAt: Date()
         )

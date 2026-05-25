@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 300a - failing tests for discipline generator tools.
+/// Task 300a - failing tests for discipline generator tools.
 @MainActor
 final class DisciplineGeneratorToolsTests: XCTestCase {
 

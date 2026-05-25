@@ -6,7 +6,7 @@ final class FindingModelTests: XCTestCase {
     func testFindingCodableRoundTrip() throws {
         let f = Finding(
             id: UUID(),
-            category: .phaseDrift,
+            category: .taskDrift,
             severity: .block,
             summary: "Symbol missing",
             detail: "ProviderBudget absent from source",
@@ -17,14 +17,14 @@ final class FindingModelTests: XCTestCase {
         let data = try JSONEncoder().encode(f)
         let decoded = try JSONDecoder().decode(Finding.self, from: data)
         XCTAssertEqual(decoded.id, f.id)
-        XCTAssertEqual(decoded.category, .phaseDrift)
+        XCTAssertEqual(decoded.category, .taskDrift)
         XCTAssertEqual(decoded.severity, .block)
         XCTAssertEqual(decoded.summary, "Symbol missing")
         XCTAssertEqual(decoded.suggestedAction, "Restore or write addendum")
     }
 
     func testFindingCategoryRawValues() {
-        XCTAssertEqual(FindingCategory.phaseDrift.rawValue, "phaseDrift")
+        XCTAssertEqual(FindingCategory.taskDrift.rawValue, "taskDrift")
         XCTAssertEqual(FindingCategory.manualCoverageGap.rawValue, "manualCoverageGap")
         XCTAssertEqual(FindingCategory.docStaleReference.rawValue, "docStaleReference")
         XCTAssertEqual(FindingCategory.whyCommentMissing.rawValue, "whyCommentMissing")

@@ -7,7 +7,7 @@ final class FindingDedupKeyTests: XCTestCase {
 
     private func makeFinding(
         id: UUID = UUID(),
-        category: FindingCategory = .phaseDrift,
+        category: FindingCategory = .taskDrift,
         summary: String = "Surface X",
         lastSeenAt: Date = Date()
     ) -> Finding {
@@ -33,23 +33,23 @@ final class FindingDedupKeyTests: XCTestCase {
     // MARK: - dedupKey value semantics
 
     func testDedupKeyEqualForSameCategoryAndSummary() {
-        let a = makeFinding(id: UUID(), category: .phaseDrift, summary: "Surface X")
-        let b = makeFinding(id: UUID(), category: .phaseDrift, summary: "Surface X")
+        let a = makeFinding(id: UUID(), category: .taskDrift, summary: "Surface X")
+        let b = makeFinding(id: UUID(), category: .taskDrift, summary: "Surface X")
         XCTAssertNotEqual(a.id, b.id, "Precondition: distinct UUIDs")
         XCTAssertEqual(a.dedupKey, b.dedupKey,
                        "Findings with the same category + summary must share a dedup key")
     }
 
     func testDedupKeyDiffersWhenCategoryDiffers() {
-        let a = makeFinding(category: .phaseDrift, summary: "Surface X")
+        let a = makeFinding(category: .taskDrift, summary: "Surface X")
         let b = makeFinding(category: .manualCoverageGap, summary: "Surface X")
         XCTAssertNotEqual(a.dedupKey, b.dedupKey,
                          "A different category must produce a different dedup key")
     }
 
     func testDedupKeyDiffersWhenSummaryDiffers() {
-        let a = makeFinding(category: .phaseDrift, summary: "Surface X")
-        let b = makeFinding(category: .phaseDrift, summary: "Surface Y")
+        let a = makeFinding(category: .taskDrift, summary: "Surface X")
+        let b = makeFinding(category: .taskDrift, summary: "Surface Y")
         XCTAssertNotEqual(a.dedupKey, b.dedupKey,
                          "A different summary must produce a different dedup key")
     }

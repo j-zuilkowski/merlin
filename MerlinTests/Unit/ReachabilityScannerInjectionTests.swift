@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 317a — failing tests for ReachabilityScanner injection detection.
+/// Task 317a — failing tests for ReachabilityScanner injection detection.
 final class ReachabilityScannerInjectionTests: XCTestCase {
 
     private func makeTmpProject(_ files: [String: String]) throws -> URL {

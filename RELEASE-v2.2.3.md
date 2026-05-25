@@ -26,7 +26,7 @@ built on.
   `installBuiltinSkills()` only resolved its input via a build-machine `#filePath`
   fallback, so a distributed build installed no skills at all.
 - The 5 `project:*` `SKILL.md` files are now version-controlled in
-  `Merlin/Skills/Builtin/` rather than living only in `~/.merlin/` and in phase files.
+  `Merlin/Skills/Builtin/` rather than living only in `~/.merlin/` and in task files.
 
 ## Migration
 

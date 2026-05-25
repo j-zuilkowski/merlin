@@ -65,7 +65,7 @@ actor ManualCoverageScanner {
         for case let url as URL in enumerator {
             guard url.pathExtension == "swift",
                   !url.path.contains("Tests/"),
-                  !url.path.contains("/phases/"),
+                  !url.path.contains("/tasks/"),
                   !DisciplineExclusions.isExcluded(url),
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
 

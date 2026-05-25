@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 320a — failing tests for WorkerDiffView's reject-all / accept-and-merge actions.
+/// Task 320a — failing tests for WorkerDiffView's reject-all / accept-and-merge actions.
 final class WorkerDiffViewActionTests: XCTestCase {
 
     private func makeEntry(buffer: StagingBuffer) -> SubagentSidebarEntry {

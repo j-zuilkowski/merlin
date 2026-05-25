@@ -32,7 +32,7 @@ merlin-eval/
                         chat surface, dialogs, operator config, connectors, skills,
                         memories, intents, notifications, agent tools) — coverage map
                         in SURFACE-CENSUS.md
-  fixtures/             — fixture artifacts built by Codex per the phase docs
+  fixtures/             — fixture artifacts built by Codex per the task docs
   results/              — per-run proving-pass result logs
 ```
 
@@ -63,7 +63,7 @@ Each `scenarios/SN-*.md` contains:
 
 ## Running a proving pass
 
-Run **after** Merlin Batches B–D (phase docs 294–301) are executed — the suite targets a
+Run **after** Merlin Batches B–D (task docs 294–301) are executed — the suite targets a
 complete Merlin. For each scenario: follow the runsheet / run the harness test, score
 against the rubric, and write a dated result file to `results/`.
 

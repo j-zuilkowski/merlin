@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 331a - tests for `DisciplineExclusions`, the path blacklist every file-walking
+/// Task 331a - tests for `DisciplineExclusions`, the path blacklist every file-walking
 /// discipline scanner honours. The `merlin-eval/` eval-suite tree holds deliberately-
 /// buggy fixture source and scenario Markdown; without the blacklist the scanners raise
 /// false drift / unwired / stub / dangling-reference findings against it.
@@ -22,7 +22,7 @@ final class DisciplineExclusionsTests: XCTestCase {
     }
 
     func testNormalSourcePathIsNotExcluded() {
-        let url = URL(fileURLWithPath: "/p/merlin/Merlin/Discipline/PhaseScanner.swift")
+        let url = URL(fileURLWithPath: "/p/merlin/Merlin/Discipline/TaskScanner.swift")
         XCTAssertFalse(DisciplineExclusions.isExcluded(url))
     }
 

@@ -11,7 +11,7 @@ final class DriftSeverityTests: XCTestCase {
     func testDriftFindingIdentifiable() {
         let f = DriftFinding(
             id: UUID(),
-            phaseID: "233b",
+            taskID: "233b",
             surface: "ProviderBudget",
             severity: .red,
             evidence: "No match in source tree",
@@ -24,7 +24,7 @@ final class DriftSeverityTests: XCTestCase {
         func requiresSendable<T: Sendable>(_ value: T) {}
         let f = DriftFinding(
             id: UUID(),
-            phaseID: nil,
+            taskID: nil,
             surface: "AgenticEngine",
             severity: .green,
             evidence: "Found at AgenticEngine.swift:12",

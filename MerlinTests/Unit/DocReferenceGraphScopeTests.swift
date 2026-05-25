@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 316a, rewritten by phase 319b. After phase 319 the only dangling-reference
+/// Task 316a, rewritten by task 319b. After task 319 the only dangling-reference
 /// check is the fenced-block enum-case check, so these fixtures exercise it.
 final class DocReferenceGraphScopeTests: XCTestCase {
 
@@ -18,7 +18,7 @@ final class DocReferenceGraphScopeTests: XCTestCase {
         return dir
     }
 
-    func testPhasesDocsSkippedAndTestSymbolsKnown() async throws {
+    func testTasksDocsSkippedAndTestSymbolsKnown() async throws {
         let proj = try makeTmpProject([
             // A symbol declared in a test-target file.
             "Tests/SampleChannel.swift": """
@@ -26,12 +26,12 @@ final class DocReferenceGraphScopeTests: XCTestCase {
                 case realTestCase
             }
             """,
-            // A phase doc with a fenced bogus case — must be skipped (phases/).
-            "phases/phase-1-demo.md": """
-            # Phase 1
+            // A task doc with a fenced bogus case — must be skipped (tasks/).
+            "tasks/task-1-demo.md": """
+            # Task 1
             ```swift
             enum X {
-                case phaseScopedGhost
+                case taskScopedGhost
             }
             ```
             """,
@@ -49,8 +49,8 @@ final class DocReferenceGraphScopeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: proj) }
 
         let dangling = await DocReferenceGraph().danglingReferences(projectPath: proj.path)
-        XCTAssertFalse(dangling.contains { $0.codeSymbol == "phaseScopedGhost" },
-                       "fenced cases inside phases/ docs must not be flagged")
+        XCTAssertFalse(dangling.contains { $0.codeSymbol == "taskScopedGhost" },
+                       "fenced cases inside tasks/ docs must not be flagged")
         XCTAssertFalse(dangling.contains { $0.codeSymbol == "realTestCase" },
                        "a case declared in a test file is a known symbol")
         XCTAssertTrue(dangling.contains { $0.codeSymbol == "productDocGhost" },

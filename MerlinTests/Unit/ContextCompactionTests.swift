@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Tests for the ContextManager compaction behaviour introduced in Phase 168b.
+/// Tests for the ContextManager compaction behaviour introduced in Task 168b.
 ///
 /// These tests verify that `compact()` removes COMPLETE exchange pairs
 /// (assistant tool_call message + all its tool results) rather than only

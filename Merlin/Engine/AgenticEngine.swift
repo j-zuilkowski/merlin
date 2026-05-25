@@ -78,16 +78,16 @@ final class AgenticEngine {
     var permissionMode: PermissionMode = .ask {
         didSet { _stablePrefixDirty = true }
     }
-    var claudeMDContent: String = "" {
+    var constitutionContent: String = "" {
         didSet { _stablePrefixDirty = true }
     }
-    /// SHA256 hex of the `claudeMDContent` that was most recently distilled.
+    /// SHA256 hex of the `constitutionContent` that was most recently distilled.
     /// Empty string when no distillation has been performed yet.
-    var claudeMDDistillHash: String = ""
+    var constitutionDistillHash: String = ""
 
-    /// Compressed equivalent of `claudeMDContent` produced by `refreshDistilledClaudeMD(using:)`.
+    /// Compressed equivalent of `constitutionContent` produced by `refreshDistilledConstitution(using:)`.
     /// Empty string until the first distillation completes.
-    var claudeMDDistilledContent: String = ""
+    var constitutionDistilledContent: String = ""
     var memoriesContent: String = "" {
         didSet { _stablePrefixDirty = true }
     }
@@ -736,12 +736,12 @@ final class AgenticEngine {
         if let augmented = await hookEngine.runUserPromptSubmit(prompt: effectiveMessage) {
             continuation.yield(.systemNote(augmented))
         }
-        // Discipline: flag a feature request submitted without a phase NNa file, so the
+        // Discipline: flag a feature request submitted without a task NNa file, so the
         // project's TDD-first workflow is visible in the agent loop.
         if let disciplineProjectPath = currentProjectPath, !disciplineProjectPath.isEmpty {
             let promptCheck = await UserPromptDisciplineChecker().check(
                 prompt: effectiveMessage, projectPath: disciplineProjectPath)
-            if case .missingPhaseFile(let suggestion) = promptCheck {
+            if case .missingTaskFile(let suggestion) = promptCheck {
                 continuation.yield(.systemNote("⚠️ TDD discipline: \(suggestion)"))
             }
         }
@@ -2069,7 +2069,7 @@ final class AgenticEngine {
 
     /// Dispatches all regular (non-spawn_agent) tool calls for one loop iteration.
     ///
-    /// Three-phase approach:
+    /// Three-task approach:
     ///   1. Sequential pre-hooks  — preserves hook side-effect ordering
     ///   2. Batch parallel dispatch — passes all allowed calls to ToolRouter at once
     ///   3. Sequential context updates — preserves OpenAI wire-format message ordering
@@ -2090,7 +2090,7 @@ final class AgenticEngine {
             let writtenPath: String?
         }
 
-        // Phase 1 — sequential pre-hooks
+        // Task 1 — sequential pre-hooks
         var prehookOutcomes: [PrehookOutcome] = []
         prehookOutcomes.reserveCapacity(calls.count)
         for call in calls {
@@ -2110,7 +2110,7 @@ final class AgenticEngine {
             }
         }
 
-        // Phase 2 — batch parallel dispatch
+        // Task 2 — batch parallel dispatch
         let allowedCalls = prehookOutcomes.compactMap { $0.denied == nil ? $0.call : nil }
         let batchStart = Date()
         let batchResults: [ToolResult]
@@ -2129,7 +2129,7 @@ final class AgenticEngine {
         let batchMs = Date().timeIntervalSince(batchStart) * 1000
         let resultByID = Dictionary(uniqueKeysWithValues: batchResults.map { ($0.toolCallId, $0) })
 
-        // Phase 3 — sequential context updates (original call order)
+        // Task 3 — sequential context updates (original call order)
         let targetContext = context ?? contextManager
         for outcome in prehookOutcomes {
             let result: ToolResult
@@ -2446,10 +2446,10 @@ final class AgenticEngine {
     private func buildHotSystemSuffix() -> String {
         let settings = AppSettings.shared
         var parts: [String] = []
-        if settings.cagEnabled, !settings.cagPinClaudeMD, !claudeMDContent.isEmpty {
-            let mdToUse = settings.promptCompressionEnabled && !claudeMDDistilledContent.isEmpty
-                ? claudeMDDistilledContent
-                : claudeMDContent
+        if settings.cagEnabled, !settings.cagPinConstitution, !constitutionContent.isEmpty {
+            let mdToUse = settings.promptCompressionEnabled && !constitutionDistilledContent.isEmpty
+                ? constitutionDistilledContent
+                : constitutionContent
             parts.append(mdToUse)
         }
         if let warning = nearCeilingWarningAddendum {
@@ -2466,8 +2466,8 @@ final class AgenticEngine {
         let compressionEnabled = settings.promptCompressionEnabled
         let cagSignature = [
             settings.cagEnabled ? "enabled" : "disabled",
-            settings.cagPinClaudeMD ? "pin-claude" : "skip-claude",
-            settings.cagPinnedPhaseDocs.joined(separator: "\u{1f}")
+            settings.cagPinConstitution ? "pin-claude" : "skip-claude",
+            settings.cagPinnedTaskDocs.joined(separator: "\u{1f}")
         ].joined(separator: "\u{1e}")
         if !_stablePrefixDirty,
            _stablePrefixCompressionEnabled == compressionEnabled,
@@ -2476,15 +2476,15 @@ final class AgenticEngine {
         }
         var parts: [String] = []
 
-        // CLAUDE.md: use distilled version when compression is on and distillation has run.
-        if !claudeMDContent.isEmpty && (!settings.cagEnabled || settings.cagPinClaudeMD) {
-            let mdToUse = compressionEnabled && !claudeMDDistilledContent.isEmpty
-                ? claudeMDDistilledContent
-                : claudeMDContent
+        // constitution.md: use distilled version when compression is on and distillation has run.
+        if !constitutionContent.isEmpty && (!settings.cagEnabled || settings.cagPinConstitution) {
+            let mdToUse = compressionEnabled && !constitutionDistilledContent.isEmpty
+                ? constitutionDistilledContent
+                : constitutionContent
             parts.append(mdToUse)
         }
         if settings.cagEnabled {
-            parts.append(contentsOf: pinnedCAGDocumentContents(settings.cagPinnedPhaseDocs))
+            parts.append(contentsOf: pinnedCAGDocumentContents(settings.cagPinnedTaskDocs))
         }
         if !memoriesContent.isEmpty {
             parts.append(memoriesContent)
@@ -2547,24 +2547,24 @@ final class AgenticEngine {
         }
     }
 
-    /// Distils `claudeMDContent` using `provider` when the content has changed since the last
+    /// Distils `constitutionContent` using `provider` when the content has changed since the last
     /// distillation. Uses a SHA256 hash of the content as a cache key — the provider is called
-    /// at most once per unique `claudeMDContent` value. No-op when content is empty or unchanged.
-    func refreshDistilledClaudeMD(using provider: any LLMProvider) async {
-        guard !claudeMDContent.isEmpty else { return }
-        let currentHash = sha256Hex(claudeMDContent)
-        guard currentHash != claudeMDDistillHash else { return }
+    /// at most once per unique `constitutionContent` value. No-op when content is empty or unchanged.
+    func refreshDistilledConstitution(using provider: any LLMProvider) async {
+        guard !constitutionContent.isEmpty else { return }
+        let currentHash = sha256Hex(constitutionContent)
+        guard currentHash != constitutionDistillHash else { return }
 
         let systemMsg = Message(
             role: .system,
             content: .text(
-                "Compress the following CLAUDE.md into a token-efficient shorthand that preserves all " +
+                "Compress the following constitution.md into a token-efficient shorthand that preserves all " +
                 "constraints, rules, and technical details. Use abbreviations, symbols, and dense phrasing. " +
                 "Output only the compressed text — no preamble."
             ),
             timestamp: Date()
         )
-        let userMsg = Message(role: .user, content: .text(claudeMDContent), timestamp: Date())
+        let userMsg = Message(role: .user, content: .text(constitutionContent), timestamp: Date())
         var request = CompletionRequest(model: provider.resolvedModelID, messages: [systemMsg, userMsg])
         request.tools = []
         request.maxTokens = 1_024
@@ -2577,12 +2577,12 @@ final class AgenticEngine {
             }
             let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty {
-                claudeMDDistilledContent = trimmed
-                claudeMDDistillHash = currentHash
+                constitutionDistilledContent = trimmed
+                constitutionDistillHash = currentHash
             }
         } catch {
             // Distillation failed — keep previous distilled content (or empty); do not update hash.
-            // buildStablePrefix() will fall back to the original claudeMDContent.
+            // buildStablePrefix() will fall back to the original constitutionContent.
         }
     }
 

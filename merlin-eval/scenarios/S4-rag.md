@@ -67,7 +67,7 @@ Sources-block render.
 
 ## Runsheet
 
-1. Batches B–D merged (S4 depends on the phase-294 RAG Sources block); Merlin built.
+1. Batches B–D merged (S4 depends on the task-294 RAG Sources block); Merlin built.
 2. Build + run xcalibre-server; ingest the corpus; confirm via the server's own query
    endpoint that the corpus is searchable.
 3. Point Merlin at the instance in Settings.

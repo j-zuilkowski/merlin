@@ -275,7 +275,7 @@ struct AgentSettingsView: View {
 
             Section("Prompting") {
                 Toggle("Prompt Compression", isOn: $settings.promptCompressionEnabled)
-                    .help("When enabled: uses a compact distilled version of the core system prompt, and compresses your CLAUDE.md once per change. Reduces token cost of each LLM request.")
+                    .help("When enabled: uses a compact distilled version of the core system prompt, and compresses your constitution.md once per change. Reduces token cost of each LLM request.")
                     .accessibilityIdentifier(AccessibilityID.settingsAgentPromptCompressionToggle)
             }
 

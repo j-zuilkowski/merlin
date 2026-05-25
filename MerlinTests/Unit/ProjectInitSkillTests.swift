@@ -1,7 +1,7 @@
 import XCTest
 
 /// Tests that the project:init SKILL.md file is installed and well-formed.
-/// These tests fail until phase 259b writes the skill file.
+/// These tests fail until task 259b writes the skill file.
 final class ProjectInitSkillTests: XCTestCase {
 
     override func setUpWithError() throws {
@@ -16,7 +16,7 @@ final class ProjectInitSkillTests: XCTestCase {
 
     func testSkillFileExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "~/.merlin/skills/project-init/SKILL.md not found. Run phase 259b.")
+                      "~/.merlin/skills/project-init/SKILL.md not found. Run task 259b.")
     }
 
     func testSkillHasTriggerSection() throws {

@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 148 — Two-Tier Document Verification
+// Tests for Task 148 — Two-Tier Document Verification
 //
 // Covers:
 //   - Stage 2 verdict is parsed from the LAST line (handles Qwen3 reasoning preamble)

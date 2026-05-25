@@ -25,7 +25,7 @@ struct RedundantDocstring: Sendable, Equatable {
 // MARK: - RedundantDocstringScanner
 
 /// Scans Swift source files for `///` doc-comment blocks that violate the project's
-/// "no WHAT-comments" rule (see CLAUDE.md). Three heuristics: identifier-restatement,
+/// "no WHAT-comments" rule (see constitution.md). Three heuristics: identifier-restatement,
 /// known WHAT-phrase prefixes, and multi-line blocks without a structural marker.
 ///
 /// Suppressed by content-bearing markers (numeric ranges like `[0, 1]`, examples

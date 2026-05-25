@@ -4,7 +4,7 @@ Released: 2026-05-14
 
 ## What's New
 
-**Project Discipline Subsystem (v2.2.0)** — 25 phase pairs (241a–265b) building the
+**Project Discipline Subsystem (v2.2.0)** — 25 task pairs (241a–265b) building the
 construction-discipline layer directly into Merlin.
 
 ### Adapter System (241–242)
@@ -16,7 +16,7 @@ construction-discipline layer directly into Merlin.
 
 ### Phase Validation (243)
 
-- `PhaseScanner` — reads `phases/` and cross-checks declared surfaces against the current
+- `TaskScanner` — reads `tasks/` and cross-checks declared surfaces against the current
   codebase. Four-colour drift report: green / yellow / red / orange.
 
 ### Pending Attention Queue (244)
@@ -34,7 +34,7 @@ construction-discipline layer directly into Merlin.
 
 - `SessionStart` hook event + system-reminder injection — top-3 findings surfaced at
   session open.
-- `UserPromptSubmit` discipline check — flags unscoped feature requests without phase files.
+- `UserPromptSubmit` discipline check — flags unscoped feature requests without task files.
 - `GitHookInstaller` — post-commit and pre-push hook installer / uninstaller.
 
 ### Manual Coverage (249–250)
@@ -77,7 +77,7 @@ construction-discipline layer directly into Merlin.
 ### Project Skills (259–263)
 
 - `/project:init` — scaffold a new project with full discipline support.
-- `/project:phase` — build an NNa/NNb phase pair with structured questioning.
+- `/project:task` — build an NNa/NNb task pair with structured questioning.
 - `/project:revise` — scan for drift, present findings, apply patches.
 - `/project:release` — consolidated release gate with 14-check checklist.
 - `/project:adopt` — apply discipline to an existing project; first target: Merlin itself.

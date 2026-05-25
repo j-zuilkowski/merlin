@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 164 — Critic retry loop + OutcomeSignals wiring
+// Tests for Task 164 — Critic retry loop + OutcomeSignals wiring
 //
 // Covers:
 //   - AppSettings.criticEnabled default is true

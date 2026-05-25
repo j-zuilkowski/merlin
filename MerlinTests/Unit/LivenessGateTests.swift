@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 311a — failing tests for LivenessGate.
+/// Task 311a — failing tests for LivenessGate.
 final class LivenessGateTests: XCTestCase {
 
     private func makeTmpProject(projectYML: String) throws -> URL {

@@ -8,10 +8,10 @@ findings and verified repair status.
 
 Authority model used for this pass:
 
-- `architecture.md` = normative product/design spec
+- `spec.md` = normative product/design spec
 - source code = implementation evidence
 - live app behavior = runtime evidence
-- phase docs = non-authoritative historical/build scaffolding
+- task docs = non-authoritative historical/build scaffolding
 
 ## Method
 
@@ -40,9 +40,9 @@ Evidence sources used:
 
 ### Confirmed
 
-- The repo's measurable documentation drift is concentrated in the phase-doc
-  layer, not in a proven `architecture.md` symbol-staleness failure.
-- `architecture.md` already distinguishes some planned/deferred sections
+- The repo's measurable documentation drift is concentrated in the task-doc
+  layer, not in a proven `spec.md` symbol-staleness failure.
+- `spec.md` already distinguishes some planned/deferred sections
   explicitly.
 - The chat renderer architecture has materially landed: Merlin now uses a
   `WKWebView` conversation renderer.
@@ -56,7 +56,7 @@ Evidence sources used:
   the runner is sequential across prompts, and the `/calibrate` sheet did not
   present during live checks even when the coordinator had valid reference
   providers to offer.
-- The provider-routing description in `architecture.md` is stale in one
+- The provider-routing description in `spec.md` is stale in one
   important place: vision routing is no longer "first local vision-capable
   provider" in code.
 - The memory/RAG/KAG stack was initially only partially landed: local memory
@@ -108,7 +108,7 @@ Verdict: `partial`
 
 #### What the architecture says
 
-`architecture.md` says:
+`spec.md` says:
 
 - `ProviderRegistry` owns provider config, availability, and active selection
 - runtime routing is:
@@ -117,8 +117,8 @@ Verdict: `partial`
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:844)
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:892)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:844)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:892)
 
 #### What the code does
 
@@ -246,7 +246,7 @@ Verdict: `partial`
 
 #### What the architecture says
 
-`architecture.md` describes a 3-step calibration sheet flow:
+`spec.md` describes a 3-step calibration sheet flow:
 
 - `/calibrate`
 - provider picker
@@ -258,7 +258,7 @@ in parallel via `TaskGroup`.
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:387)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:387)
 
 #### What the code does
 
@@ -480,7 +480,7 @@ The old SwiftUI chat list was planned to move to a `WKWebView` renderer.
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:1531)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:1531)
 
 #### What the code does
 
@@ -507,7 +507,7 @@ The architecture describes real subagent execution:
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:1945)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:1945)
 
 #### What the code does
 
@@ -574,8 +574,8 @@ The architecture describes:
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:460)
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:1180)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:460)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:1180)
 
 #### What the code does
 
@@ -695,7 +695,7 @@ session feature:
 
 See:
 
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:939)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:939)
 - [DeveloperManual.md](/Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Docs/DeveloperManual.md:754)
 - [UserGuide.md](/Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Docs/UserGuide.md:605)
 
@@ -1092,7 +1092,7 @@ Evidence:
 
 - [LocalModelManagerProtocol.swift](/Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift:1)
 - [ModelControlView.swift](/Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Views/Settings/ModelControlView.swift:1)
-- [architecture.md](/Users/jonzuilkowski/Documents/localProject/merlin/architecture.md:247)
+- [spec.md](/Users/jonzuilkowski/Documents/localProject/merlin/spec.md:247)
 - [FEATURES.md](/Users/jonzuilkowski/Documents/localProject/merlin/FEATURES.md:98)
 
 So this is not a stub subsystem. The `partial` verdict comes from provider

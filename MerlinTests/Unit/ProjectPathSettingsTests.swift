@@ -76,7 +76,7 @@ final class ProjectPathSettingsTests: XCTestCase {
 /// Uses the real AppSettings type — tests verify the property exists at compile time.
 @MainActor
 private func makeFreshSettings() -> AppSettings {
-    // Reset the singleton field that this phase introduces so tests remain independent.
+    // Reset the singleton field that this task introduces so tests remain independent.
     AppSettings.shared.projectPath = ""
     return AppSettings.shared
 }

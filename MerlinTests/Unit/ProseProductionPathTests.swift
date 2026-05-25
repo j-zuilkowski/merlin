@@ -58,7 +58,7 @@ final class ProseProductionPathTests: XCTestCase {
         // forcedGrade 15.0 is well above any target -> must produce a fail finding.
         let engine = DisciplineEngine(
             adapter: ProjectAdapter.makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

@@ -6,18 +6,18 @@ in strict sequence, committing after each one.
 ---
 
 You are executing the Merlin **Budget-Aware Execution** overhaul, which ships as **v2.1.0**.
-The work is broken into 18 phase files (nine NNa/NNb pairs covering phases 232 through 240) under
-`phases/`. Each phase file is **self-contained** and includes its own context, surface list,
+The work is broken into 18 task files (nine NNa/NNb pairs covering phases 232 through 240) under
+`tasks/`. Each task file is **self-contained** and includes its own context, surface list,
 verify command, and commit instructions.
 
 ## Hard rules — read and obey before starting
 
 1. **Working directory:** `~/Documents/localProject/merlin`. All commands run from there.
-2. **Read `CLAUDE.md` and `architecture.md` first.** They define the project's TDD discipline,
+2. **Read `constitution.md` and `spec.md` first.** They define the project's TDD discipline,
    Swift standards, build commands, versioning policy, and constraints (Swift 5.10, macOS 14+,
    non-sandboxed, no third-party packages, `SWIFT_STRICT_CONCURRENCY=complete`, zero warnings,
    zero errors). Honor every rule. Do not relax `SWIFT_STRICT_CONCURRENCY`. The "V2.1 —
-   Budget-Aware Execution" section in `architecture.md` is the architectural spec for this work
+   Budget-Aware Execution" section in `spec.md` is the architectural spec for this work
    — phases must match it, not modify it.
 3. **Strict phase order.** Execute phases in this exact sequence — no reordering, no skipping,
    no merging:
@@ -32,11 +32,11 @@ verify command, and commit instructions.
    and a passing test run before the commit. **Never** skip the failing-tests commit. **Never**
    batch commits across phases.
 5. **Commit after every phase.** Use the exact `git add` and `git commit` invocations in each
-   phase file. Never use `git add -A`. Never amend a prior phase's commit. Never use
+   task file. Never use `git add -A`. Never amend a prior phase's commit. Never use
    `--no-verify`. Never use interactive git flags (`-i`).
-6. **Phase files are the source of truth.** If the file says "Edit `X.swift`" and a surface
+6. **Task files are the source of truth.** If the file says "Edit `X.swift`" and a surface
    doesn't match what you find in the codebase, read the file, adapt the implementation to the
-   spec's intent (not its letter), and keep going. The phase file is a contract on what behavior
+   spec's intent (not its letter), and keep going. The task file is a contract on what behavior
    must exist after `NNb`; minor structural details (e.g., which file an enum lives in) can be
    adjusted to fit the codebase as long as the test surfaces are preserved.
 7. **Pre-flight before phase 232a:**
@@ -79,9 +79,9 @@ verify command, and commit instructions.
    ```
    Do not invent variants. The three `CODE_SIGN_*` overrides are required in this sandbox because
    the "Merlin Dev Signing" certificate is not available here. **Every** xcodebuild invocation in
-   every phase file already includes them; do not omit them.
+   every task file already includes them; do not omit them.
 10. **Per-phase loop:**
-    1. Open the phase file with `cat phases/phase-NN<x>-<name>.md`.
+    1. Open the task file with `cat tasks/task-NN<x>-<name>.md`.
     2. Read its `## Context` block and confirm prerequisites are satisfied.
     3. Implement the listed edits in the listed files.
     4. Run the `## Verify` command. The expected outcome is in the file.
@@ -89,11 +89,11 @@ verify command, and commit instructions.
        all tests pass and you are on a `b` phase, that is success.
     6. If verification does not match the expected outcome, **stop and report** — do not commit
        broken work, do not improvise an unbounded fix loop.
-    7. Commit exactly as the phase file specifies.
+    7. Commit exactly as the task file specifies.
     8. Append a one-line completion summary to a running buffer (do not write it to a file).
     9. Move to the next phase.
 11. **Reporting and stopping conditions.** Report and pause if any of these occur:
-    - Verify outcome does not match the phase file's expectation.
+    - Verify outcome does not match the task file's expectation.
     - Any pre-existing test regresses (tests that passed before this work now fail).
     - A `git commit` is rejected by a pre-commit hook. **Fix the underlying issue and make a new
       commit.** Do not amend, do not use `--no-verify`.
@@ -134,9 +134,9 @@ Architectural pieces (these *are* the phases, in order):
 
 ```bash
 cd ~/Documents/localProject/merlin
-cat phases/phase-232a-budget-telemetry-tests.md
+cat tasks/task-232a-budget-telemetry-tests.md
 ```
 
-Execute that phase end to end, commit, then advance to `phase-232b-budget-telemetry.md`, and
+Execute that phase end to end, commit, then advance to `task-232b-budget-telemetry.md`, and
 so on until phase 240b is committed and `v2.1.0` is tagged and released. Stop and report at the
 first stopping condition above.

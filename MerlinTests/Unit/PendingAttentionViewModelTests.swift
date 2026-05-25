@@ -14,7 +14,7 @@ final class PendingAttentionViewModelTests: XCTestCase {
     private func makeEngine(projectRoot: URL) -> DisciplineEngine {
         DisciplineEngine(
             adapter: ProjectAdapter.makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -25,7 +25,7 @@ final class PendingAttentionViewModelTests: XCTestCase {
 
     private func makeFinding(severity: Severity = .nudge) -> Finding {
         Finding(
-            id: UUID(), category: .phaseDrift, severity: severity,
+            id: UUID(), category: .taskDrift, severity: severity,
             summary: "Test finding", detail: "Detail",
             suggestedAction: "Fix it", createdAt: Date(), lastSeenAt: Date()
         )
@@ -37,16 +37,16 @@ final class PendingAttentionViewModelTests: XCTestCase {
         let projectRoot = makeTmpProject()
         defer { try? FileManager.default.removeItem(at: projectRoot) }
 
-        let phasesDir = projectRoot.appendingPathComponent("phases")
-        try FileManager.default.createDirectory(at: phasesDir, withIntermediateDirectories: true)
-        let phaseDoc = """
-        # Phase 001b — Example
+        let tasksDir = projectRoot.appendingPathComponent("tasks")
+        try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
+        let taskDoc = """
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
-        try phaseDoc.write(
-            to: phasesDir.appendingPathComponent("phase-001b-example.md"),
+        try taskDoc.write(
+            to: tasksDir.appendingPathComponent("task-001b-example.md"),
             atomically: true,
             encoding: .utf8
         )
@@ -65,16 +65,16 @@ final class PendingAttentionViewModelTests: XCTestCase {
         let projectRoot = makeTmpProject()
         defer { try? FileManager.default.removeItem(at: projectRoot) }
 
-        let phasesDir = projectRoot.appendingPathComponent("phases")
-        try FileManager.default.createDirectory(at: phasesDir, withIntermediateDirectories: true)
-        let phaseDoc = """
-        # Phase 001b — Example
+        let tasksDir = projectRoot.appendingPathComponent("tasks")
+        try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
+        let taskDoc = """
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
-        try phaseDoc.write(
-            to: phasesDir.appendingPathComponent("phase-001b-example.md"),
+        try taskDoc.write(
+            to: tasksDir.appendingPathComponent("task-001b-example.md"),
             atomically: true,
             encoding: .utf8
         )
@@ -112,16 +112,16 @@ final class PendingAttentionViewModelTests: XCTestCase {
         let projectRoot = makeTmpProject()
         defer { try? FileManager.default.removeItem(at: projectRoot) }
 
-        let phasesDir = projectRoot.appendingPathComponent("phases")
-        try FileManager.default.createDirectory(at: phasesDir, withIntermediateDirectories: true)
-        let phaseDoc = """
-        # Phase 001b — Example
+        let tasksDir = projectRoot.appendingPathComponent("tasks")
+        try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
+        let taskDoc = """
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
-        try phaseDoc.write(
-            to: phasesDir.appendingPathComponent("phase-001b-example.md"),
+        try taskDoc.write(
+            to: tasksDir.appendingPathComponent("task-001b-example.md"),
             atomically: true,
             encoding: .utf8
         )
@@ -134,7 +134,7 @@ final class PendingAttentionViewModelTests: XCTestCase {
         XCTAssertFalse(vm.findings.isEmpty, "scan must produce at least one finding")
 
         // Dismiss every finding the scan produced — the scan can yield more than one
-        // (e.g. a phaseDrift and a docStaleReference for the same ghost symbol).
+        // (e.g. a taskDrift and a docStaleReference for the same ghost symbol).
         var guardCount = 0
         while let finding = vm.findings.first, guardCount < 100 {
             await vm.dismiss(finding: finding, rationale: "done")

@@ -14,7 +14,7 @@ final class ProjectReleaseSkillTests: XCTestCase {
 
     func testSkillFileExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "~/.merlin/skills/project-release/SKILL.md not found. Run phase 262b.")
+                      "~/.merlin/skills/project-release/SKILL.md not found. Run task 262b.")
     }
 
     func testSkillHasRequiredSections() throws {

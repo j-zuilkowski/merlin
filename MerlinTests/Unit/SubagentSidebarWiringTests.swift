@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 296a — failing tests for subagent-sidebar wiring.
+/// Task 296a — failing tests for subagent-sidebar wiring.
 @MainActor
 final class SubagentSidebarWiringTests: XCTestCase {
 

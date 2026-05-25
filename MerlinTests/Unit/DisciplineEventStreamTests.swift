@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 298a — failing tests for the discipline event stream.
+/// Task 298a — failing tests for the discipline event stream.
 final class DisciplineEventStreamTests: XCTestCase {
 
     private func makeTmpProject() -> URL {

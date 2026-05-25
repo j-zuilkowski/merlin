@@ -1,6 +1,6 @@
 import Foundation
 
-/// Classification of a single phase-vs-code drift finding.
+/// Classification of a single task-vs-code drift finding.
 enum DriftSeverity: Sendable, Equatable {
     /// Surface present; shape matches declaration.
     case green
@@ -8,14 +8,14 @@ enum DriftSeverity: Sendable, Equatable {
     case yellow
     /// Surface absent from code (deleted without addendum).
     case red
-    /// Code surface not declared in any phase file (undocumented).
+    /// Code surface not declared in any task file (undocumented).
     case orange
 }
 
-/// A single drift finding from `PhaseScanner`.
+/// A single drift finding from `TaskScanner`.
 struct DriftFinding: Sendable, Identifiable {
     let id: UUID
-    let phaseID: String?
+    let taskID: String?
     let surface: String
     let severity: DriftSeverity
     let evidence: String

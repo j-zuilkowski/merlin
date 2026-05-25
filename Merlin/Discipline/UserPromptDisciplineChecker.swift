@@ -2,15 +2,15 @@ import Foundation
 
 /// Result of a user-prompt discipline check.
 enum UserPromptCheckResult: Sendable {
-    /// Prompt does not appear to be a new feature request, or a matching phase file exists.
+    /// Prompt does not appear to be a new feature request, or a matching task file exists.
     case ok
-    /// Prompt looks like a feature request but no NNa phase file was found.
-    case missingPhaseFile(suggestion: String)
+    /// Prompt looks like a feature request but no NNa task file was found.
+    case missingTaskFile(suggestion: String)
 }
 
 /// Checks incoming user prompts for unscoped feature requests.
-/// Returns `.missingPhaseFile` when the prompt describes a new feature that has no
-/// corresponding NNa phase file in `phases/`.
+/// Returns `.missingTaskFile` when the prompt describes a new feature that has no
+/// corresponding NNa task file in `tasks/`.
 actor UserPromptDisciplineChecker {
 
     // MARK: - Feature-request keywords
@@ -45,18 +45,18 @@ actor UserPromptDisciplineChecker {
         // Extract candidate noun (first capitalized word-ish token from original).
         let candidates = extractCandidateNouns(from: prompt)
 
-        // Check whether any NNa phase file mentions a candidate noun.
+        // Check whether any NNa task file mentions a candidate noun.
         if candidates.isEmpty {
-            let suggestion = "Write a phase NNa file before implementing: /project:phase"
-            return .missingPhaseFile(suggestion: suggestion)
+            let suggestion = "Write a task NNa file before implementing: /project:task"
+            return .missingTaskFile(suggestion: suggestion)
         }
 
-        if candidatesHaveMatchingPhase(candidates, projectPath: projectPath) {
+        if candidatesHaveMatchingTask(candidates, projectPath: projectPath) {
             return .ok
         }
 
-        let suggestion = "Write a phase NNa file before implementing: /project:phase"
-        return .missingPhaseFile(suggestion: suggestion)
+        let suggestion = "Write a task NNa file before implementing: /project:task"
+        return .missingTaskFile(suggestion: suggestion)
     }
 
     // MARK: - Helpers
@@ -70,20 +70,20 @@ actor UserPromptDisciplineChecker {
         }
     }
 
-    private func candidatesHaveMatchingPhase(
+    private func candidatesHaveMatchingTask(
         _ candidates: [String], projectPath: String
     ) -> Bool {
-        let phasesDir = URL(fileURLWithPath: projectPath).appendingPathComponent("phases")
-        // Check existence first so a project with no phases/ never constructs an NSError.
-        guard FileManager.default.fileExists(atPath: phasesDir.path),
+        let tasksDir = URL(fileURLWithPath: projectPath).appendingPathComponent("tasks")
+        // Check existence first so a project with no tasks/ never constructs an NSError.
+        guard FileManager.default.fileExists(atPath: tasksDir.path),
               let files = try? FileManager.default.contentsOfDirectory(
-            at: phasesDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+            at: tasksDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
         ) else { return false }
 
         // NNa files only.
         let nnAFiles = files.filter { file in
             file.pathExtension == "md" &&
-            file.lastPathComponent.range(of: #"phase-\d+a-"#,
+            file.lastPathComponent.range(of: #"task-\d+a-"#,
                                          options: .regularExpression) != nil
         }
 

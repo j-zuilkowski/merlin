@@ -1,5 +1,5 @@
 // RestoreDedupAndHistoryTests.swift
-// Phase 196a — failing tests for prior-session restore deduplication and history display.
+// Task 196a — failing tests for prior-session restore deduplication and history display.
 import XCTest
 @testable import Merlin
 

@@ -102,7 +102,7 @@ final class CriticGatedMemoryTests: XCTestCase {
     func testLastCriticVerdictNilAtInit() {
         let spy = SpyXcalibreClient()
         let engine = makeTestEngine(spy: spy)
-        // Phase 115b adds this property. Until then, BUILD FAILED.
+        // Task 115b adds this property. Until then, BUILD FAILED.
         XCTAssertNil(engine.lastCriticVerdict)
     }
 

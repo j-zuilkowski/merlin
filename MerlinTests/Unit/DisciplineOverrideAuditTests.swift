@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 291a — failing tests for override audit logging.
+/// Task 291a — failing tests for override audit logging.
 ///
 /// `OverrideAuditLog` is never invoked: the dismiss flow goes only to
 /// `PendingAttentionQueue.dismiss`, and `weeklyReview` is never run. These tests pin
@@ -18,7 +18,7 @@ final class DisciplineOverrideAuditTests: XCTestCase {
     private func makeEngine(projectRoot: URL) -> DisciplineEngine {
         DisciplineEngine(
             adapter: .makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -27,7 +27,7 @@ final class DisciplineOverrideAuditTests: XCTestCase {
         )
     }
 
-    private func makeFinding(category: FindingCategory = .phaseDrift) -> Finding {
+    private func makeFinding(category: FindingCategory = .taskDrift) -> Finding {
         Finding(
             id: UUID(), category: category, severity: .nudge,
             summary: "Surface.swift", detail: "d", suggestedAction: "fix",
@@ -39,14 +39,14 @@ final class DisciplineOverrideAuditTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: project) }
         let engine = makeEngine(projectRoot: project)
 
-        await engine.dismiss(finding: makeFinding(category: .phaseDrift), rationale: "intentional")
+        await engine.dismiss(finding: makeFinding(category: .taskDrift), rationale: "intentional")
 
         let logPath = project.appendingPathComponent(".merlin/override-log.jsonl").path
         let log = OverrideAuditLog(logPath: logPath)
         let entries = await log.entries(since: Date(timeIntervalSince1970: 0))
         XCTAssertEqual(entries.count, 1)
         XCTAssertEqual(entries.first?.rationale, "intentional")
-        XCTAssertEqual(entries.first?.category, "phaseDrift")
+        XCTAssertEqual(entries.first?.category, "taskDrift")
         XCTAssertEqual(entries.first?.userDismissed, true)
     }
 
@@ -59,7 +59,7 @@ final class DisciplineOverrideAuditTests: XCTestCase {
         let log = OverrideAuditLog(logPath: logPath)
         for i in 0..<6 {
             try await log.record(OverrideEntry(
-                timestamp: Date(), category: "phaseDrift", file: "F\(i).swift", line: i,
+                timestamp: Date(), category: "taskDrift", file: "F\(i).swift", line: i,
                 rationale: "r", userDismissed: true, viaAnnotation: false, annotationText: nil))
         }
 

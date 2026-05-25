@@ -56,7 +56,7 @@ actor DocReferenceGraph {
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
             // Phase-doc Markdown is build scaffolding — never scan it for staleness.
-            if docFile.contains("/phases/") { continue }
+            if docFile.contains("/tasks/") { continue }
 
             guard let text = try? String(
                 contentsOf: URL(fileURLWithPath: docFile), encoding: .utf8)
@@ -155,7 +155,7 @@ actor DocReferenceGraph {
         return nil
     }
 
-    /// Enum-case identifiers declared on a trimmed `line` - `case phaseDrift`, or a
+    /// Enum-case identifiers declared on a trimmed `line` - `case taskDrift`, or a
     /// comma list `case a, b = "x"`. A trailing `//` line comment is stripped first so a
     /// comma inside the comment is not mistaken for a case separator (e.g.
     /// `case green // present, shape unchanged` must not yield a phantom case `shape`).

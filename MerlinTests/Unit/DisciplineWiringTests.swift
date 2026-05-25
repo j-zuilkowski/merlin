@@ -40,7 +40,7 @@ final class DisciplineWiringTests: XCTestCase {
 
         let finding = Finding(
             id: UUID(),
-            category: .phaseDrift,
+            category: .taskDrift,
             severity: .block,
             summary: "Missing surface Foo",
             detail: "detail",

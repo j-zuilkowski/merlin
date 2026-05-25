@@ -31,14 +31,14 @@ final class DocReferenceGraphTests: XCTestCase {
         # Architecture
 
         `ProviderBudget` controls how many tokens each provider can receive.
-        """.write(to: proj.appendingPathComponent("docs/architecture.md"),
+        """.write(to: proj.appendingPathComponent("docs/spec.md"),
                   atomically: true, encoding: .utf8)
 
         let graph = DocReferenceGraph()
         let refs = await graph.build(projectPath: proj.path)
         let match = refs.first { $0.codeSymbol == "ProviderBudget" }
         XCTAssertNotNil(match, "Expected reference for ProviderBudget")
-        XCTAssertTrue(match?.docFile.hasSuffix("architecture.md") == true)
+        XCTAssertTrue(match?.docFile.hasSuffix("spec.md") == true)
     }
 
     // MARK: - build does not produce reference for unknown symbol
@@ -51,7 +51,7 @@ final class DocReferenceGraphTests: XCTestCase {
         # Architecture
 
         `NonExistentSymbol` is mentioned here but does not exist in source.
-        """.write(to: proj.appendingPathComponent("docs/architecture.md"),
+        """.write(to: proj.appendingPathComponent("docs/spec.md"),
                   atomically: true, encoding: .utf8)
 
         let graph = DocReferenceGraph()

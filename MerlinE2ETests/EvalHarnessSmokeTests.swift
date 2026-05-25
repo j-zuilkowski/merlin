@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import Merlin
 
-/// Phase 303a - failing smoke test for the eval harness.
+/// Task 303a - failing smoke test for the eval harness.
 final class EvalHarnessSmokeTests: XCTestCase {
 
     @MainActor

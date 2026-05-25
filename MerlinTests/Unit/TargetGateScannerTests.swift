@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 307a — failing tests for TargetGateScanner.
+/// Task 307a — failing tests for TargetGateScanner.
 final class TargetGateScannerTests: XCTestCase {
 
     private func makeTmpProject(projectYML: String) throws -> URL {

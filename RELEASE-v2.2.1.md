@@ -25,7 +25,7 @@ running app and fixes correctness bugs found in code review.
 - **Doc-reference accuracy (phase 267).** `DisciplineEngine` no longer emits a stale
   finding for every healthy doc reference. `DocReferenceGraph.danglingReferences`
   reports only doc mentions of code symbols that do not exist in the source tree.
-- **Scanner accuracy (phase 268).** `PhaseScanner` now excludes test targets
+- **Scanner accuracy (phase 268).** `TaskScanner` now excludes test targets
   (`MerlinTests` and friends), so public test symbols no longer produce spurious
   "undocumented" findings. `WhyCommentScanner` skips trigger patterns that appear only
   inside comments or string literals, removing false-positive pre-commit blocks.

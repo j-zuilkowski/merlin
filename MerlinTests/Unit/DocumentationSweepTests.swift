@@ -83,7 +83,7 @@ final class DocumentationSweepTests: XCTestCase {
             repoFile("merlin-eval/scenarios/S13-providers-connectors.md"),
             repoFile("merlin-eval/SURFACE-CENSUS.md"),
             repoFile("merlin-eval/SURFACE-INVENTORY.md"),
-            repoFile("phases/SURFACE-INVENTORY.md"),
+            repoFile("tasks/SURFACE-INVENTORY.md"),
         ].joined(separator: "\n")
 
         XCTAssertFalse(docs.contains("11 providers"))
@@ -94,7 +94,7 @@ final class DocumentationSweepTests: XCTestCase {
             repoFile("merlin-eval/SURFACE-CENSUS.md"),
             repoFile("merlin-eval/SURFACE-INVENTORY.md"),
             repoFile("merlin-eval/scenarios/S9-panels.md"),
-            repoFile("phases/SURFACE-INVENTORY.md"),
+            repoFile("tasks/SURFACE-INVENTORY.md"),
         ].joined(separator: "\n")
 
         XCTAssertTrue(docs.contains("SlotStatusPanel"))

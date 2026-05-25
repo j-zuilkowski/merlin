@@ -3,7 +3,7 @@ import Foundation
 // MARK: - FindingCategory
 
 enum FindingCategory: String, Codable, Sendable, CaseIterable {
-    case phaseDrift
+    case taskDrift
     case manualCoverageGap
     case docStaleReference
     case whyCommentMissing

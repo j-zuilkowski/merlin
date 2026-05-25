@@ -9,7 +9,7 @@ final class DisciplineEngineTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         // Minimal structure
         try FileManager.default.createDirectory(
-            at: dir.appendingPathComponent("phases"), withIntermediateDirectories: true)
+            at: dir.appendingPathComponent("tasks"), withIntermediateDirectories: true)
         return dir
     }
 
@@ -17,7 +17,7 @@ final class DisciplineEngineTests: XCTestCase {
         let adapter = ProjectAdapter.makeStub(language: "swift")
         return DisciplineEngine(
             adapter: adapter,
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),
@@ -80,7 +80,7 @@ final class DisciplineEngineTests: XCTestCase {
         let adapter = ProjectAdapter.makeStub(language: "swift")
         let engine = DisciplineEngine(
             adapter: adapter,
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

@@ -1,10 +1,10 @@
 # Merlin — Vision Document
 
 `vision.md` is Merlin's idea launchpad. New ideas land in `## Active`, then are either
-promoted to `architecture.md` as committed design or parked in `## Deferred` with a
+promoted to `spec.md` as committed design or parked in `## Deferred` with a
 clear reconsideration trigger.
 
-Architectural source of truth remains `architecture.md`; this document captures intent
+Architectural source of truth remains `spec.md`; this document captures intent
 upstream of committed design.
 
 ## Active
@@ -12,21 +12,21 @@ upstream of committed design.
 ### Spec-Driven Development alignment
 
 Merlin's discipline subsystem already practices Spec-Driven Development (SDD) under its
-own names: `CLAUDE.md` is the constitution, `architecture.md` is the spec/plan,
-`phases/` are the tasks, and the `vision → architecture → phase → code` pipeline is the
+own names: `constitution.md` is the constitution, `spec.md` is the spec/plan,
+`tasks/` are the tasks, and the `vision → architecture → phase → code` pipeline is the
 SDD workflow. This initiative formalizes that alignment so the methodology is named,
 consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro).
 
 **What:**
 - **Vocabulary rename** — adopt SDD terms across the docs and the `project:*` skill
-  subsystem: *constitution* (`CLAUDE.md`), *spec* (`architecture.md`), *tasks*
-  (`phases/`), *vision* (`vision.md`).
+  subsystem: *constitution* (`constitution.md`), *spec* (`spec.md`), *tasks*
+  (`tasks/`), *vision* (`vision.md`).
 - **EARS acceptance criteria** — add a `## Behavior` block to the phase/task template
   using EARS notation (`WHEN [trigger] THE [system] SHALL [response]`, plus `WHILE`,
   `IF … THEN`, `WHERE`, and ubiquitous forms). Each task states its intended behavior
   in a standardized, testable form that the `a`-phase TDD tests verify directly.
 - **Backfill** — retrofit the EARS `## Behavior` block and the SDD vocabulary into the
-  existing committed phase files, not new phases only.
+  existing committed task files, not new phases only.
 - **Consistency gate** — extend `DisciplineEngine` with a vision↔spec↔task coherence
   check (the SDD `/analyze` equivalent), run before implementation rather than only as
   post-hoc drift detection. It verifies that every task traces to a spec section and
@@ -35,21 +35,21 @@ consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro
 **Why:** Merlin converged on SDD independently; naming it removes ambiguity, EARS
 sharpens every task's acceptance criteria, a shared vocabulary makes the discipline
 subsystem legible to the ecosystem, and the consistency gate catches spec/task
-divergence before code is written. SDD is additive here — keep the phase-file + TDD
+divergence before code is written. SDD is additive here — keep the task-file + TDD
 engine; do not swap the `project:*` subsystem for Spec Kit's CLI.
 
-**Rename scope — decided: structural rename.** `phases/` → `tasks/` (and each
-`phase-NNx-*.md` → `task-NNx-*.md`); `architecture.md` → `spec.md`. `CLAUDE.md` keeps
-its filename — Claude Code auto-loads `CLAUDE.md` by name, so renaming it would break
+**Rename scope — decided: structural rename.** `tasks/` → `tasks/` (and each
+`task-NNx-*.md` → `task-NNx-*.md`); `spec.md` → `spec.md`. `constitution.md` keeps
+its filename — Claude Code auto-loads `constitution.md` by name, so renaming it would break
 the toolchain; it is *designated* the constitution in place. The rename touches every
-task file, the `DisciplineEngine` / `PhaseScanner` code that walks `phases/`,
+task file, the `DisciplineEngine` / `TaskScanner` code that walks `tasks/`,
 `REBUILD-GUIDE.md`, `PASTE-LIST.md`, `ALL-PHASES.md`, and **all five `project:*` skills
 (`init`, `adopt`, `phase`, `revise`, `release`)** — all updated together in one
 mechanical phase.
 
 For the `project:*` skills the rename is **two-sided**: not only their own prose but
 also the artifacts they *scaffold* must change — `project:init` and `project:adopt`
-write `spec.md` / `tasks/` (not `architecture.md` / `phases/`), `project:phase` and
+write `spec.md` / `tasks/` (not `spec.md` / `tasks/`), `project:phase` and
 `project:revise` operate on `tasks/`, and the doc templates under
 `~/.merlin/templates/docs/` follow suit. So every project Merlin creates or adopts after
 the rename uses the SDD names from the start, not just the Merlin repo itself.
@@ -76,7 +76,7 @@ in this order — (1) EARS `## Behavior` template change; (2) structural rename 
 (3) backfill EARS + SDD vocabulary into the existing renamed task files; (4) the
 vision↔spec↔task consistency gate in `DisciplineEngine`.
 
-_Status: deferred for now — this is a broad mechanical rename and should only be promoted when the repository is ready to rename `architecture.md`/`phases/` and all related tooling in one coordinated sweep._
+_Status: deferred for now — this is a broad mechanical rename and should only be promoted when the repository is ready to rename `spec.md`/`tasks/` and all related tooling in one coordinated sweep._
 
 ### Runtime plugin architecture + the electronics plugin
 
@@ -175,7 +175,7 @@ _Status: deferred until after the SDD rename or a separate roadmap branch — th
 
 ### Electronics / KiCad Domain
 
-The v2.0 Electronics/KiCad feature set in `architecture.md` is scoped to two product intents (raster → PCB; requirements → design) with deterministic gates, BOM/distributor integration, and high-stakes sign-off. The following extensions are explicitly out of scope for v2.0.
+The v2.0 Electronics/KiCad feature set in `spec.md` is scoped to two product intents (raster → PCB; requirements → design) with deterministic gates, BOM/distributor integration, and high-stakes sign-off. The following extensions are explicitly out of scope for v2.0.
 
 #### EMC / EMI compliance testing
 
@@ -253,7 +253,7 @@ v2.0 runs `merlin-kicad-mcp` locally alongside the Merlin app. There is no remot
 
 ### How to use this document
 
-When implementing v2.0 phases, check this file before adding scope. If an idea matches an item here, it stays out of v2.0 — note the existing entry in the phase doc rather than re-debating scope.
+When implementing v2.0 phases, check this file before adding scope. If an idea matches an item here, it stays out of v2.0 — note the existing entry in the task doc rather than re-debating scope.
 
 When v2.0 ships and users request capabilities, check this file first. If the request matches an entry, the architectural hook is already identified; the work becomes a new domain extension, not a re-architecture.
 

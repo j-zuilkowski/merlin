@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-// Tests for the four session bugs fixed in Phase 193b.
+// Tests for the four session bugs fixed in Task 193b.
 // All tests are @MainActor because AppState, LiveSession, and ContextManager
 // are @MainActor types.
 

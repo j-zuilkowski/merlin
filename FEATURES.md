@@ -1,6 +1,6 @@
 # Merlin — Features
 
-A complete reference of everything Merlin can do. For implementation details see [`architecture.md`](architecture.md).
+A complete reference of everything Merlin can do. For implementation details see [`spec.md`](spec.md).
 
 ---
 
@@ -41,7 +41,7 @@ All providers share a single configuration surface (Settings → Providers). API
 - **Parallel tool calls** — multiple tools dispatched concurrently via Swift structured concurrency.
 - **Interrupt at any time** — Stop button cancels the active turn cleanly; the session remains in a valid state.
 - **Error retry** — first failure retries silently; second failure surfaces to the user with Retry / Skip / Abort options.
-- **Context compaction** — old tool results are summarised automatically at three trigger points: (1) pre-run when estimated tokens exceed 6,000, (2) mid-loop every time tool results push past 20,000 tokens within a single turn, and (3) emergency overflow at 800,000 tokens. Mid-loop summarisation uses the active LLM to produce a narrative digest of removed exchanges rather than a static truncation marker, so the model retains a meaningful summary of what it already did. Type `/compact` in the chat bar or use Session → Compact Context (⌘⇧K) to compact on demand. (Authoritative values in `ContextManager.swift`; see CLAUDE.md → Canonical Defaults.)
+- **Context compaction** — old tool results are summarised automatically at three trigger points: (1) pre-run when estimated tokens exceed 6,000, (2) mid-loop every time tool results push past 20,000 tokens within a single turn, and (3) emergency overflow at 800,000 tokens. Mid-loop summarisation uses the active LLM to produce a narrative digest of removed exchanges rather than a static truncation marker, so the model retains a meaningful summary of what it already did. Type `/compact` in the chat bar or use Session → Compact Context (⌘⇧K) to compact on demand. (Authoritative values in `ContextManager.swift`; see constitution.md → Canonical Defaults.)
 - **Context-length recovery** — when the provider rejects a prompt as too long (HTTP 400 "context_length_exceeded"), Merlin compacts automatically and retries the failed turn once rather than stopping.
 - **Thinking mode** — automatically enabled for reasoning-heavy prompts (architecture, debugging, analysis) when the active provider supports it. Suppressed for simple operations.
 - **Reasoning effort** — configurable per provider; overridable per session.
@@ -54,7 +54,7 @@ All providers share a single configuration surface (Settings → Providers). API
 ## CAG — Cache-Augmented Generation
 
 - CAG caches the cold, stable prefix: system prompt, project instructions, domain addenda, pinned docs, and stable tool schemas.
-- CLAUDE.md can be kept hot with `pin_claude_md = false`; it remains in the request but outside Anthropic's cache-marked block.
+- constitution.md can be kept hot with `pin_constitution = false`; it remains in the request but outside Anthropic's cache-marked block.
 - RAG/KAG enrichment, tool results, and user turns remain hot suffix content and are not part of the cacheable prefix.
 - Anthropic uses explicit prompt-cache markers (`cache_control`) plus the prompt-caching beta header.
 - OpenAI-compatible, DeepSeek, and local providers do not receive Anthropic-specific fields; they benefit from stable prefix bytes when server-side automatic cache or KV reuse is available.
@@ -80,14 +80,14 @@ This contrasts with the overflow path (800 K tokens) and the pre-run path (6 K t
 
 ### Instruction distillation
 
-The core system prompt and the user's `CLAUDE.md` file are sent verbatim on every single LLM request. In a 100-step loop, a 2 K-token system prompt costs 200 K tokens in overhead before any work is done.
+The core system prompt and the user's `constitution.md` file are sent verbatim on every single LLM request. In a 100-step loop, a 2 K-token system prompt costs 200 K tokens in overhead before any work is done.
 
 Merlin addresses this in two layers:
 
 - **Static distillation** — the built-in `coreSystemPrompt` is expressed in a compact, symbol-dense form (~6 lines) that conveys the same constraints as the original 18-line prose version at a fraction of the token count.
-- **Dynamic distillation** — when `promptCompressionEnabled` is `true` (Settings → Agent → Prompt Compression), Merlin calls the reason-slot provider once to compress the project's `CLAUDE.md` into a shorthand equivalent. The distilled version is cached against a hash of the original; it is only re-distilled when the source file changes. `buildStablePrefix()` uses the distilled variant for every subsequent request in the session.
+- **Dynamic distillation** — when `promptCompressionEnabled` is `true` (Settings → Agent → Prompt Compression), Merlin calls the reason-slot provider once to compress the project's `constitution.md` into a shorthand equivalent. The distilled version is cached against a hash of the original; it is only re-distilled when the source file changes. `buildStablePrefix()` uses the distilled variant for every subsequent request in the session.
 
-Enable dynamic distillation in **Settings → Agent → Prompt Compression** or via `prompt_compression_enabled = true` in `~/.merlin/config.toml`. The distillation call is made once per changed `CLAUDE.md`, not per turn.
+Enable dynamic distillation in **Settings → Agent → Prompt Compression** or via `prompt_compression_enabled = true` in `~/.merlin/config.toml`. The distillation call is made once per changed `constitution.md`, not per turn.
 
 **Token savings summary**
 
@@ -298,7 +298,7 @@ Connect any MCP server via stdio transport. Configure in `~/.merlin/mcp.json`. S
 - **@mention files** — type `@` in the prompt to open a file picker. Selected files are inlined with line numbers. Supports line-range syntax: `@Engine.swift:50-120`.
 - **Drag and drop** — drop files directly onto the chat input.
 - **Attachments** — source files inlined as code blocks; images sent to the vision model and result inlined; PDFs text-extracted via PDFKit.
-- **CLAUDE.md auto-load** — at session start, Merlin searches for `CLAUDE.md` files from the project root upward and prepends them to the system prompt.
+- **constitution.md auto-load** — at session start, Merlin searches for `constitution.md` files from the project root upward and prepends them to the system prompt.
 - **Memory injection** — accepted AI-generated memories are injected as a second system prompt block every session.
 
 ---
@@ -447,7 +447,7 @@ Unassigned slot fallback is runtime-based:
 
 KiCad integration is a first-class domain extension with deterministic completion gates: raster/PDF schematic ingestion, KiCad CLI as primary authority, the Merlin-owned `merlin-kicad-mcp` server for structured operations (schematic, board, placement, routing, library, simulation), FreeRouting-backed auto-route, ERC/DRC/parity/SPICE/fab gates, and vendor-native BOM/order workflows for JLCPCB / PCBWay / OSHPark / custom. High-stakes designs (hazardous energy, isolation, mission-critical) require explicit user sign-off; visual QA can block on presentation issues but cannot override electrical or fabrication gates.
 
-Requires KiCad `>= 10.0.0`. Full design (locked v2.0 decisions, extraction-confidence thresholds, board-rule defaults, BOM canonical model, fab acceptance checks, terminal status codes) is specified in [architecture.md → V2.0 Electronics/KiCad Domain](architecture.md#v20-electronics-domain). See also [Requirements.md §6](Requirements.md#6-kicad--electronics-domain) for tooling versions.
+Requires KiCad `>= 10.0.0`. Full design (locked v2.0 decisions, extraction-confidence thresholds, board-rule defaults, BOM canonical model, fab acceptance checks, terminal status codes) is specified in [spec.md → V2.0 Electronics/KiCad Domain](spec.md#v20-electronics-domain). See also [Requirements.md §6](Requirements.md#6-kicad--electronics-domain) for tooling versions.
 
 **Complexity Classification** — `PlannerEngine` classifies each message into one of three tiers:
 
@@ -707,8 +707,8 @@ Merlin can enforce construction discipline automatically — running scanners af
 
 | Skill | What it does |
 |---|---|
-| `/project:init` | Scaffold a new project with CLAUDE.md, doc set, phase structure, and git hooks |
-| `/project:phase` | Build a TDD phase pair (NNa failing tests + NNb implementation) for one new surface |
+| `/project:init` | Scaffold a new project with constitution.md, doc set, phase structure, and git hooks |
+| `/project:task` | Build a TDD task pair (NNa failing tests + NNb implementation) for one new surface |
 | `/project:revise` | Run the discipline scanner, review findings, and accept or dismiss each one |
 | `/project:release` | Consolidated release gate — verifies tests, docs, version bump, then tags and publishes |
 | `/project:adopt` | Apply discipline to an existing project without rewriting its history |
@@ -721,7 +721,7 @@ Three layers enforce discipline. Only the first requires you to act.
 
 **Layer 2 — DisciplineEngine + hooks (automatic).** After every turn, the engine scans the project for drift and queues findings in `.merlin/pending.json`. At session start, the top findings appear as a system reminder. Silent when everything is healthy.
 
-**Layer 3 — Git hooks (hard gates).** Installed by `/project:init` or `/project:adopt`. Block commits when violations are present: missing WHY-comments, user-facing surfaces with no manual coverage, phase files that no longer match the code.
+**Layer 3 — Git hooks (hard gates).** Installed by `/project:init` or `/project:adopt`. Block commits when violations are present: missing WHY-comments, user-facing surfaces with no manual coverage, task files that no longer match the code.
 
 ### Adopting an existing project
 

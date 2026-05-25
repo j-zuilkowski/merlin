@@ -64,7 +64,7 @@ Merlin version: v2.2.5
 
 ## Key takeaways
 
-**The biggest structural gap from the original (2026-04-26) analysis is now closed.** The original document identified the lack of sessions-as-worktrees and a diff review layer as the core deficit. Merlin now has full git worktree isolation per session, a staged diff review layer with inline commenting and agent revision, parallel sessions, and subagents. All five "most impactful daily use" gaps from the original doc (diff pane, stop button, @filename, CLAUDE.md, MCP) are implemented.
+**The biggest structural gap from the original (2026-04-26) analysis is now closed.** The original document identified the lack of sessions-as-worktrees and a diff review layer as the core deficit. Merlin now has full git worktree isolation per session, a staged diff review layer with inline commenting and agent revision, parallel sessions, and subagents. All five "most impactful daily use" gaps from the original doc (diff pane, stop button, @filename, constitution.md, MCP) are implemented.
 
 **All local feature gaps are now closed.** Phases 200–204 addressed the three open bugs (spawn_agent crash, missing /compact, context-overflow fatal stop) and all three previously-listed minor local gaps (scroll lock, /rewind, /btw).
 

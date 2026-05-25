@@ -1,7 +1,7 @@
 import XCTest
 
 /// Tests that the project:init skill scaffolds vision.md as the idea launchpad.
-/// These tests build clean but FAIL at runtime until phase 288b updates the skill.
+/// These tests build clean but FAIL at runtime until task 288b updates the skill.
 final class ProjectVisionLaunchpadTests: XCTestCase {
 
     private let skillPath: String = {
@@ -24,7 +24,7 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
 
     func testProjectInitSkillExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "project-init SKILL.md not found — phase 259b must have run first.")
+                      "project-init SKILL.md not found — task 259b must have run first.")
     }
 
     func testProjectInitScaffoldsVisionDoc() throws {
@@ -44,7 +44,7 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
     }
 
     func testProjectInitDocumentsThePipeline() throws {
-        // The vision → architecture → phase → code pipeline must be stated in the skill
+        // The vision → architecture → task → code pipeline must be stated in the skill
         // so the discipline workflow is explicit.
         let body = try skillBody().lowercased()
         let mentionsPipeline =
@@ -58,7 +58,7 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
         // Adopting an existing project must recognise an existing vision.md rather than
         // ignore or clobber it, and give a vision-less project the launchpad scaffold.
         XCTAssertTrue(FileManager.default.fileExists(atPath: adoptSkillPath),
-                      "project-adopt SKILL.md not found — phase 263b must have run first.")
+                      "project-adopt SKILL.md not found — task 263b must have run first.")
         let body = try adoptSkillBody()
         XCTAssertTrue(body.contains("vision.md"),
                       "project:adopt must incorporate an existing vision.md.")

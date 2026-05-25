@@ -1,5 +1,5 @@
 // StablePrefixCacheTests.swift
-// Phase 197a — failing tests for stable system-prompt prefix caching.
+// Task 197a — failing tests for stable system-prompt prefix caching.
 import XCTest
 @testable import Merlin
 
@@ -13,8 +13,8 @@ final class StablePrefixCacheTests: XCTestCase {
     override func tearDown() {
         MainActor.assumeIsolated {
             AppSettings.shared.cagEnabled = false
-            AppSettings.shared.cagPinClaudeMD = true
-            AppSettings.shared.cagPinnedPhaseDocs = []
+            AppSettings.shared.cagPinConstitution = true
+            AppSettings.shared.cagPinnedTaskDocs = []
         }
         super.tearDown()
     }
@@ -26,7 +26,7 @@ final class StablePrefixCacheTests: XCTestCase {
     /// FAILS before 197b — buildStablePrefix() does not exist.
     func test_stablePrefix_isSameAcrossConsecutiveCalls() {
         let engine = makeEngine()
-        engine.claudeMDContent = "# Instructions\nDo stuff."
+        engine.constitutionContent = "# Instructions\nDo stuff."
         let first = engine.buildStablePrefix()
         let second = engine.buildStablePrefix()
         XCTAssertEqual(first, second)
@@ -34,14 +34,14 @@ final class StablePrefixCacheTests: XCTestCase {
 
     // MARK: - Cache invalidation
 
-    /// Changing claudeMDContent must cause the next buildStablePrefix() call to
+    /// Changing constitutionContent must cause the next buildStablePrefix() call to
     /// return a different string.
     /// FAILS before 197b — _stablePrefixDirty / buildStablePrefix() do not exist.
-    func test_stablePrefix_changesWhenClaudeMDContentChanges() {
+    func test_stablePrefix_changesWhenConstitutionContentChanges() {
         let engine = makeEngine()
-        engine.claudeMDContent = "v1"
+        engine.constitutionContent = "v1"
         let first = engine.buildStablePrefix()
-        engine.claudeMDContent = "v2"
+        engine.constitutionContent = "v2"
         let second = engine.buildStablePrefix()
         XCTAssertNotEqual(first, second)
         XCTAssertTrue(second.contains("v2"))
@@ -84,28 +84,28 @@ final class StablePrefixCacheTests: XCTestCase {
                       "full system prompt must include the near-ceiling warning")
     }
 
-    func test_cagPinnedPhaseDocs_areIncludedInStablePrefix() throws {
+    func test_cagPinnedTaskDocs_areIncludedInStablePrefix() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cag-prefix-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         try "Pinned task content".write(
-            to: dir.appendingPathComponent("phase.md"),
+            to: dir.appendingPathComponent("task.md"),
             atomically: true,
             encoding: .utf8)
 
         let engine = makeEngine()
         engine.currentProjectPath = dir.path
         AppSettings.shared.cagEnabled = true
-        AppSettings.shared.cagPinnedPhaseDocs = ["phase.md"]
+        AppSettings.shared.cagPinnedTaskDocs = ["task.md"]
 
         let prefix = engine.buildStablePrefix()
 
-        XCTAssertTrue(prefix.contains("Pinned CAG document: phase.md"))
+        XCTAssertTrue(prefix.contains("Pinned CAG document: task.md"))
         XCTAssertTrue(prefix.contains("Pinned task content"))
     }
 
-    func test_cagPinnedPhaseDocs_skipTraversalOutsideCurrentProject() throws {
+    func test_cagPinnedTaskDocs_skipTraversalOutsideCurrentProject() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cag-prefix-\(UUID().uuidString)", isDirectory: true)
         let outside = FileManager.default.temporaryDirectory
@@ -120,7 +120,7 @@ final class StablePrefixCacheTests: XCTestCase {
         let engine = makeEngine()
         engine.currentProjectPath = dir.path
         AppSettings.shared.cagEnabled = true
-        AppSettings.shared.cagPinnedPhaseDocs = [outside.path]
+        AppSettings.shared.cagPinnedTaskDocs = [outside.path]
 
         let prefix = engine.buildStablePrefix()
 
@@ -128,7 +128,7 @@ final class StablePrefixCacheTests: XCTestCase {
         XCTAssertFalse(prefix.contains("Secret outside content"))
     }
 
-    func test_cagPinnedPhaseDocs_skipOversizedFiles() throws {
+    func test_cagPinnedTaskDocs_skipOversizedFiles() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cag-prefix-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -142,7 +142,7 @@ final class StablePrefixCacheTests: XCTestCase {
         let engine = makeEngine()
         engine.currentProjectPath = dir.path
         AppSettings.shared.cagEnabled = true
-        AppSettings.shared.cagPinnedPhaseDocs = ["large.md"]
+        AppSettings.shared.cagPinnedTaskDocs = ["large.md"]
 
         let prefix = engine.buildStablePrefix()
 
@@ -150,22 +150,22 @@ final class StablePrefixCacheTests: XCTestCase {
         XCTAssertFalse(prefix.contains(String(repeating: "x", count: 256)))
     }
 
-    func test_cagPinClaudeMDFalse_excludesClaudeFromStablePrefix() {
+    func test_cagPinConstitutionFalse_excludesClaudeFromStablePrefix() {
         let engine = makeEngine()
-        engine.claudeMDContent = "CLAUDE SHOULD NOT BE PINNED"
+        engine.constitutionContent = "CLAUDE SHOULD NOT BE PINNED"
         AppSettings.shared.cagEnabled = true
-        AppSettings.shared.cagPinClaudeMD = false
+        AppSettings.shared.cagPinConstitution = false
 
         let prefix = engine.buildStablePrefix()
 
         XCTAssertFalse(prefix.contains("CLAUDE SHOULD NOT BE PINNED"))
     }
 
-    func test_cagPinClaudeMDFalse_keepsClaudeInHotSystemSuffix() {
+    func test_cagPinConstitutionFalse_keepsClaudeInHotSystemSuffix() {
         let engine = makeEngine()
-        engine.claudeMDContent = "CLAUDE SHOULD REMAIN HOT"
+        engine.constitutionContent = "CLAUDE SHOULD REMAIN HOT"
         AppSettings.shared.cagEnabled = true
-        AppSettings.shared.cagPinClaudeMD = false
+        AppSettings.shared.cagPinConstitution = false
 
         let segments = engine.buildCAGSystemPromptSegments()
 

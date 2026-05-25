@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 319a — failing tests for DocReferenceGraph precision.
+/// Task 319a — failing tests for DocReferenceGraph precision.
 final class DocReferenceGraphPrecisionTests: XCTestCase {
 
     /// Writes `[relativePath: content]`, creating intermediate directories.
@@ -35,7 +35,7 @@ final class DocReferenceGraphPrecisionTests: XCTestCase {
 
         let dangling = await DocReferenceGraph().danglingReferences(projectPath: proj.path)
         XCTAssertFalse(dangling.contains { $0.codeSymbol == "LooseDanglingIdentifier" },
-                       "the loose backticked-identifier check is dropped in phase 319")
+                       "the loose backticked-identifier check is dropped in task 319")
         XCTAssertTrue(dangling.contains { $0.codeSymbol == "ghostFencedCase" },
                       "the high-precision fenced-block enum-case check is retained")
     }

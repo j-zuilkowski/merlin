@@ -50,6 +50,7 @@ final class SDDArtifactCutoverTests: XCTestCase {
                 options: [.skipsHiddenFiles]
             ) else { continue }
             for case let file as URL in enumerator where file.pathExtension == "swift" {
+                if file.lastPathComponent == "SDDArtifactCutoverTests.swift" { continue }
                 result += try String(contentsOf: file, encoding: .utf8)
                 result += "\n"
             }

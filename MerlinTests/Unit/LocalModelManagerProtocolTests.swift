@@ -43,7 +43,7 @@ private struct StubRestartOnlyManager: LocalModelManagerProtocol {
 
 final class LocalModelManagerProtocolTests: XCTestCase {
 
-    // MARK: Type existence (compile-time failures without phase 125b)
+    // MARK: Type existence (compile-time failures without task 125b)
 
     func testLoadParamEnumExists() {
         let _: LoadParam = .contextLength

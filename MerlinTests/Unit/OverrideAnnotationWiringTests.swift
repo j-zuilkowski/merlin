@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 293a — failing tests for override-annotation wiring.
+/// Task 293a — failing tests for override-annotation wiring.
 ///
 /// `WhyCommentScanner` skips `rationale-not-needed:` lines with a raw string check and
 /// never records them; `OverrideAnnotationParser` is dead. These tests pin that an
@@ -31,7 +31,7 @@ final class OverrideAnnotationWiringTests: XCTestCase {
     private func makeEngine(projectRoot: URL, adapter: ProjectAdapter) -> DisciplineEngine {
         DisciplineEngine(
             adapter: adapter,
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

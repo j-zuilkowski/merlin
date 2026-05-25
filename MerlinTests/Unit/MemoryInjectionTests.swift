@@ -17,13 +17,13 @@ final class MemoryInjectionTests: XCTestCase {
         super.tearDown()
     }
 
-    // MARK: - CLAUDEMDLoader.memoriesBlock
+    // MARK: - ConstitutionLoader.memoriesBlock
 
     func testMemoriesBlockWrapsContent() throws {
         let file1 = tempDir.appendingPathComponent("a.md")
         try "- User prefers bullet points".write(to: file1, atomically: true, encoding: .utf8)
 
-        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        let block = ConstitutionLoader.memoriesBlock(acceptedDir: tempDir.path)
         XCTAssertTrue(block.hasPrefix("[Memories]"), "Block should open with [Memories]")
         XCTAssertTrue(block.hasSuffix("[/Memories]"), "Block should close with [/Memories]")
         XCTAssertTrue(block.contains("bullet points"))
@@ -33,19 +33,19 @@ final class MemoryInjectionTests: XCTestCase {
         try "- Pref A".write(to: tempDir.appendingPathComponent("1.md"), atomically: true, encoding: .utf8)
         try "- Pref B".write(to: tempDir.appendingPathComponent("2.md"), atomically: true, encoding: .utf8)
 
-        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        let block = ConstitutionLoader.memoriesBlock(acceptedDir: tempDir.path)
         XCTAssertTrue(block.contains("Pref A"))
         XCTAssertTrue(block.contains("Pref B"))
     }
 
     func testMemoriesBlockEmptyDirReturnsEmpty() {
-        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        let block = ConstitutionLoader.memoriesBlock(acceptedDir: tempDir.path)
         XCTAssertTrue(block.isEmpty, "Empty memories dir should return empty string")
     }
 
     func testMemoriesBlockMissingDirReturnsEmpty() {
         let missing = tempDir.appendingPathComponent("does-not-exist").path
-        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: missing)
+        let block = ConstitutionLoader.memoriesBlock(acceptedDir: missing)
         XCTAssertTrue(block.isEmpty)
     }
 
@@ -53,7 +53,7 @@ final class MemoryInjectionTests: XCTestCase {
         try "- Real memory".write(to: tempDir.appendingPathComponent("a.md"), atomically: true, encoding: .utf8)
         try "ignored".write(to: tempDir.appendingPathComponent("b.txt"), atomically: true, encoding: .utf8)
 
-        let block = CLAUDEMDLoader.memoriesBlock(acceptedDir: tempDir.path)
+        let block = ConstitutionLoader.memoriesBlock(acceptedDir: tempDir.path)
         XCTAssertTrue(block.contains("Real memory"))
         XCTAssertFalse(block.contains("ignored"))
     }
@@ -61,9 +61,9 @@ final class MemoryInjectionTests: XCTestCase {
     // MARK: - AgenticEngine system prompt order
 
     @MainActor
-    func testBuildSystemPromptIncludesMemoriesAfterClaudeMD() {
+    func testBuildSystemPromptIncludesMemoriesAfterConstitution() {
         let engine = makeEngine()
-        engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
+        engine.constitutionContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
         engine.memoriesContent = "[Memories]\n- User likes brevity\n[/Memories]"
 
         let messages = engine.messagesWithSystem(
@@ -74,19 +74,19 @@ final class MemoryInjectionTests: XCTestCase {
             return t
         } ?? ""
 
-        XCTAssertTrue(systemText.contains("[Project instructions]"), "CLAUDE.md content should be present")
+        XCTAssertTrue(systemText.contains("[Project instructions]"), "constitution.md content should be present")
         XCTAssertTrue(systemText.contains("[Memories]"), "Memories block should be present")
 
         let claudeRange = systemText.range(of: "[Project instructions]")!
         let memoriesRange = systemText.range(of: "[Memories]")!
         XCTAssertLessThan(claudeRange.lowerBound, memoriesRange.lowerBound,
-                          "CLAUDE.md content should appear before memories")
+                          "constitution.md content should appear before memories")
     }
 
     @MainActor
     func testBuildSystemPromptNoMemoriesOmitsBlock() {
         let engine = makeEngine()
-        engine.claudeMDContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
+        engine.constitutionContent = "[Project instructions]\nUse TDD.\n[/Project instructions]"
         engine.memoriesContent = ""
 
         let messages = engine.messagesWithSystem(

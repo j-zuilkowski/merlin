@@ -49,7 +49,7 @@ enum DisciplineCLI {
             .appendingPathComponent(".merlin/pending.json").path
         let engine = DisciplineEngine(
             adapter: adapter,
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

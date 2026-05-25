@@ -19,59 +19,59 @@ final class InstructionDistillationTests: XCTestCase {
         XCTAssertFalse(AgenticEngine.distilledCoreSystemPrompt.isEmpty)
     }
 
-    // MARK: - refreshDistilledClaudeMD
+    // MARK: - refreshDistilledConstitution
 
-    func test_refreshDistilledClaudeMD_calls_provider_when_content_changed() async {
+    func test_refreshDistilledConstitution_calls_provider_when_content_changed() async {
         let engine = AgenticEngine()
         let provider = MockProvider(response: "DISTILLED:search+read>prose")
-        engine.claudeMDContent = "You are a helpful assistant with a long CLAUDE.md file..."
+        engine.constitutionContent = "You are a helpful assistant with a long constitution.md file..."
 
-        await engine.refreshDistilledClaudeMD(using: provider)
+        await engine.refreshDistilledConstitution(using: provider)
 
         XCTAssertEqual(provider.callCount, 1,
-                       "provider must be called once when claudeMDContent has no prior distillation")
-        XCTAssertFalse(engine.claudeMDDistilledContent.isEmpty,
+                       "provider must be called once when constitutionContent has no prior distillation")
+        XCTAssertFalse(engine.constitutionDistilledContent.isEmpty,
                        "distilled content must be stored after provider call")
     }
 
-    func test_refreshDistilledClaudeMD_does_not_call_provider_when_hash_matches() async {
+    func test_refreshDistilledConstitution_does_not_call_provider_when_hash_matches() async {
         let engine = AgenticEngine()
         let provider = MockProvider(response: "DISTILLED:v2")
-        let content = "A known CLAUDE.md body"
-        engine.claudeMDContent = content
+        let content = "A known constitution.md body"
+        engine.constitutionContent = content
 
         // First call — distills and stores hash.
-        await engine.refreshDistilledClaudeMD(using: provider)
+        await engine.refreshDistilledConstitution(using: provider)
         XCTAssertEqual(provider.callCount, 1)
 
         // Second call with identical content — hash matches, provider must NOT be called again.
-        await engine.refreshDistilledClaudeMD(using: provider)
+        await engine.refreshDistilledConstitution(using: provider)
         XCTAssertEqual(provider.callCount, 1,
-                       "provider must not be called again when claudeMDContent is unchanged")
+                       "provider must not be called again when constitutionContent is unchanged")
     }
 
-    func test_refreshDistilledClaudeMD_re_distills_when_content_changes() async {
+    func test_refreshDistilledConstitution_re_distills_when_content_changes() async {
         let engine = AgenticEngine()
         let provider = MockProvider(response: "DISTILLED")
-        engine.claudeMDContent = "Original content"
-        await engine.refreshDistilledClaudeMD(using: provider)
+        engine.constitutionContent = "Original content"
+        await engine.refreshDistilledConstitution(using: provider)
 
-        engine.claudeMDContent = "Updated content with new instructions"
-        await engine.refreshDistilledClaudeMD(using: provider)
+        engine.constitutionContent = "Updated content with new instructions"
+        await engine.refreshDistilledConstitution(using: provider)
 
         XCTAssertEqual(provider.callCount, 2,
-                       "provider must be called again when claudeMDContent changes")
+                       "provider must be called again when constitutionContent changes")
     }
 
-    func test_refreshDistilledClaudeMD_noOp_when_content_empty() async {
+    func test_refreshDistilledConstitution_noOp_when_content_empty() async {
         let engine = AgenticEngine()
         let provider = MockProvider(response: "should not be called")
-        engine.claudeMDContent = ""
+        engine.constitutionContent = ""
 
-        await engine.refreshDistilledClaudeMD(using: provider)
+        await engine.refreshDistilledConstitution(using: provider)
 
         XCTAssertEqual(provider.callCount, 0,
-                       "provider must not be called when claudeMDContent is empty")
+                       "provider must not be called when constitutionContent is empty")
     }
 
     // MARK: - buildStablePrefix with compression enabled
@@ -81,7 +81,7 @@ final class InstructionDistillationTests: XCTestCase {
         defer { AppSettings.shared.promptCompressionEnabled = false }
 
         let engine = AgenticEngine()
-        // No claudeMDContent set — distilled core prompt is the only compression target.
+        // No constitutionContent set — distilled core prompt is the only compression target.
         let prefix = engine.buildStablePrefix()
 
         XCTAssertTrue(prefix.contains(AgenticEngine.distilledCoreSystemPrompt),
@@ -100,35 +100,35 @@ final class InstructionDistillationTests: XCTestCase {
                       "stable prefix must contain the original core prompt when compression is disabled")
     }
 
-    func test_buildStablePrefix_uses_distilled_claudeMD_when_available_and_enabled() async {
+    func test_buildStablePrefix_uses_distilled_constitution_when_available_and_enabled() async {
         AppSettings.shared.promptCompressionEnabled = true
         defer { AppSettings.shared.promptCompressionEnabled = false }
 
         let engine = AgenticEngine()
         let provider = MockProvider(response: "COMPRESSED_MD")
-        engine.claudeMDContent = "A very long CLAUDE.md with extensive prose instructions..."
+        engine.constitutionContent = "A very long constitution.md with extensive prose instructions..."
 
-        await engine.refreshDistilledClaudeMD(using: provider)
+        await engine.refreshDistilledConstitution(using: provider)
         let prefix = engine.buildStablePrefix()
 
         XCTAssertTrue(prefix.contains("COMPRESSED_MD"),
-                      "stable prefix must use the distilled CLAUDE.md when compression is enabled and distillation is ready")
-        XCTAssertFalse(prefix.contains("A very long CLAUDE.md"),
-                       "stable prefix must not include the original CLAUDE.md when a distilled version is available")
+                      "stable prefix must use the distilled constitution.md when compression is enabled and distillation is ready")
+        XCTAssertFalse(prefix.contains("A very long constitution.md"),
+                       "stable prefix must not include the original constitution.md when a distilled version is available")
     }
 
-    func test_buildStablePrefix_falls_back_to_original_claudeMD_when_distillation_not_run() {
+    func test_buildStablePrefix_falls_back_to_original_constitution_when_distillation_not_run() {
         AppSettings.shared.promptCompressionEnabled = true
         defer { AppSettings.shared.promptCompressionEnabled = false }
 
         let engine = AgenticEngine()
-        engine.claudeMDContent = "Original CLAUDE.md content"
-        // No call to refreshDistilledClaudeMD — distilledContent is empty.
+        engine.constitutionContent = "Original constitution.md content"
+        // No call to refreshDistilledConstitution — distilledContent is empty.
 
         let prefix = engine.buildStablePrefix()
 
-        XCTAssertTrue(prefix.contains("Original CLAUDE.md content"),
-                      "must fall back to original CLAUDE.md when distillation has not yet run")
+        XCTAssertTrue(prefix.contains("Original constitution.md content"),
+                      "must fall back to original constitution.md when distillation has not yet run")
     }
 
     // MARK: - AppSettings round-trip

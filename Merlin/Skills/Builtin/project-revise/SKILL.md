@@ -20,9 +20,9 @@ User says any of:
 - **Add an idea** — append a new entry to `vision.md`'s `## Active` section.
 - **Defer an idea** — move an entry from `## Active` to `## Deferred`, adding a
   "reconsider when" note.
-- **Promote an idea** — move an `## Active` entry into `architecture.md` as a committed
+- **Promote an idea** — move an `## Active` entry into `spec.md` as a committed
   design decision; remove it from `vision.md`. From there it follows the pipeline:
-  `architecture.md → phases/ → code`.
+  `spec.md → tasks/ → code`.
 Vision edits are committed in the same batch commit as other revision findings.
 
 1. **Run scan**: Call `DisciplineEngine.scan(projectPath: projectPath)`.
@@ -36,7 +36,7 @@ Vision edits are committed in the same batch commit as other revision findings.
    - Suggested action
 
 3. **For each finding, prompt for action**:
-   - **Accept proposed patch** — apply the suggested fix. For phase-drift findings,
+   - **Accept proposed patch** — apply the suggested fix. For task-drift findings,
      either update the phase NNb file or create a phase NNc addendum.
    - **Modify** — open the finding in context; user edits; validate and apply.
    - **Dismiss with rationale** — call `DisciplineEngine.dismiss(findingID:rationale:)`.
@@ -56,7 +56,7 @@ Vision edits are committed in the same batch commit as other revision findings.
 
 ## Output
 
-- Modified phase files (addendum phases or updated NNb files).
+- Modified task files (addendum phases or updated NNb files).
 - New manual sections in doc files.
 - Dismissed findings logged to `.merlin/override-log.jsonl`.
 - A single git commit per revision batch (never per individual finding).

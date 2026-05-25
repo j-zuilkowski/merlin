@@ -1,6 +1,6 @@
 import XCTest
 
-/// Phase 302a - failing tests: the app Info.plist must declare the Speech and
+/// Task 302a - failing tests: the app Info.plist must declare the Speech and
 /// microphone usage strings required for voice dictation under hardened runtime.
 final class InfoPlistPermissionsTests: XCTestCase {
 

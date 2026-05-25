@@ -64,7 +64,7 @@ final class DevGuideGeneratorTests: XCTestCase {
 
         ## Architecture
 
-        See architecture.md for the full design.
+        See spec.md for the full design.
         """
         try existingProse.write(to: guide, atomically: true, encoding: .utf8)
 
@@ -74,7 +74,7 @@ final class DevGuideGeneratorTests: XCTestCase {
         let updated = try String(contentsOf: guide, encoding: .utf8)
         XCTAssertTrue(updated.contains("This guide explains how to contribute."),
                       "Prose outside markers should be preserved")
-        XCTAssertTrue(updated.contains("See architecture.md"),
+        XCTAssertTrue(updated.contains("See spec.md"),
                       "Tail prose should be preserved")
         XCTAssertFalse(updated.contains("old content"),
                        "Old mechanical content should be replaced")

@@ -2,7 +2,7 @@
 
 ## Objective
 
-Five TDD phase pairs (200a through 204b) that address the three open bugs and close all
+Five TDD task pairs (200a through 204b) that address the three open bugs and close all
 remaining local feature gaps vs. Claude Code. All work follows strict TDD: write failing
 tests first (a-phase), commit, implement until green (b-phase), commit again.
 
@@ -12,22 +12,22 @@ tests first (a-phase), commit, implement until green (b-phase), commit again.
 - `SWIFT_STRICT_CONCURRENCY=complete` — zero warnings, zero errors required
 - No third-party Swift packages in production or test targets
 - Non-sandboxed macOS app
-- Phase files (source of truth): ~/Documents/localProject/merlin/phases/
+- Task files (source of truth): ~/Documents/localProject/merlin/tasks/
 
 ## Phases Overview
 
 | Phase | File | What it does |
 |-------|------|--------------|
-| 200a  | phase-200a-spawn-agent-error-isolation-tests.md | Failing tests for unknown agent warning + subagent failure isolation |
-| 200b  | phase-200b-spawn-agent-error-isolation.md | Fix BUG-001: `AgentRegistry.knownNames()`, `.systemNote` on unknown agent, `do-catch` in TaskGroup |
-| 201a  | phase-201a-compact-and-context-recovery-tests.md | Failing tests for `/compact` + `ProviderError.isContextLengthExceeded` + engine retry |
-| 201b  | phase-201b-compact-and-context-recovery.md | Fix BUG-002 + BUG-003: `/compact` slash, context-length auto-compact-retry |
-| 202a  | phase-202a-scroll-lock-tests.md | Failing tests for `ConversationWebView.Coordinator` `scrollLock` bridge message |
-| 202b  | phase-202b-scroll-lock.md | JS→Swift scroll-lock bridge, resume banner in `ChatView` |
-| 203a  | phase-203a-rewind-checkpoint-tests.md | Failing tests for `CheckpointStore` + `RewindCommand` |
-| 203b  | phase-203b-rewind-checkpoint.md | `/rewind` checkpoint save + restore |
-| 204a  | phase-204a-btw-overlay-tests.md | Failing tests for `BtwSession` |
-| 204b  | phase-204b-btw-overlay.md | `/btw` floating overlay with isolated provider call |
+| 200a  | task-200a-spawn-agent-error-isolation-tests.md | Failing tests for unknown agent warning + subagent failure isolation |
+| 200b  | task-200b-spawn-agent-error-isolation.md | Fix BUG-001: `AgentRegistry.knownNames()`, `.systemNote` on unknown agent, `do-catch` in TaskGroup |
+| 201a  | task-201a-compact-and-context-recovery-tests.md | Failing tests for `/compact` + `ProviderError.isContextLengthExceeded` + engine retry |
+| 201b  | task-201b-compact-and-context-recovery.md | Fix BUG-002 + BUG-003: `/compact` slash, context-length auto-compact-retry |
+| 202a  | task-202a-scroll-lock-tests.md | Failing tests for `ConversationWebView.Coordinator` `scrollLock` bridge message |
+| 202b  | task-202b-scroll-lock.md | JS→Swift scroll-lock bridge, resume banner in `ChatView` |
+| 203a  | task-203a-rewind-checkpoint-tests.md | Failing tests for `CheckpointStore` + `RewindCommand` |
+| 203b  | task-203b-rewind-checkpoint.md | `/rewind` checkpoint save + restore |
+| 204a  | task-204a-btw-overlay-tests.md | Failing tests for `BtwSession` |
+| 204b  | task-204b-btw-overlay.md | `/btw` floating overlay with isolated provider call |
 
 ## Key Files
 
@@ -59,7 +59,7 @@ tests first (a-phase), commit, implement until green (b-phase), commit again.
 ## Phase-by-Phase Requirements
 
 ### Phase 200a — SpawnAgent Error Isolation Tests (failing)
-Full spec: `phases/phase-200a-spawn-agent-error-isolation-tests.md`
+Full spec: `tasks/task-200a-spawn-agent-error-isolation-tests.md`
 
 Write `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` exactly as specified.
 4 tests:
@@ -72,7 +72,7 @@ Write `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` exactly as specifie
 Verify BUILD FAILED (symbols don't exist). Commit: `Phase 200a — SpawnAgentErrorIsolationTests (failing)`
 
 ### Phase 200b — SpawnAgent Error Isolation
-Full spec: `phases/phase-200b-spawn-agent-error-isolation.md`
+Full spec: `tasks/task-200b-spawn-agent-error-isolation.md`
 
 1. Add `knownNames() -> Set<String>` to `AgentRegistry`
 2. In `handleSpawnAgents`: when `requestedDefinition == nil`, emit `.systemNote` warning naming the unknown agent and listing known agents
@@ -85,7 +85,7 @@ Verify BUILD SUCCEEDED + all 200a tests pass. Commit: `Phase 200b — SpawnAgent
 ---
 
 ### Phase 201a — /compact + Context-Length Recovery Tests (failing)
-Full spec: `phases/phase-201a-compact-and-context-recovery-tests.md`
+Full spec: `tasks/task-201a-compact-and-context-recovery-tests.md`
 
 Write two test files:
 - `MerlinTests/Unit/ContextLengthRecoveryTests.swift` — 5 tests for `ProviderError.isContextLengthExceeded` and engine retry behaviour
@@ -94,7 +94,7 @@ Write two test files:
 Verify BUILD FAILED. Commit: `Phase 201a — ContextLengthRecoveryTests + CompactSlashCommandTests (failing)`
 
 ### Phase 201b — /compact + Context-Length Recovery
-Full spec: `phases/phase-201b-compact-and-context-recovery.md`
+Full spec: `tasks/task-201b-compact-and-context-recovery.md`
 
 1. Add `isContextLengthExceeded: Bool` to `ProviderError` (HTTP 400 + body substring match)
 2. In `AgenticEngine.runLoop` catch block: intercept `isContextLengthExceeded`, call `forceCompaction()`, emit systemNote, retry once; second failure surfaces as error
@@ -108,7 +108,7 @@ Verify BUILD SUCCEEDED + all tests pass. Commit: `Phase 201b — /compact slash 
 ---
 
 ### Phase 202a — Scroll Lock Tests (failing)
-Full spec: `phases/phase-202a-scroll-lock-tests.md`
+Full spec: `tasks/task-202a-scroll-lock-tests.md`
 
 Write `MerlinTests/Unit/ScrollLockTests.swift`. 5 tests for `ConversationWebView.Coordinator`:
 - `test_scrollLock_true_message_sets_locked`
@@ -122,7 +122,7 @@ Uses `simulateBridgeMessage` extension on `Coordinator` that calls `handleBridge
 Verify BUILD FAILED. Commit: `Phase 202a — ScrollLockTests (failing)`
 
 ### Phase 202b — Scroll Lock
-Full spec: `phases/phase-202b-scroll-lock.md`
+Full spec: `tasks/task-202b-scroll-lock.md`
 
 1. In `ConversationHTMLRenderer` JS scroll listener: post `{type:'scrollLock', locked:'true'/'false'}` only when `_userScrolled` changes value. Add `merlin.resumeAutoScroll()` to the JS `merlin` object.
 2. In `ConversationWebView`: add `onScrollLockChange: (Bool) -> Void` property; update `makeCoordinator()`; add `handleBridgeBody` extracting switch logic from `userContentController`; add `scrollLock` case routing to `onScrollLockChange`; add `resumeAutoScroll()` method
@@ -136,7 +136,7 @@ Verify BUILD SUCCEEDED + all ScrollLockTests pass. Commit: `Phase 202b — Scrol
 ---
 
 ### Phase 203a — /rewind Checkpoint Tests (failing)
-Full spec: `phases/phase-203a-rewind-checkpoint-tests.md`
+Full spec: `tasks/task-203a-rewind-checkpoint-tests.md`
 
 Write two test files:
 - `MerlinTests/Unit/CheckpointStoreTests.swift` — 10 tests for `CheckpointStore` and `SessionCheckpoint`
@@ -145,7 +145,7 @@ Write two test files:
 Verify BUILD FAILED. Commit: `Phase 203a — CheckpointStoreTests + RewindSlashCommandTests (failing)`
 
 ### Phase 203b — /rewind Checkpoint Restoration
-Full spec: `phases/phase-203b-rewind-checkpoint.md`
+Full spec: `tasks/task-203b-rewind-checkpoint.md`
 
 1. Write `Merlin/Sessions/SessionCheckpoint.swift` — `struct`, `Sendable`, `Identifiable`
 2. Write `Merlin/Sessions/CheckpointStore.swift` — `@MainActor final class`, capped at 50, `save/restore/clear`
@@ -158,7 +158,7 @@ Verify BUILD SUCCEEDED + all tests pass. Commit: `Phase 203b — /rewind checkpo
 ---
 
 ### Phase 204a — /btw Overlay Tests (failing)
-Full spec: `phases/phase-204a-btw-overlay-tests.md`
+Full spec: `tasks/task-204a-btw-overlay-tests.md`
 
 Write `MerlinTests/Unit/BtwSessionTests.swift`. 8 tests for `BtwSession`:
 - `ask()` calls provider exactly once
@@ -175,7 +175,7 @@ Extend `MockProvider` with `response: String` and `delay: TimeInterval` paramete
 Verify BUILD FAILED. Commit: `Phase 204a — BtwSessionTests (failing)`
 
 ### Phase 204b — /btw Side-Question Overlay
-Full spec: `phases/phase-204b-btw-overlay.md`
+Full spec: `tasks/task-204b-btw-overlay.md`
 
 1. Extend `MockProvider` with `response:` and `delay:` init parameters
 2. Write `Merlin/Views/BtwSession.swift` — `@MainActor final class ObservableObject` with `ask(question:provider:)` using an isolated `[Message]` (never touches `ContextManager`); `reset()`

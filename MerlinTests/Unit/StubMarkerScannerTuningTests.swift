@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 318a — failing tests for StubMarkerScanner tuning.
+/// Task 318a — failing tests for StubMarkerScanner tuning.
 final class StubMarkerScannerTuningTests: XCTestCase {
 
     private func makeTmpProject(file: String, content: String) throws -> URL {

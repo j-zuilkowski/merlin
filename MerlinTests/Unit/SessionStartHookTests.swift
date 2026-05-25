@@ -10,7 +10,7 @@ final class SessionStartHookTests: XCTestCase {
         try FileManager.default.createDirectory(
             at: dir.appendingPathComponent(".merlin"), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
-            at: dir.appendingPathComponent("phases"), withIntermediateDirectories: true)
+            at: dir.appendingPathComponent("tasks"), withIntermediateDirectories: true)
         return dir
     }
 
@@ -43,7 +43,7 @@ final class SessionStartHookTests: XCTestCase {
         let queue = PendingAttentionQueue(storePath: storePath)
         let now = Date()
         await queue.add(Finding(
-            id: UUID(), category: .phaseDrift, severity: .block,
+            id: UUID(), category: .taskDrift, severity: .block,
             summary: "ProviderBudget missing", detail: "Red drift finding",
             suggestedAction: "Restore symbol", createdAt: now, lastSeenAt: now
         ))

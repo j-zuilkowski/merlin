@@ -13,28 +13,28 @@ final class AppSettingsCAGTests: XCTestCase {
     func testCAGSettingsDefaults() {
         let settings = makeSettings()
         XCTAssertFalse(settings.cagEnabled)
-        XCTAssertTrue(settings.cagPinClaudeMD)
-        XCTAssertEqual(settings.cagPinnedPhaseDocs, [])
+        XCTAssertTrue(settings.cagPinConstitution)
+        XCTAssertEqual(settings.cagPinnedTaskDocs, [])
     }
 
     func testCAGSettingsRoundTrip() throws {
         let settings = makeSettings()
         settings.cagEnabled = true
-        settings.cagPinClaudeMD = false
-        settings.cagPinnedPhaseDocs = ["phases/phase-341a-cag-foundation-tests.md"]
+        settings.cagPinConstitution = false
+        settings.cagPinnedTaskDocs = ["tasks/task-341a-cag-foundation-tests.md"]
 
         try settings.save()
 
         let disk = try String(contentsOf: settings.configURL, encoding: .utf8)
         XCTAssertTrue(disk.contains("[cag]"))
         XCTAssertTrue(disk.contains("enabled = true"))
-        XCTAssertTrue(disk.contains("pin_claude_md = false"))
-        XCTAssertTrue(disk.contains("pinned_phase_docs = [\"phases/phase-341a-cag-foundation-tests.md\"]"))
+        XCTAssertTrue(disk.contains("pin_constitution = false"))
+        XCTAssertTrue(disk.contains("pinned_task_docs = [\"tasks/task-341a-cag-foundation-tests.md\"]"))
 
         let reloaded = AppSettings(configURL: settings.configURL)
         XCTAssertTrue(reloaded.cagEnabled)
-        XCTAssertFalse(reloaded.cagPinClaudeMD)
-        XCTAssertEqual(reloaded.cagPinnedPhaseDocs, ["phases/phase-341a-cag-foundation-tests.md"])
+        XCTAssertFalse(reloaded.cagPinConstitution)
+        XCTAssertEqual(reloaded.cagPinnedTaskDocs, ["tasks/task-341a-cag-foundation-tests.md"])
     }
 
     func testCAGSettingsLoadFromTomlSection() {
@@ -42,13 +42,13 @@ final class AppSettingsCAGTests: XCTestCase {
         settings.applyTOML("""
         [cag]
         enabled = true
-        pin_claude_md = false
-        pinned_phase_docs = ["phases/phase-341a-cag-foundation-tests.md"]
+        pin_constitution = false
+        pinned_task_docs = ["tasks/task-341a-cag-foundation-tests.md"]
         """)
 
         XCTAssertTrue(settings.cagEnabled)
-        XCTAssertFalse(settings.cagPinClaudeMD)
-        XCTAssertEqual(settings.cagPinnedPhaseDocs, ["phases/phase-341a-cag-foundation-tests.md"])
+        XCTAssertFalse(settings.cagPinConstitution)
+        XCTAssertEqual(settings.cagPinnedTaskDocs, ["tasks/task-341a-cag-foundation-tests.md"])
     }
 
     func testLlamaCppRuntimeSettingsRoundTrip() throws {

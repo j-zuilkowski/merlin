@@ -13,7 +13,7 @@ final class PendingAttentionQueueTests: XCTestCase {
 
     private func makeFinding(
         severity: Severity = .nudge,
-        category: FindingCategory = .phaseDrift,
+        category: FindingCategory = .taskDrift,
         summary: String = "Test finding"
     ) -> Finding {
         Finding(

@@ -1,7 +1,7 @@
 // LiveSession — wires all per-session subsystems around an AppState.
 //
 // Created by SessionManager for each project window session. Responsibilities:
-//   • Initialises AppState with the correct project path and CLAUDE.md content
+//   • Initialises AppState with the correct project path and constitution.md content
 //   • Starts MCPBridge (launches MCP servers, registers their tools)
 //   • Starts MemoryEngine idle timer (generates summaries on inactivity)
 //
@@ -65,8 +65,8 @@ final class LiveSession: ObservableObject, Identifiable {
         self.appState = AppState(projectPath: projectRef.path, activeDomainIDs: self.activeDomainIDs)
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry
-        self.appState.engine.claudeMDContent = CLAUDEMDLoader.systemPromptBlock(projectPath: projectRef.path)
-        self.appState.engine.memoriesContent = CLAUDEMDLoader.defaultMemoriesBlock()
+        self.appState.engine.constitutionContent = ConstitutionLoader.systemPromptBlock(projectPath: projectRef.path)
+        self.appState.engine.memoriesContent = ConstitutionLoader.defaultMemoriesBlock()
         self.appState.engine.standingInstructions = AppSettings.shared.standingInstructions
         appState.engine.permissionMode = permissionMode
         appState.engine.toolRouter.stagingBuffer = stagingBufferStorage

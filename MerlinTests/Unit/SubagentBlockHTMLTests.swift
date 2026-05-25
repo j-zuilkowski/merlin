@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 295a — failing tests for subagent-block HTML rendering + ChatViewModel wiring.
+/// Task 295a — failing tests for subagent-block HTML rendering + ChatViewModel wiring.
 @MainActor
 final class SubagentBlockHTMLTests: XCTestCase {
 

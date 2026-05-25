@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 292a — failing tests for user-prompt discipline wiring.
+/// Task 292a — failing tests for user-prompt discipline wiring.
 ///
 /// `UserPromptDisciplineChecker` exists and is unit-tested, but the agent loop never
 /// calls it. These tests pin that `AgenticEngine.send` runs the check after
@@ -16,7 +16,7 @@ final class UserPromptDisciplineWiringTests: XCTestCase {
         return dir
     }
 
-    func testFeatureRequestWithoutPhaseFileEmitsDisciplineNote() async throws {
+    func testFeatureRequestWithoutTaskFileEmitsDisciplineNote() async throws {
         let project = makeTmpProject()
         defer { try? FileManager.default.removeItem(at: project) }
         let provider = MockProvider(responses: [MockLLMResponse.text("ok")])
@@ -28,7 +28,7 @@ final class UserPromptDisciplineWiringTests: XCTestCase {
             if case .systemNote(let n) = event { notes.append(n) }
         }
         XCTAssertTrue(notes.contains { $0.contains("TDD discipline") },
-                      "a feature request with no phase NNa file must emit a discipline note")
+                      "a feature request with no task NNa file must emit a discipline note")
     }
 
     func testBugFixPromptEmitsNoDisciplineNote() async throws {

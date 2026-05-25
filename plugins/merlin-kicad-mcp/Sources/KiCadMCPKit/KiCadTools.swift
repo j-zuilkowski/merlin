@@ -76,7 +76,7 @@ enum KiCadTools {
         return string
     }
 
-    // MARK: - Phase 04: version gate
+    // MARK: - Task 04: version gate
 
     static let checkVersion = MCPTool(
         name: "kicad_check_version",
@@ -115,7 +115,7 @@ enum KiCadTools {
                       extra: ["kicad_cli_path": path, "version_output": versionOutput])
     }
 
-    // MARK: - Phase 07: schematic ingestion
+    // MARK: - Task 07: schematic ingestion
 
     static let ingestSchematic = MCPTool(
         name: "kicad_ingest_schematic",
@@ -192,7 +192,7 @@ enum KiCadTools {
                       artifacts: artifact.map { [$0] } ?? [])
     }
 
-    // MARK: - Phase 08: components & libraries
+    // MARK: - Task 08: components & libraries
 
     static let selectComponents = MCPTool(
         name: "kicad_select_components",
@@ -245,7 +245,7 @@ enum KiCadTools {
                       extra: ["component_matrix_path": matrixPath])
     }
 
-    // MARK: - Phase 09: project compile + board setup
+    // MARK: - Task 09: project compile + board setup
 
     static let compileProject = MCPTool(
         name: "kicad_compile_project",
@@ -310,7 +310,7 @@ enum KiCadTools {
                       artifacts: artifact.map { [$0] } ?? [])
     }
 
-    // MARK: - Phase 10: placement + routing
+    // MARK: - Task 10: placement + routing
 
     static let placeComponents = MCPTool(
         name: "kicad_place_components",
@@ -365,7 +365,7 @@ enum KiCadTools {
                       extra: ["project_path": projectPath])
     }
 
-    // MARK: - Phase 11: electrical verification
+    // MARK: - Task 11: electrical verification
 
     static let runERC = MCPTool(
         name: "kicad_run_erc",
@@ -409,7 +409,7 @@ enum KiCadTools {
                       extra: ["project_path": projectPath])
     }
 
-    // MARK: - Phase 12: simulation
+    // MARK: - Task 12: simulation
 
     static let runSpice = MCPTool(
         name: "kicad_run_spice",
@@ -448,7 +448,7 @@ enum KiCadTools {
                       extra: ["measurements_path": measurements])
     }
 
-    // MARK: - Phase 13: visual inspection
+    // MARK: - Task 13: visual inspection
 
     static let visualInspect = MCPTool(
         name: "kicad_visual_inspect",
@@ -472,7 +472,7 @@ enum KiCadTools {
                       extra: ["project_path": projectPath])
     }
 
-    // MARK: - Phase 14: fabrication + vendor
+    // MARK: - Task 14: fabrication + vendor
 
     static let exportFab = MCPTool(
         name: "kicad_export_fab",

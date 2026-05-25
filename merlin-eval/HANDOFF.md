@@ -13,13 +13,13 @@ reasoning where missing things is the failure mode). Sonnet is acceptable for W5
 
 **You author phase documents; the Codex app executes them.** Do NOT directly
 implement, build, or commit Merlin *source* for multi-phase work. You write
-`phases/phase-NNa-*.md` (failing tests) and `phase-NNb-*.md` (implementation) as TDD
+`tasks/task-NNa-*.md` (failing tests) and `task-NNb-*.md` (implementation) as TDD
 pairs; the user runs them through Codex. You MAY directly: do research/audits, read
-code, run read-only commands, edit phase docs and spec docs.
+code, run read-only commands, edit task docs and spec docs.
 
 - Project: `~/Documents/localProject/merlin` — Swift 5.10, macOS 14+, SwiftUI, xcodegen
   (`project.yml` is source of truth), `SWIFT_STRICT_CONCURRENCY=complete`, non-sandboxed.
-- The repo's `CLAUDE.md` holds the binding rules. Read it.
+- The repo's `constitution.md` holds the binding rules. Read it.
 - Git: commit locally only; **never push** without an explicit "push"; **never commit**
   without an explicit request.
 - Next free phase number: **320**.
@@ -71,7 +71,7 @@ W4 must finish before W5 (user instruction).
 - `Merlin.xcodeproj/project.pbxproj`, `.../MerlinTests-Live.xcscheme` — xcodegen-generated;
   `.xcodeproj/` is gitignored but these were tracked before the ignore rule. A one-time
   `git rm -r --cached Merlin.xcodeproj` would stop the drift permanently — only if asked.
-- `phases/PASTE-LIST.md` — has uncommitted entries for phases 313–319. Commit it (with
+- `tasks/PASTE-LIST.md` — has uncommitted entries for phases 313–319. Commit it (with
   the user's OK) or let it ride with W4's first commit.
 
 ---
@@ -79,7 +79,7 @@ W4 must finish before W5 (user instruction).
 ## W4 — the trace-the-calls audit (start here)
 
 A deep audit of the live codebase. **Research only** — produce a written report; real
-findings become phase docs (320+) for Codex. Do it directly.
+findings become task docs (320+) for Codex. Do it directly.
 
 ### Scope — follow the code, do not trust green builds
 - Every public type → a real call site (is it actually used, or dead?).
@@ -96,16 +96,16 @@ findings become phase docs (320+) for Codex. Do it directly.
    "Accept & Merge" toolbar buttons have empty `{ }` actions. Dead controls — they
    carry accessibility IDs (look wired) but do nothing. Wire them to the worker-diff
    staging buffer's reject-all / accept-and-merge.
-2. **`architecture.md`** — contains `versionBumpCandidate`, a stale reference: phase 301
-   deleted `FindingCategory.versionBumpCandidate` but missed `architecture.md`. Also
+2. **`spec.md`** — contains `versionBumpCandidate`, a stale reference: phase 301
+   deleted `FindingCategory.versionBumpCandidate` but missed `spec.md`. Also
    `domain` / `shape` / `signature` are flagged there — classify illustrative vs. stale.
 3. **`phaseDrift` — 214 findings** ("public symbol not declared in any phase NNb file").
-   Triage: genuine drift vs. `PhaseScanner` signature-normalization noise. Run
+   Triage: genuine drift vs. `TaskScanner` signature-normalization noise. Run
    `merlin-discipline scan` to get the live list.
 
 ### Deliverable
 A written audit report (suggest `merlin-eval/TRACE-AUDIT.md`), every finding classified
-live / dead / partially-wired. Then author phase docs (320+) for the real findings;
+live / dead / partially-wired. Then author task docs (320+) for the real findings;
 the user runs them through Codex. Re-run `merlin-discipline scan` afterward to confirm.
 
 ---
@@ -117,12 +117,12 @@ suite: `README.md`, `BLOCKED.md`, `SURFACE-INVENTORY.md`, `scenarios/S1-*.md …
 S1–S6 are capability scenarios; S7–S17 are surface-coverage scenarios. S7–S11 each
 carry an "Accessibility-ID coverage" preflight note (that is W3 — fill AX-ID gaps as
 each scenario is authored). W5 = build the fixtures/manifests/rubrics, author the
-`MerlinE2ETests` harness phase docs (the `EvalHarness` already exists, phase 303), run
+`MerlinE2ETests` harness task docs (the `EvalHarness` already exists, phase 303), run
 the suite, log results to `merlin-eval/results/`.
 
 ---
 
-## Verification commands (from CLAUDE.md, post-phase-312)
+## Verification commands (from constitution.md, post-task-312)
 
 ```bash
 xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
@@ -169,5 +169,5 @@ fail signing.
 **Symptom of an unsigned (ad-hoc) test host:** `pristineFixtureCopy` times out
 after 600s with `EvalShell timeout`, no LM Studio activity, telemetry shows the
 test method never entered the agentic loop. The fix is always: rebuild with
-signing, re-toggle the FDA entry. See `phases/phase-239b` Fixes for the full
+signing, re-toggle the FDA entry. See `tasks/task-239b` Fixes for the full
 post-mortem.

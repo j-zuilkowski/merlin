@@ -16,13 +16,13 @@ its registration site to runtime; the 220 scanner findings triaged group by grou
 | # | Finding | Class | Action |
 |---|---|---|---|
 | F1 | `WorkerDiffView` "Reject All" / "Accept & Merge" buttons have empty `{ }` actions | **DEAD control** | Phase 320a/320b |
-| F2 | `architecture.md` — stale `FindingCategory.versionBumpCandidate` + nonexistent `KAGTripleSource.domain` | **STALE doc** | Fixed directly (this session) |
+| F2 | `spec.md` — stale `FindingCategory.versionBumpCandidate` + nonexistent `KAGTripleSource.domain` | **STALE doc** | Fixed directly (this session) |
 | F3 | `DocReferenceGraph.extractEnumCaseNames` flags identifiers inside `//` comments | **Scanner false positive** | Phase 321a/321b |
-| F4 | `PhaseScanner` reads only `phase-NNb` docs — misses the `a`-tier "New surface" blocks (200 docs) + `diag-*` | **Scanner blind spot** | Phase 323a/323b |
+| F4 | `TaskScanner` reads only `task-NNb` docs — misses the `a`-tier "New surface" blocks (200 docs) + `diag-*` | **Scanner blind spot** | Phase 323a/323b |
 | F5 | `TelemetryEmitter.setSession/setTurn/setLoop` — no callers anywhere | **DEAD code** | Phase 322 |
 | F6 | `.environmentObject(sessionManager)` injected with no consumer (×2) | **Harmless over-injection** | No action |
 | F7 | Phase 319b left `DocReferenceDanglingTests` (2 of 3 tests) failing since it landed | **Test rot** | Folded into phase 321b — see §8 |
-| F8 | Phase 323 exposed `PhaseScanner`'s symbol matching as too crude — qualified names, enum cases, non-symbol backtick content (211 → 981 nudges) | **Scanner accuracy** | Phase 324a/324b — see §9 |
+| F8 | Phase 323 exposed `TaskScanner`'s symbol matching as too crude — qualified names, enum cases, non-symbol backtick content (211 → 981 nudges) | **Scanner accuracy** | Phase 324a/324b — see §9 |
 | — | `@EnvironmentObject` injection wiring (23 consumers) | **VERIFIED CLEAN** | None — see §1 |
 | — | `DisciplineEngine.scan()` at `AppState.swift:286` | **VERIFIED LIVE** | None — see §2 |
 | — | KAG subsystem (8 public types) | **VERIFIED LIVE** | None — see §4 |
@@ -65,7 +65,7 @@ to a `.environmentObject(...)` injection on a reachable ancestor in the live vie
   scene at `MerlinApp.swift:44`; the `.sheet` at `SchedulerView.swift:41` re-injects it. ✓
 - `appState` consumers `MemoryBrowserView`, `PerformanceDashboardView` inherit from `:21`. ✓
 
-**Verdict: CLEAN.** Every consumer has an injecting ancestor. No phase doc needed.
+**Verdict: CLEAN.** Every consumer has an injecting ancestor. No task doc needed.
 
 ---
 
@@ -136,60 +136,60 @@ confirmed zero callers in any target). `diag-01b` — the rebuild source for
 
 ## §5 — `phaseDrift` triage (214 findings)
 
-Every flagged symbol was checked against the source tree and the `phases/` directory.
+Every flagged symbol was checked against the source tree and the `tasks/` directory.
 **None of the 214 indicates dead, broken, or mis-wired code.** Breakdown:
 
 | Group | Count | Root cause | Class |
 |---|---|---|---|
 | `AccessibilityID` enum + ~155 `let …Button`/`…Field` constants | ~157 | introduced in `diag-07b-accessibility.md` | Scanner blind spot |
 | Telemetry types/methods | ~22 | introduced in `diag-01b-telemetry-emitter.md` | Scanner blind spot |
-| KAG types/methods | ~30 | `phase-19{0,1,2}b` carry no "New surface" block | Phase-doc format gap |
+| KAG types/methods | ~30 | `task-19{0,1,2}b` carry no "New surface" block | Phase-doc format gap |
 | `let shared` ×3 | 3 | generic singleton accessor name | Normalization noise |
 | `(block) git add` | 1 | a back-ticked git command parsed as a "surface" | Parser false positive |
 
-**F4 — `PhaseScanner` reads the wrong doc tier.** `PhaseScanner.extractDeclaredSurfaces`
-(`PhaseScanner.swift:91-97`) only reads files matching the regex `phase-\d+b-`. But the
+**F4 — `TaskScanner` reads the wrong doc tier.** `TaskScanner.extractDeclaredSurfaces`
+(`TaskScanner.swift:91-97`) only reads files matching the regex `task-\d+b-`. But the
 `New surface introduced in phase` block — the only thing it harvests declared surfaces
-from — lives in the **`a` (tests) doc** per the `CLAUDE.md` template. A grep of `phases/`
-confirms it: **200 of 263 `phase-*a-*.md` carry the block versus 8 of 266
-`phase-*b-*.md`.** The `diag-*` series is excluded by the regex entirely. So the scanner
+from — lives in the **`a` (tests) doc** per the `constitution.md` template. A grep of `tasks/`
+confirms it: **200 of 263 `task-*a-*.md` carry the block versus 8 of 266
+`task-*b-*.md`.** The `diag-*` series is excluded by the regex entirely. So the scanner
 harvests ~9 docs' worth of declared surface out of ~200, `declaredNames` is nearly empty,
 and every `public` symbol it cannot match is flagged `orange`. (It also explains the zero
 `green`/`yellow` findings — there is almost nothing to match against.)
 
 All 214 are `nudge` severity (advisory, non-blocking) and none is a code defect — but a
-phase-drift scanner that is structurally blind across ~200 phases leaves the
-"phase files are the rebuild source of truth" invariant unverified, which is a real
-latent risk. **Phase 323 fixes it:** `PhaseScanner` reads every phase doc (`a`, `b`,
+task-drift scanner that is structurally blind across ~200 phases leaves the
+"task files are the rebuild source of truth" invariant unverified, which is a real
+latent risk. **Phase 323 fixes it:** `TaskScanner` reads every task doc (`a`, `b`,
 `diag-*`); and `DisciplineEngine` surfaces `red`/`yellow`/`orange` drift all as `.nudge`.
-The severity change is load-bearing — once the scanner can see 200 historical phase docs
+The severity change is load-bearing — once the scanner can see 200 historical task docs
 it will find genuine `red` drift (symbols declared long ago and since refactored away),
 and the old `red → .block` mapping would jam the live pre-commit gate on normal code
-evolution. After 323 lands, the residual orange/yellow/red is the *true* phase-doc drift
+evolution. After 323 lands, the residual orange/yellow/red is the *true* task-doc drift
 backlog — a triage task, surfaced rather than hidden.
 
 ---
 
-## §6 — `docStaleReference` triage (4 findings, all in `architecture.md`)
+## §6 — `docStaleReference` triage (4 findings, all in `spec.md`)
 
 `DocReferenceGraph.danglingReferences` flags an enum `case` inside a fenced code block
 whose name (≥4 chars) matches no source symbol.
 
-- **`versionBumpCandidate`** — `architecture.md:4933`, in the `enum FindingCategory`
+- **`versionBumpCandidate`** — `spec.md:4933`, in the `enum FindingCategory`
   code block. **GENUINE STALE:** phase 301 deleted `FindingCategory.versionBumpCandidate`;
   the doc block was missed. The block is also *missing* the three cases that exist today
   (`ungatedTarget`, `stubbedImplementation`, `unwiredComponent`).
-- **`domain`** — `architecture.md:622`, `case domain` in the `enum KAGTripleSource`
+- **`domain`** — `spec.md:622`, `case domain` in the `enum KAGTripleSource`
   example. **GENUINE STALE:** the shipped enum (`KAGTriple.swift`, phase 190b) has only
   `session` and `book`; `domain` was a design-doc aspiration never implemented.
-- **`shape`** — `architecture.md:4546`. **SCANNER FALSE POSITIVE:** the word `shape`
+- **`shape`** — `spec.md:4546`. **SCANNER FALSE POSITIVE:** the word `shape`
   appears inside the `//` comment on `case green // surface present, shape unchanged`.
   `extractEnumCaseNames` comma-splits the line *without stripping the `//` comment first*,
   so ` shape unchanged` is parsed as a second "case."
-- **`signature`** — `architecture.md:4547`. **SCANNER FALSE POSITIVE:** identical cause —
+- **`signature`** — `spec.md:4547`. **SCANNER FALSE POSITIVE:** identical cause —
   `case yellow // surface present, signature changed`.
 
-**Actions:** F2 (the two genuine stale refs) — `architecture.md` corrected directly this
+**Actions:** F2 (the two genuine stale refs) — `spec.md` corrected directly this
 session: `versionBumpCandidate` removed and the three real cases added; `KAGTripleSource`
 example's `case domain` removed and its inline `// .session | .book | .domain` comment
 fixed. F3 (the two false positives) — `DocReferenceGraph.extractEnumCaseNames` must strip
@@ -202,10 +202,10 @@ fixed. F3 (the two false positives) — `DocReferenceGraph.extractEnumCaseNames`
 **F6 — `.environmentObject(sessionManager)` over-injection.** `SessionManager` is injected
 at `FloatingWindowManager.swift:149` and `SideChatPane.swift:31` onto `ChatView`, but no
 view consumes it via `@EnvironmentObject`. Harmless (an unused environment object never
-crashes) — leave it, or drop the two lines as cosmetic cleanup. Not phase-worthy.
+crashes) — leave it, or drop the two lines as cosmetic cleanup. Not task-worthy.
 
 **`(block) git add` phaseDrift entry.** A back-ticked `git add …` command in some phase
-doc's bullet list is parsed by `PhaseScanner` as a declared surface named `git`. Cosmetic
+doc's bullet list is parsed by `TaskScanner` as a declared surface named `git`. Cosmetic
 parser false positive; subsumed by the F4 scanner work.
 
 ---
@@ -231,7 +231,7 @@ test classes, not a subset, so a future loose-check change cannot rot a sibling 
 
 ---
 
-## Phase docs authored (this session)
+## Task docs authored (this session)
 
 | Phase | Title | Kind | Verify with |
 |---|---|---|---|
@@ -240,16 +240,16 @@ test classes, not a subset, so a future loose-check change cannot rot a sibling 
 | 321a | `DocReferenceGraph` comment-stripping tests (failing) | runtime-failure | `test` |
 | 321b | `DocReferenceGraph.extractEnumCaseNames` strips `//` comments | implementation | `test` |
 | 322  | Remove 3 dead `TelemetryEmitter` setters (F5) | implementation (cleanup) | `build-for-testing` |
-| 323a | PhaseScanner doc-coverage + drift-severity tests (F4) | runtime-failure | `test` |
-| 323b | PhaseScanner reads all phase docs; drift is always a nudge (F4) | implementation | `test` |
-| 324a | PhaseScanner symbol-matching accuracy tests (F8) | runtime-failure | `test` |
-| 324b | PhaseScanner symbol-matching accuracy (F8) | implementation | `test` |
+| 323a | TaskScanner doc-coverage + drift-severity tests (F4) | runtime-failure | `test` |
+| 323b | TaskScanner reads all task docs; drift is always a nudge (F4) | implementation | `test` |
+| 324a | TaskScanner symbol-matching accuracy tests (F8) | runtime-failure | `test` |
+| 324b | TaskScanner symbol-matching accuracy (F8) | implementation | `test` |
 
 Next free phase number after this batch: **325**.
 
-## §9 — F8: PhaseScanner symbol-matching accuracy (phases 323 → 324)
+## §9 — F8: TaskScanner symbol-matching accuracy (phases 323 → 324)
 
-Phase 323 turned the scanner on — it now reads all ~200 phase docs. The scan jumped
+Phase 323 turned the scanner on — it now reads all ~200 task docs. The scan jumped
 211 → 981, but ~900 of those were false positives from crude symbol matching, not real
 drift: qualified names (`Type.member` in docs vs bare `member` in source), enum cases
 (never enumerated from source at all), non-symbol backtick content (`/compact`, `2.1.0`,
@@ -266,9 +266,9 @@ Phase 324 fixes the matching. **Verified** (full `MerlinTests` suite green — 1
 Post-324 the 252 are **61 red + 191 orange** (0 yellow). The red tier is now a real
 signal — mostly genuine stale-doc drift, with a residual ~15 scanner edge cases (`init`
 is not enumerated; build-setting names like `MARKETING_VERSION`; `$projected` values; a
-`file.swift:lines` reference). The 191 orange is a phase-doc *format* artifact, not
+`file.swift:lines` reference). The 191 orange is a task-doc *format* artifact, not
 drift: ~155 are the `AccessibilityID` constants plus the KAG/Telemetry public surface,
-which **are** phase-documented — via `## Write to:` code fences rather than "New surface"
+which **are** task-documented — via `## Write to:` code fences rather than "New surface"
 bullet blocks, which is all `extractSurfaces` harvests.
 
 252 is a ~4× honest improvement over 981. Closing the residual fully is optional
@@ -287,4 +287,4 @@ follow-up (harvest declared symbols from `## Write to:` fences, or narrow the ov
 Every W4 code/doc defect (F1, F2, F3, F7) is resolved and verified; F5 by phase 322;
 F4/F8 by phases 323–324. **All of phases 320–324 are committed** (`54f9dec`, `90560a2`,
 `a11e595`, `66ebbb8`, `43c21d3`, `067bcfd`, `85878d0`, `9ea2dd3`, `6f4e0cb`). The
-post-324 `252` (61 red + 191 orange, all nudge) is the real phase-doc drift metric.
+post-324 `252` (61 red + 191 orange, all nudge) is the real task-doc drift metric.

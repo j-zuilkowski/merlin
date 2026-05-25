@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 267 originally; rewritten by phase 321b. After phase 319 the only
+/// Task 267 originally; rewritten by task 321b. After task 319 the only
 /// dangling-reference check is the fenced-block enum-case check, so these fixtures
 /// declare enum `case`s inside fenced code blocks rather than prose backticks.
 final class DocReferenceDanglingTests: XCTestCase {
@@ -96,7 +96,7 @@ final class DocReferenceDanglingTests: XCTestCase {
 
         let engine = DisciplineEngine(
             adapter: ProjectAdapter.makeStub(language: "swift"),
-            phaseScanner: PhaseScanner(),
+            taskScanner: TaskScanner(),
             manualCoverageScanner: ManualCoverageScanner(),
             docReferenceGraph: DocReferenceGraph(),
             whyCommentScanner: WhyCommentScanner(),

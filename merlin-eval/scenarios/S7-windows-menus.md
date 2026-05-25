@@ -54,7 +54,7 @@ for any window-level control XCUITest cannot reach by title, as setup for this s
       quits cleanly with open sessions + `config.toml` intact on relaunch; the Edit-menu
       items operate in text fields; Hide / Show All / Minimize / Zoom / Close behave.
 - [ ] Every keyboard shortcut fires its command.
-- [ ] The three phase-305 commands work (terminal toggles, side chat toggles, memory
+- [ ] The three task-305 commands work (terminal toggles, side chat toggles, memory
       window opens) — no dead menu items remain.
 - [ ] Every slash command is consumed and behaves.
 

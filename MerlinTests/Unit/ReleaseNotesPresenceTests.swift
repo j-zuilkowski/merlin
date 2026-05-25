@@ -23,7 +23,7 @@ final class ReleaseNotesPresenceTests: XCTestCase {
         let root = try projectRoot()
         let notesPath = root.appendingPathComponent("RELEASE-v2.2.0.md").path
         XCTAssertTrue(FileManager.default.fileExists(atPath: notesPath),
-                      "RELEASE-v2.2.0.md not found at project root. Run phase 265b.")
+                      "RELEASE-v2.2.0.md not found at project root. Run task 265b.")
     }
 
     func testReleaseNotesHaveWhatsNewSection() throws {

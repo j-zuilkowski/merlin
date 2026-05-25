@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 299a — failing tests for git-hook wiring.
+/// Task 299a — failing tests for git-hook wiring.
 final class GitHookWiringTests: XCTestCase {
 
     private func makeTmpRepo() throws -> URL {

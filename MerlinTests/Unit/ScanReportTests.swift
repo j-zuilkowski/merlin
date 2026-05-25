@@ -12,7 +12,7 @@ final class ScanReportTests: XCTestCase {
     func testScanReportFields() {
         let now = Date()
         let f = Finding(
-            id: UUID(), category: .phaseDrift, severity: .nudge,
+            id: UUID(), category: .taskDrift, severity: .nudge,
             summary: "s", detail: "d", suggestedAction: nil,
             createdAt: now, lastSeenAt: now
         )

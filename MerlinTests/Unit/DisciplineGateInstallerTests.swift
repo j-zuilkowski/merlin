@@ -1,7 +1,7 @@
 import XCTest
 @testable import Merlin
 
-/// Phase 313a — failing tests for DisciplineGateInstaller.
+/// Task 313a — failing tests for DisciplineGateInstaller.
 final class DisciplineGateInstallerTests: XCTestCase {
 
     /// Builds a temp project; writes `.merlin/project.toml` only when `toml` is non-nil.
