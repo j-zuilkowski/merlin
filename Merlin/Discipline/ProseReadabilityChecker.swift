@@ -54,7 +54,7 @@ actor ProseReadabilityChecker {
 
     private func spawnVale(docFile: String) async -> String {
         guard hasValeConfig(for: docFile) else { return "" }
-        guard await ToolRequirementCoordinator.shared.ensure("vale") else { return "" }
+        guard Self.isValeAvailable() else { return "" }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -114,6 +114,33 @@ actor ProseReadabilityChecker {
                 return false
             }
             directory = parent
+        }
+    }
+
+    private static func isValeAvailable() -> Bool {
+        if runProcess(executable: "/usr/bin/which", arguments: ["vale"]) == 0 {
+            return true
+        }
+        for path in ["/opt/homebrew/bin/vale", "/usr/local/bin/vale"]
+        where FileManager.default.isExecutableFile(atPath: path) {
+            return true
+        }
+        return false
+    }
+
+    private static func runProcess(executable: String, arguments: [String]) -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus
+        } catch {
+            return 127
         }
     }
 

@@ -2,6 +2,7 @@ import Foundation
 
 actor MemoryEngine {
     private var idleTask: Task<Void, Never>?
+    private var idleGeneration = 0
     private var timeout: TimeInterval = 300
     private var onIdleFired: (@Sendable () -> Void)?
     private var provider: (any LLMProvider)?
@@ -33,6 +34,7 @@ actor MemoryEngine {
     func stopIdleTimer() {
         idleTask?.cancel()
         idleTask = nil
+        idleGeneration += 1
     }
 
     func generateMemories(from messages: [Message]) async throws -> [MemoryEntry] {
@@ -229,19 +231,22 @@ actor MemoryEngine {
 
     private func scheduleFireTask() {
         idleTask?.cancel()
+        idleGeneration += 1
+        let generation = idleGeneration
         let timeout = timeout
         idleTask = Task { [weak self] in
             do {
                 try await Task.sleep(for: .seconds(timeout))
                 guard let self else { return }
-                await self.fireIdle()
+                await self.fireIdle(ifCurrent: generation)
             } catch {
                 return
             }
         }
     }
 
-    private func fireIdle() async {
+    private func fireIdle(ifCurrent generation: Int) async {
+        guard generation == idleGeneration else { return }
         let callback = onIdleFired
         await MainActor.run { callback?() }
     }
