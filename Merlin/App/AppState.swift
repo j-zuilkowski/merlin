@@ -38,6 +38,12 @@ enum ToolActivityState: String, Sendable {
     case toolExecuting
 }
 
+enum SlotRuntimeState: String, Sendable {
+    case ready
+    case busy
+    case error
+}
+
 private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
 
 private struct DisciplineToolArgs: Decodable {
@@ -82,6 +88,7 @@ final class AppState: ObservableObject {
     @Published var parameterAdvisories: [ParameterAdvisory] = []
     @Published var thinkingModeActive: Bool = false
     @Published var toolActivityState: ToolActivityState = .idle
+    @Published var slotRuntimeStates: [AgentSlot: SlotRuntimeState] = [:]
 
     let xcalibreClient: XcalibreClient
     /// Registry of all MemoryBackendPlugin implementations.

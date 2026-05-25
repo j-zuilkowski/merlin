@@ -194,6 +194,9 @@ The lower-left sidebar includes a **Slot Status** panel with four persistent row
 - Rows are driven only by explicit slot assignments.
 - Unassigned rows remain visible and are labelled **Not configured**.
 - Enabling a provider in Settings does not populate slot rows until a slot is assigned.
+- Status dots use grey for unconfigured slots, green for ready or finished slots,
+  orange while a slot is busy, and red after the last turn on that slot reports an
+  error.
 
 Available providers:
 
@@ -208,7 +211,7 @@ Available providers:
 | LM Studio | Local | `localhost:1234`. Fully supported. Supports vision and passed live pair calibration. |
 | Jan.ai | Local | `localhost:1337`. Fully supported and passed live pair calibration. |
 | LocalAI | Local | `localhost:8080`. Fully supported and passed live pair calibration. |
-| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Pending fresh calibration numbers. |
+| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Runtime load/unload uses router endpoints when available, and restart guidance uses the current `--models-dir` / `--models-preset` llama-server flags. Pending fresh calibration numbers. |
 | Mistral.rs | Local | `localhost:1235`. Currently unusable for the tested Qwen3 MoE model on Apple Metal. |
 | vLLM-Metal | Local | `localhost:8000`. Not recommended: general works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |

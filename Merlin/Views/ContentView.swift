@@ -35,12 +35,6 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            ToolbarItem(placement: .status) {
-                Label(appState.activeDomainDisplayName, systemImage: "cpu")
-                    .font(.caption)
-                    .foregroundStyle(.accessibleSecondary)
-                    .accessibilityIdentifier(AccessibilityID.activeDomainIndicator)
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     TelemetryEmitter.shared.emitGUIAction("tap", identifier: AccessibilityID.settingsButton)

@@ -53,7 +53,8 @@ configuration tips, known limitations.
 
 - **Endpoint:** `http://localhost:8081/v1`
 - **Install:** `brew install llama.cpp` (provides `/opt/homebrew/bin/llama-server`)
-- **Launch:** one router-mode process on port `8081` (do not run separate general/vision servers)
+- **Launch:** one router-mode process on port `8081` with `--models-dir` and
+  `--models-preset` (do not run separate general/vision servers)
 - **Formats:** GGUF (+ optional mmproj for VL models)
 - **Architectures:** anything the installed `llama.cpp` build supports
 - **LoRA serving:** **fuse + convert** — `mlx_lm.fuse`, then `llama.cpp/convert_hf_to_gguf.py`, then serve the converted GGUF

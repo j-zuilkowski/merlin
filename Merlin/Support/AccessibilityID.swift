@@ -17,7 +17,6 @@ public enum AccessibilityID {
     public static let chatCancelButton = "chat-cancel-button"
     public static let chatAttachmentButton = "chat-attachment-button"
     public static let chatVoiceButton = "chat-voice-button"
-    public static let chatPermissionModeButton = "chat-permission-mode-button"
     public static let chatStopButton = "chat-stop-button"
     public static let chatToolbarActionPrefix = "chat-toolbar-action-"
     public static let chatResumeScrollButton = "chat-resume-scroll-button"
@@ -40,13 +39,10 @@ public enum AccessibilityID {
     public static let slotStatusPanel = "slot-status-panel"
     public static let slotStatusRowPrefix = "slot-status-row-"
 
-    // MARK: - Toolbar / HUD
+    // MARK: - Toolbar
 
-    /// The ProviderHUD button that opens the provider popover.
-    public static let providerHUD = "provider-hud"
     /// Settings gear button in the window toolbar.
     public static let settingsButton = "settings-button"
-    public static let activeDomainIndicator = "active-domain-indicator"
 
     // MARK: - Settings / provider picker
 

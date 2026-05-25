@@ -58,6 +58,24 @@ final class DocumentationSweepTests: XCTestCase {
 
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("Slot Status"))
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("Not configured"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("orange"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("red"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("grey"))
+    }
+
+    func testMainSurfaceRetiredIndicatorsStayRemoved() throws {
+        let source = try [
+            repoFile("Merlin/Views/ChatView.swift"),
+            repoFile("Merlin/Views/ContentView.swift"),
+            repoFile("Merlin/Views/SessionSidebar.swift"),
+            repoFile("Merlin/Support/AccessibilityID.swift"),
+        ].joined(separator: "\n")
+
+        XCTAssertFalse(source.contains("chatPermissionModeButton"))
+        XCTAssertFalse(source.contains("activeDomainIndicator"))
+        XCTAssertFalse(source.contains("providerHUD"))
+        XCTAssertFalse(source.contains("PermissionModeBadge"))
+        XCTAssertFalse(source.contains("ToolbarItem(placement: .status)"))
     }
 
     func testEvalCurrentDocsUseUpdatedProviderCounts() throws {

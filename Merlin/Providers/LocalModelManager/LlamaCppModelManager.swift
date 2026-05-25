@@ -9,7 +9,18 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
     let capabilities = ModelManagerCapabilities(
         canReloadAtRuntime: true,
-        supportedLoadParams: [],
+        supportedLoadParams: [
+            .contextLength,
+            .gpuLayers,
+            .cpuThreads,
+            .flashAttention,
+            .cacheTypeK,
+            .cacheTypeV,
+            .ropeFrequencyBase,
+            .batchSize,
+            .useMmap,
+            .useMlock,
+        ],
         supportsRouterMode: true,
         supportsRuntimeModelLoad: true,
         supportsRuntimeModelUnload: true
@@ -89,12 +100,12 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
         let command = [
             "LLAMA_SERVER=\"/opt/homebrew/bin/llama-server\"",
             "MODEL_DIR=\"${MODEL_DIR:-$HOME/Models/gguf}\"",
-            "PRESET_FILE=\"${PRESET_FILE:-$HOME/.config/llama.cpp/router-preset.json}\"",
+            "PRESET_FILE=\"${PRESET_FILE:-$HOME/.config/llama.cpp/router-preset.ini}\"",
             "\"$LLAMA_SERVER\"",
             "--host 127.0.0.1",
             "--port 8081",
-            "--model-dir \"$MODEL_DIR\"",
-            "--props \"$PRESET_FILE\""
+            "--models-dir \"$MODEL_DIR\"",
+            "--models-preset \"$PRESET_FILE\""
         ].joined(separator: " ")
 
         return RestartInstructions(

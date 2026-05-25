@@ -1091,11 +1091,11 @@ final class ProviderRegistry: ObservableObject {
 
 All base URLs are user-configurable in `ProviderSettingsView`.
 
-### Main Workspace Slot Status [v2.3 planned]
+### Main Workspace Slot Status [v2.3]
 
 Providers are inventory; slots are routing. The main workspace must show routing state, not provider inventory. Enabling or configuring a provider in `ProviderSettingsView` must not create any visible workspace status badge unless a role slot is explicitly assigned to that provider.
 
-The old top-of-window `ProviderHUD` is retired for provider display. Its provider/auto badge was ambiguous because it showed a single effective provider even though Merlin routes across four slots. Replacement is a collapsed slot-status panel at the bottom of the left session sidebar, below the session list and above the `New Project Workspace` button.
+The old top-of-window provider/status HUD and the visible permission-mode chip are retired from the main workspace. They were ambiguous because they showed a single effective provider or mode even though Merlin routes across four slots. Replacement is a collapsed slot-status panel at the bottom of the left session sidebar, below the session list and above the `New Project Workspace` button.
 
 The panel always renders four rows:
 
@@ -1116,20 +1116,19 @@ Rules:
 5. Virtual local model IDs (`backend:model`) render as the backend display name plus model name, consistent with the Settings picker.
 6. Orchestrate may still fall back to reason internally, but the UI row must remain `Not configured` unless `slotAssignments[.orchestrate]` is set.
 7. Vision may fall back internally for legacy behavior, but the UI row must remain `Not configured` unless `slotAssignments[.vision]` is set.
-8. Later health states attach to the same rows: `Missing key`, `Provider offline`, `No model selected`, `Model unavailable`, or `Ready`.
+8. Status dots attach to the same rows: grey is not configured, green is ready or the last turn finished, orange is busy, and red means the last command/request on that slot threw an error.
 
 Implementation surface:
 
 ```text
 Merlin/Views/
   SlotStatusPanel.swift        — collapsed four-row slot routing summary
-  ProviderHUD.swift            — no longer shows provider routing; keep only non-provider status if still needed
   SessionSidebar.swift         — embeds SlotStatusPanel in sidebar footer area
 
 Data dependencies:
   AppSettings.slotAssignments
   ProviderRegistry.displayName(for:)
-  ProviderRegistry.isReadyForUse(_:)      — health only; never determines assignment
+  AppState.slotRuntimeStates              — activity/error state only; never determines assignment
 ```
 
 Acceptance criteria:
@@ -1787,7 +1786,7 @@ Sessions saved to `~/Library/Application Support/Merlin/sessions/` as JSON. Writ
 
 **[v1] ChatView** — primary conversation thread. Markdown rendered with CommonMark two-space hard line break. Tool calls shown as collapsible cards. Thinking content in dimmed expandable block.
 
-**[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, permission mode badge, model picker dropdown, scroll-lock: manual upward scroll pauses auto-scroll-to-bottom while streaming continues off-screen; auto-scroll resumes when user scrolls back within 40pt of the bottom.
+**[v2] ChatView additions** — stop button (visible while `isSending`), `@` autocomplete file picker, attachment button, model picker dropdown, scroll-lock: manual upward scroll pauses auto-scroll-to-bottom while streaming continues off-screen; auto-scroll resumes when user scrolls back within 40pt of the bottom. Permission mode remains configurable through settings/commands rather than a persistent main-surface badge.
 
 **[v3] ChatView — WKWebView message renderer (planned)**
 
@@ -1823,13 +1822,13 @@ Once the WKWebView renderer exists, adding image kinds to the parser and passing
 
 **[v1] AuthPopupView** — modal, non-dismissable via background click.
 
-**[v1] ProviderHUD** — toolbar indicator showing active provider and thinking/tool state. Superseded for provider display in v2.3: main-window routing status moves to the left-sidebar `SlotStatusPanel`, and the top HUD must not show provider inventory or fallback-derived routing.
+**[v1 retired] Provider/status HUD** — the old toolbar indicator for active provider and thinking/tool state is superseded in v2.3. Routing status now lives in the left-sidebar `SlotStatusPanel`, and the main surface must not show provider inventory or fallback-derived routing.
 
 **[v1] FirstLaunchSetupView** — Keychain setup on first run. Calls `appState.reloadProviders(apiKey:)` after saving.
 
 **[v2] ProjectPickerView** — shown at launch when no windows are open. Recent projects list (resolved paths, last-opened timestamp), Open button (triggers folder panel), clear-recents option. Selecting a project calls `openWindow(value: projectRef)` and dismisses the picker.
 
-**[v2] SessionSidebar** — lists open sessions with title, model badge, activity indicator, permission mode badge. New session button.
+**[v2] SessionSidebar** — lists open sessions with title and activity indicator, embeds `SlotStatusPanel`, and provides the new session button.
 
 **[v2] DiffPane** — staged changes as unified diff, Accept/Reject/Comment per change, commit button.
 
@@ -2082,7 +2081,6 @@ Merlin/
 │   ├── DiffPane.swift                [v2]
 │   ├── FirstLaunchSetupView.swift
 │   ├── ProjectPickerView.swift       [v2]
-│   ├── ProviderHUD.swift
 │   ├── SchedulerView.swift           [v2]
 │   ├── ScreenPreviewView.swift
 │   ├── SessionSidebar.swift          [v2]

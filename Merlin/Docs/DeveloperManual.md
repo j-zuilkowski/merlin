@@ -703,7 +703,12 @@ Virtual provider IDs (`backendID:modelID`) are first-class for slot assignment a
 
 - Router catalog discovery: `GET /models` with fallback `GET /v1/models`
 - Runtime operations: `POST /models/load` and `POST /models/unload`
-- Single-model fallback: when router endpoints are unavailable, runtime swap paths return restart instructions for one router-mode `llama-server` process on `127.0.0.1:8081`
+- The engine preflights local router-capable requests with `ensureModelLoaded(modelID:)`
+  before dispatching the OpenAI-compatible completion request.
+- Single-model fallback: when router endpoints are unavailable, runtime swap paths return restart instructions for one router-mode `llama-server` process on `127.0.0.1:8081` using the installed llama.cpp `--models-dir` and `--models-preset` flags.
+- Supported load parameters are advertised for context length, GPU layers, CPU
+  threads, flash attention, KV cache types, RoPE frequency base, batch size,
+  mmap, and mlock.
 
 ---
 

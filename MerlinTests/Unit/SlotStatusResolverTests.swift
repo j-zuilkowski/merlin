@@ -33,17 +33,38 @@ final class SlotStatusResolverTests: XCTestCase {
         let rows = resolver.rows(slotAssignments: [.execute: "deepseek"])
 
         XCTAssertEqual(rows.first(where: { $0.id == .execute })?.value, "DeepSeek")
-        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .configured)
+        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .ready)
         XCTAssertEqual(rows.first(where: { $0.id == .reason })?.value, "Not configured")
         XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.value, "Not configured")
         XCTAssertEqual(rows.first(where: { $0.id == .vision })?.value, "Not configured")
+    }
+
+    func testAssignedRowsReflectRuntimeDotStates() {
+        let resolver = SlotStatusResolver { id in id }
+        let rows = resolver.rows(
+            slotAssignments: [
+                .execute: "deepseek-flash",
+                .reason: "deepseek-pro",
+                .vision: "llamacpp:qwen3-vl",
+            ],
+            slotRuntimeStates: [
+                .execute: .busy,
+                .reason: .error,
+                .vision: .ready,
+            ]
+        )
+
+        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .busy)
+        XCTAssertEqual(rows.first(where: { $0.id == .reason })?.state, .error)
+        XCTAssertEqual(rows.first(where: { $0.id == .vision })?.state, .ready)
+        XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.state, .notConfigured)
     }
 
     func testReasonAssignmentDoesNotPopulateOrchestrateFallbackDisplay() {
         let resolver = SlotStatusResolver { id in id == "anthropic" ? "Anthropic" : id }
         let rows = resolver.rows(slotAssignments: [.reason: "anthropic"])
 
-        XCTAssertEqual(rows.first(where: { $0.id == .reason })?.state, .configured)
+        XCTAssertEqual(rows.first(where: { $0.id == .reason })?.state, .ready)
         XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.state, .notConfigured)
         XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.value, "Not configured")
     }
@@ -52,7 +73,7 @@ final class SlotStatusResolverTests: XCTestCase {
         let resolver = SlotStatusResolver { id in id == "deepseek" ? "DeepSeek" : id }
         let rows = resolver.rows(slotAssignments: [.execute: "deepseek"])
 
-        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .configured)
+        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .ready)
         XCTAssertEqual(rows.first(where: { $0.id == .reason })?.state, .notConfigured)
         XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.state, .notConfigured)
         XCTAssertEqual(rows.first(where: { $0.id == .vision })?.state, .notConfigured)

@@ -13,6 +13,18 @@ final class LlamaCppModelManagerTests: XCTestCase {
         XCTAssertTrue(manager.capabilities.supportsRouterMode)
         XCTAssertTrue(manager.capabilities.supportsRuntimeModelLoad)
         XCTAssertTrue(manager.capabilities.supportsRuntimeModelUnload)
+        XCTAssertEqual(manager.capabilities.supportedLoadParams, [
+            .contextLength,
+            .gpuLayers,
+            .cpuThreads,
+            .flashAttention,
+            .cacheTypeK,
+            .cacheTypeV,
+            .ropeFrequencyBase,
+            .batchSize,
+            .useMmap,
+            .useMlock,
+        ])
     }
 
     func testLoadedModelsReadsRouterCatalogFromModelsEndpoint() async throws {
@@ -126,6 +138,11 @@ final class LlamaCppModelManagerTests: XCTestCase {
         XCTAssertTrue(instructions?.shellCommand.contains("/opt/homebrew/bin/llama-server") == true)
         XCTAssertTrue(instructions?.shellCommand.contains("--host 127.0.0.1") == true)
         XCTAssertTrue(instructions?.shellCommand.contains("--port 8081") == true)
+        XCTAssertTrue(instructions?.shellCommand.contains("--models-dir \"$MODEL_DIR\"") == true)
+        XCTAssertTrue(instructions?.shellCommand.contains("--models-preset \"$PRESET_FILE\"") == true)
+        XCTAssertTrue(instructions?.shellCommand.contains("router-preset.ini") == true)
+        XCTAssertFalse(instructions?.shellCommand.contains("--model-dir ") == true)
+        XCTAssertFalse(instructions?.shellCommand.contains("--props ") == true)
         XCTAssertFalse(instructions?.shellCommand.contains("&&") == true)
         XCTAssertFalse(instructions?.shellCommand.contains("vision") == true)
     }

@@ -106,10 +106,11 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 - `ModelControlView` lets you edit local load-time parameters per provider and then either reload in place or display restart instructions.
 - The lower-left sidebar `SlotStatusPanel` always shows Execute, Reason, Orchestrate, and Vision rows from explicit slot assignments.
 - Unassigned rows remain visible and are labelled `Not configured`; enabling a provider by itself does not populate slot rows.
+- Slot status dots use grey for unconfigured, green for ready/finished, orange for busy, and red for the last failed turn on that slot.
 - LM Studio, Ollama, Jan.ai, and llama.cpp router mode can reload model presence at runtime.
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.
-- llama.cpp uses router endpoints (`/models`, `/models/load`, `/models/unload`) when available; single-model `/v1/models` servers fall back to restart guidance.
+- llama.cpp uses router endpoints (`/models`, `/models/load`, `/models/unload`) when available; single-model `/v1/models` servers fall back to restart guidance using the current `llama-server --models-dir` and `--models-preset` flags.
 - Recommended local providers for full general+vision use are LM Studio, Jan.ai, and LocalAI.
 - Ollama and vLLM-Metal remain available for general-model use, but are not recommended for pair calibration because the tested vision path failed live.
 - Mistral.rs remains listed for completeness, but is currently unusable for the tested Qwen3 MoE model on Apple Metal.

@@ -1063,6 +1063,9 @@ final class AgenticEngine {
                     if resizedModelID != provider.resolvedModelID {
                         registry?.updateModel(resizedModelID, for: baseProviderID)
                     }
+                    if manager.capabilities.supportsRuntimeModelLoad {
+                        try await manager.ensureModelLoaded(modelID: request.model)
+                    }
                 }
 
                 // Pre-flight budget gate. Working-set caps are applied inside the

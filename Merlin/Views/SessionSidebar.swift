@@ -20,6 +20,7 @@ struct SessionSidebar: View {
 
             SlotStatusPanel(
                 slotAssignments: settings.slotAssignments,
+                slotRuntimeStates: coordinator.activeSession?.appState.slotRuntimeStates ?? [:],
                 displayNameForProviderID: { providerID in
                     coordinator.activeSession?.appState.registry.displayName(for: providerID) ?? providerID
                 }
@@ -294,13 +295,10 @@ private struct LiveSessionRow: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(isActive ? Color.accentColor : .primary)
                     .lineLimit(1)
-                HStack(spacing: 4) {
-                    PermissionModeBadge(mode: session.permissionMode)
-                    if appState.toolActivityState != .idle {
-                        Circle()
-                            .fill(.purple)
-                            .frame(width: 5, height: 5)
-                    }
+                if appState.toolActivityState != .idle {
+                    Circle()
+                        .fill(.purple)
+                        .frame(width: 5, height: 5)
                 }
             }
             Spacer()
@@ -347,18 +345,5 @@ private struct SectionLabel: View {
             .padding(.horizontal, 12)
             .padding(.top, 10)
             .padding(.bottom, 4)
-    }
-}
-
-private struct PermissionModeBadge: View {
-    let mode: PermissionMode
-    var body: some View {
-        Text(mode.label)
-            .font(.system(size: 9, weight: .semibold))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(mode.color.opacity(0.22))
-            .foregroundStyle(.primary)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
     }
 }

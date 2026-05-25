@@ -12,7 +12,6 @@ final class AccessibilityIDTests: XCTestCase {
         AccessibilityID.chatCancelButton,
         AccessibilityID.sessionList,
         AccessibilityID.newSessionButton,
-        AccessibilityID.providerHUD,
         AccessibilityID.settingsButton,
         AccessibilityID.providerSelector,
     ]

@@ -156,23 +156,6 @@ struct ChatView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            Button {
-                if let session = sessionManager?.activeSession {
-                    session.permissionMode = session.permissionMode.next
-                }
-            } label: {
-                Text(currentMode.label)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(currentMode.color.opacity(0.22))
-                    .foregroundStyle(.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-            }
-            .keyboardShortcut("m", modifiers: [.command, .shift])
-            .help("Cycle permission mode (⌘⇧M)")
-            .accessibilityIdentifier(AccessibilityID.chatPermissionModeButton)
-
             PendingAttentionChipView(viewModel: appState.pendingAttention)
             Spacer(minLength: 0)
         }
@@ -180,10 +163,6 @@ struct ChatView: View {
         .padding(.vertical, 12)
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.55))
         .animation(.easeInOut(duration: 0.15), value: appState.engine.isRunning)
-    }
-
-    private var currentMode: PermissionMode {
-        sessionManager?.activeSession?.permissionMode ?? appState.engine.permissionMode
     }
 
     private var toolbarActionsList: [ToolbarAction] {
@@ -628,6 +607,9 @@ final class ChatViewModel: ObservableObject {
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
         let resolved = ContextInjector.resolveAtMentions(in: message, projectPath: appState.projectPath)
+        let workingSlot = appState.engine.selectSlot(for: resolved)
+        var turnFailed = false
+        appState.slotRuntimeStates[workingSlot] = .busy
         appendUser(resolved)
 
         for await event in appState.engine.send(userMessage: resolved) {
@@ -659,6 +641,7 @@ final class ChatViewModel: ObservableObject {
             case .cleanStop(let reason, let summary):
                 appendSystemNote("⛔ Cannot continue: \(reason). \(summary)")
             case .error(let error):
+                turnFailed = true
                 appendError(error)
             }
         }
@@ -666,6 +649,7 @@ final class ChatViewModel: ObservableObject {
         isSending = false
         appState.thinkingModeActive = false
         appState.toolActivityState = .idle
+        appState.slotRuntimeStates[workingSlot] = turnFailed ? .error : .ready
     }
 
     func clear() {
