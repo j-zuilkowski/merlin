@@ -82,7 +82,7 @@ User says any of:
 12. **Run `AdapterRegistry.installSeedAdapters(into:)`** if
     `~/.merlin/adapters/` does not yet exist.
 
-13. **Initial git commit**: `git add -A && git commit -m "Phase 00 — scaffold"`
+13. **Initial git commit**: `git add -A && git commit -m "Task 00 — scaffold"`
 
 14. **Report to user**: project path, adapter chosen, baseline coverage gap (0 for new
     project), installed hooks, doc set, `vision.md` seeded with the founding idea, next
