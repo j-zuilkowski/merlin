@@ -35,7 +35,11 @@ final class ProseReadabilityCheckerTests: XCTestCase {
         let doc = dir.appendingPathComponent("README.md")
         try "# Test\n\nA short document.".write(to: doc, atomically: true, encoding: .utf8)
 
-        let checker = ProseReadabilityChecker(timeoutSeconds: 1)
+        let checker = ProseReadabilityChecker(
+            timeoutSeconds: 1,
+            hasValeConfigOverride: false,
+            valeAvailability: { false }
+        )
         let finding = await checker.check(docFile: doc.path, targetGrade: 9.0)
 
         XCTAssertEqual(finding.measuredGrade, 9.0)

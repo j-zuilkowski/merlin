@@ -15,11 +15,21 @@ actor ProseReadabilityChecker {
     private let forcedGrade: Double?
     /// Maximum wall-clock seconds the `vale` child process may run. Injectable for tests.
     private let timeoutSeconds: Int
+    private let hasValeConfigOverride: Bool?
+    private let valeAvailability: @Sendable () -> Bool
 
-    init(dryRun: Bool = false, forcedGrade: Double? = nil, timeoutSeconds: Int = 120) {
+    init(
+        dryRun: Bool = false,
+        forcedGrade: Double? = nil,
+        timeoutSeconds: Int = 120,
+        hasValeConfigOverride: Bool? = nil,
+        valeAvailability: @escaping @Sendable () -> Bool = ProseReadabilityChecker.isValeAvailable
+    ) {
         self.dryRun = dryRun
         self.forcedGrade = forcedGrade
         self.timeoutSeconds = timeoutSeconds
+        self.hasValeConfigOverride = hasValeConfigOverride
+        self.valeAvailability = valeAvailability
     }
 
     func check(docFile: String, targetGrade: Double) async -> ReadabilityFinding {
@@ -53,8 +63,8 @@ actor ProseReadabilityChecker {
     }
 
     private func spawnVale(docFile: String) async -> String {
-        guard hasValeConfig(for: docFile) else { return "" }
-        guard Self.isValeAvailable() else { return "" }
+        guard hasValeConfigOverride ?? hasValeConfig(for: docFile) else { return "" }
+        guard valeAvailability() else { return "" }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
