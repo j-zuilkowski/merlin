@@ -120,4 +120,24 @@ final class ProviderTests: XCTestCase {
         let chunk = try SSEParser.parseChunk(line)
         XCTAssertEqual(chunk?.delta?.toolCalls?.first?.function?.name, "mcp_u003A_kicad")
     }
+
+    func testOpenAICompatibleProviderDoesNotEmitAnthropicCacheControl() throws {
+        let provider = OpenAICompatibleProvider(
+            id: "deepseek",
+            baseURL: URL(string: "https://api.deepseek.com/v1")!,
+            apiKey: "sk-test",
+            modelID: "deepseek-chat"
+        )
+
+        var req = CompletionRequest(model: "deepseek-chat", messages: [], tools: nil)
+        req.cachePolicy = .ephemeral
+
+        let urlRequest = try provider.buildRequest(req)
+        XCTAssertNil(urlRequest.value(forHTTPHeaderField: "anthropic-beta"))
+
+        let bodyData = try XCTUnwrap(urlRequest.httpBody)
+        let bodyText = String(data: bodyData, encoding: .utf8) ?? ""
+        XCTAssertFalse(bodyText.contains("cache_control"))
+    }
+
 }

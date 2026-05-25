@@ -51,6 +51,15 @@ final class AnthropicSSEParserTests: XCTestCase {
         let chunk = try AnthropicSSEParser.parseChunk("")
         XCTAssertNil(chunk)
     }
+
+
+    func testAnthropicSSEParserParsesCacheUsage() throws {
+        let line = #"data: {"type":"message_delta","usage":{"input_tokens":100,"cache_read_input_tokens":80,"cache_creation_input_tokens":20}}"#
+        let chunk = try AnthropicSSEParser.parseChunk(line)
+        XCTAssertEqual(chunk?.cacheUsage?.readTokens, 80)
+        XCTAssertEqual(chunk?.cacheUsage?.creationTokens, 20)
+        XCTAssertEqual(chunk?.cacheUsage?.uncachedInputTokens, 100)
+    }
 }
 
 // MARK: - AnthropicMessageEncoderTests
@@ -126,6 +135,63 @@ final class AnthropicMessageEncoderTests: XCTestCase {
         XCTAssertNotNil(encoded[0]["input_schema"], "Anthropic uses input_schema not parameters")
         XCTAssertNil(encoded[0]["parameters"], "parameters key must not appear")
     }
+
+    func testCAGEnabledAddsPromptCachingBetaHeader() throws {
+        let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
+        var req = CompletionRequest(model: "claude-opus-4-7", messages: [
+            Message(role: .system, content: .text("System text"), timestamp: Date())
+        ], tools: nil)
+        req.cachePolicy = .ephemeral
+
+        let urlRequest = try provider.buildRequest(req)
+        XCTAssertTrue(urlRequest.value(forHTTPHeaderField: "anthropic-beta")?.contains("prompt-caching-2024-07-31") == true)
+    }
+
+    func testCAGEnabledMarksSystemBlockEphemeral() throws {
+        let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
+        var req = CompletionRequest(model: "claude-opus-4-7", messages: [
+            Message(role: .system, content: .text("System text"), timestamp: Date())
+        ], tools: nil)
+        req.cachePolicy = .ephemeral
+
+        let urlRequest = try provider.buildRequest(req)
+        let body = try JSONSerialization.jsonObject(with: try XCTUnwrap(urlRequest.httpBody)) as! [String: Any]
+        let system = body["system"] as? [[String: Any]]
+        let first = system?.first
+        XCTAssertEqual(first?["type"] as? String, "text")
+        XCTAssertEqual((first?["cache_control"] as? [String: Any])?["type"] as? String, "ephemeral")
+    }
+
+    func testCAGEnabledMarksLastToolEphemeral() throws {
+        let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
+        let tools = [
+            ToolDefinition(function: .init(name: "alpha", description: "a", parameters: JSONSchema(type: "object"))),
+            ToolDefinition(function: .init(name: "beta", description: "b", parameters: JSONSchema(type: "object"))),
+        ]
+        var req = CompletionRequest(model: "claude-opus-4-7", messages: [], tools: tools)
+        req.cachePolicy = .ephemeral
+
+        let urlRequest = try provider.buildRequest(req)
+        let body = try JSONSerialization.jsonObject(with: try XCTUnwrap(urlRequest.httpBody)) as! [String: Any]
+        let encodedTools = body["tools"] as? [[String: Any]]
+        let last = encodedTools?.last
+        XCTAssertEqual((last?["cache_control"] as? [String: Any])?["type"] as? String, "ephemeral")
+    }
+
+    func testCAGDisabledKeepsLegacySystemString() throws {
+        let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
+        var req = CompletionRequest(model: "claude-opus-4-7", messages: [
+            Message(role: .system, content: .text("System text"), timestamp: Date())
+        ], tools: nil)
+        req.cachePolicy = .disabled
+
+        let urlRequest = try provider.buildRequest(req)
+        XCTAssertNil(urlRequest.value(forHTTPHeaderField: "anthropic-beta"))
+
+        let body = try JSONSerialization.jsonObject(with: try XCTUnwrap(urlRequest.httpBody)) as! [String: Any]
+        XCTAssertEqual(body["system"] as? String, "System text")
+    }
+
 }
 
 // MARK: - AnthropicProvider request building
