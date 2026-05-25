@@ -101,6 +101,42 @@ final class DocumentationSweepTests: XCTestCase {
         XCTAssertFalse(docs.contains("ProviderHUD"))
     }
 
+
+    func testReleaseDocsMentionCAG() throws {
+        let docs = try [
+            repoFile("FEATURES.md"),
+            repoFile("Merlin/Docs/UserGuide.md"),
+            repoFile("Merlin/Docs/DeveloperManual.md"),
+        ].joined(separator: "\n")
+
+        XCTAssertTrue(
+            docs.localizedCaseInsensitiveContains("cache-augmented generation") ||
+            docs.localizedCaseInsensitiveContains("cag"),
+            "Release-current docs should mention CAG"
+        )
+    }
+
+    func testReleaseDocsDoNotCallCAGPlanned() throws {
+        let docs = try [
+            repoFile("FEATURES.md"),
+            repoFile("Merlin/Docs/UserGuide.md"),
+            repoFile("Merlin/Docs/DeveloperManual.md"),
+        ].joined(separator: "\n")
+
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("cag planned"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("cache-augmented generation planned"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("cag not implemented"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("cache-augmented generation not implemented"))
+
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("cache_control"))
+        XCTAssertTrue(
+            docs.localizedCaseInsensitiveContains("stable prefix bytes") ||
+            docs.localizedCaseInsensitiveContains("stable-byte") ||
+            docs.localizedCaseInsensitiveContains("automatic cache behavior"),
+            "Release-current docs should distinguish Anthropic explicit markers from stable-prefix behavior elsewhere"
+        )
+    }
+
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
         return try String(contentsOf: url, encoding: .utf8)
