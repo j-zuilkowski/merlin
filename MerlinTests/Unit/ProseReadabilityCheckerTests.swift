@@ -28,14 +28,14 @@ final class ProseReadabilityCheckerTests: XCTestCase {
     }
 
     func testMissingValeConfigPassesGracefully() async throws {
-        let dir = FileManager.default.temporaryDirectory
+        let dir = URL(fileURLWithPath: "/tmp", isDirectory: true)
             .appendingPathComponent("prose-no-vale-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let doc = dir.appendingPathComponent("README.md")
         try "# Test\n\nA short document.".write(to: doc, atomically: true, encoding: .utf8)
 
-        let checker = ProseReadabilityChecker()
+        let checker = ProseReadabilityChecker(timeoutSeconds: 1)
         let finding = await checker.check(docFile: doc.path, targetGrade: 9.0)
 
         XCTAssertEqual(finding.measuredGrade, 9.0)
