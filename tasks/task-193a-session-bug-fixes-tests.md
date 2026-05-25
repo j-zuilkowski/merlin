@@ -1,10 +1,10 @@
-# Phase 193a — Session Bug Fix Tests
+# Task 193a — Session Bug Fix Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 192b complete: KAGEngine.scheduleExtraction wired into AgenticEngine; v1.8.0.
+Task 192b complete: KAGEngine.scheduleExtraction wired into AgenticEngine; v1.8.0.
 
 Four UI/session bugs found after v1.8.0 shipped:
   1. Status dot stays active after engine run completes — `toolActivityState` not reset by engine
@@ -12,7 +12,7 @@ Four UI/session bugs found after v1.8.0 shipped:
   3. Sessions never auto-name — new LiveSessions not registered in SessionStore so engine saves to wrong record
   4. Compact Context → 400 — force-compact with no tool exchanges leaves context unchanged
 
-New surface introduced in phase 193b:
+New surface introduced in task 193b:
   - `AppState`: Combine subscriber resets `toolActivityState = .idle` when `engine.isRunning` → false
   - `WorkspaceView.sessionContent`: `.id(session.id)` on `ContentView()`
   - `LiveSession.init`: calls `appState.sessionStore?.save(Session(id: self.id, title: "New Session", messages: []))` immediately
@@ -33,7 +33,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-// Tests for the four session bugs fixed in Phase 193b.
+// Tests for the four session bugs fixed in Task 193b.
 // All tests are @MainActor because AppState, LiveSession, and ContextManager
 // are @MainActor types.
 
@@ -164,5 +164,5 @@ fails (compact just appends a sentinel).
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SessionBugFixTests.swift \
         tasks/task-193a-session-bug-fixes-tests.md
-git commit -m "Phase 193a — SessionBugFixTests (failing)"
+git commit -m "Task 193a — SessionBugFixTests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 100b — AgenticEngine Role Slot Routing
+# Task 100b — AgenticEngine Role Slot Routing
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 100a complete: failing slot routing tests in place.
+Task 100a complete: failing slot routing tests in place.
 
-This phase replaces the `proProvider`/`flashProvider` two-provider model with
+This task replaces the `proProvider`/`flashProvider` two-provider model with
 capability-based role slots: `execute`, `reason`, `orchestrate`, `vision`.
 The `AgenticEngine` init signature changes; all call sites must be updated.
 
@@ -328,5 +328,5 @@ git add Merlin/Engine/AgentSlot.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Config/AppSettings.swift \
         project.yml
-git commit -m "Phase 100b — AgenticEngine role slot routing (execute/reason/orchestrate/vision)"
+git commit -m "Task 100b — AgenticEngine role slot routing (execute/reason/orchestrate/vision)"
 ```

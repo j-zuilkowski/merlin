@@ -1,11 +1,11 @@
-# Phase 162a — CBZ/CBR cover extraction tests (failing)
+# Task 162a — CBZ/CBR cover extraction tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 161b complete.
+Task 161b complete.
 
-New surface in phase 162b:
+New surface in task 162b:
   - `crate::cover::cbz::extract(path)` — extracts first image from CBZ (ZIP of images)
   - `pipeline::cover::run_cover` handles `DetectedFormat::Cbz` via `cbz::extract`
 
@@ -75,5 +75,5 @@ Expected: compile error — `crate::cover::cbz` does not exist.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/cbz_cover_tests.rs processing/Cargo.toml
-git commit -m "Phase 162a — CBZ cover extraction tests (failing)"
+git commit -m "Task 162a — CBZ cover extraction tests (failing)"
 ```

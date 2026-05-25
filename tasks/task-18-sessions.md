@@ -1,11 +1,11 @@
-# Phase 18 — Session + SessionStore
+# Task 18 — Session + SessionStore
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: Message type exists.
+Task 02b complete: Message type exists.
 
 ---
 
@@ -122,5 +122,5 @@ Expected: `Test Suite 'SessionSerializationTests' passed` with 4 tests.
 cd ~/Documents/localProject/merlin
 git add Merlin/Sessions/Session.swift Merlin/Sessions/SessionStore.swift \
     MerlinTests/Unit/SessionSerializationTests.swift
-git commit -m "Phase 18 — Session + SessionStore + tests (4 tests passing)"
+git commit -m "Task 18 — Session + SessionStore + tests (4 tests passing)"
 ```

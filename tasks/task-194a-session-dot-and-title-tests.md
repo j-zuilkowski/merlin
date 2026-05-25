@@ -1,10 +1,10 @@
-# Phase 194a — Session Dot & Title Fix Tests (failing)
+# Task 194a — Session Dot & Title Fix Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 193b complete: session dot, view isolation, auto-naming, and compact-context fixes
+Task 193b complete: session dot, view isolation, auto-naming, and compact-context fixes
 shipped in v1.8.1.
 
 Two bugs survive:
@@ -27,7 +27,7 @@ gets session 2's record → writes session 1's messages into session 2 and calls
 `onTitleUpdate` with a title that belongs to session 1. Neither session ends up
 with the right title.
 
-New surface introduced in phase 194b:
+New surface introduced in task 194b:
   - `AgenticEngine.sessionID: UUID?` — set by `SessionManager`; used for direct
     session-record lookup instead of `sessionStore.activeSession`
   - `SessionManager.newSession()` sets `session.appState.engine.sessionID = session.id`
@@ -45,7 +45,7 @@ TDD coverage:
 
 ```swift
 // SessionDotAndTitleFixTests.swift
-// Phase 194a — failing tests for session dot and auto-title bugs.
+// Task 194a — failing tests for session dot and auto-title bugs.
 //
 // Bug A: LiveSessionRow reads session.appState.toolActivityState but only
 //   observes `session` (not `appState`), so dot never updates.
@@ -132,5 +132,5 @@ runtime once the compile errors are resolved.
 ## Commit
 ```bash
 git add MerlinTests/Unit/SessionDotAndTitleFixTests.swift
-git commit -m "Phase 194a — SessionDotAndTitleFixTests (failing)"
+git commit -m "Task 194a — SessionDotAndTitleFixTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 221b - Multi-Domain Sessions
+# Task 221b - Multi-Domain Sessions
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 221a complete: failing multi-domain tests exist.
+Task 221a complete: failing multi-domain tests exist.
 
 ---
 
@@ -54,7 +54,7 @@ Expected: **BUILD SUCCEEDED**. Multi-domain tests pass.
 
 ```bash
 git add Merlin/MCP/DomainRegistry.swift Merlin/Sessions/Session.swift Merlin/Sessions/LiveSession.swift Merlin/Config/AppSettings.swift MerlinTests/Unit/MultiDomainRegistryTests.swift MerlinTests/Unit/MultiDomainSessionTests.swift
-git commit -m "Phase 221b - multi-domain sessions"
+git commit -m "Task 221b - multi-domain sessions"
 ```
 
 ## Fixes

@@ -1,8 +1,8 @@
-# Phase 311b — LivenessGate + pre-commit hook
+# Task 311b — LivenessGate + pre-commit hook
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 311a complete: failing tests in `LivenessGateTests`.
+Task 311a complete: failing tests in `LivenessGateTests`.
 
 `LivenessGate` turns the deterministic liveness check into a real gate, and a new
 `pre-commit` git hook runs it on every commit. All three files are in
@@ -25,7 +25,7 @@ enum LivenessGateResult: Sendable, Equatable {
 /// The deterministic, blocking half of Liveness Discipline. Runs `TargetGateScanner`
 /// and blocks a commit when a target is built by no scheme — the zero-false-positive
 /// condition that let `MerlinLiveTests` / `MerlinE2ETests` rot uncompiled for ~160
-/// phases. Heuristic liveness findings (stubs, unwired components) are advisory and are
+///  tasks. Heuristic liveness findings (stubs, unwired components) are advisory and are
 /// never enforced here.
 actor LivenessGate {
     func check(projectPath: String,
@@ -143,5 +143,5 @@ Expected: BUILD SUCCEEDED.
 ```
 git add Merlin/Discipline/LivenessGate.swift Merlin/Discipline/DisciplineCLI.swift \
   Merlin/Discipline/GitHookInstaller.swift tasks/task-311b-liveness-gate.md
-git commit -m "Phase 311b — LivenessGate: pre-commit hook blocks ungated targets"
+git commit -m "Task 311b — LivenessGate: pre-commit hook blocks ungated targets"
 ```

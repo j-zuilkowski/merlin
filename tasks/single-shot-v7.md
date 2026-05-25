@@ -3,7 +3,7 @@
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Starting point: Phase 121b complete — LoRA settings UI in place, all prior tests passing.
+Starting point: Task 121b complete — LoRA settings UI in place, all prior tests passing.
 
 Implement everything below in order. Write every file exactly as specified.
 Make every edit exactly as specified. Run the verify command once at the end.
@@ -75,7 +75,7 @@ final class MemoryXcalibreIndexTests: XCTestCase {
     // MARK: - Tests
 
     func testSetXcalibreClientCompiles() async {
-        // Verifies the method exists on the actor — fails to build without phase 122b.
+        // Verifies the method exists on the actor — fails to build without task 122b.
         let engine = MemoryEngine()
         let spy = SpyXcalibreClient()
         await engine.setXcalibreClient(spy)
@@ -316,7 +316,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
-    // MARK: - Field existence (compile-time failures without phase 123b)
+    // MARK: - Field existence (compile-time failures without task 123b)
 
     func testTopKFieldExists() {
         var req = makeRequest()
@@ -439,7 +439,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
     // MARK: - AppSettings inference defaults
 
     func testAppSettingsInferenceTopKExists() {
-        // Compile-time proof — fails to build without phase 123b.
+        // Compile-time proof — fails to build without task 123b.
         let _ = AppSettings.shared.inferenceTopK
     }
 
@@ -605,7 +605,7 @@ automatically omitted from the JSON body — no explicit `encodeIfPresent` calls
 ## Edit 3: Merlin/Settings/AppSettings.swift
 
 Add an `[inference]` section to AppSettings. Follow the exact pattern used by the `[lora]`
-section (phase 116b): `@Published` properties, TOML serialisation, TOML apply, `CodingKeys`.
+section (task 116b): `@Published` properties, TOML serialisation, TOML apply, `CodingKeys`.
 
 ### 3a — Add @Published properties (near the LoRA properties block)
 
@@ -723,7 +723,7 @@ final class ModelParameterAdvisorTests: XCTestCase {
     // MARK: - Compile-time existence checks
 
     func testParameterAdvisoryKindExists() {
-        // Fails to build without phase 124b.
+        // Fails to build without task 124b.
         let _: ParameterAdvisoryKind = .maxTokensTooLow
         let _: ParameterAdvisoryKind = .temperatureUnstable
         let _: ParameterAdvisoryKind = .repetitiveOutput
@@ -1168,7 +1168,7 @@ Add the field with backward-compatible decode (falls back to nil when absent):
 
 ```swift
 // In OutcomeRecord — add after the `legacyTrainingRecord` field:
-    /// finish_reason from the last chunk. nil for records created before phase 124b.
+    /// finish_reason from the last chunk. nil for records created before task 124b.
     var finishReason: String?
 
 // In init(...):
@@ -1372,7 +1372,7 @@ private struct StubRestartOnlyManager: LocalModelManagerProtocol {
 
 final class LocalModelManagerProtocolTests: XCTestCase {
 
-    // MARK: Type existence (compile-time failures without phase 125b)
+    // MARK: Type existence (compile-time failures without task 125b)
 
     func testLoadParamEnumExists() {
         let _: LoadParam = .contextLength
@@ -2617,7 +2617,7 @@ func applyAdvisory(_ advisory: ParameterAdvisory) async throws {
 ```
 
 Note: `AppSettings.inferenceTemperature` and `AppSettings.inferenceMaxTokens` should be added
-alongside the other inference defaults added in Phase 123b if not already present. Follow the
+alongside the other inference defaults added in Task 123b if not already present. Follow the
 same `@Published var inferenceTemperature: Double? = nil` pattern.
 
 ---
@@ -2655,7 +2655,7 @@ AppState (to avoid circular dependency), use a closure callback:
 // Add to AgenticEngine:
 var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
 
-// In the post-record advisor block (Phase 124b):
+// In the post-record advisor block (Task 124b):
 let singleAdvisories = await advisor.checkRecord(trackerRecord)
 for advisory in singleAdvisories {
     isReloadingModel = advisory.kind == .contextLengthTooSmall
@@ -3325,63 +3325,63 @@ Run after verify:
 
 ```bash
 git add MerlinTests/Unit/MemoryXcalibreIndexTests.swift
-git commit -m "Phase 122a — MemoryXcalibreIndexTests (failing)"
+git commit -m "Task 122a — MemoryXcalibreIndexTests (failing)"
 
 git add Merlin/Memories/MemoryEngine.swift
 git add Merlin/UI/Memories/MemoryReviewView.swift
-git commit -m "Phase 122b — approved memories indexed in xcalibre-server as factual RAG chunks"
+git commit -m "Task 122b — approved memories indexed in xcalibre-server as factual RAG chunks"
 
 git add MerlinTests/Unit/CompletionRequestSamplingParamsTests.swift
-git commit -m "Phase 123a — CompletionRequestSamplingParamsTests (failing)"
+git commit -m "Task 123a — CompletionRequestSamplingParamsTests (failing)"
 
 git add Merlin/Providers/LLMProvider.swift
 git add Merlin/Providers/SSEParser.swift
 git add Merlin/Settings/AppSettings.swift
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 123b — expand CompletionRequest with 8 sampling params; AppSettings inference defaults"
+git commit -m "Task 123b — expand CompletionRequest with 8 sampling params; AppSettings inference defaults"
 
 git add MerlinTests/Unit/ModelParameterAdvisorTests.swift
-git commit -m "Phase 124a — ModelParameterAdvisorTests (failing)"
+git commit -m "Task 124a — ModelParameterAdvisorTests (failing)"
 
 git add Merlin/Engine/ModelParameterAdvisor.swift
 git add Merlin/Engine/ModelPerformanceTracker.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/App/AppState.swift
 git add Merlin/Views/Settings/PerformanceDashboardView.swift
-git commit -m "Phase 124b — ModelParameterAdvisor (truncation, variance, repetition, context overflow detection)"
+git commit -m "Task 124b — ModelParameterAdvisor (truncation, variance, repetition, context overflow detection)"
 
 git add MerlinTests/Unit/LocalModelManagerProtocolTests.swift
-git commit -m "Phase 125a — LocalModelManagerProtocolTests (failing)"
+git commit -m "Task 125a — LocalModelManagerProtocolTests (failing)"
 
 git add Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift
 git add Merlin/Providers/LocalModelManager/LMStudioModelManager.swift
 git add Merlin/Providers/LocalModelManager/OllamaModelManager.swift
-git commit -m "Phase 125b — LocalModelManagerProtocol + LMStudio + Ollama managers"
+git commit -m "Task 125b — LocalModelManagerProtocol + LMStudio + Ollama managers"
 
 git add MerlinTests/Unit/LocalModelManagerExtendedTests.swift
-git commit -m "Phase 126a — LocalModelManagerExtendedTests (failing)"
+git commit -m "Task 126a — LocalModelManagerExtendedTests (failing)"
 
 git add Merlin/Providers/LocalModelManager/JanModelManager.swift
 git add Merlin/Providers/LocalModelManager/LocalAIModelManager.swift
 git add Merlin/Providers/LocalModelManager/MistralRSModelManager.swift
 git add Merlin/Providers/LocalModelManager/VLLMModelManager.swift
-git commit -m "Phase 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal model managers"
+git commit -m "Task 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal model managers"
 
 git add MerlinTests/Unit/ModelManagerWiringTests.swift
-git commit -m "Phase 127a — ModelManagerWiringTests (failing)"
+git commit -m "Task 127a — ModelManagerWiringTests (failing)"
 
 git add Merlin/App/AppState.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/Providers/LocalModelManager/NullModelManager.swift
-git commit -m "Phase 127b — model manager wiring: AppState registry, applyAdvisory, engine reload pause"
+git commit -m "Task 127b — model manager wiring: AppState registry, applyAdvisory, engine reload pause"
 
 git add MerlinTests/Unit/ModelControlViewTests.swift
-git commit -m "Phase 128a — ModelControlViewTests (failing)"
+git commit -m "Task 128a — ModelControlViewTests (failing)"
 
 git add Merlin/Views/Settings/ModelControlView.swift
 git add Merlin/Views/Settings/ProviderSettingsView.swift
 git add Merlin/Views/Settings/PerformanceDashboardView.swift
-git commit -m "Phase 128b — ModelControlView: per-provider load param editor + restart instructions sheet"
+git commit -m "Task 128b — ModelControlView: per-provider load param editor + restart instructions sheet"
 
 git add Merlin/Providers/LLMProvider.swift
 git add Merlin/Providers/SSEParser.swift
@@ -3400,5 +3400,5 @@ git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/Views/Settings/ModelControlView.swift
 git add spec.md
 git add FEATURES.md
-git commit -m "Phase 132 — V7 docs + code comments: inference params, ModelParameterAdvisor, LocalModelManagerProtocol, ModelControlView"
+git commit -m "Task 132 — V7 docs + code comments: inference params, ModelParameterAdvisor, LocalModelManagerProtocol, ModelControlView"
 ```

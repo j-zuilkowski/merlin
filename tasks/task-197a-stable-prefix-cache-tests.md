@@ -1,10 +1,10 @@
-# Phase 197a — Stable Prefix Cache Tests (failing)
+# Task 197a — Stable Prefix Cache Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 196b complete: session restore dedup + history loading.
+Task 196b complete: session restore dedup + history loading.
 
 ## Problem
 `AgenticEngine.buildSystemPrompt()` is a `private` method called on every loop iteration.
@@ -18,7 +18,7 @@ to hit, the prefix of the system message must be byte-identical between turns. R
 string each turn does not guarantee this; caching the stable portion makes it an explicit
 guarantee.
 
-## New surface in phase 197b
+## New surface in task 197b
 - `AgenticEngine.buildStablePrefix() -> String` — internal; returns the cacheable portion
   of the system prompt (everything except `nearCeilingWarningAddendum`)
 - `AgenticEngine._stablePrefixDirty: Bool` — internal; true when the cache must be rebuilt
@@ -39,7 +39,7 @@ TDD coverage:
 
 ```swift
 // StablePrefixCacheTests.swift
-// Phase 197a — failing tests for stable system-prompt prefix caching.
+// Task 197a — failing tests for stable system-prompt prefix caching.
 import XCTest
 @testable import Merlin
 
@@ -133,5 +133,5 @@ Expected: BUILD FAILED — `buildStablePrefix()`, `buildSystemPromptForTesting()
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/StablePrefixCacheTests.swift
-git commit -m "Phase 197a — StablePrefixCacheTests (failing)"
+git commit -m "Task 197a — StablePrefixCacheTests (failing)"
 ```

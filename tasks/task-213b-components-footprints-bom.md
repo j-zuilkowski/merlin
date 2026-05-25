@@ -1,10 +1,10 @@
-# Phase 213b — Components, Footprints, Libraries, and BOM
+# Task 213b — Components, Footprints, Libraries, and BOM
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 213a complete: failing components/footprints/BOM tests exist.
+Task 213a complete: failing components/footprints/BOM tests exist.
 
 ---
 
@@ -22,7 +22,7 @@ Implement policy and mapping logic:
 8. `VendorSourcePolicy`
 9. `SubstitutionPolicy`
 
-No vendor network calls in this phase.
+No vendor network calls in this task.
 
 ---
 
@@ -41,5 +41,5 @@ Expected: **BUILD SUCCEEDED**. `ComponentsFootprintsBOMTests` pass.
 
 ```bash
 git add Merlin/Electronics/ComponentsFootprintsBOM.swift
-git commit -m "Phase 213b — components footprints libraries and BOM policy"
+git commit -m "Task 213b — components footprints libraries and BOM policy"
 ```

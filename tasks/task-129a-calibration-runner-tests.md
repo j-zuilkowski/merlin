@@ -1,12 +1,12 @@
-# Phase 129a — CalibrationRunner Tests
+# Task 129a — CalibrationRunner Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 128b complete: ModelControlView in place. All prior tests pass.
+Task 128b complete: ModelControlView in place. All prior tests pass.
 
-New surface introduced in phase 129b:
+New surface introduced in task 129b:
 
   `CalibrationCategory` — enum: reasoning, coding, instructionFollowing, summarization
   `CalibrationPrompt` — struct: id, category, prompt, systemPrompt?
@@ -255,5 +255,5 @@ Expected: **BUILD FAILED** — `CalibrationCategory`, `CalibrationPrompt`, `Cali
 ## Commit
 ```bash
 git add MerlinTests/Unit/CalibrationRunnerTests.swift
-git commit -m "Phase 129a — CalibrationRunnerTests (failing)"
+git commit -m "Task 129a — CalibrationRunnerTests (failing)"
 ```

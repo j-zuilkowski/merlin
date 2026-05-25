@@ -11,8 +11,8 @@ reasoning where missing things is the failure mode). Sonnet is acceptable for W5
 
 ## Your role — read this first
 
-**You author phase documents; the Codex app executes them.** Do NOT directly
-implement, build, or commit Merlin *source* for multi-phase work. You write
+**You author task documents; the Codex app executes them.** Do NOT directly
+implement, build, or commit Merlin *source* for multi-task work. You write
 `tasks/task-NNa-*.md` (failing tests) and `task-NNb-*.md` (implementation) as TDD
 pairs; the user runs them through Codex. You MAY directly: do research/audits, read
 code, run read-only commands, edit task docs and spec docs.
@@ -22,13 +22,13 @@ code, run read-only commands, edit task docs and spec docs.
 - The repo's `constitution.md` holds the binding rules. Read it.
 - Git: commit locally only; **never push** without an explicit "push"; **never commit**
   without an explicit request.
-- Next free phase number: **320**.
+- Next free task number: **320**.
 
-### Phase-doc defect classes that stop Codex — check every doc you write
+### Task-doc defect classes that stop Codex — check every doc you write
 1. **Deletion/addition gaps** — deleting a symbol a test/doc still references; adding a
    `FindingCategory` case without updating `MerlinTests/Unit/FindingModelTests.swift`.
-2. **`build-for-testing` vs `test` verb** — a *compile-failure* phase verifies with
-   `build-for-testing` (BUILD FAILED); a *runtime-failure* phase verifies with `test`
+2. **`build-for-testing` vs `test` verb** — a *compile-failure* task verifies with
+   `build-for-testing` (BUILD FAILED); a *runtime-failure* task verifies with `test`
    (BUILD SUCCEEDED, the test fails). Getting this wrong stops Codex.
 3. **Code that won't compile against real APIs** — verify signatures against source.
 4. **Non-existent scheme/target/path** — valid schemes: `Merlin`, `MerlinTests`,
@@ -41,8 +41,8 @@ code, run read-only commands, edit task docs and spec docs.
 
 | | Work | Status |
 |---|---|---|
-| W1 | Arm the discipline pre-commit gate (auto-install at app launch) | **done** — phases 313 |
-| W2 | Make discipline scanners runnable + trustworthy | **done** — phases 314–319 |
+| W1 | Arm the discipline pre-commit gate (auto-install at app launch) | **done** —  tasks 313 |
+| W2 | Make discipline scanners runnable + trustworthy | **done** —  tasks 314–319 |
 | W3 | Accessibility-ID coverage gaps | tracked in `merlin-eval/scenarios/S7–S11` — folded into W5 |
 | **W4** | **Trace-the-calls audit of the live codebase** | **NEXT — start here** |
 | W5 | Build the S1–S17 eval fixtures + run the proving suite | after W4 |
@@ -53,7 +53,7 @@ W4 must finish before W5 (user instruction).
 
 ## Current state (committed)
 
-- All phases **294–319** + **302c** committed. HEAD ≈ `819f3a1` (Phase 319b).
+- All  tasks **294–319** + **302c** committed. HEAD ≈ `819f3a1` (Task 319b).
   (294–306 = a "wiring" batch that wired up Merlin's dormant v2.2 Discipline subsystem;
   307–312 = "Liveness Discipline" — 4 new scanners + a pre-commit gate; 313 = gate
   auto-install; 314–319 = discipline `scan` CLI + scanner tuning.)
@@ -64,14 +64,14 @@ W4 must finish before W5 (user instruction).
 - `merlin-discipline scan <path>` runs the full discipline scan and prints findings.
   Rebuild + run: `xcodebuild -scheme merlin-discipline build -derivedDataPath /tmp/merlin-derived`
   then `/tmp/merlin-derived/Build/Products/Debug/merlin-discipline scan ~/Documents/localProject/merlin`.
-- Latest scan = **220 findings**: 214 `phaseDrift`, 4 `docStaleReference`, 2
+- Latest scan = **220 findings**: 214 `taskDrift`, 4 `docStaleReference`, 2
   `stubbedImplementation`. (Down from an untuned 1798.)
 
 ### Uncommitted (known, leave unless asked)
 - `Merlin.xcodeproj/project.pbxproj`, `.../MerlinTests-Live.xcscheme` — xcodegen-generated;
   `.xcodeproj/` is gitignored but these were tracked before the ignore rule. A one-time
   `git rm -r --cached Merlin.xcodeproj` would stop the drift permanently — only if asked.
-- `tasks/PASTE-LIST.md` — has uncommitted entries for phases 313–319. Commit it (with
+- `tasks/PASTE-LIST.md` — has uncommitted entries for  tasks 313–319. Commit it (with
   the user's OK) or let it ride with W4's first commit.
 
 ---
@@ -96,10 +96,10 @@ findings become task docs (320+) for Codex. Do it directly.
    "Accept & Merge" toolbar buttons have empty `{ }` actions. Dead controls — they
    carry accessibility IDs (look wired) but do nothing. Wire them to the worker-diff
    staging buffer's reject-all / accept-and-merge.
-2. **`spec.md`** — contains `versionBumpCandidate`, a stale reference: phase 301
+2. **`spec.md`** — contains `versionBumpCandidate`, a stale reference: task 301
    deleted `FindingCategory.versionBumpCandidate` but missed `spec.md`. Also
    `domain` / `shape` / `signature` are flagged there — classify illustrative vs. stale.
-3. **`phaseDrift` — 214 findings** ("public symbol not declared in any phase NNb file").
+3. **`taskDrift` — 214 findings** ("public symbol not declared in any task NNb file").
    Triage: genuine drift vs. `TaskScanner` signature-normalization noise. Run
    `merlin-discipline scan` to get the live list.
 
@@ -117,7 +117,7 @@ suite: `README.md`, `BLOCKED.md`, `SURFACE-INVENTORY.md`, `scenarios/S1-*.md …
 S1–S6 are capability scenarios; S7–S17 are surface-coverage scenarios. S7–S11 each
 carry an "Accessibility-ID coverage" preflight note (that is W3 — fill AX-ID gaps as
 each scenario is authored). W5 = build the fixtures/manifests/rubrics, author the
-`MerlinE2ETests` harness task docs (the `EvalHarness` already exists, phase 303), run
+`MerlinE2ETests` harness task docs (the `EvalHarness` already exists, task 303), run
 the suite, log results to `merlin-eval/results/`.
 
 ---

@@ -1,10 +1,10 @@
-# Codex Task: Merlin — Bug Fixes + Scroll Lock + /rewind + /btw (Phases 200–204)
+# Codex Task: Merlin — Bug Fixes + Scroll Lock + /rewind + /btw (Tasks 200–204)
 
 ## Objective
 
 Five TDD task pairs (200a through 204b) that address the three open bugs and close all
 remaining local feature gaps vs. Claude Code. All work follows strict TDD: write failing
-tests first (a-phase), commit, implement until green (b-phase), commit again.
+tests first (a-task), commit, implement until green (b-task), commit again.
 
 ## Context
 - Language/Framework: Swift 5.10, macOS 14+, SwiftUI, async/await, actors
@@ -14,9 +14,9 @@ tests first (a-phase), commit, implement until green (b-phase), commit again.
 - Non-sandboxed macOS app
 - Task files (source of truth): ~/Documents/localProject/merlin/tasks/
 
-## Phases Overview
+## Tasks Overview
 
-| Phase | File | What it does |
+| Task | File | What it does |
 |-------|------|--------------|
 | 200a  | task-200a-spawn-agent-error-isolation-tests.md | Failing tests for unknown agent warning + subagent failure isolation |
 | 200b  | task-200b-spawn-agent-error-isolation.md | Fix BUG-001: `AgentRegistry.knownNames()`, `.systemNote` on unknown agent, `do-catch` in TaskGroup |
@@ -43,22 +43,22 @@ tests first (a-phase), commit, implement until green (b-phase), commit again.
 - `Merlin/Views/BtwSession.swift` — **NEW** @MainActor ObservableObject
 - `Merlin/Views/BtwOverlayView.swift` — **NEW** SwiftUI view
 - `TestHelpers/MockProvider.swift` — extend with `response:`, `delay:`, `failFirstCallWith:`, `failAllCallsWith:`, `callCount`
-- `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` — **NEW** (phase 200a)
-- `MerlinTests/Unit/ContextLengthRecoveryTests.swift` — **NEW** (phase 201a)
-- `MerlinTests/Unit/CompactSlashCommandTests.swift` — **NEW** (phase 201a)
-- `MerlinTests/Unit/ScrollLockTests.swift` — **NEW** (phase 202a)
-- `MerlinTests/Unit/CheckpointStoreTests.swift` — **NEW** (phase 203a)
-- `MerlinTests/Unit/RewindSlashCommandTests.swift` — **NEW** (phase 203a)
-- `MerlinTests/Unit/BtwSessionTests.swift` — **NEW** (phase 204a)
+- `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` — **NEW** (task 200a)
+- `MerlinTests/Unit/ContextLengthRecoveryTests.swift` — **NEW** (task 201a)
+- `MerlinTests/Unit/CompactSlashCommandTests.swift` — **NEW** (task 201a)
+- `MerlinTests/Unit/ScrollLockTests.swift` — **NEW** (task 202a)
+- `MerlinTests/Unit/CheckpointStoreTests.swift` — **NEW** (task 203a)
+- `MerlinTests/Unit/RewindSlashCommandTests.swift` — **NEW** (task 203a)
+- `MerlinTests/Unit/BtwSessionTests.swift` — **NEW** (task 204a)
 
 ## Do NOT Touch
 - `ToolRouter.swift` — no changes needed
 - `project.yml` — do not add packages or targets
 - Any file not listed above unless a compile error forces a minimal fix
 
-## Phase-by-Phase Requirements
+## Task-by-Task Requirements
 
-### Phase 200a — SpawnAgent Error Isolation Tests (failing)
+### Task 200a — SpawnAgent Error Isolation Tests (failing)
 Full spec: `tasks/task-200a-spawn-agent-error-isolation-tests.md`
 
 Write `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` exactly as specified.
@@ -69,9 +69,9 @@ Write `MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift` exactly as specifie
 - `test_spawnAgent_unknownName_doesNotAbort_loopContinues`
 - `test_spawnAgent_subagentProviderError_emitsSystemNote_notError`
 
-Verify BUILD FAILED (symbols don't exist). Commit: `Phase 200a — SpawnAgentErrorIsolationTests (failing)`
+Verify BUILD FAILED (symbols don't exist). Commit: `Task 200a — SpawnAgentErrorIsolationTests (failing)`
 
-### Phase 200b — SpawnAgent Error Isolation
+### Task 200b — SpawnAgent Error Isolation
 Full spec: `tasks/task-200b-spawn-agent-error-isolation.md`
 
 1. Add `knownNames() -> Set<String>` to `AgentRegistry`
@@ -80,20 +80,20 @@ Full spec: `tasks/task-200b-spawn-agent-error-isolation.md`
 4. Add `agentName: String` to the local `SubagentPlan` struct
 5. Extend `MockProvider` with `shouldFail: Bool`
 
-Verify BUILD SUCCEEDED + all 200a tests pass. Commit: `Phase 200b — SpawnAgent error isolation: unknown-agent warning + subagent failure catch (BUG-001)`
+Verify BUILD SUCCEEDED + all 200a tests pass. Commit: `Task 200b — SpawnAgent error isolation: unknown-agent warning + subagent failure catch (BUG-001)`
 
 ---
 
-### Phase 201a — /compact + Context-Length Recovery Tests (failing)
+### Task 201a — /compact + Context-Length Recovery Tests (failing)
 Full spec: `tasks/task-201a-compact-and-context-recovery-tests.md`
 
 Write two test files:
 - `MerlinTests/Unit/ContextLengthRecoveryTests.swift` — 5 tests for `ProviderError.isContextLengthExceeded` and engine retry behaviour
 - `MerlinTests/Unit/CompactSlashCommandTests.swift` — 2 tests for compaction trigger
 
-Verify BUILD FAILED. Commit: `Phase 201a — ContextLengthRecoveryTests + CompactSlashCommandTests (failing)`
+Verify BUILD FAILED. Commit: `Task 201a — ContextLengthRecoveryTests + CompactSlashCommandTests (failing)`
 
-### Phase 201b — /compact + Context-Length Recovery
+### Task 201b — /compact + Context-Length Recovery
 Full spec: `tasks/task-201b-compact-and-context-recovery.md`
 
 1. Add `isContextLengthExceeded: Bool` to `ProviderError` (HTTP 400 + body substring match)
@@ -103,11 +103,11 @@ Full spec: `tasks/task-201b-compact-and-context-recovery.md`
 5. Add `activeContinuation` property + `emitSystemNote()` helper to `AgenticEngine`
 6. Extend `MockProvider` with `failFirstCallWith:`, `failAllCallsWith:`, `callCount`
 
-Verify BUILD SUCCEEDED + all tests pass. Commit: `Phase 201b — /compact slash + context-length auto-compact-retry (BUG-002, BUG-003)`
+Verify BUILD SUCCEEDED + all tests pass. Commit: `Task 201b — /compact slash + context-length auto-compact-retry (BUG-002, BUG-003)`
 
 ---
 
-### Phase 202a — Scroll Lock Tests (failing)
+### Task 202a — Scroll Lock Tests (failing)
 Full spec: `tasks/task-202a-scroll-lock-tests.md`
 
 Write `MerlinTests/Unit/ScrollLockTests.swift`. 5 tests for `ConversationWebView.Coordinator`:
@@ -119,9 +119,9 @@ Write `MerlinTests/Unit/ScrollLockTests.swift`. 5 tests for `ConversationWebView
 
 Uses `simulateBridgeMessage` extension on `Coordinator` that calls `handleBridgeBody`.
 
-Verify BUILD FAILED. Commit: `Phase 202a — ScrollLockTests (failing)`
+Verify BUILD FAILED. Commit: `Task 202a — ScrollLockTests (failing)`
 
-### Phase 202b — Scroll Lock
+### Task 202b — Scroll Lock
 Full spec: `tasks/task-202b-scroll-lock.md`
 
 1. In `ConversationHTMLRenderer` JS scroll listener: post `{type:'scrollLock', locked:'true'/'false'}` only when `_userScrolled` changes value. Add `merlin.resumeAutoScroll()` to the JS `merlin` object.
@@ -131,20 +131,20 @@ Full spec: `tasks/task-202b-scroll-lock.md`
 5. Place `scrollLockBanner(proxy:)` in an `.overlay(alignment: .bottom)` conditioned on `scrollLockVisible`
 6. In `sendMessage()`: call `webView.resumeAutoScroll()` alongside clearing `scrollLockVisible`
 
-Verify BUILD SUCCEEDED + all ScrollLockTests pass. Commit: `Phase 202b — Scroll lock: JS→Swift bridge + resume banner`
+Verify BUILD SUCCEEDED + all ScrollLockTests pass. Commit: `Task 202b — Scroll lock: JS→Swift bridge + resume banner`
 
 ---
 
-### Phase 203a — /rewind Checkpoint Tests (failing)
+### Task 203a — /rewind Checkpoint Tests (failing)
 Full spec: `tasks/task-203a-rewind-checkpoint-tests.md`
 
 Write two test files:
 - `MerlinTests/Unit/CheckpointStoreTests.swift` — 10 tests for `CheckpointStore` and `SessionCheckpoint`
 - `MerlinTests/Unit/RewindSlashCommandTests.swift` — 5 tests for `RewindCommand.parse`
 
-Verify BUILD FAILED. Commit: `Phase 203a — CheckpointStoreTests + RewindSlashCommandTests (failing)`
+Verify BUILD FAILED. Commit: `Task 203a — CheckpointStoreTests + RewindSlashCommandTests (failing)`
 
-### Phase 203b — /rewind Checkpoint Restoration
+### Task 203b — /rewind Checkpoint Restoration
 Full spec: `tasks/task-203b-rewind-checkpoint.md`
 
 1. Write `Merlin/Sessions/SessionCheckpoint.swift` — `struct`, `Sendable`, `Identifiable`
@@ -153,11 +153,11 @@ Full spec: `tasks/task-203b-rewind-checkpoint.md`
 4. In `AgenticEngine`: add `checkpointStore: CheckpointStore`; call `checkpointStore.save(messages:)` before each user turn; `checkpointStore.clear()` on session reset
 5. In `ChatView.handleSlashCommandIfNeeded`: add `/rewind` handling — parse with `RewindCommand.parse`, call `checkpointStore.restore(stepsBack:)`, call `contextManager.load` + `model.load(from:)`, emit systemNote
 
-Verify BUILD SUCCEEDED + all tests pass. Commit: `Phase 203b — /rewind checkpoint restoration`
+Verify BUILD SUCCEEDED + all tests pass. Commit: `Task 203b — /rewind checkpoint restoration`
 
 ---
 
-### Phase 204a — /btw Overlay Tests (failing)
+### Task 204a — /btw Overlay Tests (failing)
 Full spec: `tasks/task-204a-btw-overlay-tests.md`
 
 Write `MerlinTests/Unit/BtwSessionTests.swift`. 8 tests for `BtwSession`:
@@ -172,9 +172,9 @@ Write `MerlinTests/Unit/BtwSessionTests.swift`. 8 tests for `BtwSession`:
 
 Extend `MockProvider` with `response: String` and `delay: TimeInterval` parameters.
 
-Verify BUILD FAILED. Commit: `Phase 204a — BtwSessionTests (failing)`
+Verify BUILD FAILED. Commit: `Task 204a — BtwSessionTests (failing)`
 
-### Phase 204b — /btw Side-Question Overlay
+### Task 204b — /btw Side-Question Overlay
 Full spec: `tasks/task-204b-btw-overlay.md`
 
 1. Extend `MockProvider` with `response:` and `delay:` init parameters
@@ -182,12 +182,12 @@ Full spec: `tasks/task-204b-btw-overlay.md`
 3. Write `Merlin/Views/BtwOverlayView.swift` — floating `VStack` in a material background: input field (focused on appear), streaming answer in `ScrollView`, error label, dismiss button + Esc key handler, outside-click dismiss
 4. In `ChatView`: add `showBtwOverlay: Bool` + `btwPrefill: String` state; add `/btw` case to `handleSlashCommandIfNeeded` (extracts argument as prefill); present `BtwOverlayView` via `.overlay` with spring animation and `Color.clear` tap-to-dismiss layer
 
-Verify BUILD SUCCEEDED + all BtwSessionTests pass. Commit: `Phase 204b — /btw side-question overlay`
+Verify BUILD SUCCEEDED + all BtwSessionTests pass. Commit: `Task 204b — /btw side-question overlay`
 
 ---
 
 ## Acceptance Criteria
-- [ ] BUILD SUCCEEDED with zero warnings, zero errors after each b-phase
+- [ ] BUILD SUCCEEDED with zero warnings, zero errors after each b-task
 - [ ] All 200a tests pass after 200b
 - [ ] All 201a tests pass after 201b
 - [ ] All 202a tests pass after 202b
@@ -220,4 +220,4 @@ xcodebuild -scheme MerlinTests test \
 - `RewindCommand` is a pure value-type enum with no stored state — it's safe to use from any actor context
 - `CheckpointStore.restore(stepsBack:)` uses 0-based indexing from the end: `stepsBack=0` → most recent, `stepsBack=1` → one before that
 - Scroll-lock JS change: post the message only when `nowLocked !== _userScrolled` to avoid flooding the bridge on every scroll event
-- The `_stablePrefixDirty` / `_stablePrefixCached` pattern from phase 197b should not interfere; these phases touch different sections of `AgenticEngine`
+- The `_stablePrefixDirty` / `_stablePrefixCached` pattern from task 197b should not interfere; these  tasks touch different sections of `AgenticEngine`

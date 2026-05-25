@@ -1,11 +1,11 @@
-# Phase 66 — Memories Settings Section
+# Task 66 — Memories Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 65 complete: AgentSettingsView with model picker and standing instructions.
-Phase 62b complete: AppSettings.memoriesEnabled + memoryIdleTimeout added.
+Task 65 complete: AgentSettingsView with model picker and standing instructions.
+Task 62b complete: AppSettings.memoriesEnabled + memoryIdleTimeout added.
 
 Replace the stub `MemoriesSettingsView` in `SettingsWindowView.swift` with a real view that:
 - Toggles `AppSettings.memoriesEnabled`
@@ -81,5 +81,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 66 — MemoriesSettingsView: enable toggle, idle timeout picker, MemoryReviewView embed"
+git commit -m "Task 66 — MemoriesSettingsView: enable toggle, idle timeout picker, MemoryReviewView embed"
 ```

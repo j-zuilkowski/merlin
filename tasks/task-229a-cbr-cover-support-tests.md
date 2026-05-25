@@ -1,11 +1,11 @@
-# Phase 229a - CBR Cover Support Tests
+# Task 229a - CBR Cover Support Tests
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-The Merlin phase archive includes an xcalibre deferred item: CBR/RAR cover extraction returns `Ok(None)` because external `unrar` support was not implemented.
+The Merlin task archive includes an xcalibre deferred item: CBR/RAR cover extraction returns `Ok(None)` because external `unrar` support was not implemented.
 
-New surface introduced in phase 229b:
+New surface introduced in task 229b:
   - CBR cover extraction via an injectable RAR listing/extraction runner.
   - Unit tests avoid requiring a real `unrar` binary by using a fake runner.
 
@@ -43,6 +43,6 @@ Expected: **tests fail to compile** because injectable CBR/RAR cover support doe
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/cbr_cover_tests.rs
-git commit -m "Phase 229a - CBR cover support tests (failing)"
+git commit -m "Task 229a - CBR cover support tests (failing)"
 ```
 

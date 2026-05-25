@@ -1,10 +1,10 @@
-# Phase 336a — LoRA Serving Target Tests
+# Task 336a — LoRA Serving Target Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 335b complete: ProviderConfigCalibrationDefaultsTests + Mistral.rs port rebind.
+Task 335b complete: ProviderConfigCalibrationDefaultsTests + Mistral.rs port rebind.
 
 vLLM-Metal smoke testing (2026-05-20) confirmed it serves MLX format directly
 via `mlx_lm.load`, putting it in the same MLX-native runtime family as
@@ -13,7 +13,7 @@ mlx_lm.server / LM Studio load adapters directly; vLLM-Metal requires one
 `mlx_lm.fuse` step first. Today Merlin hard-codes the routing target to
 `mlx_lm.server` via the `loraServerURL` field.
 
-New surface in phase 336b:
+New surface in task 336b:
   - `AppSettings.loraServingTarget: String` — selects which MLX-native runtime
     serves the trained adapter. Default `"mlx_lm_server"` (historic behaviour).
     Other values: `"vllm_metal"`, `"lm_studio"`, `"custom"`.
@@ -48,5 +48,5 @@ Expected: BUILD FAILED with errors naming `loraServingTarget` and `knownLoRAServ
 ```bash
 git add MerlinTests/Unit/LoRAServingTargetSettingsTests.swift \
         tasks/task-336a-lora-serving-target-tests.md
-git commit -m "Phase 336a — LoRAServingTargetSettingsTests (failing)"
+git commit -m "Task 336a — LoRAServingTargetSettingsTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 257b — Vale Pre-Commit Gate
+# Task 257b — Vale Pre-Commit Gate
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 257a complete: failing tests for ProseGate and ProseGateResult.
+Task 257a complete: failing tests for ProseGate and ProseGateResult.
 
 ---
 
@@ -109,12 +109,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 257a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 257a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-257b-vale-gate.md \
     Merlin/Discipline/ProseGate.swift
-git commit -m "Phase 257b — Vale pre-commit gate + critic Stage 2 prose check"
+git commit -m "Task 257b — Vale pre-commit gate + critic Stage 2 prose check"
 ```

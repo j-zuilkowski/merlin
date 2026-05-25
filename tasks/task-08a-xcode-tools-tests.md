@@ -1,11 +1,11 @@
-# Phase 08a — Xcode Tools Tests
+# Task 08a — Xcode Tools Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
+Task 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
 
 ---
 
@@ -66,5 +66,5 @@ Expected: `BUILD FAILED` with errors referencing `XcodeTools`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/XcodeToolTests.swift
-git commit -m "Phase 08a — XcodeToolTests (failing)"
+git commit -m "Task 08a — XcodeToolTests (failing)"
 ```

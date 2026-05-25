@@ -1,12 +1,12 @@
-# Phase 143a — Dynamic Model Fetch Tests (failing)
+# Task 143a — Dynamic Model Fetch Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-07b complete.
+Task diag-07b complete.
 
-New surface introduced in phase 143b:
+New surface introduced in task 143b:
   - `ProviderRegistry.fetchModels(for:)` — calls `GET {baseURL}/models` (OpenAI format) or
     `GET https://api.anthropic.com/v1/models` (Anthropic format); returns `[String]` of model IDs
   - `ProviderRegistry.fetchAllModels()` — calls `fetchModels(for:)` for every enabled provider
@@ -305,5 +305,5 @@ Expected: BUILD FAILED — `ProviderRegistry.fetchModels(for:)`, `fetchAllModels
 ## Commit
 ```bash
 git add MerlinTests/Unit/DynamicModelFetchTests.swift
-git commit -m "Phase 143a — Dynamic model fetch tests (failing)"
+git commit -m "Task 143a — Dynamic model fetch tests (failing)"
 ```

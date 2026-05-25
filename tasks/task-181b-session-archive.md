@@ -1,10 +1,10 @@
-# Phase 181b — Session Archive Implementation
+# Task 181b — Session Archive Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 181a complete: SessionArchiveTests committed (failing).
+Task 181a complete: SessionArchiveTests committed (failing).
 
 ---
 
@@ -255,5 +255,5 @@ git add tasks/task-181b-session-archive.md \
         Merlin/Sessions/Session.swift \
         Merlin/Sessions/SessionStore.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 181b — Session.archived + SessionStore project-scoped path + archive/unarchive"
+git commit -m "Task 181b — Session.archived + SessionStore project-scoped path + archive/unarchive"
 ```

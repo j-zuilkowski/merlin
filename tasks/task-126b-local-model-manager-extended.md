@@ -1,10 +1,10 @@
-# Phase 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal Manager Implementations
+# Task 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal Manager Implementations
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 126a complete: failing tests for all four extended managers.
+Task 126a complete: failing tests for all four extended managers.
 
 ---
 
@@ -351,5 +351,5 @@ git add Merlin/Providers/LocalModelManager/JanModelManager.swift
 git add Merlin/Providers/LocalModelManager/LocalAIModelManager.swift
 git add Merlin/Providers/LocalModelManager/MistralRSModelManager.swift
 git add Merlin/Providers/LocalModelManager/VLLMModelManager.swift
-git commit -m "Phase 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal model managers"
+git commit -m "Task 126b — Jan, LocalAI, Mistral.rs, vLLM-Metal model managers"
 ```

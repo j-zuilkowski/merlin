@@ -1,10 +1,10 @@
-# Phase 40b — MCPBridge Implementation
+# Task 40b — MCPBridge Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 40a complete: failing MCPBridgeTests in place.
+Task 40a complete: failing MCPBridgeTests in place.
 
 MCP stdio transport: Merlin spawns each configured server as a child Process, communicates
 over stdin/stdout using JSON-RPC 2.0. Only stdio transport is supported in v2.
@@ -446,7 +446,7 @@ git add Merlin/MCP/MCPConfig.swift \
         Merlin/Engine/ToolRouter.swift \
         Merlin/Sessions/LiveSession.swift \
         project.yml
-git commit -m "Phase 40b — MCPBridge: stdio transport + tool registration"
+git commit -m "Task 40b — MCPBridge: stdio transport + tool registration"
 ```
 
 ---

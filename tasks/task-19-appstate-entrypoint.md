@@ -1,11 +1,11 @@
-# Phase 19 — AppState + MerlinApp Entry Point
+# Task 19 — AppState + MerlinApp Entry Point
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All engine + session components exist (phases 13b–18). ToolRegistration will be written in phase 19b.
+All engine + session components exist ( tasks 13b–18). ToolRegistration will be written in task 19b.
 
 ---
 
@@ -84,7 +84,7 @@ Implement `AppState.init` in this exact order:
    // authStorePath = ~/Library/Application Support/Merlin/auth.json
 2. let gate = AuthGate(memory: authMemory, presenter: self)
 3. let toolRouter = ToolRouter(authGate: gate)
-4. registerAllTools(router: toolRouter)          // phase 19b
+4. registerAllTools(router: toolRouter)          // task 19b
 5. Override run_shell handler for streaming:
    toolRouter.register(name: "run_shell") { [weak self] args in
        struct A: Decodable { var command: String; var cwd: String?; var timeout_seconds: Int? }
@@ -174,5 +174,5 @@ Expected: `BUILD SUCCEEDED`. Zero errors.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift Merlin/App/MerlinApp.swift
-git commit -m "Phase 19 — AppState wiring + MerlinApp entry point"
+git commit -m "Task 19 — AppState wiring + MerlinApp entry point"
 ```

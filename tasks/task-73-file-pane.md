@@ -1,16 +1,16 @@
-# Phase 73 — FilePane: Inline File Viewer
+# Task 73 — FilePane: Inline File Viewer
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 72b complete: WorkspaceLayoutManager persisting pane visibility.
+Task 72b complete: WorkspaceLayoutManager persisting pane visibility.
 
 Add `FilePane` — a SwiftUI view that shows the contents of a file in a scrollable,
 monospaced text area. The pane is driven by a `@Binding<URL?>` — when non-nil it
 displays that file's contents; when nil it shows a placeholder.
 
-The pane is wired into `WorkspaceView` in phase 77. This phase only creates the view file.
+The pane is wired into `WorkspaceView` in task 77. This task only creates the view file.
 
 ---
 
@@ -93,5 +93,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/FilePane.swift
-git commit -m "Phase 73 — FilePane: scrollable monospaced file viewer driven by URL binding"
+git commit -m "Task 73 — FilePane: scrollable monospaced file viewer driven by URL binding"
 ```

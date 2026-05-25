@@ -1,10 +1,10 @@
-# Phase 196a — Restore Dedup & History Tests (failing)
+# Task 196a — Restore Dedup & History Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 195b complete: ChatViewModel owned by LiveSession (v1.8.3).
+Task 195b complete: ChatViewModel owned by LiveSession (v1.8.3).
 
 Two bugs remain:
 
@@ -26,7 +26,7 @@ Fix: Add `func load(from messages: [Message])` to `ChatViewModel` that converts 
 `Message` records to `ChatEntry` display items. Call it from `LiveSession.init` when
 `initialMessages` is non-empty, so the view is populated immediately on restore.
 
-New surface in phase 196b:
+New surface in task 196b:
   - `LiveSession.originalSessionID: UUID?`
   - `SessionManager.restore()` sets `live.originalSessionID = session.id`
   - `ChatViewModel.load(from: [Message])` — converts stored messages to display entries
@@ -43,7 +43,7 @@ TDD coverage:
 
 ```swift
 // RestoreDedupAndHistoryTests.swift
-// Phase 196a — failing tests for prior-session restore deduplication and history display.
+// Task 196a — failing tests for prior-session restore deduplication and history display.
 import XCTest
 @testable import Merlin
 
@@ -126,5 +126,5 @@ Expected: **BUILD FAILED** — `originalSessionID` and `load(from:)` do not exis
 ## Commit
 ```bash
 git add MerlinTests/Unit/RestoreDedupAndHistoryTests.swift
-git commit -m "Phase 196a — RestoreDedupAndHistoryTests (failing)"
+git commit -m "Task 196a — RestoreDedupAndHistoryTests (failing)"
 ```

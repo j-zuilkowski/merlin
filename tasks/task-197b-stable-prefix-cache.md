@@ -1,10 +1,10 @@
-# Phase 197b — Stable Prefix Cache Implementation
+# Task 197b — Stable Prefix Cache Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 197a complete: failing tests in place.
+Task 197a complete: failing tests in place.
 
 ## Goal
 Cache the stable portion of the system prompt so llama.cpp's KV prefix cache gets a
@@ -112,5 +112,5 @@ Expected: BUILD SUCCEEDED, all 197a tests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 197b — Stable prefix cache for system prompt"
+git commit -m "Task 197b — Stable prefix cache for system prompt"
 ```

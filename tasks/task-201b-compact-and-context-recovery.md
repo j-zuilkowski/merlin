@@ -1,10 +1,10 @@
-# Phase 201b — /compact Slash + Context-Length Recovery
+# Task 201b — /compact Slash + Context-Length Recovery
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 201a complete: failing tests in ContextLengthRecoveryTests and CompactSlashCommandTests.
+Task 201a complete: failing tests in ContextLengthRecoveryTests and CompactSlashCommandTests.
 
 Fixes BUG-002 (/compact on-demand) and BUG-003 (context-length-exceeded treated as fatal).
 
@@ -180,7 +180,7 @@ git add Merlin/Providers/ProviderError.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/ChatView.swift \
         TestHelpers/MockProvider.swift
-git commit -m "Phase 201b — /compact slash + context-length auto-compact-retry (BUG-002, BUG-003)"
+git commit -m "Task 201b — /compact slash + context-length auto-compact-retry (BUG-002, BUG-003)"
 ```
 
 ## Fixes

@@ -1,10 +1,10 @@
-# Phase 174a — LoRAProviderRoutingTests: wrong slot mapping (failing — pre-existing)
+# Task 174a — LoRAProviderRoutingTests: wrong slot mapping (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 173b complete: ConversationHTMLRenderer fenced code fix.
+Task 173b complete: ConversationHTMLRenderer fenced code fix.
 
 ## Problem
 
@@ -49,5 +49,5 @@ Expected: 3 LoRAProviderRoutingTests failures.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-174a-lora-routing-tests.md
-git commit -m "Phase 174a — LoRAProviderRoutingTests slot-mapping failures documented"
+git commit -m "Task 174a — LoRAProviderRoutingTests slot-mapping failures documented"
 ```

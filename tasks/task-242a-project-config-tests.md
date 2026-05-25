@@ -1,16 +1,16 @@
-# Phase 242a — ProjectConfig Tests
+# Task 242a — ProjectConfig Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 241b complete: AdapterRegistry, ProjectAdapter, WHYTriggerSpec, ManualCoveragePattern,
+Task 241b complete: AdapterRegistry, ProjectAdapter, WHYTriggerSpec, ManualCoveragePattern,
 TOMLAdapterParser, and seed adapters live.
 
 Introduces the per-project configuration file (`.merlin/project.toml`) and its loader.
 Every discipline component reads from `ProjectConfig` rather than hard-coded paths.
 
-New surface introduced in phase 242b:
+New surface introduced in task 242b:
   - `ProjectConfig: Sendable, Codable` in `Merlin/Discipline/ProjectConfig.swift`:
     `adapter: String`, `adapterVersion: String`, `disciplineLayers: [String]`,
     `manualCoverageBaseline: Int`, `decayPerRelease: Int`.
@@ -190,5 +190,5 @@ and `ProjectConfigLoader.defaultConfig`.
 git add tasks/task-242a-project-config-tests.md \
     MerlinTests/Unit/ProjectConfigTests.swift \
     MerlinTests/Unit/ProjectConfigLoaderTests.swift
-git commit -m "Phase 242a — ProjectConfigTests (failing)"
+git commit -m "Task 242a — ProjectConfigTests (failing)"
 ```

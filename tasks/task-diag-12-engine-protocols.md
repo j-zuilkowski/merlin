@@ -1,4 +1,4 @@
-# Phase diag-12 — Engine Protocols
+# Task diag-12 — Engine Protocols
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
@@ -147,5 +147,5 @@ git add Merlin/Engine/Protocols/CriticEngineProtocol.swift \
         Merlin/Engine/Protocols/PlannerEngineProtocol.swift \
         Merlin/Engine/Protocols/XcalibreClientProtocol.swift \
         tasks/task-diag-12-engine-protocols.md
-git commit -m "Phase diag-12 — Engine protocol files (CriticEngineProtocol + ModelPerformanceTrackerProtocol + PlannerEngineProtocol + XcalibreClientProtocol)"
+git commit -m "Task diag-12 — Engine protocol files (CriticEngineProtocol + ModelPerformanceTrackerProtocol + PlannerEngineProtocol + XcalibreClientProtocol)"
 ```

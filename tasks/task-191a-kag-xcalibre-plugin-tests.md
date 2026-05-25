@@ -1,12 +1,12 @@
-# Phase 191a — KAG XcalibrePlugin + RAGTools + AppSettings Tests (failing)
+# Task 191a — KAG XcalibrePlugin + RAGTools + AppSettings Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 190b complete: KAGBackendPlugin protocol, NullKAGPlugin, LocalKAGPlugin, KAGEngine stub.
+Task 190b complete: KAGBackendPlugin protocol, NullKAGPlugin, LocalKAGPlugin, KAGEngine stub.
 
-New surface introduced in phase 191b:
+New surface introduced in task 191b:
   - `XcalibreKAGPlugin` — `KAGBackendPlugin` implementation that talks to xcalibre-server:
       `init(baseURL: URL, token: String, session: URLSession)`
       `writeTriples` → `POST /api/v1/graph/triples` (bearer auth)
@@ -412,5 +412,5 @@ git add \
   MerlinTests/Unit/KAGEngineExtractionTests.swift \
   MerlinTests/Unit/AppSettingsKAGTests.swift \
   MerlinTests/Unit/RAGToolsEnrichmentTests.swift
-git commit -m "Phase 191a — KAG XcalibrePlugin + RAGTools + AppSettings tests (failing)"
+git commit -m "Task 191a — KAG XcalibrePlugin + RAGTools + AppSettings tests (failing)"
 ```

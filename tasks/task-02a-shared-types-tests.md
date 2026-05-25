@@ -1,4 +1,4 @@
-# Phase 02a — Shared Types: Tests First
+# Task 02a — Shared Types: Tests First
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -70,7 +70,7 @@ final class SharedTypesTests: XCTestCase {
 
 ## Verify
 
-Run after writing the file. Expect build errors for missing types — that is correct for a test-first phase.
+Run after writing the file. Expect build errors for missing types — that is correct for a test-first task.
 
 ```bash
 cd ~/Documents/localProject/merlin
@@ -86,5 +86,5 @@ Expected: build errors referencing `Message`, `ToolCall`, etc. — not logic err
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SharedTypesTests.swift
-git commit -m "Phase 02a — SharedTypesTests (failing, types not yet defined)"
+git commit -m "Task 02a — SharedTypesTests (failing, types not yet defined)"
 ```

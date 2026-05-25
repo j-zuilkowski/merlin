@@ -1,12 +1,12 @@
-# Phase diag-02a — Provider Telemetry Tests (failing)
+# Task diag-02a — Provider Telemetry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-01b complete: TelemetryEmitter available.
+Task diag-01b complete: TelemetryEmitter available.
 
-New surface instrumented in phase diag-02b:
+New surface instrumented in task diag-02b:
   - `OpenAICompatibleProvider.complete()` emits:
       `request.encode`   — body_bytes, encode_duration_ms
       `request.sent`     — provider, url, body_bytes, message_count, tool_count, model
@@ -253,5 +253,5 @@ Expected: BUILD FAILED — `OpenAICompatibleProvider.init` does not accept `sess
 ## Commit
 ```bash
 git add MerlinTests/Unit/ProviderTelemetryTests.swift
-git commit -m "Phase diag-02a — Provider telemetry tests (failing)"
+git commit -m "Task diag-02a — Provider telemetry tests (failing)"
 ```

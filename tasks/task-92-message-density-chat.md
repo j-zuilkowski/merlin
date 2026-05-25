@@ -1,10 +1,10 @@
-# Phase 92 — Apply messageDensity to ChatView Message Rows
+# Task 92 — Apply messageDensity to ChatView Message Rows
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 91 complete: ToolRegistry.shared.registerBuiltins() called at launch.
+Task 91 complete: ToolRegistry.shared.registerBuiltins() called at launch.
 
 `AppSettings.messageDensity` is persisted and exposed in Appearance settings but its
 `verticalPadding` computed property is never read by ChatView. Message rows always use
@@ -60,5 +60,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ChatView.swift
-git commit -m "Phase 92 — Apply messageDensity.verticalPadding to ChatView message rows"
+git commit -m "Task 92 — Apply messageDensity.verticalPadding to ChatView message rows"
 ```

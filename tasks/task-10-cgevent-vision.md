@@ -1,11 +1,11 @@
-# Phase 10 — CGEventTool + VisionQueryTool
+# Task 10 — CGEventTool + VisionQueryTool
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 04 complete: LMStudioProvider exists. Phase 09b complete: ScreenCaptureTool exists.
+Task 04 complete: LMStudioProvider exists. Task 09b complete: ScreenCaptureTool exists.
 
 ---
 
@@ -131,5 +131,5 @@ Expected: `Test Suite 'CGEventToolTests' passed` with 2 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/CGEventTool.swift Merlin/Tools/VisionQueryTool.swift MerlinTests/Unit/CGEventToolTests.swift
-git commit -m "Phase 10 — CGEventTool + VisionQueryTool + tests"
+git commit -m "Task 10 — CGEventTool + VisionQueryTool + tests"
 ```

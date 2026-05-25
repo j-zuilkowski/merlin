@@ -1,18 +1,18 @@
-# Phase 315a — `merlin-discipline scan` Command Tests (failing)
+# Task 315a — `merlin-discipline scan` Command Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 314b complete: `TargetGateScanner` follows transitive dependencies.
+Task 314b complete: `TargetGateScanner` follows transitive dependencies.
 
 The `merlin-discipline` CLI has `pre-commit`, `post-commit`, `pre-push` — all gates.
 There is **no way to simply run the full discipline scan and see every finding**. An
-operator (and the W2 triage step of the proving-readiness plan) needs that. This phase
+operator (and the W2 triage step of the proving-readiness plan) needs that. This task
 adds a `scan` subcommand: it runs `DisciplineEngine.scan()` and prints every finding,
 grouped by category. `scan` is informational — it always exits 0, it never blocks.
 
-New surface introduced in phase 315b:
+New surface introduced in task 315b:
   - `DisciplineCLI.formatScanReport(_ findings: [Finding]) -> String` — `internal static`
     pure formatter (the unit-tested seam).
   - `DisciplineCLI` `scan` subcommand → `runScan(projectPath:)`.
@@ -29,7 +29,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 315a — failing tests for the `merlin-discipline scan` report formatter.
+/// Task 315a — failing tests for the `merlin-discipline scan` report formatter.
 final class DisciplineScanReportTests: XCTestCase {
 
     private func finding(_ category: FindingCategory,
@@ -70,10 +70,10 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
   -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
 ```
 Expected: **BUILD FAILED** — `DisciplineCLI.formatScanReport` does not exist yet. This
-is a compile-failure phase (`build-for-testing` is the correct verb).
+is a compile-failure task (`build-for-testing` is the correct verb).
 
 ## Commit
 ```
 git add MerlinTests/Unit/DisciplineScanReportTests.swift tasks/task-315a-discipline-scan-command-tests.md
-git commit -m "Phase 315a — merlin-discipline scan command tests (failing)"
+git commit -m "Task 315a — merlin-discipline scan command tests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 196b — Restore Dedup & History Implementation
+# Task 196b — Restore Dedup & History Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 196a complete: failing tests in place.
+Task 196a complete: failing tests in place.
 
 Five targeted edits across four files.
 
@@ -233,5 +233,5 @@ git add Merlin/Providers/LLMProvider.swift \
         Merlin/Sessions/SessionManager.swift \
         Merlin/Views/ChatView.swift \
         Merlin/Views/SessionSidebar.swift
-git commit -m "Phase 196b — Deduplicate prior session restore; populate chatViewModel from history"
+git commit -m "Task 196b — Deduplicate prior session restore; populate chatViewModel from history"
 ```

@@ -11,8 +11,8 @@ This manual covers the complete architecture, development workflow, and code org
 1. [Project Overview](#project-overview)
 2. [Repository Layout](#repository-layout)
 3. [Build System](#build-system)
-4. [Development Workflow — TDD Phases](#development-workflow--tdd-phases)
-5. [Phase Sheet Format](#task-sheet-format)
+4. [Development Workflow — TDD Tasks](#development-workflow--tdd- tasks)
+5. [Task Sheet Format](#task-sheet-format)
 6. [Core Architecture](#core-architecture)
 7. [Engine — The Agentic Loop](#engine--the-agentic-loop)
 8. [Supervisor-Worker Engine](#supervisor-worker-engine)
@@ -146,49 +146,49 @@ The app requires **macOS 14+** and runs **non-sandboxed** (entitlement `com.appl
 
 ---
 
-## Development Workflow — TDD Phases
+## Development Workflow — TDD Tasks
 
-Every feature is built in two committed phases:
+Every feature is built in two committed  tasks:
 
-### Phase NNa — Tests (failing)
+### Task NNa — Tests (failing)
 
-1. Read `tasks/PASTE-LIST.md` to find the next unused phase number
+1. Read `tasks/PASTE-LIST.md` to find the next unused task number
 2. Write the `tasks/task-NNa-<name>-tests.md` sheet (see format below)
 3. Write the test file(s) — **implementation classes must not exist yet**
 4. Run `xcodebuild` and confirm `BUILD FAILED` with errors naming the missing symbols
-5. Commit: `Phase NNa — <TestNames> (failing)`
+5. Commit: `Task NNa — <TestNames> (failing)`
 
-### Phase NNb — Implementation
+### Task NNb — Implementation
 
 1. Write the `tasks/task-NNb-<name>.md` sheet
 2. Implement the production code
 3. Run `xcodebuild` and confirm `BUILD SUCCEEDED` with all NNa tests passing
-4. Commit: `Phase NNb — <FeatureName>`
+4. Commit: `Task NNb — <FeatureName>`
 
-**Commits are mandatory after every phase.** Never batch phases into one commit. Never amend a phase commit.
+**Commits are mandatory after every task.** Never batch  tasks into one commit. Never amend a task commit.
 
 ### Git Commit Protocol
 
 ```bash
 git add <specific files — never git add -A>
-git commit -m "Phase NNx — <Description>"
+git commit -m "Task NNx — <Description>"
 ```
 
 ---
 
-## Phase Sheet Format
+## Task Sheet Format
 
 ### NNa sheet (`tasks/task-NNa-<name>-tests.md`)
 
 ```markdown
-# Phase NNa — <Feature> Tests
+# Task NNa — <Feature> Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed.
 SWIFT_STRICT_CONCURRENCY=complete. Working dir: ~/Documents/localProject/merlin
-Phase (N-1)b complete: <what was last implemented>.
+Task (N-1)b complete: <what was last implemented>.
 
-New surface introduced in phase NNb:
+New surface introduced in task NNb:
   - TypeName.methodName() — short description
 
 TDD coverage:
@@ -207,17 +207,17 @@ xcodebuild -scheme MerlinTests build-for-testing ...
 
 ## Commit
 git add MerlinTests/Unit/TestFile.swift
-git commit -m "Phase NNa — TestName (failing)"
+git commit -m "Task NNa — TestName (failing)"
 ```
 
 ### NNb sheet (`tasks/task-NNb-<name>.md`)
 
 ```markdown
-# Phase NNb — <Feature> Implementation
+# Task NNb — <Feature> Implementation
 
 ## Context
 <same as NNa, updated>
-Phase NNa complete: failing tests in place.
+Task NNa complete: failing tests in place.
 
 ---
 
@@ -232,7 +232,7 @@ xcodebuild -scheme MerlinTests test ...
 
 ## Commit
 git add <source files>
-git commit -m "Phase NNb — FeatureName"
+git commit -m "Task NNb — FeatureName"
 ```
 
 ---
@@ -477,7 +477,7 @@ Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train option
 
 ### Overview
 
-`DisciplineEngine` is a top-level `actor`, peer to `AgenticEngine`, `MemoryEngine`, and `PlannerEngine`. It coordinates five scanners - the phase scanner, manual-coverage scanner, doc-reference graph, why-comment scanner, and prose-readability checker - owns the pending-attention queue, and integrates with the hook engine. It runs after every turn (`Stop` hook) and injects findings at session start (`SessionStart` hook).
+`DisciplineEngine` is a top-level `actor`, peer to `AgenticEngine`, `MemoryEngine`, and `PlannerEngine`. It coordinates five scanners - the task scanner, manual-coverage scanner, doc-reference graph, why-comment scanner, and prose-readability checker - owns the pending-attention queue, and integrates with the hook engine. It runs after every turn (`Stop` hook) and injects findings at session start (`SessionStart` hook).
 
 ```swift
 actor DisciplineEngine {
@@ -505,7 +505,7 @@ Per-project config lives in `<project>/.merlin/project.toml`: adapter selection,
 
 ### Scanners
 
-**`TaskScanner`** — reads `tasks/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration). Projects with historical phase archives can set `task_scan_min_number` to scan only the active baseline forward, and `task_scan_public_undeclared = false` to avoid retroactive orange findings for public symbols that predate the baseline.
+**`TaskScanner`** — reads `tasks/` NNb files, extracts declared surfaces from the "New surface introduced in task NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no task declaration). Projects with historical task archives can set `task_scan_min_number` to scan only the active baseline forward, and `task_scan_public_undeclared = false` to avoid retroactive orange findings for public symbols that predate the baseline.
 
 **`ManualCoverageScanner`** — enumerates user-facing surfaces via adapter regex patterns, cross-checks against `<!-- covers: ... -->` markers in doc files. Gaps and stale references become findings. Surfaces escape the requirement via `// manual: not-user-facing — <rationale>` (logged to override audit).
 
@@ -522,7 +522,7 @@ Persisted at `<project>/.merlin/pending.json`. Idempotency key prevents duplicat
 ```swift
 struct Finding: Sendable, Identifiable, Codable {
     let id: UUID
-    let category: FindingCategory   // phaseDrift | manualCoverageGap | docStaleReference
+    let category: FindingCategory   // taskDrift | manualCoverageGap | docStaleReference
                                     // | whyCommentMissing | proseReadabilityFail
                                     // | overrideAuditAccumulation
     let severity: Severity          // block | nudge | silent
@@ -554,10 +554,10 @@ Every override appended to `<project>/.merlin/override-log.jsonl`. Weekly review
 
 Five `~/.merlin/skills/project-*/SKILL.md` files implement the user-facing layer.
 
-| Skill | Phases | Concern |
+| Skill | Tasks | Concern |
 |---|---|---|
 | `project:init` | 259a/b | Scaffold new project; install hooks |
-| `project:phase` | 260a/b | Build NNa/NNb task pair |
+| `project:task` | 260a/b | Build NNa/NNb task pair |
 | `project:revise` | 261a/b | Interactive finding review |
 | `project:release` | 262a/b | Consolidated release gate |
 | `project:adopt` | 263a/b | Adopt existing project; record baseline |
@@ -949,9 +949,9 @@ Designed against the failure taxonomy in ["Context Decay, Orchestration Drift, a
 
 | Failure pattern | Merlin mitigation |
 |---|---|
-| **Context degradation** — model reasons confidently over stale/thin retrieval | `GroundingReport` (phase 141): per-turn chunk count, average cosine score, staleness flag, `isWellGrounded` |
+| **Context degradation** — model reasons confidently over stale/thin retrieval | `GroundingReport` (task 141): per-turn chunk count, average cosine score, staleness flag, `isWellGrounded` |
 | **Orchestration drift** — multi-step runs diverge under load | `CriticEngine` evaluates every turn; `ModelParameterAdvisor` tracks score trends |
-| **Silent partial failure** — subsystem degrades before fully breaking | `consecutiveCriticFailures` + circuit breaker (phase 140): halt or warn after N failures |
+| **Silent partial failure** — subsystem degrades before fully breaking | `consecutiveCriticFailures` + circuit breaker (task 140): halt or warn after N failures |
 | **Automation blast radius** — a bad step propagates into later decisions | `AuthGate` blocks unauthorised calls; critic failure suppresses backend memory writes |
 
 **`GroundingReport`** (`Merlin/Engine/GroundingReport.swift`) — emitted as `AgentEvent.groundingReport(_:)` after every RAG search step, even when no chunks were found. Fields: `totalChunks`, `memoryChunks`, `bookChunks`, `averageScore`, `oldestMemoryAgeDays`, `hasStaleMemory`, `isWellGrounded`. `hasStaleMemory` uses `AppSettings.ragFreshnessThresholdDays` (default 90). `isWellGrounded` is `totalChunks > 0 && averageScore >= AppSettings.ragMinGroundingScore` (default 0.30). Staleness does not affect `isWellGrounded`.
@@ -1337,7 +1337,7 @@ Cross-reference between code comments and this manual:
 
 ## Adding a New Tool
 
-1. **Write the failing test** (Phase NNa):
+1. **Write the failing test** (Task NNa):
    - Test that `ToolRegistry.shared` contains your tool by name after `registerBuiltins()`
    - Test the handler function directly with a mock input
 
@@ -1417,7 +1417,7 @@ For project-scoped skills that should not be shared across projects, put them in
 These rules apply to every code change in this repository. They are enforced in `constitution.md` and must not be bypassed.
 
 1. **TDD always.** Tests first, failing commit, then implementation.
-2. **Git commit after every phase.** No exceptions, no batching.
+2. **Git commit after every task.** No exceptions, no batching.
 3. **Zero warnings, zero errors.** `SWIFT_STRICT_CONCURRENCY=complete`.
 4. **No third-party Swift packages** in production or test targets.
 5. **Non-sandboxed.** Do not use sandbox-only APIs.

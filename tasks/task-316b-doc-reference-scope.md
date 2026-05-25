@@ -1,10 +1,10 @@
-# Phase 316b — DocReferenceGraph Scope Fix
+# Task 316b — DocReferenceGraph Scope Fix
 
-> **Note:** these methods are further refined by phase 319b (skip build/, drop the loose backticked check). Implement 319b's versions.
+> **Note:** these methods are further refined by task 319b (skip build/, drop the loose backticked check). Implement 319b's versions.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 316a complete: failing runtime test in `DocReferenceGraphScopeTests`.
+Task 316a complete: failing runtime test in `DocReferenceGraphScopeTests`.
 
 Cuts the `docStaleReference` false-positive flood (1578 → an expected handful):
 `danglingReferences` no longer scans `tasks/*.md`, and `enumerateSourceSymbols` now
@@ -27,7 +27,7 @@ it skips `tasks/` documentation entirely:
         var seen: Set<String> = []
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
-            // Phase-doc Markdown is build scaffolding — historical and illustrative
+            // Task-doc Markdown is build scaffolding — historical and illustrative
             // identifiers, not product documentation. Never scan it for staleness.
             if docFile.contains("/tasks/") { continue }
 
@@ -115,7 +115,7 @@ and doc references to them are not reported as dangling:
 Add a one-line banner under that doc's title:
 ```
 > **Note:** `danglingReferences` and `enumerateSourceSymbols` here are superseded by
-> phase 316b (skip `tasks/`, include test symbols). Implement 316b's versions.
+> task 316b (skip `tasks/`, include test symbols). Implement 316b's versions.
 ```
 
 ---
@@ -138,5 +138,5 @@ unaffected); BUILD SUCCEEDED, zero warnings.
 ```
 git add Merlin/Discipline/DocReferenceGraph.swift tasks/task-310b-doc-reference-fenced-block.md \
   tasks/task-316b-doc-reference-scope.md
-git commit -m "Phase 316b — DocReferenceGraph skips tasks/ and knows test symbols"
+git commit -m "Task 316b — DocReferenceGraph skips tasks/ and knows test symbols"
 ```

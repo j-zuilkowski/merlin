@@ -1,10 +1,10 @@
-# Phase 287a — Tool Requirement Checker Tests (failing)
+# Task 287a — Tool Requirement Checker Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 286b complete: every `provider.complete` send is routed through `PreflightGuard`.
+Task 286b complete: every `provider.complete` send is routed through `PreflightGuard`.
 
 **The gap.** `Requirements.md` §10 lists the external CLI tools Merlin shells out to —
 `git`, `xcodegen`, `gh`, `vale`, `cargo`, `python`, `lms`, KiCad. When one is absent the
@@ -13,13 +13,13 @@ no hint of what is missing or how to get it. Merlin is non-sandboxed and already
 tool presence ad hoc (`task-00-preflight.sh` does exactly this at build time) — it just
 never does it *in-app, on first use*.
 
-This phase adds a declarative tool-requirement registry and a checker that detects
+This task adds a declarative tool-requirement registry and a checker that detects
 presence and, for the brew-safe subset, installs the tool with one confirmed
 `brew install`. The 80/20: Merlin auto-installs only the Homebrew-safe formulae; for
 everything else (rustup's curl-pipe-sh, Python, the LM Studio / KiCad apps) it shows the
 requirement and the install command/URL but never runs the installer itself.
 
-New surface introduced in phase 287b:
+New surface introduced in task 287b:
   - `ToolRequirement` struct + `ToolRequirement.InstallMethod` enum in
     `Merlin/Tools/ToolRequirement.swift`:
     ```swift
@@ -188,7 +188,7 @@ Expected: **BUILD FAILED** — errors naming the missing `ToolRequirement`,
 git add tasks/task-287a-tool-requirement-checker-tests.md \
     MerlinTests/Unit/ToolRequirementCheckerTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 287a — ToolRequirementCheckerTests (failing)"
+git commit -m "Task 287a — ToolRequirementCheckerTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file registers.)

@@ -1,16 +1,16 @@
-# Phase 260a — project:phase Skill Tests
+# Task 260a — project:task Skill Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 259b complete: project:init SKILL.md installed.
+Task 259b complete: project:init SKILL.md installed.
 
-New surface introduced in phase 260b:
-  - `~/.merlin/skills/project-task/SKILL.md` — the `project:phase` skill file.
+New surface introduced in task 260b:
+  - `~/.merlin/skills/project-task/SKILL.md` — the `project:task` skill file.
 
 TDD coverage:
-  File 1 — `MerlinTests/Unit/ProjectPhaseSkillTests.swift`:
+  File 1 — `MerlinTests/Unit/ProjectTaskSkillTests.swift`:
     `~/.merlin/skills/project-task/SKILL.md` exists; contains "## Trigger";
     contains "## Steps"; contains "## Output"; mentions "NNa" and "NNb".
 
@@ -18,14 +18,14 @@ TDD coverage:
 
 ## Write to
 
-- `MerlinTests/Unit/ProjectPhaseSkillTests.swift`
+- `MerlinTests/Unit/ProjectTaskSkillTests.swift`
 
-### MerlinTests/Unit/ProjectPhaseSkillTests.swift
+### MerlinTests/Unit/ProjectTaskSkillTests.swift
 
 ```swift
 import XCTest
 
-final class ProjectPhaseSkillTests: XCTestCase {
+final class ProjectTaskSkillTests: XCTestCase {
 
     private let skillPath: String = {
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -34,7 +34,7 @@ final class ProjectPhaseSkillTests: XCTestCase {
 
     func testSkillFileExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "~/.merlin/skills/project-task/SKILL.md not found. Run phase 260b.")
+                      "~/.merlin/skills/project-task/SKILL.md not found. Run task 260b.")
     }
 
     func testSkillHasTriggerSection() throws {
@@ -80,6 +80,6 @@ Expected: **BUILD SUCCEEDED** but tests **FAIL** at runtime (skill file absent).
 
 ```bash
 git add tasks/task-260a-project-task-skill-tests.md \
-    MerlinTests/Unit/ProjectPhaseSkillTests.swift
-git commit -m "Phase 260a — ProjectPhaseSkillTests (failing)"
+    MerlinTests/Unit/ProjectTaskSkillTests.swift
+git commit -m "Task 260a — ProjectTaskSkillTests (failing)"
 ```

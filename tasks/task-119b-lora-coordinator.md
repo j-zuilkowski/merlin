@@ -1,10 +1,10 @@
-# Phase 119b — LoRACoordinator
+# Task 119b — LoRACoordinator
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 119a complete: LoRACoordinatorTests (failing) in place.
+Task 119a complete: LoRACoordinatorTests (failing) in place.
 
 ---
 
@@ -137,7 +137,7 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/LoRACoordinator.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 119b — LoRACoordinator (threshold-gated auto-train trigger, concurrent-safe)"
+git commit -m "Task 119b — LoRACoordinator (threshold-gated auto-train trigger, concurrent-safe)"
 ```
 
 ---

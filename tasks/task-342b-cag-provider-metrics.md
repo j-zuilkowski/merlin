@@ -1,10 +1,10 @@
-# Phase 342b — CAG Provider And Metrics Implementation
+# Task 342b — CAG Provider And Metrics Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 342a complete: CAG provider and metrics tests are failing.
+Task 342a complete: CAG provider and metrics tests are failing.
 
 Recommended execution model: GPT-5.3-Codex.
 
@@ -38,7 +38,7 @@ actor CAGCacheMetricsStore {
 ```
 
 Aggregation should sum token counts. Keep the API small; the Budget UI can read
-it in a later phase.
+it in a later task.
 
 ## Edit: Merlin/Providers/LLMProvider.swift
 
@@ -103,7 +103,7 @@ xcodebuild -scheme MerlinTests test \
     CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'Executed.*tests|BUILD' | tail
 ```
-Expected: all tests pass, including the phase 342a CAG provider and metrics
+Expected: all tests pass, including the task 342a CAG provider and metrics
 tests.
 
 ## Commit
@@ -116,5 +116,5 @@ git add Merlin/CAG/CacheMetrics.swift \
         MerlinTests/Unit/CAGCacheMetricsTests.swift \
         MerlinTests/Unit/ProviderTests.swift \
         tasks/task-342b-cag-provider-metrics.md
-git commit -m "Phase 342b — CAG Anthropic cache control and metrics"
+git commit -m "Task 342b — CAG Anthropic cache control and metrics"
 ```

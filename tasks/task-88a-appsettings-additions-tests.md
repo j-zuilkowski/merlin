@@ -1,12 +1,12 @@
-# Phase 88a — AppSettings Additions Tests (keepAwake, permissionMode, notifications, messageDensity)
+# Task 88a — AppSettings Additions Tests (keepAwake, permissionMode, notifications, messageDensity)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 87 complete: PRMonitor wired.
+Task 87 complete: PRMonitor wired.
 
-New surface introduced in phase 88b:
+New surface introduced in task 88b:
   - `AppSettings.keepAwake: Bool` (default false) — persisted to config.toml
   - `AppSettings.defaultPermissionMode: PermissionMode` (default .ask) — persisted
   - `AppSettings.notificationsEnabled: Bool` (default true) — persisted
@@ -124,5 +124,5 @@ Expected: `BUILD FAILED` — `keepAwake`, `defaultPermissionMode`, `notification
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AppSettingsAdditionsTests.swift
-git commit -m "Phase 88a — AppSettingsAdditionsTests (failing)"
+git commit -m "Task 88a — AppSettingsAdditionsTests (failing)"
 ```

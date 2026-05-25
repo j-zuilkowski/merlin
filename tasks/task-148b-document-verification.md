@@ -1,16 +1,16 @@
-# Phase 148b — Two-Tier Document Verification
+# Task 148b — Two-Tier Document Verification
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 148a complete: failing tests in place.
+Task 148a complete: failing tests in place.
 
 ---
 
 ## Problem
 
-Before this phase, the CriticEngine had three silent defects that made it unfit for
+Before this task, the CriticEngine had three silent defects that made it unfit for
 document-generation verification:
 
 1. **Truncation** — `output.prefix(4000)` meant documents longer than ~4KB were never
@@ -235,5 +235,5 @@ Expected: BUILD SUCCEEDED, all 148a tests pass, zero warnings.
 git add Merlin/Engine/CriticEngine.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Engine/Protocols/CriticEngineProtocol.swift
-git commit -m "Phase 148b — two-tier document verification"
+git commit -m "Task 148b — two-tier document verification"
 ```

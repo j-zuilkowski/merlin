@@ -1,16 +1,16 @@
-# Phase 244a — PendingAttentionQueue Tests
+# Task 244a — PendingAttentionQueue Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 243b complete: TaskScanner, DriftFinding, DriftSeverity live.
+Task 243b complete: TaskScanner, DriftFinding, DriftSeverity live.
 
 Introduces the persisted `PendingAttentionQueue` and the `Finding` / `FindingCategory` /
 `Severity` types that flow through the entire discipline subsystem.
 
-New surface introduced in phase 244b:
-  - `FindingCategory: String, Codable, Sendable` enum — `case phaseDrift, manualCoverageGap,
+New surface introduced in task 244b:
+  - `FindingCategory: String, Codable, Sendable` enum — `case taskDrift, manualCoverageGap,
     docStaleReference, whyCommentMissing, proseReadabilityFail, versionBumpCandidate,
     overrideAuditAccumulation`.
   - `Severity: String, Codable, Sendable` enum — `case block, nudge, silent`.
@@ -52,7 +52,7 @@ final class FindingModelTests: XCTestCase {
     func testFindingCodableRoundTrip() throws {
         let f = Finding(
             id: UUID(),
-            category: .phaseDrift,
+            category: .taskDrift,
             severity: .block,
             summary: "Symbol missing",
             detail: "ProviderBudget absent from source",
@@ -63,14 +63,14 @@ final class FindingModelTests: XCTestCase {
         let data = try JSONEncoder().encode(f)
         let decoded = try JSONDecoder().decode(Finding.self, from: data)
         XCTAssertEqual(decoded.id, f.id)
-        XCTAssertEqual(decoded.category, .phaseDrift)
+        XCTAssertEqual(decoded.category, .taskDrift)
         XCTAssertEqual(decoded.severity, .block)
         XCTAssertEqual(decoded.summary, "Symbol missing")
         XCTAssertEqual(decoded.suggestedAction, "Restore or write addendum")
     }
 
     func testFindingCategoryRawValues() {
-        XCTAssertEqual(FindingCategory.phaseDrift.rawValue, "phaseDrift")
+        XCTAssertEqual(FindingCategory.taskDrift.rawValue, "taskDrift")
         XCTAssertEqual(FindingCategory.manualCoverageGap.rawValue, "manualCoverageGap")
         XCTAssertEqual(FindingCategory.docStaleReference.rawValue, "docStaleReference")
         XCTAssertEqual(FindingCategory.whyCommentMissing.rawValue, "whyCommentMissing")
@@ -105,7 +105,7 @@ final class PendingAttentionQueueTests: XCTestCase {
 
     private func makeFinding(
         severity: Severity = .nudge,
-        category: FindingCategory = .phaseDrift
+        category: FindingCategory = .taskDrift
     ) -> Finding {
         Finding(
             id: UUID(),
@@ -223,5 +223,5 @@ and `PendingAttentionQueue`.
 git add tasks/task-244a-pending-attention-queue-tests.md \
     MerlinTests/Unit/FindingModelTests.swift \
     MerlinTests/Unit/PendingAttentionQueueTests.swift
-git commit -m "Phase 244a — PendingAttentionQueueTests (failing)"
+git commit -m "Task 244a — PendingAttentionQueueTests (failing)"
 ```

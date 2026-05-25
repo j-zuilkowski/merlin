@@ -1,10 +1,10 @@
-# Phase 69 — Web Search Settings Section
+# Task 69 — Web Search Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 68 complete: SkillsSettingsView with per-skill enable/disable.
+Task 68 complete: SkillsSettingsView with per-skill enable/disable.
 
 Replace the stub `SearchSettingsView` in `SettingsWindowView.swift` with a real view that:
 - Shows a SecureField for the Brave Search API key
@@ -115,5 +115,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift \
         Merlin/Connectors/ConnectorCredentials.swift
-git commit -m "Phase 69 — SearchSettingsView: Brave API key in Keychain, live-activates web_search tool"
+git commit -m "Task 69 — SearchSettingsView: Brave API key in Keychain, live-activates web_search tool"
 ```

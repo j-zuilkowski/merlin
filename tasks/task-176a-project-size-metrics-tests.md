@@ -1,10 +1,10 @@
-# Phase 176a — ProjectSizeMetricsTests + ProjectSizeObserverTests: formula mismatch (failing — pre-existing)
+# Task 176a — ProjectSizeMetricsTests + ProjectSizeObserverTests: formula mismatch (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 175b complete: TOML section placement fix.
+Task 175b complete: TOML section placement fix.
 
 ## Problem
 
@@ -66,5 +66,5 @@ Expected: 6 ProjectSizeMetricsTests failures + 1 ProjectSizeObserverTests failur
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-176a-project-size-metrics-tests.md
-git commit -m "Phase 176a — ProjectSizeMetrics/Observer formula failures documented"
+git commit -m "Task 176a — ProjectSizeMetrics/Observer formula failures documented"
 ```

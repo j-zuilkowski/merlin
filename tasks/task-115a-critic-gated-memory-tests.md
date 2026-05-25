@@ -1,10 +1,10 @@
-# Phase 115a — CriticGatedMemoryTests (failing)
+# Task 115a — CriticGatedMemoryTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 114b complete: StagingBuffer accept/reject counters wired into OutcomeSignals.
+Task 114b complete: StagingBuffer accept/reject counters wired into OutcomeSignals.
 
 Current state: AgenticEngine.runLoop evaluates the critic (CriticEngine) when complexity is
 non-routine, but its verdict is a local `let verdict` scoped inside the while-loop guard block.
@@ -13,7 +13,7 @@ whenever `memoriesEnabled = true` and the summary is non-empty. Low-quality sess
 critic verdict was `.fail` therefore enter the xcalibre memory store, polluting the RAG dataset
 used by future sessions.
 
-New surface introduced in phase 115b:
+New surface introduced in task 115b:
   - `AgenticEngine.lastCriticVerdict: CriticResult?` — stored on the instance; reset to nil at
     the start of each runLoop call; set inside the critic switch for pass / fail / skipped.
   - Memory write guard: if `case .fail = lastCriticVerdict { return }` — write skipped.
@@ -127,7 +127,7 @@ final class CriticGatedMemoryTests: XCTestCase {
     func testLastCriticVerdictNilAtInit() {
         let spy = SpyXcalibreClient()
         let engine = makeTestEngine(spy: spy)
-        // Phase 115b adds this property. Until then, BUILD FAILED.
+        // Task 115b adds this property. Until then, BUILD FAILED.
         XCTAssertNil(engine.lastCriticVerdict)
     }
 
@@ -269,5 +269,5 @@ Expected: BUILD FAILED — `AgenticEngine.lastCriticVerdict` not defined.
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/CriticGatedMemoryTests.swift \
         TestHelpers/EngineFactory.swift
-git commit -m "Phase 115a — CriticGatedMemoryTests (failing)"
+git commit -m "Task 115a — CriticGatedMemoryTests (failing)"
 ```

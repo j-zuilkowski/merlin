@@ -1,10 +1,10 @@
-# Phase 103b — PlannerEngine (classifier + decomposer + complexity routing)
+# Task 103b — PlannerEngine (classifier + decomposer + complexity routing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 103a complete: failing PlannerEngine tests in place.
+Task 103a complete: failing PlannerEngine tests in place.
 
 ---
 
@@ -273,5 +273,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/PlannerEngine.swift \
         Merlin/Config/AppSettings.swift \
         project.yml
-git commit -m "Phase 103b — PlannerEngine (execute-slot classifier + orchestrate decomposer + complexity routing)"
+git commit -m "Task 103b — PlannerEngine (execute-slot classifier + orchestrate decomposer + complexity routing)"
 ```

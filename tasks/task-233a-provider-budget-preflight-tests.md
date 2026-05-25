@@ -1,17 +1,17 @@
-# Phase 233a — ProviderBudget + Pre-Flight Gate Tests
+# Task 233a — ProviderBudget + Pre-Flight Gate Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 232b complete: telemetry emits error body, pre-flight estimate, and per-step planner trace.
+Task 232b complete: telemetry emits error body, pre-flight estimate, and per-step planner trace.
 
-Introduces the contract every later phase depends on: each provider/model entry advertises an
+Introduces the contract every later task depends on: each provider/model entry advertises an
 input-token budget, and the engine refuses to send a request that would exceed it. Reactive
 400-on-overrun handling stays in place for safety, but stops being load-bearing — most overruns
 disappear because pre-flight blocks them.
 
-New surface introduced in phase 233b:
+New surface introduced in task 233b:
   - `ProviderBudget` value type in `Merlin/Providers/ProviderBudget.swift`:
     `struct ProviderBudget: Sendable { let maxInputTokens: Int; let reservedOutputTokens: Int;
     var usableInputTokens: Int { maxInputTokens - reservedOutputTokens } }`.
@@ -26,7 +26,7 @@ New surface introduced in phase 233b:
     `enum PreflightOutcome { case ok; case wouldOverflow(estimated: Int, budget: Int) }`.
     Called immediately before `completeWithRetry`. `.wouldOverflow` triggers compaction (existing
     `compactWithSummaryIfNeeded`); if still over, rethrows `EngineError.preflightOverflow` —
-    later phases (237b, 239b) handle that error.
+    later  tasks (237b, 239b) handle that error.
   - Lowered thresholds in `Merlin/Engine/ContextManager.swift`:
     `preRunCompactionThreshold = 6_000` (was 10_000) and `midLoopCompactionThreshold = 20_000`
     (was 40_000). Both still tunable via `var` for tests.
@@ -79,5 +79,5 @@ git add tasks/task-233a-provider-budget-preflight-tests.md \
     MerlinTests/Unit/PreflightGateTests.swift \
     MerlinTests/Unit/CompactionThresholdTests.swift \
     MerlinTests/Unit/PreflightOkTelemetryTests.swift
-git commit -m "Phase 233a — ProviderBudgetAndPreflightTests (failing)"
+git commit -m "Task 233a — ProviderBudgetAndPreflightTests (failing)"
 ```

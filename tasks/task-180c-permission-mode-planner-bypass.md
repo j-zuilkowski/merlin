@@ -1,10 +1,10 @@
-# Phase 180c — Fix: PermissionModeTests planner-consumes-mock-response
+# Task 180c — Fix: PermissionModeTests planner-consumes-mock-response
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 180b complete: @MainActor CapturingAuthPresenter; pure tool-call chunks in place.
+Task 180b complete: @MainActor CapturingAuthPresenter; pure tool-call chunks in place.
 
 ## Root Cause
 
@@ -114,5 +114,5 @@ Expected: BUILD SUCCEEDED; all PermissionModeTests pass including
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PermissionModeTests.swift \
         tasks/task-180c-permission-mode-planner-bypass.md
-git commit -m "Phase 180c — Fix: change auth-popup test message to avoid planner keyword"
+git commit -m "Task 180c — Fix: change auth-popup test message to avoid planner keyword"
 ```

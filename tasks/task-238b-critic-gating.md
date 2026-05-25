@@ -1,10 +1,10 @@
-# Phase 238b — Critic Gating
+# Task 238b — Critic Gating
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 238a complete: failing tests for the three-input critic gate.
+Task 238a complete: failing tests for the three-input critic gate.
 
 The critic now runs only when there is a reason for it to: a skill says so, a `PlanStep` says
 so, or the heuristic has no better answer. Steps whose success can be proven by deterministic
@@ -51,7 +51,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 238a tests pass. Pre-existing critic tests still pass.
+Expected: **BUILD SUCCEEDED** and all task 238a tests pass. Pre-existing critic tests still pass.
 
 ## Commit
 
@@ -62,9 +62,9 @@ git add tasks/task-238b-critic-gating.md \
     Merlin/Engine/CriterionChecker.swift \
     Merlin/Engine/CriticEngine.swift \
     Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 238b — Critic gating (skill frontmatter, step policy, deterministic short-circuit)"
+git commit -m "Task 238b — Critic gating (skill frontmatter, step policy, deterministic short-circuit)"
 ```
 
 ## PASTE-LIST update
 
-Append phase 238a/238b under the "Budget-Aware Execution (v2.1.0)" section.
+Append task 238a/238b under the "Budget-Aware Execution (v2.1.0)" section.

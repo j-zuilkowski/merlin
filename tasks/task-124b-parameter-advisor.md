@@ -1,10 +1,10 @@
-# Phase 124b — ModelParameterAdvisor Implementation
+# Task 124b — ModelParameterAdvisor Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 124a complete: 12 failing tests in ModelParameterAdvisorTests.
+Task 124a complete: 12 failing tests in ModelParameterAdvisorTests.
 
 ---
 
@@ -239,7 +239,7 @@ Add the field with backward-compatible decode (falls back to nil when absent):
 
 ```swift
 // In OutcomeRecord — add after the `legacyTrainingRecord` field:
-    /// finish_reason from the last chunk. nil for records created before phase 124b.
+    /// finish_reason from the last chunk. nil for records created before task 124b.
     var finishReason: String?
 
 // In init(...):
@@ -416,5 +416,5 @@ git add Merlin/Engine/ModelPerformanceTracker.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/App/AppState.swift
 git add Merlin/Views/Settings/PerformanceDashboardView.swift
-git commit -m "Phase 124b — ModelParameterAdvisor (truncation, variance, repetition, context overflow detection)"
+git commit -m "Task 124b — ModelParameterAdvisor (truncation, variance, repetition, context overflow detection)"
 ```

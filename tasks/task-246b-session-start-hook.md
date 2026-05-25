@@ -1,10 +1,10 @@
-# Phase 246b — SessionStart Hook
+# Task 246b — SessionStart Hook
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 246a complete: failing tests for HookEvent.sessionStart and HookEngine.runSessionStart.
+Task 246a complete: failing tests for HookEvent.sessionStart and HookEngine.runSessionStart.
 
 ---
 
@@ -69,12 +69,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 246a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 246a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-246b-session-start-hook.md \
     Merlin/Engine/HookEngine.swift
-git commit -m "Phase 246b — SessionStart hook event + system-reminder injection"
+git commit -m "Task 246b — SessionStart hook event + system-reminder injection"
 ```

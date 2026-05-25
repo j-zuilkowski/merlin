@@ -1,11 +1,11 @@
-# Phase 155a — TCR text extraction tests (failing)
+# Task 155a — TCR text extraction tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 154b complete.
+Task 154b complete.
 
-New surface introduced in phase 155b:
+New surface introduced in task 155b:
   - `crate::text::tcr::extract(path)` — returns ExtractedText with actual decoded content
 
 ## Write to: processing/tests/tcr_text_tests.rs
@@ -82,5 +82,5 @@ Expected: BUILD FAILED or tests fail (implementation not updated yet).
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/tcr_text_tests.rs processing/Cargo.toml
-git commit -m "Phase 155a — TCR text extraction tests (failing)"
+git commit -m "Task 155a — TCR text extraction tests (failing)"
 ```

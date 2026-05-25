@@ -1,10 +1,10 @@
-# Phase 208b — Merlin v2.0 KiCad Core Contracts
+# Task 208b — Merlin v2.0 KiCad Core Contracts
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 208a complete: failing `KiCadV2CoreContractsTests` are in place.
+Task 208a complete: failing `KiCadV2CoreContractsTests` are in place.
 
 Spec source:
   - `spec.md` section `Merlin v2.0 — Electronics/KiCad Feature Set`
@@ -590,7 +590,7 @@ static let all: [ToolDefinition] = [
 ]
 ```
 
-Do not add tool handlers in this phase. Later phases implement dispatch; this phase only exposes
+Do not add tool handlers in this task. Later  tasks implement dispatch; this task only exposes
 the OpenAI function schemas through the runtime registry.
 
 ---
@@ -612,7 +612,7 @@ Expected: **BUILD SUCCEEDED**. `KiCadV2CoreContractsTests` pass and no existing 
 git add Merlin/Electronics/KiCadV2Core.swift \
         Merlin/Electronics/KiCadToolDefinitions.swift \
         Merlin/Tools/ToolDefinitions.swift
-git commit -m "Phase 208b — Merlin v2.0 KiCad core contracts"
+git commit -m "Task 208b — Merlin v2.0 KiCad core contracts"
 ```
 
 ---

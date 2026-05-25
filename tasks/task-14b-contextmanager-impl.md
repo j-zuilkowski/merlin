@@ -1,6 +1,6 @@
-# Phase 14b — ContextManager Implementation
+# Task 14b — ContextManager Implementation
 
-> ⚠️ **OUTDATED** — This phase documents the original v1 implementation only.
+> ⚠️ **OUTDATED** — This task documents the original v1 implementation only.
 > The current `ContextManager.swift` includes significant v5 additions.
 > **Read `task-14c-contextmanager-v5-addendum.md` alongside this document** to get the
 > complete current implementation. `task-14c` is the authoritative spec for the live code.
@@ -10,7 +10,7 @@ Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party pack
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 14a complete: ContextManagerTests.swift written.
+Task 14a complete: ContextManagerTests.swift written.
 
 ---
 
@@ -71,5 +71,5 @@ Expected: `Test Suite 'ContextManagerTests' passed` with 5 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift
-git commit -m "Phase 14b — ContextManager with compaction (5 tests passing)"
+git commit -m "Task 14b — ContextManager with compaction (5 tests passing)"
 ```

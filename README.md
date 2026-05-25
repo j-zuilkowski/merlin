@@ -30,7 +30,7 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal (after a one-shot `mlx_lm.fuse`, though vLLM-Metal is not recommended for the current general+vision pair workflow). For GGUF providers (Ollama / Jan.ai / LocalAI / llama.cpp), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
 
-**Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD task pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and task-file/code sync. Five `/project:*` skills (`init`, `phase`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
+**Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD task pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and task-file/code sync. Five `/project:*` skills (`init`, `task`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
 
 See [`FEATURES.md`](FEATURES.md) for a complete capability reference.  
 See [`spec.md`](spec.md) for implementation details and design decisions.
@@ -102,7 +102,7 @@ MerlinLiveTests/    Real-provider API tests (run manually)
 MerlinE2ETests/     Full agentic loop + UI tests (run manually)
 TestHelpers/        Shared test utilities (MockProvider, EngineFactory, …)
 TestTargetApp/      Fixture app for GUI automation tests
-tasks/             Phase-by-phase implementation sheets
+tasks/             Task-by-task implementation sheets
 scripts/            DMG packaging script
 ```
 

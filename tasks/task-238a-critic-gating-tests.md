@@ -1,17 +1,17 @@
-# Phase 238a — Critic Gating Tests
+# Task 238a — Critic Gating Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 237b complete: EscalationHandler installed, recursive recovery deleted.
+Task 237b complete: EscalationHandler installed, recursive recovery deleted.
 
-Today the critic fires on a hard-coded heuristic at `AgenticEngine.swift:928–931`. This phase
+Today the critic fires on a hard-coded heuristic at `AgenticEngine.swift:928–931`. This task
 replaces that with a three-input gate: skill frontmatter `critic:`, current `PlanStep.requiresCritic`,
 and Stage-1 deterministic verification short-circuit (skip the LLM critic when the structured
 `StepCriterion` checks already prove the step succeeded).
 
-New surface introduced in phase 238b:
+New surface introduced in task 238b:
   - `SkillFrontmatter.critic: CriticMode?` — parsed from the YAML `critic:` field. Legal values
     `required`, `optional`, `skip`. Absent → `nil` (defer to step/heuristic).
   - `CriticPolicyResolver` in `Merlin/Engine/CriticPolicyResolver.swift`:
@@ -92,5 +92,5 @@ git add tasks/task-238a-critic-gating-tests.md \
     MerlinTests/Unit/CriticPolicyResolverTests.swift \
     MerlinTests/Unit/CriterionCheckerTests.swift \
     MerlinTests/Unit/DeterministicVerificationShortCircuitTests.swift
-git commit -m "Phase 238a — CriticGatingTests (failing)"
+git commit -m "Task 238a — CriticGatingTests (failing)"
 ```

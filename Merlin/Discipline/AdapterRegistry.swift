@@ -188,7 +188,7 @@ actor AdapterRegistry {
 
     [[why_comment_triggers]]
     regex = "todo!\\(\\)"
-    reason = "must reference issue/phase"
+    reason = "must reference issue/task"
 
     [[why_comment_triggers]]
     regex = "Duration::from_millis\\("

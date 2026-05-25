@@ -1,10 +1,10 @@
-# Phase 166b — WKWebView Chat Renderer
+# Task 166b — WKWebView Chat Renderer
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 166a complete: ConversationHTMLRendererTests failing (missing implementation).
+Task 166a complete: ConversationHTMLRendererTests failing (missing implementation).
 
 Migrate `ChatView`'s message list from SwiftUI `Text`-per-message to a single `WKWebView`.
 SwiftUI `.textSelection(.enabled)` creates an isolated AppKit selection island per `Text`
@@ -553,7 +553,7 @@ struct ConversationWebView: NSViewRepresentable {
 
 ## Edit: `Merlin/Views/ChatView.swift`
 
-Replace the `messageList` computed property and its `VStack`+`ForEach` contents with `ConversationWebView`. The `ChatEntryRow`, `RenderedMessage`, and `markdownText` helpers are no longer needed in `ChatView` — they remain in the file for now but are superseded; they can be removed in a follow-up cleanup phase.
+Replace the `messageList` computed property and its `VStack`+`ForEach` contents with `ConversationWebView`. The `ChatEntryRow`, `RenderedMessage`, and `markdownText` helpers are no longer needed in `ChatView` — they remain in the file for now but are superseded; they can be removed in a follow-up cleanup task.
 
 ### Replace `messageList`
 
@@ -690,7 +690,7 @@ git add Merlin/Views/Chat/ConversationHTMLRenderer.swift \
         Merlin/Views/Chat/ConversationWebView.swift \
         Merlin/Views/ChatView.swift \
         tasks/task-166b-wkwebview-chat.md
-git commit -m "Phase 166b — WKWebView conversation renderer (cross-message selection)"
+git commit -m "Task 166b — WKWebView conversation renderer (cross-message selection)"
 ```
 
 ---

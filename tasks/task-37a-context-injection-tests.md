@@ -1,12 +1,12 @@
-# Phase 37a — Context Injection Tests
+# Task 37a — Context Injection Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 36b complete: ConstitutionLoader + engine integration.
+Task 36b complete: ConstitutionLoader + engine integration.
 
-New surface introduced in phase 37b:
+New surface introduced in task 37b:
   - `ContextInjector.resolveAtMentions(in:projectPath:) -> String`
     Replaces `@filename` and `@filename:start-end` tokens with `[File: name]\n<content>\n`
     blocks. Paths are resolved relative to projectPath. Files truncated at 2,000 lines;
@@ -159,5 +159,5 @@ Expected: `BUILD FAILED` with errors referencing `ContextInjector`, `AttachmentE
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ContextInjectionTests.swift
-git commit -m "Phase 37a — ContextInjectionTests (failing)"
+git commit -m "Task 37a — ContextInjectionTests (failing)"
 ```

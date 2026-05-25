@@ -1,15 +1,15 @@
-# Phase 303a — Eval Harness Tests (failing)
+# Task 303a — Eval Harness Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 
 The Merlin end-to-end proving suite needs an automated harness that drives a real
 `LiveSession` against a fixture project and captures the agent's behaviour for scoring.
-This phase pins that harness. It lives in the `MerlinE2ETests` target (live-gated, real
+This task pins that harness. It lives in the `MerlinE2ETests` target (live-gated, real
 providers — LM Studio + DeepSeek per the configured slots), following the existing
 `AgenticLoopE2ETests` pattern (`skipUnlessLiveEnvironment()`, real `AgenticEngine`).
 
-New surface in phase 303b:
+New surface in task 303b:
   - `EvalRun` — captured result of one scenario run: `assistantText`, `toolCalls`
     (`[ToolCallRecord]`), `systemNotes`, `errors`, `allEvents`.
   - `ToolCallRecord` — `name`, `arguments`, `result`, `isError`.
@@ -29,7 +29,7 @@ import Foundation
 import XCTest
 @testable import Merlin
 
-/// Phase 303a — failing smoke test for the eval harness.
+/// Task 303a — failing smoke test for the eval harness.
 final class EvalHarnessSmokeTests: XCTestCase {
 
     @MainActor
@@ -68,5 +68,5 @@ Expected: BUILD FAILED — `EvalHarness`, `EvalRun`, `ToolCallRecord` do not exi
 ## Commit
 ```
 git add MerlinE2ETests/EvalHarnessSmokeTests.swift tasks/task-303a-eval-harness-tests.md
-git commit -m "Phase 303a — Eval harness tests (failing)"
+git commit -m "Task 303a — Eval harness tests (failing)"
 ```

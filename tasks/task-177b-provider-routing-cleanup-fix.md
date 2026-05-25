@@ -1,10 +1,10 @@
-# Phase 177b — Fix: NullProvider for nil registry; vision falls back to primary
+# Task 177b — Fix: NullProvider for nil registry; vision falls back to primary
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 177a complete: ProviderRoutingCleanup failures documented.
+Task 177a complete: ProviderRoutingCleanup failures documented.
 
 ## Fix
 
@@ -66,5 +66,5 @@ xcodebuild -scheme MerlinTests test \
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         tasks/task-177b-provider-routing-cleanup-fix.md
-git commit -m "Phase 177b — Fix: provider(for:) returns NullProvider for nil registry; vision falls back to primary"
+git commit -m "Task 177b — Fix: provider(for:) returns NullProvider for nil registry; vision falls back to primary"
 ```

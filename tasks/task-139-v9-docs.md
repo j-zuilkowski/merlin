@@ -1,13 +1,13 @@
-# Phase 139 — V9 Documentation & Code Comment Update
+# Task 139 — V9 Documentation & Code Comment Update
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 138b complete: full v9 local memory backend pipeline in place. All tests pass.
+Task 138b complete: full v9 local memory backend pipeline in place. All tests pass.
 
-This is a documentation-only phase — no new symbols, no test changes.
-Update every file introduced in phases 134–138 so that:
+This is a documentation-only task — no new symbols, no test changes.
+Update every file introduced in  tasks 134–138 so that:
   1. All `///` doc-comments and `//` inline comments are complete and accurate.
   2. `spec.md` has a correct v9 section.
   3. `FEATURES.md` has a complete local memory entry.
@@ -45,7 +45,7 @@ Update every file introduced in phases 134–138 so that:
 ### Merlin/Memories/LocalVectorPlugin.swift
 - `LocalVectorPlugin`: actor-level doc explaining:
   - Storage path convention (`~/.merlin/memory.sqlite` in production).
-  - Two-phase write: row inserted immediately (embedding = NULL), embedding computed and
+  - Two-task write: row inserted immediately (embedding = NULL), embedding computed and
     updated asynchronously in a detached Task.
   - Retrieval: load all rows with non-NULL embedding, brute-force cosine, return top-K.
   - Scale note: brute-force is fast at hundreds to low thousands of chunks.
@@ -136,7 +136,7 @@ TestHelpers/
 
 Update the **Version Summary** table to add:
 ```
-| v9  | Local memory store + behavioral reliability | MemoryBackendPlugin plugin system; LocalVectorPlugin (SQLite + NLContextualEmbedding); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141) |
+| v9  | Local memory store + behavioral reliability | MemoryBackendPlugin plugin system; LocalVectorPlugin (SQLite + NLContextualEmbedding); xcalibre retained for book content only; circuit breaker (task 140); grounding confidence signal (task 141) |
 ```
 
 Add a **References** subsection at the end of the v9 section:
@@ -157,9 +157,9 @@ status against each:
 
 | Failure pattern | Description | Merlin response |
 |---|---|---|
-| Context degradation | Model reasons over stale/incomplete retrieval; answer looks polished, grounding is gone | `GroundingReport` (phase 141) — per-turn staleness flag, average score, `isWellGrounded` |
+| Context degradation | Model reasons over stale/incomplete retrieval; answer looks polished, grounding is gone | `GroundingReport` (task 141) — per-turn staleness flag, average score, `isWellGrounded` |
 | Orchestration drift | Agentic pipeline diverges under real load across multi-step sequences | `CriticEngine` grades each turn; `ModelParameterAdvisor` tracks variance across last 20 records |
-| Silent partial failure | Component underperforms below alert threshold; degrades behaviourally before operationally | `consecutiveCriticFailures` counter + circuit breaker (phase 140) surfaces sustained degradation |
+| Silent partial failure | Component underperforms below alert threshold; degrades behaviourally before operationally | `consecutiveCriticFailures` counter + circuit breaker (task 140) surfaces sustained degradation |
 | Automation blast radius | Misinterpretation in step 1 propagates across steps and business decisions | `AuthGate` blocks unauthorised tool calls; critic failure suppresses memory writes |
 
 #### Mitigations
@@ -167,7 +167,7 @@ status against each:
 | Mitigation | Description | Merlin implementation |
 |---|---|---|
 | Behavioral telemetry | Track grounding, fallback, confidence per turn | `PerformanceTracker`, `ModelParameterAdvisor`, `AgentEvent.ragSources`, `AgentEvent.groundingReport` |
-| Semantic fault injection | Deliberately simulate stale retrieval, truncation, empty tools, context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (phase 142) |
+| Semantic fault injection | Deliberately simulate stale retrieval, truncation, empty tools, context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (task 142) |
 | Safe halt conditions | Stop cleanly when confidence cannot be maintained; label the failure | `agentCircuitBreakerMode = "halt"` (default): halts the next turn after N consecutive critic failures; labels and directs user to act |
 | Shared ownership | Semantic failure must have a designated owner | In Merlin each reliability signal maps to a single module: `CriticEngine` owns per-turn quality, `ModelParameterAdvisor` owns trend detection, `GroundingReport` owns retrieval confidence, circuit breaker owns halt decisions |
 ```
@@ -200,7 +200,7 @@ no external server required.
 - xcalibre-server remains available as an optional book-content source;
   it is no longer used for Merlin session memory.
 
-**Behavioral reliability (phases 140–141):**
+**Behavioral reliability ( tasks 140–141):**
 
 Motivated by the failure taxonomy in ["Context Decay, Orchestration Drift, and the Rise
 of Silent Failures in AI Systems" (VentureBeat)](https://venturebeat.com/infrastructure/context-decay-orchestration-drift-and-the-rise-of-silent-failures-in-ai-systems):
@@ -237,5 +237,5 @@ git add Merlin/Settings/AppSettings.swift
 git add Merlin/App/AppState.swift
 git add spec.md
 git add FEATURES.md
-git commit -m "Phase 139 — V9 docs + code comments: local memory store plugin system"
+git commit -m "Task 139 — V9 docs + code comments: local memory store plugin system"
 ```

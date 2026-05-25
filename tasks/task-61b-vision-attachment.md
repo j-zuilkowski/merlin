@@ -1,10 +1,10 @@
-# Phase 61b — Vision Attachment Implementation
+# Task 61b — Vision Attachment Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 61a complete: failing ContextInjectorVisionTests in place.
+Task 61a complete: failing ContextInjectorVisionTests in place.
 
 Generalize `VisionQueryTool.query` to accept `any LLMProvider` and wire image attachments
 through to the vision provider in `ContextInjector`.
@@ -136,5 +136,5 @@ Expected: `TEST BUILD SUCCEEDED`; all ContextInjectorVisionTests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/VisionQueryTool.swift Merlin/Engine/ContextInjector.swift
-git commit -m "Phase 61b — image attachment → vision description; generalize VisionQueryTool"
+git commit -m "Task 61b — image attachment → vision description; generalize VisionQueryTool"
 ```

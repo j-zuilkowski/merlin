@@ -1,8 +1,8 @@
-# Phase 291b — Override Audit Wiring (implementation)
+# Task 291b — Override Audit Wiring (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 291a complete: failing tests in `DisciplineOverrideAuditTests`.
+Task 291a complete: failing tests in `DisciplineOverrideAuditTests`.
 Unit A2 of the discipline-wiring plan.
 
 ## Edit: Merlin/Discipline/DisciplineEngine.swift
@@ -33,4 +33,4 @@ Expected: BUILD SUCCEEDED, all tests pass.
 git add Merlin/Discipline/DisciplineEngine.swift Merlin/ViewModels/PendingAttentionViewModel.swift \
   Merlin/App/AppState.swift MerlinTests/Unit/DisciplineEngineTests.swift \
   tasks/task-291b-override-audit-wiring.md
-git commit -m "Phase 291b — Override audit wiring"
+git commit -m "Task 291b — Override audit wiring"

@@ -1,10 +1,10 @@
-# Phase 198b — Async Tool Dispatch Implementation
+# Task 198b — Async Tool Dispatch Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 198a complete: failing tests in place.
+Task 198a complete: failing tests in place.
 
 ## Changes to: Merlin/Engine/AgenticEngine.swift
 
@@ -28,7 +28,7 @@ await dispatchRegularCalls(
 ```swift
 /// Dispatches all regular (non-spawn_agent) tool calls for one loop iteration.
 ///
-/// Three-phase approach:
+/// Three-task approach:
 ///   1. Sequential pre-hooks  — preserves hook side-effect ordering
 ///   2. Batch parallel dispatch — passes all allowed calls to ToolRouter at once
 ///   3. Sequential context updates — preserves OpenAI wire-format message ordering
@@ -41,7 +41,7 @@ func dispatchRegularCalls(
 ) async {
     guard !calls.isEmpty else { return }
 
-    // MARK: Phase 1 — sequential pre-hooks
+    // MARK: Task 1 — sequential pre-hooks
     struct PrehookOutcome {
         let call: ToolCall
         let denied: ToolResult?
@@ -68,7 +68,7 @@ func dispatchRegularCalls(
         }
     }
 
-    // MARK: Phase 2 — batch parallel dispatch
+    // MARK: Task 2 — batch parallel dispatch
     let allowedCalls = prehookOutcomes.compactMap { $0.denied == nil ? $0.call : nil }
     let batchStart = Date()
     let batchResults: [ToolResult]
@@ -86,7 +86,7 @@ func dispatchRegularCalls(
     }
     let batchMs = Date().timeIntervalSince(batchStart) * 1000
 
-    // MARK: Phase 3 — sequential context updates (original call order)
+    // MARK: Task 3 — sequential context updates (original call order)
     var batchIndex = 0
     for outcome in prehookOutcomes {
         let result: ToolResult
@@ -182,5 +182,5 @@ Expected: BUILD SUCCEEDED, all 198a tests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 198b — Async batch tool dispatch"
+git commit -m "Task 198b — Async batch tool dispatch"
 ```

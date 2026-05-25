@@ -1,10 +1,10 @@
-# Phase 54b — AgentDefinition + AgentRegistry Implementation
+# Task 54b — AgentDefinition + AgentRegistry Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 54a complete: failing tests in place.
+Task 54a complete: failing tests in place.
 
 New files:
   - `Merlin/Agents/AgentDefinition.swift`
@@ -168,5 +168,5 @@ Expected: BUILD SUCCEEDED, all AgentRegistryTests pass.
 ## Commit
 ```bash
 git add Merlin/Agents/AgentDefinition.swift Merlin/Agents/AgentRegistry.swift
-git commit -m "Phase 54b — AgentDefinition + AgentRegistry (TOML loading, built-in explorer/worker/default)"
+git commit -m "Task 54b — AgentDefinition + AgentRegistry (TOML loading, built-in explorer/worker/default)"
 ```

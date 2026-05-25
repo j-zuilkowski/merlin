@@ -1,29 +1,29 @@
-# Phase 195a — ChatViewModel Persistence Tests (failing)
+# Task 195a — ChatViewModel Persistence Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 194b complete: session dot and auto-title fixes shipped in v1.8.2.
+Task 194b complete: session dot and auto-title fixes shipped in v1.8.2.
 
 **Bug — Session messages disappear on session switch**
 
 Root cause: `ChatViewModel` is declared as `@StateObject private var model = ChatViewModel()`
-inside `ChatView`. The `.id(session.id)` fix (phase 193b) correctly forces SwiftUI to tear
+inside `ChatView`. The `.id(session.id)` fix (task 193b) correctly forces SwiftUI to tear
 down and recreate `ContentView` on every session switch. This also destroys the `ChatViewModel`,
 clearing all `items`. The engine's `contextManager.messages` retains the conversation, but
 `ChatView` never reads from it on reappear — it only populates `items` by consuming live
 streaming events. Switching back to a completed session creates a fresh empty `ChatViewModel`
 and shows a blank chat.
 
-Fix (phase 195b):
+Fix (task 195b):
 - `LiveSession` owns `chatViewModel: ChatViewModel` — persists for the session's lifetime
 - `WorkspaceView.sessionContent(session:)` injects it as `.environmentObject(session.chatViewModel)`
 - `ChatView` changes `@StateObject private var model = ChatViewModel()` →
   `@EnvironmentObject private var model: ChatViewModel`
 - `ChatViewModel` is `public` within the module — no structural changes needed
 
-New surface introduced in phase 195b:
+New surface introduced in task 195b:
   - `LiveSession.chatViewModel: ChatViewModel` — session-scoped, not view-scoped
 
 TDD coverage:
@@ -35,7 +35,7 @@ TDD coverage:
 
 ```swift
 // ChatViewModelPersistenceTests.swift
-// Phase 195a — failing tests for ChatViewModel persistence across session switches.
+// Task 195a — failing tests for ChatViewModel persistence across session switches.
 //
 // Before 195b: ChatViewModel is a @StateObject inside ChatView — destroyed on every
 //   .id(session.id) teardown, clearing all chat items.
@@ -98,5 +98,5 @@ Expected: **BUILD FAILED** — `chatViewModel` does not exist on `LiveSession`.
 ## Commit
 ```bash
 git add MerlinTests/Unit/ChatViewModelPersistenceTests.swift
-git commit -m "Phase 195a — ChatViewModelPersistenceTests (failing)"
+git commit -m "Task 195a — ChatViewModelPersistenceTests (failing)"
 ```

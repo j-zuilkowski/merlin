@@ -1,10 +1,10 @@
-# Phase 98 — Apply AppTheme and Font Settings to the UI
+# Task 98 — Apply AppTheme and Font Settings to the UI
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 97 complete: HookEngine wired into main AgenticEngine loop.
+Task 97 complete: HookEngine wired into main AgenticEngine loop.
 
 `AppSettings.appearance.theme` (system/light/dark) and `appearance.fontSize`/`fontName`
 are persisted and shown in the Appearance settings section. However:
@@ -112,5 +112,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Views/WorkspaceView.swift \
         Merlin/Config/AppearanceSettings.swift \
         Merlin/App/MerlinApp.swift
-git commit -m "Phase 98 — Apply AppTheme (preferredColorScheme) and font settings to the UI"
+git commit -m "Task 98 — Apply AppTheme (preferredColorScheme) and font settings to the UI"
 ```

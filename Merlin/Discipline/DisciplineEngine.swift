@@ -98,7 +98,7 @@ actor DisciplineEngine {
 
             // Convert drift findings to queue findings. Surface red (absent),
             // yellow (signature-drift) and orange (undeclared) drift — all as nudges.
-            // Task drift is advisory: a symbol declared many phases ago and since
+            // Task drift is advisory: a symbol declared many  tasks ago and since
             // refactored is normal evolution, not a commit-blocker. green = no-op.
             for d in drift where d.severity == .red
                 || d.severity == .yellow || d.severity == .orange {

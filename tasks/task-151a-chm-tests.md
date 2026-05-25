@@ -1,4 +1,4 @@
-# Phase 151a — CHM: Real ITSF/HTML Metadata and Text Extraction Tests
+# Task 151a — CHM: Real ITSF/HTML Metadata and Text Extraction Tests
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
@@ -9,7 +9,7 @@ Current state: CHM metadata uses `recover_title()` fallback; CHM text uses `reco
 
 CHM files (Microsoft HTML Help) are a common format for technical documentation. The current stub handler scans raw binary for readable strings — it cannot reach the `<title>` tag, `<meta>` author, or structured HTML content inside the ITSF container. Plan calls for the `chmlib` crate to parse the ITSF container, locate the HHC (TOC) and home/default HTML page, extract real metadata, and return full HTML text.
 
-## New surface introduced in phase 151b
+## New surface introduced in task 151b
 
 - `metadata/chm.rs`: replace `recover_title()` fallback with `chmlib`-based ITSF parse → locate HHC TOC → locate default HTML page → extract `<title>` and `<meta name="author">` via `scraper` crate
 - `text/chm.rs`: replace `recover_readable_text()` fallback with ITSF parse → iterate all HTML pages in the container → strip tags via regex → return full text + word count
@@ -29,12 +29,12 @@ File — `processing/tests/chm_metadata_tests.rs`:
 ```bash
 cd ~/Documents/localProject/xcalibre
 cargo test --package xcalibre-processing -- chm_metadata 2>&1 | tail -10
-# Expected: compilation errors — chmlib import, new types not yet defined (phase 151b will fix)
+# Expected: compilation errors — chmlib import, new types not yet defined (task 151b will fix)
 ```
 
 ## Commit
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/chm_metadata_tests.rs
-git commit -m "Phase 151a — CHM ITSF/HTML tests (failing)"
+git commit -m "Task 151a — CHM ITSF/HTML tests (failing)"
 ```

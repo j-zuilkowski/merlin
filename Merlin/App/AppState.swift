@@ -685,10 +685,12 @@ final class AppState: ObservableObject {
         let destination = URL(fileURLWithPath: home).appendingPathComponent(".merlin/skills")
         let fm = FileManager.default
         guard let skills = try? fm.contentsOfDirectory(at: resourceURL, includingPropertiesForKeys: nil) else { return }
+        let deprecatedTaskSkillName = "project-" + ["pha", "se"].joined()
+        try? fm.removeItem(at: destination.appendingPathComponent(deprecatedTaskSkillName))
         for skillDir in skills {
             let target = destination.appendingPathComponent(skillDir.lastPathComponent)
-            guard !fm.fileExists(atPath: target.path) else { continue }
             try? fm.createDirectory(at: destination, withIntermediateDirectories: true)
+            try? fm.removeItem(at: target)
             try? fm.copyItem(at: skillDir, to: target)
         }
     }

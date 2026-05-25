@@ -1,12 +1,12 @@
-# Phase 52 — Toolbar Actions + Notifications
+# Task 52 — Toolbar Actions + Notifications
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 51 complete: Reasoning effort + personalization + context tracker in place.
+Task 51 complete: Reasoning effort + personalization + context tracker in place.
 
-Two features in one phase — both are small and independent:
+Two features in one task — both are small and independent:
 1. **Toolbar Actions** — named one-click shortcuts (run tests, start server, build) per project
 2. **Notifications** — system notifications when agent tasks complete or need approval
 
@@ -269,5 +269,5 @@ git add MerlinTests/Unit/ToolbarActionTests.swift \
         Merlin/Toolbar/ToolbarAction.swift \
         Merlin/Toolbar/ToolbarActionStore.swift \
         Merlin/Notifications/NotificationEngine.swift
-git commit -m "Phase 52 — Toolbar Actions + Notifications"
+git commit -m "Task 52 — Toolbar Actions + Notifications"
 ```

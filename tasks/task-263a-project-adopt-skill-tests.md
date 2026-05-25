@@ -1,12 +1,12 @@
-# Phase 263a — project:adopt Skill Tests
+# Task 263a — project:adopt Skill Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 262b complete: project:release SKILL.md installed.
+Task 262b complete: project:release SKILL.md installed.
 
-New surface introduced in phase 263b:
+New surface introduced in task 263b:
   - `~/.merlin/skills/project-adopt/SKILL.md` — the `project:adopt` skill file.
   - First adoption target is Merlin itself (the skill references this).
 
@@ -35,7 +35,7 @@ final class ProjectAdoptSkillTests: XCTestCase {
 
     func testSkillFileExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "~/.merlin/skills/project-adopt/SKILL.md not found. Run phase 263b.")
+                      "~/.merlin/skills/project-adopt/SKILL.md not found. Run task 263b.")
     }
 
     func testSkillHasRequiredSections() throws {
@@ -86,5 +86,5 @@ Expected: **BUILD SUCCEEDED** but tests **FAIL** at runtime.
 ```bash
 git add tasks/task-263a-project-adopt-skill-tests.md \
     MerlinTests/Unit/ProjectAdoptSkillTests.swift
-git commit -m "Phase 263a — ProjectAdoptSkillTests (failing)"
+git commit -m "Task 263a — ProjectAdoptSkillTests (failing)"
 ```

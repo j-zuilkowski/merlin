@@ -1,10 +1,10 @@
-# Phase 143b — Dynamic Model Fetch Implementation
+# Task 143b — Dynamic Model Fetch Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 143a complete: failing tests in place.
+Task 143a complete: failing tests in place.
 
 ---
 
@@ -199,7 +199,7 @@ registry.modelsByProviderID[...
 
 Both files use this pattern. After this change, local providers that return multiple models from
 `/v1/models` will show all of them in the picker immediately — no further UI changes needed here
-(those come in phase 146).
+(those come in task 146).
 
 ---
 
@@ -218,5 +218,5 @@ git add Merlin/Providers/ProviderConfig.swift \
         Merlin/App/AppState.swift \
         Merlin/UI/Settings/SettingsWindowView.swift \
         Merlin/Views/Settings/ProviderSettingsView.swift
-git commit -m "Phase 143b — Dynamic model fetch"
+git commit -m "Task 143b — Dynamic model fetch"
 ```

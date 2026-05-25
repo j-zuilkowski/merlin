@@ -1,10 +1,10 @@
-# Phase 248b — GitHookInstaller
+# Task 248b — GitHookInstaller
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 248a complete: failing tests for GitHookInstaller and HookError.
+Task 248a complete: failing tests for GitHookInstaller and HookError.
 
 ---
 
@@ -136,12 +136,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 248a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 248a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-248b-git-hook-installer.md \
     Merlin/Discipline/GitHookInstaller.swift
-git commit -m "Phase 248b — GitHookInstaller (post-commit + pre-push + uninstaller)"
+git commit -m "Task 248b — GitHookInstaller (post-commit + pre-push + uninstaller)"
 ```

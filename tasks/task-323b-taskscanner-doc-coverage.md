@@ -1,18 +1,18 @@
-# Phase 323b — TaskScanner Reads All Phase Docs; Drift Is Always a Nudge
+# Task 323b — TaskScanner Reads All Task Docs; Drift Is Always a Nudge
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 323a complete: failing runtime tests in `TaskScannerDocCoverageTests` and
-`DisciplineEnginePhaseDriftSeverityTests`.
+Task 323a complete: failing runtime tests in `TaskScannerDocCoverageTests` and
+`DisciplineEngineTaskDriftSeverityTests`.
 
 W4 trace audit finding F4. Two edits, two files:
 1. `TaskScanner.extractDeclaredSurfaces` reads every task doc — `a`, `b`, and the
-   `diag-*` series — not only `task-\d+b-`. The "New surface introduced in phase" block
+   `diag-*` series — not only `task-\d+b-`. The "New surface introduced in task" block
    lives in the `a` doc per the project template.
 2. `DisciplineEngine.scan` surfaces `.red`/`.yellow`/`.orange` drift, all as `.nudge`.
-   Task drift is advisory — a symbol declared 200 phases ago and since refactored is
+   Task drift is advisory — a symbol declared 200  tasks ago and since refactored is
    normal evolution, not a commit-blocker.
 
 No new public surface — both edits modify existing methods.
@@ -38,8 +38,8 @@ header that consumes it. Change:
 ```
 to:
 ```swift
-        // Read every phase document — the `a` (tests) and `b` (implementation) tiers
-        // and the `diag-*` series. The "New surface introduced in phase" block lives in
+        // Read every task document — the `a` (tests) and `b` (implementation) tiers
+        // and the `diag-*` series. The "New surface introduced in task" block lives in
         // the `a` doc per the project template, so the former `task-\d+b-` filter saw
         // almost no declared surface. Files with no such block contribute nothing.
         let taskDocFiles = files
@@ -62,20 +62,20 @@ In `scan(projectPath:)`, replace the drift-to-finding loop header. Change:
             for d in drift where d.severity == .red || d.severity == .orange {
                 let f = Finding(
                     id: UUID(),
-                    category: .phaseDrift,
+                    category: .taskDrift,
                     severity: d.severity == .red ? .block : .nudge,
 ```
 to:
 ```swift
             // Convert drift findings to queue findings. Surface red (absent),
             // yellow (signature-drift) and orange (undeclared) drift — all as nudges.
-            // Task drift is advisory: a symbol declared many phases ago and since
+            // Task drift is advisory: a symbol declared many  tasks ago and since
             // refactored is normal evolution, not a commit-blocker. green = no-op.
             for d in drift where d.severity == .red
                 || d.severity == .yellow || d.severity == .orange {
                 let f = Finding(
                     id: UUID(),
-                    category: .phaseDrift,
+                    category: .taskDrift,
                     severity: .nudge,
 ```
 Leave the rest of the loop body (`summary`, `detail`, `suggestedAction`, `queue.add`,
@@ -101,14 +101,14 @@ Expected: the full `MerlinTests` suite passes — including 323a's two test clas
 
 The full suite is run deliberately (not a hand-picked subset): broadening the task-doc
 filter changes `TaskScanner` output for any test with task-doc fixtures, and the
-severity change touches every `phaseDrift` finding. **If a failure appears in a test
+severity change touches every `taskDrift` finding. **If a failure appears in a test
 unrelated to `TaskScanner` / `DisciplineEngine` / discipline findings, it is
 pre-existing rot — STOP and report it; do not commit and do not try to fix it in this
-phase.**
+task.**
 
 ## Commit
 ```
 git add Merlin/Discipline/TaskScanner.swift Merlin/Discipline/DisciplineEngine.swift \
-  tasks/task-323b-phasescanner-doc-coverage.md
-git commit -m "Phase 323b — TaskScanner reads all task docs; drift is always a nudge"
+  tasks/task-323b- taskscanner-doc-coverage.md
+git commit -m "Task 323b — TaskScanner reads all task docs; drift is always a nudge"
 ```

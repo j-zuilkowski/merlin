@@ -1,12 +1,12 @@
-# Phase 203a — /rewind Checkpoint Tests (failing)
+# Task 203a — /rewind Checkpoint Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 202b complete: scroll lock wired.
+Task 202b complete: scroll lock wired.
 
-New surface introduced in phase 203b:
+New surface introduced in task 203b:
   - `SessionCheckpoint` — `struct { id: UUID; capturedAt: Date; messageCount: Int; messages: [Message] }`; `Sendable`, `Identifiable`
   - `CheckpointStore` — `@MainActor final class`; records a checkpoint at each user message send; exposes `checkpoints: [SessionCheckpoint]`, `save()`, `restore(to:) -> [Message]`, `clear()`
   - `ContextManager.load(_ messages: [Message])` — replaces context messages with the given array (already exists; used here for restore)
@@ -183,5 +183,5 @@ Expected: **BUILD FAILED** — `SessionCheckpoint`, `CheckpointStore`, `RewindCo
 ```bash
 git add MerlinTests/Unit/CheckpointStoreTests.swift \
         MerlinTests/Unit/RewindSlashCommandTests.swift
-git commit -m "Phase 203a — CheckpointStoreTests + RewindSlashCommandTests (failing)"
+git commit -m "Task 203a — CheckpointStoreTests + RewindSlashCommandTests (failing)"
 ```

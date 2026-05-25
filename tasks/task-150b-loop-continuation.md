@@ -1,10 +1,10 @@
-# Phase 150b — Loop Continuation and Near-Ceiling Warning
+# Task 150b — Loop Continuation and Near-Ceiling Warning
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 150a complete: failing tests in place.
+Task 150a complete: failing tests in place.
 
 ## Edit: `Merlin/Engine/AgenticEngine.swift`
 
@@ -190,7 +190,7 @@ xcodebuild -scheme MerlinTests test \
 ```bash
 git add Merlin/Engine/AgenticEngine.swift \
         MerlinTests/Unit/LoopContinuationTests.swift
-git commit -m "Phase 150b — loop continuation and near-ceiling warning"
+git commit -m "Task 150b — loop continuation and near-ceiling warning"
 ```
 
 ---

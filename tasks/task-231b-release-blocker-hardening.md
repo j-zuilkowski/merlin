@@ -1,10 +1,10 @@
-# Phase 231b — Release Blocker Hardening
+# Task 231b — Release Blocker Hardening
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 231a complete: failing tests are in place for release-blocking isolation and lifecycle fixes.
+Task 231a complete: failing tests are in place for release-blocking isolation and lifecycle fixes.
 
 ---
 
@@ -43,7 +43,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 231a tests pass.
+Expected: **BUILD SUCCEEDED** and all task 231a tests pass.
 
 ## Commit
 
@@ -57,5 +57,5 @@ git add tasks/task-231b-release-blocker-hardening.md \
     Merlin/Sessions/LiveSession.swift \
     Merlin/Sessions/SessionManager.swift \
     Merlin/Config/AppSettings.swift
-git commit -m "Phase 231b — Release blocker hardening"
+git commit -m "Task 231b — Release blocker hardening"
 ```

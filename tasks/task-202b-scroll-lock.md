@@ -1,14 +1,14 @@
-# Phase 202b — Scroll Lock
+# Task 202b — Scroll Lock
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 202a complete: failing ScrollLockTests.
+Task 202a complete: failing ScrollLockTests.
 
-`ChatView` already has `autoScrollEnabled`, `scrollLockVisible`, `scrollPhaseIsUser`, and
+`ChatView` already has `autoScrollEnabled`, `scrollLockVisible`, `scrollTaskIsUser`, and
 `scrollLockBanner(proxy:)`. `ConversationHTMLRenderer` already tracks `_userScrolled` in JS
-and skips auto-scroll when true. This phase wires the missing JS→Swift bridge message,
+and skips auto-scroll when true. This task wires the missing JS→Swift bridge message,
 exposes the callback through `ConversationWebView`, places the banner in the view hierarchy,
 and adds the `resumeAutoScroll()` JS call when the user dismisses the banner or sends a message.
 
@@ -223,5 +223,5 @@ Launch the app and verify manually:
 git add Merlin/Views/Chat/ConversationHTMLRenderer.swift \
         Merlin/Views/Chat/ConversationWebView.swift \
         Merlin/Views/ChatView.swift
-git commit -m "Phase 202b — Scroll lock: JS→Swift bridge + resume banner"
+git commit -m "Task 202b — Scroll lock: JS→Swift bridge + resume banner"
 ```

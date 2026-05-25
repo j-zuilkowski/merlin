@@ -1,13 +1,13 @@
-# Phase 191b — KAG XcalibrePlugin + RAGTools + AppSettings Implementation
+# Task 191b — KAG XcalibrePlugin + RAGTools + AppSettings Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 191a complete: failing tests for XcalibreKAGPlugin, KAGEngine extraction, AppSettings
+Task 191a complete: failing tests for XcalibreKAGPlugin, KAGEngine extraction, AppSettings
 KAG keys, and RAGTools.buildEnrichedMessage.
 
-This phase:
+This task:
 - Implements XcalibreKAGPlugin (REST calls to xcalibre-server graph endpoints)
 - Replaces KAGEngine.extractTriples stub with real LLM-gated extraction + parseExtractedTriples
 - Adds kagEnabled / kagHops / kagXcalibreURL to AppSettings
@@ -377,7 +377,7 @@ git add \
   project.yml \
   constitution.md \
   Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 191b — KAG XcalibreKAGPlugin + RAGTools enrichment + AppSettings (v1.7.0)"
+git commit -m "Task 191b — KAG XcalibreKAGPlugin + RAGTools enrichment + AppSettings (v1.7.0)"
 git tag v1.7.0
 git push && git push --tags
 ```

@@ -1,10 +1,10 @@
-# Phase 110b — Memory Browser
+# Task 110b — Memory Browser
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 110a complete: MemoryBrowserTests (failing) in place.
+Task 110a complete: MemoryBrowserTests (failing) in place.
 
 ---
 
@@ -212,5 +212,5 @@ git add Merlin/RAG/XcalibreClient.swift \
         Merlin/Engine/Protocols/XcalibreClientProtocol.swift \
         Merlin/Views/Settings/MemoryBrowserView.swift \
         project.yml
-git commit -m "Phase 110b — Memory browser (searchMemory convenience + MemoryBrowserView)"
+git commit -m "Task 110b — Memory browser (searchMemory convenience + MemoryBrowserView)"
 ```

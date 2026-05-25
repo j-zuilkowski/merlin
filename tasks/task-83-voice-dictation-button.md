@@ -1,10 +1,10 @@
-# Phase 83 — Voice Dictation: Microphone Button in ChatView
+# Task 83 — Voice Dictation: Microphone Button in ChatView
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 82 complete: ContextUsageTracker shown in ProviderHUD.
+Task 82 complete: ContextUsageTracker shown in ProviderHUD.
 
 `VoiceDictationEngine.shared` exists but is never connected to the UI. Add a microphone
 button to `ChatView`'s `inputBar`. When tapped, toggles recording; on transcript, appends
@@ -82,5 +82,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ChatView.swift
-git commit -m "Phase 83 — VoiceDictationButton added to ChatView inputBar; appends transcript to draft"
+git commit -m "Task 83 — VoiceDictationButton added to ChatView inputBar; appends transcript to draft"
 ```

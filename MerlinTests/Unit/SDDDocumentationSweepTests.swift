@@ -15,17 +15,22 @@ final class SDDDocumentationSweepTests: XCTestCase {
     }
 
     func testNoStaleSddArtifactReferencesRemain() throws {
-        let forbiddenLiterals = [
-            "CLAUDE.md",
-            "CLAUDEMD",
-            "claude-md",
-            "architecture.md",
-            "phases/",
-            "phase-",
-            "/project:phase",
-            "project-phase"
+        let legacyTasksDir = "pha" + "se" + "s/"
+        let legacyTaskPrefix = "pha" + "se-"
+        let legacyCommand = "/project:" + "pha" + "se"
+        let legacySkill = "project-" + "pha" + "se"
+        let forbiddenLiterals: [String] = [
+            ["CLAUDE", "md"].joined(separator: "."),
+            "CLAUDE" + "MD",
+            "claude" + "-md",
+            ["architecture", "md"].joined(separator: "."),
+            legacyTasksDir,
+            legacyTaskPrefix,
+            legacyCommand,
+            legacySkill
         ]
-        let standalonePhase = try NSRegularExpression(pattern: #"(?<![A-Za-z])[Pp]hase(?![A-Za-z])"#)
+        let standaloneTask = try NSRegularExpression(
+            pattern: #"(?<![A-Za-z])(?i:"# + "pha" + "se" + #")(?![A-Za-z])"#)
         var failures: [String] = []
 
         for file in try trackedTextFiles() {
@@ -45,8 +50,8 @@ final class SDDDocumentationSweepTests: XCTestCase {
                 failures.append("\(relative): contains \(forbidden)")
             }
             let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            if standalonePhase.firstMatch(in: text, range: range) != nil {
-                failures.append("\(relative): contains standalone phase/Phase")
+            if standaloneTask.firstMatch(in: text, range: range) != nil {
+                failures.append("\(relative): contains standalone legacy task word")
             }
         }
 

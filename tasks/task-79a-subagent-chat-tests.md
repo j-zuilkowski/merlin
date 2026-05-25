@@ -1,12 +1,12 @@
-# Phase 79a — Subagent Chat Integration Tests
+# Task 79a — Subagent Chat Integration Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 78 complete: Settings scene fixed.
+Task 78 complete: Settings scene fixed.
 
-New surface introduced in phase 79b:
+New surface introduced in task 79b:
   - `EngineEvent.subagentStarted(id: UUID, agentName: String)` — emitted when spawn_agent fires
   - `EngineEvent.subagentUpdate(id: UUID, event: SubagentEvent)` — forwarded subagent events
   - `ChatEntry.subagentID: UUID?` — non-nil for subagent block entries
@@ -119,5 +119,5 @@ Expected: `BUILD FAILED` — `EngineEvent.subagentStarted`, `EngineEvent.subagen
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SubagentChatIntegrationTests.swift
-git commit -m "Phase 79a — SubagentChatIntegrationTests (failing)"
+git commit -m "Task 79a — SubagentChatIntegrationTests (failing)"
 ```

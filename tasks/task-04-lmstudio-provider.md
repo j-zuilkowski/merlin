@@ -1,11 +1,11 @@
-# Phase 04 — LMStudioProvider
+# Task 04 — LMStudioProvider
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 03b complete: DeepSeekProvider and SSEParser exist.
+Task 03b complete: DeepSeekProvider and SSEParser exist.
 
 ---
 
@@ -76,5 +76,5 @@ Expected: test skips cleanly.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/LMStudioProvider.swift MerlinLiveTests/LMStudioProviderLiveTests.swift
-git commit -m "Phase 04 — LMStudioProvider + live test skeleton"
+git commit -m "Task 04 — LMStudioProvider + live test skeleton"
 ```

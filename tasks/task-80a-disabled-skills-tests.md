@@ -1,12 +1,12 @@
-# Phase 80a — DisabledSkillNames Enforcement Tests
+# Task 80a — DisabledSkillNames Enforcement Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 79b complete: SubagentBlockView wired into ChatView.
+Task 79b complete: SubagentBlockView wired into ChatView.
 
-New surface introduced in phase 80b:
+New surface introduced in task 80b:
   - `SkillsRegistry.enabledSkills(disabledNames:)` — returns skills not in the disabled list
   - `ContextManager.buildSkillReinjectionBlock(skills:)` — accepts `[Skill]`, filters respected
   - `AgenticEngine` passes `AppSettings.shared.disabledSkillNames` when building skill blocks
@@ -115,5 +115,5 @@ Expected: `BUILD FAILED` — `enabledSkills(from:disabledNames:)` and
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/DisabledSkillsTests.swift
-git commit -m "Phase 80a — DisabledSkillsTests (failing)"
+git commit -m "Task 80a — DisabledSkillsTests (failing)"
 ```

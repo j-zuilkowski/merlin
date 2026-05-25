@@ -1,10 +1,10 @@
-# Phase 33b — DiffEngine + DiffPane Implementation
+# Task 33b — DiffEngine + DiffPane Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 33a complete: failing DiffEngineTests in place.
+Task 33a complete: failing DiffEngineTests in place.
 
 ---
 
@@ -396,7 +396,7 @@ HSplitView {
 
     DiffPane(
         buffer: StagingBufferWrapper(buffer: session.stagingBuffer),
-        onCommit: { /* commit flow in phase 36 */ }
+        onCommit: { /* commit flow in task 36 */ }
     )
     .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
 }
@@ -443,5 +443,5 @@ git add Merlin/Engine/DiffEngine.swift \
         Merlin/Views/WorkspaceView.swift \
         Merlin/Sessions/LiveSession.swift \
         project.yml
-git commit -m "Phase 33b — DiffEngine + DiffPane"
+git commit -m "Task 33b — DiffEngine + DiffPane"
 ```

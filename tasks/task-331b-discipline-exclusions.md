@@ -1,14 +1,14 @@
-# Phase 331b — Discipline Exclusions Implementation
+# Task 331b — Discipline Exclusions Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 331a complete: failing `DisciplineExclusionsTests` in place.
+Task 331a complete: failing `DisciplineExclusionsTests` in place.
 
-This phase adds `DisciplineExclusions` — a shared directory blacklist — and wires its
+This task adds `DisciplineExclusions` — a shared directory blacklist — and wires its
 `isExcluded(_:)` predicate into **every** file-walking discipline scanner so the
-`merlin-eval/` tree (moved into the repo in phase 332) is never scanned.
+`merlin-eval/` tree (moved into the repo in task 332) is never scanned.
 
 There is no shared file-discovery utility — each scanner rolls its own
 `FileManager.enumerator`. So `isExcluded` is applied at **10 enumeration sites across 8
@@ -258,5 +258,5 @@ git add Merlin/Discipline/DisciplineExclusions.swift \
         Merlin/Discipline/ManualCoverageScanner.swift Merlin/Discipline/DocReferenceGraph.swift \
         Merlin/Discipline/DisciplineEngine.swift Merlin/Discipline/DisciplineCLI.swift \
         tasks/task-331b-discipline-exclusions.md
-git commit -m "Phase 331b — DisciplineExclusions blacklist"
+git commit -m "Task 331b — DisciplineExclusions blacklist"
 ```

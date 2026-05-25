@@ -1,11 +1,11 @@
-# Phase diag-01a — TelemetryEmitter Tests (failing)
+# Task diag-01a — TelemetryEmitter Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
-New surface introduced in phase diag-01b:
+New surface introduced in task diag-01b:
   - `TelemetryValue` — Encodable enum (string/int/double/bool/null) with ExpressibleBy conformances
   - `TelemetryEvent` — Codable struct: ts, sessionID, turn, loop, event, durationMs?, data
   - `TelemetrySpan` — timing helper opened with `TelemetryEmitter.begin(_:data:)`, closed with `span.finish(data:)`
@@ -210,5 +210,5 @@ Expected: BUILD FAILED — `TelemetryEmitter`, `TelemetryEvent`, `TelemetryValue
 ## Commit
 ```bash
 git add MerlinTests/Unit/TelemetryEmitterTests.swift
-git commit -m "Phase diag-01a — TelemetryEmitter tests (failing)"
+git commit -m "Task diag-01a — TelemetryEmitter tests (failing)"
 ```

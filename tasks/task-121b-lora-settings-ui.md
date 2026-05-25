@@ -1,10 +1,10 @@
-# Phase 121b — LoRA Settings UI
+# Task 121b — LoRA Settings UI
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 121a complete: LoRASettingsUITests (failing) in place.
+Task 121a complete: LoRASettingsUITests (failing) in place.
 
 ---
 
@@ -160,7 +160,7 @@ Locate the Settings window tab or navigation list (typically in a `SettingsView`
 
 ```swift
 // In whatever view enumerates settings sections, add:
-// (exact location depends on how prior phases wired the Settings window)
+// (exact location depends on how prior  tasks wired the Settings window)
 
 Tab("LoRA", systemImage: "cpu") {
     LoRASettingsSection()
@@ -189,5 +189,5 @@ Expected: BUILD SUCCEEDED; LoRASettingsUITests → 4 pass; all prior tests pass;
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/Settings/LoRASettingsSection.swift
-git commit -m "Phase 121b — LoRA Settings UI (master toggle + training config + status row)"
+git commit -m "Task 121b — LoRA Settings UI (master toggle + training config + status row)"
 ```

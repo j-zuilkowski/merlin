@@ -1,17 +1,17 @@
-# Phase 273a — v2.2.1 Release Tests
+# Task 273a — v2.2.1 Release Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 272b complete: the v2.2 discipline subsystem is wired into the running app.
+Task 272b complete: the v2.2 discipline subsystem is wired into the running app.
 
-This is the release phase for **v2.2.1 — Project Discipline remediation**. It ships the
-correctness fixes from phases 266–272. Phase 273a writes failing tests that assert the
-v2.2.1 version numbers and the release-notes file; phase 273b bumps the version, writes
+This is the release task for **v2.2.1 — Project Discipline remediation**. It ships the
+correctness fixes from  tasks 266–272. Task 273a writes failing tests that assert the
+v2.2.1 version numbers and the release-notes file; task 273b bumps the version, writes
 the notes, regenerates the project, and tags.
 
-New surface introduced in phase 273b:
+New surface introduced in task 273b:
   - `project.yml`: `MARKETING_VERSION` 2.2.0 → 2.2.1, `CURRENT_PROJECT_VERSION` 17 → 18.
   - `RELEASE-v2.2.1.md` — new file at repo root.
 
@@ -101,7 +101,7 @@ xcodebuild -scheme MerlinTests test \
 ```
 
 Expected: **BUILD SUCCEEDED**, but both new test classes FAIL at runtime — the bundle
-still reports 2.2.0 / build 17 and `RELEASE-v2.2.1.md` does not exist. Phase 273b makes
+still reports 2.2.0 / build 17 and `RELEASE-v2.2.1.md` does not exist. Task 273b makes
 them pass.
 
 ## Commit
@@ -110,5 +110,5 @@ them pass.
 git add tasks/task-273a-v2-2-1-release-tests.md \
     MerlinTests/Unit/AppVersion221Tests.swift \
     MerlinTests/Unit/ReleaseNotes221Tests.swift
-git commit -m "Phase 273a — AppVersion221Tests + ReleaseNotes221Tests (failing)"
+git commit -m "Task 273a — AppVersion221Tests + ReleaseNotes221Tests (failing)"
 ```

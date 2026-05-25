@@ -1,10 +1,10 @@
-# Phase 172b — Fix: compact() handles standalone .tool messages
+# Task 172b — Fix: compact() handles standalone .tool messages
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 172a complete: ContextPreRunCompaction failure documented.
+Task 172a complete: ContextPreRunCompaction failure documented.
 
 ## Root Cause
 
@@ -87,5 +87,5 @@ Expected: BUILD SUCCEEDED; `testTokensReducedAfterPreRunCompaction` passes.
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift \
         tasks/task-172b-context-compaction-tool-msgs-fix.md
-git commit -m "Phase 172b — Fix: compact() removes standalone .tool messages when no exchange groups"
+git commit -m "Task 172b — Fix: compact() removes standalone .tool messages when no exchange groups"
 ```

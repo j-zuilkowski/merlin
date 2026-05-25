@@ -1,10 +1,10 @@
-# Phase 60b — Skill Compaction Implementation
+# Task 60b — Skill Compaction Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 60a complete: failing SkillCompactionTests in place.
+Task 60a complete: failing SkillCompactionTests in place.
 
 Add skill invocation tracking to `ContextManager` and re-inject the most-recently-used
 skills (up to 25,000 estimated tokens) as a `[Skills]` system message after compaction.
@@ -186,5 +186,5 @@ Expected: `TEST BUILD SUCCEEDED`; all SkillCompactionTests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift
-git commit -m "Phase 60b — skill invocation tracking + post-compaction re-injection"
+git commit -m "Task 60b — skill invocation tracking + post-compaction re-injection"
 ```

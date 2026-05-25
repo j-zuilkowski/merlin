@@ -1,10 +1,10 @@
-# Phase 337b — CalibrationReportSaver Implementation
+# Task 337b — CalibrationReportSaver Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 337a complete: 4 failing tests in `CalibrationReportSaverTests`.
+Task 337a complete: 4 failing tests in `CalibrationReportSaverTests`.
 
 ---
 
@@ -67,5 +67,5 @@ git add Merlin/Calibration/CalibrationReportSaver.swift \
         Merlin/Calibration/CalibrationTypes.swift \
         Merlin/Engine/ModelParameterAdvisor.swift \
         tasks/task-337b-calibration-report-saver.md
-git commit -m "Phase 337b — CalibrationReportSaver: auto-save every report to ~/.merlin/calibration/"
+git commit -m "Task 337b — CalibrationReportSaver: auto-save every report to ~/.merlin/calibration/"
 ```

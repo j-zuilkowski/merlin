@@ -1,16 +1,16 @@
-# Phase 265a — v2.2.0 Release Tests
+# Task 265a — v2.2.0 Release Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 264b complete: Discipline UI (pending-attention chip + panel) live.
+Task 264b complete: Discipline UI (pending-attention chip + panel) live.
 
-These tests assert the release conditions for v2.2.0. They fail until phase 265b bumps
+These tests assert the release conditions for v2.2.0. They fail until task 265b bumps
 `project.yml` to `MARKETING_VERSION = 2.2.0` / `CURRENT_PROJECT_VERSION = 17` and writes
 `RELEASE-v2.2.0.md`.
 
-New surface introduced in phase 265b:
+New surface introduced in task 265b:
   - `project.yml` — `MARKETING_VERSION` bumped to `2.2.0`,
     `CURRENT_PROJECT_VERSION` bumped to `17`.
   - `RELEASE-v2.2.0.md` — release notes file with required sections.
@@ -42,13 +42,13 @@ final class AppVersionTests: XCTestCase {
     func testMarketingVersion() throws {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         XCTAssertEqual(version, "2.2.0",
-                       "MARKETING_VERSION must be 2.2.0. Run phase 265b to bump project.yml.")
+                       "MARKETING_VERSION must be 2.2.0. Run task 265b to bump project.yml.")
     }
 
     func testBuildNumber() throws {
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
         XCTAssertEqual(build, "17",
-                       "CURRENT_PROJECT_VERSION must be 17. Run phase 265b to bump project.yml.")
+                       "CURRENT_PROJECT_VERSION must be 17. Run task 265b to bump project.yml.")
     }
 }
 ```
@@ -81,7 +81,7 @@ final class ReleaseNotesPresenceTests: XCTestCase {
         let root = try projectRoot()
         let notesPath = root.appendingPathComponent("RELEASE-v2.2.0.md").path
         XCTAssertTrue(FileManager.default.fileExists(atPath: notesPath),
-                      "RELEASE-v2.2.0.md not found at project root. Run phase 265b.")
+                      "RELEASE-v2.2.0.md not found at project root. Run task 265b.")
     }
 
     func testReleaseNotesHaveWhatsNewSection() throws {
@@ -131,5 +131,5 @@ and `RELEASE-v2.2.0.md` does not exist.
 git add tasks/task-265a-v2-2-release-tests.md \
     MerlinTests/Unit/AppVersionTests.swift \
     MerlinTests/Unit/ReleaseNotesPresenceTests.swift
-git commit -m "Phase 265a — v2.2.0ReleaseTests (failing)"
+git commit -m "Task 265a — v2.2.0ReleaseTests (failing)"
 ```

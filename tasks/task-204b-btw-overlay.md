@@ -1,10 +1,10 @@
-# Phase 204b — /btw Side-Question Overlay
+# Task 204b — /btw Side-Question Overlay
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 204a complete: failing BtwSessionTests.
+Task 204a complete: failing BtwSessionTests.
 
 `/btw` opens a floating overlay that sends a one-shot question directly to the active provider.
 The response is shown in the overlay. Nothing is written to `ContextManager` or the conversation
@@ -264,5 +264,5 @@ git add Merlin/Views/BtwSession.swift \
         Merlin/Views/BtwOverlayView.swift \
         Merlin/Views/ChatView.swift \
         TestHelpers/MockProvider.swift
-git commit -m "Phase 204b — /btw side-question overlay"
+git commit -m "Task 204b — /btw side-question overlay"
 ```

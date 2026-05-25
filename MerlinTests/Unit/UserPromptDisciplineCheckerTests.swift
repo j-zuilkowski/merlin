@@ -3,13 +3,13 @@ import XCTest
 
 final class UserPromptDisciplineCheckerTests: XCTestCase {
 
-    private func makeTmpProject(withTaskFile phaseContent: String? = nil) throws -> URL {
+    private func makeTmpProject(withTaskFile taskContent: String? = nil) throws -> URL {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("updc-\(UUID())")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let tasksDir = dir.appendingPathComponent("tasks")
         try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
-        if let content = phaseContent {
+        if let content = taskContent {
             try content.write(
                 to: tasksDir.appendingPathComponent("task-99a-provider-budget-tests.md"),
                 atomically: true, encoding: .utf8)

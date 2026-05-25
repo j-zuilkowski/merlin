@@ -1,14 +1,14 @@
-# Phase 270a — Prose Readability Production Path Tests
+# Task 270a — Prose Readability Production Path Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 269b complete: adapter-key consistency fixed.
+Task 269b complete: adapter-key consistency fixed.
 
-This phase covers three High-priority prose-readability bugs. All touch existing
+This task covers three High-priority prose-readability bugs. All touch existing
 symbols, so the build will NOT fail — the new tests assert correct post-fix behaviour
-and FAIL at runtime until phase 270b lands.
+and FAIL at runtime until task 270b lands.
 
 **Bug A — Vale JSON parsing.** `ProseReadabilityChecker.extractGrade` reads
 `obj["readability"]` as a top-level `Double`. Vale's real `--output JSON` output has no
@@ -23,7 +23,7 @@ Vale never computes a grade from it.
 **Bug C — checker unused.** `DisciplineEngine` stores `proseReadabilityChecker` as a
 dependency but never invokes it in `scan()`. Prose readability is dead in the engine.
 
-New surface introduced in phase 270b:
+New surface introduced in task 270b:
   - `ValeStyleWriter` `readability.yml` uses `extends: readability` (with a `metrics:`
     list and a `grade:` threshold), not `extends: existence`.
   - `ProseReadabilityChecker.extractGrade` / `extractSuggestions` parse Vale's actual
@@ -148,12 +148,12 @@ xcodebuild -scheme MerlinTests test \
 
 Expected: **BUILD SUCCEEDED**, but `ProseProductionPathTests` FAILS at runtime —
 `readability.yml` still uses `extends: existence`, and `DisciplineEngine.scan()` never
-runs the prose checker. Phase 270b makes both cases pass.
+runs the prose checker. Task 270b makes both cases pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-270a-prose-production-path-tests.md \
     MerlinTests/Unit/ProseProductionPathTests.swift
-git commit -m "Phase 270a — ProseProductionPathTests (failing)"
+git commit -m "Task 270a — ProseProductionPathTests (failing)"
 ```

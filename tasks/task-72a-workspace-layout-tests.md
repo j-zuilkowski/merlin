@@ -1,12 +1,12 @@
-# Phase 72a — WorkspaceLayoutManager Tests
+# Task 72a — WorkspaceLayoutManager Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 71 complete: Connectors/Advanced settings sections complete.
+Task 71 complete: Connectors/Advanced settings sections complete.
 
-New surface introduced in phase 72b:
+New surface introduced in task 72b:
   - `WorkspaceLayout` — Codable struct with `Bool` flags for each pane and `Double` width hints
   - `WorkspaceLayoutManager` — loads/saves `WorkspaceLayout` from a given `URL` (layout.json)
     - `func load() throws -> WorkspaceLayout`
@@ -107,5 +107,5 @@ Expected: `BUILD FAILED` — `WorkspaceLayout`, `WorkspaceLayoutManager` not yet
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/WorkspaceLayoutManagerTests.swift
-git commit -m "Phase 72a — WorkspaceLayoutManagerTests (failing)"
+git commit -m "Task 72a — WorkspaceLayoutManagerTests (failing)"
 ```

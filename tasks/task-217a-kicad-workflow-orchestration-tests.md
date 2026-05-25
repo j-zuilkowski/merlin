@@ -1,12 +1,12 @@
-# Phase 217a — KiCad Workflow Orchestration Tests
+# Task 217a — KiCad Workflow Orchestration Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 216b complete: vendor/order/approval policy exists.
+Task 216b complete: vendor/order/approval policy exists.
 
-New surface introduced in phase 217b:
+New surface introduced in task 217b:
   - `KiCadWorkflowOrchestrator`
   - `KiCadWorkflowMode`
   - `KiCadWorkflowState`
@@ -48,5 +48,5 @@ Expected: **BUILD FAILED** with missing workflow orchestration symbols.
 
 ```bash
 git add MerlinTests/Unit/KiCadWorkflowOrchestrationTests.swift
-git commit -m "Phase 217a — KiCadWorkflowOrchestrationTests (failing)"
+git commit -m "Task 217a — KiCadWorkflowOrchestrationTests (failing)"
 ```

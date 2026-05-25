@@ -1,4 +1,4 @@
-# Phase 12a — PatternMatcher + AuthMemory Tests
+# Task 12a — PatternMatcher + AuthMemory Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -100,5 +100,5 @@ Expected: `BUILD FAILED` with errors referencing `PatternMatcher` and `AuthMemor
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PatternMatcherTests.swift MerlinTests/Unit/AuthMemoryTests.swift
-git commit -m "Phase 12a — PatternMatcherTests + AuthMemoryTests (failing)"
+git commit -m "Task 12a — PatternMatcherTests + AuthMemoryTests (failing)"
 ```

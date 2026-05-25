@@ -1,16 +1,16 @@
-# Phase 253a — DevGuideGenerator Tests
+# Task 253a — DevGuideGenerator Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 252b complete: APIDocGenerator live.
+Task 252b complete: APIDocGenerator live.
 
 Introduces `DevGuideGenerator` which regenerates the mechanical sections of
 `developer-guide.md` — build commands, test commands, adapter config — directly from the
 project adapter, keeping the guide in sync without manual edits.
 
-New surface introduced in phase 253b:
+New surface introduced in task 253b:
   - `DevGuideGenerator` actor in `Merlin/Discipline/DevGuideGenerator.swift`:
     `func generate(projectPath: String, adapter: ProjectAdapter) async throws`
     — updates the "mechanical sections" of `docs/developer-guide.md` (or creates the file if
@@ -164,5 +164,5 @@ Expected: **BUILD FAILED** with errors naming `DevGuideGenerator` and
 ```bash
 git add tasks/task-253a-devguide-generator-tests.md \
     MerlinTests/Unit/DevGuideGeneratorTests.swift
-git commit -m "Phase 253a — DevGuideGeneratorTests (failing)"
+git commit -m "Task 253a — DevGuideGeneratorTests (failing)"
 ```

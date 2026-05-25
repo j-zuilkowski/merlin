@@ -1,12 +1,12 @@
-# Phase 28a — Menu Tests
+# Task 28a — Menu Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 27b complete: model picker in provider settings.
+Task 27b complete: model picker in provider settings.
 
-New surface introduced in phase 28b:
+New surface introduced in task 28b:
   - `AgenticEngine.cancel()` + `private var currentTask`
   - `AgenticEngine.send()` emits `.systemNote("[Interrupted]")` on cancellation
   - `AppState.newSession()` — clears context, posts `Notification.Name.merlinNewSession`
@@ -219,5 +219,5 @@ Expected: `BUILD FAILED` with errors referencing `AgenticEngine.cancel()`,
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineCancelTests.swift \
         MerlinTests/Unit/AppStateSessionTests.swift
-git commit -m "Phase 28a — AgenticEngineCancelTests + AppStateSessionTests (failing)"
+git commit -m "Task 28a — AgenticEngineCancelTests + AppStateSessionTests (failing)"
 ```

@@ -1,16 +1,16 @@
-# Phase 49a — Thread Automations Tests
+# Task 49a — Thread Automations Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 48b complete: HookEngine in place.
+Task 48b complete: HookEngine in place.
 
 Thread automations extend the task-41 SchedulerEngine with session-aware wake-up calls.
 Unlike standalone scheduled tasks, thread automations resume a specific conversation session
 with a configured prompt, preserving all context.
 
-New surface introduced in phase 49b:
+New surface introduced in task 49b:
   - `ThreadAutomation` — struct: `id: UUID`, `sessionID: UUID`, `cronExpression: String`,
     `prompt: String`, `enabled: Bool`, `label: String`
   - `ThreadAutomationStore` — actor; persists automations in `~/.merlin/config.toml` via AppSettings
@@ -186,5 +186,5 @@ Expected: BUILD FAILED — `ThreadAutomation`, `ThreadAutomationStore`, `ThreadA
 ## Commit
 ```bash
 git add MerlinTests/Unit/ThreadAutomationTests.swift
-git commit -m "Phase 49a — ThreadAutomationTests (failing)"
+git commit -m "Task 49a — ThreadAutomationTests (failing)"
 ```

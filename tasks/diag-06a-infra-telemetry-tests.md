@@ -1,12 +1,12 @@
-# Phase diag-06a — Infrastructure Telemetry Tests (failing)
+# Task diag-06a — Infrastructure Telemetry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-05b complete: context, planner & critic telemetry instrumented.
+Task diag-05b complete: context, planner & critic telemetry instrumented.
 
-New surface introduced in phase diag-06b:
+New surface introduced in task diag-06b:
   - `SessionStore.save(_:)` emits:
       `session.save`        — session_id, message_count, duration_ms
   - `HookEngine.runPreToolUse(...)` emits:
@@ -260,5 +260,5 @@ Expected: BUILD FAILED — `session.save`, `hook.pre_tool`, `process.memory` eve
 git add MerlinTests/Unit/SessionStoreTelemetryTests.swift \
         MerlinTests/Unit/HookTelemetryTests.swift \
         MerlinTests/Unit/ProcessMemoryTelemetryTests.swift
-git commit -m "Phase diag-06a — Infrastructure telemetry tests (failing)"
+git commit -m "Task diag-06a — Infrastructure telemetry tests (failing)"
 ```

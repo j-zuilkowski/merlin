@@ -1,10 +1,10 @@
-# Phase 44b — TOMLDecoder Implementation
+# Task 44b — TOMLDecoder Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 44a complete: failing tests in place.
+Task 44a complete: failing tests in place.
 
 New files:
   - `Merlin/Config/TOMLValue.swift` — value enum + Foundation bridge
@@ -716,5 +716,5 @@ Expected: BUILD SUCCEEDED, all TOMLDecoderTests pass.
 ## Commit
 ```bash
 git add Merlin/Config/TOMLValue.swift Merlin/Config/TOMLParser.swift Merlin/Config/TOMLDecoder.swift
-git commit -m "Phase 44b — TOMLDecoder (full TOML v1 parser + Foundation bridge)"
+git commit -m "Task 44b — TOMLDecoder (full TOML v1 parser + Foundation bridge)"
 ```

@@ -1,7 +1,7 @@
-# Phase 46b — AppSettings Implementation
+# Task 46b — AppSettings Implementation
 
-> ⚠️ **OUTDATED** — This phase documents the original v1 AppSettings only (~10 properties).
-> The current `AppSettings.swift` has 50+ properties added across phases 60–165.
+> ⚠️ **OUTDATED** — This task documents the original v1 AppSettings only (~10 properties).
+> The current `AppSettings.swift` has 50+ properties added across  tasks 60–165.
 > **Read `task-46c-appsettings-v5-addendum.md` alongside this document** for the complete
 > current property set, nested types, and TOML serialization.
 > `task-46c` is the authoritative spec for the live code.
@@ -10,7 +10,7 @@
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 46a complete: failing tests in place.
+Task 46a complete: failing tests in place.
 
 New files:
   - `Merlin/Config/AppSettings.swift` — @MainActor ObservableObject, TOMLDecoder load/save, FSEvents
@@ -390,7 +390,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     }
 }
 
-// MARK: - Stub detail views (fleshed out in later phases)
+// MARK: - Stub detail views (fleshed out in later  tasks)
 
 struct GeneralSettingsView: View {
     @ObservedObject private var settings = AppSettings.shared
@@ -447,7 +447,7 @@ struct AppearanceSettingsView: View {
     }
 }
 
-// Stub views — implemented fully in their respective feature phases
+// Stub views — implemented fully in their respective feature  tasks
 struct ProvidersSettingsView: View { var body: some View { Text("Providers").padding() } }
 struct HooksSettingsView: View { var body: some View { Text("Hooks").padding() } }
 struct MemoriesSettingsView: View { var body: some View { Text("Memories").padding() } }
@@ -501,5 +501,5 @@ git add Merlin/Config/AppSettings.swift \
         Merlin/Config/SettingsProposal.swift \
         Merlin/Config/HookConfig.swift \
         Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 46b — AppSettings + config.toml + Settings Window + Appearance"
+git commit -m "Task 46b — AppSettings + config.toml + Settings Window + Appearance"
 ```

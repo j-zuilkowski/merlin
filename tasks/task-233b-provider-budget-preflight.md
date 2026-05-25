@@ -1,15 +1,15 @@
-# Phase 233b — ProviderBudget + Pre-Flight Gate
+# Task 233b — ProviderBudget + Pre-Flight Gate
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 233a complete: failing tests for ProviderBudget, TokenEstimator, pre-flight overflow path,
+Task 233a complete: failing tests for ProviderBudget, TokenEstimator, pre-flight overflow path,
 lowered thresholds, and telemetry.
 
-This phase installs the budget contract and the pre-flight gate. The recursive 400-recovery loop
-at `AgenticEngine.swift:1049–1081` is left in place untouched — phase 237b deletes and replaces
-it. Pre-flight reduces the rate at which that path fires; later phases retire it.
+This task installs the budget contract and the pre-flight gate. The recursive 400-recovery loop
+at `AgenticEngine.swift:1049–1081` is left in place untouched — task 237b deletes and replaces
+it. Pre-flight reduces the rate at which that path fires; later  tasks retire it.
 
 ---
 
@@ -62,7 +62,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 233a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 233a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -73,9 +73,9 @@ git add tasks/task-233b-provider-budget-preflight.md \
     Merlin/Engine/TokenEstimator.swift \
     Merlin/Engine/AgenticEngine.swift \
     Merlin/Engine/ContextManager.swift
-git commit -m "Phase 233b — ProviderBudget and pre-flight gate"
+git commit -m "Task 233b — ProviderBudget and pre-flight gate"
 ```
 
 ## PASTE-LIST update
 
-Append phase 233a/233b under the "Budget-Aware Execution (v2.1.0)" section started in 232b.
+Append task 233a/233b under the "Budget-Aware Execution (v2.1.0)" section started in 232b.

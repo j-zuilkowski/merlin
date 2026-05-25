@@ -1,11 +1,11 @@
-# Phase 310b — DocReferenceGraph Fenced-Block Strengthening
+# Task 310b — DocReferenceGraph Fenced-Block Strengthening
 
 > **Note:** `danglingReferences` and `enumerateSourceSymbols` here are superseded by
-> phase 316b (skip `tasks/`, include test symbols). Implement 316b's versions.
+> task 316b (skip `tasks/`, include test symbols). Implement 316b's versions.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 310a complete: failing runtime test in `DocReferenceGraphFencedBlockTests`.
+Task 310a complete: failing runtime test in `DocReferenceGraphFencedBlockTests`.
 
 Strengthen `DocReferenceGraph` to verify enum-case declarations inside fenced doc code
 blocks (catching the `versionBumpCandidate`-in-`DeveloperManual.md` class), and raise
@@ -20,7 +20,7 @@ both the app and the `merlin-discipline` CLI. Keep it that way.
 
 **1a.** Add this private helper to the type (next to `extractDeclaredSymbol`):
 ```swift
-/// Enum-case identifiers declared on a trimmed `line` — `case phaseDrift`, or a
+/// Enum-case identifiers declared on a trimmed `line` — `case taskDrift`, or a
 /// comma list `case a, b = "x"`. Over-collecting switch-statement `case` patterns is
 /// harmless: it only adds to the known-symbol set.
 private func extractEnumCaseNames(from line: String) -> [String] {
@@ -83,7 +83,7 @@ func danglingReferences(projectPath: String) async -> [DocReference] {
             contentsOf: URL(fileURLWithPath: docFile), encoding: .utf8)
         else { continue }
 
-        // Phase-doc Markdown is build scaffolding full of illustrative code; only
+        // Task-doc Markdown is build scaffolding full of illustrative code; only
         // verify fenced blocks in product documentation.
         let checkFences = !docFile.contains("/tasks/")
 
@@ -155,5 +155,5 @@ Expected: `DocReferenceGraphFencedBlockTests` passes; BUILD SUCCEEDED, zero warn
 ```
 git add Merlin/Discipline/DocReferenceGraph.swift Merlin/Discipline/DisciplineEngine.swift \
   tasks/task-310b-doc-reference-fenced-block.md
-git commit -m "Phase 310b — DocReferenceGraph verifies fenced-block enum cases"
+git commit -m "Task 310b — DocReferenceGraph verifies fenced-block enum cases"
 ```

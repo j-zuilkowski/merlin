@@ -1,14 +1,14 @@
-# Phase 64 — SettingsSection Enum: Add Agent/MCP/Skills/Search/Permissions
+# Task 64 — SettingsSection Enum: Add Agent/MCP/Skills/Search/Permissions
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 63b complete: memory injection wired through ConstitutionLoader + AgenticEngine.
+Task 63b complete: memory injection wired through ConstitutionLoader + AgenticEngine.
 
 Extend `SettingsWindowView.swift` to add five new settings sections (`agents`, `mcp`, `skills`,
 `search`, `permissions`) and remove the `shortcuts` stub. Each new section gets a placeholder
-view in this phase; real content follows in phases 65–70.
+view in this task; real content follows in  tasks 65–70.
 
 ---
 
@@ -175,7 +175,7 @@ struct ProvidersSettingsView: View {
     }
 }
 
-// MARK: - Agents (stub — replaced in phase 65)
+// MARK: - Agents (stub — replaced in task 65)
 
 struct AgentSettingsView: View {
     @ObservedObject var settings: AppSettings
@@ -218,7 +218,7 @@ struct HooksSettingsView: View {
     }
 }
 
-// MARK: - Memories (stub — replaced in phase 66)
+// MARK: - Memories (stub — replaced in task 66)
 
 struct MemoriesSettingsView: View {
     @ObservedObject var settings: AppSettings
@@ -230,7 +230,7 @@ struct MemoriesSettingsView: View {
     }
 }
 
-// MARK: - MCP (stub — replaced in phase 67)
+// MARK: - MCP (stub — replaced in task 67)
 
 struct MCPSettingsView: View {
     var body: some View {
@@ -240,7 +240,7 @@ struct MCPSettingsView: View {
     }
 }
 
-// MARK: - Skills (stub — replaced in phase 68)
+// MARK: - Skills (stub — replaced in task 68)
 
 struct SkillsSettingsView: View {
     var body: some View {
@@ -250,7 +250,7 @@ struct SkillsSettingsView: View {
     }
 }
 
-// MARK: - Search (stub — replaced in phase 69)
+// MARK: - Search (stub — replaced in task 69)
 
 struct SearchSettingsView: View {
     var body: some View {
@@ -260,7 +260,7 @@ struct SearchSettingsView: View {
     }
 }
 
-// MARK: - Permissions (stub — replaced in phase 70)
+// MARK: - Permissions (stub — replaced in task 70)
 
 struct PermissionsSettingsView: View {
     var body: some View {
@@ -270,7 +270,7 @@ struct PermissionsSettingsView: View {
     }
 }
 
-// MARK: - Connectors (stub — replaced in phase 71)
+// MARK: - Connectors (stub — replaced in task 71)
 
 private struct ConnectorsSettingsView: View {
     var body: some View {
@@ -280,7 +280,7 @@ private struct ConnectorsSettingsView: View {
     }
 }
 
-// MARK: - Advanced (stub — replaced in phase 71)
+// MARK: - Advanced (stub — replaced in task 71)
 
 private struct AdvancedSettingsView: View {
     var body: some View {
@@ -312,5 +312,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 64 — SettingsSection: add agents/mcp/skills/search/permissions, remove shortcuts"
+git commit -m "Task 64 — SettingsSection: add agents/mcp/skills/search/permissions, remove shortcuts"
 ```

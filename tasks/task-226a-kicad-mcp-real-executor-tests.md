@@ -1,12 +1,12 @@
-# Phase 226a - KiCad MCP Real Executor Tests
+# Task 226a - KiCad MCP Real Executor Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 209b intentionally created only a KiCad MCP tooling boundary and returns `kicad_boundary_stub` artifacts.
+Task 209b intentionally created only a KiCad MCP tooling boundary and returns `kicad_boundary_stub` artifacts.
 
-New surface introduced in phase 226b:
+New surface introduced in task 226b:
   - `KiCadMCPClient` JSON-RPC client abstraction.
   - `KiCadMCPToolExecutor` delegates available tool calls to `KiCadMCPClient`.
   - Real executor returns artifact refs from MCP responses instead of stub `/tmp/<tool>.json` paths.
@@ -47,6 +47,6 @@ Expected: **BUILD FAILED** because `KiCadMCPClient` and real result delegation d
 
 ```bash
 git add MerlinTests/Unit/KiCadMCPRealExecutorTests.swift
-git commit -m "Phase 226a - KiCadMCPRealExecutorTests (failing)"
+git commit -m "Task 226a - KiCadMCPRealExecutorTests (failing)"
 ```
 

@@ -1,11 +1,11 @@
-# Phase diag-10a — Toolbar Actions Tests
+# Task diag-10a — Toolbar Actions Tests
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-New surface introduced in phase diag-10b:
+New surface introduced in task diag-10b:
   - `ToolbarAction` — `Identifiable & Codable & Sendable` struct; `id`, `label`,
     `command`, `shortcut?`; `run()` executes command via `/bin/sh -c`
   - `ToolbarActionError.nonZeroExit(Int, String)` — error thrown on non-zero exit
@@ -117,5 +117,5 @@ Expected: BUILD SUCCEEDED (ToolbarAction + ToolbarActionStore already exist).
 cd ~/Documents/localProject/merlin
 git add tasks/task-diag-10a-toolbar-actions-tests.md \
         MerlinTests/Unit/ToolbarActionTests.swift
-git commit -m "Phase diag-10a — ToolbarActionTests"
+git commit -m "Task diag-10a — ToolbarActionTests"
 ```

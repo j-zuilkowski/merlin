@@ -1,12 +1,12 @@
-# Phase 71 — Advanced + Connectors Settings; Delete ConnectorsView.swift
+# Task 71 — Advanced + Connectors Settings; Delete ConnectorsView.swift
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 70 complete: PermissionsSettingsView with allow/deny pattern list.
+Task 70 complete: PermissionsSettingsView with allow/deny pattern list.
 
-Two tasks in this phase:
+Two tasks in this task:
 1. Replace the `ConnectorsSettingsView` stub with real content (moved from `ConnectorsView.swift`)
 2. Replace the `AdvancedSettingsView` stub with real content (xcalibre token + subagent limits)
 3. Delete `Merlin/Views/ConnectorsView.swift` (now superseded by the settings section)
@@ -170,5 +170,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
 git rm Merlin/Views/ConnectorsView.swift
-git commit -m "Phase 71 — Connectors/Advanced settings; delete standalone ConnectorsView.swift"
+git commit -m "Task 71 — Connectors/Advanced settings; delete standalone ConnectorsView.swift"
 ```

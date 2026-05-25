@@ -1,10 +1,10 @@
-# Phase 67 — MCP Settings Section
+# Task 67 — MCP Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 66 complete: MemoriesSettingsView with enable/timeout/review.
+Task 66 complete: MemoriesSettingsView with enable/timeout/review.
 
 Replace the stub `MCPSettingsView` in `SettingsWindowView.swift` with a real view that reads
 `~/.merlin/mcp.json`, shows the list of configured servers, and lets the user add or remove
@@ -159,5 +159,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 67 — MCPSettingsView: add/remove MCP server configs persisted to mcp.json"
+git commit -m "Task 67 — MCPSettingsView: add/remove MCP server configs persisted to mcp.json"
 ```

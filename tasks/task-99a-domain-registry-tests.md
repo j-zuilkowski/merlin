@@ -1,20 +1,20 @@
-# Phase 99a — DomainRegistry Tests (failing)
+# Task 99a — DomainRegistry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
-Phase 98 complete: V4 fully shipped. Starting V5 — Domain Plugin System + Supervisor-Worker architecture.
+Task 98 complete: V4 fully shipped. Starting V5 — Domain Plugin System + Supervisor-Worker architecture.
 
-New surface introduced in phase 99b:
+New surface introduced in task 99b:
   - `DomainTaskType` — domain-registered task type (domainID + name)
   - `DomainPlugin` protocol — adopted by built-in domains and MCPDomainAdapter
   - `DomainManifest` — Decodable JSON shape served by MCP domain servers
   - `MCPDomainAdapter` — wraps a DomainManifest into a DomainPlugin
   - `DomainRegistry.shared` — actor; register/unregister/activeDomain/taskTypes
   - `SoftwareDomain` — always-registered built-in; cannot be removed
-  - `NullVerificationBackend` — placeholder until VerificationBackend phase
+  - `NullVerificationBackend` — placeholder until VerificationBackend task
 
 TDD coverage:
   File 1 — DomainRegistryTests: registration, unregistration, active domain fallback, taskTypes returns active domain only
@@ -165,5 +165,5 @@ Expected: BUILD FAILED — `DomainRegistry`, `DomainPlugin`, `DomainTaskType`, `
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/DomainRegistryTests.swift
-git commit -m "Phase 99a — DomainRegistryTests + DomainManifestTests (failing)"
+git commit -m "Task 99a — DomainRegistryTests + DomainManifestTests (failing)"
 ```

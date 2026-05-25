@@ -13,7 +13,7 @@ upstream of committed design.
 
 Merlin's discipline subsystem already practices Spec-Driven Development (SDD) under its
 own names: `constitution.md` is the constitution, `spec.md` is the spec/plan,
-`tasks/` are the tasks, and the `vision → architecture → phase → code` pipeline is the
+`tasks/` are the tasks, and the `vision → architecture → task → code` pipeline is the
 SDD workflow. This initiative formalizes that alignment so the methodology is named,
 consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro).
 
@@ -21,12 +21,12 @@ consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro
 - **Vocabulary rename** — adopt SDD terms across the docs and the `project:*` skill
   subsystem: *constitution* (`constitution.md`), *spec* (`spec.md`), *tasks*
   (`tasks/`), *vision* (`vision.md`).
-- **EARS acceptance criteria** — add a `## Behavior` block to the phase/task template
+- **EARS acceptance criteria** — add a `## Behavior` block to the task/task template
   using EARS notation (`WHEN [trigger] THE [system] SHALL [response]`, plus `WHILE`,
   `IF … THEN`, `WHERE`, and ubiquitous forms). Each task states its intended behavior
-  in a standardized, testable form that the `a`-phase TDD tests verify directly.
+  in a standardized, testable form that the `a`-task TDD tests verify directly.
 - **Backfill** — retrofit the EARS `## Behavior` block and the SDD vocabulary into the
-  existing committed task files, not new phases only.
+  existing committed task files, not new  tasks only.
 - **Consistency gate** — extend `DisciplineEngine` with a vision↔spec↔task coherence
   check (the SDD `/analyze` equivalent), run before implementation rather than only as
   post-hoc drift detection. It verifies that every task traces to a spec section and
@@ -43,13 +43,13 @@ engine; do not swap the `project:*` subsystem for Spec Kit's CLI.
 its filename — Claude Code auto-loads `constitution.md` by name, so renaming it would break
 the toolchain; it is *designated* the constitution in place. The rename touches every
 task file, the `DisciplineEngine` / `TaskScanner` code that walks `tasks/`,
-`REBUILD-GUIDE.md`, `PASTE-LIST.md`, `ALL-PHASES.md`, and **all five `project:*` skills
-(`init`, `adopt`, `phase`, `revise`, `release`)** — all updated together in one
-mechanical phase.
+`REBUILD-GUIDE.md`, `PASTE-LIST.md`, `ALL-TASKS.md`, and **all five `project:*` skills
+(`init`, `adopt`, `task`, `revise`, `release`)** — all updated together in one
+mechanical task.
 
 For the `project:*` skills the rename is **two-sided**: not only their own prose but
 also the artifacts they *scaffold* must change — `project:init` and `project:adopt`
-write `spec.md` / `tasks/` (not `spec.md` / `tasks/`), `project:phase` and
+write `spec.md` / `tasks/` (not `spec.md` / `tasks/`), `project:task` and
 `project:revise` operate on `tasks/`, and the doc templates under
 `~/.merlin/templates/docs/` follow suit. So every project Merlin creates or adopts after
 the rename uses the SDD names from the start, not just the Merlin repo itself.
@@ -113,8 +113,8 @@ a standalone out-of-process MCP server (stdio JSON-RPC). Under the runtime-plugi
 the electronics plugin is **in-process** — a loadable `DomainPlugin`, not a server
 process. The KiCad/FreeRouting *logic* and the ~23-tool contract survive; the stdio MCP
 transport does not. The `merlin/plugins/merlin-kicad-mcp/` scaffold (constitution,
-ROADMAP, phases 00/01a/01b) must be reconceived as `merlin/plugins/electronics/` with
-its ROADMAP rewritten — phase 01 is no longer "MCP stdio server" but "loadable
+ROADMAP,  tasks 00/01a/01b) must be reconceived as `merlin/plugins/electronics/` with
+its ROADMAP rewritten — task 01 is no longer "MCP stdio server" but "loadable
 `DomainPlugin` bundle + factory entry point".
 
 **Infrastructure this needs first (before the electronics plugin):**
@@ -161,7 +161,7 @@ unsigned downloaded bundles) — never `dlopen`'d into Merlin. It is the marketp
 layer on top of the Tier-2 bridge; deferred until the in-repo first-party model is
 proven, not a prerequisite for it.
 
-**Promotion:** promote to `spec.md` as the plugin-architecture section, then phases —
+**Promotion:** promote to `spec.md` as the plugin-architecture section, then  tasks —
 (1) the `MerlinPluginAPI` shared module (the `DomainPlugin` contract + declarative
 settings-schema, designed for both tiers); (2) the Tier-1 in-process loader + launch
 scan; (3) the build wiring; (4) host-rendered dynamic settings panels in the Settings
@@ -253,7 +253,7 @@ v2.0 runs `merlin-kicad-mcp` locally alongside the Merlin app. There is no remot
 
 ### How to use this document
 
-When implementing v2.0 phases, check this file before adding scope. If an idea matches an item here, it stays out of v2.0 — note the existing entry in the task doc rather than re-debating scope.
+When implementing v2.0  tasks, check this file before adding scope. If an idea matches an item here, it stays out of v2.0 — note the existing entry in the task doc rather than re-debating scope.
 
 When v2.0 ships and users request capabilities, check this file first. If the request matches an entry, the architectural hook is already identified; the work becomes a new domain extension, not a re-architecture.
 

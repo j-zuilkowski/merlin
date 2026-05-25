@@ -1,10 +1,10 @@
-# Phase 226b - KiCad MCP Real Executor
+# Task 226b - KiCad MCP Real Executor
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 226a complete: failing KiCad MCP real executor tests exist.
+Task 226a complete: failing KiCad MCP real executor tests exist.
 
 ---
 
@@ -48,6 +48,6 @@ Expected: **BUILD SUCCEEDED**. KiCad MCP real executor tests pass.
 
 ```bash
 git add Merlin/Electronics/KiCadMCPClient.swift Merlin/Electronics/KiCadMCPTooling.swift MerlinTests/Unit/KiCadMCPRealExecutorTests.swift
-git commit -m "Phase 226b - KiCad MCP real executor"
+git commit -m "Task 226b - KiCad MCP real executor"
 ```
 

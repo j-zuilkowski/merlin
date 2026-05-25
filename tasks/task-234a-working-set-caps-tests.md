@@ -1,16 +1,16 @@
-# Phase 234a — Working-Set Caps Tests
+# Task 234a — Working-Set Caps Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 233b complete: ProviderBudget + pre-flight gate live; thresholds lowered to 6 K / 20 K.
+Task 233b complete: ProviderBudget + pre-flight gate live; thresholds lowered to 6 K / 20 K.
 
 Decomposes the context window into bounded components. Each component declares its share of the
 provider's `usableInputTokens`, and the sum of caps never exceeds the budget. This makes
 pre-flight overflow a near-zero event, not a steady-state failure mode.
 
-New surface introduced in phase 234b:
+New surface introduced in task 234b:
   - `WorkingSetBudget` value type in `Merlin/Engine/WorkingSetBudget.swift`:
     ```swift
     struct WorkingSetBudget: Sendable {
@@ -81,5 +81,5 @@ git add tasks/task-234a-working-set-caps-tests.md \
     MerlinTests/Unit/WorkingSetTruncationTests.swift \
     MerlinTests/Unit/ToolBurstCompactionTests.swift \
     MerlinTests/Unit/PreflightCapsIntegrationTests.swift
-git commit -m "Phase 234a — WorkingSetCapsTests (failing)"
+git commit -m "Task 234a — WorkingSetCapsTests (failing)"
 ```

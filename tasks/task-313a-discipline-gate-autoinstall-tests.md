@@ -1,22 +1,22 @@
-# Phase 313a — Discipline Gate Auto-Install Tests (failing)
+# Task 313a — Discipline Gate Auto-Install Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 312 complete: the Liveness Discipline batch (307–312) is committed.
+Task 312 complete: the Liveness Discipline batch (307–312) is committed.
 
 Today the discipline pre-commit gate only activates when a user opens the app's Settings
 and flips the discipline-hooks toggle (`SettingsWindowView.swift` `setDisciplineHooks`).
 That is opt-in and easy to never enable — a prevention gate you can forget to turn on is
-not a gate. This phase makes activation **automatic at app launch**: when a project that
+not a gate. This task makes activation **automatic at app launch**: when a project that
 has opted into the `pre_commit` discipline layer (its `.merlin/project.toml` lists
 `pre_commit` in `discipline_layers`) is opened, the discipline binary and git hooks
 install themselves.
 
 The Settings toggle stays as a manual install/uninstall override — it is NOT removed.
 
-New surface introduced in phase 313b:
+New surface introduced in task 313b:
   - `enum DisciplineGateInstaller` (in `Merlin/Discipline/`) with:
     - `static func wantsPreCommitGate(projectPath:) async -> Bool` — true when the
       project's `.merlin/project.toml` opts into the `pre_commit` layer.
@@ -38,7 +38,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 313a — failing tests for DisciplineGateInstaller.
+/// Task 313a — failing tests for DisciplineGateInstaller.
 final class DisciplineGateInstallerTests: XCTestCase {
 
     /// Builds a temp project; writes `.merlin/project.toml` only when `toml` is non-nil.
@@ -104,10 +104,10 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
   -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
 ```
 Expected: **BUILD FAILED** — `DisciplineGateInstaller` does not exist yet. This is a
-compile-failure phase (`build-for-testing` is the correct verb).
+compile-failure task (`build-for-testing` is the correct verb).
 
 ## Commit
 ```
 git add MerlinTests/Unit/DisciplineGateInstallerTests.swift tasks/task-313a-discipline-gate-autoinstall-tests.md
-git commit -m "Phase 313a — Discipline gate auto-install tests (failing)"
+git commit -m "Task 313a — Discipline gate auto-install tests (failing)"
 ```

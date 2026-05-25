@@ -1,11 +1,11 @@
-# Phase 11 — AppControlTools + ToolDiscovery
+# Task 11 — AppControlTools + ToolDiscovery
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07b complete: ShellTool exists.
+Task 07b complete: ShellTool exists.
 
 ---
 
@@ -141,5 +141,5 @@ Expected: both test suites pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/AppControlTools.swift Merlin/Tools/ToolDiscovery.swift \
     MerlinTests/Unit/AppControlTests.swift MerlinTests/Unit/ToolDiscoveryTests.swift
-git commit -m "Phase 11 — AppControlTools + ToolDiscovery + tests"
+git commit -m "Task 11 — AppControlTools + ToolDiscovery + tests"
 ```

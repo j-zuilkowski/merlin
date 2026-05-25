@@ -1,10 +1,10 @@
-# Phase 65 — Agent Settings Section
+# Task 65 — Agent Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 64 complete: SettingsSection enum updated, AgentSettingsView stub in place.
+Task 64 complete: SettingsSection enum updated, AgentSettingsView stub in place.
 
 Replace the stub `AgentSettingsView` in `SettingsWindowView.swift` with a real view:
 - Provider/model picker (drives `AppSettings.providerName` + `AppSettings.modelID`)
@@ -127,5 +127,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 65 — AgentSettingsView: model picker, reasoning toggle, standing instructions"
+git commit -m "Task 65 — AgentSettingsView: model picker, reasoning toggle, standing instructions"
 ```

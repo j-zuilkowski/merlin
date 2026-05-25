@@ -1,15 +1,15 @@
-# Phase 251a — DocReferenceGraph Tests
+# Task 251a — DocReferenceGraph Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 250b complete: ManualBaselineManager + ManualSectionTemplateWriter live.
+Task 250b complete: ManualBaselineManager + ManualSectionTemplateWriter live.
 
 Replaces the `DocReferenceGraph` stub with a real implementation using automatic mode:
 greps doc files for symbol-shaped strings, cross-checks against the code symbol index.
 
-New surface introduced in phase 251b (replacing stub):
+New surface introduced in task 251b (replacing stub):
   - `DocReferenceGraph.build(projectPath:) async -> [DocReference]` — real implementation.
   - `DocReferenceGraph.staleReferences(against changedSymbols:) async -> [DocReference]`
     — returns references whose `codeSymbol` appears in `changedSymbols`.
@@ -154,5 +154,5 @@ compile but fail), or the real `build(projectPath:)` signature change causes com
 ```bash
 git add tasks/task-251a-doc-reference-graph-tests.md \
     MerlinTests/Unit/DocReferenceGraphTests.swift
-git commit -m "Phase 251a — DocReferenceGraphTests (failing)"
+git commit -m "Task 251a — DocReferenceGraphTests (failing)"
 ```

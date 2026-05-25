@@ -1,10 +1,10 @@
-# Phase 339a — Slot Status Panel Tests
+# Task 339a — Slot Status Panel Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 338b complete: llama.cpp is a first-class local router provider.
+Task 338b complete: llama.cpp is a first-class local router provider.
 
 Recommended execution model: GPT-5.3-Codex.
 
@@ -13,7 +13,7 @@ That is misleading because Merlin routes work through four configured slots:
 execute, reason, orchestrate, and vision. A configured provider in Settings must
 not appear as active routing unless one or more slots are explicitly assigned.
 
-New surface introduced in phase 339b:
+New surface introduced in task 339b:
   - A compact `SlotStatusPanel` in the lower-left sidebar, below sessions and
     above New Project Workspace.
   - Four persistent rows: Execute, Reason, Orchestrate, Vision.
@@ -91,5 +91,5 @@ Expected: BUILD FAILED with errors naming missing `SlotStatusResolver`,
 git add MerlinTests/Unit/SlotStatusResolverTests.swift \
         MerlinTests/Unit/AccessibilityIDCoverageTests.swift \
         tasks/task-339a-slot-status-panel-tests.md
-git commit -m "Phase 339a — slot status panel tests (failing)"
+git commit -m "Task 339a — slot status panel tests (failing)"
 ```

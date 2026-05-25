@@ -21,7 +21,7 @@ struct ChatView: View {
     @State private var isDragTargeted: Bool = false
     @State private var autoScrollEnabled: Bool = true
     @State private var scrollLockVisible: Bool = false
-    @State private var scrollPhaseIsUser: Bool = false
+    @State private var scrollTaskIsUser: Bool = false
     @State private var shouldResumeScroll: Bool = false
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""

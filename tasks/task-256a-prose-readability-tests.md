@@ -1,15 +1,15 @@
-# Phase 256a — ProseReadabilityChecker Tests
+# Task 256a — ProseReadabilityChecker Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 255b complete: WHYCommentGate + OverrideAnnotationParser live.
+Task 255b complete: WHYCommentGate + OverrideAnnotationParser live.
 
 Replaces the `ProseReadabilityChecker` stub with a real implementation. Calls `vale` (dev
 tool, not vendored) with the Merlin-specific style folder. Includes Vale style file content.
 
-New surface introduced in phase 256b (replacing stub):
+New surface introduced in task 256b (replacing stub):
   - `ProseReadabilityChecker.check(docFile:targetGrade:) async -> ReadabilityFinding`
     — real implementation. Runs `vale --output JSON <docFile>`, parses the output, returns
     measured grade and suggestions. In dry-run mode (init parameter), returns a synthetic
@@ -141,5 +141,5 @@ and `ValeStyleWriter`.
 git add tasks/task-256a-prose-readability-tests.md \
     MerlinTests/Unit/ProseReadabilityCheckerTests.swift \
     MerlinTests/Unit/ValeStyleWriterTests.swift
-git commit -m "Phase 256a — ProseReadabilityCheckerTests (failing)"
+git commit -m "Task 256a — ProseReadabilityCheckerTests (failing)"
 ```

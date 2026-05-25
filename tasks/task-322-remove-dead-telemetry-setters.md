@@ -1,10 +1,10 @@
-# Phase 322 — Remove Dead TelemetryEmitter Setters
+# Task 322 — Remove Dead TelemetryEmitter Setters
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 321b complete: DocReferenceGraph comment-stripping fix landed.
+Task 321b complete: DocReferenceGraph comment-stripping fix landed.
 
 W4 trace audit finding F5: `TelemetryEmitter.setSession(_:)`, `setTurn(_:)` and
 `setLoop(_:)` are dead — a repo-wide grep finds **zero callers** in any target
@@ -12,8 +12,8 @@ W4 trace audit finding F5: `TelemetryEmitter.setSession(_:)`, `setTurn(_:)` and
 context setter that is used is `setContext(sessionID:turn:loop:)` (test-only). The three
 single-field setters are removed here.
 
-This is an implementation-only cleanup phase — pure dead-code removal, no new behavior,
-so there is no `a` tests phase. The compile gate is the verification: if anything
+This is an implementation-only cleanup task — pure dead-code removal, no new behavior,
+so there is no `a` tests task. The compile gate is the verification: if anything
 referenced the deleted methods, `build-for-testing` would fail.
 
 ---
@@ -54,7 +54,7 @@ the same three `setSession` / `setTurn` / `setLoop` lines and the blank line abo
 Then add this `## Fixes` section at the end of `diag-01b-telemetry-emitter.md`:
 ```
 ## Fixes
-Phase 322 removed `setSession(_:)`, `setTurn(_:)` and `setLoop(_:)` — dead code with
+Task 322 removed `setSession(_:)`, `setTurn(_:)` and `setLoop(_:)` — dead code with
 zero callers in any target (W4 trace-audit finding F5). `setContext(sessionID:turn:loop:)`
 is the surviving context setter.
 ```
@@ -85,5 +85,5 @@ does not; the grep confirmed zero callers.)
 ## Commit
 ```
 git add Merlin/Telemetry/TelemetryEmitter.swift tasks/diag-01b-telemetry-emitter.md tasks/task-322-remove-dead-telemetry-setters.md
-git commit -m "Phase 322 — Remove dead TelemetryEmitter setters"
+git commit -m "Task 322 — Remove dead TelemetryEmitter setters"
 ```

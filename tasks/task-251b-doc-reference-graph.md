@@ -1,10 +1,10 @@
-# Phase 251b — DocReferenceGraph
+# Task 251b — DocReferenceGraph
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 251a complete: failing tests for the real DocReferenceGraph implementation.
+Task 251a complete: failing tests for the real DocReferenceGraph implementation.
 
 Replaces the stub in `Merlin/Discipline/DocReferenceGraph.swift` with the automatic mode
 implementation.
@@ -170,12 +170,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 251a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 251a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-251b-doc-reference-graph.md \
     Merlin/Discipline/DocReferenceGraph.swift
-git commit -m "Phase 251b — DocReferenceGraph automatic mode (replaces stub)"
+git commit -m "Task 251b — DocReferenceGraph automatic mode (replaces stub)"
 ```

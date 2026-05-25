@@ -1,8 +1,8 @@
-# Phase 313b — Discipline Gate Auto-Install (implementation)
+# Task 313b — Discipline Gate Auto-Install (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 313a complete: failing tests in `DisciplineGateInstallerTests`.
+Task 313a complete: failing tests in `DisciplineGateInstallerTests`.
 
 `DisciplineGateInstaller` makes the discipline pre-commit gate activate automatically at
 app launch for any project that opts into the `pre_commit` discipline layer — replacing
@@ -57,7 +57,7 @@ In `init`, inside the existing `if !projectPath.isEmpty { ... }` block, immediat
 after the `startDisciplineEventPolling(projectPath: projectPath)` line, add:
 ```swift
             // Auto-arm the discipline pre-commit gate for projects that opt into the
-            // pre_commit layer — no Settings toggle required (phase 313).
+            // pre_commit layer — no Settings toggle required (task 313).
             Task {
                 await DisciplineGateInstaller.installIfConfigured(projectPath: projectPath)
             }
@@ -90,11 +90,11 @@ ls -la ~/.merlin/bin/merlin-discipline          # exists, executable
 ls -la <merlin-repo>/.git/hooks/pre-commit      # exists, contains "# merlin-discipline"
 ```
 Both must appear without anyone opening Settings. (Driven by W1.3 of the proving-
-readiness plan, not by this phase's automated Verify.)
+readiness plan, not by this task's automated Verify.)
 
 ## Commit
 ```
 git add Merlin/Discipline/DisciplineGateInstaller.swift Merlin/App/AppState.swift \
   tasks/task-313b-discipline-gate-autoinstall.md
-git commit -m "Phase 313b — Auto-arm the discipline pre-commit gate at app launch"
+git commit -m "Task 313b — Auto-arm the discipline pre-commit gate at app launch"
 ```

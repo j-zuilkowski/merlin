@@ -1,10 +1,10 @@
-# Phase 131b — Calibration Skill & UI Implementation
+# Task 131b — Calibration Skill & UI Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 131a complete: failing CalibrationSkillTests in place.
+Task 131a complete: failing CalibrationSkillTests in place.
 
 ---
 
@@ -690,5 +690,5 @@ git add Merlin/Views/Calibration/CalibrationReportView.swift
 git add Merlin/App/AppState.swift
 git add Merlin/Views/Chat/ChatInputView.swift
 git add Merlin/Views/MainWindowView.swift
-git commit -m "Phase 131b — /calibrate skill: provider picker, runner wiring, report view with apply-all"
+git commit -m "Task 131b — /calibrate skill: provider picker, runner wiring, report view with apply-all"
 ```

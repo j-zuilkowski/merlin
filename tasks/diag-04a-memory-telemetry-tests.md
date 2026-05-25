@@ -1,12 +1,12 @@
-# Phase diag-04a — Memory & RAG Telemetry Tests (failing)
+# Task diag-04a — Memory & RAG Telemetry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-03b complete: engine telemetry instrumented.
+Task diag-03b complete: engine telemetry instrumented.
 
-New surface introduced in phase diag-04b:
+New surface introduced in task diag-04b:
   - `MemoryEngine.generateMemories(from:)` emits:
       `memory.generate.start`    — message_count
       `memory.generate.complete` — duration_ms, entry_count
@@ -325,5 +325,5 @@ Expected: BUILD FAILED — telemetry events not yet emitted by MemoryEngine/Xcal
 ```bash
 git add MerlinTests/Unit/MemoryTelemetryTests.swift \
         MerlinTests/Unit/RAGTelemetryTests.swift
-git commit -m "Phase diag-04a — Memory & RAG telemetry tests (failing)"
+git commit -m "Task diag-04a — Memory & RAG telemetry tests (failing)"
 ```

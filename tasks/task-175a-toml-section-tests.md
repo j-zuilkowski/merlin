@@ -1,10 +1,10 @@
-# Phase 175a — ProjectPathSettingsTests + RAGSettingsTests: TOML section placement (failing — pre-existing)
+# Task 175a — ProjectPathSettingsTests + RAGSettingsTests: TOML section placement (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 174b complete: LoRAProviderRoutingTests slot mapping fix.
+Task 174b complete: LoRAProviderRoutingTests slot mapping fix.
 
 ## Problem
 
@@ -56,5 +56,5 @@ Expected: 3 TOML round-trip failures.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-175a-toml-section-tests.md
-git commit -m "Phase 175a — ProjectPath/RAGSettings TOML section failures documented"
+git commit -m "Task 175a — ProjectPath/RAGSettings TOML section failures documented"
 ```

@@ -1,10 +1,10 @@
-# Phase 267a — Doc Reference Dangling Detection Tests
+# Task 267a — Doc Reference Dangling Detection Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 266b complete: `Finding.dedupKey` + re-keyed `PendingAttentionQueue`.
+Task 266b complete: `Finding.dedupKey` + re-keyed `PendingAttentionQueue`.
 
 **Bug (Critical — every doc reference treated as stale).** `DisciplineEngine.scan()`
 loops over `docReferenceGraph.build(projectPath:)` — the FULL reference graph — and emits
@@ -14,7 +14,7 @@ The result is a `docStaleReference` finding for every correct, healthy doc refer
 the project. Detecting a genuinely broken reference needs the inverse: doc mentions of
 symbol-shaped identifiers that have NO matching declaration.
 
-New surface introduced in phase 267b:
+New surface introduced in task 267b:
   - `DocReferenceGraph.danglingReferences(projectPath:) async -> [DocReference]` —
     scans doc files for backtick-quoted identifiers (`` `SymbolName` ``) that look like
     code symbols (PascalCase type names or camelCase function names, length ≥ 4) but
@@ -156,5 +156,5 @@ the method does not exist yet, so the test file fails to compile.
 ```bash
 git add tasks/task-267a-doc-reference-dangling-tests.md \
     MerlinTests/Unit/DocReferenceDanglingTests.swift
-git commit -m "Phase 267a — DocReferenceDanglingTests (failing)"
+git commit -m "Task 267a — DocReferenceDanglingTests (failing)"
 ```

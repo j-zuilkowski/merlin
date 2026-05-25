@@ -5,7 +5,7 @@ the transcribed text drives the agent correctly. Per the user's decision this is
 a dedicated scenario (below) **and** woven cues — every other scenario's runsheet has a
 step instructing the tester to *speak* a prompt instead of typing it.
 
-**Prerequisite:** phase 302 (Info.plist Speech + microphone usage strings) must be
+**Prerequisite:** task 302 (Info.plist Speech + microphone usage strings) must be
 merged, and macOS Speech-recognition + microphone permissions granted to Merlin.
 
 This scenario is **manual** — a human must speak. There is no automated harness hook.
@@ -13,7 +13,7 @@ This scenario is **manual** — a human must speak. There is no automated harnes
 ---
 
 ## What it proves
-- The Speech-recognition and microphone permission prompts appear (post phase 302) and,
+- The Speech-recognition and microphone permission prompts appear (post task 302) and,
   once granted, dictation works.
 - Transcription is accurate enough across: short commands, long multi-sentence prompts,
   and technical content (code identifiers, file paths, symbols) — the hard case.
@@ -36,7 +36,7 @@ This scenario is **manual** — a human must speak. There is no automated harnes
 ## Scoring rubric
 
 - [ ] D5 — both permission prompts appear with Merlin's descriptions; granting them
-      enables dictation; denying them fails gracefully (no crash — verifies phase 302).
+      enables dictation; denying them fails gracefully (no crash — verifies task 302).
 - [ ] D1–D4 — transcription word-error rate is low enough that intent is preserved;
       record the transcript verbatim next to what was spoken.
 - [ ] Merlin acts on each dictated command correctly.
@@ -49,7 +49,7 @@ This scenario is **manual** — a human must speak. There is no automated harnes
 
 ## Runsheet
 
-1. Confirm phase 302 is merged and Merlin is freshly built. On first dictation, expect
+1. Confirm task 302 is merged and Merlin is freshly built. On first dictation, expect
    the macOS permission dialogs (D5) — grant them.
 2. Open any project in Merlin.
 3. For D1–D4: press the mic button (or the dictation shortcut), speak the input exactly,

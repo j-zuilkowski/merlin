@@ -20,7 +20,7 @@ final class TaskScannerMatchingTests: XCTestCase {
         let bullets = surfaces.map { "  - `\($0)` — test surface" }
             .joined(separator: "\n")
         let content = """
-        # Task \(taskID) — Test Phase
+        # Task \(taskID) — Test Task
 
         ## Context
         Test task file.

@@ -1,12 +1,12 @@
-# Phase 206a — LLM Summarisation Compaction Tests (failing)
+# Task 206a — LLM Summarisation Compaction Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 205b complete: `compactIfNeededMidLoop()` wired in the execute loop.
+Task 205b complete: `compactIfNeededMidLoop()` wired in the execute loop.
 
-New surface introduced in phase 206b:
+New surface introduced in task 206b:
   - `ContextManager.compact(force: Bool, customDigest: String?)` — private; existing `compact(force:)` gains an optional `customDigest` parameter (default `nil`). When non-nil, `customDigest` replaces the auto-generated preview string in the summary system message.
   - `ContextManager.compactWithSummaryIfNeeded(provider: any LLMProvider) async -> Bool` — checks `estimatedTokens > midLoopCompactionThreshold`; if exceeded, extracts the text of removable exchange groups, calls the provider for a one-shot narrative summary (no tools, temperature 0), then calls `compact(force: true, customDigest: summary)`; returns `true` when compaction fired. Falls back to the static sentinel on provider error.
   - `AgenticEngine.runLoop()` — replaces the `context.compactIfNeededMidLoop()` call (added in 205b) with `_ = await context.compactWithSummaryIfNeeded(provider: provider)`. The `provider` local variable (resolved execute-slot provider) is already in scope at that point.
@@ -169,5 +169,5 @@ Expected: **BUILD FAILED** — `ContextManager` has no `compactWithSummaryIfNeed
 
 ```bash
 git add MerlinTests/Unit/LLMSummarisationCompactionTests.swift
-git commit -m "Phase 206a — LLMSummarisationCompactionTests (failing)"
+git commit -m "Task 206a — LLMSummarisationCompactionTests (failing)"
 ```

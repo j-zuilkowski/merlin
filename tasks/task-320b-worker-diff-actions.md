@@ -1,13 +1,13 @@
-# Phase 320b — Wire WorkerDiffView Reject-All / Accept-and-Merge
+# Task 320b — Wire WorkerDiffView Reject-All / Accept-and-Merge
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 320a complete: failing `WorkerDiffViewActionTests` in place.
+Task 320a complete: failing `WorkerDiffViewActionTests` in place.
 
 W4 trace audit finding F1: `WorkerDiffView`'s "Reject All" and "Accept & Merge" toolbar
-buttons have empty `{ }` actions — dead controls. This phase adds two `async` methods and
+buttons have empty `{ }` actions — dead controls. This task adds two `async` methods and
 wires the buttons to them.
 
 `StagingBuffer` API used (from `Merlin/Engine/StagingBuffer.swift`):
@@ -89,5 +89,5 @@ warnings. The discipline `StubMarkerScanner` no longer flags `WorkerDiffView.swi
 ## Commit
 ```
 git add Merlin/UI/Sidebar/WorkerDiffView.swift tasks/task-320b-worker-diff-actions.md
-git commit -m "Phase 320b — Wire WorkerDiffView reject-all / accept-and-merge"
+git commit -m "Task 320b — Wire WorkerDiffView reject-all / accept-and-merge"
 ```

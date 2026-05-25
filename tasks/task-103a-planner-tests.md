@@ -1,12 +1,12 @@
-# Phase 103a — PlannerEngine Tests (failing)
+# Task 103a — PlannerEngine Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 102b complete: CriticEngine (two-stage) in place.
+Task 102b complete: CriticEngine (two-stage) in place.
 
-New surface introduced in phase 103b:
+New surface introduced in task 103b:
   - `ComplexityTier` enum — `.routine` / `.standard` / `.highStakes`
   - `ClassifierResult` struct — `needsPlanning: Bool`, `complexity: ComplexityTier`, `reason: String`
   - `PlannerEngine` actor — classifies tasks, decomposes plans, routes slots
@@ -165,5 +165,5 @@ Expected: BUILD FAILED — `ComplexityTier`, `ClassifierResult`, `PlannerEngine`
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PlannerEngineTests.swift
-git commit -m "Phase 103a — PlannerEngineTests (failing)"
+git commit -m "Task 103a — PlannerEngineTests (failing)"
 ```

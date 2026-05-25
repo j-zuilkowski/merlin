@@ -4,15 +4,26 @@ import XCTest
 /// These tests build clean but FAIL at runtime until task 288b updates the skill.
 final class ProjectVisionLaunchpadTests: XCTestCase {
 
-    private let skillPath: String = {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".merlin/skills/project-init/SKILL.md").path
-    }()
+    private var repoRoot: URL {
+        var current = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while current.path != current.deletingLastPathComponent().path {
+            if FileManager.default.fileExists(
+                atPath: current.appendingPathComponent("project.yml").path
+            ) {
+                return current
+            }
+            current = current.deletingLastPathComponent()
+        }
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+    }
 
-    private let adoptSkillPath: String = {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".merlin/skills/project-adopt/SKILL.md").path
-    }()
+    private var skillPath: String {
+        repoRoot.appendingPathComponent("Merlin/Skills/Builtin/project-init/SKILL.md").path
+    }
+
+    private var adoptSkillPath: String {
+        repoRoot.appendingPathComponent("Merlin/Skills/Builtin/project-adopt/SKILL.md").path
+    }
 
     private func skillBody() throws -> String {
         try String(contentsOfFile: skillPath, encoding: .utf8)
@@ -44,14 +55,14 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
     }
 
     func testProjectInitDocumentsThePipeline() throws {
-        // The vision → architecture → task → code pipeline must be stated in the skill
+        // The vision -> spec -> task -> code pipeline must be stated in the skill
         // so the discipline workflow is explicit.
         let body = try skillBody().lowercased()
         let mentionsPipeline =
-            body.contains("vision") && body.contains("architecture")
-            && body.contains("phase") && body.contains("code")
+            body.contains("vision") && body.contains("spec")
+            && body.contains("task") && body.contains("code")
         XCTAssertTrue(mentionsPipeline,
-                      "project:init must document the vision→architecture→phase→code pipeline.")
+                      "project:init must document the vision->spec->task->code pipeline.")
     }
 
     func testProjectAdoptIncorporatesExistingVisionDoc() throws {

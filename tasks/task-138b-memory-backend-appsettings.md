@@ -1,10 +1,10 @@
-# Phase 138b — Memory Backend AppSettings Wiring
+# Task 138b — Memory Backend AppSettings Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 138a complete: failing tests for AppSettings + AppState memory backend wiring in place.
+Task 138a complete: failing tests for AppSettings + AppState memory backend wiring in place.
 
 ---
 
@@ -118,5 +118,5 @@ git add Merlin/Settings/AppSettings.swift
 git add Merlin/App/AppState.swift
 # Include the settings view if changed:
 # git add Merlin/Views/Settings/MemorySettingsSection.swift
-git commit -m "Phase 138b — AppSettings.memoryBackendID + AppState memory registry wiring"
+git commit -m "Task 138b — AppSettings.memoryBackendID + AppState memory registry wiring"
 ```

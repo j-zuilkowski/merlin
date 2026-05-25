@@ -1,10 +1,10 @@
-# Phase 242b — ProjectConfig
+# Task 242b — ProjectConfig
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 242a complete: failing tests for ProjectConfig and ProjectConfigLoader.
+Task 242a complete: failing tests for ProjectConfig and ProjectConfigLoader.
 
 ---
 
@@ -168,7 +168,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 242a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 242a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -176,5 +176,5 @@ Expected: **BUILD SUCCEEDED** and all phase 242a tests pass. No prior phase regr
 git add tasks/task-242b-project-config.md \
     Merlin/Discipline/ProjectConfig.swift \
     Merlin/Discipline/ProjectConfigLoader.swift
-git commit -m "Phase 242b — ProjectConfig + ProjectConfigLoader"
+git commit -m "Task 242b — ProjectConfig + ProjectConfigLoader"
 ```

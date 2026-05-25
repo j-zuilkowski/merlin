@@ -1,10 +1,10 @@
-# Phase 128b — Model Control UI Implementation
+# Task 128b — Model Control UI Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 128a complete: failing UI tests in place.
+Task 128a complete: failing UI tests in place.
 
 ---
 
@@ -397,5 +397,5 @@ Expected: **BUILD SUCCEEDED** — all ModelControlViewTests pass; all prior test
 git add Merlin/Views/Settings/ModelControlView.swift
 git add Merlin/Views/Settings/ProviderSettingsView.swift
 git add Merlin/Views/Settings/PerformanceDashboardView.swift
-git commit -m "Phase 128b — ModelControlView: per-provider load param editor + restart instructions sheet"
+git commit -m "Task 128b — ModelControlView: per-provider load param editor + restart instructions sheet"
 ```

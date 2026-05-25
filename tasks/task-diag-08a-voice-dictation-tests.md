@@ -1,11 +1,11 @@
-# Phase diag-08a — Voice Dictation Tests
+# Task diag-08a — Voice Dictation Tests
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
-New surface introduced in phase diag-08b:
+New surface introduced in task diag-08b:
   - `VoiceDictationEngine` — `@MainActor ObservableObject` singleton
   - `VoiceDictationEngine.State` — `.idle`, `.recording`, `.error(String)`
   - `toggle()` — start if idle, stop if recording, reset if error
@@ -73,5 +73,5 @@ Expected: BUILD SUCCEEDED (VoiceDictationEngine already exists).
 cd ~/Documents/localProject/merlin
 git add tasks/task-diag-08a-voice-dictation-tests.md \
         MerlinTests/Unit/VoiceDictationTests.swift
-git commit -m "Phase diag-08a — VoiceDictationTests"
+git commit -m "Task diag-08a — VoiceDictationTests"
 ```

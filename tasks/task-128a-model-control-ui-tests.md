@@ -1,12 +1,12 @@
-# Phase 128a — Model Control UI Tests
+# Task 128a — Model Control UI Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 127b complete: wiring in place. All prior tests pass.
+Task 127b complete: wiring in place. All prior tests pass.
 
-New surface introduced in phase 128b:
+New surface introduced in task 128b:
 
   `ModelControlView` — SwiftUI View shown in Settings → Providers for local providers:
     - Accepts a `manager: any LocalModelManagerProtocol` and `providerConfig: ProviderConfig`
@@ -132,5 +132,5 @@ Expected: **BUILD FAILED** — `ModelControlView`, `RestartInstructionsSheet`, `
 ## Commit
 ```bash
 git add MerlinTests/Unit/ModelControlViewTests.swift
-git commit -m "Phase 128a — ModelControlViewTests (failing)"
+git commit -m "Task 128a — ModelControlViewTests (failing)"
 ```

@@ -1,9 +1,9 @@
-# Phase 154b — PDB/eReader: Metadata Header Reading
+# Task 154b — PDB/eReader: Metadata Header Reading
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 154a complete: PDB eReader tests written and failing (expected — updated metadata extractor not yet implemented).
+Task 154a complete: PDB eReader tests written and failing (expected — updated metadata extractor not yet implemented).
 
 ## Edit: `processing/src/metadata/pdb.rs`
 
@@ -195,5 +195,5 @@ cargo clippy --workspace -- -D warnings 2>&1 | tail -5
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/pdb.rs \
         processing/tests/pdb_ereader_tests.rs
-git commit -m "Phase 154b — PDB eReader metadata header reading (title, author, publisher, ISBN)"
+git commit -m "Task 154b — PDB eReader metadata header reading (title, author, publisher, ISBN)"
 ```

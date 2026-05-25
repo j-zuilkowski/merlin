@@ -1,12 +1,12 @@
-# Phase 136a — MemoryEngine Backend Wiring Tests (failing)
+# Task 136a — MemoryEngine Backend Wiring Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 135b complete: LocalVectorPlugin, EmbeddingProviderProtocol in place.
+Task 135b complete: LocalVectorPlugin, EmbeddingProviderProtocol in place.
 
-New surface introduced in phase 136b:
+New surface introduced in task 136b:
   - `MemoryEngine.setMemoryBackend(_ backend: any MemoryBackendPlugin)` replaces
     `setXcalibreClient`. The old method is removed.
   - `MemoryEngine.approve(_:movingTo:)` writes a `MemoryChunk` (chunkType: "factual",
@@ -157,5 +157,5 @@ Expected: BUILD FAILED — `MemoryEngine.setMemoryBackend(_:)` is undefined;
 ```bash
 git add MerlinTests/Unit/MemoryEngineBackendWiringTests.swift
 git add TestHelpers/CapturingMemoryBackend.swift
-git commit -m "Phase 136a — MemoryEngine backend wiring tests (failing)"
+git commit -m "Task 136a — MemoryEngine backend wiring tests (failing)"
 ```

@@ -1,11 +1,11 @@
-# Phase 156a — SNB text extraction tests (failing)
+# Task 156a — SNB text extraction tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 155b complete.
+Task 155b complete.
 
-New surface introduced in phase 156b:
+New surface introduced in task 156b:
   - `crate::text::snb::extract(path)` — extracts text from SNB ZIP container's XML chapter files
 
 ## Write to: processing/tests/snb_text_tests.rs
@@ -81,5 +81,5 @@ Expected: tests fail (snb::extract still uses recover_readable_text).
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/snb_text_tests.rs processing/Cargo.toml
-git commit -m "Phase 156a — SNB text extraction tests (failing)"
+git commit -m "Task 156a — SNB text extraction tests (failing)"
 ```

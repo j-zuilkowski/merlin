@@ -1,10 +1,10 @@
-# Phase 93 — Enforce keepAwake via IOPMAssertion
+# Task 93 — Enforce keepAwake via IOPMAssertion
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 92 complete: messageDensity applied to ChatView.
+Task 92 complete: messageDensity applied to ChatView.
 
 `AppSettings.keepAwake` is persisted and toggled in General settings but no
 `IOPMAssertionCreateWithName` call exists anywhere — the Mac sleeps regardless of
@@ -118,5 +118,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/System/KeepAwakeManager.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 93 — KeepAwakeManager: enforce keepAwake via IOPMAssertion"
+git commit -m "Task 93 — KeepAwakeManager: enforce keepAwake via IOPMAssertion"
 ```

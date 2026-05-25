@@ -1,12 +1,12 @@
-# Phase 113b — OutcomeRecord Persistence
+# Task 113b — OutcomeRecord Persistence
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 113a complete: OutcomeRecordPersistenceTests (failing) in place.
+Task 113a complete: OutcomeRecordPersistenceTests (failing) in place.
 
-Note: ModelPerformanceProfile is already persisted. This phase adds persistence for the raw
+Note: ModelPerformanceProfile is already persisted. This task adds persistence for the raw
 OutcomeRecord array — the V6 LoRA training dataset source.
 
 ---
@@ -144,5 +144,5 @@ Expected: BUILD SUCCEEDED; OutcomeRecordPersistenceTests → 6 pass; all prior t
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ModelPerformanceTracker.swift \
         Merlin/Engine/Protocols/ModelPerformanceTrackerProtocol.swift
-git commit -m "Phase 113b — OutcomeRecord persistence (V6 training data survives restarts)"
+git commit -m "Task 113b — OutcomeRecord persistence (V6 training data survives restarts)"
 ```

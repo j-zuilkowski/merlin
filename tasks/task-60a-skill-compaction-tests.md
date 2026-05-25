@@ -1,12 +1,12 @@
-# Phase 60a — Skill Compaction Tests
+# Task 60a — Skill Compaction Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 59 complete: V4 subagent sidebar UI.
+Task 59 complete: V4 subagent sidebar UI.
 
-New surface introduced in phase 60b:
+New surface introduced in task 60b:
   - `ContextManager.recordSkillInvocation(_ skill: Skill)` — prepends to recent list, max 20
   - `ContextManager.recentlyInvokedSkills: [Skill]` — most-recent first
   - `ContextManager.compact()` — after compaction, appends a system message re-injecting up to
@@ -171,5 +171,5 @@ Expected: `BUILD FAILED` with errors referencing `recordSkillInvocation`, `recen
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SkillCompactionTests.swift
-git commit -m "Phase 60a — SkillCompactionTests (failing)"
+git commit -m "Task 60a — SkillCompactionTests (failing)"
 ```

@@ -1,13 +1,13 @@
-# Phase 00 — Scaffold
+# Task 00 — Scaffold
 
 ## Context
 Swift 5.10, macOS 14+, `async`/`await` + actors. No third-party Swift packages.
 `SWIFT_STRICT_CONCURRENCY=complete`. Zero warnings, zero errors required.
 Working dir: `~/Documents/localProject/merlin/plugins/merlin-kicad-mcp`
 
-This is the first phase. It creates the Swift Package skeleton so every later phase has
+This is the first task. It creates the Swift Package skeleton so every later task has
 a target to build into and a test target to register tests in. `constitution.md` and
-`tasks/` (with `ROADMAP.md`) already exist — this phase adds the package and commits
+`tasks/` (with `ROADMAP.md`) already exist — this task adds the package and commits
 everything as the initial commit.
 
 ---
@@ -46,25 +46,25 @@ No `dependencies:` on the package — Foundation only.
 
 ### `Sources/merlin-kicad-mcp/main.swift`
 
-A thin entry point — a placeholder for now; phase 01 replaces the body with the real
+A thin entry point — a placeholder for now; task 01 replaces the body with the real
 server start. It must compile:
 
 ```swift
 import KiCadMCPKit
 
-// Phase 01 replaces this with: await MCPServer().run()
+// Task 01 replaces this with: await MCPServer().run()
 print("merlin-kicad-mcp — not yet implemented", to: &standardError)
 ```
 
 (Provide a minimal `standardError` `TextOutputStream` helper in `KiCadMCPKit`, or use
-`FileHandle.standardError` — phase 01 will formalise logging.)
+`FileHandle.standardError` — task 01 will formalise logging.)
 
 ### `Sources/KiCadMCPKit/KiCadMCPKit.swift`
 
 A placeholder so the library target has a source file:
 
 ```swift
-/// Marker for the KiCadMCPKit library. Real types arrive in phase 01+.
+/// Marker for the KiCadMCPKit library. Real types arrive in task 01+.
 public enum KiCadMCPKit {
     public static let protocolName = "merlin-kicad-mcp"
 }
@@ -118,5 +118,5 @@ cd ~/Documents/localProject/merlin/plugins/merlin-kicad-mcp
 # tracked there. `git add` from here stages into that repo.
 git add constitution.md README.md .gitignore Package.swift \
     Sources/ Tests/ tasks/
-git commit -m "kicad-mcp Phase 00 — Swift package scaffold"
+git commit -m "kicad-mcp Task 00 — Swift package scaffold"
 ```

@@ -1,10 +1,10 @@
-# Phase 81 — Scheduler Settings Section + SchedulerEngine Wiring
+# Task 81 — Scheduler Settings Section + SchedulerEngine Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 80b complete: disabledSkillNames enforced.
+Task 80b complete: disabledSkillNames enforced.
 
 `SchedulerEngine` and `SchedulerView` exist but are unreachable. Fix by:
 1. Adding `SchedulerEngine` as a singleton (or app-level object) and injecting it via environment
@@ -115,5 +115,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/App/MerlinApp.swift \
         Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 81 — Scheduler section in Settings; SchedulerEngine injected into environment"
+git commit -m "Task 81 — Scheduler section in Settings; SchedulerEngine injected into environment"
 ```

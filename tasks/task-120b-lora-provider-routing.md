@@ -1,10 +1,10 @@
-# Phase 120b — LoRA Provider Routing
+# Task 120b — LoRA Provider Routing
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 120a complete: LoRAProviderRoutingTests (failing) in place.
+Task 120a complete: LoRAProviderRoutingTests (failing) in place.
 
 ---
 
@@ -94,5 +94,5 @@ Expected: BUILD SUCCEEDED; LoRAProviderRoutingTests → 4 pass; all prior tests 
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 120b — LoRA provider routing (execute slot → mlx_lm.server when adapter loaded)"
+git commit -m "Task 120b — LoRA provider routing (execute slot → mlx_lm.server when adapter loaded)"
 ```

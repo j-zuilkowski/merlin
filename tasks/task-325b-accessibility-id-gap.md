@@ -1,10 +1,10 @@
-# Phase 325b — AccessibilityID Gap-Fill Implementation
+# Task 325b — AccessibilityID Gap-Fill Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 325a complete: failing `AccessibilityIDCoverageTests.testPhase325IdentifiersAreDeclared`.
+Task 325a complete: failing `AccessibilityIDCoverageTests.testTask325IdentifiersAreDeclared`.
 
 Adds the 12 missing `AccessibilityID` constants (W5 surface-census §1.2) and applies
 `.accessibilityIdentifier(...)` to the 12 controls so XCUITest can reach them. Six files.
@@ -17,7 +17,7 @@ Add this section immediately **before the closing `}`** of `enum AccessibilityID
 (after the last existing constant, `calibrationApplyAllButton`):
 ```swift
 
-    // MARK: - Surface-census gap fill (phase 325)
+    // MARK: - Surface-census gap fill (task 325)
 
     public static let workspaceToggleDiffButton = "workspace-toggle-diff-button"
     public static let workspaceToggleFileButton = "workspace-toggle-file-button"
@@ -168,7 +168,7 @@ xcodebuild -scheme MerlinTests-Live build-for-testing -destination 'platform=mac
 ```
 Expected: both `AccessibilityIDCoverageTests` pass; BUILD SUCCEEDED on both schemes,
 zero warnings. (The XCUITest reachability of each newly-identified control is verified
-by eval scenarios S7/S9/S11 — this phase establishes the constants + applies them.)
+by eval scenarios S7/S9/S11 — this task establishes the constants + applies them.)
 
 ## Commit
 ```
@@ -176,5 +176,5 @@ git add Merlin/Support/AccessibilityID.swift Merlin/Views/WorkspaceView.swift \
   Merlin/Views/ScreenPreviewView.swift Merlin/Views/PreviewPane.swift \
   Merlin/Tools/ToolRequirementCoordinator.swift Merlin/Views/AdvisoryRow.swift \
   tasks/task-325b-accessibility-id-gap.md
-git commit -m "Phase 325b — AccessibilityID gap-fill: the 12 controls phase 306 missed"
+git commit -m "Task 325b — AccessibilityID gap-fill: the 12 controls task 306 missed"
 ```

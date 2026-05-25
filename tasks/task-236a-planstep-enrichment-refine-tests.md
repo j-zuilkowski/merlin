@@ -1,17 +1,17 @@
-# Phase 236a — Enriched PlanStep + refineStep Tests
+# Task 236a — Enriched PlanStep + refineStep Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 235b complete: working-set caps and adaptive RAG keep request size under provider budget.
+Task 235b complete: working-set caps and adaptive RAG keep request size under provider budget.
 
-Enriches `PlanStep` with the metadata every later phase wants to read, and introduces
+Enriches `PlanStep` with the metadata every later task wants to read, and introduces
 `PlannerEngine.refineStep(...)` — the single decomposition entry point. Two future trigger
 sites (ReAct iteration ceiling in 237b, budget overflow in 239b) both invoke this same helper,
 so it must be designed for general use now.
 
-New surface introduced in phase 236b:
+New surface introduced in task 236b:
   - `enum CriticMode: String, Codable, Sendable { case required, optional, skip }` in
     `Merlin/Engine/CriticMode.swift`.
   - `enum StepCriterion: Sendable, Equatable` in `Merlin/Engine/StepCriterion.swift`:
@@ -96,5 +96,5 @@ git add tasks/task-236a-planstep-enrichment-refine-tests.md \
     MerlinTests/Unit/EnrichedPlanStepTests.swift \
     MerlinTests/Unit/PlannerRefineStepTests.swift \
     MerlinTests/Unit/PlannerRefineTelemetryTests.swift
-git commit -m "Phase 236a — EnrichedPlanStepAndRefineTests (failing)"
+git commit -m "Task 236a — EnrichedPlanStepAndRefineTests (failing)"
 ```

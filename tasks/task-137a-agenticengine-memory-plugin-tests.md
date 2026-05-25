@@ -1,12 +1,12 @@
-# Phase 137a — AgenticEngine Memory Plugin Tests (failing)
+# Task 137a — AgenticEngine Memory Plugin Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 136b complete: MemoryEngine uses MemoryBackendPlugin for approved memory writes.
+Task 136b complete: MemoryEngine uses MemoryBackendPlugin for approved memory writes.
 
-New surface introduced in phase 137b:
+New surface introduced in task 137b:
   - `AgenticEngine.setMemoryBackend(_ backend: any MemoryBackendPlugin)` — replaces the
     xcalibre episodic write at session end. The xcalibre client is KEPT for book-content
     RAG search (`source: "all"`). Only the memory write is redirected.
@@ -176,5 +176,5 @@ and `setMemoryBackend(_:)` does not exist.
 ## Commit
 ```bash
 git add MerlinTests/Unit/AgenticEngineMemoryPluginTests.swift
-git commit -m "Phase 137a — AgenticEngine memory plugin tests (failing)"
+git commit -m "Task 137a — AgenticEngine memory plugin tests (failing)"
 ```

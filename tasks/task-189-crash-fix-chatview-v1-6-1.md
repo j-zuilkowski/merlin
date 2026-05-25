@@ -1,10 +1,10 @@
-# Phase 189 — Crash Fix: ChatView EnvironmentObject + Version Bump to v1.6.1
+# Task 189 — Crash Fix: ChatView EnvironmentObject + Version Bump to v1.6.1
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 188 complete: v1.6.0 (build 5) released.
+Task 188 complete: v1.6.0 (build 5) released.
 
 **Crash in v1.6.0:** `EXC_BREAKPOINT` / `EnvironmentObject.error()` in `ChatView.currentMode`
 (ChatView.swift:104) on first session activation. `ChatView` declared
@@ -14,7 +14,7 @@ injected as an `@EnvironmentObject`. Fix: change to `@FocusedObject` (optional, 
 and expose the active `SessionManager` via `.focusedObject()` in `WorkspaceView`.
 
 The code changes are documented as a `## Fixes` addendum in
-`tasks/task-186b-multiproject-ui.md`. This phase covers only the version bump and tag.
+`tasks/task-186b-multiproject-ui.md`. This task covers only the version bump and tag.
 
 No new tests — the crash manifested at runtime, not at compile time. The fix is verified
 by confirming the app launches and activates sessions without trapping.

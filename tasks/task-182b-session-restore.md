@@ -1,10 +1,10 @@
-# Phase 182b — Session Restore Implementation
+# Task 182b — Session Restore Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 182a complete: SessionRestoreTests committed (failing).
+Task 182a complete: SessionRestoreTests committed (failing).
 
 ---
 
@@ -271,5 +271,5 @@ git add tasks/task-182b-session-restore.md \
         Merlin/Engine/ContextManager.swift \
         Merlin/Sessions/LiveSession.swift \
         Merlin/Sessions/SessionManager.swift
-git commit -m "Phase 182b — ContextManager.load + LiveSession initial messages + SessionManager.restore"
+git commit -m "Task 182b — ContextManager.load + LiveSession initial messages + SessionManager.restore"
 ```

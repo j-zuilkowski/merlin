@@ -1,12 +1,12 @@
-# Phase 127a — Model Manager Wiring Tests
+# Task 127a — Model Manager Wiring Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 126b complete: all 6 provider managers implemented. All prior tests pass.
+Task 126b complete: all 6 provider managers implemented. All prior tests pass.
 
-New surface introduced in phase 127b:
+New surface introduced in task 127b:
 
   `AppState`:
   - `var localModelManagers: [String: any LocalModelManagerProtocol]` — keyed by providerID
@@ -218,5 +218,5 @@ Expected: **BUILD FAILED** — `AppState.localModelManagers`, `AppState.applyAdv
 ## Commit
 ```bash
 git add MerlinTests/Unit/ModelManagerWiringTests.swift
-git commit -m "Phase 127a — ModelManagerWiringTests (failing)"
+git commit -m "Task 127a — ModelManagerWiringTests (failing)"
 ```

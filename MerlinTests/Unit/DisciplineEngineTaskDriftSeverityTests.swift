@@ -5,7 +5,7 @@ import XCTest
 /// findings as `.nudge` (never `.block`). After task 324 `TaskScanner` reports a
 /// declared symbol as `red` only when it is genuinely absent from source; a present
 /// symbol is `green` and is not surfaced as drift.
-final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
+final class DisciplineEngineTaskDriftSeverityTests: XCTestCase {
 
     func testTaskDriftFindingsAreNudgeNeverBlock() async throws {
         let proj = FileManager.default.temporaryDirectory
@@ -18,7 +18,7 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
 
         // A task doc declaring one absent symbol (red drift) and one present symbol.
         let doc = """
-        # Task 701b — Drift Phase
+        # Task 701b — Drift Task
 
         ## Context
         Test task file.

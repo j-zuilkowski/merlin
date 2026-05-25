@@ -549,7 +549,7 @@ Scaffolds a new project. Asks for project name, language, doc-set preference, an
 
 ### /project:task
 
-Builds a TDD task pair for one new surface. Asks structuring questions — what the abstraction is, what prior phase it depends on, what surfaces NNb introduces — and produces both the NNa (failing tests) and NNb (implementation) task files, plus a `PASTE-LIST.md` update.
+Builds a TDD task pair for one new surface. Asks structuring questions — what the abstraction is, what prior task it depends on, what surfaces NNb introduces — and produces both the NNa (failing tests) and NNb (implementation) task files, plus a `PASTE-LIST.md` update.
 
 ### /project:revise
 

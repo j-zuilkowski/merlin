@@ -42,7 +42,7 @@ assert writes go to the selected backend.
 **Score:** checks passed / N — the redaction check is pass/fail and gating.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built. Back up real `~/.merlin/memories/`.
+1. Tasks B–D, 301–306 merged; Merlin built. Back up real `~/.merlin/memories/`.
 2. Run a seeded session (include planted fake secrets) via `EvalHarness`; trigger
    generation.
 3. Inspect every pending memory file for leaks; walk the review + library UI.

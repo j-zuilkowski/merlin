@@ -1,10 +1,10 @@
-# Phase 136b — MemoryEngine Backend Wiring
+# Task 136b — MemoryEngine Backend Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 136a complete: failing tests for MemoryEngine backend wiring in place.
+Task 136a complete: failing tests for MemoryEngine backend wiring in place.
 
 ---
 
@@ -96,11 +96,11 @@ an `AppState` via environment, use:
 ```swift
 await engine.setMemoryBackend(appState.memoryRegistry.activePlugin)
 ```
-(AppState.memoryRegistry is added in phase 138b; for now, inject NullMemoryPlugin or
+(AppState.memoryRegistry is added in task 138b; for now, inject NullMemoryPlugin or
 use the registry if it is available, depending on what MemoryReviewView has access to.)
 
 If `MemoryReviewView` currently calls `setXcalibreClient`, remove that call and do not
-replace it yet — the AppState wiring from phase 138b will inject the correct backend.
+replace it yet — the AppState wiring from task 138b will inject the correct backend.
 The NullMemoryPlugin default in MemoryEngine means approve() will still function
 (just without persistence) until 138b completes the wiring.
 
@@ -121,5 +121,5 @@ Check that no other file still calls `engine.setXcalibreClient` (grep the codeba
 git add Merlin/Memories/MemoryEngine.swift
 # Also add MemoryReviewView.swift if it was changed:
 # git add Merlin/UI/Memories/MemoryReviewView.swift
-git commit -m "Phase 136b — MemoryEngine: replace xcalibre write with MemoryBackendPlugin"
+git commit -m "Task 136b — MemoryEngine: replace xcalibre write with MemoryBackendPlugin"
 ```

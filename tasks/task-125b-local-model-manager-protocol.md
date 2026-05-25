@@ -1,10 +1,10 @@
-# Phase 125b — LocalModelManagerProtocol + LMStudio + Ollama Implementation
+# Task 125b — LocalModelManagerProtocol + LMStudio + Ollama Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 125a complete: failing tests for protocol + LMStudio + Ollama.
+Task 125a complete: failing tests for protocol + LMStudio + Ollama.
 
 ---
 
@@ -354,5 +354,5 @@ Expected: **BUILD SUCCEEDED** — all LocalModelManagerProtocolTests pass; all p
 git add Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift
 git add Merlin/Providers/LocalModelManager/LMStudioModelManager.swift
 git add Merlin/Providers/LocalModelManager/OllamaModelManager.swift
-git commit -m "Phase 125b — LocalModelManagerProtocol + LMStudio + Ollama managers"
+git commit -m "Task 125b — LocalModelManagerProtocol + LMStudio + Ollama managers"
 ```

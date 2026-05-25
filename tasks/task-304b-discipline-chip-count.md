@@ -1,8 +1,8 @@
-# Phase 304b — Discipline Chip Count (implementation)
+# Task 304b — Discipline Chip Count (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 304a complete: failing test in `PendingAttentionChipCountTests`.
+Task 304a complete: failing test in `PendingAttentionChipCountTests`.
 
 The chip showed at most 3 because it read `findings.count` and `findings` is the capped
 top-3 panel subset. Give the chip the true total.
@@ -53,5 +53,5 @@ and the panel still lists 3.
 ```
 git add Merlin/Discipline/DisciplineEngine.swift Merlin/ViewModels/PendingAttentionViewModel.swift \
   Merlin/Views/PendingAttentionChipView.swift tasks/task-304b-discipline-chip-count.md
-git commit -m "Phase 304b — Discipline chip shows true finding count"
+git commit -m "Task 304b — Discipline chip shows true finding count"
 ```

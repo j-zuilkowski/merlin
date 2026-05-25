@@ -1,22 +1,22 @@
-# Phase 307a — TargetGateScanner Tests (failing)
+# Task 307a — TargetGateScanner Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
 
-This is the first phase of the **Liveness Discipline** batch (phases 307–312). Project
+This is the first task of the **Liveness Discipline** batch ( tasks 307–312). Project
 Discipline today catches *task drift* — spec/doc/code pulling apart. It is blind to
 *liveness drift*: code that exists and compiles but is never reached, gated, or finished.
-The `MerlinLiveTests` / `MerlinE2ETests` targets bit-rotted for ~160 phases precisely
-because no scheme in the per-phase verification gate ever compiled them.
+The `MerlinLiveTests` / `MerlinE2ETests` targets bit-rotted for ~160  tasks precisely
+because no scheme in the per-task verification gate ever compiled them.
 
 `TargetGateScanner` closes that gap: it reads `project.yml` and reports any target that
 no scheme builds, or that only non-gating schemes build. It is a peer of `TaskScanner`,
 `WhyCommentScanner`, etc. — an `actor` in `Merlin/Discipline/`, wired into
-`DisciplineEngine` in phase 307b.
+`DisciplineEngine` in task 307b.
 
-New surface introduced in phase 307b:
+New surface introduced in task 307b:
   - `UngatedTargetFinding` — `targetName: String`, `reason: String`, `blocking: Bool`.
   - `actor TargetGateScanner` with
     `scan(projectPath:gatingSchemes:) async -> [UngatedTargetFinding]`
@@ -37,7 +37,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 307a — failing tests for TargetGateScanner.
+/// Task 307a — failing tests for TargetGateScanner.
 final class TargetGateScannerTests: XCTestCase {
 
     private func makeTmpProject(projectYML: String) throws -> URL {
@@ -120,10 +120,10 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' \
   -derivedDataPath /tmp/merlin-derived CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
 ```
 Expected: **BUILD FAILED** — `TargetGateScanner` and `UngatedTargetFinding` do not exist
-yet. This is a compile-failure phase (`build-for-testing` is the correct verb).
+yet. This is a compile-failure task (`build-for-testing` is the correct verb).
 
 ## Commit
 ```
 git add MerlinTests/Unit/TargetGateScannerTests.swift tasks/task-307a-target-gate-scanner-tests.md
-git commit -m "Phase 307a — TargetGateScanner tests (failing)"
+git commit -m "Task 307a — TargetGateScanner tests (failing)"
 ```

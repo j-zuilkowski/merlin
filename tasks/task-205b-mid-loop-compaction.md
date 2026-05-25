@@ -1,10 +1,10 @@
-# Phase 205b — Mid-loop Compaction
+# Task 205b — Mid-loop Compaction
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 205a complete: failing ContextManagerMidLoopCompactionTests.
+Task 205a complete: failing ContextManagerMidLoopCompactionTests.
 
 See also: FEATURES.md § "Prompt Compression — Mid-loop compaction"
 Reference: https://machinelearningmastery.com/implementing-prompt-compression-to-reduce-agentic-loop-costs/
@@ -51,7 +51,7 @@ loop goes back to its top — add:
 
 ```swift
 // Prompt compression: compact if tool results have pushed tokens past the mid-loop threshold.
-// Phase 206 will replace this with an async LLM-summarisation call.
+// Task 206 will replace this with an async LLM-summarisation call.
 context.compactIfNeededMidLoop()
 emitCompactionNoteIfNeeded()
 ```
@@ -70,7 +70,7 @@ await dispatchRegularCalls(
     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
 )
 // Prompt compression: compact if tool results have pushed tokens past the mid-loop threshold.
-// Phase 206 will replace this with an async LLM-summarisation call.
+// Task 206 will replace this with an async LLM-summarisation call.
 context.compactIfNeededMidLoop()
 emitCompactionNoteIfNeeded()
 ```
@@ -100,5 +100,5 @@ Manual verification during an agentic run:
 ```bash
 git add Merlin/Engine/ContextManager.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 205b — mid-loop compaction: compact at 40k tokens inside the execute loop"
+git commit -m "Task 205b — mid-loop compaction: compact at 40k tokens inside the execute loop"
 ```

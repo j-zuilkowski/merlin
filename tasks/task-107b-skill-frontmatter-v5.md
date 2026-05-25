@@ -1,10 +1,10 @@
-# Phase 107b — V5 Skill Frontmatter (role: + complexity: declarations)
+# Task 107b — V5 Skill Frontmatter (role: + complexity: declarations)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 107a complete: failing skill frontmatter V5 tests in place.
+Task 107a complete: failing skill frontmatter V5 tests in place.
 
 ---
 
@@ -93,5 +93,5 @@ Expected: BUILD SUCCEEDED; SkillFrontmatterV5Tests → 6 pass; all prior tests p
 cd ~/Documents/localProject/merlin
 git add Merlin/Skills/SkillsRegistry.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 107b — Skill frontmatter role: and complexity: declarations"
+git commit -m "Task 107b — Skill frontmatter role: and complexity: declarations"
 ```

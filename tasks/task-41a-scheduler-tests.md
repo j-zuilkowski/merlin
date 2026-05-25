@@ -1,12 +1,12 @@
-# Phase 41a — SchedulerEngine Tests
+# Task 41a — SchedulerEngine Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 40b complete: MCPBridge stdio transport + tool registration.
+Task 40b complete: MCPBridge stdio transport + tool registration.
 
-New surface introduced in phase 41b:
+New surface introduced in task 41b:
   - `ScheduledTask` — Codable struct: id (UUID), name, cadence (ScheduleCadence),
     time (String "HH:mm"), projectPath, permissionMode, prompt, isEnabled
   - `ScheduleCadence` — enum: daily, weekly(Weekday), hourly
@@ -176,5 +176,5 @@ Expected: `BUILD FAILED` with errors referencing `SchedulerEngine`, `ScheduledTa
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SchedulerEngineTests.swift
-git commit -m "Phase 41a — SchedulerEngineTests (failing)"
+git commit -m "Task 41a — SchedulerEngineTests (failing)"
 ```

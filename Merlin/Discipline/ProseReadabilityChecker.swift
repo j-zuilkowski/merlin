@@ -23,7 +23,7 @@ actor ProseReadabilityChecker {
         forcedGrade: Double? = nil,
         timeoutSeconds: Int = 120,
         hasValeConfigOverride: Bool? = nil,
-        valeAvailability: @escaping @Sendable () -> Bool = ProseReadabilityChecker.isValeAvailable
+        valeAvailability: @escaping @Sendable () -> Bool = { ProseReadabilityChecker.isValeAvailable() }
     ) {
         self.dryRun = dryRun
         self.forcedGrade = forcedGrade

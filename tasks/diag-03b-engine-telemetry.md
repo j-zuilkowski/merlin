@@ -1,10 +1,10 @@
-# Phase diag-03b — Engine Telemetry Implementation
+# Task diag-03b — Engine Telemetry Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-03a complete: failing tests in place.
+Task diag-03a complete: failing tests in place.
 
 Instrument `AgenticEngine` to emit telemetry events covering the turn lifecycle and every tool dispatch.
 
@@ -182,5 +182,5 @@ Expected: all EngineTelemetryTests pass, BUILD SUCCEEDED, zero warnings.
 ## Commit
 ```bash
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase diag-03b — Engine telemetry instrumentation"
+git commit -m "Task diag-03b — Engine telemetry instrumentation"
 ```

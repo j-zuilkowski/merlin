@@ -1,16 +1,16 @@
-# Phase 29 — ProjectRef + ProjectPickerView + WindowGroup
+# Task 29 — ProjectRef + ProjectPickerView + WindowGroup
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 28b complete: macOS menu (New Session, Stop, Provider switching, Settings).
+Task 28b complete: macOS menu (New Session, Stop, Provider switching, Settings).
 
 Introduces multi-window support: one NSWindow per project. `WindowGroup(for: ProjectRef.self)`
 routes each project to its own workspace window. At launch with no open windows a
 `ProjectPickerView` is shown (recent projects + Open Folder…).
 
-No a/b split — this phase adds only a struct and SwiftUI views with no new testable
+No a/b split — this task adds only a struct and SwiftUI views with no new testable
 business logic. Pure entry-point wiring.
 
 ---
@@ -264,7 +264,7 @@ struct MerlinApp: App {
         .commands { MerlinCommands() }
 
         Settings {
-            // Placeholder — wired properly in phase 30b
+            // Placeholder — wired properly in task 30b
             Text("Settings")
                 .padding()
         }
@@ -276,7 +276,7 @@ struct MerlinApp: App {
 
 ## Write to: Merlin/Views/WorkspaceView.swift (placeholder)
 
-This placeholder lets the project compile. `WorkspaceView` is fully implemented in phase 30b.
+This placeholder lets the project compile. `WorkspaceView` is fully implemented in task 30b.
 
 ```swift
 import SwiftUI
@@ -336,5 +336,5 @@ git add Merlin/App/ProjectRef.swift \
         Merlin/Views/ProjectPickerView.swift \
         Merlin/Views/WorkspaceView.swift \
         project.yml
-git commit -m "Phase 29 — ProjectRef + ProjectPickerView + multi-window WindowGroup"
+git commit -m "Task 29 — ProjectRef + ProjectPickerView + multi-window WindowGroup"
 ```

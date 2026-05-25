@@ -1,10 +1,10 @@
-# Phase 244b — PendingAttentionQueue
+# Task 244b — PendingAttentionQueue
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 244a complete: failing tests for Finding, FindingCategory, Severity,
+Task 244a complete: failing tests for Finding, FindingCategory, Severity,
 and PendingAttentionQueue.
 
 ---
@@ -19,7 +19,7 @@ import Foundation
 // MARK: - FindingCategory
 
 enum FindingCategory: String, Codable, Sendable, CaseIterable {
-    case phaseDrift
+    case taskDrift
     case manualCoverageGap
     case docStaleReference
     case whyCommentMissing
@@ -171,7 +171,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 244a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 244a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -179,5 +179,5 @@ Expected: **BUILD SUCCEEDED** and all phase 244a tests pass. No prior phase regr
 git add tasks/task-244b-pending-attention-queue.md \
     Merlin/Discipline/Finding.swift \
     Merlin/Discipline/PendingAttentionQueue.swift
-git commit -m "Phase 244b — PendingAttentionQueue + Finding + FindingCategory + Severity"
+git commit -m "Task 244b — PendingAttentionQueue + Finding + FindingCategory + Severity"
 ```

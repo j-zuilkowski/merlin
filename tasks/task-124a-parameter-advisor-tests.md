@@ -1,12 +1,12 @@
-# Phase 124a — ModelParameterAdvisor Tests
+# Task 124a — ModelParameterAdvisor Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 123b complete: CompletionRequest extended with 8 sampling params. All prior tests pass.
+Task 123b complete: CompletionRequest extended with 8 sampling params. All prior tests pass.
 
-New surface introduced in phase 124b:
+New surface introduced in task 124b:
 
   `ParameterAdvisoryKind` — enum of detectable issues:
     - `.maxTokensTooLow`      — finish_reason == "length" in recent turns
@@ -62,7 +62,7 @@ final class ModelParameterAdvisorTests: XCTestCase {
     // MARK: - Compile-time existence checks
 
     func testParameterAdvisoryKindExists() {
-        // Fails to build without phase 124b.
+        // Fails to build without task 124b.
         let _: ParameterAdvisoryKind = .maxTokensTooLow
         let _: ParameterAdvisoryKind = .temperatureUnstable
         let _: ParameterAdvisoryKind = .repetitiveOutput
@@ -288,5 +288,5 @@ Expected: **BUILD FAILED** — `ModelParameterAdvisor`, `ParameterAdvisory`, `Pa
 ## Commit
 ```bash
 git add MerlinTests/Unit/ModelParameterAdvisorTests.swift
-git commit -m "Phase 124a — ModelParameterAdvisorTests (failing)"
+git commit -m "Task 124a — ModelParameterAdvisorTests (failing)"
 ```

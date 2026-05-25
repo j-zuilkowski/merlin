@@ -1,22 +1,22 @@
-# Phase 01a — MCP Server Core Tests (failing)
+# Task 01a — MCP Server Core Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, `async`/`await` + actors. No third-party Swift packages.
 `SWIFT_STRICT_CONCURRENCY=complete`. Zero warnings, zero errors required.
 Working dir: `~/Documents/localProject/merlin/plugins/merlin-kicad-mcp`
-Phase 00 complete: Swift package scaffold (`KiCadMCPKit` library + executable + test
+Task 00 complete: Swift package scaffold (`KiCadMCPKit` library + executable + test
 target) builds and `ScaffoldTests` passes.
 
-This phase covers the MCP protocol core: JSON-RPC 2.0 message handling and the MCP
-lifecycle (`initialize`, `tools/list`, etc.). The tool *registry* is phase 02 — here
+This task covers the MCP protocol core: JSON-RPC 2.0 message handling and the MCP
+lifecycle (`initialize`, `tools/list`, etc.). The tool *registry* is task 02 — here
 `tools/list` returns an empty array and unknown methods return method-not-found.
 
 The protocol logic is kept pure and testable: `MCPServer.handle(_:)` takes one
 newline-delimited JSON-RPC message string and returns the response string (or nil for a
-notification). The stdio pump (`StdioTransport`) is built in phase 01b and exercised by
+notification). The stdio pump (`StdioTransport`) is built in task 01b and exercised by
 the manual check, not unit tests — all protocol behaviour is tested through `handle`.
 
-New surface introduced in phase 01b:
+New surface introduced in task 01b:
   - `MCPServer` actor in `Sources/KiCadMCPKit/MCPServer.swift`:
     ```swift
     actor MCPServer {
@@ -78,7 +78,7 @@ final class MCPServerCoreTests: XCTestCase {
         let resp = try object(await handle(req))
         let result = try XCTUnwrap(resp["result"] as? [String: Any])
         XCTAssertNotNil(result["tools"] as? [Any],
-                        "tools/list must return a 'tools' array (empty until phase 02)")
+                        "tools/list must return a 'tools' array (empty until task 02)")
     }
 
     func testUnknownMethodReturnsMethodNotFound() async throws {
@@ -118,5 +118,5 @@ Expected: **build fails** — `MCPServer` is undefined. That is the TDD signal.
 ```bash
 cd ~/Documents/localProject/merlin/plugins/merlin-kicad-mcp
 git add Tests/KiCadMCPKitTests/MCPServerCoreTests.swift tasks/task-01a-mcp-server-core-tests.md
-git commit -m "kicad-mcp Phase 01a — MCPServerCoreTests (failing)"
+git commit -m "kicad-mcp Task 01a — MCPServerCoreTests (failing)"
 ```

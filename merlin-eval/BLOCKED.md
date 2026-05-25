@@ -11,7 +11,7 @@ The capability probe (2026-05-16) found every scenario area testable:
 |---|---|---|
 | Swift GUI debug | Xcode toolchain | available |
 | Rust debug | cargo / rustc 1.94 | available |
-| Voice dictation | Speech + microphone | available — pending the `Info.plist` Speech/mic keys (phase 302) |
+| Voice dictation | Speech + microphone | available — pending the `Info.plist` Speech/mic keys (task 302) |
 | xcalibre RAG | xcalibre-server source | available at `localProject/xcalibre-server` |
 | LoRA training | Python 3.9.13, mlx_lm, mlx, MLX base model | available |
 | Electronics | KiCad 10.0.3, merlin-kicad-mcp, FreeRouting, ngspice | available |

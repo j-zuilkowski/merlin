@@ -1,10 +1,10 @@
-# Phase 97 — Wire HookEngine into Main AgenticEngine Loop
+# Task 97 — Wire HookEngine into Main AgenticEngine Loop
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 96 complete: AgentRegistry.registerBuiltins() called at launch.
+Task 96 complete: AgentRegistry.registerBuiltins() called at launch.
 
 `HookEngine` fires only for subagent tool calls (in `SubagentEngine` and
 `WorkerSubagentEngine`). The parent `AgenticEngine.runLoop` dispatches tool calls
@@ -147,5 +147,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 97 — Wire HookEngine (PreToolUse/PostToolUse/UserPromptSubmit/Stop) into main AgenticEngine loop"
+git commit -m "Task 97 — Wire HookEngine (PreToolUse/PostToolUse/UserPromptSubmit/Stop) into main AgenticEngine loop"
 ```

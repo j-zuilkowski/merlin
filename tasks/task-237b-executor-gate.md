@@ -1,18 +1,18 @@
-# Phase 237b — Unified Executor Gate + Recovery Deletion
+# Task 237b — Unified Executor Gate + Recovery Deletion
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 237a complete: failing tests for the EscalationHandler, no-recursion invariant, retry-counter
+Task 237a complete: failing tests for the EscalationHandler, no-recursion invariant, retry-counter
 deletion, and clean-stop outcome.
 
-This phase deletes the recursive recovery path and replaces it with a bounded escalation helper.
+This task deletes the recursive recovery path and replaces it with a bounded escalation helper.
 Net code volume drops noticeably even though new logic is added — the deletion of `contextLengthRetryCount`,
 `maxContextOverrunRecoveryAttempts`, `contextOverrunRecoveryDirective`, and the recursive
 `runLoop` self-call together remove ~120 lines.
 
-After this phase the infinite-loop bug class observed previously is structurally impossible.
+After this task the infinite-loop bug class observed previously is structurally impossible.
 No code path inside a catch block re-enters `runLoop`.
 
 ---
@@ -45,9 +45,9 @@ No code path inside a catch block re-enters `runLoop`.
       → `handleEscalation(reason: .preflightOverflow)`. **No recursion.**
 - `Merlin/Engine/AgentEvent.swift` (or wherever AgentEvent lives) — add
   `case cleanStop(reason: String, summary: String)`. UI render parity with `.systemNote` is
-  acceptable for v2.1.0; distinct affordance is a future UI phase.
+  acceptable for v2.1.0; distinct affordance is a future UI task.
 
-The architectural spec for this phase lives in `spec.md` § "V2.1 — Budget-Aware
+The architectural spec for this task lives in `spec.md` § "V2.1 — Budget-Aware
 Execution" (already written, lines ~3759–4301). Do not duplicate it; the implementation must
 match it. If the spec and the test surfaces disagree, the test surfaces win — flag the
 divergence in your completion summary.
@@ -70,7 +70,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 237a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 237a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -79,9 +79,9 @@ git add tasks/task-237b-executor-gate.md \
     Merlin/Engine/EscalationHandler.swift \
     Merlin/Engine/AgenticEngine.swift \
     Merlin/Engine/AgentEvent.swift
-git commit -m "Phase 237b — Unified executor gate, delete recursive recovery"
+git commit -m "Task 237b — Unified executor gate, delete recursive recovery"
 ```
 
 ## PASTE-LIST update
 
-Append phase 237a/237b under the "Budget-Aware Execution (v2.1.0)" section.
+Append task 237a/237b under the "Budget-Aware Execution (v2.1.0)" section.

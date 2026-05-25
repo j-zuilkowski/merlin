@@ -1,14 +1,14 @@
-# Phase 192b — KAGEngine AgenticEngine Wiring
+# Task 192b — KAGEngine AgenticEngine Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
-Phase 192a complete: failing tests in `AgenticEngineKAGWiringTests` — they reference
+Task 192a complete: failing tests in `AgenticEngineKAGWiringTests` — they reference
 `kag.pendingTask` (private) and `makeEngine(provider:kagEngine:)` (non-existent).
 
-This phase makes the tests pass with three targeted changes:
+This task makes the tests pass with three targeted changes:
 1. `KAGEngine.pendingTask`: `private` → `private(set)` for `@testable` observation
 2. `AgenticEngine`: add `kagEngine: KAGEngine` injectable property + call site
 3. `TestHelpers/EngineFactory.swift`: add `kagEngine` parameter to `makeEngine`
@@ -163,12 +163,12 @@ git add Merlin/KAG/KAGEngine.swift \
         Merlin.xcodeproj/project.pbxproj \
         tasks/task-192a-kag-engine-wiring-tests.md \
         tasks/task-192b-kag-engine-wiring.md
-git commit -m "Phase 192b — Wire KAGEngine.scheduleExtraction into AgenticEngine; v1.8.0"
+git commit -m "Task 192b — Wire KAGEngine.scheduleExtraction into AgenticEngine; v1.8.0"
 git tag v1.8.0
 git push origin main --tags
 gh release create v1.8.0 \
     --repo j-zuilkowski/merlin \
     --title "v1.8.0 — KAG extraction live end-to-end" \
-    --notes "Phase 192: KAGEngine.scheduleExtraction is now called after every assistant turn when kagEnabled=true. Triple extraction fires after a 2-second idle delay and writes to the configured backend (LocalKAGPlugin or XcalibreKAGPlugin)." \
+    --notes "Task 192: KAGEngine.scheduleExtraction is now called after every assistant turn when kagEnabled=true. Triple extraction fires after a 2-second idle delay and writes to the configured backend (LocalKAGPlugin or XcalibreKAGPlugin)." \
     --latest
 ```

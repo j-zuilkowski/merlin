@@ -1,12 +1,12 @@
-# Phase 284b — Tool Output Cap
+# Task 284b — Tool Output Cap
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 284a complete: failing tests for `ToolOutput.clamp`.
+Task 284a complete: failing tests for `ToolOutput.clamp`.
 
-After this phase no single tool result can overrun the context: `run_shell` and
+After this task no single tool result can overrun the context: `run_shell` and
 `read_file` output is bounded before it reaches the model, the way every production
 agent harness bounds it.
 
@@ -84,7 +84,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 284a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all task 284a tests pass, no prior task regresses.
 
 **Manual check:** in a large repo, have the agent run `git diff` on a big change or
 `read_file` on a large file. The tool result in the conversation must be truncated with
@@ -97,7 +97,7 @@ git add tasks/task-284b-tool-output-cap.md \
     Merlin/Tools/ToolOutput.swift \
     Merlin.xcodeproj/project.pbxproj \
     <the run_shell / read_file handler file(s)>
-git commit -m "Phase 284b — Cap run_shell and read_file output before it enters context"
+git commit -m "Task 284b — Cap run_shell and read_file output before it enters context"
 ```
 
 (Run `xcodegen generate` for the new `ToolOutput.swift`; commit the regenerated
@@ -110,7 +110,7 @@ the context, so a single large tool output can no longer overrun the provider in
 window. This is the upstream fix for the context-overflow 400s the v2.1 budget layer
 was left to mitigate downstream.
 
-## Follow-up (not in this phase)
+## Follow-up (not in this task)
 
 `read_file` is whole-file only. Adding `offset` / `limit` parameters (like a standard
 Read tool) would let the agent page through a large file instead of receiving a clamped

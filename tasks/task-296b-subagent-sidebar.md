@@ -1,8 +1,8 @@
-# Phase 296b — Subagent Sidebar (implementation)
+# Task 296b — Subagent Sidebar (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 296a complete: failing tests in `SubagentSidebarWiringTests`. Unit B3 of the plan.
+Task 296a complete: failing tests in `SubagentSidebarWiringTests`. Unit B3 of the plan.
 
 ## Edit: Merlin/Views/ChatView.swift — `ChatViewModel`
 - Add `weak var subagentSidebar: SubagentSidebarViewModel?` to `ChatViewModel`.
@@ -70,5 +70,5 @@ Subagents" row appears in the session sidebar and selecting it shows `WorkerDiff
 ```
 git add Merlin/Views/ChatView.swift Merlin/Sessions/LiveSession.swift \
   Merlin/Views/SessionSidebar.swift tasks/task-296b-subagent-sidebar.md
-git commit -m "Phase 296b — Subagent sidebar"
+git commit -m "Task 296b — Subagent sidebar"
 ```

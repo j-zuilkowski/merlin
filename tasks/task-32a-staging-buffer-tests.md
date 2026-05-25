@@ -1,12 +1,12 @@
-# Phase 32a — StagingBuffer Tests
+# Task 32a — StagingBuffer Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 31b complete: PermissionMode enum + engine integration.
+Task 31b complete: PermissionMode enum + engine integration.
 
-New surface introduced in phase 32b:
+New surface introduced in task 32b:
   - `StagedChange` — Identifiable, Sendable struct: id, path, kind (write/create/delete/move),
     before (String?), after (String?)
   - `ChangeKind` enum: write, create, delete, move
@@ -178,5 +178,5 @@ Expected: `BUILD FAILED` with errors referencing `StagingBuffer`, `StagedChange`
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/StagingBufferTests.swift
-git commit -m "Phase 32a — StagingBufferTests (failing)"
+git commit -m "Task 32a — StagingBufferTests (failing)"
 ```

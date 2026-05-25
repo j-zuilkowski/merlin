@@ -1,10 +1,10 @@
-# Phase 320a — WorkerDiffView Reject/Accept Action Tests (failing)
+# Task 320a — WorkerDiffView Reject/Accept Action Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 319b complete: discipline scanner-tuning pass landed.
+Task 319b complete: discipline scanner-tuning pass landed.
 
 W4 trace audit finding F1: `Merlin/UI/Sidebar/WorkerDiffView.swift:39` and `:42` — the
 "Reject All" and "Accept & Merge" toolbar buttons have empty `{ }` actions. They carry
@@ -15,7 +15,7 @@ look wired but do nothing. `StubMarkerScanner` flags both as `stubbedImplementat
 `actor StagingBuffer?`. `StagingBuffer` exposes `rejectAll()` (isolated, sync) and
 `acceptAll() async throws` — the same API the working `DiffPane` view drives.
 
-New surface introduced in phase 320b:
+New surface introduced in task 320b:
   - `WorkerDiffView.rejectAllChanges()` — `async`; discards every staged change via the
     buffer, then refreshes the displayed entry list
   - `WorkerDiffView.acceptAndMergeChanges()` — `async`; applies every staged change to
@@ -25,7 +25,7 @@ TDD coverage:
   File 1 — WorkerDiffViewActionTests: rejecting clears the buffer; accepting writes the
   staged content to disk and clears the buffer.
 
-**This is a compile-failure phase.** The test references `WorkerDiffView.rejectAllChanges()`
+**This is a compile-failure task.** The test references `WorkerDiffView.rejectAllChanges()`
 and `.acceptAndMergeChanges()`, which do not exist until 320b. Verify with
 `build-for-testing` — expect BUILD FAILED naming the two missing methods.
 
@@ -37,7 +37,7 @@ and `.acceptAndMergeChanges()`, which do not exist until 320b. Verify with
 import XCTest
 @testable import Merlin
 
-/// Phase 320a — failing tests for WorkerDiffView's reject-all / accept-and-merge actions.
+/// Task 320a — failing tests for WorkerDiffView's reject-all / accept-and-merge actions.
 final class WorkerDiffViewActionTests: XCTestCase {
 
     private func makeEntry(buffer: StagingBuffer) -> SubagentSidebarEntry {
@@ -116,5 +116,5 @@ failure is at compile time (the methods do not exist yet).
 ## Commit
 ```
 git add MerlinTests/Unit/WorkerDiffViewActionTests.swift tasks/task-320a-worker-diff-actions-tests.md
-git commit -m "Phase 320a — WorkerDiffViewActionTests (failing)"
+git commit -m "Task 320a — WorkerDiffViewActionTests (failing)"
 ```

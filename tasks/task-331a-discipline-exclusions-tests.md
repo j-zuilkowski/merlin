@@ -1,20 +1,20 @@
-# Phase 331a — Discipline Exclusions Tests (failing)
+# Task 331a — Discipline Exclusions Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 330 complete: phases 326–330 are the eval harness (capability + surface + render +
+Task 330 complete:  tasks 326–330 are the eval harness (capability + surface + render +
 operator coverage).
 
-Reason for this phase: the eval suite's fixture tree, `merlin-eval/`, is about to be
-moved *into* the merlin repo (phase 332). It contains deliberately-buggy fixture source
+Reason for this task: the eval suite's fixture tree, `merlin-eval/`, is about to be
+moved *into* the merlin repo (task 332). It contains deliberately-buggy fixture source
 (`.swift`, `.rs`) and scenario Markdown. Every file-walking discipline scanner is handed
 the **repo root** and would then walk `merlin-eval/`, raising false drift / unwired /
-stub / dangling-reference findings. This phase adds the failing tests for
-`DisciplineExclusions` — a shared path blacklist the scanners will honour (phase 331b).
+stub / dangling-reference findings. This task adds the failing tests for
+`DisciplineExclusions` — a shared path blacklist the scanners will honour (task 331b).
 
-New surface introduced in phase 331b:
+New surface introduced in task 331b:
   - `DisciplineExclusions.excludedDirectoryNames: Set<String>` — the blacklist; initially
     `["merlin-eval"]`.
   - `DisciplineExclusions.isExcluded(_ url: URL) -> Bool` — true when `url` lies inside a
@@ -34,7 +34,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 331a — tests for `DisciplineExclusions`, the path blacklist every file-walking
+/// Task 331a — tests for `DisciplineExclusions`, the path blacklist every file-walking
 /// discipline scanner honours. The `merlin-eval/` eval-suite tree holds deliberately-
 /// buggy fixture source and scenario Markdown; without the blacklist the scanners raise
 /// false drift / unwired / stub / dangling-reference findings against it.
@@ -140,5 +140,5 @@ compile errors name `DisciplineExclusions`. That is the failing-tests state.
 ```
 git add MerlinTests/Unit/DisciplineExclusionsTests.swift \
         tasks/task-331a-discipline-exclusions-tests.md
-git commit -m "Phase 331a — DisciplineExclusionsTests (failing)"
+git commit -m "Task 331a — DisciplineExclusionsTests (failing)"
 ```

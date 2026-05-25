@@ -16,15 +16,15 @@ macOS SwiftUI agentic chat app. Non-sandboxed. Connects to multiple LLM provider
 
 ## Non-Negotiable Rules (apply to every session)
 
-- **TDD always.** Tests are written first (phase `NNa`), confirmed failing, then implementation follows (phase `NNb`). Never skip the failing-tests commit.
-- **Git commit after every phase.** Each phase ends with an explicit `git add` + `git commit`. No exceptions — do not skip or batch commits across phases.
+- **TDD always.** Tests are written first (task `NNa`), confirmed failing, then implementation follows (task `NNb`). Never skip the failing-tests commit.
+- **Git commit after every task.** Each task ends with an explicit `git add` + `git commit`. No exceptions — do not skip or batch commits across  tasks.
 - **Zero warnings, zero errors.** Every file must compile clean. `SWIFT_STRICT_CONCURRENCY=complete` is on.
 - **No third-party Swift packages** in production targets (`Merlin`, `TestTargetApp`). Test targets may not add packages either — all helpers go in `TestHelpers/`.
 - **Non-sandboxed.** The app entitlement `com.apple.security.app-sandbox` is `false`. Do not add sandbox-only APIs.
 - **OpenAI function calling wire format** for all tool definitions. No translation layer except inside `AnthropicProvider`.
 - **Task files must stay in sync with the code.** Any code change — bug fix, refactor, new feature, or addendum — must also update or create the relevant task file(s) before the git commit:
-  - **New feature:** write a failing `NNa` tests phase, commit it, implement in `NNb`, update `REBUILD-GUIDE.md` and `PASTE-LIST.md`.
-  - **Change to an existing file:** update the file's primary task doc (the `b` implementation phase) to reflect the new behaviour. If the change is large, create a `c` addendum phase (e.g. `task-17c`) and add a superseded banner to the old `b` phase.
+  - **New feature:** write a failing `NNa` tests task, commit it, implement in `NNb`, update `REBUILD-GUIDE.md` and `PASTE-LIST.md`.
+  - **Change to an existing file:** update the file's primary task doc (the `b` implementation task) to reflect the new behaviour. If the change is large, create a `c` addendum task (e.g. `task-17c`) and add a superseded banner to the old `b` task.
   - **Bug fix with no new surface area:** add a `## Fixes` section to the relevant `b` task doc noting what changed and why.
   - **Never commit code whose task doc still describes the old behaviour.** Task files are the rebuild source of truth — if they are wrong, a future rebuild produces broken code.
 
@@ -40,21 +40,21 @@ macOS SwiftUI agentic chat app. Non-sandboxed. Connects to multiple LLM provider
 
 ---
 
-## Phase Sheet Format
+## Task Sheet Format
 
-Every feature follows this two-phase pattern:
+Every feature follows this two-task pattern:
 
 ### `tasks/task-NNa-<name>-tests.md` (write first)
 ```
-# Phase NNa — <Feature> Tests
+# Task NNa — <Feature> Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase (N-1)b complete: <summary of prior state>.
+Task (N-1)b complete: <summary of prior state>.
 
-New surface introduced in phase NNb:
+New surface introduced in task NNb:
   - <TypeName.methodName()> — short description
   - ...
 
@@ -74,16 +74,16 @@ TDD coverage:
 
 ## Commit
 git add <test files>
-git commit -m "Phase NNa — <TestNames> (failing)"
+git commit -m "Task NNa — <TestNames> (failing)"
 ```
 
 ### `tasks/task-NNb-<name>.md` (write after NNa commit)
 ```
-# Phase NNb — <Feature> Implementation
+# Task NNb — <Feature> Implementation
 
 ## Context
 <same block as NNa, updated>
-Phase NNa complete: failing tests in place.
+Task NNa complete: failing tests in place.
 
 ---
 
@@ -98,7 +98,7 @@ Phase NNa complete: failing tests in place.
 
 ## Commit
 git add <source files>
-git commit -m "Phase NNb — <FeatureName>"
+git commit -m "Task NNb — <FeatureName>"
 ```
 
 ---
@@ -122,7 +122,7 @@ xcodebuild -scheme MerlinTests test \
 
 # Live/E2E compile gate - compiles MerlinLiveTests, MerlinE2ETests, TestTargetApp.
 # build-for-testing only COMPILES (no run), so it needs no API keys and no LM Studio.
-# Omitting this is how those three targets rotted uncompiled for roughly 160 phases.
+# Omitting this is how those three targets rotted uncompiled for roughly 160  tasks.
 xcodebuild -scheme MerlinTests-Live build-for-testing \
     -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived \
     CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
@@ -132,11 +132,11 @@ xcodebuild -scheme MerlinTests-Live build-for-testing \
 xcodegen generate
 ```
 
-> **Both schemes are part of the gate.** Every phase's Verify must keep `MerlinTests`
+> **Both schemes are part of the gate.** Every task's Verify must keep `MerlinTests`
 > *and* `MerlinTests-Live` compiling. `MerlinTests` builds the app + unit tests;
 > `MerlinTests-Live` builds the live/E2E targets the unit scheme never touches. A target
 > compiled by neither scheme rots silently - `TargetGateScanner` (Project Discipline)
-> flags that condition, but compiling the scheme every phase is the real prevention.
+> flags that condition, but compiling the scheme every task is the real prevention.
 
 ### Local E2E test execution (proving suite)
 
@@ -194,17 +194,17 @@ TestHelpers/               — MockProvider, NullAuthPresenter, EngineFactory (s
 
 ## Git Commit Protocol
 
-Every phase ends with:
+Every task ends with:
 
 ```bash
 cd ~/Documents/localProject/merlin
 git add <specific files — never git add -A>
-git commit -m "Phase NNx — <Description>"
+git commit -m "Task NNx — <Description>"
 ```
 
-Commit message format: `Phase NNa — <TestNames> (failing)` or `Phase NNb — <FeatureName>`.
+Commit message format: `Task NNa — <TestNames> (failing)` or `Task NNb — <FeatureName>`.
 
-Never skip the commit. Never amend a prior phase commit when adding the next phase — always create a new commit.
+Never skip the commit. Never amend a prior task commit when adding the next task — always create a new commit.
 
 ---
 
@@ -256,9 +256,9 @@ If an in-progress operation exists, surface it to the user and ask whether to ab
 
 ---
 
-## Phase Numbering
+## Task Numbering
 
-Current phases live in `tasks/`. Before starting a new feature, check the highest existing phase number and increment. The `tasks/PASTE-LIST.md` tracks what has been handed off. Check it before writing a new task sheet to avoid duplicates.
+Current  tasks live in `tasks/`. Before starting a new feature, check the highest existing task number and increment. The `tasks/PASTE-LIST.md` tracks what has been handed off. Check it before writing a new task sheet to avoid duplicates.
 
 ---
 

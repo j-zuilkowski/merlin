@@ -1,10 +1,10 @@
-# Phase 72b — WorkspaceLayoutManager Implementation
+# Task 72b — WorkspaceLayoutManager Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 72a complete: failing WorkspaceLayoutManagerTests in place.
+Task 72a complete: failing WorkspaceLayoutManagerTests in place.
 
 Implement `WorkspaceLayout` and `WorkspaceLayoutManager`. These are pure value/logic types
 with no SwiftUI dependency — they live in a new file `Merlin/Windows/WorkspaceLayoutManager.swift`.
@@ -86,5 +86,5 @@ Expected: `BUILD SUCCEEDED`; all WorkspaceLayoutManagerTests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Windows/WorkspaceLayoutManager.swift
-git commit -m "Phase 72b — WorkspaceLayoutManager: Codable layout persistence to layout.json"
+git commit -m "Task 72b — WorkspaceLayoutManager: Codable layout persistence to layout.json"
 ```

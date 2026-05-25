@@ -1,10 +1,10 @@
-# Phase 117b — OutcomeRecord Training Fields
+# Task 117b — OutcomeRecord Training Fields
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 117a complete: OutcomeRecordTrainingFieldsTests (failing) in place.
+Task 117a complete: OutcomeRecordTrainingFieldsTests (failing) in place.
 
 ---
 
@@ -29,9 +29,9 @@ struct OutcomeRecord: Codable, Sendable {
     var score: Double
     var addendumHash: String
     var timestamp: Date
-    /// The user message that triggered this session. Empty for records created before phase 117b.
+    /// The user message that triggered this session. Empty for records created before task 117b.
     var prompt: String
-    /// The model's final text response. Empty for records created before phase 117b.
+    /// The model's final text response. Empty for records created before task 117b.
     var response: String
 
     init(modelID: String, taskType: DomainTaskType, score: Double, addendumHash: String,
@@ -211,5 +211,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ModelPerformanceTracker.swift \
         Merlin/Engine/Protocols/ModelPerformanceTrackerProtocol.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 117b — OutcomeRecord prompt/response fields; record() captures conversation text"
+git commit -m "Task 117b — OutcomeRecord prompt/response fields; record() captures conversation text"
 ```

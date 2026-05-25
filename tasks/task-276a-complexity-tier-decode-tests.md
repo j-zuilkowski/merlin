@@ -1,10 +1,10 @@
-# Phase 276a — ComplexityTier Decode Tolerance (failing tests)
+# Task 276a — ComplexityTier Decode Tolerance (failing tests)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 275b complete: context-overrun retry bound fixed.
+Task 275b complete: context-overrun retry bound fixed.
 
 **Regression being fixed.** `ComplexityTier` (`Merlin/Engine/PlannerEngine.swift:6`) is
 a `String`-raw enum with `case highStakes = "high-stakes"` — a *hyphen*. Planner step
@@ -14,7 +14,7 @@ the hyphenated raw value throws, the whole `PlanStep` decode fails, the step is 
 and `parseSteps` returns `[]`. `ParallelWorkerTests.test_parseSteps_defaultsParallelSafeToFalse`
 then indexes `steps[0]` on an empty array and crashes.
 
-This phase adds tests for tolerant complexity decoding and makes the existing test
+This task adds tests for tolerant complexity decoding and makes the existing test
 crash-safe.
 
 ---
@@ -88,5 +88,5 @@ forms currently throw). 276b makes them pass.
 ```bash
 git add tasks/task-276a-complexity-tier-decode-tests.md \
     MerlinTests/Unit/ParallelWorkerTests.swift
-git commit -m "Phase 276a — ComplexityTierDecodeTests (failing)"
+git commit -m "Task 276a — ComplexityTierDecodeTests (failing)"
 ```

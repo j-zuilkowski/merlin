@@ -1,10 +1,10 @@
-# Phase 77 — WorkspaceView Wiring: All Panes + Layout Persistence + Shortcuts
+# Task 77 — WorkspaceView Wiring: All Panes + Layout Persistence + Shortcuts
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phases 72b–76 complete: all pane views created, WorkspaceLayoutManager ready.
+Tasks 72b–76 complete: all pane views created, WorkspaceLayoutManager ready.
 
 Replace the static `WorkspaceView` in `Merlin/Views/WorkspaceView.swift` with a fully-wired
 version that:
@@ -174,7 +174,7 @@ struct WorkspaceView: View {
 private extension View {
     func keyboardShortcut() -> some View {
         self
-            .onKeyPress(.init(Character("`")), phases: .down) { _ in
+            .onKeyPress(.init(Character("`")),  tasks: .down) { _ in
                 return .ignored
             }
     }
@@ -197,7 +197,7 @@ CommandMenu("View") {
 ```
 
 These are placeholder actions — the actual toggle is handled in `WorkspaceView` via `@FocusedObject`
-in a future phase. For now, registering the shortcuts prevents macOS from capturing them elsewhere.
+in a future task. For now, registering the shortcuts prevents macOS from capturing them elsewhere.
 
 ---
 
@@ -221,5 +221,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/WorkspaceView.swift \
         Merlin/App/MerlinCommands.swift
-git commit -m "Phase 77 — WorkspaceView: all panes wired, layout persistence, toolbar toggles, shortcuts"
+git commit -m "Task 77 — WorkspaceView: all panes wired, layout persistence, toolbar toggles, shortcuts"
 ```

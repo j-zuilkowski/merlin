@@ -1,12 +1,12 @@
-# Phase 43a — Connectors Tests
+# Task 43a — Connectors Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 42b complete: PRMonitor GitHub polling + CI status + auto-merge.
+Task 42b complete: PRMonitor GitHub polling + CI status + auto-merge.
 
-New surface introduced in phase 43b:
+New surface introduced in task 43b:
   - `ConnectorCredentials` — stores one token per service in Keychain
     (`com.merlin.connector.<service>`)
   - `GitHubConnector` — read: list PRs, get issue, get file contents;
@@ -114,5 +114,5 @@ Expected: `BUILD FAILED` with errors referencing `ConnectorCredentials`, `GitHub
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ConnectorTests.swift
-git commit -m "Phase 43a — ConnectorTests (failing)"
+git commit -m "Task 43a — ConnectorTests (failing)"
 ```

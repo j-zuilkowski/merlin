@@ -1,10 +1,10 @@
-# Phase 179b — Fix: reduce ThreadAutomationEngine loop interval to 50ms
+# Task 179b — Fix: reduce ThreadAutomationEngine loop interval to 50ms
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 179a complete: ThreadAutomation loop-interval failure documented.
+Task 179a complete: ThreadAutomation loop-interval failure documented.
 
 ## Fix
 
@@ -41,5 +41,5 @@ Expected: BUILD SUCCEEDED; `test_engine_firesCallbackOnSchedule` passes.
 cd ~/Documents/localProject/merlin
 git add Merlin/Automations/ThreadAutomationEngine.swift \
         tasks/task-179b-thread-automation-fix.md
-git commit -m "Phase 179b — Fix: ThreadAutomationEngine loop interval 1000ms → 50ms"
+git commit -m "Task 179b — Fix: ThreadAutomationEngine loop interval 1000ms → 50ms"
 ```

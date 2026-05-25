@@ -1,11 +1,11 @@
-# Phase diag-09a — Floating & Help Windows Tests
+# Task diag-09a — Floating & Help Windows Tests
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-New surface introduced in phase diag-09b:
+New surface introduced in task diag-09b:
   - `FloatingWindowManager` — `@MainActor ObservableObject` singleton; opens/closes
     pop-out NSWindows for individual sessions; supports `alwaysOnTop` level
   - `HelpWindowManager` — `@MainActor` singleton; retains strong NSWindow references
@@ -68,5 +68,5 @@ Expected: BUILD SUCCEEDED.
 cd ~/Documents/localProject/merlin
 git add tasks/task-diag-09a-windows-tests.md \
         MerlinTests/Unit/WorkspaceLayoutManagerTests.swift
-git commit -m "Phase diag-09a — WorkspaceLayoutManagerTests"
+git commit -m "Task diag-09a — WorkspaceLayoutManagerTests"
 ```

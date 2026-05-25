@@ -1,8 +1,8 @@
-# Phase 303b — Eval Harness (implementation)
+# Task 303b — Eval Harness (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 303a complete: failing smoke test in `EvalHarnessSmokeTests`.
+Task 303a complete: failing smoke test in `EvalHarnessSmokeTests`.
 
 The harness drives a real `LiveSession` so scenarios exercise the full tool registry,
 real providers, and the real agent loop — not mocks.
@@ -113,5 +113,5 @@ DeepSeek key is present (otherwise it skips).
 ## Commit
 ```
 git add MerlinE2ETests/EvalHarness.swift tasks/task-303b-eval-harness.md
-git commit -m "Phase 303b — Eval harness"
+git commit -m "Task 303b — Eval harness"
 ```

@@ -1,10 +1,10 @@
-# Phase 224b - DPO Review Queue UI
+# Task 224b - DPO Review Queue UI
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 224a complete: failing DPO review queue tests exist.
+Task 224a complete: failing DPO review queue tests exist.
 
 ---
 
@@ -56,6 +56,6 @@ Expected: **BUILD SUCCEEDED**. DPO review tests pass.
 
 ```bash
 git add Merlin/Engine/DPOReviewStore.swift Merlin/Views/Settings/DPOReviewQueueView.swift Merlin/Views/Settings/LoRASettingsSection.swift MerlinTests/Unit/DPOReviewStoreTests.swift MerlinTests/Unit/DPOReviewQueueViewTests.swift
-git commit -m "Phase 224b - DPO review queue UI"
+git commit -m "Task 224b - DPO review queue UI"
 ```
 

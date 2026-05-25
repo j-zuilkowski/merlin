@@ -1,10 +1,10 @@
-# Phase 38b — SkillsRegistry Implementation
+# Task 38b — SkillsRegistry Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 38a complete: failing SkillsRegistryTests in place.
+Task 38a complete: failing SkillsRegistryTests in place.
 
 Note: YAML parsing is done with a minimal hand-rolled parser for the simple key: value
 frontmatter format defined in skill-standard.md. No third-party packages.
@@ -383,5 +383,5 @@ git add Merlin/Skills/SkillFrontmatter.swift \
         Merlin/Views/SkillsPicker.swift \
         Merlin/Sessions/LiveSession.swift \
         project.yml
-git commit -m "Phase 38b — SkillsRegistry + Skill + SkillsPicker"
+git commit -m "Task 38b — SkillsRegistry + Skill + SkillsPicker"
 ```

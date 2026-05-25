@@ -1,10 +1,10 @@
-# Phase 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain
+# Task 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 99a complete: failing tests in place.
+Task 99a complete: failing tests in place.
 
 ---
 
@@ -367,5 +367,5 @@ git add Merlin/MCP/DomainPlugin.swift \
         Merlin/Engine/VerificationBackend.swift \
         Merlin/Config/AppSettings.swift \
         project.yml
-git commit -m "Phase 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain"
+git commit -m "Task 99b — DomainRegistry + DomainPlugin + MCPDomainAdapter + SoftwareDomain"
 ```

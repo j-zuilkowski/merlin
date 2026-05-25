@@ -1,10 +1,10 @@
-# Phase 203b — /rewind Checkpoint Restoration
+# Task 203b — /rewind Checkpoint Restoration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 203a complete: failing CheckpointStoreTests + RewindSlashCommandTests.
+Task 203a complete: failing CheckpointStoreTests + RewindSlashCommandTests.
 
 ---
 
@@ -205,5 +205,5 @@ git add Merlin/Sessions/SessionCheckpoint.swift \
         Merlin/Sessions/RewindCommand.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/ChatView.swift
-git commit -m "Phase 203b — /rewind checkpoint restoration"
+git commit -m "Task 203b — /rewind checkpoint restoration"
 ```

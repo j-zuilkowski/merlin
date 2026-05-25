@@ -1,12 +1,12 @@
-# Phase 211a — KiCad Schematic Parser Tests
+# Task 211a — KiCad Schematic Parser Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 210b complete: canonical KiCad artifacts persist as JSON.
+Task 210b complete: canonical KiCad artifacts persist as JSON.
 
-New surface introduced in phase 211b:
+New surface introduced in task 211b:
   - `KiCadSExpression`
   - `KiCadSchematicDocument`
   - `KiCadSchematicParser`
@@ -45,5 +45,5 @@ Expected: **BUILD FAILED** with missing schematic parser symbols.
 
 ```bash
 git add MerlinTests/Unit/KiCadSchematicParserTests.swift
-git commit -m "Phase 211a — KiCadSchematicParserTests (failing)"
+git commit -m "Task 211a — KiCadSchematicParserTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 127b — Model Manager Wiring Implementation
+# Task 127b — Model Manager Wiring Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 127a complete: failing wiring tests in place.
+Task 127a complete: failing wiring tests in place.
 
 ---
 
@@ -125,7 +125,7 @@ func applyAdvisory(_ advisory: ParameterAdvisory) async throws {
 ```
 
 Note: `AppSettings.inferenceTemperature` and `AppSettings.inferenceMaxTokens` should be added
-alongside the other inference defaults added in Phase 123b if not already present. Follow the
+alongside the other inference defaults added in Task 123b if not already present. Follow the
 same `@Published var inferenceTemperature: Double? = nil` pattern.
 
 ---
@@ -163,7 +163,7 @@ AppState (to avoid circular dependency), use a closure callback:
 // Add to AgenticEngine:
 var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
 
-// In the post-record advisor block (Phase 124b):
+// In the post-record advisor block (Task 124b):
 let singleAdvisories = await advisor.checkRecord(trackerRecord)
 for advisory in singleAdvisories {
     isReloadingModel = advisory.kind == .contextLengthTooSmall
@@ -245,5 +245,5 @@ Expected: **BUILD SUCCEEDED** — all ModelManagerWiringTests pass; all prior te
 git add Merlin/App/AppState.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/Providers/LocalModelManager/NullModelManager.swift
-git commit -m "Phase 127b — model manager wiring: AppState registry, applyAdvisory, engine reload pause"
+git commit -m "Task 127b — model manager wiring: AppState registry, applyAdvisory, engine reload pause"
 ```

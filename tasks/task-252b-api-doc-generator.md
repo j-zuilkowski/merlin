@@ -1,10 +1,10 @@
-# Phase 252b — APIDocGenerator
+# Task 252b — APIDocGenerator
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 252a complete: failing tests for APIDocGenerator and GeneratorError.
+Task 252a complete: failing tests for APIDocGenerator and GeneratorError.
 
 ---
 
@@ -149,12 +149,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 252a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 252a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-252b-api-doc-generator.md \
     Merlin/Discipline/APIDocGenerator.swift
-git commit -m "Phase 252b — APIDocGenerator (DocC for Swift, rustdoc for Rust)"
+git commit -m "Task 252b — APIDocGenerator (DocC for Swift, rustdoc for Rust)"
 ```

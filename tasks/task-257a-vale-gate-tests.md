@@ -1,15 +1,15 @@
-# Phase 257a — Vale Pre-Commit Gate Tests
+# Task 257a — Vale Pre-Commit Gate Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 256b complete: ProseReadabilityChecker + ValeStyleWriter live.
+Task 256b complete: ProseReadabilityChecker + ValeStyleWriter live.
 
 Introduces the Vale pre-commit gate: a `ProseGate` actor that runs `ProseReadabilityChecker`
 over changed `.md` files and blocks the commit if any exceeds its target grade.
 
-New surface introduced in phase 257b:
+New surface introduced in task 257b:
   - `ProseGate` actor in `Merlin/Discipline/ProseGate.swift`:
     `func check(changedDocFiles: [String], adapter: ProjectAdapter) async -> ProseGateResult`
   - `ProseGateResult: Sendable` — `case pass`,
@@ -127,5 +127,5 @@ Expected: **BUILD FAILED** with errors naming `ProseGate`, `ProseGateResult`, an
 ```bash
 git add tasks/task-257a-vale-gate-tests.md \
     MerlinTests/Unit/ProseGateTests.swift
-git commit -m "Phase 257a — ProseGateTests (failing)"
+git commit -m "Task 257a — ProseGateTests (failing)"
 ```

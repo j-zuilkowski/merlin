@@ -1,16 +1,16 @@
-# Phase 117a — OutcomeRecord Training Fields Tests (failing)
+# Task 117a — OutcomeRecord Training Fields Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 116b complete: LoRA AppSettings in place.
+Task 116b complete: LoRA AppSettings in place.
 
-Current state: OutcomeRecord has no prompt/response fields. The LoRATrainer (phase 118)
+Current state: OutcomeRecord has no prompt/response fields. The LoRATrainer (task 118)
 needs the actual conversation text to build training JSONL. The performanceTracker.record()
 call in AgenticEngine passes only OutcomeSignals — no message text.
 
-New surface introduced in phase 117b:
+New surface introduced in task 117b:
   - `OutcomeRecord.prompt: String` — the user message that triggered the session; default ""
     (backward compatible: old persisted records decode with "" for this field)
   - `OutcomeRecord.response: String` — the model's final text output; default ""
@@ -193,5 +193,5 @@ Expected: BUILD FAILED — `OutcomeRecord.prompt`, `OutcomeRecord.response` not 
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/OutcomeRecordTrainingFieldsTests.swift
-git commit -m "Phase 117a — OutcomeRecordTrainingFieldsTests (failing)"
+git commit -m "Task 117a — OutcomeRecordTrainingFieldsTests (failing)"
 ```

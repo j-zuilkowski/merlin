@@ -1,10 +1,10 @@
-# Phase 89 — Complete General + Appearance Settings Sections
+# Task 89 — Complete General + Appearance Settings Sections
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 88b complete: keepAwake, defaultPermissionMode, notificationsEnabled, messageDensity in AppSettings.
+Task 88b complete: keepAwake, defaultPermissionMode, notificationsEnabled, messageDensity in AppSettings.
 
 Complete the `GeneralSettingsView` and `AppearanceSettingsView` in `SettingsWindowView.swift`
 to match the architecture spec.
@@ -135,5 +135,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift \
         Merlin/Engine/PermissionMode.swift
-git commit -m "Phase 89 — General + Appearance settings: keepAwake, permission mode, message density"
+git commit -m "Task 89 — General + Appearance settings: keepAwake, permission mode, message density"
 ```

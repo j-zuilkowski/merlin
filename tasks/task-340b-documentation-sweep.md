@@ -1,10 +1,10 @@
-# Phase 340b — Documentation Sweep Implementation
+# Task 340b — Documentation Sweep Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 340a complete: documentation sweep tests are failing on stale docs.
+Task 340a complete: documentation sweep tests are failing on stale docs.
 
 Recommended execution model: GPT-5.3-Codex.
 
@@ -108,5 +108,5 @@ git add README.md \
         tasks/SURFACE-INVENTORY.md \
         MerlinTests/Unit/DocumentationSweepTests.swift \
         tasks/task-340b-documentation-sweep.md
-git commit -m "Phase 340b — reconcile documentation after llama.cpp and slot status panel"
+git commit -m "Task 340b — reconcile documentation after llama.cpp and slot status panel"
 ```

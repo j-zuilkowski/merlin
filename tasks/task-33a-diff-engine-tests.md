@@ -1,12 +1,12 @@
-# Phase 33a — DiffEngine Tests
+# Task 33a — DiffEngine Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 32b complete: StagingBuffer actor + ToolRouter intercept.
+Task 32b complete: StagingBuffer actor + ToolRouter intercept.
 
-New surface introduced in phase 33b:
+New surface introduced in task 33b:
   - `DiffLine` — enum: .context(String), .added(String), .removed(String)
   - `DiffHunk` — array of DiffLine with optional line numbers
   - `DiffEngine.diff(before:after:)` — pure function, returns [DiffHunk]
@@ -146,5 +146,5 @@ Expected: `BUILD FAILED` with errors referencing `DiffEngine`, `DiffHunk`, `Diff
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/DiffEngineTests.swift
-git commit -m "Phase 33a — DiffEngineTests (failing)"
+git commit -m "Task 33a — DiffEngineTests (failing)"
 ```

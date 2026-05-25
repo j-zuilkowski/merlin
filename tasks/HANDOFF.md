@@ -6,14 +6,14 @@ macOS SwiftUI non-sandboxed agentic chat app. Connects to multiple LLM providers
 ## Full Design
 See `../spec.md` and `../llm.md` for all decisions. Do not re-derive — implement exactly as specified.
 
-## Rules (apply to every phase)
+## Rules (apply to every task)
 - Swift 5.10, macOS 14+, SwiftUI + Swift Concurrency (async/await, actors)
 - `SWIFT_STRICT_CONCURRENCY=complete` — zero warnings, zero errors required
 - No third-party packages (production targets; test targets use TestHelpers/ source folder only)
 - Non-sandboxed app — `com.apple.security.app-sandbox = false`
 - OpenAI function calling wire format for all tool definitions; Anthropic wire format handled inside `AnthropicProvider` only
-- TDD: tests in MerlinTests/ pass before phase is complete
-- Git commit after every phase — never batch across phases
+- TDD: tests in MerlinTests/ pass before task is complete
+- Git commit after every task — never batch across  tasks
 
 ## Project Layout
 ```
@@ -52,10 +52,10 @@ Merlin.xcodeproj
 - **V1** — Core engine: DeepSeek + LM Studio, tool registry, auth, sessions, basic chat UI
 - **V2** — Multi-project workspace: SessionManager, StagingBuffer, DiffPane, constitution.md, context injection, skills, MCP, scheduler, PR monitor, connectors
 - **V3** — Config + settings: TOMLDecoder, AppSettings, config.toml, MemoryEngine, HookEngine, ThreadAutomations, WebSearch, reasoning effort, toolbar, floating window
-- **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI (phases 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection (phases 60–98)
+- **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI ( tasks 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection ( tasks 60–98)
 
 ## Current Status
-Phase 98 complete. V4 fully shipped. V5 (Supervisor-Worker Multi-LLM + Domain Plugin System) in design — architecture complete in `../spec.md`, no task files written yet. Task files to be written starting at phase 99.
+Task 98 complete. V4 fully shipped. V5 (Supervisor-Worker Multi-LLM + Domain Plugin System) in design — architecture complete in `../spec.md`, no task files written yet. Task files to be written starting at task 99.
 
 ## Key Architecture Decisions (V3+)
 - **AppSettings**: `@MainActor ObservableObject` singleton. Single source of truth for all persisted config. Backing stores: `~/.merlin/config.toml` (feature flags, hooks, memories, toolbar, reasoning), Keychain (API keys), UserDefaults (UI-only). Features never read backing stores directly — they read `AppSettings`.

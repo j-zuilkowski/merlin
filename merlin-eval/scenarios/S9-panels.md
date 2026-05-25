@@ -30,10 +30,10 @@ source, assert the panel shows the data, toggle it off.
 - **SlotStatusPanel** — assert four persistent rows (Execute/Reason/Orchestrate/Vision),
   `Not configured` defaults, and explicit-slot-only population.
 - **PendingAttentionChip / Panel** — with findings queued, assert the chip shows the
-  true count (regression for phase 304) and the panel lists + dismisses findings.
+  true count (regression for task 304) and the panel lists + dismisses findings.
 
 ## Accessibility-ID coverage
-Phase 306b's `AccessibilityID` pass ran without this catalogue and was driven from
+Task 306b's `AccessibilityID` pass ran without this catalogue and was driven from
 source — substantial (~110 identifiers), but not verified-exhaustive. Before the M2
 portion, cross-check every panel control against `Merlin/Support/AccessibilityID.swift`.
 **Known-suspect gaps:** the six `WorkspaceView` toolbar toggles (Staged Changes, File
@@ -52,7 +52,7 @@ scenario.
 **Score:** panels verified / 10, plus the two regressions.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built.
+1. Tasks B–D, 301–306 merged; Merlin built.
 2. Run the S9 host-render + XCUITest suite.
 3. Drive each panel's data (run a tool, run a shell command, stage a change, capture a
    screen, queue findings) and eyeball each panel.

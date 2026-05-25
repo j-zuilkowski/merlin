@@ -1,10 +1,10 @@
-# Phase 68 — Skills Settings Section
+# Task 68 — Skills Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 67 complete: MCPSettingsView with add/remove server configs.
+Task 67 complete: MCPSettingsView with add/remove server configs.
 
 Add `AppSettings.disabledSkillNames: [String]` (persisted to config.toml).
 Replace the stub `SkillsSettingsView` in `SettingsWindowView.swift` with a real view that
@@ -136,5 +136,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift \
         Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 68 — SkillsSettingsView: per-skill enable/disable via AppSettings.disabledSkillNames"
+git commit -m "Task 68 — SkillsSettingsView: per-skill enable/disable via AppSettings.disabledSkillNames"
 ```

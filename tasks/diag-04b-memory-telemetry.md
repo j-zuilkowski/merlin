@@ -1,10 +1,10 @@
-# Phase diag-04b — Memory & RAG Telemetry Implementation
+# Task diag-04b — Memory & RAG Telemetry Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-04a complete: failing tests in place.
+Task diag-04a complete: failing tests in place.
 
 Instrument `MemoryEngine` and `XcalibreClient` with telemetry events.
 
@@ -171,5 +171,5 @@ Expected: all MemoryTelemetryTests and RAGTelemetryTests pass, BUILD SUCCEEDED, 
 ```bash
 git add Merlin/Memories/MemoryEngine.swift \
         Merlin/RAG/XcalibreClient.swift
-git commit -m "Phase diag-04b — Memory & RAG telemetry instrumentation"
+git commit -m "Task diag-04b — Memory & RAG telemetry instrumentation"
 ```

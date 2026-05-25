@@ -1,12 +1,12 @@
-# Phase 54a — AgentDefinition + AgentRegistry Tests
+# Task 54a — AgentDefinition + AgentRegistry Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 53 complete: floating pop-out window + voice dictation in place.
+Task 53 complete: floating pop-out window + voice dictation in place.
 
-New surface introduced in phase 54b:
+New surface introduced in task 54b:
   - `AgentRole` — enum: `.explorer`, `.worker`, `.default`
   - `AgentDefinition` — Codable struct: `name`, `description`, `instructions`, `model`,
     `role`, `allowedTools: [String]?`
@@ -222,5 +222,5 @@ Expected: BUILD FAILED — `AgentDefinition`, `AgentRole`, `AgentRegistry` not y
 ## Commit
 ```bash
 git add MerlinTests/Unit/AgentRegistryTests.swift
-git commit -m "Phase 54a — AgentRegistryTests (failing)"
+git commit -m "Task 54a — AgentRegistryTests (failing)"
 ```

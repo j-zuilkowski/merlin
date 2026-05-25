@@ -1,10 +1,10 @@
-# Phase 79b — Subagent Chat Integration Implementation
+# Task 79b — Subagent Chat Integration Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 79a complete: failing SubagentChatIntegrationTests in place.
+Task 79a complete: failing SubagentChatIntegrationTests in place.
 
 Wire SubagentBlockView into ChatView. Changes across four files:
 1. `EngineEvent` — add `subagentStarted` and `subagentUpdate` cases
@@ -208,5 +208,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/ChatView.swift \
         Merlin/Agents/AgentDefinition.swift
-git commit -m "Phase 79b — SubagentBlockView wired into ChatView; EngineEvent subagent cases added"
+git commit -m "Task 79b — SubagentBlockView wired into ChatView; EngineEvent subagent cases added"
 ```

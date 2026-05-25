@@ -1,10 +1,10 @@
-# Phase 146b — Provider Settings UI
+# Task 146b — Provider Settings UI
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 146a complete: failing tests in place.
+Task 146a complete: failing tests in place.
 
 ---
 
@@ -112,7 +112,7 @@ In the `Section("Providers")` header area, add a refresh button:
 
 ### 2. Use `registry.modelsByProviderID` in `ProviderRow`
 
-This was already done in phase 143b. Confirm the call site reads:
+This was already done in task 143b. Confirm the call site reads:
 ```swift
                         availableModels: registry.modelsByProviderID[config.id] ?? [],
 ```
@@ -175,7 +175,7 @@ Expected: all SlotPickerEntriesTests pass, BUILD SUCCEEDED, zero warnings.
 git add Merlin/Providers/ProviderConfig.swift \
         Merlin/Views/Settings/ProviderSettingsView.swift \
         Merlin/Views/Settings/RoleSlotSettingsView.swift
-git commit -m "Phase 146b — Provider settings UI with dynamic model picker"
+git commit -m "Task 146b — Provider settings UI with dynamic model picker"
 ```
 
 ---

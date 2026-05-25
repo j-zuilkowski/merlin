@@ -1,10 +1,10 @@
-# Phase 170a — CircuitBreakerTests (failing — pre-existing)
+# Task 170a — CircuitBreakerTests (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 169b complete: continuation abort [STEP_ALREADY_DONE] feature in place.
+Task 169b complete: continuation abort [STEP_ALREADY_DONE] feature in place.
 
 ## Problem
 
@@ -32,7 +32,7 @@ case .fail:
 }
 ```
 
-The fix (phase 170b): move the `consecutiveCriticFailures += 1` to only the
+The fix (task 170b): move the `consecutiveCriticFailures += 1` to only the
 `else` branch of `if criticRetryCount < maxRetries { ... } else { ... }`,
 so it increments exactly once per turn when all retries are exhausted.
 
@@ -60,5 +60,5 @@ Expected: several `CircuitBreakerTests` test cases reported as failed.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-170a-circuit-breaker-counter-tests.md
-git commit -m "Phase 170a — CircuitBreakerTests pre-existing failures documented"
+git commit -m "Task 170a — CircuitBreakerTests pre-existing failures documented"
 ```

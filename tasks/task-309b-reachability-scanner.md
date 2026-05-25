@@ -1,11 +1,11 @@
-# Phase 309b — ReachabilityScanner (implementation)
+# Task 309b — ReachabilityScanner (implementation)
 
-> **Note:** `injectedTypes` and the per-line loop here are refined by phase 317b
+> **Note:** `injectedTypes` and the per-line loop here are refined by task 317b
 > (annotation-based injection detection, comment-line skip). Implement 317b's version.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 309a complete: failing tests in `ReachabilityScannerTests`.
+Task 309a complete: failing tests in `ReachabilityScannerTests`.
 
 `ReachabilityScanner` is a peer of `TargetGateScanner` / `StubMarkerScanner`. Pure
 Foundation — lands in `Merlin/Discipline/` (compiled into both the app and the
@@ -168,7 +168,7 @@ Add `case unwiredComponent` to `FindingCategory` (after `stubbedImplementation`)
 adjust any `allCases.count` assertion.
 
 ## 3. Edit: Merlin/Discipline/DisciplineEngine.swift
-Same wiring pattern as phases 307b / 308b:
+Same wiring pattern as  tasks 307b / 308b:
 
 - **Stored property:** `private let reachabilityScanner: ReachabilityScanner`
 - **Init parameter** (defaulted) — insert after `stubMarkerScanner:`:
@@ -225,5 +225,5 @@ warnings.
 git add Merlin/Discipline/ReachabilityScanner.swift Merlin/Discipline/Finding.swift \
   Merlin/Discipline/DisciplineEngine.swift MerlinTests/Unit/FindingModelTests.swift \
   tasks/task-309b-reachability-scanner.md
-git commit -m "Phase 309b — ReachabilityScanner: flag unwired views and uninjected env objects"
+git commit -m "Task 309b — ReachabilityScanner: flag unwired views and uninjected env objects"
 ```

@@ -33,11 +33,11 @@ banner (scroll up → banner → Resume); the permission-mode cycle button.
 **Rendering kinds (G):** assert `ConversationHTMLRenderer` output for a `ChatEntry` of
 each kind — user, assistant, system, error; thinking block (collapsible); tool-call rows
 (running / done / error states); grounding report (each status); RAG sources block
-(phase 294); subagent block (phase 295). Assert the JS-bridge interactive elements
+(task 294); subagent block (task 295). Assert the JS-bridge interactive elements
 (thinking toggle, tool-row toggle, scroll-lock signal).
 
 ## Accessibility-ID coverage
-Phase 306b's `AccessibilityID` pass ran without this catalogue and was driven from
+Task 306b's `AccessibilityID` pass ran without this catalogue and was driven from
 source — substantial (~110 identifiers), but not verified-exhaustive. The chat input
 surfaces appear well-covered (`chat-input`, send/stop, attachment, voice, @-mention,
 skills picker, toolbar-action prefix, resume-scroll, permission-mode). Before the M2
@@ -57,7 +57,7 @@ portion, confirm each input surface this scenario drives resolves to a real
 **Score:** input surfaces / N + rendering kinds / M, plus the visual pass.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built.
+1. Tasks B–D, 301–306 merged; Merlin built.
 2. Run the S10 renderer unit tests (M3) and the XCUITest input suite (M2).
 3. Manually exercise drag/drop, paste, @-mention, skills picker, BTW, scroll-lock.
 4. Screenshot the chat with every entry kind present; judge visually.

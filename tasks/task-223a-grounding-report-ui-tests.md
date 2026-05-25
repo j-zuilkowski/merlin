@@ -1,4 +1,4 @@
-# Phase 223a - Grounding Report UI Tests
+# Task 223a - Grounding Report UI Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 `AgenticEngine` emits `AgentEvent.groundingReport`, but `ChatViewModel` currently ignores it.
 
-New surface introduced in phase 223b:
+New surface introduced in task 223b:
   - `ChatEntry.groundingReport`
   - `ChatViewModel.lastGroundingReport`
   - Conversation renderer displays compact grounding metadata for assistant turns with RAG context.
@@ -43,6 +43,6 @@ Expected: **BUILD FAILED** because `ChatEntry.groundingReport` and UI handling d
 
 ```bash
 git add MerlinTests/Unit/GroundingReportUITests.swift
-git commit -m "Phase 223a - GroundingReportUITests (failing)"
+git commit -m "Task 223a - GroundingReportUITests (failing)"
 ```
 

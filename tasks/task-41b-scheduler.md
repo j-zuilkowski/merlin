@@ -1,10 +1,10 @@
-# Phase 41b — SchedulerEngine Implementation
+# Task 41b — SchedulerEngine Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 41a complete: failing SchedulerEngineTests in place.
+Task 41a complete: failing SchedulerEngineTests in place.
 
 ---
 
@@ -360,5 +360,5 @@ git add Merlin/Scheduler/ScheduledTask.swift \
         Merlin/Scheduler/SchedulerEngine.swift \
         Merlin/Views/SchedulerView.swift \
         project.yml
-git commit -m "Phase 41b — SchedulerEngine + ScheduledTask + SchedulerView"
+git commit -m "Task 41b — SchedulerEngine + ScheduledTask + SchedulerView"
 ```

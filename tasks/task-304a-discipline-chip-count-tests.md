@@ -1,4 +1,4 @@
-# Phase 304a — Discipline Chip Count Tests (failing)
+# Task 304a — Discipline Chip Count Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
@@ -8,7 +8,7 @@ Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 caps its number at 3 even when more findings are queued. The chip should show the TRUE
 total; the panel may still list only the top 3.
 
-New surface in phase 304b:
+New surface in task 304b:
   - `DisciplineEngine.pendingAttentionCount()` — the full queued-finding count.
   - `PendingAttentionViewModel.totalCount: Int` — published; the true total, set by
     `refresh` alongside the (still top-3) `findings`.
@@ -23,7 +23,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 304a — failing test: the discipline chip count must reflect the true number of
+/// Task 304a — failing test: the discipline chip count must reflect the true number of
 /// queued findings, not the capped top-3 panel subset.
 final class PendingAttentionChipCountTests: XCTestCase {
 
@@ -46,7 +46,7 @@ final class PendingAttentionChipCountTests: XCTestCase {
     }
 
     private func makeFinding(_ n: Int) -> Finding {
-        Finding(id: UUID(), category: .phaseDrift, severity: .nudge,
+        Finding(id: UUID(), category: .taskDrift, severity: .nudge,
                 summary: "Finding-\(n)", detail: "d", suggestedAction: "fix",
                 createdAt: Date(), lastSeenAt: Date())
     }
@@ -84,5 +84,5 @@ Expected: BUILD FAILED — `PendingAttentionViewModel.totalCount` does not exist
 ## Commit
 ```
 git add MerlinTests/Unit/PendingAttentionChipCountTests.swift tasks/task-304a-discipline-chip-count-tests.md
-git commit -m "Phase 304a — Discipline chip count tests (failing)"
+git commit -m "Task 304a — Discipline chip count tests (failing)"
 ```

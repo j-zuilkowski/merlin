@@ -1,10 +1,10 @@
-# Phase 247b — UserPromptSubmit Discipline Check
+# Task 247b — UserPromptSubmit Discipline Check
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 247a complete: failing tests for UserPromptDisciplineChecker and UserPromptCheckResult.
+Task 247a complete: failing tests for UserPromptDisciplineChecker and UserPromptCheckResult.
 
 ---
 
@@ -20,11 +20,11 @@ enum UserPromptCheckResult: Sendable {
     /// Prompt does not appear to be a new feature request, or a matching task file exists.
     case ok
     /// Prompt looks like a feature request but no NNa task file was found.
-    case missingPhaseFile(suggestion: String)
+    case missingTaskFile(suggestion: String)
 }
 
 /// Checks incoming user prompts for unscoped feature requests.
-/// Returns `.missingPhaseFile` when the prompt describes a new feature that has no
+/// Returns `.missingTaskFile` when the prompt describes a new feature that has no
 /// corresponding NNa task file in `tasks/`.
 actor UserPromptDisciplineChecker {
 
@@ -61,12 +61,12 @@ actor UserPromptDisciplineChecker {
         let candidates = extractCandidateNouns(from: prompt)
 
         // Check whether any NNa task file mentions a candidate noun
-        if candidates.isEmpty || candidatesHaveMatchingPhase(candidates, projectPath: projectPath) {
+        if candidates.isEmpty || candidatesHaveMatchingTask(candidates, projectPath: projectPath) {
             return .ok
         }
 
-        let suggestion = "Write a phase NNa file before implementing: /project:task"
-        return .missingPhaseFile(suggestion: suggestion)
+        let suggestion = "Write a task NNa file before implementing: /project:task"
+        return .missingTaskFile(suggestion: suggestion)
     }
 
     // MARK: - Helpers
@@ -80,10 +80,10 @@ actor UserPromptDisciplineChecker {
         }
     }
 
-    private func candidatesHaveMatchingPhase(
+    private func candidatesHaveMatchingTask(
         _ candidates: [String], projectPath: String
     ) -> Bool {
-        let tasksDir = URL(fileURLWithPath: projectPath).appendingPathComponent("phases")
+        let tasksDir = URL(fileURLWithPath: projectPath).appendingPathComponent(" tasks")
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: tasksDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
         ) else { return false }
@@ -128,12 +128,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 247a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 247a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-247b-user-prompt-discipline-check.md \
     Merlin/Discipline/UserPromptDisciplineChecker.swift
-git commit -m "Phase 247b — UserPromptSubmit discipline check for unscoped feature requests"
+git commit -m "Task 247b — UserPromptSubmit discipline check for unscoped feature requests"
 ```

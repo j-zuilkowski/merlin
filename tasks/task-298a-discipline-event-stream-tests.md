@@ -1,14 +1,14 @@
-# Phase 298a — Discipline Event Stream Tests (failing)
+# Task 298a — Discipline Event Stream Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Unit C2 of the wiring plan. Phase 297 complete (the `merlin-discipline` CLI exists).
+Unit C2 of the wiring plan. Task 297 complete (the `merlin-discipline` CLI exists).
 
 The CLI runs gates in a git-hook subprocess — outside the app. To keep it observable,
 the CLI writes a structured JSONL event stream to `<project>/.merlin/discipline-events.jsonl`,
 and the app watches that file and surfaces each gate run.
 
-New surface in phase 298b:
+New surface in task 298b:
   - `DisciplineEvent` — `Codable, Sendable` event (`timestamp`, `subcommand`, `step`,
     `detail`, `passed: Bool?`).
   - `DisciplineEventLog` (actor) — `record(_:)`, `events(since:)`, reading/appending
@@ -27,7 +27,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 298a — failing tests for the discipline event stream.
+/// Task 298a — failing tests for the discipline event stream.
 final class DisciplineEventStreamTests: XCTestCase {
 
     private func makeTmpProject() -> URL {
@@ -74,5 +74,5 @@ Expected: BUILD FAILED — `DisciplineEvent`, `DisciplineEventLog` do not exist.
 ## Commit
 ```
 git add MerlinTests/Unit/DisciplineEventStreamTests.swift tasks/task-298a-discipline-event-stream-tests.md
-git commit -m "Phase 298a — Discipline event stream tests (failing)"
+git commit -m "Task 298a — Discipline event stream tests (failing)"
 ```

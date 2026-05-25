@@ -1,10 +1,10 @@
-# Phase 137b — AgenticEngine Memory Plugin Wiring
+# Task 137b — AgenticEngine Memory Plugin Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 137a complete: failing tests for AgenticEngine memory plugin wiring in place.
+Task 137a complete: failing tests for AgenticEngine memory plugin wiring in place.
 
 ---
 
@@ -168,5 +168,5 @@ Expected: BUILD SUCCEEDED — all 137a tests pass, zero warnings.
 ## Commit
 ```bash
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 137b — AgenticEngine: local memory plugin for writes + merged RAG search"
+git commit -m "Task 137b — AgenticEngine: local memory plugin for writes + merged RAG search"
 ```

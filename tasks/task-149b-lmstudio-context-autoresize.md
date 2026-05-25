@@ -1,10 +1,10 @@
-# Phase 149b — LM Studio Context Auto-Resize
+# Task 149b — LM Studio Context Auto-Resize
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 149a complete: failing tests in place.
+Task 149a complete: failing tests in place.
 
 ## New/modified files
 
@@ -77,5 +77,5 @@ git add Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift \
         Merlin/Engine/CriticEngine.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 149b — LM Studio context auto-resize"
+git commit -m "Task 149b — LM Studio context auto-resize"
 ```

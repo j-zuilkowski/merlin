@@ -1,10 +1,10 @@
-# Phase 86 — ToolbarActionStore: Wire Into AppState + ChatView Toolbar
+# Task 86 — ToolbarActionStore: Wire Into AppState + ChatView Toolbar
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 85 complete: ThreadAutomationEngine wired.
+Task 85 complete: ThreadAutomationEngine wired.
 
 `ToolbarAction` and `ToolbarActionStore` exist but are not used. Wire them: persist a user's
 custom toolbar actions to `~/.merlin/toolbar-actions.json`, load them in `AppState`, and
@@ -145,5 +145,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift \
         Merlin/Toolbar/ToolbarActionStore.swift \
         Merlin/Views/ChatView.swift
-git commit -m "Phase 86 — ToolbarActionStore wired; custom action buttons rendered above chat input"
+git commit -m "Task 86 — ToolbarActionStore wired; custom action buttons rendered above chat input"
 ```

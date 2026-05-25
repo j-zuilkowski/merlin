@@ -1,12 +1,12 @@
-# Phase 272b — Discipline App Integration Wiring
+# Task 272b — Discipline App Integration Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 272a complete: failing tests for the discipline wiring.
+Task 272a complete: failing tests for the discipline wiring.
 
-This phase wires the v2.2 discipline subsystem into the running app. Before this phase
+This task wires the v2.2 discipline subsystem into the running app. Before this task
 the subsystem ships but never executes. After it: `AppState` builds a `DisciplineEngine`
 and a `PendingAttentionViewModel` at init, installs seed adapters, runs the SessionStart
 hook, scans after every turn, and `ChatView` shows the pending-attention chip.
@@ -201,7 +201,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 272a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 272a tests pass. No prior task regresses.
 
 **Manual confirmation (required, in addition to the automated tests):** build the app,
 launch it (`open ~/Documents/localProject/merlin/build/Debug/Merlin.app`), open a
@@ -215,5 +215,5 @@ panel.
 git add tasks/task-272b-discipline-wiring.md \
     Merlin/App/AppState.swift \
     Merlin/Views/ChatView.swift
-git commit -m "Phase 272b — Discipline app integration wiring"
+git commit -m "Task 272b — Discipline app integration wiring"
 ```

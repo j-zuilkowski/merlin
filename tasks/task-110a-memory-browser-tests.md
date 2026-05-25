@@ -1,12 +1,12 @@
-# Phase 110a — Memory Browser Tests (failing)
+# Task 110a — Memory Browser Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 109b complete: AppSettings.projectPath wired into engine.
+Task 109b complete: AppSettings.projectPath wired into engine.
 
-New surface introduced in phase 110b:
+New surface introduced in task 110b:
   - `XcalibreClientProtocol.searchMemory(query:projectPath:limit:) async -> [RAGChunk]` — convenience
     wrapping `searchChunks(source: "memory", ...)` for explicit memory-only searches
   - `XcalibreClient.searchMemory(query:projectPath:limit:)` — concrete implementation
@@ -143,5 +143,5 @@ Expected: BUILD FAILED — `XcalibreClient.searchMemory(query:projectPath:limit:
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/MemoryBrowserTests.swift
-git commit -m "Phase 110a — MemoryBrowserTests (failing)"
+git commit -m "Task 110a — MemoryBrowserTests (failing)"
 ```

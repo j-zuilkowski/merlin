@@ -1,4 +1,4 @@
-# Phase 25a — RAG Integration Tests
+# Task 25a — RAG Integration Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -578,5 +578,5 @@ cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/XcalibreClientTests.swift \
         MerlinTests/Unit/RAGToolsTests.swift \
         MerlinTests/Unit/RAGEngineTests.swift
-git commit -m "Phase 25a — XcalibreClientTests + RAGToolsTests + RAGEngineTests (failing)"
+git commit -m "Task 25a — XcalibreClientTests + RAGToolsTests + RAGEngineTests (failing)"
 ```

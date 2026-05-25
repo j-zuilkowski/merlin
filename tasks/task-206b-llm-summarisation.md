@@ -1,10 +1,10 @@
-# Phase 206b — LLM Summarisation Compaction
+# Task 206b — LLM Summarisation Compaction
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 206a complete: failing LLMSummarisationCompactionTests.
+Task 206a complete: failing LLMSummarisationCompactionTests.
 
 See also: FEATURES.md § "Prompt Compression — LLM summarisation (recursive summarisation)"
 Reference: https://machinelearningmastery.com/implementing-prompt-compression-to-reduce-agentic-loop-costs/
@@ -170,11 +170,11 @@ private func summarise(_ exchangeText: String, using provider: any LLMProvider) 
 
 ### 3. Replace `compactIfNeededMidLoop()` with the async LLM-summarisation call
 
-In `runLoop()`, locate the two lines added in phase 205b:
+In `runLoop()`, locate the two lines added in task 205b:
 
 ```swift
 // Prompt compression: compact if tool results have pushed tokens past the mid-loop threshold.
-// Phase 206 will replace this with an async LLM-summarisation call.
+// Task 206 will replace this with an async LLM-summarisation call.
 context.compactIfNeededMidLoop()
 emitCompactionNoteIfNeeded()
 ```
@@ -182,7 +182,7 @@ emitCompactionNoteIfNeeded()
 Replace them with:
 
 ```swift
-// Prompt compression: mid-loop LLM summarisation (Phase 206b).
+// Prompt compression: mid-loop LLM summarisation (Task 206b).
 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
 _ = await context.compactWithSummaryIfNeeded(provider: provider)
 emitCompactionNoteIfNeeded()
@@ -214,5 +214,5 @@ Manual verification:
 ```bash
 git add Merlin/Engine/ContextManager.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 206b — LLM summarisation: mid-loop compaction replaces static sentinel with provider digest"
+git commit -m "Task 206b — LLM summarisation: mid-loop compaction replaces static sentinel with provider digest"
 ```

@@ -1,9 +1,9 @@
-# Phase 229b - CBR Cover Support
+# Task 229b - CBR Cover Support
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 229a complete: failing CBR cover tests exist.
+Task 229a complete: failing CBR cover tests exist.
 
 ---
 
@@ -36,6 +36,6 @@ Expected: all CBR cover tests pass and clippy reports no errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/cover/cbz.rs processing/tests/cbr_cover_tests.rs
-git commit -m "Phase 229b - CBR cover extraction via unrar runner"
+git commit -m "Task 229b - CBR cover extraction via unrar runner"
 ```
 

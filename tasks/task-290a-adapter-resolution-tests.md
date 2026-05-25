@@ -1,4 +1,4 @@
-# Phase 290a — Adapter Resolution Tests (failing)
+# Task 290a — Adapter Resolution Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -10,7 +10,7 @@ is built with `ProjectAdapter.makeStub(language:"swift")` (`AppState.swift:120`)
 `AdapterRegistry` loaded at launch is never read — so the engine never uses a project's real
 adapter. This is unit A1 of the wiring plan.
 
-New surface introduced in phase 290b:
+New surface introduced in task 290b:
   - `DisciplineEngine.setAdapter(_:)` — replace the engine's adapter at runtime
   - `DisciplineEngine.currentAdapter()` — read the engine's current adapter
   - `DisciplineEngine.resolveProjectAdapter(projectPath:registry:)` — static; loads
@@ -31,4 +31,4 @@ Expected: BUILD FAILED — missing `setAdapter`, `currentAdapter`, `resolveProje
 
 ## Commit
 git add MerlinTests/Unit/DisciplineAdapterResolutionTests.swift tasks/task-290a-adapter-resolution-tests.md
-git commit -m "Phase 290a — Adapter resolution tests (failing)"
+git commit -m "Task 290a — Adapter resolution tests (failing)"

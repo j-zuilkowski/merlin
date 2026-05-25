@@ -1,12 +1,12 @@
-# Phase 47a — AI-Generated Memories Tests
+# Task 47a — AI-Generated Memories Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 46b complete: AppSettings + Settings Window in place.
+Task 46b complete: AppSettings + Settings Window in place.
 
-New surface introduced in phase 47b:
+New surface introduced in task 47b:
   - `MemoryEngine` — actor; drives AI memory generation from session transcripts
   - `MemoryEngine.startIdleTimer(timeout:)` — begins countdown; fires `generateMemories()` on expiry
   - `MemoryEngine.resetIdleTimer()` — resets on each user turn
@@ -176,5 +176,5 @@ Expected: BUILD FAILED — `MemoryEngine`, `MemoryEntry` not yet defined.
 ## Commit
 ```bash
 git add MerlinTests/Unit/MemoryEngineTests.swift
-git commit -m "Phase 47a — MemoryEngineTests (failing)"
+git commit -m "Task 47a — MemoryEngineTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 96 — Call AgentRegistry.registerBuiltins() at Launch
+# Task 96 — Call AgentRegistry.registerBuiltins() at Launch
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 95 complete: LiveSession reads defaultPermissionMode from AppSettings.
+Task 95 complete: LiveSession reads defaultPermissionMode from AppSettings.
 
 `AgentRegistry.shared.registerBuiltins()` exists but is never called. At runtime,
 `AgentRegistry.shared.definition(named:)` always returns nil because the registry starts
@@ -55,5 +55,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift
-git commit -m "Phase 96 — AgentRegistry: registerBuiltins() + load user agents at launch"
+git commit -m "Task 96 — AgentRegistry: registerBuiltins() + load user agents at launch"
 ```

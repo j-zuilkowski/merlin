@@ -1,12 +1,12 @@
-# Phase diag-05a — Context, Planner & Critic Telemetry Tests (failing)
+# Task diag-05a — Context, Planner & Critic Telemetry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-04b complete: memory & RAG telemetry instrumented.
+Task diag-04b complete: memory & RAG telemetry instrumented.
 
-New surface introduced in phase diag-05b:
+New surface introduced in task diag-05b:
   - `ContextManager.compact(force:)` emits:
       `context.compaction`      — message_count_before, message_count_after, tokens_before, tokens_after, forced
   - `PlannerEngine.classify(message:domain:)` emits:
@@ -382,5 +382,5 @@ Expected: BUILD FAILED — `context.compaction`, `planner.classify`, `critic.eva
 git add MerlinTests/Unit/ContextCompactionTelemetryTests.swift \
         MerlinTests/Unit/PlannerTelemetryTests.swift \
         MerlinTests/Unit/CriticTelemetryTests.swift
-git commit -m "Phase diag-05a — Context, planner & critic telemetry tests (failing)"
+git commit -m "Task diag-05a — Context, planner & critic telemetry tests (failing)"
 ```

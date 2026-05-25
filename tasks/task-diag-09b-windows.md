@@ -1,9 +1,9 @@
-# Phase diag-09b — Floating & Help Windows Implementation
+# Task diag-09b — Floating & Help Windows Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
-Phase diag-09a complete.
+Task diag-09a complete.
 
 Three files implement the window management subsystem:
 
@@ -562,5 +562,5 @@ git add Merlin/Windows/FloatingWindowManager.swift \
         Merlin/Windows/HelpWindowManager.swift \
         Merlin/Windows/HelpWindowView.swift \
         tasks/task-diag-09b-windows.md
-git commit -m "Phase diag-09b — FloatingWindowManager + HelpWindowManager + HelpWindowView"
+git commit -m "Task diag-09b — FloatingWindowManager + HelpWindowManager + HelpWindowView"
 ```

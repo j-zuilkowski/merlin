@@ -1,12 +1,12 @@
-# Phase 265b — v2.2.0 Release
+# Task 265b — v2.2.0 Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 265a complete: failing tests asserting v2.2.0 version and RELEASE-v2.2.0.md.
+Task 265a complete: failing tests asserting v2.2.0 version and RELEASE-v2.2.0.md.
 
-This phase bumps the project version to 2.2.0, writes release notes, regenerates the
+This task bumps the project version to 2.2.0, writes release notes, regenerates the
 Xcode project, tags, and publishes.
 
 ---
@@ -50,7 +50,7 @@ construction-discipline layer directly into Merlin.
 - `.merlin/project.toml` + `ProjectConfigLoader` — per-project adapter selection and
   decaying-baseline configuration.
 
-### Phase Validation (243)
+### Task Validation (243)
 
 - `TaskScanner` — reads `tasks/` and cross-checks declared surfaces against the current
   codebase. Four-colour drift report: green / yellow / red / orange.
@@ -177,7 +177,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 265a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 265a tests pass. No prior task regresses.
 
 ---
 
@@ -197,7 +197,7 @@ xcodebuild -scheme MerlinTests test \
 git add tasks/task-265b-v2-2-release.md \
     project.yml \
     RELEASE-v2.2.0.md
-git commit -m "Phase 265b — Bump version to 2.2.0 (build 17)"
+git commit -m "Task 265b — Bump version to 2.2.0 (build 17)"
 ```
 
 ## Tag and Publish

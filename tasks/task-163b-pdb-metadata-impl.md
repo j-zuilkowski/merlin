@@ -1,9 +1,9 @@
-# Phase 163b — PDB metadata completeness implementation
+# Task 163b — PDB metadata completeness implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 163a complete: PDB eReader tests failing.
+Task 163a complete: PDB eReader tests failing.
 
 ## Edit: processing/src/metadata/pdb.rs
 
@@ -145,5 +145,5 @@ Expected: all PDB tests pass, full test suite passes, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/pdb.rs
-git commit -m "Phase 163b — PDB eReader metadata: creator-ID detection + record-0 title/author/publisher/ISBN"
+git commit -m "Task 163b — PDB eReader metadata: creator-ID detection + record-0 title/author/publisher/ISBN"
 ```

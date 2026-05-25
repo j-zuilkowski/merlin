@@ -1,12 +1,12 @@
-# Phase 31a — Permission Mode Tests
+# Task 31a — Permission Mode Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 30b complete: SessionManager, LiveSession, WorkspaceView, SessionSidebar.
+Task 30b complete: SessionManager, LiveSession, WorkspaceView, SessionSidebar.
 
-New surface introduced in phase 31b:
+New surface introduced in task 31b:
   - `PermissionMode` enum: `.ask`, `.autoAccept`, `.plan`
   - `PermissionMode.label: String` — short display name ("ask" / "auto" / "plan")
   - `PermissionMode.color: Color` — badge tint
@@ -196,5 +196,5 @@ Expected: `BUILD FAILED` with errors referencing `PermissionMode`, `PermissionMo
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PermissionModeTests.swift
-git commit -m "Phase 31a — PermissionModeTests (failing)"
+git commit -m "Task 31a — PermissionModeTests (failing)"
 ```

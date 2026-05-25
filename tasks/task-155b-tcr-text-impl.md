@@ -1,9 +1,9 @@
-# Phase 155b — TCR text extraction implementation
+# Task 155b — TCR text extraction implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 155a complete: TCR tests in place and failing.
+Task 155a complete: TCR tests in place and failing.
 
 ## Edit: processing/src/text/tcr.rs
 
@@ -69,5 +69,5 @@ Expected: all 3 TCR tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/text/tcr.rs
-git commit -m "Phase 155b — TCR text extraction: header-driven table decode"
+git commit -m "Task 155b — TCR text extraction: header-driven table decode"
 ```

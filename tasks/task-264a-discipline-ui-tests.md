@@ -1,15 +1,15 @@
-# Phase 264a — Discipline UI Tests
+# Task 264a — Discipline UI Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 263b complete: project:adopt SKILL.md installed.
+Task 263b complete: project:adopt SKILL.md installed.
 
 Introduces the pending-attention chip in the chat view and the expandable panel that shows
 the top-3 findings with dismiss affordances.
 
-New surface introduced in phase 264b:
+New surface introduced in task 264b:
   - `PendingAttentionChipView` SwiftUI view in `Merlin/Views/PendingAttentionChipView.swift`.
   - `PendingAttentionPanelView` SwiftUI view in `Merlin/Views/PendingAttentionPanelView.swift`.
   - `PendingAttentionViewModel` `@MainActor ObservableObject` in
@@ -52,7 +52,7 @@ final class PendingAttentionViewModelTests: XCTestCase {
 
     private func makeFinding(severity: Severity = .nudge) -> Finding {
         Finding(
-            id: UUID(), category: .phaseDrift, severity: severity,
+            id: UUID(), category: .taskDrift, severity: severity,
             summary: "Test finding", detail: "Detail",
             suggestedAction: "Fix it", createdAt: Date(), lastSeenAt: Date()
         )
@@ -134,5 +134,5 @@ Expected: **BUILD FAILED** with errors naming `PendingAttentionViewModel`.
 ```bash
 git add tasks/task-264a-discipline-ui-tests.md \
     MerlinTests/Unit/PendingAttentionViewModelTests.swift
-git commit -m "Phase 264a — DisciplineUITests (failing)"
+git commit -m "Task 264a — DisciplineUITests (failing)"
 ```

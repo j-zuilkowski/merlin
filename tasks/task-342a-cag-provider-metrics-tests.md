@@ -1,20 +1,20 @@
-# Phase 342a — CAG Provider And Metrics Tests
+# Task 342a — CAG Provider And Metrics Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 341b complete: CAG request policy and deterministic tool ordering are
+Task 341b complete: CAG request policy and deterministic tool ordering are
 implemented.
 
 Recommended execution model: GPT-5.3-Codex.
 
-This phase covers explicit provider support and metrics. Anthropic is the only
+This task covers explicit provider support and metrics. Anthropic is the only
 provider that needs wire-format changes; OpenAI-compatible, DeepSeek, and local
 providers rely on stable prefix bytes and should not receive synthetic
 provider-specific cache fields.
 
-New surface introduced in phase 342b:
+New surface introduced in task 342b:
   - `Merlin/CAG/CacheMetrics.swift`
   - `CAGCacheUsage`
   - `CAGCacheMetricsStore`
@@ -114,5 +114,5 @@ git add MerlinTests/Unit/AnthropicProviderTests.swift \
         MerlinTests/Unit/CAGCacheMetricsTests.swift \
         MerlinTests/Unit/ProviderTests.swift \
         tasks/task-342a-cag-provider-metrics-tests.md
-git commit -m "Phase 342a — CAG provider and metrics tests (failing)"
+git commit -m "Task 342a — CAG provider and metrics tests (failing)"
 ```

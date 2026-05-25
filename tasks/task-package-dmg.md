@@ -1,11 +1,11 @@
-# Phase — Package Merlin as DMG
+# Task — Package Merlin as DMG
 
 ## Context
 macOS non-sandboxed app. Bundle ID: `com.merlin.app`. Product name: `Merlin`.
-No third-party packages. No tests. No sequence number — run this phase on demand
+No third-party packages. No tests. No sequence number — run this task on demand
 whenever a distributable build is needed.
 
-This phase produces a drag-to-install `.dmg` at:
+This task produces a drag-to-install `.dmg` at:
 ```
 ~/Documents/localProject/merlin/dist/Merlin-<version>.dmg
 ```

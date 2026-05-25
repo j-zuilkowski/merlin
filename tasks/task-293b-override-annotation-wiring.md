@@ -1,8 +1,8 @@
-# Phase 293b — Override-Annotation Wiring (implementation)
+# Task 293b — Override-Annotation Wiring (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 293a complete: failing tests in `OverrideAnnotationWiringTests`.
+Task 293a complete: failing tests in `OverrideAnnotationWiringTests`.
 Unit A4 of the discipline-wiring plan.
 
 ## Edit: Merlin/Discipline/WhyCommentScanner.swift
@@ -32,7 +32,7 @@ Expected: BUILD SUCCEEDED, all tests pass.
 ## Commit
 git add Merlin/Discipline/WhyCommentScanner.swift Merlin/Discipline/DisciplineEngine.swift \
   MerlinTests/Unit/WhyCommentScannerTests.swift tasks/task-293b-override-annotation-wiring.md
-git commit -m "Phase 293b — Override-annotation wiring"
+git commit -m "Task 293b — Override-annotation wiring"
 
 ## Fixes
 - `WHYCommentGate.check` now excludes triggers with a non-nil `overrideRationale` from

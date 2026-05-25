@@ -1,10 +1,10 @@
-# Phase 53 — Floating Pop-out Window + Voice Dictation
+# Task 53 — Floating Pop-out Window + Voice Dictation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 52 complete: Toolbar Actions + Notifications in place.
+Task 52 complete: Toolbar Actions + Notifications in place.
 
 Two features:
 1. **Floating pop-out window** — detach any session thread into a standalone floating window;
@@ -352,5 +352,5 @@ Expected: BUILD SUCCEEDED, all VoiceDictationTests pass.
 git add MerlinTests/Unit/VoiceDictationTests.swift \
         Merlin/Voice/VoiceDictationEngine.swift \
         Merlin/Windows/FloatingWindowManager.swift
-git commit -m "Phase 53 — Floating pop-out window + voice dictation (Ctrl+M)"
+git commit -m "Task 53 — Floating pop-out window + voice dictation (Ctrl+M)"
 ```

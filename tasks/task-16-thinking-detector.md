@@ -1,11 +1,11 @@
-# Phase 16 — ThinkingModeDetector
+# Task 16 — ThinkingModeDetector
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: ThinkingConfig type exists in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: ThinkingConfig type exists in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -89,5 +89,5 @@ Expected: `Test Suite 'ThinkingModeDetectorTests' passed` with 6 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ThinkingModeDetector.swift MerlinTests/Unit/ThinkingModeDetectorTests.swift
-git commit -m "Phase 16 — ThinkingModeDetector + tests (6 tests passing)"
+git commit -m "Task 16 — ThinkingModeDetector + tests (6 tests passing)"
 ```

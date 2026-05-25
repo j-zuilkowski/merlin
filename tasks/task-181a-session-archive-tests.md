@@ -1,12 +1,12 @@
-# Phase 181a — SessionArchiveTests (failing)
+# Task 181a — SessionArchiveTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 180c complete: PermissionMode planner bypass fix in place.
+Task 180c complete: PermissionMode planner bypass fix in place.
 
-New surface introduced in phase 181b:
+New surface introduced in task 181b:
   - `Session.archived: Bool` — new field, default false, Codable-compatible
   - `SessionStore.init(projectPath: String)` — project-scoped store directory
   - `SessionStore.archive(_ id: UUID) throws` — sets archived flag and persists
@@ -268,5 +268,5 @@ Expected: BUILD FAILED — `Session.archived`, `SessionStore.scopedDirectoryName
 cd ~/Documents/localProject/merlin
 git add tasks/task-181a-session-archive-tests.md \
         MerlinTests/Unit/SessionArchiveTests.swift
-git commit -m "Phase 181a — SessionArchiveTests (failing)"
+git commit -m "Task 181a — SessionArchiveTests (failing)"
 ```

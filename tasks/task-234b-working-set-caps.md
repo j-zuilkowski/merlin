@@ -1,13 +1,13 @@
-# Phase 234b — Working-Set Caps
+# Task 234b — Working-Set Caps
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 234a complete: failing tests for the WorkingSetBudget allocator, per-component truncation,
+Task 234a complete: failing tests for the WorkingSetBudget allocator, per-component truncation,
 post-tool-burst compaction, and end-to-end pre-flight integration.
 
-After this phase, the four context components (system prompt, RAG injection, recent turns, tool
+After this task, the four context components (system prompt, RAG injection, recent turns, tool
 burst) each carry their own ceiling derived from the active `ProviderBudget`. Compaction fires
 when *a component* runs hot, not only when the whole context crosses a global threshold. This
 is the change that makes "seamless regardless of provider" structurally true rather than
@@ -76,7 +76,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 234a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 234a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -85,9 +85,9 @@ git add tasks/task-234b-working-set-caps.md \
     Merlin/Engine/WorkingSetBudget.swift \
     Merlin/Engine/ContextManager.swift \
     Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 234b — Working-set caps (per-component budget enforcement)"
+git commit -m "Task 234b — Working-set caps (per-component budget enforcement)"
 ```
 
 ## PASTE-LIST update
 
-Append phase 234a/234b under the "Budget-Aware Execution (v2.1.0)" section.
+Append task 234a/234b under the "Budget-Aware Execution (v2.1.0)" section.

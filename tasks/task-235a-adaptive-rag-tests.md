@@ -1,10 +1,10 @@
-# Phase 235a — Adaptive RAG Tests
+# Task 235a — Adaptive RAG Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 234b complete: working-set caps live; RAG has a budget-derived cap but RAG retrieval still
+Task 234b complete: working-set caps live; RAG has a budget-derived cap but RAG retrieval still
 uses the static `ragChunkLimit` setting.
 
 Replaces the global `ragChunkLimit` for chunk count with a value derived from the current
@@ -12,7 +12,7 @@ provider's `WorkingSetBudget.ragInjectionCap`. A 200 K-context provider gets ric
 a 32 K-context provider gets minimal grounding; a 4 K toy model gets near-zero grounding without
 the user touching settings. Setting becomes an upper bound, not the active value.
 
-New surface introduced in phase 235b:
+New surface introduced in task 235b:
   - `RAGSelector.selectChunks(candidates: [RAGChunk], budget: Int, userCeiling: Int) -> [RAGChunk]`
     in `Merlin/Engine/RAGSelector.swift`. Pure function. Greedily includes chunks in retrieval
     order until adding the next one would exceed `budget` (tokens, via `TokenEstimator.estimateText`
@@ -67,5 +67,5 @@ git add tasks/task-235a-adaptive-rag-tests.md \
     MerlinTests/Unit/RAGSelectorTests.swift \
     MerlinTests/Unit/TokenEstimatorTextTests.swift \
     MerlinTests/Unit/AdaptiveRAGIntegrationTests.swift
-git commit -m "Phase 235a — AdaptiveRAGTests (failing)"
+git commit -m "Task 235a — AdaptiveRAGTests (failing)"
 ```

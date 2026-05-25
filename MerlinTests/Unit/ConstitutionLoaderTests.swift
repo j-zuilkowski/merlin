@@ -8,7 +8,7 @@ final class ConstitutionLoaderTests: XCTestCase {
     override func setUp() {
         super.setUp()
         tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("merlin-claudemd-\(UUID().uuidString)")
+            .appendingPathComponent("merlin-constitution-\(UUID().uuidString)")
         try! FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
     }
 

@@ -1,10 +1,10 @@
-# Phase 28 — macOS Menu
+# Task 28 — macOS Menu
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 27 complete: ProviderRegistry.knownModels exists; model picker works.
+Task 27 complete: ProviderRegistry.knownModels exists; model picker works.
 
 Problem: The macOS menu bar has no app-specific items — no way to start a new session,
 stop the running agent, switch providers, or open settings from the keyboard.
@@ -221,5 +221,5 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/App/MerlinCommands.swift \
         Merlin/Views/ChatView.swift \
         Merlin/Views/ContentView.swift
-git commit -m "Phase 28 — macOS menu: new session, stop, provider switching, settings"
+git commit -m "Task 28 — macOS menu: new session, stop, provider switching, settings"
 ```

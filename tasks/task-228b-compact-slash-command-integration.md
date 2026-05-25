@@ -1,10 +1,10 @@
-# Phase 228b - Compact Slash Command Integration
+# Task 228b - Compact Slash Command Integration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 228a complete: failing compact slash command integration tests exist.
+Task 228a complete: failing compact slash command integration tests exist.
 
 ---
 
@@ -44,6 +44,6 @@ Expected: **BUILD SUCCEEDED**. `CompactSlashCommandTests` pass without placehold
 
 ```bash
 git add Merlin/Views/SlashCommandHandler.swift Merlin/Views/ChatView.swift MerlinTests/Unit/CompactSlashCommandTests.swift
-git commit -m "Phase 228b - compact slash command integration"
+git commit -m "Task 228b - compact slash command integration"
 ```
 

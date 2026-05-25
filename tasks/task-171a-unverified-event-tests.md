@@ -1,10 +1,10 @@
-# Phase 171a — AgenticEngineV5Tests: unverified event when critic skipped (failing — pre-existing)
+# Task 171a — AgenticEngineV5Tests: unverified event when critic skipped (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 170b complete: circuit breaker counter fix.
+Task 170b complete: circuit breaker counter fix.
 
 ## Problem
 
@@ -33,7 +33,7 @@ private func makeEngineWithCriticSpy(
 }
 ```
 
-Fix (phase 171b): only assign `criticOverride` when `reasonProviderAvailable == true`.
+Fix (task 171b): only assign `criticOverride` when `reasonProviderAvailable == true`.
 
 ## Existing test file
 
@@ -56,5 +56,5 @@ Expected: `testUnverifiedEventEmittedWhenCriticSkipped` reported as failed.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-171a-unverified-event-tests.md
-git commit -m "Phase 171a — AgenticEngineV5 unverified-event failure documented"
+git commit -m "Task 171a — AgenticEngineV5 unverified-event failure documented"
 ```

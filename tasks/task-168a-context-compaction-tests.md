@@ -1,10 +1,10 @@
-# Phase 168a — ContextCompaction Tests (failing)
+# Task 168a — ContextCompaction Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 167b complete: ProviderError + engine-level retry implemented.
+Task 167b complete: ProviderError + engine-level retry implemented.
 
 ## Root cause confirmed via telemetry (~/.merlin/telemetry.jsonl)
 
@@ -33,7 +33,7 @@ messages containing `reasoning_content` — which Flash does not accept.
 Both errors are resolved by the same fix: compact whole exchange groups instead of lone
 tool result messages.
 
-## New surface introduced in phase 168b
+## New surface introduced in task 168b
 
 - `ContextManager.compact()` — now removes complete (assistant + tool results) exchange
   pairs rather than only the tool result messages.
@@ -77,5 +77,5 @@ exist in old compact logic).
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ContextCompactionTests.swift \
         tasks/task-168a-context-compaction-tests.md
-git commit -m "Phase 168a — ContextCompactionTests (failing)"
+git commit -m "Task 168a — ContextCompactionTests (failing)"
 ```

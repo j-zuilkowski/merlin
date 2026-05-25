@@ -1,11 +1,11 @@
-# Phase 22 — AuthPopupView + FirstLaunchSetupView
+# Task 22 — AuthPopupView + FirstLaunchSetupView
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (phase 13b). KeychainManager exists (phase 05).
+Task 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (task 13b). KeychainManager exists (task 05).
 
 ---
 
@@ -118,5 +118,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/AuthPopupView.swift Merlin/Views/FirstLaunchSetupView.swift \
     MerlinE2ETests/VisualLayoutTests.swift
-git commit -m "Phase 22 — AuthPopupView + FirstLaunchSetupView"
+git commit -m "Task 22 — AuthPopupView + FirstLaunchSetupView"
 ```

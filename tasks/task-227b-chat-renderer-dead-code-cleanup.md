@@ -1,10 +1,10 @@
-# Phase 227b - Chat Renderer Dead-Code Cleanup
+# Task 227b - Chat Renderer Dead-Code Cleanup
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 227a complete: failing chat renderer cleanup tests exist.
+Task 227a complete: failing chat renderer cleanup tests exist.
 
 ---
 
@@ -35,6 +35,6 @@ Expected: **BUILD SUCCEEDED**. Chat renderer cleanup tests pass.
 
 ```bash
 git add Merlin/Views/ChatView.swift MerlinTests/Unit/ChatRendererCleanupTests.swift
-git commit -m "Phase 227b - remove dead chat renderer helpers"
+git commit -m "Task 227b - remove dead chat renderer helpers"
 ```
 

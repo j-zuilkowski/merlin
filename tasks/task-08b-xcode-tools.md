@@ -1,11 +1,11 @@
-# Phase 08b — XcodeTools Implementation
+# Task 08b — XcodeTools Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 08a complete: XcodeToolTests.swift written. ShellTool exists.
+Task 08a complete: XcodeToolTests.swift written. ShellTool exists.
 
 ---
 
@@ -82,5 +82,5 @@ Expected: all 4 tests pass (the xcresult fixture test may skip — that is accep
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/XcodeTools.swift
-git commit -m "Phase 08b — XcodeTools implementation"
+git commit -m "Task 08b — XcodeTools implementation"
 ```

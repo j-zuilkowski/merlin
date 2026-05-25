@@ -1,11 +1,11 @@
-# merlin-kicad-mcp — Phase Roadmap
+# merlin-kicad-mcp — Task Roadmap
 
 The decomposition of the `merlin-kicad-mcp` server into TDD tasks. Each numbered
-feature phase is a `NNa` (failing tests) + `NNb` (implementation) pair, except phase 00
-(scaffold) and phase 15 (release), which are single phases.
+feature task is a `NNa` (failing tests) + `NNb` (implementation) pair, except task 00
+(scaffold) and task 15 (release), which are single  tasks.
 
 Build order is dependency-ordered: protocol/transport → tool plumbing → KiCad access →
-the tool families → integration. Do not start a phase until the previous one is
+the tool families → integration. Do not start a task until the previous one is
 committed.
 
 The tool contract is pinned by Merlin's existing client — `spec.md` §2241–2263
@@ -14,9 +14,9 @@ and `Merlin/Electronics/KiCadToolDefinitions.swift` confirms the names.
 
 ---
 
-## Phases
+## Tasks
 
-| Phase | Name | Scope |
+| Task | Name | Scope |
 |---|---|---|
 | 00 | Scaffold | `Package.swift` (executable `merlin-kicad-mcp` + library `KiCadMCPKit` + test target), `.gitignore`, `README.md`, first commit into the Merlin repo. |
 | 01 | MCP server core | JSON-RPC 2.0 message types; newline-delimited stdio transport; MCP lifecycle — `initialize` handshake, `tools/list`, `tools/call`, `resources/list`, `resources/read`; structured error envelope. |
@@ -39,13 +39,13 @@ and `Merlin/Electronics/KiCadToolDefinitions.swift` confirms the names.
 
 ## Notes
 
-- **Phases 01–04 are the foundation** — protocol, plumbing, KiCad access. Nothing in
+- **Tasks 01–04 are the foundation** — protocol, plumbing, KiCad access. Nothing in
   07–14 can be verified end-to-end until 04 lands.
-- **Phases 07–14 each depend on 05 (schemas) and 06 (S-expr parser).**
-- **FreeRouting** (phase 10) needs an API key; the phase will read it from an env var /
+- **Tasks 07–14 each depend on 05 (schemas) and 06 (S-expr parser).**
+- **FreeRouting** (task 10) needs an API key; the task will read it from an env var /
   config, never hardcode it.
 - The tool families in 07–14 may each split into more than one `NN`/`NN+1` pair if a
-  phase's test surface grows too large — keep each phase to one coherent, verifiable
+  task's test surface grows too large — keep each task to one coherent, verifiable
   unit of work.
 - Estimated total: ~30 task files (00 + 01–14 paired + 15).
 
@@ -55,12 +55,12 @@ and `Merlin/Electronics/KiCadToolDefinitions.swift` confirms the names.
 
 The server was built in a single consolidated pass during the proving-suite run
 (commit `Build merlin-kicad-mcp server (S6)`), ahead of writing out the individual
-`NNa`/`NNb` task sheets for phases 02–15. What landed:
+`NNa`/`NNb` task sheets for  tasks 02–15. What landed:
 
-- **Phase 00–01 (foundation):** `Package.swift`, `KiCadMCPKit`, the executable.
+- **Task 00–01 (foundation):** `Package.swift`, `KiCadMCPKit`, the executable.
   `MCPServer` (JSON-RPC 2.0 core — `initialize`, `tools/list`, `tools/call`,
   `resources/list`, error codes) and `StdioTransport` (newline-delimited stdio pump).
-- **Phase 02 (registry/dispatch):** `MCPTool` + the registry inside `MCPServer`;
+- **Task 02 (registry/dispatch):** `MCPTool` + the registry inside `MCPServer`;
   `tools/call` routes to handlers, with tool-not-found / bad-argument errors.
 - **The full 23-tool `kicad_*` surface** (`KiCadTools`) — names/descriptions/schemas
   match Merlin's `KiCadToolDefinitions`. Handlers do real work via the installed
@@ -70,6 +70,6 @@ The server was built in a single consolidated pass during the proving-suite run
   result rather than a fabricated success.
 
 Not yet done — to be back-filled as proper `NNa`/`NNb` task sheets: the
-`merlin://domain/manifest` resource (phase 03), the canonical schemas + S-expression
-parser (phases 05–06), and deepening the design-pipeline handlers (07–14) from
+`merlin://domain/manifest` resource (task 03), the canonical schemas + S-expression
+parser ( tasks 05–06), and deepening the design-pipeline handlers (07–14) from
 structured-result placeholders to full KiCad work.

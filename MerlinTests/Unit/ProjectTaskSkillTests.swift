@@ -1,6 +1,6 @@
 import XCTest
 
-final class ProjectPhaseSkillTests: XCTestCase {
+final class ProjectTaskSkillTests: XCTestCase {
 
     override func setUpWithError() throws {
         try skipUnlessLiveEnvironment(

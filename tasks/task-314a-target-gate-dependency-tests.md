@@ -1,22 +1,22 @@
-# Phase 314a — TargetGateScanner Dependency-Following Tests (failing)
+# Task 314a — TargetGateScanner Dependency-Following Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 313b complete: the discipline gate auto-installs at app launch.
+Task 313b complete: the discipline gate auto-installs at app launch.
 
-When the gate went live (phase 313) it blocked a commit because `merlin-discipline` —
+When the gate went live (task 313) it blocked a commit because `merlin-discipline` —
 built only as an implicit `dependencies:` entry of the `Merlin` target — is not named in
 any `project.yml` scheme block, so `TargetGateScanner` flagged it as ungated. That is a
 **false positive**: a target built transitively as a dependency of a scheme-built target
-*is* compiled by that scheme. This phase pins the corrected behavior; 314b implements it.
+*is* compiled by that scheme. This task pins the corrected behavior; 314b implements it.
 
-**This is a runtime-failure phase.** The test compiles fine against the existing
+**This is a runtime-failure task.** The test compiles fine against the existing
 `TargetGateScanner.scan` API and FAILS at runtime because today's scanner does not
 follow `dependencies:`. It MUST be verified with `test`, not `build-for-testing`.
 
-TDD coverage: a new test method on the existing `TargetGateScannerTests` (phase 307a).
+TDD coverage: a new test method on the existing `TargetGateScannerTests` (task 307a).
 
 ---
 
@@ -69,5 +69,5 @@ other `TargetGateScannerTests` methods pass. Verified with `test` (not
 ## Commit
 ```
 git add MerlinTests/Unit/TargetGateScannerTests.swift tasks/task-314a-target-gate-dependency-tests.md
-git commit -m "Phase 314a — TargetGateScanner dependency-following tests (failing)"
+git commit -m "Task 314a — TargetGateScanner dependency-following tests (failing)"
 ```

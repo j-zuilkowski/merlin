@@ -1,22 +1,22 @@
-# Phase 311a — LivenessGate Tests (failing)
+# Task 311a — LivenessGate Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 310b complete: `DocReferenceGraph` fenced-block strengthening landed.
+Task 310b complete: `DocReferenceGraph` fenced-block strengthening landed.
 
 Liveness Discipline batch, unit 5 of 6. The four liveness scanners (307–310) only
 *report*. `LivenessGate` makes the deterministic part *prevent*: it runs
 `TargetGateScanner` and blocks when a target is built by no scheme at all — a
 zero-false-positive condition. Heuristic findings (stubs, unwired components) stay
-advisory and never block a commit. Phase 311b also wires a `pre-commit` git hook so the
+advisory and never block a commit. Task 311b also wires a `pre-commit` git hook so the
 gate runs on every commit.
 
 `LivenessGate` follows the existing `WHYCommentGate` / `ProseGate` pattern — an `actor`
 in `Merlin/Discipline/`, pure Foundation.
 
-New surface introduced in phase 311b:
+New surface introduced in task 311b:
   - `enum LivenessGateResult: Sendable, Equatable` — `.pass` / `.block([UngatedTargetFinding])`.
   - `actor LivenessGate` with
     `check(projectPath:gatingSchemes:) async -> LivenessGateResult`.
@@ -33,7 +33,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 311a — failing tests for LivenessGate.
+/// Task 311a — failing tests for LivenessGate.
 final class LivenessGateTests: XCTestCase {
 
     private func makeTmpProject(projectYML: String) throws -> URL {
@@ -101,5 +101,5 @@ Expected: **BUILD FAILED** — `LivenessGate` / `LivenessGateResult` do not exis
 ## Commit
 ```
 git add MerlinTests/Unit/LivenessGateTests.swift tasks/task-311a-liveness-gate-tests.md
-git commit -m "Phase 311a — LivenessGate tests (failing)"
+git commit -m "Task 311a — LivenessGate tests (failing)"
 ```

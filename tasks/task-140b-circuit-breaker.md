@@ -1,10 +1,10 @@
-# Phase 140b — Reasoning-Layer Circuit Breaker Implementation
+# Task 140b — Reasoning-Layer Circuit Breaker Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 140a complete: failing tests for reasoning-layer circuit breaker in place.
+Task 140a complete: failing tests for reasoning-layer circuit breaker in place.
 
 Addresses the "safe halt conditions" mitigation from:
 "Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems" — VentureBeat
@@ -155,5 +155,5 @@ Expected: BUILD SUCCEEDED — all 140a tests pass, zero warnings.
 git add Merlin/Config/AppSettings.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/App/AppState.swift
-git commit -m "Phase 140b — circuit breaker: halt/warn modes, counter reset on new session"
+git commit -m "Task 140b — circuit breaker: halt/warn modes, counter reset on new session"
 ```

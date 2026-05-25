@@ -44,7 +44,7 @@ Skills settings pane).
 **Score:** skill checks / N + agent checks / M.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built.
+1. Tasks B–D, 301–306 merged; Merlin built.
 2. Place the test skill and agent definition files (keep a few crafted fixtures in
    `merlin-eval/fixtures/skills-agents/`).
 3. Invoke skills via the picker; drive a subagent-spawning task via `EvalHarness`.

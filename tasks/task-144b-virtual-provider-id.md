@@ -1,10 +1,10 @@
-# Phase 144b — Virtual Provider ID Implementation
+# Task 144b — Virtual Provider ID Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 144a complete: failing tests in place.
+Task 144a complete: failing tests in place.
 
 ---
 
@@ -116,7 +116,7 @@ Replace with:
         let vision = registry.visionProvider ?? NullProvider()
 ```
 
-(This is temporary — `visionProvider` itself is removed in phase 145.)
+(This is temporary — `visionProvider` itself is removed in task 145.)
 
 Also remove the `case "lmstudio":` branch inside `rebuildLocalModelManagers()` that
 instantiates `LMStudioModelManager` via a hardcoded string match — replace with a lookup
@@ -168,5 +168,5 @@ git rm Merlin/Providers/LMStudioProvider.swift
 git add Merlin/Providers/ProviderConfig.swift \
         Merlin/App/AppState.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 144b — Virtual provider IDs, delete LMStudioProvider"
+git commit -m "Task 144b — Virtual provider IDs, delete LMStudioProvider"
 ```

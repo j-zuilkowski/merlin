@@ -1,10 +1,10 @@
-# Phase 325a — AccessibilityID Gap-Fill Tests (failing)
+# Task 325a — AccessibilityID Gap-Fill Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 324b complete: TaskScanner symbol-matching accuracy landed.
+Task 324b complete: TaskScanner symbol-matching accuracy landed.
 
 The W5 surface census (`merlin-eval/SURFACE-CENSUS.md` §1.2) found **12 interactive
 controls with no `AccessibilityID`** — the task-306 pass missed them. XCUITest (eval
@@ -17,7 +17,7 @@ surface. The 12:
   - `ToolRequirementSheet` — Install with Homebrew, Cancel, Done
   - `AdvisoryRow` "Fix this" button (the performance-dashboard pane's only control)
 
-New surface introduced in phase 325b:
+New surface introduced in task 325b:
   - `AccessibilityID.workspaceToggleDiffButton` / `…FileButton` / `…TerminalButton` /
     `…PreviewButton` / `…SideChatButton` / `…MemoriesButton` — the 6 toolbar toggles
   - `AccessibilityID.screenPreviewToggleButton` — ScreenPreviewView header button
@@ -28,7 +28,7 @@ New surface introduced in phase 325b:
 TDD coverage: `MerlinTests/Unit/AccessibilityIDCoverageTests.swift` — a new test asserts
 all 12 constants are declared, non-empty, and unique.
 
-**This is a compile-failure phase.** The new test references 12 `AccessibilityID`
+**This is a compile-failure task.** The new test references 12 `AccessibilityID`
 members that do not exist until 325b. Verify with `build-for-testing` — expect
 BUILD FAILED naming the missing members.
 
@@ -40,8 +40,8 @@ BUILD FAILED naming the missing members.
 import XCTest
 @testable import Merlin
 
-/// Phase 306a — failing tests for the accessibility-identifier namespace.
-/// Phase 325a extends it for the 12 controls the task-306 pass missed.
+/// Task 306a — failing tests for the accessibility-identifier namespace.
+/// Task 325a extends it for the 12 controls the task-306 pass missed.
 final class AccessibilityIDCoverageTests: XCTestCase {
 
     /// One representative identifier per settings pane + per panel.
@@ -66,10 +66,10 @@ final class AccessibilityIDCoverageTests: XCTestCase {
         XCTAssertEqual(Set(ids).count, ids.count, "identifiers must be unique")
     }
 
-    /// Phase 325 — the 12 controls the task-306 pass missed (W5 surface-census §1.2):
+    /// Task 325 — the 12 controls the task-306 pass missed (W5 surface-census §1.2):
     /// the 6 WorkspaceView toolbar toggles, the ScreenPreview + PreviewPane buttons,
     /// the 3 ToolRequirementSheet buttons, and the performance-dashboard advisory button.
-    func testPhase325IdentifiersAreDeclared() {
+    func testTask325IdentifiersAreDeclared() {
         let ids: [String] = [
             AccessibilityID.workspaceToggleDiffButton,
             AccessibilityID.workspaceToggleFileButton,
@@ -109,5 +109,5 @@ Expected: **BUILD FAILED** — errors naming the 12 missing `AccessibilityID` me
 ## Commit
 ```
 git add MerlinTests/Unit/AccessibilityIDCoverageTests.swift tasks/task-325a-accessibility-id-gap-tests.md
-git commit -m "Phase 325a — AccessibilityID gap-fill tests (failing)"
+git commit -m "Task 325a — AccessibilityID gap-fill tests (failing)"
 ```

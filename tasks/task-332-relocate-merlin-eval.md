@@ -1,19 +1,19 @@
-# Phase 332 — Relocate merlin-eval into the merlin repo
+# Task 332 — Relocate merlin-eval into the merlin repo
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 331b complete: `DisciplineExclusions` blacklist wired into every file-walking
+Task 331b complete: `DisciplineExclusions` blacklist wired into every file-walking
 discipline scanner; `merlin-eval` is on the blacklist.
 
 The eval suite (`merlin-eval/` — specs, fixture docs, built fixtures) currently sits at
 `~/Documents/localProject/merlin-eval/`, a sibling of the merlin repo, and is **not
-version-controlled at all**. This phase moves it inside the merlin repo, fixes the
+version-controlled at all**. This task moves it inside the merlin repo, fixes the
 harness path resolution, and commits it. The discipline scanners already skip it
-(phase 331b), so no false findings result.
+(task 331b), so no false findings result.
 
-This is an operational/relocation phase — no new testable surface. Verification is the
+This is an operational/relocation task — no new testable surface. Verification is the
 `MerlinTests-Live` compile gate (`EvalSupport.swift` lives in `MerlinE2ETests`) plus a
 check that the move happened.
 
@@ -85,7 +85,7 @@ listing. Apply the **same** Edits A–D to that listing inside the task doc, and
 `## Fixes` section:
 ```
 ## Fixes
-Phase 332 relocated `merlin-eval/` into the merlin repo (`merlin/merlin-eval/`).
+Task 332 relocated `merlin-eval/` into the merlin repo (`merlin/merlin-eval/`).
 `EvalPaths.fixture(_:)` and `EvalLog`'s results directory now resolve
 `merlin/merlin-eval/...`; `EvalPaths.root` and `EvalPaths.sibling(_:)` are unchanged.
 ```
@@ -134,7 +134,7 @@ path appears in `git status` (the `.gitignore` excludes them).
 git add merlin-eval .gitignore MerlinE2ETests/EvalSupport.swift \
         tasks/task-326-eval-capability-harness.md \
         tasks/task-332-relocate-merlin-eval.md
-git commit -m "Phase 332 — Relocate merlin-eval into the merlin repo"
+git commit -m "Task 332 — Relocate merlin-eval into the merlin repo"
 git status --short
 ```
 `git status` after the commit should be clean (aside from any intentionally-untracked

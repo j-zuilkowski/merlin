@@ -1,10 +1,10 @@
-# Phase 50b — Web Search Tool Implementation
+# Task 50b — Web Search Tool Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 50a complete: failing tests in place.
+Task 50a complete: failing tests in place.
 
 New files:
   - `Merlin/Tools/WebSearch/BraveSearchClient.swift`
@@ -177,5 +177,5 @@ Expected: BUILD SUCCEEDED, all WebSearchToolTests pass.
 git add Merlin/Tools/WebSearch/BraveSearchClient.swift \
         Merlin/Tools/WebSearch/WebSearchTool.swift \
         Merlin/Tools/ToolRegistry.swift
-git commit -m "Phase 50b — WebSearchTool (Brave Search API, conditional registration)"
+git commit -m "Task 50b — WebSearchTool (Brave Search API, conditional registration)"
 ```

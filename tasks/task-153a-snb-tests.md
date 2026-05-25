@@ -1,4 +1,4 @@
-# Phase 153a — SNB: SNBF Container Parsing Tests
+# Task 153a — SNB: SNBF Container Parsing Tests
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
@@ -9,7 +9,7 @@ Current state: SNB metadata uses only `path.file_stem()` with `_`/`-` replaced b
 
 SNB (Shanda Bambook) is a proprietary Chinese ebook format. The SNBF binary container format has documented section headers and a file table pointing to a `book.snbf` metadata XML file containing title, author, publisher, language, and cover information. The current stub ignores all of this — it returns the filename as the title and recovers text heuristically. Plan calls for parsing the SNBF section headers, locating `book.snbf`, and extracting metadata via XML parse. No new crate dependency is needed.
 
-## New surface introduced in phase 153b
+## New surface introduced in task 153b
 
 - `metadata/snb.rs`: parse SNBF container (section headers → file table → locate `book.snbf`) → parse metadata XML → extract title, author, publisher, language
 
@@ -27,12 +27,12 @@ File — `processing/tests/snb_metadata_tests.rs`:
 ```bash
 cd ~/Documents/localProject/xcalibre
 cargo test --package xcalibre-processing -- snb_metadata 2>&1 | tail -10
-# Expected: compilation errors — new SNB metadata parser not yet implemented (phase 153b will fix)
+# Expected: compilation errors — new SNB metadata parser not yet implemented (task 153b will fix)
 ```
 
 ## Commit
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/snb_metadata_tests.rs
-git commit -m "Phase 153a — SNB SNBF metadata tests (failing)"
+git commit -m "Task 153a — SNB SNBF metadata tests (failing)"
 ```

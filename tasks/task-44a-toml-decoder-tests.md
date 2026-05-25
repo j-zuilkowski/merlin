@@ -1,12 +1,12 @@
-# Phase 44a — TOMLDecoder Tests
+# Task 44a — TOMLDecoder Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 43b complete: Connectors (GitHub/Slack/Linear REST wrappers) in place.
+Task 43b complete: Connectors (GitHub/Slack/Linear REST wrappers) in place.
 
-New surface introduced in phase 44b:
+New surface introduced in task 44b:
   - `TOMLValue` — indirect enum: .string, .integer, .float, .bool, .datetime, .array, .table
   - `TOMLError` — error enum for parse failures
   - `TOMLParser` — recursive descent parser; `parse(_ source: String) throws -> [String: TOMLValue]`
@@ -317,5 +317,5 @@ Expected: BUILD FAILED with errors for `TOMLDecoder`, `TOMLValue`, `TOMLParser` 
 ## Commit
 ```bash
 git add MerlinTests/Unit/TOMLDecoderTests.swift
-git commit -m "Phase 44a — TOMLDecoderTests (failing)"
+git commit -m "Task 44a — TOMLDecoderTests (failing)"
 ```

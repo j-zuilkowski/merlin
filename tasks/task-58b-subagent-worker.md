@@ -1,10 +1,10 @@
-# Phase 58b — SubagentEngine V4b (Write-Capable Worker) Implementation
+# Task 58b — SubagentEngine V4b (Write-Capable Worker) Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 58a complete: failing tests in place.
+Task 58a complete: failing tests in place.
 
 New file:
   - `Merlin/Agents/WorkerSubagentEngine.swift`
@@ -284,5 +284,5 @@ Expected: BUILD SUCCEEDED, all WorkerSubagentEngineTests pass.
 ## Commit
 ```bash
 git add Merlin/Agents/WorkerSubagentEngine.swift
-git commit -m "Phase 58b — WorkerSubagentEngine V4b (worktree isolation, path rewriting, StagingBuffer)"
+git commit -m "Task 58b — WorkerSubagentEngine V4b (worktree isolation, path rewriting, StagingBuffer)"
 ```

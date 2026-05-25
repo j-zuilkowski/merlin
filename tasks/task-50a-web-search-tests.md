@@ -1,12 +1,12 @@
-# Phase 50a — Web Search Tool Tests
+# Task 50a — Web Search Tool Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 49b complete: ThreadAutomations in place.
+Task 49b complete: ThreadAutomations in place.
 
-New surface introduced in phase 50b:
+New surface introduced in task 50b:
   - `BraveSearchClient` — actor; wraps Brave Search API REST calls
   - `BraveSearchClient(apiKey:)` — init
   - `BraveSearchClient.search(query:count:) async throws -> [BraveSearchResult]`
@@ -135,5 +135,5 @@ Expected: BUILD FAILED — `BraveSearchClient`, `BraveSearchResult`, `WebSearchT
 ## Commit
 ```bash
 git add MerlinTests/Unit/WebSearchToolTests.swift
-git commit -m "Phase 50a — WebSearchToolTests (failing)"
+git commit -m "Task 50a — WebSearchToolTests (failing)"
 ```

@@ -1,17 +1,17 @@
-# Phase 241a — AdapterRegistry Tests
+# Task 241a — AdapterRegistry Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 240b complete: v2.1.0 released.
+Task 240b complete: v2.1.0 released.
 
 Introduces the adapter system: per-language/per-toolchain config that every v2.2 component
 consumes. An adapter declares how to build, test, version-bump, and document a project in a
 given language. `AdapterRegistry` holds the live set of adapters; `AdapterLoader` reads `.toml`
 files from `~/.merlin/adapters/`.
 
-New surface introduced in phase 241b:
+New surface introduced in task 241b:
   - `ProjectAdapter` value type in `Merlin/Discipline/ProjectAdapter.swift` — `Sendable`,
     `Codable`. Fields: `language`, `versioningFile`, `versioningField`, `buildCommand`,
     `testCommand`, `buildSuccessMarker`, `buildFailureMarker`, `releaseCommand`,
@@ -291,5 +291,5 @@ git add tasks/task-241a-adapter-registry-tests.md \
     MerlinTests/Unit/AdapterRegistryTests.swift \
     MerlinTests/Unit/ProjectAdapterTests.swift \
     MerlinTests/Unit/AdapterSeedTests.swift
-git commit -m "Phase 241a — AdapterRegistryTests (failing)"
+git commit -m "Task 241a — AdapterRegistryTests (failing)"
 ```

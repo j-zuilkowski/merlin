@@ -1,12 +1,12 @@
-# Phase 35a — Inline Diff Comment Tests
+# Task 35a — Inline Diff Comment Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 34 complete: stop button + scroll lock in ChatView.
+Task 34 complete: stop button + scroll lock in ChatView.
 
-New surface introduced in phase 35b:
+New surface introduced in task 35b:
   - `DiffComment` — struct: id, lineIndex (Int), body (String), createdAt
   - `StagedChange.comments: [DiffComment]` — already declared in StagedChange; populated here
   - `StagingBuffer.addComment(_:toChange:)` — appends a DiffComment to a StagedChange
@@ -154,5 +154,5 @@ Expected: `BUILD FAILED` with errors referencing `DiffComment`,
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/DiffCommentTests.swift
-git commit -m "Phase 35a — DiffCommentTests (failing)"
+git commit -m "Task 35a — DiffCommentTests (failing)"
 ```

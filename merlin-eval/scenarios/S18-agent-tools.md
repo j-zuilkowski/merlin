@@ -72,7 +72,7 @@ by S4; KiCad by S6; subagent by S14; web search by S13. S18 does not replace tho
 errors on a valid call, or is missing from the registry, is a finding.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built; LM Studio running.
+1. Tasks B–D, 301–306 merged; Merlin built; LM Studio running.
 2. Run the S18 harness suite (registry census + per-tool invocation).
 3. For tools needing real targets (Xcode → S1 fixture; KiCad → S6 setup; MCP → a test
    server), set those up per the referenced scenario.

@@ -1,10 +1,10 @@
-# Phase 85 — ThreadAutomationEngine: Wire Into LiveSession
+# Task 85 — ThreadAutomationEngine: Wire Into LiveSession
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 84 complete: FloatingWindowManager wired.
+Task 84 complete: FloatingWindowManager wired.
 
 `ThreadAutomationEngine`, `ThreadAutomationStore`, and `ThreadAutomation` exist but are never
 started. Wire them into `LiveSession`: load the store, start the engine, and on each fire
@@ -75,5 +75,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/Sessions/LiveSession.swift \
         Merlin/Automations/ThreadAutomationStore.swift
-git commit -m "Phase 85 — ThreadAutomationEngine wired into LiveSession; fires prompts on schedule"
+git commit -m "Task 85 — ThreadAutomationEngine wired into LiveSession; fires prompts on schedule"
 ```

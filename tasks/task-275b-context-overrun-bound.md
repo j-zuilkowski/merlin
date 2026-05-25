@@ -1,13 +1,13 @@
-# Phase 275b — Context-Overrun Retry Bound
+# Task 275b — Context-Overrun Retry Bound
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 275a complete: a failing test asserts that repeated context-overrun is bounded
+Task 275a complete: a failing test asserts that repeated context-overrun is bounded
 and ends with a `.cleanStop`.
 
-This phase fixes the unbounded-retry regression. The infinite-loop bug class phase 237
+This task fixes the unbounded-retry regression. The infinite-loop bug class task 237
 was meant to eliminate is not actually eliminated for the repeated-overrun path.
 
 ---
@@ -79,7 +79,7 @@ xcodebuild -scheme MerlinTests test \
 
 Expected: **BUILD SUCCEEDED** and
 `test_engine_bounds_retries_and_cleanStops_on_repeated_body_size_failures` passes.
-`EscalationHandlerTests` and all other prior phases remain green (gated engine tests
+`EscalationHandlerTests` and all other prior  tasks remain green (gated engine tests
 still skip under a headless run).
 
 ## Commit
@@ -88,12 +88,12 @@ still skip under a headless run).
 git add tasks/task-275b-context-overrun-bound.md \
     Merlin/Engine/EscalationHandler.swift \
     <updated EscalationHandlerTests file if changed>
-git commit -m "Phase 275b — Bound context-overrun escalation; fix ~199-retry loop"
+git commit -m "Task 275b — Bound context-overrun escalation; fix ~199-retry loop"
 ```
 
 ## Fixes
 
 `EscalationHandler.escalateOrStop` budget now counts every escalation attempt, closing
 the `.routeToProvider` loophole that let repeated context-overrun retry unbounded
-(~199 provider calls, no terminal event). Phase 237's no-unbounded-retry invariant now
+(~199 provider calls, no terminal event). Task 237's no-unbounded-retry invariant now
 holds for the repeated-overrun path.

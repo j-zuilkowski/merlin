@@ -55,7 +55,7 @@ actor DocReferenceGraph {
         var seen: Set<String> = []
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
-            // Phase-doc Markdown is build scaffolding — never scan it for staleness.
+            // Task-doc Markdown is build scaffolding — never scan it for staleness.
             if docFile.contains("/tasks/") { continue }
 
             guard let text = try? String(

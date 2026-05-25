@@ -1,4 +1,4 @@
-# Phase 17a — AgenticEngine Tests
+# Task 17a — AgenticEngine Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ All value types: Sendable. OpenAI function calling format. Dynamic tool registry
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All engine components exist: ContextManager (14b), ToolRouter (15), ThinkingModeDetector (16), providers (03b, 04).
-TestHelpers/MockProvider.swift and TestHelpers/EngineFactory.swift are already written (phase 01 scaffold).
+TestHelpers/MockProvider.swift and TestHelpers/EngineFactory.swift are already written (task 01 scaffold).
 `MockProvider`, `MockLLMResponse`, `NullAuthPresenter`, `makeEngine` are available in the test targets.
 
 ---
@@ -100,5 +100,5 @@ Expected: `BUILD FAILED` with errors referencing `AgenticEngine` and `AgentEvent
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineTests.swift
-git commit -m "Phase 17a — AgenticEngineTests (failing)"
+git commit -m "Task 17a — AgenticEngineTests (failing)"
 ```

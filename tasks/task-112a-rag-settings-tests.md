@@ -1,12 +1,12 @@
-# Phase 112a — RAG Settings Tests (failing)
+# Task 112a — RAG Settings Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 111b complete: rag_search tool source + project_path parameters in place.
+Task 111b complete: rag_search tool source + project_path parameters in place.
 
-New surface introduced in phase 112b:
+New surface introduced in task 112b:
   - `AppSettings.ragRerank: Bool` — whether to pass rerank=true to xcalibre (default: false)
   - `AppSettings.ragChunkLimit: Int` — how many chunks to retrieve per query (default: 3)
   - Both serialise to/from config.toml as `rag_rerank` and `rag_chunk_limit`
@@ -211,5 +211,5 @@ Expected: BUILD FAILED — `AppSettings.ragRerank`, `AppSettings.ragChunkLimit`,
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/RAGSettingsTests.swift
-git commit -m "Phase 112a — RAGSettingsTests (failing)"
+git commit -m "Task 112a — RAGSettingsTests (failing)"
 ```

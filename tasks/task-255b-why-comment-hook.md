@@ -1,10 +1,10 @@
-# Phase 255b — WHY-Comment Pre-Commit Hook
+# Task 255b — WHY-Comment Pre-Commit Hook
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 255a complete: failing tests for WHYCommentGate, WHYGateResult, OverrideAnnotationParser.
+Task 255a complete: failing tests for WHYCommentGate, WHYGateResult, OverrideAnnotationParser.
 
 ---
 
@@ -83,7 +83,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 255a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 255a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -91,5 +91,5 @@ Expected: **BUILD SUCCEEDED** and all phase 255a tests pass. No prior phase regr
 git add tasks/task-255b-why-comment-hook.md \
     Merlin/Discipline/WHYCommentGate.swift \
     Merlin/Discipline/OverrideAnnotationParser.swift
-git commit -m "Phase 255b — WHY-comment pre-commit gate + OverrideAnnotationParser"
+git commit -m "Task 255b — WHY-comment pre-commit gate + OverrideAnnotationParser"
 ```

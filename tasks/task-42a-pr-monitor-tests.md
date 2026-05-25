@@ -1,12 +1,12 @@
-# Phase 42a — PRMonitor Tests
+# Task 42a — PRMonitor Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 41b complete: SchedulerEngine + ScheduledTask + SchedulerView.
+Task 41b complete: SchedulerEngine + ScheduledTask + SchedulerView.
 
-New surface introduced in phase 42b:
+New surface introduced in task 42b:
   - `PRStatus` — struct: number (Int), title, headSHA, checksState (ChecksState), url
   - `ChecksState` enum: pending, passed, failed, unknown
   - `PRMonitor` — @MainActor ObservableObject: `start(projectPath:token:)` begins polling;
@@ -131,5 +131,5 @@ Expected: `BUILD FAILED` with errors referencing `PRMonitor`, `PRStatus`, `Check
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PRMonitorTests.swift
-git commit -m "Phase 42a — PRMonitorTests (failing)"
+git commit -m "Task 42a — PRMonitorTests (failing)"
 ```

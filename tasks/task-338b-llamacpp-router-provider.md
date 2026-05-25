@@ -1,10 +1,10 @@
-# Phase 338b — llama.cpp Router Provider Implementation
+# Task 338b — llama.cpp Router Provider Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 338a complete: llama.cpp router-provider tests are failing for the new
+Task 338a complete: llama.cpp router-provider tests are failing for the new
 surface area.
 
 Recommended execution model: GPT-5.3-Codex.
@@ -74,7 +74,7 @@ Add a disabled default provider:
 - `localModelManagerID: "llamacpp"`
 
 The provider should appear in Settings as inventory, but it must not imply any
-slot is configured. Slot assignment behavior is handled in phase 339.
+slot is configured. Slot assignment behavior is handled in task 339.
 
 ## Edit: Merlin/App/AppState.swift
 
@@ -106,7 +106,7 @@ feature is not undocumented:
 - `docs/local-provider-configs/benchmark-throughput.sh` - add `llamacpp` on
   `http://localhost:8081/v1` to dispatch and `all`.
 - `docs/local-provider-configs/RESULTS.md` - add llama.cpp as pending
-  calibration unless fresh live results are produced during this phase.
+  calibration unless fresh live results are produced during this task.
 
 Do not edit historical release notes or old handoff snapshots for this provider
 unless the file presents itself as current release documentation.
@@ -149,5 +149,5 @@ git add Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift \
         MerlinTests/Unit/ProviderRegistryTests.swift \
         MerlinTests/Unit/ProviderConfigCalibrationDefaultsTests.swift \
         tasks/task-338b-llamacpp-router-provider.md
-git commit -m "Phase 338b — llama.cpp first-class router provider"
+git commit -m "Task 338b — llama.cpp first-class router provider"
 ```

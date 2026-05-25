@@ -1,4 +1,4 @@
-# Phase 306a — Accessibility-Identifier Pass Tests (failing)
+# Task 306a — Accessibility-Identifier Pass Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
@@ -9,7 +9,7 @@ elements by accessibility identifier. Today only ~5 controls have an
 `.newSessionButton`, `.settingsButton`, chat send/cancel). Every interactive control
 across the 17 settings panes, the menus, the panels, and the dialogs must be addressable.
 
-Phase 306b adds an `accessibilityIdentifier` to every interactive control, with stable
+Task 306b adds an `accessibilityIdentifier` to every interactive control, with stable
 names declared as constants in `Merlin/Support/AccessibilityID.swift`.
 
 TDD coverage: `MerlinTests/Unit/AccessibilityIDCoverageTests.swift` — asserts the
@@ -23,7 +23,7 @@ naming surface; the exhaustive wiring is verified by S7–S11 at proving time.
 import XCTest
 @testable import Merlin
 
-/// Phase 306a — failing tests for the accessibility-identifier namespace.
+/// Task 306a — failing tests for the accessibility-identifier namespace.
 final class AccessibilityIDCoverageTests: XCTestCase {
 
     /// One representative identifier per settings pane + per panel. 306b adds these
@@ -66,5 +66,5 @@ Expected: BUILD FAILED — the `AccessibilityID` constants do not exist.
 ## Commit
 ```
 git add MerlinTests/Unit/AccessibilityIDCoverageTests.swift tasks/task-306a-accessibility-id-pass-tests.md
-git commit -m "Phase 306a — Accessibility-identifier pass tests (failing)"
+git commit -m "Task 306a — Accessibility-identifier pass tests (failing)"
 ```

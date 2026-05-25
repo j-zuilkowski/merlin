@@ -1,16 +1,16 @@
-# Phase 212b — Schematic Extraction Policy
+# Task 212b — Schematic Extraction Policy
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 212a complete: failing schematic extraction policy tests exist.
+Task 212a complete: failing schematic extraction policy tests exist.
 
 ---
 
 ## Add: Merlin/Electronics/SchematicExtractionPolicy.swift
 
-Implement policy/math only. Do not implement computer vision in this phase.
+Implement policy/math only. Do not implement computer vision in this task.
 
 Required:
 
@@ -45,5 +45,5 @@ Expected: **BUILD SUCCEEDED**. `SchematicExtractionPolicyTests` pass.
 
 ```bash
 git add Merlin/Electronics/SchematicExtractionPolicy.swift
-git commit -m "Phase 212b — schematic extraction policy and clarification planning"
+git commit -m "Task 212b — schematic extraction policy and clarification planning"
 ```

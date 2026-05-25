@@ -1,12 +1,12 @@
-# Phase 134a — MemoryBackendPlugin Tests (failing)
+# Task 134a — MemoryBackendPlugin Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 133 complete: v8 docs pass. All tests pass.
+Task 133 complete: v8 docs pass. All tests pass.
 
-New surface introduced in phase 134b:
+New surface introduced in task 134b:
   - `MemoryChunk` — value type representing a stored memory chunk
   - `MemorySearchResult` — search result pairing a chunk with a cosine score
   - `MemoryBackendPlugin` — actor protocol: pluginID, displayName, write, search, delete
@@ -169,5 +169,5 @@ Expected: BUILD FAILED — `MemoryChunk`, `MemorySearchResult`, `MemoryBackendPl
 ## Commit
 ```bash
 git add MerlinTests/Unit/MemoryBackendPluginTests.swift
-git commit -m "Phase 134a — MemoryBackendPlugin tests (failing)"
+git commit -m "Task 134a — MemoryBackendPlugin tests (failing)"
 ```

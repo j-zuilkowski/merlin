@@ -1,12 +1,12 @@
-# Phase 102a — CriticEngine Tests (failing)
+# Task 102a — CriticEngine Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 101b complete: ModelPerformanceTracker in place.
+Task 101b complete: ModelPerformanceTracker in place.
 
-New surface introduced in phase 102b:
+New surface introduced in task 102b:
   - `CriticResult` enum — `.pass` / `.fail(reason: String)` / `.skipped`
   - `CriticEngine` actor — Stage 1 (domain verification via ShellTool) + Stage 2 (reason-slot model)
   - `CriticEngine.evaluate(taskType:output:context:)` → `CriticResult`
@@ -164,5 +164,5 @@ Expected: BUILD FAILED — `CriticResult`, `CriticEngine`, `ShellRunning` not de
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/CriticEngineTests.swift
-git commit -m "Phase 102a — CriticEngineTests (failing)"
+git commit -m "Task 102a — CriticEngineTests (failing)"
 ```

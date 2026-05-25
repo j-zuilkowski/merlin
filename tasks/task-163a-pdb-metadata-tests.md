@@ -1,16 +1,16 @@
-# Phase 163a — PDB metadata completeness tests (failing)
+# Task 163a — PDB metadata completeness tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 162b complete.
+Task 162b complete.
 
-Phase 154b wrote failing tests for PDB eReader metadata. Those tests exist at:
+Task 154b wrote failing tests for PDB eReader metadata. Those tests exist at:
 `processing/tests/pdb_ereader_tests.rs` — check if this file exists.
 If it does, skip writing tests (just verify they still fail against the current stub).
 If it does NOT exist, write it now.
 
-New surface in phase 163b:
+New surface in task 163b:
   - `crate::metadata::pdb::extract(path)` — reads creator ID + eReader metadata record (title, author, publisher, ISBN)
 
 ## Check first:
@@ -139,5 +139,5 @@ Expected: tests fail (current pdb.rs only reads 32-byte name).
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/pdb_ereader_tests.rs processing/Cargo.toml
-git commit -m "Phase 163a — PDB eReader metadata tests (failing)"
+git commit -m "Task 163a — PDB eReader metadata tests (failing)"
 ```

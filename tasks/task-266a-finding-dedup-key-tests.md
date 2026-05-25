@@ -1,10 +1,10 @@
-# Phase 266a — Finding Dedup Key Tests
+# Task 266a — Finding Dedup Key Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 265b complete: v2.2.0 shipped. This is the first remediation phase of v2.2.1.
+Task 265b complete: v2.2.0 shipped. This is the first remediation task of v2.2.1.
 
 **Bug (Critical — queue dedup broken).** `PendingAttentionQueue` stores findings in
 `[UUID: Finding]` keyed by `finding.id`, but `DisciplineEngine.scan()` mints a fresh
@@ -12,7 +12,7 @@ Phase 265b complete: v2.2.0 shipped. This is the first remediation phase of v2.2
 `pending.json` grows unboundedly — every scan re-appends every finding as a brand-new
 entry. The queue needs a stable, content-derived idempotency key.
 
-New surface introduced in phase 266b:
+New surface introduced in task 266b:
   - `Finding.dedupKey: String` — computed property `"\(category.rawValue)|\(summary)"`.
     Two findings with the same category + summary share a dedup key regardless of `id`.
   - `PendingAttentionQueue` internal storage re-keyed by `dedupKey` (a `[String: Finding]`).
@@ -44,7 +44,7 @@ final class FindingDedupKeyTests: XCTestCase {
 
     private func makeFinding(
         id: UUID = UUID(),
-        category: FindingCategory = .phaseDrift,
+        category: FindingCategory = .taskDrift,
         summary: String = "Surface X",
         lastSeenAt: Date = Date()
     ) -> Finding {
@@ -70,23 +70,23 @@ final class FindingDedupKeyTests: XCTestCase {
     // MARK: - dedupKey value semantics
 
     func testDedupKeyEqualForSameCategoryAndSummary() {
-        let a = makeFinding(id: UUID(), category: .phaseDrift, summary: "Surface X")
-        let b = makeFinding(id: UUID(), category: .phaseDrift, summary: "Surface X")
+        let a = makeFinding(id: UUID(), category: .taskDrift, summary: "Surface X")
+        let b = makeFinding(id: UUID(), category: .taskDrift, summary: "Surface X")
         XCTAssertNotEqual(a.id, b.id, "Precondition: distinct UUIDs")
         XCTAssertEqual(a.dedupKey, b.dedupKey,
             "Findings with the same category + summary must share a dedup key")
     }
 
     func testDedupKeyDiffersWhenCategoryDiffers() {
-        let a = makeFinding(category: .phaseDrift, summary: "Surface X")
+        let a = makeFinding(category: .taskDrift, summary: "Surface X")
         let b = makeFinding(category: .manualCoverageGap, summary: "Surface X")
         XCTAssertNotEqual(a.dedupKey, b.dedupKey,
             "A different category must produce a different dedup key")
     }
 
     func testDedupKeyDiffersWhenSummaryDiffers() {
-        let a = makeFinding(category: .phaseDrift, summary: "Surface X")
-        let b = makeFinding(category: .phaseDrift, summary: "Surface Y")
+        let a = makeFinding(category: .taskDrift, summary: "Surface X")
+        let b = makeFinding(category: .taskDrift, summary: "Surface Y")
         XCTAssertNotEqual(a.dedupKey, b.dedupKey,
             "A different summary must produce a different dedup key")
     }
@@ -143,5 +143,5 @@ property does not exist yet, so the test file fails to compile.
 ```bash
 git add tasks/task-266a-finding-dedup-key-tests.md \
     MerlinTests/Unit/FindingDedupKeyTests.swift
-git commit -m "Phase 266a — FindingDedupKeyTests (failing)"
+git commit -m "Task 266a — FindingDedupKeyTests (failing)"
 ```

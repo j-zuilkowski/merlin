@@ -1,12 +1,12 @@
-# Phase 62a — Memory Generation Tests
+# Task 62a — Memory Generation Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 61b complete: image → vision description.
+Task 61b complete: image → vision description.
 
-New surface introduced in phase 62b:
+New surface introduced in task 62b:
   - `MemoryEngine.setProvider(_ provider: any LLMProvider)` — injects provider for generation
   - `MemoryEngine.generateMemories(from messages: [Message])` — real LLM single-turn call;
     returns `[MemoryEntry]` parsed from bullet lines; sanitized
@@ -183,5 +183,5 @@ Expected: `BUILD FAILED` — `setProvider`, `generateAndNotify` not yet on `Memo
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/MemoryGenerationTests.swift
-git commit -m "Phase 62a — MemoryGenerationTests (failing)"
+git commit -m "Task 62a — MemoryGenerationTests (failing)"
 ```

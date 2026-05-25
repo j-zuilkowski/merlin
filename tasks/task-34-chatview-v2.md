@@ -1,14 +1,14 @@
-# Phase 34 — ChatView v2 (Stop Button + Scroll Lock)
+# Task 34 — ChatView v2 (Stop Button + Scroll Lock)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 33b complete: DiffEngine + DiffPane.
+Task 33b complete: DiffEngine + DiffPane.
 
-Two ChatView UI improvements with no new testable business logic — single phase, no a/b split.
+Two ChatView UI improvements with no new testable business logic — single task, no a/b split.
 
-**Stop button:** `AgenticEngine.cancel()` already exists (phase 28). Add `@Published var isRunning: Bool`
+**Stop button:** `AgenticEngine.cancel()` already exists (task 28). Add `@Published var isRunning: Bool`
 to `AgenticEngine` (true while a task is active) and wire a stop button in the ChatView toolbar
 that calls `appState.stopEngine()` when `isRunning` is true.
 
@@ -187,7 +187,7 @@ Manual checks:
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/ChatView.swift
-git commit -m "Phase 34 — ChatView v2: stop button + scroll lock"
+git commit -m "Task 34 — ChatView v2: stop button + scroll lock"
 ```
 
 ---

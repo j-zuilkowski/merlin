@@ -1,4 +1,4 @@
-# Phase 294a — RAG Sources HTML Tests (failing)
+# Task 294a — RAG Sources HTML Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -11,9 +11,9 @@ events) but `ConversationHTMLRenderer` never renders them, and the native
 `RAGSourcesView` is never instantiated. The chat is HTML in a `WKWebView`, so the fix is
 to render the sources in the HTML, not place a SwiftUI view.
 
-Phases 290–293 complete (discipline core wiring). Batch A is green.
+Tasks 290–293 complete (discipline core wiring). Batch A is green.
 
-New behaviour in phase 294b (no new public API — `ConversationHTMLRenderer` output change):
+New behaviour in task 294b (no new public API — `ConversationHTMLRenderer` output change):
   `ConversationHTMLRenderer.messageHTML(for:)` on an assistant `ChatEntry` whose
   `ragSources` is non-empty emits a collapsible "Sources (n)" `<details>` block listing
   each chunk's source badge, location (bookTitle / headingPath), and a text preview.
@@ -29,7 +29,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 294a — failing tests for RAG-sources HTML rendering.
+/// Task 294a — failing tests for RAG-sources HTML rendering.
 final class RAGSourcesHTMLTests: XCTestCase {
 
     /// Minimal RAGChunk. NOTE for executor: fill EVERY field of RAGChunk's memberwise
@@ -90,5 +90,5 @@ Expected: BUILD SUCCEEDED; `testAssistantEntryWithRAGSourcesRendersSourcesBlock`
 ## Commit
 ```
 git add MerlinTests/Unit/RAGSourcesHTMLTests.swift tasks/task-294a-rag-sources-html-tests.md
-git commit -m "Phase 294a — RAG sources HTML tests (failing)"
+git commit -m "Task 294a — RAG sources HTML tests (failing)"
 ```

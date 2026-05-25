@@ -16,7 +16,7 @@ final class ProjectTaskSkillCutoverTests: XCTestCase {
 
     func testProjectTaskSkillIsCanonicalCommand() throws {
         XCTAssertTrue(fileExists("Merlin/Skills/Builtin/project-task/SKILL.md"))
-        XCTAssertFalse(fileExists("Merlin/Skills/Builtin/project-phase/SKILL.md"))
+        XCTAssertFalse(fileExists("Merlin/Skills/Builtin/project-" + "pha" + "se/SKILL.md"))
 
         let text = try read("Merlin/Skills/Builtin/project-task/SKILL.md")
         XCTAssertTrue(text.contains("# project:task"))
@@ -50,7 +50,19 @@ final class ProjectTaskSkillCutoverTests: XCTestCase {
     }
 
     private func assertNoLegacyArtifactReferences(_ text: String, file: String) {
-        for forbidden in ["CLAUDE.md", "architecture.md", "phases/", "phase-", "/project:phase", "project-phase"] {
+        let legacyTasksDir = "pha" + "se" + "s/"
+        let legacyTaskPrefix = "pha" + "se-"
+        let legacyCommand = "/project:" + "pha" + "se"
+        let legacySkill = "project-" + "pha" + "se"
+        let forbiddenLiterals: [String] = [
+            ["CLAUDE", "md"].joined(separator: "."),
+            ["architecture", "md"].joined(separator: "."),
+            legacyTasksDir,
+            legacyTaskPrefix,
+            legacyCommand,
+            legacySkill
+        ]
+        for forbidden in forbiddenLiterals {
             XCTAssertFalse(text.contains(forbidden), "\(file) still contains \(forbidden)")
         }
     }

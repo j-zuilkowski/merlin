@@ -1,10 +1,10 @@
-# Phase 272a — Discipline App Integration Wiring Tests
+# Task 272a — Discipline App Integration Wiring Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 271b complete: process and git-hook safety hardened.
+Task 271b complete: process and git-hook safety hardened.
 
 **Bug (Critical — v2.2 is dead code).** Nothing in the running app uses the discipline
 subsystem. `DisciplineEngine` is never instantiated; the chip/panel views are never
@@ -21,7 +21,7 @@ Integration anchors (already in the codebase):
   - `Merlin/Hooks/HookEngine.swift` — has `static let shared` and
     `func runSessionStart(projectPath:) async -> String?`.
 
-New surface introduced in phase 272b:
+New surface introduced in task 272b:
   - `AppState` stored properties: a `DisciplineEngine` and a
     `@Published var pendingAttention: PendingAttentionViewModel`, both built in `init`.
   - `AppState.init` installs + loads seed adapters and, on session start, calls
@@ -40,7 +40,7 @@ TDD coverage:
 
 NOTE on expected outcome: the discipline-engine / `pendingAttention` assertions
 reference properties that do not exist on `AppState` yet, so this test file may cause a
-**BUILD FAILED** rather than a runtime failure. Phase 272b must satisfy whichever
+**BUILD FAILED** rather than a runtime failure. Task 272b must satisfy whichever
 occurs. See `## Verify` below.
 
 ---
@@ -90,7 +90,7 @@ final class DisciplineWiringTests: XCTestCase {
 
         let finding = Finding(
             id: UUID(),
-            category: .phaseDrift,
+            category: .taskDrift,
             severity: .block,
             summary: "Missing surface Foo",
             detail: "detail",
@@ -149,9 +149,9 @@ xcodebuild -scheme MerlinTests test \
 ```
 
 Expected: either **BUILD FAILED** (because `appState.disciplineEngine` /
-`appState.pendingAttention` are referenced before phase 272b adds them) OR **BUILD
+`appState.pendingAttention` are referenced before task 272b adds them) OR **BUILD
 SUCCEEDED** with `DisciplineWiringTests` failing at runtime (if a partial wiring already
-compiles). Both are acceptable for the `a` phase — phase 272b must make the build
+compiles). Both are acceptable for the `a` task — task 272b must make the build
 succeed AND all three tests pass.
 
 ## Commit
@@ -159,5 +159,5 @@ succeed AND all three tests pass.
 ```bash
 git add tasks/task-272a-discipline-wiring-tests.md \
     MerlinTests/Unit/DisciplineWiringTests.swift
-git commit -m "Phase 272a — DisciplineWiringTests (failing)"
+git commit -m "Task 272a — DisciplineWiringTests (failing)"
 ```

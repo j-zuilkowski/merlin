@@ -1,10 +1,10 @@
-# Phase 183b — Session Sidebar Implementation
+# Task 183b — Session Sidebar Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 183a complete: SessionSidebarHelpersTests committed (failing).
+Task 183a complete: SessionSidebarHelpersTests committed (failing).
 
 ---
 
@@ -292,5 +292,5 @@ cd ~/Documents/localProject/merlin
 git add tasks/task-183b-session-sidebar.md \
         Merlin/Support/RelativeTimestampFormatter.swift \
         Merlin/Views/SessionSidebar.swift
-git commit -m "Phase 183b — SessionSidebar Prior Sessions + archive/recall + timestamps"
+git commit -m "Task 183b — SessionSidebar Prior Sessions + archive/recall + timestamps"
 ```

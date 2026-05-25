@@ -1,10 +1,10 @@
-# Phase 87 — PRMonitor: Wire Into AppState
+# Task 87 — PRMonitor: Wire Into AppState
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 86 complete: ToolbarActionStore wired.
+Task 86 complete: ToolbarActionStore wired.
 
 `PRMonitor` exists but is never instantiated. Wire it into `AppState`: start polling when a
 GitHub token is available, and post a macOS notification when a PR's CI checks change state.
@@ -118,5 +118,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift \
         Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 87 — PRMonitor wired into AppState; starts polling when GitHub token is present"
+git commit -m "Task 87 — PRMonitor wired into AppState; starts polling when GitHub token is present"
 ```

@@ -40,5 +40,5 @@ full external-dependency inventory.
 ## Migration
 
 - No user data migration required.
-- The `v2.2.1` tag remains at the Phase 273b commit as an unreleased intermediate;
+- The `v2.2.1` tag remains at the Task 273b commit as an unreleased intermediate;
   v2.2.2 is the published successor to v2.2.0.

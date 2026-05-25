@@ -1,10 +1,10 @@
-# Phase diag-01b — TelemetryEmitter Implementation
+# Task diag-01b — TelemetryEmitter Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-01a complete: failing tests in place.
+Task diag-01a complete: failing tests in place.
 
 ---
 
@@ -272,10 +272,10 @@ Expected: all TelemetryEmitterTests pass, BUILD SUCCEEDED.
 ## Commit
 ```bash
 git add Merlin/Telemetry/TelemetryEmitter.swift project.yml Merlin.xcodeproj
-git commit -m "Phase diag-01b — TelemetryEmitter core"
+git commit -m "Task diag-01b — TelemetryEmitter core"
 ```
 
 ## Fixes
-Phase 322 removed `setSession(_:)`, `setTurn(_:)` and `setLoop(_:)` — dead code with
+Task 322 removed `setSession(_:)`, `setTurn(_:)` and `setLoop(_:)` — dead code with
 zero callers in any target (W4 trace-audit finding F5). `setContext(sessionID:turn:loop:)`
 is the surviving context setter.

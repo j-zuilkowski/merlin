@@ -1,9 +1,9 @@
-# Phase 160b — LIT text extraction implementation
+# Task 160b — LIT text extraction implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 160a complete: LIT text tests failing.
+Task 160a complete: LIT text tests failing.
 
 ## Edit: processing/src/text/lit.rs
 
@@ -76,5 +76,5 @@ Expected: all 3 LIT tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/text/lit.rs
-git commit -m "Phase 160b — LIT text: HTML fragment scan of compressed binary"
+git commit -m "Task 160b — LIT text: HTML fragment scan of compressed binary"
 ```

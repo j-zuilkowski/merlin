@@ -35,7 +35,7 @@ exactly what was observed at each stage. A check that logs only "passed" is not 
 ---
 
 **Prerequisite for M2 (exhaustive UI automation):** every interactive control needs an
-`AccessibilityID`. Phase 306 added ~110 identifiers across the UI — but that pass ran
+`AccessibilityID`. Task 306 added ~110 identifiers across the UI — but that pass ran
 without this catalogue (it was missing from the checkout) and was driven from source, so
 it is substantial yet not verified-exhaustive. Each of S7–S11 cross-checks its catalogue
 section against `Merlin/Support/AccessibilityID.swift` and adds any missing identifier as
@@ -52,7 +52,7 @@ The deep dive is also a bug hunt. Found so far — must be fixed before the prov
 - **DEAD MENU ITEMS** — `MerlinCommands.swift:87–94`: the View menu's **"Toggle Terminal"
   (⌃`)**, **"Toggle Side Chat" (⌘⇧/)**, and **"Review Memories" (⌘⇧M)** have empty `{}`
   action bodies. Three menu commands + their keyboard shortcuts do nothing — the
-  dead-control bug class again. Needs a fix phase.
+  dead-control bug class again. Needs a fix task.
 
 Running S7–S17 will surface more; each is logged to `BLOCKED.md` or the fix backlog.
 
@@ -70,7 +70,7 @@ Running S7–S17 will surface more; each is logged to `BLOCKED.md` or the fix ba
 Workspace (⌘N); Session → Stop (⌘.), Compact Context (⌘⇧K); Window → Pop Out Session
 (⌘⇧P); Provider → (dynamic per provider); View → Toggle Terminal (⌃`)†, Toggle Side Chat
 (⌘⇧/)†, Review Memories (⌘⇧M)†; Copy Conversation (⌘⇧A); Help → User Guide (⌘?),
-Developer Manual. †= was dead, fixed by phase 305 — S7 re-checks as a regression.
+Developer Manual. †= was dead, fixed by task 305 — S7 re-checks as a regression.
 
 **B2 — standard macOS menu bar.** `MerlinCommands` customises only the groups in B1
 (`CommandGroup(replacing:)` / `CommandMenu`); **every other menu item is OS/SwiftUI-

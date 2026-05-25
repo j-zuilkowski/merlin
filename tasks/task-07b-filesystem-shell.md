@@ -1,11 +1,11 @@
-# Phase 07b — FileSystemTools + ShellTool Implementation
+# Task 07b — FileSystemTools + ShellTool Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
+Task 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
 
 ---
 
@@ -117,5 +117,5 @@ Expected: `Test Suite 'FileSystemToolTests' passed` (5 tests), `Test Suite 'Shel
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/FileSystemTools.swift Merlin/Tools/ShellTool.swift
-git commit -m "Phase 07b — FileSystemTools + ShellTool (9 tests passing)"
+git commit -m "Task 07b — FileSystemTools + ShellTool (9 tests passing)"
 ```

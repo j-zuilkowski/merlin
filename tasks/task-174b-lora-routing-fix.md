@@ -1,10 +1,10 @@
-# Phase 174b — Fix: add private makeEngine to LoRAProviderRoutingTests with correct slots
+# Task 174b — Fix: add private makeEngine to LoRAProviderRoutingTests with correct slots
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 174a complete: LoRAProviderRoutingTests slot failures documented.
+Task 174a complete: LoRAProviderRoutingTests slot failures documented.
 
 ## Root Cause
 
@@ -87,5 +87,5 @@ Expected: BUILD SUCCEEDED; all LoRAProviderRoutingTests pass.
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRAProviderRoutingTests.swift \
         tasks/task-174b-lora-routing-fix.md
-git commit -m "Phase 174b — Fix: private makeEngine in LoRAProviderRoutingTests maps pro→execute"
+git commit -m "Task 174b — Fix: private makeEngine in LoRAProviderRoutingTests maps pro→execute"
 ```

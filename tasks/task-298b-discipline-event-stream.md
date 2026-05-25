@@ -1,8 +1,8 @@
-# Phase 298b — Discipline Event Stream (implementation)
+# Task 298b — Discipline Event Stream (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 298a complete: failing tests in `DisciplineEventStreamTests`. Unit C2 of the plan.
+Task 298a complete: failing tests in `DisciplineEventStreamTests`. Unit C2 of the plan.
 
 ## Write to: Merlin/Discipline/DisciplineEvent.swift (new)
 
@@ -63,5 +63,5 @@ a `[discipline]` system note appears.
 git add Merlin/Discipline/DisciplineEvent.swift Merlin/Discipline/DisciplineEventLog.swift \
   Merlin/Discipline/DisciplineCLI.swift Merlin/App/AppState.swift \
   tasks/task-298b-discipline-event-stream.md
-git commit -m "Phase 298b — Discipline event stream"
+git commit -m "Task 298b — Discipline event stream"
 ```

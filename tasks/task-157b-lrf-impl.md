@@ -1,9 +1,9 @@
-# Phase 157b — LRF metadata + text implementation
+# Task 157b — LRF metadata + text implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 157a complete: LRF tests failing.
+Task 157a complete: LRF tests failing.
 
 ## Edit: processing/src/metadata/lrf.rs
 
@@ -115,5 +115,5 @@ Expected: all 4 LRF tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/lrf.rs processing/src/text/lrf.rs
-git commit -m "Phase 157b — LRF metadata + text: key=value scanner + ASCII run extractor"
+git commit -m "Task 157b — LRF metadata + text: key=value scanner + ASCII run extractor"
 ```

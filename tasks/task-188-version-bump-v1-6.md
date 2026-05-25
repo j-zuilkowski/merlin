@@ -1,10 +1,10 @@
-# Phase 188 — Version Bump to v1.6.0
+# Task 188 — Version Bump to v1.6.0
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 187b complete: session title auto-labeling from first user message.
+Task 187b complete: session title auto-labeling from first user message.
 
 No new tests. Bumps marketing version to 1.6.0 (build 5), regenerates project,
 confirms clean build, commits, and tags.

@@ -1,10 +1,10 @@
-# Phase 339b — Slot Status Panel Implementation
+# Task 339b — Slot Status Panel Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 339a complete: slot status panel tests are failing for the new surface.
+Task 339a complete: slot status panel tests are failing for the new surface.
 
 Recommended execution model: GPT-5.3-Codex.
 
@@ -51,7 +51,7 @@ Remove the top-of-chat provider routing indicator. If `ProviderHUD` is still
 needed for unrelated context/thinking state, strip its provider selector/display
 behavior. If it only exists for provider display, stop mounting it.
 
-After this phase, selecting or enabling a provider in Settings must not create
+After this task, selecting or enabling a provider in Settings must not create
 any main-screen provider badge or slot status row by itself.
 
 ## Edit: Merlin/Support/AccessibilityID.swift
@@ -140,5 +140,5 @@ git add Merlin/Views/SlotStatusPanel.swift \
         MerlinTests/Unit/SlotStatusResolverTests.swift \
         MerlinTests/Unit/AccessibilityIDCoverageTests.swift \
         tasks/task-339b-slot-status-panel.md
-git commit -m "Phase 339b — move routing status to sidebar slot panel"
+git commit -m "Task 339b — move routing status to sidebar slot panel"
 ```

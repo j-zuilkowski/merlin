@@ -1,10 +1,10 @@
-# Phase 222b - Streaming Shell Pane
+# Task 222b - Streaming Shell Pane
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 222a complete: failing shell stream view-model tests exist.
+Task 222a complete: failing shell stream view-model tests exist.
 
 ---
 
@@ -49,6 +49,6 @@ Expected: **BUILD SUCCEEDED**. `ShellStreamViewModelTests` pass.
 
 ```bash
 git add Merlin/Views/ShellStreamViewModel.swift Merlin/Views/TerminalPane.swift MerlinTests/Unit/ShellStreamViewModelTests.swift
-git commit -m "Phase 222b - streaming shell pane"
+git commit -m "Task 222b - streaming shell pane"
 ```
 

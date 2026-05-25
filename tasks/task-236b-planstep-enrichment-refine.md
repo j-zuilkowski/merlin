@@ -1,15 +1,15 @@
-# Phase 236b — Enriched PlanStep + refineStep
+# Task 236b — Enriched PlanStep + refineStep
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 236a complete: failing tests for enriched `PlanStep`, `StepCriterion`, `refineStep`, and
+Task 236a complete: failing tests for enriched `PlanStep`, `StepCriterion`, `refineStep`, and
 its telemetry.
 
-After this phase the planner emits richer plans (with structured criteria, token budgets, and
+After this task the planner emits richer plans (with structured criteria, token budgets, and
 critic policy per step) and exposes a single decomposition entry point usable from both the
-budget-overflow and ReAct-stall trigger sites in later phases.
+budget-overflow and ReAct-stall trigger sites in later  tasks.
 
 ---
 
@@ -51,7 +51,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 236a tests pass.
+Expected: **BUILD SUCCEEDED** and all task 236a tests pass.
 
 ## Commit
 
@@ -61,9 +61,9 @@ git add tasks/task-236b-planstep-enrichment-refine.md \
     Merlin/Engine/StepCriterion.swift \
     Merlin/Engine/PlannerEngine.swift \
     Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 236b — Enriched PlanStep and PlannerEngine.refineStep"
+git commit -m "Task 236b — Enriched PlanStep and PlannerEngine.refineStep"
 ```
 
 ## PASTE-LIST update
 
-Append phase 236a/236b under the "Budget-Aware Execution (v2.1.0)" section.
+Append task 236a/236b under the "Budget-Aware Execution (v2.1.0)" section.

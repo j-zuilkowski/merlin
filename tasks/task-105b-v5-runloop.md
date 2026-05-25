@@ -1,12 +1,12 @@
-# Phase 105b — V5 AgenticEngine Run Loop (planner + critic + tracker + memory integration)
+# Task 105b — V5 AgenticEngine Run Loop (planner + critic + tracker + memory integration)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 105a complete: failing V5 run loop integration tests in place.
+Task 105a complete: failing V5 run loop integration tests in place.
 
-This phase wires all V5 components into `AgenticEngine.runLoop()`:
+This task wires all V5 components into `AgenticEngine.runLoop()`:
 - PlannerEngine classifies complexity → routes to correct slot
 - CriticEngine evaluates output (skipped for routine; run for standard+)
 - RAG search uses `source: "all"` with project path scoping
@@ -287,7 +287,7 @@ private func runLoop(
         let signals = OutcomeSignals(
             stage1Passed: nil,   // populated by CriticEngine result if available
             stage2Score: nil,
-            diffAccepted: true,  // refined by StagingBuffer observation in future phase
+            diffAccepted: true,  // refined by StagingBuffer observation in future task
             diffEditedOnAccept: false,
             criticRetryCount: 0,
             userCorrectedNextTurn: false,
@@ -371,5 +371,5 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Engine/Protocols/PlannerEngineProtocol.swift \
         Merlin/Engine/Protocols/ModelPerformanceTrackerProtocol.swift \
         project.yml
-git commit -m "Phase 105b — V5 AgenticEngine run loop (planner + critic + tracker + memory write)"
+git commit -m "Task 105b — V5 AgenticEngine run loop (planner + critic + tracker + memory write)"
 ```

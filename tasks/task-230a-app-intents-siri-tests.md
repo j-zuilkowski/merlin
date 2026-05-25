@@ -1,4 +1,4 @@
-# Phase 230a - App Intents Siri Tests
+# Task 230a - App Intents Siri Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 `MerlinMetadataIntent` is currently a minimal App Intents stub and Siri integration was deferred.
 
-New surface introduced in phase 230b:
+New surface introduced in task 230b:
   - `StartMerlinSessionIntent`
   - `SendMerlinPromptIntent`
   - AppIntent handlers route through existing session/app-state APIs without duplicating engine logic.
@@ -45,6 +45,6 @@ Expected: **BUILD FAILED** because only the metadata stub intent exists.
 
 ```bash
 git add MerlinTests/Unit/AppIntentsSupportTests.swift
-git commit -m "Phase 230a - AppIntentsSupportTests (failing)"
+git commit -m "Task 230a - AppIntentsSupportTests (failing)"
 ```
 

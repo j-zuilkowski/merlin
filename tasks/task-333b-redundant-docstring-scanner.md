@@ -1,10 +1,10 @@
-# Phase 333b — RedundantDocstringScanner Implementation
+# Task 333b — RedundantDocstringScanner Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 333a complete: 9 `RedundantDocstringScannerTests` in place, failing to compile
+Task 333a complete: 9 `RedundantDocstringScannerTests` in place, failing to compile
 because `RedundantDocstringScanner`, `RedundantDocstring`, and `RedundantDocstring.Reason`
 are not yet defined.
 
@@ -105,8 +105,8 @@ actor RedundantDocstringScanner {
 ```
 
 Full file content lives at `Merlin/Discipline/RedundantDocstringScanner.swift` (single-file,
-~190 LOC). The scanner is intentionally *not* wired into `DisciplineEngine` in this phase —
-that integration is deferred to a follow-up so this phase ships the smallest reviewable
+~190 LOC). The scanner is intentionally *not* wired into `DisciplineEngine` in this task —
+that integration is deferred to a follow-up so this task ships the smallest reviewable
 surface that satisfies the 333a tests.
 
 ---
@@ -130,7 +130,7 @@ xcodebuild -scheme MerlinTests-Live build-for-testing \
 ```
 Expected: `** TEST BUILD SUCCEEDED **`.
 
-## Follow-up (not in this phase)
+## Follow-up (not in this task)
 
 - Wire `RedundantDocstringScanner` into `DisciplineEngine` so findings flow into the
   pending-attention queue alongside other scanners. Will require extending
@@ -145,5 +145,5 @@ Expected: `** TEST BUILD SUCCEEDED **`.
 git add Merlin/Discipline/RedundantDocstringScanner.swift \
         tasks/task-333b-redundant-docstring-scanner.md \
         Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 333b — RedundantDocstringScanner"
+git commit -m "Task 333b — RedundantDocstringScanner"
 ```

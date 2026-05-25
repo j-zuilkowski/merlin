@@ -1,10 +1,10 @@
-# Phase 317a — ReachabilityScanner Injection-Detection Tests (failing)
+# Task 317a — ReachabilityScanner Injection-Detection Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 316b complete: `DocReferenceGraph` scoping fixed.
+Task 316b complete: `DocReferenceGraph` scoping fixed.
 
 The first real `merlin-discipline scan` produced 2 `unwiredComponent` findings, both
 false positives:
@@ -17,10 +17,10 @@ false positives:
   2. `T` — the scanner matched the literal text `@EnvironmentObject var x: T` inside its
      own doc comment.
 
-Phase 317b fixes both: `injectedTypes` also reads `@StateObject` / `@ObservedObject`
+Task 317b fixes both: `injectedTypes` also reads `@StateObject` / `@ObservedObject`
 type annotations, and the per-line heuristics skip comment lines.
 
-**This is a runtime-failure phase.** The test compiles against the existing
+**This is a runtime-failure task.** The test compiles against the existing
 `ReachabilityScanner.scan` API and FAILS at runtime. Verify with `test`.
 
 TDD coverage: `MerlinTests/Unit/ReachabilityScannerInjectionTests.swift`.
@@ -33,7 +33,7 @@ TDD coverage: `MerlinTests/Unit/ReachabilityScannerInjectionTests.swift`.
 import XCTest
 @testable import Merlin
 
-/// Phase 317a — failing tests for ReachabilityScanner injection detection.
+/// Task 317a — failing tests for ReachabilityScanner injection detection.
 final class ReachabilityScannerInjectionTests: XCTestCase {
 
     private func makeTmpProject(_ files: [String: String]) throws -> URL {
@@ -112,5 +112,5 @@ Expected: BUILD SUCCEEDED; both tests **FAIL** against today's scanner. Verified
 ## Commit
 ```
 git add MerlinTests/Unit/ReachabilityScannerInjectionTests.swift tasks/task-317a-reachability-injection-tests.md
-git commit -m "Phase 317a — ReachabilityScanner injection-detection tests (failing)"
+git commit -m "Task 317a — ReachabilityScanner injection-detection tests (failing)"
 ```

@@ -1,15 +1,15 @@
-# Phase 252a — APIDocGenerator Tests
+# Task 252a — APIDocGenerator Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 251b complete: DocReferenceGraph automatic mode live.
+Task 251b complete: DocReferenceGraph automatic mode live.
 
 Introduces `APIDocGenerator` which drives DocC (Swift) or rustdoc (Rust) to regenerate
 `api.md` (or equivalent) as part of the release gate.
 
-New surface introduced in phase 252b:
+New surface introduced in task 252b:
   - `APIDocGenerator` actor in `Merlin/Discipline/APIDocGenerator.swift`:
     `func generate(projectPath: String, adapter: ProjectAdapter) async throws -> String`
     — returns the path to the generated doc file.
@@ -148,5 +148,5 @@ Expected: **BUILD FAILED** with errors naming `APIDocGenerator` and
 ```bash
 git add tasks/task-252a-api-doc-generator-tests.md \
     MerlinTests/Unit/APIDocGeneratorTests.swift
-git commit -m "Phase 252a — APIDocGeneratorTests (failing)"
+git commit -m "Task 252a — APIDocGeneratorTests (failing)"
 ```

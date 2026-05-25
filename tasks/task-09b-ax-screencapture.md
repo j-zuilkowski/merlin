@@ -1,11 +1,11 @@
-# Phase 09b — AXInspectorTool + ScreenCaptureTool
+# Task 09b — AXInspectorTool + ScreenCaptureTool
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
+Task 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
 
 ---
 
@@ -111,5 +111,5 @@ Expected: AXInspectorTests pass if Accessibility is granted (Finder probe). Scre
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/AXInspectorTool.swift Merlin/Tools/ScreenCaptureTool.swift
-git commit -m "Phase 09b — AXInspectorTool + ScreenCaptureTool"
+git commit -m "Task 09b — AXInspectorTool + ScreenCaptureTool"
 ```

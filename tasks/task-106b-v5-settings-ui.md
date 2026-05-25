@@ -1,12 +1,12 @@
-# Phase 106b — V5 Settings UI (role slots + domain selector + performance dashboard)
+# Task 106b — V5 Settings UI (role slots + domain selector + performance dashboard)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 106a complete: V5SettingsUITests (failing) in place.
+Task 106a complete: V5SettingsUITests (failing) in place.
 
-This phase adds the Settings UI for V5: role slot assignment, active domain selector,
+This task adds the Settings UI for V5: role slot assignment, active domain selector,
 performance dashboard (per-model × task-type success rates), and degraded-mode indicator.
 No new logic types — pure UI wired to existing V5 components.
 
@@ -247,7 +247,7 @@ git add Merlin/Views/Settings/RoleSlotSettingsView.swift \
         Merlin/Views/Settings/PerformanceDashboardView.swift \
         Merlin/Views/Settings/SettingsWindowView.swift \
         project.yml
-git commit -m "Phase 106b — V5 Settings UI (role slot assignment + domain selector + performance dashboard)"
+git commit -m "Task 106b — V5 Settings UI (role slot assignment + domain selector + performance dashboard)"
 ```
 
 ---

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Merlin — Phase 00: Environment Preflight
-# Run manually before starting any Codex phases:
+# Merlin — Task 00: Environment Preflight
+# Run manually before starting any Codex  tasks:
 #   bash tasks/task-00-preflight.sh
 #
 # Exits 0 if all required deps are satisfied (warnings are non-fatal).
@@ -229,8 +229,8 @@ proj_dir="$(cd "$(dirname "$0")/.." && pwd)"
 ok "Project root: $proj_dir"
 
 if [ -f "$proj_dir/tasks/HANDOFF.md" ]; then
-    phase_count=$(ls "$proj_dir/tasks/task-"*.md 2>/dev/null | wc -l | tr -d ' ')
-    ok "$phase_count task files found in tasks/"
+    task_count=$(ls "$proj_dir/tasks/task-"*.md 2>/dev/null | wc -l | tr -d ' ')
+    ok "$task_count task files found in tasks/"
 else
     fail "tasks/HANDOFF.md not found — run this script from the project root."
 fi
@@ -253,11 +253,11 @@ echo ""
 echo "══════════════════════════════════════════════"
 
 if [ "$errors" -eq 0 ] && [ "$warnings" -eq 0 ]; then
-    echo "  $PASS All checks passed. Ready to begin Phase 01."
+    echo "  $PASS All checks passed. Ready to begin Task 01."
 elif [ "$errors" -eq 0 ]; then
     echo "  $PASS Required deps OK. $warnings warning(s) — review above."
     echo "     Warnings affect live/E2E tests only. Unit tests will run."
-    echo "     Safe to begin Phase 01."
+    echo "     Safe to begin Task 01."
 else
     echo "  $FAIL $errors error(s) must be fixed before proceeding."
     [ "$warnings" -gt 0 ] && echo "  $WARN $warnings warning(s) also noted."

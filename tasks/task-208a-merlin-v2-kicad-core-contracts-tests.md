@@ -1,16 +1,16 @@
-# Phase 208a — Merlin v2.0 KiCad Core Contracts Tests
+# Task 208a — Merlin v2.0 KiCad Core Contracts Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 207b complete: instruction distillation implemented.
+Task 207b complete: instruction distillation implemented.
 
 Spec source:
   - `spec.md` section `Merlin v2.0 — Electronics/KiCad Feature Set`
   - `FEATURES.md` section `V2.0 Electronics Domain (KiCad)`
 
-New surface introduced in phase 208b:
+New surface introduced in task 208b:
   - `KiCadStatus` — wire-format status enum (`COMPLETE`, `BLOCKED`, `BLOCKED_INPUT_QUALITY`, etc.)
   - `KiCadToolResult` — common result envelope for KiCad/MCP tool calls
   - `BoardProfile.jlcpcb2LayerDefault` — first MVP fabrication profile
@@ -198,5 +198,5 @@ and `KiCadToolDefinitions`.
 
 ```bash
 git add MerlinTests/Unit/KiCadV2CoreContractsTests.swift
-git commit -m "Phase 208a — KiCadV2CoreContractsTests (failing)"
+git commit -m "Task 208a — KiCadV2CoreContractsTests (failing)"
 ```

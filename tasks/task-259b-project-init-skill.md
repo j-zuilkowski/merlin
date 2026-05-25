@@ -1,13 +1,13 @@
-# Phase 259b — project:init Skill
+# Task 259b — project:init Skill
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 259a complete: failing tests asserting the project:init SKILL.md exists.
+Task 259a complete: failing tests asserting the project:init SKILL.md exists.
 
 Skill files are Markdown documents in `~/.merlin/skills/<skill-name>/SKILL.md`.
-No Swift code is written in this phase — only the skill file.
+No Swift code is written in this task — only the skill file.
 
 ---
 
@@ -82,7 +82,7 @@ User says any of:
 11. **Run `AdapterRegistry.installSeedAdapters(into:)`** if
     `~/.merlin/adapters/` does not yet exist.
 
-12. **Initial git commit**: `git add -A && git commit -m "Phase 00 — scaffold"`
+12. **Initial git commit**: `git add -A && git commit -m "Task 00 — scaffold"`
 
 13. **Report to user**: project path, adapter chosen, baseline coverage gap (0 for new
     project), installed hooks, next step (`/project:task` to start TDD).
@@ -115,13 +115,13 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 259a `ProjectInitSkillTests` pass.
+Expected: **BUILD SUCCEEDED** and all task 259a `ProjectInitSkillTests` pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-259b-project-init-skill.md
-git commit -m "Phase 259b — project:init skill (SKILL.md)"
+git commit -m "Task 259b — project:init skill (SKILL.md)"
 ```
 
 Note: The SKILL.md is written to `~/.merlin/skills/project-init/SKILL.md` on the developer's

@@ -1,10 +1,10 @@
-# Phase 116b — LoRA AppSettings
+# Task 116b — LoRA AppSettings
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 116a complete: LoRASettingsTests (failing) in place.
+Task 116a complete: LoRASettingsTests (failing) in place.
 
 ---
 
@@ -119,7 +119,7 @@ Expected: BUILD SUCCEEDED; LoRASettingsTests → 10 pass; all prior tests pass; 
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift
-git commit -m "Phase 116b — LoRA AppSettings (loraEnabled + 6 sub-settings, [lora] TOML section)"
+git commit -m "Task 116b — LoRA AppSettings (loraEnabled + 6 sub-settings, [lora] TOML section)"
 ```
 
 ---
@@ -128,7 +128,7 @@ git commit -m "Phase 116b — LoRA AppSettings (loraEnabled + 6 sub-settings, [l
 
 **2026-05-20 — `loraMinSamples` default raised from 50 → 1000.**
 
-The original `50` was a pipeline-testing convenience (small enough to fire during phase
+The original `50` was a pipeline-testing convenience (small enough to fire during task
 development) but is well below the LoRA-fine-tuning literature's noise floor. At 50
 training samples a LoRA on a 30B-class base typically memorizes specific exchanges
 rather than generalizing — frequently producing a measurable regression on out-of-sample

@@ -1,13 +1,13 @@
-# Phase 274a — Discipline Chip Freshness + CI Test Gate (failing tests)
+# Task 274a — Discipline Chip Freshness + CI Test Gate (failing tests)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 273b complete: v2.2.1 committed and tagged locally (not pushed).
+Task 273b complete: v2.2.1 committed and tagged locally (not pushed).
 
 A code review of the v2.2 / v2.2.1 work plus the live GitHub CI logs found two problems
-this phase fixes:
+this task fixes:
 
 1. **Two-queue staleness.** `AppState.init` hands `PendingAttentionViewModel` its own
    `PendingAttentionQueue`, while `DisciplineEngine.init` builds a *separate* queue for
@@ -20,7 +20,7 @@ this phase fixes:
    because they need a live LLM endpoint / favourable timing not present on a CI runner
    (or in a headless sandbox). Confirmed against run 25890231419.
 
-New surface introduced in phase 274b:
+New surface introduced in task 274b:
   - `isLiveEnvironment() -> Bool` and `skipUnlessLiveEnvironment(_:) throws` — free
     functions in `TestHelpers/LiveEnvironmentGate.swift`. `isLiveEnvironment()` is true
     only when `RUN_LIVE_TESTS == "1"`. `skipUnlessLiveEnvironment()` throws `XCTSkip`
@@ -99,14 +99,14 @@ final class DisciplineChipFreshnessTests: XCTestCase {
 
     func testChipReflectsFindingsFromEngineScan() async throws {
         // A task file declaring a surface that does not exist in source produces a
-        // red phaseDrift finding when scanned.
-        let tasksDir = projectRoot.appendingPathComponent("phases")
+        // red taskDrift finding when scanned.
+        let tasksDir = projectRoot.appendingPathComponent(" tasks")
         try FileManager.default.createDirectory(
             at: tasksDir, withIntermediateDirectories: true)
         let taskDoc = """
-        # Phase 001b — Example
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
         try taskDoc.write(
@@ -158,5 +158,5 @@ Expected: **BUILD FAILED** — errors naming the missing `isLiveEnvironment` /
 git add tasks/task-274a-chip-freshness-ci-gate-tests.md \
     MerlinTests/Unit/CITestGateTests.swift \
     MerlinTests/Unit/DisciplineChipFreshnessTests.swift
-git commit -m "Phase 274a — ChipFreshnessAndCIGateTests (failing)"
+git commit -m "Task 274a — ChipFreshnessAndCIGateTests (failing)"
 ```

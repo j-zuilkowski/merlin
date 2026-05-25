@@ -1,4 +1,4 @@
-# Phase 02b — Shared Types: Implementation
+# Task 02b — Shared Types: Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -211,5 +211,5 @@ Expected: `Test Suite 'SharedTypesTests' passed` with 5 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/LLMProvider.swift
-git commit -m "Phase 02b — Shared types + LLMProvider protocol (all Sendable)"
+git commit -m "Task 02b — Shared types + LLMProvider protocol (all Sendable)"
 ```

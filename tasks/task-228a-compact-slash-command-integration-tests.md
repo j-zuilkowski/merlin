@@ -1,4 +1,4 @@
-# Phase 228a - Compact Slash Command Integration Tests
+# Task 228a - Compact Slash Command Integration Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 `CompactSlashCommandTests` still contains a placeholder assertion for the ChatView wiring check.
 
-New surface introduced in phase 228b:
+New surface introduced in task 228b:
   - Slash command handling is testable without a live SwiftUI environment.
   - `/compact` integration test proves the message is consumed and not forwarded to provider.
 
@@ -24,7 +24,7 @@ Replace the placeholder test with a real test that asserts:
 3. `/compact extra text` still compacts and is not forwarded.
 4. Unknown slash commands are not consumed.
 
-If `ChatView.handleSlashCommandIfNeeded` is private and hard to call, introduce a small pure helper in phase 228b and write the test against that helper.
+If `ChatView.handleSlashCommandIfNeeded` is private and hard to call, introduce a small pure helper in task 228b and write the test against that helper.
 
 ---
 
@@ -43,6 +43,6 @@ Expected: **BUILD FAILED** because slash-command handling is not directly testab
 
 ```bash
 git add MerlinTests/Unit/CompactSlashCommandTests.swift
-git commit -m "Phase 228a - CompactSlashCommand integration tests (failing)"
+git commit -m "Task 228a - CompactSlashCommand integration tests (failing)"
 ```
 

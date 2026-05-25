@@ -1,15 +1,15 @@
-# Phase 319b — DocReferenceGraph Precision Fix
+# Task 319b — DocReferenceGraph Precision Fix
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 319a complete: failing runtime tests in `DocReferenceGraphPrecisionTests`.
+Task 319a complete: failing runtime tests in `DocReferenceGraphPrecisionTests`.
 
 Final scanner-tuning pass: all scanner file enumeration skips build-output directories,
 and `danglingReferences` keeps only the high-precision fenced-block enum-case check.
 All source files are in `Merlin/Discipline/` — pure Foundation.
 
 Dropping the loose backticked-identifier check changes behavior the task-316a test
-(`DocReferenceGraphScopeTests`) relied on, so this phase rewrites that test too
+(`DocReferenceGraphScopeTests`) relied on, so this task rewrites that test too
 (section 5) — skipping it would leave the test target failing.
 
 ---
@@ -26,7 +26,7 @@ backticked-identifier check is removed; only the fenced-block enum-case check re
         var seen: Set<String> = []
 
         for docFile in enumerateDocFiles(projectPath: projectPath) {
-            // Phase-doc Markdown is build scaffolding — never scan it for staleness.
+            // Task-doc Markdown is build scaffolding — never scan it for staleness.
             if docFile.contains("/tasks/") { continue }
 
             guard let text = try? String(
@@ -49,7 +49,7 @@ backticked-identifier check is removed; only the fenced-block enum-case check re
                 // High-precision check only: an enum `case` declared inside a fenced
                 // code block that names no real source symbol is a genuinely stale doc
                 // example. The former loose backticked-identifier check was dropped in
-                // phase 319 — it could not tell a stale Merlin reference from a mention
+                // task 319 — it could not tell a stale Merlin reference from a mention
                 // of an Apple or standard-library type, and ran ~95% false positive.
                 if inFence {
                     for caseName in extractEnumCaseNames(from: trimmed)
@@ -88,7 +88,7 @@ backticked-identifier check is removed; only the fenced-block enum-case check re
 ```
 
 **1c.** Replace the whole `enumerateSourceSymbols(projectPath:)` method — skip build
-output (it keeps the test-symbol inclusion from phase 316b):
+output (it keeps the test-symbol inclusion from task 316b):
 ```swift
     private func enumerateSourceSymbols(projectPath: String) -> [SymbolEntry] {
         var entries: [SymbolEntry] = []
@@ -174,7 +174,7 @@ fenced-block enum-case check is the only dangling check that survives 319):
 import XCTest
 @testable import Merlin
 
-/// Phase 316a, rewritten by phase 319b. After phase 319 the only dangling-reference
+/// Task 316a, rewritten by task 319b. After task 319 the only dangling-reference
 /// check is the fenced-block enum-case check, so these fixtures exercise it.
 final class DocReferenceGraphScopeTests: XCTestCase {
 
@@ -191,7 +191,7 @@ final class DocReferenceGraphScopeTests: XCTestCase {
         return dir
     }
 
-    func testPhasesDocsSkippedAndTestSymbolsKnown() async throws {
+    func testTasksDocsSkippedAndTestSymbolsKnown() async throws {
         let proj = try makeTmpProject([
             // A symbol declared in a test-target file.
             "Tests/SampleChannel.swift": """
@@ -201,10 +201,10 @@ final class DocReferenceGraphScopeTests: XCTestCase {
             """,
             // A task doc with a fenced bogus case — must be skipped (tasks/).
             "tasks/task-1-demo.md": """
-            # Phase 1
+            # Task 1
             ```swift
             enum X {
-                case phaseScopedGhost
+                case taskScopedGhost
             }
             ```
             """,
@@ -222,7 +222,7 @@ final class DocReferenceGraphScopeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: proj) }
 
         let dangling = await DocReferenceGraph().danglingReferences(projectPath: proj.path)
-        XCTAssertFalse(dangling.contains { $0.codeSymbol == "phaseScopedGhost" },
+        XCTAssertFalse(dangling.contains { $0.codeSymbol == "taskScopedGhost" },
                        "fenced cases inside tasks/ docs must not be flagged")
         XCTAssertFalse(dangling.contains { $0.codeSymbol == "realTestCase" },
                        "a case declared in a test file is a known symbol")
@@ -232,16 +232,16 @@ final class DocReferenceGraphScopeTests: XCTestCase {
 }
 ```
 
-## 6. Phase-doc banners
+## 6. Task-doc banners
 Add a one-line banner under each title so the rebuild source of truth stays honest:
 - `tasks/task-316b-doc-reference-scope.md`:
-  `> **Note:** these methods are further refined by phase 319b (skip build/, drop the loose backticked check). Implement 319b's versions.`
+  `> **Note:** these methods are further refined by task 319b (skip build/, drop the loose backticked check). Implement 319b's versions.`
 - `tasks/task-316a-doc-reference-scope-tests.md`:
-  `> **Note:** the test file from this phase is rewritten by phase 319b. Use 319b's version.`
+  `> **Note:** the test file from this task is rewritten by task 319b. Use 319b's version.`
 - `tasks/task-317b-reachability-injection.md`:
-  `> **Note:** phase 319b adds build/ + DerivedData/ skips to swiftFiles.`
+  `> **Note:** task 319b adds build/ + DerivedData/ skips to swiftFiles.`
 - `tasks/task-318b-stub-marker-tuning.md`:
-  `> **Note:** phase 319b adds build/ + DerivedData/ skips to scan's file guard.`
+  `> **Note:** task 319b adds build/ + DerivedData/ skips to scan's file guard.`
 
 ---
 
@@ -270,5 +270,5 @@ git add Merlin/Discipline/DocReferenceGraph.swift Merlin/Discipline/DisciplineEn
   tasks/task-316a-doc-reference-scope-tests.md tasks/task-316b-doc-reference-scope.md \
   tasks/task-317b-reachability-injection.md tasks/task-318b-stub-marker-tuning.md \
   tasks/task-319b-doc-reference-precision.md
-git commit -m "Phase 319b — DocReferenceGraph precision: skip build/, drop the loose check"
+git commit -m "Task 319b — DocReferenceGraph precision: skip build/, drop the loose check"
 ```

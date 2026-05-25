@@ -1,10 +1,10 @@
-# Phase 94 — Guard NotificationEngine on notificationsEnabled
+# Task 94 — Guard NotificationEngine on notificationsEnabled
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 93 complete: KeepAwakeManager enforces keepAwake via IOPMAssertion.
+Task 93 complete: KeepAwakeManager enforces keepAwake via IOPMAssertion.
 
 `AppSettings.notificationsEnabled` is persisted and toggled in General settings but
 `NotificationEngine.post()` never checks it — notifications fire regardless of the toggle.
@@ -63,5 +63,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Notifications/NotificationEngine.swift
-git commit -m "Phase 94 — NotificationEngine: guard post() on AppSettings.notificationsEnabled"
+git commit -m "Task 94 — NotificationEngine: guard post() on AppSettings.notificationsEnabled"
 ```

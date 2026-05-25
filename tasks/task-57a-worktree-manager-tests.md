@@ -1,12 +1,12 @@
-# Phase 57a — WorktreeManager Tests
+# Task 57a — WorktreeManager Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 56 complete: SubagentStream UI in place.
+Task 56 complete: SubagentStream UI in place.
 
-New surface introduced in phase 57b:
+New surface introduced in task 57b:
   - `WorktreeManager` — actor; manages git worktrees for V4b write-capable subagents
   - `WorktreeManager.shared` — singleton
   - `WorktreeManager.create(sessionID:in:) async throws -> URL`
@@ -200,5 +200,5 @@ Expected: BUILD FAILED — `WorktreeManager`, `WorktreeError` not yet defined.
 ## Commit
 ```bash
 git add MerlinTests/Unit/WorktreeManagerTests.swift
-git commit -m "Phase 57a — WorktreeManagerTests (failing)"
+git commit -m "Task 57a — WorktreeManagerTests (failing)"
 ```

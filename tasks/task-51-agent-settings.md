@@ -1,12 +1,12 @@
-# Phase 51 — Reasoning Effort + Personalization + Context Usage Indicator
+# Task 51 — Reasoning Effort + Personalization + Context Usage Indicator
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 50b complete: WebSearchTool in place.
+Task 50b complete: WebSearchTool in place.
 
-This phase adds three tightly coupled UX features controlled by AppSettings:
+This task adds three tightly coupled UX features controlled by AppSettings:
 1. **Reasoning effort selector** — per-model; hidden when unsupported
 2. **Personalization** — standing instructions already in AppSettings; UI wiring + injection
 3. **Context usage indicator** — token counter badge + `/status` command response
@@ -255,5 +255,5 @@ git add MerlinTests/Unit/ReasoningEffortTests.swift \
         Merlin/Providers/ReasoningEffort.swift \
         Merlin/Providers/ProviderRegistry+ReasoningEffort.swift \
         Merlin/Engine/ContextUsageTracker.swift
-git commit -m "Phase 51 — Reasoning effort selector, personalization injection, context usage tracker"
+git commit -m "Task 51 — Reasoning effort selector, personalization injection, context usage tracker"
 ```

@@ -1,12 +1,12 @@
-# Phase 109a — Project Path AppSettings Tests (failing)
+# Task 109a — Project Path AppSettings Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 108b complete: RAG source attribution in place.
+Task 108b complete: RAG source attribution in place.
 
-New surface introduced in phase 109b:
+New surface introduced in task 109b:
   - `AppSettings.projectPath: String` — persisted project path for xcalibre memory scoping (default: "")
   - `AppSettings` serializes `project_path` to/from config.toml
   - `AppState` wires `engine.currentProjectPath` from `AppSettings.projectPath` at init and on change
@@ -146,5 +146,5 @@ Expected: BUILD FAILED — `AppSettings.projectPath`, `AppSettings.serializedTOM
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ProjectPathSettingsTests.swift
-git commit -m "Phase 109a — ProjectPathSettingsTests (failing)"
+git commit -m "Task 109a — ProjectPathSettingsTests (failing)"
 ```

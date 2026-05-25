@@ -1,10 +1,10 @@
-# Phase 199a — Parallel Worker Execution Tests (failing)
+# Task 199a — Parallel Worker Execution Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 198b complete: async batch tool dispatch.
+Task 198b complete: async batch tool dispatch.
 
 ## Problem — two separate bottlenecks
 
@@ -32,7 +32,7 @@ Add `parallelSafe: Bool` to `PlanStep`. Update the planner decompose prompt to e
 group adjacent parallel-safe steps into a single continuation batch instead of enforcing
 `stepsPerTurn = 1` for them.
 
-## New surface in phase 199b
+## New surface in task 199b
 - `PlanStep.parallelSafe: Bool` — true when the step has no file/state dependency on siblings
 - `PlannerEngine.parseSteps(from:)` parses `parallel_safe: true/false` from planner output
 - `AgenticEngine.handleSpawnAgents(_ calls: [ToolCall], depth:, continuation:)` — dispatches
@@ -49,7 +49,7 @@ TDD coverage:
 
 ```swift
 // ParallelWorkerTests.swift
-// Phase 199a — failing tests for parallel worker execution.
+// Task 199a — failing tests for parallel worker execution.
 import XCTest
 @testable import Merlin
 
@@ -173,5 +173,5 @@ Expected: BUILD FAILED — `PlanStep.parallelSafe`, `parseStepsForTesting()`,
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ParallelWorkerTests.swift
-git commit -m "Phase 199a — ParallelWorkerTests (failing)"
+git commit -m "Task 199a — ParallelWorkerTests (failing)"
 ```

@@ -19,7 +19,7 @@ final class TaskScannerDocCoverageTests: XCTestCase {
     private func writeDoc(_ dir: URL, filename: String,
                           taskID: String, surface: String) throws {
         let content = """
-        # Task \(taskID) — Test Phase
+        # Task \(taskID) — Test Task
 
         ## Context
         Test task file.

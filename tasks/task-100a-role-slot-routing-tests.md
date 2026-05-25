@@ -1,12 +1,12 @@
-# Phase 100a — AgenticEngine Role Slot Routing Tests (failing)
+# Task 100a — AgenticEngine Role Slot Routing Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 99b complete: DomainRegistry, DomainPlugin, MCPDomainAdapter, SoftwareDomain, VerificationBackend all in place.
+Task 99b complete: DomainRegistry, DomainPlugin, MCPDomainAdapter, SoftwareDomain, VerificationBackend all in place.
 
-New surface introduced in phase 100b:
+New surface introduced in task 100b:
   - `AgentSlot` enum — `execute`, `reason`, `orchestrate`, `vision`
   - `AgenticEngine` replaces `proProvider`/`flashProvider` with slot-keyed providers
   - `AgenticEngine.init(slots:visionProvider:toolRouter:contextManager:)` — new init signature
@@ -142,5 +142,5 @@ Expected: BUILD FAILED — `AgentSlot`, `AgenticEngine.init(slotAssignments:regi
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineSlotTests.swift
-git commit -m "Phase 100a — AgenticEngineSlotTests (failing)"
+git commit -m "Task 100a — AgenticEngineSlotTests (failing)"
 ```

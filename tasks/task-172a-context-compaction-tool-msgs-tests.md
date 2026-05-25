@@ -1,10 +1,10 @@
-# Phase 172a — ContextPreRunCompactionTests: standalone tool messages (failing — pre-existing)
+# Task 172a — ContextPreRunCompactionTests: standalone tool messages (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 171b complete: criticOverride fix in AgenticEngineV5Tests.
+Task 171b complete: criticOverride fix in AgenticEngineV5Tests.
 
 ## Problem
 
@@ -38,5 +38,5 @@ Expected: `testTokensReducedAfterPreRunCompaction` fails.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-172a-context-compaction-tool-msgs-tests.md
-git commit -m "Phase 172a — ContextPreRunCompaction standalone-tool failure documented"
+git commit -m "Task 172a — ContextPreRunCompaction standalone-tool failure documented"
 ```

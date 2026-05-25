@@ -1,12 +1,12 @@
-# Phase 185a — WorkspaceCoordinatorTests (failing)
+# Task 185a — WorkspaceCoordinatorTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 184 complete: v1.5.0 shipped.
+Task 184 complete: v1.5.0 shipped.
 
-New surface introduced in phase 185b:
+New surface introduced in task 185b:
   - `WorkspaceCoordinator` — @MainActor ObservableObject; no-args init loads persisted
     projects from ~/.merlin/workspace.json; auto-sets showingProjectPicker=true when
     no projects are persisted (first launch)
@@ -225,5 +225,5 @@ Expected: BUILD FAILED — `WorkspaceCoordinator` not found.
 cd ~/Documents/localProject/merlin
 git add tasks/task-185a-workspace-coordinator-tests.md \
         MerlinTests/Unit/WorkspaceCoordinatorTests.swift
-git commit -m "Phase 185a — WorkspaceCoordinatorTests (failing)"
+git commit -m "Task 185a — WorkspaceCoordinatorTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 39b — Skill Invocation + Built-in Skills
+# Task 39b — Skill Invocation + Built-in Skills
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 39a complete: failing SkillInvocationTests in place.
+Task 39a complete: failing SkillInvocationTests in place.
 
 ---
 
@@ -243,7 +243,7 @@ static func installBuiltinSkills() {
 
 Call `installBuiltinSkills()` from `AppState.init`.
 
-Also add `Merlin/Skills/Builtin/` as a `Copy Bundle Resources` build phase entry in project.yml.
+Also add `Merlin/Skills/Builtin/` as a `Copy Bundle Resources` build task entry in project.yml.
 
 ---
 
@@ -281,5 +281,5 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/App/ToolRegistration.swift \
         "Merlin/Skills/Builtin/" \
         project.yml
-git commit -m "Phase 39b — skill invocation + fork context + built-in skills"
+git commit -m "Task 39b — skill invocation + fork context + built-in skills"
 ```

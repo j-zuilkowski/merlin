@@ -11,7 +11,7 @@ actor TaskScanner {
 
         let declaredSurfaces = extractDeclaredSurfaces(
             tasksDir: tasksDir,
-            minimumPhaseNumber: config.minimumPhaseNumber)
+            minimumTaskNumber: config.minimumTaskNumber)
         let sourceDeclarations = enumerateSourceDeclarations(root: root)
 
         var findings: [DriftFinding] = []
@@ -74,13 +74,13 @@ actor TaskScanner {
     }
 
     private struct TaskScanConfig {
-        let minimumPhaseNumber: Int?
+        let minimumTaskNumber: Int?
         let checkUndeclaredPublicSymbols: Bool
     }
 
     private func extractDeclaredSurfaces(
         tasksDir: URL,
-        minimumPhaseNumber: Int?
+        minimumTaskNumber: Int?
     ) -> [DeclaredSurface] {
         // A project with no tasks/ directory has no declared surfaces. Check
         // existence first so the missing path never constructs an NSError.
@@ -104,9 +104,9 @@ actor TaskScanner {
                     && (name.hasPrefix("task-") || name.hasPrefix("diag-"))
             }
             .filter { file in
-                guard let minimumPhaseNumber else { return true }
+                guard let minimumTaskNumber else { return true }
                 guard let number = taskNumber(from: file.lastPathComponent) else { return false }
-                return number >= minimumPhaseNumber
+                return number >= minimumTaskNumber
             }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
 
@@ -143,14 +143,14 @@ actor TaskScanner {
 
     private func scanConfig(projectRoot: URL) -> TaskScanConfig {
         let defaults = TaskScanConfig(
-            minimumPhaseNumber: nil,
+            minimumTaskNumber: nil,
             checkUndeclaredPublicSymbols: true)
         let configURL = projectRoot.appendingPathComponent(".merlin/project.toml")
         guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
             return defaults
         }
 
-        var minimumPhaseNumber: Int?
+        var minimumTaskNumber: Int?
         var checkUndeclaredPublic = defaults.checkUndeclaredPublicSymbols
         for rawLine in text.components(separatedBy: .newlines) {
             let line = rawLine.split(separator: "#", maxSplits: 1)
@@ -163,7 +163,7 @@ actor TaskScanner {
             guard pieces.count == 2 else { continue }
             switch pieces[0] {
             case "task_scan_min_number":
-                minimumPhaseNumber = Int(pieces[1])
+                minimumTaskNumber = Int(pieces[1])
             case "task_scan_public_undeclared":
                 checkUndeclaredPublic = ["true", "1", "yes"]
                     .contains(pieces[1].lowercased())
@@ -172,7 +172,7 @@ actor TaskScanner {
             }
         }
         return TaskScanConfig(
-            minimumPhaseNumber: minimumPhaseNumber,
+            minimumTaskNumber: minimumTaskNumber,
             checkUndeclaredPublicSymbols: checkUndeclaredPublic)
     }
 

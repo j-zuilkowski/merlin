@@ -1,16 +1,16 @@
-# Phase 74 — TerminalPane: Inline PTY Terminal
+# Task 74 — TerminalPane: Inline PTY Terminal
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 73 complete: FilePane view created.
+Task 73 complete: FilePane view created.
 
 Add `TerminalPane` — a SwiftUI view wrapping an `NSTextView` that runs a PTY shell via
 `posix_openpt` / `login_tty`. The pane opens a login shell (`/bin/zsh -l`), streams output
 into the text view, and sends key input back to the PTY master.
 
-The pane is wired into `WorkspaceView` in phase 77. This phase only creates the view file
+The pane is wired into `WorkspaceView` in task 77. This task only creates the view file
 and the underlying `PTYSession` actor.
 
 ---
@@ -169,5 +169,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/TerminalPane.swift
-git commit -m "Phase 74 — TerminalPane: PTY shell via posix_openpt, NSTextView output, key input forwarding"
+git commit -m "Task 74 — TerminalPane: PTY shell via posix_openpt, NSTextView output, key input forwarding"
 ```

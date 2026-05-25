@@ -1,20 +1,20 @@
-# Phase 243a — TaskScanner Tests
+# Task 243a — TaskScanner Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 242b complete: ProjectConfig + ProjectConfigLoader live.
+Task 242b complete: ProjectConfig + ProjectConfigLoader live.
 
 Introduces `TaskScanner`, the load-bearing v2.2 component that validates task files stay in
 sync with the codebase. Builds a drift report classified into four colours.
 
-New surface introduced in phase 243b:
+New surface introduced in task 243b:
   - `DriftSeverity: Sendable` enum — `case green, yellow, red, orange`.
   - `DriftFinding: Sendable, Identifiable` — `id: UUID`, `taskID: String?`, `surface: String`,
     `severity: DriftSeverity`, `evidence: String`, `suggestedAction: String`.
   - `actor TaskScanner` — `func scan(projectPath: String) async -> [DriftFinding]`.
-  - TaskScanner reads `tasks/` directory, extracts "New surface introduced in phase NNb:"
+  - TaskScanner reads `tasks/` directory, extracts "New surface introduced in task NNb:"
     blocks from each NNb file, greps for each named symbol against the source tree:
     - green: symbol found, shape matches declaration.
     - yellow: symbol found but signature differs from declaration.
@@ -24,7 +24,7 @@ New surface introduced in phase 243b:
 TDD coverage:
   File 1 — `MerlinTests/Unit/DriftSeverityTests.swift`: enum cases exist; `DriftFinding`
     conforms to `Identifiable` with UUID `id`; `DriftFinding` is `Sendable`.
-  File 2 — `MerlinTests/Unit/TaskScannerTests.swift`: scan of a tmp project with a phase NNb
+  File 2 — `MerlinTests/Unit/TaskScannerTests.swift`: scan of a tmp project with a task NNb
     that declares "func fooBar()" but no such symbol in source returns a `.red` finding;
     a source file containing `func fooBar()` with a matching NNb declaration returns `.green`;
     a source file with an undeclared public symbol returns `.orange`; scanner handles empty
@@ -93,26 +93,26 @@ final class TaskScannerTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("scanproj-\(UUID())")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let tasksDir = dir.appendingPathComponent("phases")
+        let tasksDir = dir.appendingPathComponent(" tasks")
         try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
         let srcDir = dir.appendingPathComponent("Src")
         try FileManager.default.createDirectory(at: srcDir, withIntermediateDirectories: true)
         return dir
     }
 
-    private func writePhaseNNb(_ dir: URL, taskID: String, surface: String) throws {
+    private func writeTaskNNb(_ dir: URL, taskID: String, surface: String) throws {
         let content = """
-        # Phase \(taskID) — Test Phase
+        # Task \(taskID) — Test Task
 
         ## Context
         Test task file.
 
-        New surface introduced in phase \(taskID):
+        New surface introduced in task \(taskID):
           - `\(surface)` — test surface
 
         ---
         """
-        let tasksDir = dir.appendingPathComponent("phases")
+        let tasksDir = dir.appendingPathComponent(" tasks")
         try content.write(
             to: tasksDir.appendingPathComponent("task-\(taskID)-test.md"),
             atomically: true, encoding: .utf8)
@@ -131,7 +131,7 @@ final class TaskScannerTests: XCTestCase {
         let proj = try makeProject()
         defer { try? FileManager.default.removeItem(at: proj) }
 
-        try writePhaseNNb(proj, taskID: "99b", surface: "func fooBar()")
+        try writeTaskNNb(proj, taskID: "99b", surface: "func fooBar()")
         // No matching source file
 
         let scanner = TaskScanner()
@@ -146,7 +146,7 @@ final class TaskScannerTests: XCTestCase {
         let proj = try makeProject()
         defer { try? FileManager.default.removeItem(at: proj) }
 
-        try writePhaseNNb(proj, taskID: "99b", surface: "func fooBar()")
+        try writeTaskNNb(proj, taskID: "99b", surface: "func fooBar()")
         try writeSwiftSource(proj, name: "FooBar", content: """
         import Foundation
         func fooBar() { }
@@ -160,7 +160,7 @@ final class TaskScannerTests: XCTestCase {
         XCTAssertTrue(reds.isEmpty, "Should not be red when symbol is present")
     }
 
-    // MARK: - orange: public symbol not declared in any phase
+    // MARK: - orange: public symbol not declared in any task
 
     func testOrangeWhenUndeclaredPublicSymbol() async throws {
         let proj = try makeProject()
@@ -179,9 +179,9 @@ final class TaskScannerTests: XCTestCase {
             "Expected orange finding for undeclared public symbol")
     }
 
-    // MARK: - empty phases directory
+    // MARK: - empty  tasks directory
 
-    func testEmptyPhasesDirDoesNotCrash() async throws {
+    func testEmptyTasksDirDoesNotCrash() async throws {
         let proj = try makeProject()
         defer { try? FileManager.default.removeItem(at: proj) }
 
@@ -215,5 +215,5 @@ and `TaskScanner`.
 git add tasks/task-243a-task-scanner-tests.md \
     MerlinTests/Unit/DriftSeverityTests.swift \
     MerlinTests/Unit/TaskScannerTests.swift
-git commit -m "Phase 243a — TaskScannerTests (failing)"
+git commit -m "Task 243a — TaskScannerTests (failing)"
 ```

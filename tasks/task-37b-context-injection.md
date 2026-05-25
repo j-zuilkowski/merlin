@@ -1,10 +1,10 @@
-# Phase 37b — Context Injection Implementation
+# Task 37b — Context Injection Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 37a complete: failing ContextInjectionTests in place.
+Task 37a complete: failing ContextInjectionTests in place.
 
 ---
 
@@ -305,7 +305,7 @@ git add Merlin/Engine/ContextInjector.swift \
         Merlin/Views/AtMentionPicker.swift \
         Merlin/Views/ChatView.swift \
         project.yml
-git commit -m "Phase 37b — ContextInjector (@mention, attachment, drag-drop)"
+git commit -m "Task 37b — ContextInjector (@mention, attachment, drag-drop)"
 ```
 
 ---

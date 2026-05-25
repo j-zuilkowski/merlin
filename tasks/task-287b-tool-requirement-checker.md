@@ -1,13 +1,13 @@
-# Phase 287b — Tool Requirement Checker
+# Task 287b — Tool Requirement Checker
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 287a complete: failing tests for `ToolRequirement` / `ToolRequirements` /
+Task 287a complete: failing tests for `ToolRequirement` / `ToolRequirements` /
 `ToolRequirementChecker`.
 
-After this phase, when an in-app feature is about to shell out to an external CLI tool
+After this task, when an in-app feature is about to shell out to an external CLI tool
 that is not installed, Merlin detects it on first use and surfaces a prompt instead of
 letting a raw "command not found" escape. For the Homebrew-safe subset it offers a
 one-click install (`brew install <formula>`, run only on explicit confirmation); for
@@ -247,7 +247,7 @@ guard await ToolRequirementCoordinator.shared.ensure("xcodegen") else {
 ```
 
 The gate is reusable — other subprocess sites (`gh`, `python`, `lms`, KiCad) can adopt
-the same one-line `ensure(_:)` call in later phases; this phase wires the three above
+the same one-line `ensure(_:)` call in later  tasks; this task wires the three above
 as the high-traffic cases.
 
 ---
@@ -270,7 +270,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 287a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all task 287a tests pass, no prior task regresses.
 
 **Manual check:** temporarily rename your `xcodegen` binary, trigger a project
 regeneration in-app — the missing-tool sheet must appear with an **Install with
@@ -286,7 +286,7 @@ git add tasks/task-287b-tool-requirement-checker.md \
     Merlin.xcodeproj/project.pbxproj \
     <the XcodeTools / Rust adapter / ProseReadabilityChecker files wired in step 4> \
     <the root view file where the sheet is presented>
-git commit -m "Phase 287b — Tool requirement checker: detect on first use, offer brew install"
+git commit -m "Task 287b — Tool requirement checker: detect on first use, offer brew install"
 ```
 
 (Run `xcodegen generate` for the three new files; commit the regenerated
@@ -300,9 +300,9 @@ with one confirmed `brew install`; a missing non-brew tool (`cargo`, `python`, `
 KiCad) surfaces its install command/URL without Merlin running the installer. A raw
 "command not found" from a feature subprocess is replaced by an actionable prompt.
 
-## Follow-up (not in this phase)
+## Follow-up (not in this task)
 
 The gate is wired at three high-traffic sites. Extending `ensure(_:)` to the remaining
 subprocess sites (`gh` release path, `python`/mlx_lm LoRA path, `lms`, KiCad domain
 tools) is a mechanical follow-up — one `ensure(_:)` call each — separate from this
-phase's core registry + checker.
+task's core registry + checker.

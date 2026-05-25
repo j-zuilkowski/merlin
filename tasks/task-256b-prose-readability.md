@@ -1,10 +1,10 @@
-# Phase 256b — ProseReadabilityChecker
+# Task 256b — ProseReadabilityChecker
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 256a complete: failing tests for ProseReadabilityChecker and ValeStyleWriter.
+Task 256a complete: failing tests for ProseReadabilityChecker and ValeStyleWriter.
 
 Replaces the stub in `Merlin/Discipline/ProseReadabilityChecker.swift` and adds
 `ValeStyleWriter`.
@@ -198,7 +198,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 256a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 256a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -206,5 +206,5 @@ Expected: **BUILD SUCCEEDED** and all phase 256a tests pass. No prior phase regr
 git add tasks/task-256b-prose-readability.md \
     Merlin/Discipline/ProseReadabilityChecker.swift \
     Merlin/Discipline/ValeStyleWriter.swift
-git commit -m "Phase 256b — ProseReadabilityChecker (Vale integration) + ValeStyleWriter"
+git commit -m "Task 256b — ProseReadabilityChecker (Vale integration) + ValeStyleWriter"
 ```

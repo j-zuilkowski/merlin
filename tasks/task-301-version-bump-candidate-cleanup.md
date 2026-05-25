@@ -1,8 +1,8 @@
-# Phase 301 — versionBumpCandidate Cleanup
+# Task 301 — versionBumpCandidate Cleanup
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Cleanup unit of the wiring plan. Phases 294–300 complete.
+Cleanup unit of the wiring plan. Tasks 294–300 complete.
 
 `FindingCategory.versionBumpCandidate` is defined in `Merlin/Discipline/Finding.swift`
 but is produced nowhere — no scanner, gate, or generator emits it. Unlike
@@ -48,5 +48,5 @@ xcodebuild -scheme MerlinTests test -destination 'platform=macOS' -derivedDataPa
 ```
 git add Merlin/Discipline/Finding.swift MerlinTests/Unit/FindingModelTests.swift \
   Merlin/Docs/DeveloperManual.md tasks/task-301-version-bump-candidate-cleanup.md
-git commit -m "Phase 301 — Remove unused versionBumpCandidate finding category"
+git commit -m "Task 301 — Remove unused versionBumpCandidate finding category"
 ```

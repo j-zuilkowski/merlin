@@ -1,12 +1,12 @@
-# Phase 215a — Verification and Fabrication Policy Tests
+# Task 215a — Verification and Fabrication Policy Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 214b complete: board/routing policies exist.
+Task 214b complete: board/routing policies exist.
 
-New surface introduced in phase 215b:
+New surface introduced in task 215b:
   - `KiCadCompletionGateEvaluator`
   - `SPICEModelCachePolicy`
   - `ThreeDModelSourcingPolicy`
@@ -48,5 +48,5 @@ Expected: **BUILD FAILED** with missing verification/fab policy symbols.
 
 ```bash
 git add MerlinTests/Unit/VerificationFabPolicyTests.swift
-git commit -m "Phase 215a — VerificationFabPolicyTests (failing)"
+git commit -m "Task 215a — VerificationFabPolicyTests (failing)"
 ```

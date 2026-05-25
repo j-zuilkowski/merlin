@@ -1,12 +1,12 @@
-# Phase 183a — SessionSidebarHelpersTests (failing)
+# Task 183a — SessionSidebarHelpersTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 182b complete: ContextManager.load + LiveSession initial messages + SessionManager.restore.
+Task 182b complete: ContextManager.load + LiveSession initial messages + SessionManager.restore.
 
-New surface introduced in phase 183b:
+New surface introduced in task 183b:
   - `RelativeTimestampFormatter.string(from:now:) -> String` — pure helper that formats
     a Date as a human-readable relative string: "now", "Xm", "Xh", "Xd", "Xw"
   - `SessionSidebar` — new "Prior Sessions" section (disk sessions not currently live),
@@ -119,5 +119,5 @@ Expected: BUILD FAILED — `RelativeTimestampFormatter` not found.
 cd ~/Documents/localProject/merlin
 git add tasks/task-183a-session-sidebar-tests.md \
         MerlinTests/Unit/SessionSidebarHelpersTests.swift
-git commit -m "Phase 183a — SessionSidebarHelpersTests (failing)"
+git commit -m "Task 183a — SessionSidebarHelpersTests (failing)"
 ```

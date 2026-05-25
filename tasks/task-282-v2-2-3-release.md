@@ -1,13 +1,13 @@
-# Phase 282 — v2.2.3 Release
+# Task 282 — v2.2.3 Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 281 complete: built-in skills (incl. the 5 `project:*` skills) are now bundled
+Task 281 complete: built-in skills (incl. the 5 `project:*` skills) are now bundled
 into the app.
 
-This phase ships **v2.2.3** — the skill-installation fix from phase 281, as a patch
+This task ships **v2.2.3** — the skill-installation fix from task 281, as a patch
 release. Follows `spec.md` § Versioning Policy.
 
 ---
@@ -65,4 +65,4 @@ The DMG (`scripts/package-dmg.sh`) reads the version from `project.yml` and prod
 
 ## Fixes
 
-Ships the phase 281 built-in-skill bundling fix as v2.2.3.
+Ships the task 281 built-in-skill bundling fix as v2.2.3.

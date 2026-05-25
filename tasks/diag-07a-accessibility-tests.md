@@ -1,12 +1,12 @@
-# Phase diag-07a — Accessibility Identifier Tests (failing)
+# Task diag-07a — Accessibility Identifier Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-06b complete: infrastructure telemetry instrumented.
+Task diag-06b complete: infrastructure telemetry instrumented.
 
-New surface introduced in phase diag-07b:
+New surface introduced in task diag-07b:
   - All primary interactive controls in `ChatView`, `SessionSidebar`, `ContentView`, `ProviderHUD`,
     and `SettingsView` gain stable `.accessibilityIdentifier(_:)` modifiers.
   - A complete accessibility identifier manifest is defined in `AccessibilityID.swift` as an enum
@@ -176,5 +176,5 @@ Expected: BUILD FAILED — `AccessibilityID` enum not found; `TelemetryEmitter.e
 ```bash
 git add MerlinTests/Unit/AccessibilityIDTests.swift \
         MerlinTests/Unit/GUIActionTelemetryTests.swift
-git commit -m "Phase diag-07a — Accessibility identifier tests (failing)"
+git commit -m "Task diag-07a — Accessibility identifier tests (failing)"
 ```

@@ -1,4 +1,4 @@
-# Phase 305 — Wire the Dead View-Menu Commands
+# Task 305 — Wire the Dead View-Menu Commands
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
@@ -67,5 +67,5 @@ toggles, and the memory-review window opens.
 ```
 git add Merlin/App/AppState.swift Merlin/App/MerlinCommands.swift \
   Merlin/Views/WorkspaceView.swift tasks/task-305-dead-view-menu-commands.md
-git commit -m "Phase 305 — Wire the dead View-menu commands"
+git commit -m "Task 305 — Wire the dead View-menu commands"
 ```

@@ -1,10 +1,10 @@
-# Phase 63b — Memory Injection Implementation
+# Task 63b — Memory Injection Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 63a complete: failing MemoryInjectionTests in place.
+Task 63a complete: failing MemoryInjectionTests in place.
 
 Add `ConstitutionLoader.memoriesBlock(acceptedDir:)`, add `memoriesContent` to `AgenticEngine`,
 update `buildSystemPrompt()`, and wire `LiveSession.init` to inject accepted memories.
@@ -116,5 +116,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ConstitutionLoader.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Sessions/LiveSession.swift
-git commit -m "Phase 63b — memory re-injection at session init via ConstitutionLoader + AgenticEngine"
+git commit -m "Task 63b — memory re-injection at session init via ConstitutionLoader + AgenticEngine"
 ```

@@ -1,16 +1,16 @@
-# Phase 76 — SideChat: Independent Secondary Chat Panel
+# Task 76 — SideChat: Independent Secondary Chat Panel
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 75 complete: PreviewPane with WKWebView.
+Task 75 complete: PreviewPane with WKWebView.
 
 Add `SideChatPane` — a secondary chat panel that runs its own independent `AppState` and
 session, so the user can run a second conversation in parallel without affecting the main
 session. The pane is shown/hidden via a `@Binding<Bool>` from `WorkspaceView`.
 
-This phase creates the view only. The ⌘⇧/ keyboard shortcut to toggle it is wired in phase 77.
+This task creates the view only. The ⌘⇧/ keyboard shortcut to toggle it is wired in task 77.
 
 ---
 
@@ -80,7 +80,7 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/SideChatPane.swift
-git commit -m "Phase 76 — SideChatPane: independent AppState secondary chat panel"
+git commit -m "Task 76 — SideChatPane: independent AppState secondary chat panel"
 ```
 
 ---

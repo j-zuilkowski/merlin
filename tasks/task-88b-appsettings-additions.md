@@ -1,10 +1,10 @@
-# Phase 88b — AppSettings Additions Implementation
+# Task 88b — AppSettings Additions Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 88a complete: failing AppSettingsAdditionsTests in place.
+Task 88a complete: failing AppSettingsAdditionsTests in place.
 
 Add `MessageDensity` enum and four new properties to `AppSettings` with config.toml persistence.
 
@@ -116,5 +116,5 @@ Expected: `BUILD SUCCEEDED`; all AppSettingsAdditionsTests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Config/MessageDensity.swift \
         Merlin/Config/AppSettings.swift
-git commit -m "Phase 88b — AppSettings: keepAwake, defaultPermissionMode, notificationsEnabled, messageDensity"
+git commit -m "Task 88b — AppSettings: keepAwake, defaultPermissionMode, notificationsEnabled, messageDensity"
 ```

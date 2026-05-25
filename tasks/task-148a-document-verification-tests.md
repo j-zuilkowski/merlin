@@ -1,12 +1,12 @@
-# Phase 148a — Document Verification Tests (failing)
+# Task 148a — Document Verification Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 147b complete: adaptive loop ceiling wired into AgenticEngine.
+Task 147b complete: adaptive loop ceiling wired into AgenticEngine.
 
-New surface introduced in phase 148b:
+New surface introduced in task 148b:
   - `CriticEngineProtocol.evaluate(taskType:output:context:writtenFiles:)` — 4-param variant;
     default extension forwards to 3-param for backward compat with existing mocks.
   - `CriticEngine.evaluate(taskType:output:context:writtenFiles:)` — concrete 4-param
@@ -336,5 +336,5 @@ Expected: BUILD FAILED — symbols `evaluate(taskType:output:context:writtenFile
 ```bash
 git add MerlinTests/Unit/CriticDocumentVerificationTests.swift \
         MerlinTests/Unit/AgenticEngineDocumentCriticTests.swift
-git commit -m "Phase 148a — document verification tests (failing)"
+git commit -m "Task 148a — document verification tests (failing)"
 ```

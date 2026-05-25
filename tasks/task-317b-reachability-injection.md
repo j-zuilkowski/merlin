@@ -1,10 +1,10 @@
-# Phase 317b — ReachabilityScanner Injection-Detection Fix
+# Task 317b — ReachabilityScanner Injection-Detection Fix
 
-> **Note:** phase 319b adds build/ + DerivedData/ skips to swiftFiles.
+> **Note:** task 319b adds build/ + DerivedData/ skips to swiftFiles.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 317a complete: failing runtime tests in `ReachabilityScannerInjectionTests`.
+Task 317a complete: failing runtime tests in `ReachabilityScannerInjectionTests`.
 
 Fixes the two `unwiredComponent` false positives: `injectedTypes` now reads
 `@StateObject` / `@ObservedObject` type annotations (not only inline constructors), and
@@ -77,7 +77,7 @@ unchanged.
 ## 2. Edit: tasks/task-309b-reachability-scanner.md
 Add a one-line banner under that doc's title:
 ```
-> **Note:** `injectedTypes` and the per-line loop here are refined by phase 317b
+> **Note:** `injectedTypes` and the per-line loop here are refined by task 317b
 > (annotation-based injection detection, comment-line skip). Implement 317b's version.
 ```
 
@@ -100,5 +100,5 @@ all pass; BUILD SUCCEEDED, zero warnings.
 ```
 git add Merlin/Discipline/ReachabilityScanner.swift tasks/task-309b-reachability-scanner.md \
   tasks/task-317b-reachability-injection.md
-git commit -m "Phase 317b — ReachabilityScanner reads annotation injection, skips comments"
+git commit -m "Task 317b — ReachabilityScanner reads annotation injection, skips comments"
 ```

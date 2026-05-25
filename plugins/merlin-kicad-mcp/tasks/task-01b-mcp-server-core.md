@@ -1,15 +1,15 @@
-# Phase 01b — MCP Server Core
+# Task 01b — MCP Server Core
 
 ## Context
 Swift 5.10, macOS 14+, `async`/`await` + actors. No third-party Swift packages.
 `SWIFT_STRICT_CONCURRENCY=complete`. Zero warnings, zero errors required.
 Working dir: `~/Documents/localProject/merlin/plugins/merlin-kicad-mcp`
-Phase 01a complete: failing `MCPServerCoreTests`.
+Task 01a complete: failing `MCPServerCoreTests`.
 
-After this phase the server speaks MCP over stdio: it accepts JSON-RPC 2.0 messages,
+After this task the server speaks MCP over stdio: it accepts JSON-RPC 2.0 messages,
 answers the `initialize` handshake, lists tools (empty for now), and rejects unknown
 methods and malformed input with correct JSON-RPC error codes. The tool registry is
-phase 02; the manifest resource is phase 03.
+task 02; the manifest resource is task 03.
 
 ---
 
@@ -68,7 +68,7 @@ actor MCPServer {
         case "tools/list":
             return resultLine(id: id, result: ["tools": []])
         case "tools/call":
-            // Registry arrives in phase 02. Until then no tool exists.
+            // Registry arrives in task 02. Until then no tool exists.
             return errorLine(id: id, code: -32601,
                              message: "No tools registered")
         case "resources/list":
@@ -121,7 +121,7 @@ actor MCPServer {
 ```
 
 JSON-RPC error codes used: `-32700` parse error, `-32601` method not found, `-32603`
-internal error. Phase 02 adds `-32602` (invalid params) when tool arguments are bad.
+internal error. Task 02 adds `-32602` (invalid params) when tool arguments are bad.
 
 ### 2. New file — `Sources/KiCadMCPKit/StdioTransport.swift`
 
@@ -173,7 +173,7 @@ swift build 2>&1 | grep -E 'error:|warning:|Build complete' | tail -10
 swift test  2>&1 | grep -E 'passed|failed|error:' | tail -20
 ```
 
-Expected: **Build complete**, all phase 01a `MCPServerCoreTests` pass, `ScaffoldTests`
+Expected: **Build complete**, all task 01a `MCPServerCoreTests` pass, `ScaffoldTests`
 still passes, zero warnings.
 
 **Manual check:** pipe an initialize request in and confirm a single-line response:
@@ -193,12 +193,12 @@ git add Sources/KiCadMCPKit/MCPServer.swift \
     Sources/KiCadMCPKit/StdioTransport.swift \
     Sources/merlin-kicad-mcp/main.swift \
     tasks/task-01b-mcp-server-core.md
-git commit -m "kicad-mcp Phase 01b — MCP server core: JSON-RPC over stdio"
+git commit -m "kicad-mcp Task 01b — MCP server core: JSON-RPC over stdio"
 ```
 
 ## Fixes
 
 The server now speaks MCP: JSON-RPC 2.0 over newline-delimited stdio, the `initialize`
 handshake, `tools/list` / `resources/list`, and correct error codes for unknown methods
-and malformed input. Phase 02 adds the tool registry so `tools/call` dispatches real
-work; phase 03 adds the `merlin://domain/manifest` resource.
+and malformed input. Task 02 adds the tool registry so `tools/call` dispatches real
+work; task 03 adds the `merlin://domain/manifest` resource.

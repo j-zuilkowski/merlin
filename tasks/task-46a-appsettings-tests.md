@@ -1,12 +1,12 @@
-# Phase 46a — AppSettings Tests
+# Task 46a — AppSettings Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 45b complete: ToolRegistry in place.
+Task 45b complete: ToolRegistry in place.
 
-New surface introduced in phase 46b:
+New surface introduced in task 46b:
   - `AppSettings` — @MainActor ObservableObject singleton; single source of truth for all config
   - `AppSettings.shared` — singleton
   - `AppSettings.load(from url: URL) async throws` — reads config.toml via TOMLDecoder
@@ -187,5 +187,5 @@ Expected: BUILD FAILED — `AppSettings`, `AppearanceSettings`, `AppTheme`, `Set
 ## Commit
 ```bash
 git add MerlinTests/Unit/AppSettingsTests.swift
-git commit -m "Phase 46a — AppSettingsTests (failing)"
+git commit -m "Task 46a — AppSettingsTests (failing)"
 ```

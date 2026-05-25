@@ -1,10 +1,10 @@
-# Phase 125a — LocalModelManagerProtocol Tests
+# Task 125a — LocalModelManagerProtocol Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 124b complete: ModelParameterAdvisor in place. All prior tests pass.
+Task 124b complete: ModelParameterAdvisor in place. All prior tests pass.
 
 ## Purpose
 Abstract local LLM provider management behind a single protocol so Merlin can
@@ -12,7 +12,7 @@ adjust load-time parameters (context length, GPU layers, etc.) and reload models
 at runtime for any supported local provider, or gracefully fall back to restart
 instructions when the provider requires a server restart.
 
-New surface introduced in phase 125b:
+New surface introduced in task 125b:
 
 **Types — Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift**
 
@@ -107,7 +107,7 @@ private struct StubRestartOnlyManager: LocalModelManagerProtocol {
 
 final class LocalModelManagerProtocolTests: XCTestCase {
 
-    // MARK: Type existence (compile-time failures without phase 125b)
+    // MARK: Type existence (compile-time failures without task 125b)
 
     func testLoadParamEnumExists() {
         let _: LoadParam = .contextLength
@@ -258,5 +258,5 @@ Expected: **BUILD FAILED** — `LocalModelManagerProtocol`, `LocalModelConfig`, 
 ## Commit
 ```bash
 git add MerlinTests/Unit/LocalModelManagerProtocolTests.swift
-git commit -m "Phase 125a — LocalModelManagerProtocolTests (failing)"
+git commit -m "Task 125a — LocalModelManagerProtocolTests (failing)"
 ```

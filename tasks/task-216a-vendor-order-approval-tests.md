@@ -1,12 +1,12 @@
-# Phase 216a — Vendor Order and Electronics Approval Tests
+# Task 216a — Vendor Order and Electronics Approval Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 215b complete: verification/fabrication policies exist.
+Task 215b complete: verification/fabrication policies exist.
 
-New surface introduced in phase 216b:
+New surface introduced in task 216b:
   - `VendorBOMAdapter`
   - `VendorCatalog`
   - `VendorOrderPolicy`
@@ -49,5 +49,5 @@ Expected: **BUILD FAILED** with missing vendor/order/approval symbols.
 
 ```bash
 git add MerlinTests/Unit/VendorOrderApprovalTests.swift
-git commit -m "Phase 216a — VendorOrderApprovalTests (failing)"
+git commit -m "Task 216a — VendorOrderApprovalTests (failing)"
 ```

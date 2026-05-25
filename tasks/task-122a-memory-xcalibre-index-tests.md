@@ -1,17 +1,17 @@
-# Phase 122a — Memory Xcalibre Index Tests
+# Task 122a — Memory Xcalibre Index Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 121b complete: LoRA settings UI in place. 653 tests passing.
+Task 121b complete: LoRA settings UI in place. 653 tests passing.
 
-New surface introduced in phase 122b:
+New surface introduced in task 122b:
   - `MemoryEngine.setXcalibreClient(_ client: any XcalibreClientProtocol)` — injects xcalibre client
   - `MemoryEngine.approve(_:movingTo:)` — extended to call `writeMemoryChunk` after moving the file
 
 Accepted AI-generated memories currently only land in `~/.merlin/memories/` and are injected as
-a verbatim system prompt block. Phase 122 adds a second path: on approval the content is also
+a verbatim system prompt block. Task 122 adds a second path: on approval the content is also
 written to xcalibre-server as a `"factual"` chunk so it participates in RAG queries alongside
 per-turn episodic memory.
 
@@ -98,7 +98,7 @@ final class MemoryXcalibreIndexTests: XCTestCase {
     // MARK: - Tests
 
     func testSetXcalibreClientCompiles() async {
-        // Verifies the method exists on the actor — fails to build without phase 122b.
+        // Verifies the method exists on the actor — fails to build without task 122b.
         let engine = MemoryEngine()
         let spy = SpyXcalibreClient()
         await engine.setXcalibreClient(spy)
@@ -187,5 +187,5 @@ Expected: **BUILD FAILED** — `MemoryEngine` has no `setXcalibreClient` method.
 ## Commit
 ```bash
 git add MerlinTests/Unit/MemoryXcalibreIndexTests.swift
-git commit -m "Phase 122a — MemoryXcalibreIndexTests (failing)"
+git commit -m "Task 122a — MemoryXcalibreIndexTests (failing)"
 ```

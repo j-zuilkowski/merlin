@@ -1,16 +1,16 @@
-# Phase 308a — StubMarkerScanner Tests (failing)
+# Task 308a — StubMarkerScanner Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 307b complete: `TargetGateScanner` wired into `DisciplineEngine`.
+Task 307b complete: `TargetGateScanner` wired into `DisciplineEngine`.
 
 Liveness Discipline batch, unit 2 of 6. `StubMarkerScanner` finds stub, placeholder, and
 deferred-work markers — features that compile green but are unfinished. It would have
-caught the three dead `{}` View-menu commands fixed in phase 305.
+caught the three dead `{}` View-menu commands fixed in task 305.
 
-New surface introduced in phase 308b:
+New surface introduced in task 308b:
   - `StubMarkerFinding` — `file: String`, `line: Int`, `marker: String`,
     `isHardStub: Bool`, `context: String`.
   - `actor StubMarkerScanner` with `scan(projectPath:) async -> [StubMarkerFinding]`.
@@ -30,7 +30,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 308a — failing tests for StubMarkerScanner.
+/// Task 308a — failing tests for StubMarkerScanner.
 final class StubMarkerScannerTests: XCTestCase {
 
     private func makeTmpProject(file: String, content: String) throws -> URL {
@@ -90,5 +90,5 @@ Expected: **BUILD FAILED** — `StubMarkerScanner` / `StubMarkerFinding` do not 
 ## Commit
 ```
 git add MerlinTests/Unit/StubMarkerScannerTests.swift tasks/task-308a-stub-marker-scanner-tests.md
-git commit -m "Phase 308a — StubMarkerScanner tests (failing)"
+git commit -m "Task 308a — StubMarkerScanner tests (failing)"
 ```

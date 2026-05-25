@@ -1,12 +1,12 @@
-# Phase 122b — Memory Xcalibre Index Implementation
+# Task 122b — Memory Xcalibre Index Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 122a complete: failing tests added for approved-memory xcalibre indexing.
+Task 122a complete: failing tests added for approved-memory xcalibre indexing.
 
-Phase 122a introduced these expectations:
+Task 122a introduced these expectations:
   - `MemoryEngine.setXcalibreClient(_ client: any XcalibreClientProtocol)`
   - `MemoryEngine.approve(_:movingTo:)` writes approved memory content to xcalibre as a factual chunk
 
@@ -42,4 +42,4 @@ Expected: BUILD SUCCEEDED, with the new 122a tests passing.
 
 ## Commit
 git add Merlin/Memories/MemoryEngine.swift Merlin/UI/Memories/MemoryReviewView.swift Merlin/Views/WorkspaceView.swift tasks/task-122b-memory-xcalibre-index.md
-git commit -m "Phase 122b — MemoryXcalibreIndex"
+git commit -m "Task 122b — MemoryXcalibreIndex"

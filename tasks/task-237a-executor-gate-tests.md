@@ -1,23 +1,23 @@
-# Phase 237a — Unified Executor Gate + Recovery Deletion Tests
+# Task 237a — Unified Executor Gate + Recovery Deletion Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 236b complete: enriched `PlanStep` and `PlannerEngine.refineStep` available; not yet
+Task 236b complete: enriched `PlanStep` and `PlannerEngine.refineStep` available; not yet
 consumed by the executor.
 
-This is the load-bearing phase of the v2.1.0 series. It does three things together because they
+This is the load-bearing task of the v2.1.0 series. It does three things together because they
 share an invariant ("no unbounded retry path in the engine"):
   1. Consolidates the ReAct iteration-ceiling logic, the recursive context-overrun recovery,
      and ad-hoc retry counters behind one `EscalationHandler.escalateOrStop(...)` helper.
   2. Deletes the recursive `runLoop(...)` self-call at `AgenticEngine.swift:1076`. The infinite
      looping observed in prior context-overrun handling is structurally impossible after this
-     phase because no code path re-enters `runLoop` from inside its own catch block.
+     task because no code path re-enters `runLoop` from inside its own catch block.
   3. Wires the ReAct iteration ceiling to call `PlannerEngine.refineStep(reason: .iterationCap)`
      via the same helper.
 
-New surface introduced in phase 237b:
+New surface introduced in task 237b:
   - `Merlin/Engine/EscalationHandler.swift` — single retry/escalation policy.
     ```swift
     enum EscalationReason: Sendable {
@@ -116,5 +116,5 @@ git add tasks/task-237a-executor-gate-tests.md \
     MerlinTests/Unit/IterationCapEscalationTests.swift \
     MerlinTests/Unit/CleanStopOutcomeTests.swift \
     MerlinTests/Unit/RetryCounterDeletionTests.swift
-git commit -m "Phase 237a — UnifiedExecutorGateTests (failing)"
+git commit -m "Task 237a — UnifiedExecutorGateTests (failing)"
 ```

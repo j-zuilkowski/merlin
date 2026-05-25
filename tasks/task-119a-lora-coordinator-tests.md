@@ -1,16 +1,16 @@
-# Phase 119a — LoRACoordinator Tests (failing)
+# Task 119a — LoRACoordinator Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 118b complete: LoRATrainer in place.
+Task 118b complete: LoRATrainer in place.
 
-Current state: Nothing triggers LoRATrainer automatically. Phase 119b introduces
+Current state: Nothing triggers LoRATrainer automatically. Task 119b introduces
 LoRACoordinator — the piece that checks record count after each session, decides whether
 to train, prevents concurrent training runs, and notifies when training completes.
 
-New surface introduced in phase 119b:
+New surface introduced in task 119b:
   - `LoRACoordinator` — actor; holds LoRATrainer; wired into AgenticEngine
   - `LoRACoordinator.considerTraining(tracker:minSamples:baseModel:adapterOutputPath:) async`
       Checks exportTrainingData count; if >= minSamples and not already training, fires
@@ -188,5 +188,5 @@ Expected: BUILD FAILED — `LoRACoordinator` not defined.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRACoordinatorTests.swift
-git commit -m "Phase 119a — LoRACoordinatorTests (failing)"
+git commit -m "Task 119a — LoRACoordinatorTests (failing)"
 ```

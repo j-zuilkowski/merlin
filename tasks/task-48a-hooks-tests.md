@@ -1,12 +1,12 @@
-# Phase 48a — Hooks Tests
+# Task 48a — Hooks Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 47b complete: MemoryEngine in place.
+Task 47b complete: MemoryEngine in place.
 
-New surface introduced in phase 48b:
+New surface introduced in task 48b:
   - `HookEngine` — actor; executes shell-script lifecycle hooks
   - `HookDecision` — enum: `.allow`, `.deny(reason: String)`
   - `HookEngine.runPreToolUse(toolName:input:) async -> HookDecision`
@@ -214,5 +214,5 @@ Expected: BUILD FAILED — `HookEngine`, `HookDecision` not yet defined.
 ## Commit
 ```bash
 git add MerlinTests/Unit/HookEngineTests.swift
-git commit -m "Phase 48a — HookEngineTests (failing)"
+git commit -m "Task 48a — HookEngineTests (failing)"
 ```

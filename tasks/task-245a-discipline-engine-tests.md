@@ -1,15 +1,15 @@
-# Phase 245a — DisciplineEngine Tests
+# Task 245a — DisciplineEngine Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 244b complete: PendingAttentionQueue, Finding, FindingCategory, Severity live.
+Task 244b complete: PendingAttentionQueue, Finding, FindingCategory, Severity live.
 
 Introduces the `DisciplineEngine` actor — the central coordinator that runs all scanners,
 accumulates findings in the queue, and integrates with the existing HookEngine.
 
-New surface introduced in phase 245b:
+New surface introduced in task 245b:
   - `actor DisciplineEngine` in `Merlin/Discipline/DisciplineEngine.swift`:
     `init(adapter: ProjectAdapter, taskScanner: TaskScanner,
      manualCoverageScanner: ManualCoverageScanner, docReferenceGraph: DocReferenceGraph,
@@ -52,7 +52,7 @@ final class DisciplineEngineTests: XCTestCase {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         // Minimal structure
         try FileManager.default.createDirectory(
-            at: dir.appendingPathComponent("phases"), withIntermediateDirectories: true)
+            at: dir.appendingPathComponent(" tasks"), withIntermediateDirectories: true)
         return dir
     }
 
@@ -159,7 +159,7 @@ final class ScanReportTests: XCTestCase {
     func testScanReportFields() {
         let now = Date()
         let f = Finding(
-            id: UUID(), category: .phaseDrift, severity: .nudge,
+            id: UUID(), category: .taskDrift, severity: .nudge,
             summary: "s", detail: "d", suggestedAction: nil,
             createdAt: now, lastSeenAt: now
         )
@@ -193,5 +193,5 @@ and `DisciplineEngine.forceErrorForTesting`.
 git add tasks/task-245a-discipline-engine-tests.md \
     MerlinTests/Unit/DisciplineEngineTests.swift \
     MerlinTests/Unit/ScanReportTests.swift
-git commit -m "Phase 245a — DisciplineEngineTests (failing)"
+git commit -m "Task 245a — DisciplineEngineTests (failing)"
 ```

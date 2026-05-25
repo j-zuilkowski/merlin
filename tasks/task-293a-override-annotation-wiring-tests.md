@@ -1,4 +1,4 @@
-# Phase 293a — Override-Annotation Wiring Tests (failing)
+# Task 293a — Override-Annotation Wiring Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
@@ -6,7 +6,7 @@ Unit A4 of the discipline-wiring plan. `WhyCommentScanner` skips
 `rationale-not-needed:` trigger lines with a raw `String.contains` check and never
 records them; `OverrideAnnotationParser` is never called.
 
-New behaviour in phase 293b:
+New behaviour in task 293b:
   - `WhyCommentTrigger` gains `overrideRationale: String?`.
   - `WhyCommentScanner` uses `OverrideAnnotationParser` to detect annotations; an
     annotated trigger is returned with `overrideRationale` set rather than dropped.
@@ -29,4 +29,4 @@ Expected: BUILD SUCCEEDED, `testAnnotatedTriggerIsRecordedAsOverrideNotFlagged` 
 
 ## Commit
 git add MerlinTests/Unit/OverrideAnnotationWiringTests.swift tasks/task-293a-override-annotation-wiring-tests.md
-git commit -m "Phase 293a — Override-annotation wiring tests (failing)"
+git commit -m "Task 293a — Override-annotation wiring tests (failing)"

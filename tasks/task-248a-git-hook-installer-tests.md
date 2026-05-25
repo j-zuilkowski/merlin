@@ -1,15 +1,15 @@
-# Phase 248a — GitHookInstaller Tests
+# Task 248a — GitHookInstaller Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 247b complete: UserPromptSubmit discipline check live.
+Task 247b complete: UserPromptSubmit discipline check live.
 
 Introduces `GitHookInstaller`, which writes and removes Merlin's `post-commit` and `pre-push`
 git hook scripts to a project's `.git/hooks/` directory.
 
-New surface introduced in phase 248b:
+New surface introduced in task 248b:
   - `GitHookInstaller` actor in `Merlin/Discipline/GitHookInstaller.swift`:
     `func install(projectPath: String) async throws`
     `func uninstall(projectPath: String) async throws`
@@ -167,5 +167,5 @@ Expected: **BUILD FAILED** with errors naming `GitHookInstaller` and
 ```bash
 git add tasks/task-248a-git-hook-installer-tests.md \
     MerlinTests/Unit/GitHookInstallerTests.swift
-git commit -m "Phase 248a — GitHookInstallerTests (failing)"
+git commit -m "Task 248a — GitHookInstallerTests (failing)"
 ```

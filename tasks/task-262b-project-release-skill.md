@@ -1,10 +1,10 @@
-# Phase 262b — project:release Skill
+# Task 262b — project:release Skill
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 262a complete: failing tests asserting project:release SKILL.md exists.
+Task 262a complete: failing tests asserting project:release SKILL.md exists.
 
 ---
 
@@ -35,7 +35,7 @@ User says any of:
 
 ## Steps
 
-### Phase 1 — Pre-flight
+### Task 1 — Pre-flight
 
 Run all release gate checks in order. Any failure stops the release and reports the
 failing check. The user must fix or dismiss with rationale before re-running.
@@ -43,7 +43,7 @@ failing check. The user must fix or dismiss with rationale before re-running.
 **Checklist:**
 
 ```
-□  All phase tests pass (xcodebuild test / cargo test)
+□  All task tests pass (xcodebuild test / cargo test)
 □  api.md regenerated (APIDocGenerator.generate called; diff committed if changed)
 □  developer-guide.md mechanical sections regenerated (DevGuideGenerator.generate)
 □  user-manual.md: zero new uncovered surfaces (ManualCoverageScanner.scan)
@@ -62,7 +62,7 @@ Emit `discipline.release-gate.start` at the beginning.
 Emit `discipline.release-gate.fail` with failing check names on any failure.
 Emit `discipline.release-gate.pass` on full pass.
 
-### Phase 2 — Version bump
+### Task 2 — Version bump
 
 1. Edit `MARKETING_VERSION` in `project.yml` (Swift) or `version` in `Cargo.toml` (Rust)
    to the intended release version.
@@ -71,7 +71,7 @@ Emit `discipline.release-gate.pass` on full pass.
 4. Build and confirm About dialog shows the new version string.
 5. Commit: `git commit -m "Bump version to X.Y.Z"`.
 
-### Phase 3 — Tag and publish
+### Task 3 — Tag and publish
 
 6. Tag: `git tag vX.Y.Z`
 7. Push: `git push && git push --tags`
@@ -85,7 +85,7 @@ Emit `discipline.release-gate.pass` on full pass.
    ```
 9. For Rust: `cargo publish` (if the crate is public).
 
-### Phase 4 — Post-release bookkeeping
+### Task 4 — Post-release bookkeeping
 
 10. Call `ManualBaselineManager.recordRelease(uncoveredCount:)` with the current count.
 11. Archive `.merlin/pending.json` snapshot: copy to `.merlin/pending-vX.Y.Z.json`.
@@ -121,11 +121,11 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 262a `ProjectReleaseSkillTests` pass.
+Expected: **BUILD SUCCEEDED** and all task 262a `ProjectReleaseSkillTests` pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-262b-project-release-skill.md
-git commit -m "Phase 262b — project:release consolidated gate skill (SKILL.md)"
+git commit -m "Task 262b — project:release consolidated gate skill (SKILL.md)"
 ```

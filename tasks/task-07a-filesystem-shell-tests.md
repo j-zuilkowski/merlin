@@ -1,4 +1,4 @@
-# Phase 07a — FileSystem + Shell Tests
+# Task 07a — FileSystem + Shell Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -119,5 +119,5 @@ Expected: `BUILD FAILED` with errors referencing `FileSystemTools` and `ShellToo
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/FileSystemToolTests.swift MerlinTests/Integration/ShellToolTests.swift
-git commit -m "Phase 07a — FileSystemToolTests + ShellToolTests (failing)"
+git commit -m "Task 07a — FileSystemToolTests + ShellToolTests (failing)"
 ```

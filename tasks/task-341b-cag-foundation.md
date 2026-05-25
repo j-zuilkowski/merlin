@@ -1,16 +1,16 @@
-# Phase 341b — CAG Foundation Implementation
+# Task 341b — CAG Foundation Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 341a complete: CAG foundation tests are failing.
+Task 341a complete: CAG foundation tests are failing.
 
 Recommended execution model: GPT-5.3-Codex.
 
-Implement the non-provider foundation for Cache-Augmented Generation. This phase
-does not add Anthropic `cache_control` wire markers yet; that lands in phase
-342b. The output of this phase is a stable request policy and deterministic
+Implement the non-provider foundation for Cache-Augmented Generation. This task
+does not add Anthropic `cache_control` wire markers yet; that lands in task
+342b. The output of this task is a stable request policy and deterministic
 prompt/tool surface that providers can consume.
 
 ---
@@ -49,7 +49,7 @@ without mutating global registry state.
 Add `var cachePolicy: CAGCachePolicy = .disabled` to `CompletionRequest`.
 
 This is request metadata; providers that do not support explicit cache markers
-may ignore it. Do not change the OpenAI-compatible request JSON in this phase.
+may ignore it. Do not change the OpenAI-compatible request JSON in this task.
 
 ## Edit: Merlin/Config/AppSettings.swift
 
@@ -97,7 +97,7 @@ xcodebuild -scheme MerlinTests test \
     CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO 2>&1 \
     | grep -E 'Executed.*tests|BUILD' | tail
 ```
-Expected: all tests pass, including the phase 341a CAG foundation tests.
+Expected: all tests pass, including the task 341a CAG foundation tests.
 
 ## Commit
 ```bash
@@ -109,5 +109,5 @@ git add Merlin/CAG/CachePolicy.swift \
         MerlinTests/Unit/AppSettingsCAGTests.swift \
         MerlinTests/Unit/AgenticEngineCAGTests.swift \
         tasks/task-341b-cag-foundation.md
-git commit -m "Phase 341b — CAG foundation and stable request policy"
+git commit -m "Task 341b — CAG foundation and stable request policy"
 ```

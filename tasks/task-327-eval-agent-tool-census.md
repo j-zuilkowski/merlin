@@ -1,13 +1,13 @@
-# Phase 327 — Eval Agent-Tool Census (S18)
+# Task 327 — Eval Agent-Tool Census (S18)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 326 complete: eval capability harness landed.
+Task 326 complete: eval capability harness landed.
 
 W5 — the proving suite, scenario **S18** (agent-tool coverage). The agent's tool surface
-(~67 tools) had no test (W4 census gap F8). This phase adds the **registry census** —
+(~67 tools) had no test (W4 census gap F8). This task adds the **registry census** —
 the deterministic core of S18: it asserts every built-in tool is registered, so a tool
 silently dropped from `registerBuiltins()` is caught (the dead-feature class the whole
 suite exists for). Per-tool *live* invocation (valid/invalid args, real side effects)
@@ -116,7 +116,7 @@ test doing its job.)
 ## Commit
 ```
 git add MerlinTests/Unit/AgentToolCensusTests.swift tasks/task-327-eval-agent-tool-census.md
-git commit -m "Phase 327 — Eval agent-tool census (S18)"
+git commit -m "Task 327 — Eval agent-tool census (S18)"
 ```
 
 ---

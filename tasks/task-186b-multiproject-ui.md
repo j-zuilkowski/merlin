@@ -1,15 +1,15 @@
-# Phase 186b — Multi-Project UI Implementation
+# Task 186b — Multi-Project UI Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 185b complete: WorkspaceCoordinator with persistence and activeProjectManager.
+Task 185b complete: WorkspaceCoordinator with persistence and activeProjectManager.
 
-No 186a test phase — all new surface is SwiftUI view composition.
+No 186a test task — all new surface is SwiftUI view composition.
 Correctness verified by build success + manual E2E steps below.
 
-This phase enforces a single workspace window (removes WindowGroup(for: ProjectRef.self)),
+This task enforces a single workspace window (removes WindowGroup(for: ProjectRef.self)),
 fixes SideChatPane to use the active project's path, fixes TerminalPane to follow the
 active project, and wires all views through WorkspaceCoordinator.
 
@@ -841,7 +841,7 @@ git add tasks/task-186b-multiproject-ui.md \
         Merlin/Views/SideChatPane.swift \
         Merlin/Views/SessionSidebar.swift \
         Merlin/App/MerlinCommands.swift
-git commit -m "Phase 186b — Single-window multi-project: coordinator-driven UI, picker sheet, persistence"
+git commit -m "Task 186b — Single-window multi-project: coordinator-driven UI, picker sheet, persistence"
 ```
 
 ---
@@ -927,5 +927,5 @@ so `ChatView`'s `@FocusedObject` resolves correctly.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ChatView.swift Merlin/Views/WorkspaceView.swift
-git commit -m "Phase 186b addendum — ChatView @FocusedObject, WorkspaceView activeManager focusedObject"
+git commit -m "Task 186b addendum — ChatView @FocusedObject, WorkspaceView activeManager focusedObject"
 ```

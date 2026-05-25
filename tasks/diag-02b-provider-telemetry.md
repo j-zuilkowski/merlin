@@ -1,10 +1,10 @@
-# Phase diag-02b — Provider Telemetry Implementation
+# Task diag-02b — Provider Telemetry Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-02a complete: failing tests in place.
+Task diag-02a complete: failing tests in place.
 
 Instrument both `OpenAICompatibleProvider` and `DeepSeekProvider` to emit telemetry events
 covering the full request lifecycle: encode → sent → ttft → complete / error / retry.
@@ -291,5 +291,5 @@ Expected: all ProviderTelemetryTests pass, BUILD SUCCEEDED, zero warnings.
 ```bash
 git add Merlin/Providers/OpenAICompatibleProvider.swift \
         Merlin/Providers/DeepSeekProvider.swift
-git commit -m "Phase diag-02b — Provider telemetry instrumentation"
+git commit -m "Task diag-02b — Provider telemetry instrumentation"
 ```

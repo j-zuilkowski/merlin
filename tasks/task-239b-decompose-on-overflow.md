@@ -1,10 +1,10 @@
-# Phase 239b — Decompose-on-Overflow
+# Task 239b — Decompose-on-Overflow
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 239a complete: failing tests for decompose-first escalation with cross-provider fallback.
+Task 239a complete: failing tests for decompose-first escalation with cross-provider fallback.
 
 Closes the loop on "seamless regardless of provider/model/context." Decomposition is the default
 response to overflow; cross-provider routing fires only when the planner declares the step atomic.
@@ -34,7 +34,7 @@ response to overflow; cross-provider routing fires only when the planner declare
 The architectural spec for decompose-first overflow handling lives in `spec.md` §
 "V2.1 — Budget-Aware Execution" → "EscalationHandler — the single retry/escalation policy"
 (already written). Implementation must match the documented ladder. Do not modify
-`spec.md` in this phase.
+`spec.md` in this task.
 
 ---
 
@@ -54,7 +54,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 239a tests pass. All prior phases remain green.
+Expected: **BUILD SUCCEEDED** and all task 239a tests pass. All prior  tasks remain green.
 
 ## Commit
 
@@ -63,12 +63,12 @@ git add tasks/task-239b-decompose-on-overflow.md \
     Merlin/Providers/ProviderRegistry.swift \
     Merlin/Engine/EscalationHandler.swift \
     Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 239b — Decompose-on-overflow with cross-provider fallback"
+git commit -m "Task 239b — Decompose-on-overflow with cross-provider fallback"
 ```
 
 ## PASTE-LIST update
 
-Append phase 239a/239b under the "Budget-Aware Execution (v2.1.0)" section.
+Append task 239a/239b under the "Budget-Aware Execution (v2.1.0)" section.
 
 ## Fixes
 

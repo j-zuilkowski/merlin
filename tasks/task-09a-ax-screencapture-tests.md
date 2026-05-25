@@ -1,4 +1,4 @@
-# Phase 09a — AX Inspector + Screen Capture Tests
+# Task 09a — AX Inspector + Screen Capture Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -92,5 +92,5 @@ Expected: `BUILD FAILED` with errors referencing the missing types.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/AXInspectorTests.swift MerlinTests/Integration/ScreenCaptureTests.swift
-git commit -m "Phase 09a — AXInspectorTests + ScreenCaptureTests (failing)"
+git commit -m "Task 09a — AXInspectorTests + ScreenCaptureTests (failing)"
 ```

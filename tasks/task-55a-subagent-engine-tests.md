@@ -1,12 +1,12 @@
-# Phase 55a — SubagentEngine V4a Tests
+# Task 55a — SubagentEngine V4a Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 54b complete: AgentDefinition + AgentRegistry in place.
+Task 54b complete: AgentDefinition + AgentRegistry in place.
 
-New surface introduced in phase 55b:
+New surface introduced in task 55b:
   - `SubagentEvent` — enum: `.toolCallStarted`, `.toolCallCompleted`, `.messageChunk`,
     `.completed(summary:)`, `.failed(Error)`
   - `SubagentEngine` — actor; runs a child AgenticEngine, streams SubagentEvents
@@ -194,5 +194,5 @@ Expected: BUILD FAILED — `SubagentEngine`, `SubagentEvent`, `availableToolName
 ## Commit
 ```bash
 git add MerlinTests/Unit/SubagentEngineTests.swift
-git commit -m "Phase 55a — SubagentEngineTests (failing)"
+git commit -m "Task 55a — SubagentEngineTests (failing)"
 ```

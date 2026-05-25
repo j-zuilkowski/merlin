@@ -1,10 +1,10 @@
-# Phase 168b — Context Compaction Fix (remove complete exchange pairs)
+# Task 168b — Context Compaction Fix (remove complete exchange pairs)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 168a complete: ContextCompactionTests in place (failing).
+Task 168a complete: ContextCompactionTests in place (failing).
 
 ---
 
@@ -114,5 +114,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift \
         MerlinTests/Unit/ContextManagerTests.swift \
         tasks/task-168b-context-compaction-fix.md
-git commit -m "Phase 168b — Fix context compaction: remove complete exchange pairs"
+git commit -m "Task 168b — Fix context compaction: remove complete exchange pairs"
 ```

@@ -1,20 +1,20 @@
-# Phase 340a — Documentation Sweep Tests
+# Task 340a — Documentation Sweep Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 339b complete: llama.cpp provider support and the sidebar slot status
+Task 339b complete: llama.cpp provider support and the sidebar slot status
 panel have shipped.
 
 Recommended execution model: GPT-5.3-Codex.
 
-Phase 338b and 339b update the docs directly attached to their features. This
-phase adds a final documentation drift gate across the repo so release-current
+Task 338b and 339b update the docs directly attached to their features. This
+task adds a final documentation drift gate across the repo so release-current
 docs, generated docs, local-provider scripts, and eval scenario inventories do
 not retain stale provider/slot descriptions.
 
-Documentation scan completed before staging this phase found these current docs
+Documentation scan completed before staging this task found these current docs
 requiring coverage:
 
 - `README.md`
@@ -72,7 +72,7 @@ docs:
 - Include: README, FEATURES, `Merlin/Docs`, `docs/local-provider-configs`,
   current eval scenarios/surface inventories.
 - Exclude: `RELEASE-*`, dated handoffs, old task files except
-  `tasks/SURFACE-INVENTORY.md`, and historical aggregate `tasks/ALL-PHASES.md`.
+  `tasks/SURFACE-INVENTORY.md`, and historical aggregate `tasks/ALL-TASKS.md`.
 
 ## Verify
 ```bash
@@ -88,5 +88,5 @@ remaining stale docs.
 ```bash
 git add MerlinTests/Unit/DocumentationSweepTests.swift \
         tasks/task-340a-documentation-sweep-tests.md
-git commit -m "Phase 340a — documentation sweep tests (failing)"
+git commit -m "Task 340a — documentation sweep tests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 271b — Process Safety + Git-Hook Hardening
+# Task 271b — Process Safety + Git-Hook Hardening
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 271a complete: failing tests for foreign-hook detection and process timeouts.
+Task 271a complete: failing tests for foreign-hook detection and process timeouts.
 
-This phase hardens three process-and-file-safety paths: `GitHookInstaller` refuses to
+This task hardens three process-and-file-safety paths: `GitHookInstaller` refuses to
 clobber a foreign hook, the two process runners gain timeouts, and `OverrideAuditLog`
 loses its force-unwrap.
 
@@ -444,7 +444,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 271a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 271a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -454,5 +454,5 @@ git add tasks/task-271b-process-safety.md \
     Merlin/Discipline/APIDocGenerator.swift \
     Merlin/Discipline/ProseReadabilityChecker.swift \
     Merlin/Discipline/OverrideAuditLog.swift
-git commit -m "Phase 271b — Process safety and git-hook hardening"
+git commit -m "Task 271b — Process safety and git-hook hardening"
 ```

@@ -1,12 +1,12 @@
-# Phase 39a — Skill Invocation Tests
+# Task 39a — Skill Invocation Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 38b complete: SkillsRegistry + Skill + SkillsPicker.
+Task 38b complete: SkillsRegistry + Skill + SkillsPicker.
 
-New surface introduced in phase 39b:
+New surface introduced in task 39b:
   - `AgenticEngine.invokeSkill(_:arguments:) -> AsyncStream<AgentEvent>`
     Renders skill body, injects as a user turn, streams response.
     If `skill.frontmatter.model` is non-empty, overrides the active provider for this turn.
@@ -140,5 +140,5 @@ Expected: `BUILD FAILED` with errors referencing `AgenticEngine.invokeSkill`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SkillInvocationTests.swift
-git commit -m "Phase 39a — SkillInvocationTests (failing)"
+git commit -m "Task 39a — SkillInvocationTests (failing)"
 ```

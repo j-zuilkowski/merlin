@@ -1,12 +1,12 @@
-# Phase 190a — KAG Backend Plugin Tests (failing)
+# Task 190a — KAG Backend Plugin Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 189 complete: v1.6.1 crash fix shipped.
+Task 189 complete: v1.6.1 crash fix shipped.
 
-New surface introduced in phase 190b:
+New surface introduced in task 190b:
   - `KAGTripleSource` — enum: `session` | `book`
   - `KAGTriple` — Sendable value type: subject, predicate, object, domainId, source, confidence
   - `KAGBackendPlugin` — protocol; `func writeTriples(_ triples: [KAGTriple]) async throws`
@@ -292,5 +292,5 @@ git add \
   MerlinTests/Unit/KAGBackendRegistryTests.swift \
   MerlinTests/Unit/LocalKAGPluginTests.swift \
   MerlinTests/Unit/KAGEngineTests.swift
-git commit -m "Phase 190a — KAG backend plugin tests (failing)"
+git commit -m "Task 190a — KAG backend plugin tests (failing)"
 ```

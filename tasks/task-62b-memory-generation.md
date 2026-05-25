@@ -1,10 +1,10 @@
-# Phase 62b — Memory Generation Implementation
+# Task 62b — Memory Generation Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 62a complete: failing MemoryGenerationTests in place.
+Task 62a complete: failing MemoryGenerationTests in place.
 
 Implement real LLM-based memory generation in `MemoryEngine`. Add `memoriesEnabled` and
 `memoryIdleTimeout` to `AppSettings`. Wire idle callback in `LiveSession`.
@@ -296,5 +296,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Memories/MemoryEngine.swift \
         Merlin/Config/AppSettings.swift \
         Merlin/Sessions/LiveSession.swift
-git commit -m "Phase 62b — MemoryEngine LLM generation + AppSettings.memoriesEnabled"
+git commit -m "Task 62b — MemoryEngine LLM generation + AppSettings.memoriesEnabled"
 ```

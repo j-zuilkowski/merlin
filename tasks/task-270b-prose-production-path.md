@@ -1,13 +1,13 @@
-# Phase 270b — Prose Readability Production Path
+# Task 270b — Prose Readability Production Path
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 270a complete: failing tests for the Vale style shape, the Vale JSON parser, and
+Task 270a complete: failing tests for the Vale style shape, the Vale JSON parser, and
 `DisciplineEngine` prose integration.
 
-This phase makes the prose-readability path functional end to end: the Vale style file
+This task makes the prose-readability path functional end to end: the Vale style file
 uses Vale's real readability rule, the checker parses Vale's actual JSON output, and
 `DisciplineEngine.scan()` runs the checker over the project's doc files.
 
@@ -336,7 +336,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 270a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 270a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -345,5 +345,5 @@ git add tasks/task-270b-prose-production-path.md \
     Merlin/Discipline/ValeStyleWriter.swift \
     Merlin/Discipline/ProseReadabilityChecker.swift \
     Merlin/Discipline/DisciplineEngine.swift
-git commit -m "Phase 270b — Prose readability production path"
+git commit -m "Task 270b — Prose readability production path"
 ```

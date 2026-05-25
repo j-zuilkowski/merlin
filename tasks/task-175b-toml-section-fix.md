@@ -1,10 +1,10 @@
-# Phase 175b — Fix: move project_path and rag_* fields before [memory] section in serializedTOML
+# Task 175b — Fix: move project_path and rag_* fields before [memory] section in serializedTOML
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 175a complete: TOML section failures documented.
+Task 175a complete: TOML section failures documented.
 
 ## Root Cause
 
@@ -112,5 +112,5 @@ Expected: BUILD SUCCEEDED; all ProjectPathSettingsTests and RAGSettingsTests pas
 cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift \
         tasks/task-175b-toml-section-fix.md
-git commit -m "Phase 175b — Fix: project_path and rag_* fields written before [memory] section"
+git commit -m "Task 175b — Fix: project_path and rag_* fields written before [memory] section"
 ```

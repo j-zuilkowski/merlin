@@ -1,10 +1,10 @@
-# Phase 95 — Apply defaultPermissionMode to New Sessions
+# Task 95 — Apply defaultPermissionMode to New Sessions
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 94 complete: NotificationEngine guards on notificationsEnabled.
+Task 94 complete: NotificationEngine guards on notificationsEnabled.
 
 `AppSettings.defaultPermissionMode` is persisted and shown in General settings (Permissions
 section picker) but `LiveSession.permissionMode` is hardcoded to `.ask`. New sessions always
@@ -66,5 +66,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Sessions/LiveSession.swift
-git commit -m "Phase 95 — LiveSession: initialize permissionMode from AppSettings.defaultPermissionMode"
+git commit -m "Task 95 — LiveSession: initialize permissionMode from AppSettings.defaultPermissionMode"
 ```

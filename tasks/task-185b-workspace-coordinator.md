@@ -1,10 +1,10 @@
-# Phase 185b — WorkspaceCoordinator Implementation
+# Task 185b — WorkspaceCoordinator Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 185a complete: WorkspaceCoordinatorTests committed (failing).
+Task 185a complete: WorkspaceCoordinatorTests committed (failing).
 
 ---
 
@@ -133,5 +133,5 @@ Expected: BUILD SUCCEEDED; all WorkspaceCoordinatorTests pass.
 cd ~/Documents/localProject/merlin
 git add tasks/task-185b-workspace-coordinator.md \
         Merlin/Sessions/WorkspaceCoordinator.swift
-git commit -m "Phase 185b — WorkspaceCoordinator: multi-project state, persistence, activeProjectManager"
+git commit -m "Task 185b — WorkspaceCoordinator: multi-project state, persistence, activeProjectManager"
 ```

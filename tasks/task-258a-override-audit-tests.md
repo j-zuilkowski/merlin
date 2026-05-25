@@ -1,16 +1,16 @@
-# Phase 258a — Override Audit Log Tests
+# Task 258a — Override Audit Log Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 257b complete: Vale pre-commit gate live.
+Task 257b complete: Vale pre-commit gate live.
 
 Introduces the override audit log and weekly review event. Every override (dismissed finding,
 `rationale-not-needed:` annotation) is appended to `.merlin/override-log.jsonl`. The weekly
 review surfaces accumulation to pending-attention.
 
-New surface introduced in phase 258b:
+New surface introduced in task 258b:
   - `OverrideAuditLog` actor in `Merlin/Discipline/OverrideAuditLog.swift`:
     `init(logPath: String)`
     `func record(_ entry: OverrideEntry) async throws`
@@ -175,5 +175,5 @@ Expected: **BUILD FAILED** with errors naming `OverrideAuditLog`, `OverrideEntry
 ```bash
 git add tasks/task-258a-override-audit-tests.md \
     MerlinTests/Unit/OverrideAuditLogTests.swift
-git commit -m "Phase 258a — OverrideAuditLogTests (failing)"
+git commit -m "Task 258a — OverrideAuditLogTests (failing)"
 ```

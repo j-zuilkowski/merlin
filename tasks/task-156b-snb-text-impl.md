@@ -1,9 +1,9 @@
-# Phase 156b — SNB text extraction implementation
+# Task 156b — SNB text extraction implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 156a complete: SNB text tests failing.
+Task 156a complete: SNB text tests failing.
 
 ## Edit: processing/src/text/snb.rs
 
@@ -85,5 +85,5 @@ Expected: all 3 SNB text tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/text/snb.rs
-git commit -m "Phase 156b — SNB text extraction: ZIP+XML chapter parser"
+git commit -m "Task 156b — SNB text extraction: ZIP+XML chapter parser"
 ```

@@ -1,12 +1,12 @@
-# Phase 104b — System Prompt Addendum (per-provider + domain)
+# Task 104b — System Prompt Addendum (per-provider + domain)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 104a complete: SystemPromptAddendumTests (failing) in place.
+Task 104a complete: SystemPromptAddendumTests (failing) in place.
 
-This phase wires `system_prompt_addendum` from provider config and the active domain
+This task wires `system_prompt_addendum` from provider config and the active domain
 into `AgenticEngine.buildSystemPrompt()`. No new types — all wiring in existing files.
 
 ---
@@ -158,5 +158,5 @@ Expected: BUILD SUCCEEDED; SystemPromptAddendumTests → 7 pass; all prior tests
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Providers/ProviderRegistry.swift
-git commit -m "Phase 104b — system_prompt_addendum injection (per-provider + domain, with addendum hash)"
+git commit -m "Task 104b — system_prompt_addendum injection (per-provider + domain, with addendum hash)"
 ```

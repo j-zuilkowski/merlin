@@ -1,12 +1,12 @@
-# Phase 40a — MCPBridge Tests
+# Task 40a — MCPBridge Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 39b complete: skill invocation + fork context + built-in skills.
+Task 39b complete: skill invocation + fork context + built-in skills.
 
-New surface introduced in phase 40b:
+New surface introduced in task 40b:
   - `MCPServerConfig` — Codable struct: name, command, args ([String]), env ([String:String])
   - `MCPConfig` — Codable struct: mcpServers ([String: MCPServerConfig])
     Loaded from ~/.merlin/mcp.json or project-root/.mcp.json
@@ -157,5 +157,5 @@ Expected: `BUILD FAILED` with errors referencing `MCPConfig`, `MCPServerConfig`,
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/MCPBridgeTests.swift
-git commit -m "Phase 40a — MCPBridgeTests (failing)"
+git commit -m "Task 40a — MCPBridgeTests (failing)"
 ```

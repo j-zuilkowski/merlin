@@ -1,10 +1,10 @@
-# Phase 150a — Loop Continuation and Near-Ceiling Warning Tests
+# Task 150a — Loop Continuation and Near-Ceiling Warning Tests
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 149b complete: LM Studio context auto-resize in place.
+Task 149b complete: LM Studio context auto-resize in place.
 
 ## Problem
 
@@ -25,7 +25,7 @@ re-planning and run with the high-stakes ceiling.
 inject a ⚠️ system note (visible to user) and append an urgent instruction to
 the system prompt telling the LLM to commit all pending work immediately.
 
-## New surface introduced in phase 150b
+## New surface introduced in task 150b
 
 - `AgenticEngine.maxIterationsOverride: Int?` — bypasses adaptive calculation (for tests)
 - `AgenticEngine.continuationInjectURL: URL` — injectable inject path (for tests)
@@ -63,5 +63,5 @@ xcodebuild -scheme MerlinTests test \
 ## Commit
 ```bash
 git add MerlinTests/Unit/LoopContinuationTests.swift
-git commit -m "Phase 150a — LoopContinuationTests (failing)"
+git commit -m "Task 150a — LoopContinuationTests (failing)"
 ```

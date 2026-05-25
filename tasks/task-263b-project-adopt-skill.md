@@ -1,12 +1,12 @@
-# Phase 263b — project:adopt Skill
+# Task 263b — project:adopt Skill
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 263a complete: failing tests asserting project:adopt SKILL.md exists.
+Task 263a complete: failing tests asserting project:adopt SKILL.md exists.
 
-The first adoption target is Merlin itself — this skill must handle the case where phase
+The first adoption target is Merlin itself — this skill must handle the case where task
 files already exist and conventions are already partially documented.
 
 ---
@@ -90,7 +90,7 @@ User says any of:
 When run against `~/Documents/localProject/merlin`:
 - Adapter: `swift-xcode`
 - Expected baseline gap: non-zero (many existing surfaces, partially documented)
-- Task drift: mostly green (230+ phases, well-maintained)
+- Task drift: mostly green (230+  tasks, well-maintained)
 - WHY-comment violations: present in engine files (Task.sleep, try?)
 - Prose readability: spec.md targets grade 11; user-manual.md targets grade 9
 
@@ -123,11 +123,11 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 263a `ProjectAdoptSkillTests` pass.
+Expected: **BUILD SUCCEEDED** and all task 263a `ProjectAdoptSkillTests` pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-263b-project-adopt-skill.md
-git commit -m "Phase 263b — project:adopt skill (SKILL.md) — first target: Merlin itself"
+git commit -m "Task 263b — project:adopt skill (SKILL.md) — first target: Merlin itself"
 ```

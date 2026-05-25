@@ -1,10 +1,10 @@
-# Phase 169b — Continuation Abort Implementation
+# Task 169b — Continuation Abort Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 169a complete: ContinuationAbortTests (failing) in place.
+Task 169a complete: ContinuationAbortTests (failing) in place.
 
 ## Root Cause
 
@@ -167,5 +167,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         tasks/task-169b-continuation-abort.md \
         tasks/task-17c-agenticengine-v5-addendum.md
-git commit -m "Phase 169b — Continuation abort: [STEP_ALREADY_DONE] clears pending queue"
+git commit -m "Task 169b — Continuation abort: [STEP_ALREADY_DONE] clears pending queue"
 ```

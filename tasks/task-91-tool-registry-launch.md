@@ -1,10 +1,10 @@
-# Phase 91 — Register Built-in Tools at Launch
+# Task 91 — Register Built-in Tools at Launch
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 90 complete: AdvancedSettingsView fully implemented.
+Task 90 complete: AdvancedSettingsView fully implemented.
 
 `ToolRegistry.shared.registerBuiltins()` exists but is never called, leaving `ToolRegistry.shared`
 empty at runtime. `SubagentEngine` and `WorkerSubagentEngine` both call `ToolRegistry.shared.all()`
@@ -73,5 +73,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift
-git commit -m "Phase 91 — Register built-in tools in ToolRegistry at launch"
+git commit -m "Task 91 — Register built-in tools in ToolRegistry at launch"
 ```

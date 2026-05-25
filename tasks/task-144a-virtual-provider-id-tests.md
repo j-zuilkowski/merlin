@@ -1,12 +1,12 @@
-# Phase 144a — Virtual Provider ID Tests (failing)
+# Task 144a — Virtual Provider ID Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 143b complete: dynamic model fetching in place.
+Task 143b complete: dynamic model fetching in place.
 
-New surface introduced in phase 144b:
+New surface introduced in task 144b:
   - `ProviderRegistry.provider(for:)` resolves virtual IDs in `"backendID:modelID"` format.
     `"lmstudio:phi-4"` returns an `OpenAICompatibleProvider` using lmstudio's `baseURL` and
     `phi-4` as the `modelID`. The backend entry must be present and enabled.
@@ -200,5 +200,5 @@ Expected: BUILD FAILED — `virtualProviderIDs(for:)`, `displayName(for:)` not y
 ## Commit
 ```bash
 git add MerlinTests/Unit/VirtualProviderIDTests.swift
-git commit -m "Phase 144a — Virtual provider ID tests (failing)"
+git commit -m "Task 144a — Virtual provider ID tests (failing)"
 ```

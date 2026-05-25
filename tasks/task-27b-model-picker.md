@@ -1,10 +1,10 @@
-# Phase 27 — Model Picker
+# Task 27 — Model Picker
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 26b complete: ProviderRegistry, ProviderSettingsView, and updateModel(_:for:) exist.
+Task 26b complete: ProviderRegistry, ProviderSettingsView, and updateModel(_:for:) exist.
 
 Problem: ProviderSettingsView has no model editing UI. The model field in ProviderConfig
 is set at creation and never exposed for editing in the UI.
@@ -144,5 +144,5 @@ Expected: `BUILD SUCCEEDED`, zero errors, zero warnings.
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/ProviderConfig.swift \
         Merlin/Views/Settings/ProviderSettingsView.swift
-git commit -m "Phase 27 — model picker in provider settings"
+git commit -m "Task 27 — model picker in provider settings"
 ```

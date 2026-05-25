@@ -1,11 +1,11 @@
-# Phase 23 — TestTargetApp (GUI Automation Fixture)
+# Task 23 — TestTargetApp (GUI Automation Fixture)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 09b complete: AXInspectorTool exists. Phase 10 complete: CGEventTool exists. Phase 09b: ScreenCaptureTool exists.
+Task 09b complete: AXInspectorTool exists. Task 10 complete: CGEventTool exists. Task 09b: ScreenCaptureTool exists.
 
 ---
 
@@ -184,5 +184,5 @@ Expected: `BUILD SUCCEEDED`. All 3 GUIAutomation tests skip cleanly without `RUN
 cd ~/Documents/localProject/merlin
 git add TestTargetApp/TestTargetAppMain.swift TestTargetApp/ContentView.swift \
     MerlinE2ETests/GUIAutomationE2ETests.swift
-git commit -m "Phase 23 — TestTargetApp fixture + GUIAutomationE2ETests"
+git commit -m "Task 23 — TestTargetApp fixture + GUIAutomationE2ETests"
 ```

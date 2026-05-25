@@ -1,10 +1,10 @@
-# Phase 177a — ProviderRoutingCleanupTests: nil registry + vision fallback (failing — pre-existing)
+# Task 177a — ProviderRoutingCleanupTests: nil registry + vision fallback (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 176b complete: ProjectSizeMetrics formula fix.
+Task 176b complete: ProjectSizeMetrics formula fix.
 
 ## Problem
 
@@ -50,5 +50,5 @@ Expected: `testNilRegistryReturnsNullProvider` and `testVisionSlotUnassignedFall
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-177a-provider-routing-cleanup-tests.md
-git commit -m "Phase 177a — ProviderRoutingCleanup nil-registry/vision failures documented"
+git commit -m "Task 177a — ProviderRoutingCleanup nil-registry/vision failures documented"
 ```

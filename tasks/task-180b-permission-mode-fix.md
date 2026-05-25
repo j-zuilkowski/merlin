@@ -1,10 +1,10 @@
-# Phase 180b — Fix: PermissionModeTests auth popup — @MainActor on CapturingAuthPresenter + pure tool-call chunks
+# Task 180b — Fix: PermissionModeTests auth popup — @MainActor on CapturingAuthPresenter + pure tool-call chunks
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 180a complete: PermissionModeTests failure documented.
+Task 180a complete: PermissionModeTests failure documented.
 
 ## Fix (two-part)
 
@@ -119,5 +119,5 @@ cd ~/Documents/localProject/merlin
 git add TestHelpers/NullAuthPresenter.swift \
         MerlinTests/Unit/PermissionModeTests.swift \
         tasks/task-180b-permission-mode-fix.md
-git commit -m "Phase 180b — Fix: @MainActor CapturingAuthPresenter; pure tool-call chunks in PermissionModeTests"
+git commit -m "Task 180b — Fix: @MainActor CapturingAuthPresenter; pure tool-call chunks in PermissionModeTests"
 ```

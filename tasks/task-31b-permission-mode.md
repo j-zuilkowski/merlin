@@ -1,10 +1,10 @@
-# Phase 31b — Permission Mode Implementation
+# Task 31b — Permission Mode Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 31a complete: failing PermissionModeTests in place.
+Task 31a complete: failing PermissionModeTests in place.
 
 ---
 
@@ -99,7 +99,7 @@ private func isFileWriteTool(_ name: String) -> Bool {
 ## Modify: Merlin/Sessions/LiveSession.swift
 
 Replace the stub `var permissionMode: PermissionMode = .ask` — it already references
-the real type after this phase compiles, so no change needed. Confirm `LiveSession`
+the real type after this task compiles, so no change needed. Confirm `LiveSession`
 forwards the mode to its engine:
 
 ```swift
@@ -198,5 +198,5 @@ git add Merlin/Engine/PermissionMode.swift \
         Merlin/Views/SessionSidebar.swift \
         Merlin/Views/ChatView.swift \
         project.yml
-git commit -m "Phase 31b — PermissionMode (ask/auto/plan) + engine integration"
+git commit -m "Task 31b — PermissionMode (ask/auto/plan) + engine integration"
 ```

@@ -1,10 +1,10 @@
-# Phase 114b — StagingBuffer OutcomeSignals Wiring
+# Task 114b — StagingBuffer OutcomeSignals Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 114a complete: StagingBufferSignalsTests (failing) in place.
+Task 114a complete: StagingBufferSignalsTests (failing) in place.
 
 ---
 
@@ -154,5 +154,5 @@ Expected: BUILD SUCCEEDED; StagingBufferSignalsTests → 9 pass; all prior tests
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/StagingBuffer.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 114b — StagingBuffer accept/reject wired into OutcomeSignals (diffAccepted, diffEditedOnAccept)"
+git commit -m "Task 114b — StagingBuffer accept/reject wired into OutcomeSignals (diffAccepted, diffEditedOnAccept)"
 ```

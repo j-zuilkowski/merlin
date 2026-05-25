@@ -1,10 +1,10 @@
-# Phase 275a — Context-Overrun Retry Bound (failing test)
+# Task 275a — Context-Overrun Retry Bound (failing test)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 274b complete: chip-freshness fix + CI gate landed; two regressions deferred here
+Task 274b complete: chip-freshness fix + CI gate landed; two regressions deferred here
 and to 276.
 
 **Regression being fixed.** When a provider returns a context-length / body-size `400`
@@ -13,13 +13,13 @@ terminal event. Root cause: `EscalationHandler.escalateOrStop` only increments i
 `successfulRefinements` budget on the `.decomposed` outcome. The `.cannotDecompose` →
 `.routeToProvider` branch (`EscalationHandler.swift:61`) returns without consuming the
 budget, so repeated overruns loop `.routeToProvider` → `continue turnLoop` → overrun →
-escalate → `.routeToProvider` … until the outer `maxLoopIterations` cap. Phase 237's
+escalate → `.routeToProvider` … until the outer `maxLoopIterations` cap. Task 237's
 `maxRefinementsPerTurn` bound is effectively bypassed.
 
-This phase rewrites the one stale/failing test in `ContextLengthRecoveryTests` to assert
+This task rewrites the one stale/failing test in `ContextLengthRecoveryTests` to assert
 the **correct post-237 behaviour**: repeated context-overrun is bounded to a small
 finite number of provider calls and ends with a `.cleanStop` event. (The pre-237
-expectations — `callCount == 3`, an `.error` event — are obsolete; phase 237 replaced
+expectations — `callCount == 3`, an `.error` event — are obsolete; task 237 replaced
 the bounded-retry-counter design with `EscalationHandler` + `.cleanStop`.)
 
 The other tests in the file (`test_isContextLengthExceeded_*`,
@@ -94,12 +94,12 @@ xcodebuild -scheme MerlinTests test \
 Expected: **BUILD SUCCEEDED**, but
 `test_engine_bounds_retries_and_cleanStops_on_repeated_body_size_failures`
 **FAILS at runtime** — the current engine loops ~199 times and yields no `.cleanStop`.
-That failure is the red state this phase establishes; 275b makes it pass.
+That failure is the red state this task establishes; 275b makes it pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-275a-context-overrun-bound-tests.md \
     MerlinTests/Unit/ContextLengthRecoveryTests.swift
-git commit -m "Phase 275a — ContextOverrunBoundTest (failing)"
+git commit -m "Task 275a — ContextOverrunBoundTest (failing)"
 ```

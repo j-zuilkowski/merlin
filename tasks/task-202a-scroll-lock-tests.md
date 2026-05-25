@@ -1,12 +1,12 @@
-# Phase 202a — Scroll Lock Tests (failing)
+# Task 202a — Scroll Lock Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 201b complete: /compact slash + context-length recovery.
+Task 201b complete: /compact slash + context-length recovery.
 
-`ChatView` already has `autoScrollEnabled`, `scrollLockVisible`, and `scrollPhaseIsUser` state
+`ChatView` already has `autoScrollEnabled`, `scrollLockVisible`, and `scrollTaskIsUser` state
 vars plus a `scrollLockBanner(proxy:)` function. `ConversationHTMLRenderer` already tracks
 `_userScrolled` in JS and conditionally skips `scrollToBottom()`. However:
 - JS never posts a `"scrollLock"` message back to Swift when `_userScrolled` becomes true.
@@ -14,7 +14,7 @@ vars plus a `scrollLockBanner(proxy:)` function. `ConversationHTMLRenderer` alre
 - `scrollLockBanner` exists but is never placed in the view hierarchy.
 - The "Resume auto-scroll" banner consequently never appears.
 
-New surface introduced in phase 202b:
+New surface introduced in task 202b:
   - `ConversationHTMLRenderer` — adds `window.webkit.messageHandlers.merlinBridge.postMessage({type:'scrollLock',locked:true/false})` when `_userScrolled` changes
   - `ConversationWebView.Coordinator.userContentController` — handles `"scrollLock"` message, calls `onScrollLockChange(Bool)`
   - `ConversationWebView` — exposes `onScrollLockChange: (Bool) -> Void` callback
@@ -143,5 +143,5 @@ fails to compile.
 
 ```bash
 git add MerlinTests/Unit/ScrollLockTests.swift
-git commit -m "Phase 202a — ScrollLockTests (failing)"
+git commit -m "Task 202a — ScrollLockTests (failing)"
 ```

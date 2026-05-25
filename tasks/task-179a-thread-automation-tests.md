@@ -1,10 +1,10 @@
-# Phase 179a — ThreadAutomationTests: loop interval too long (failing — pre-existing)
+# Task 179a — ThreadAutomationTests: loop interval too long (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 178b complete: ProviderTelemetry URLError retry fix.
+Task 178b complete: ProviderTelemetry URLError retry fix.
 
 ## Problem
 
@@ -45,5 +45,5 @@ Expected: `test_engine_firesCallbackOnSchedule` fails.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-179a-thread-automation-tests.md
-git commit -m "Phase 179a — ThreadAutomation loop-interval failure documented"
+git commit -m "Task 179a — ThreadAutomation loop-interval failure documented"
 ```

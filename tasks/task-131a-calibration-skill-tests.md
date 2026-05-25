@@ -1,12 +1,12 @@
-# Phase 131a — Calibration Skill & UI Tests
+# Task 131a — Calibration Skill & UI Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 130b complete: CalibrationAdvisor in place. All prior tests pass.
+Task 130b complete: CalibrationAdvisor in place. All prior tests pass.
 
-New surface introduced in phase 131b:
+New surface introduced in task 131b:
 
   `CalibrationCoordinator` — @MainActor ObservableObject owned by AppState.
       @Published var sheet: CalibrationSheet? — drives sheet presentation.
@@ -189,5 +189,5 @@ Expected: **BUILD FAILED** — `CalibrationCoordinator`, `CalibrationSheet`, `Ca
 ## Commit
 ```bash
 git add MerlinTests/Unit/CalibrationSkillTests.swift
-git commit -m "Phase 131a — CalibrationSkillTests (failing)"
+git commit -m "Task 131a — CalibrationSkillTests (failing)"
 ```

@@ -11,22 +11,22 @@ artifact of the Project Discipline pipeline.
 
 - **Context-overflow HTTP 400s are fixed at the source.** Three layers, end to end:
   tool output (`run_shell`, `read_file`) is capped before it can enter the model
-  context (phase 284); the per-request budget is discovered from the active model's
+  context (task 284); the per-request budget is discovered from the active model's
   real context window — queried live for local runners and OpenRouter, learned from
-  the first 400 and persisted for commercial providers (phase 285); and every LLM
+  the first 400 and persisted for commercial providers (task 285); and every LLM
   request on every engine path — planner, critic, subagents, summariser, memory,
   KAG, vision — is sized to fit the provider window before it is sent, not just the
-  main turn loop (phase 286).
+  main turn loop (task 286).
 - **Local model picker.** When a local runner has several models loaded, each can be
-  assigned to a role slot directly from the chat HUD and the slot picker (phase 283).
+  assigned to a role slot directly from the chat HUD and the slot picker (task 283).
 - **Missing-tool detection.** When a feature needs an external CLI tool that is not
   installed, Merlin detects it on first use and offers a one-click `brew install` for
   the Homebrew-safe tools, or shows the install command/URL for the rest — instead of
-  a raw "command not found" (phase 287).
+  a raw "command not found" (task 287).
 - **Vision launchpad.** `vision.md` is now the first artifact of the discipline
-  pipeline — `vision → architecture → phase → code`. `project:init` seeds it,
+  pipeline — `vision → architecture → task → code`. `project:init` seeds it,
   `project:adopt` incorporates an existing one, `project:revise` grows and promotes
-  ideas from it (phase 288).
+  ideas from it (task 288).
 
 ## Internal changes
 

@@ -1,9 +1,9 @@
-# Phase diag-10b — Toolbar Actions Implementation
+# Task diag-10b — Toolbar Actions Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
-Phase diag-10a complete.
+Task diag-10a complete.
 
 User-configurable toolbar buttons that run arbitrary shell commands. Persisted as JSON
 at a path configured in AppSettings (default `~/.merlin/toolbar-actions.json`).
@@ -131,5 +131,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Toolbar/ToolbarAction.swift \
         Merlin/Toolbar/ToolbarActionStore.swift \
         tasks/task-diag-10b-toolbar-actions.md
-git commit -m "Phase diag-10b — ToolbarAction + ToolbarActionStore"
+git commit -m "Task diag-10b — ToolbarAction + ToolbarActionStore"
 ```

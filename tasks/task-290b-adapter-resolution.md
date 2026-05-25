@@ -1,8 +1,8 @@
-# Phase 290b — Adapter Resolution (implementation)
+# Task 290b — Adapter Resolution (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 290a complete: failing tests in `DisciplineAdapterResolutionTests`.
+Task 290a complete: failing tests in `DisciplineAdapterResolutionTests`.
 
 Unit A1 of the discipline-wiring plan. `DisciplineEngine` was built with
 `ProjectAdapter.makeStub`; the `AdapterRegistry` loaded at launch was never read.
@@ -29,4 +29,4 @@ Expected: BUILD SUCCEEDED, 4 tests pass.
 ## Commit
 git add Merlin/Discipline/DisciplineEngine.swift Merlin/App/AppState.swift \
   tasks/task-290b-adapter-resolution.md
-git commit -m "Phase 290b — Adapter resolution"
+git commit -m "Task 290b — Adapter resolution"

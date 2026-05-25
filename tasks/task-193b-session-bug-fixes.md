@@ -1,10 +1,10 @@
-# Phase 193b — Session Bug Fixes Implementation
+# Task 193b — Session Bug Fixes Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 193a complete: failing tests in `SessionBugFixTests`.
+Task 193a complete: failing tests in `SessionBugFixTests`.
 
 Four bugs to fix:
 1. Status dot stays active after engine finishes — `toolActivityState` not reset by engine
@@ -238,7 +238,7 @@ git add Merlin/App/AppState.swift \
         project.yml \
         tasks/task-193a-session-bug-fixes-tests.md \
         tasks/task-193b-session-bug-fixes.md
-git commit -m "Phase 193b — Fix session dot, view isolation, auto-naming, compact context; v1.8.1"
+git commit -m "Task 193b — Fix session dot, view isolation, auto-naming, compact context; v1.8.1"
 git tag v1.8.1
 git push origin main --tags
 gh release create v1.8.1 \

@@ -1,12 +1,12 @@
-# Phase 104a — System Prompt Addendum Tests (failing)
+# Task 104a — System Prompt Addendum Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 103b complete: PlannerEngine in place.
+Task 103b complete: PlannerEngine in place.
 
-New surface introduced in phase 104:
+New surface introduced in task 104:
   - `ProviderConfig.systemPromptAddendum: String` — per-provider text appended to system prompt
   - `AgenticEngine.buildSystemPrompt(for:)` — slot-aware variant that injects provider + domain addenda
   - `AgenticEngine.currentAddendumHash(for:)` — SHA256 prefix of the combined addendum for tracking
@@ -151,5 +151,5 @@ Expected: BUILD FAILED — `ProviderConfig.systemPromptAddendum`, `String.addend
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SystemPromptAddendumTests.swift
-git commit -m "Phase 104a — SystemPromptAddendumTests (failing)"
+git commit -m "Task 104a — SystemPromptAddendumTests (failing)"
 ```

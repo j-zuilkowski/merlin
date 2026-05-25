@@ -1,4 +1,4 @@
-# Phase 224a - DPO Review Queue UI Tests
+# Task 224a - DPO Review Queue UI Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 `DPOQueue` persists pending entries, but the review queue UI and accept/edit/decline flow are future scoped.
 
-New surface introduced in phase 224b:
+New surface introduced in task 224b:
   - `DPOReviewStore`
   - `DPOReviewQueueView`
   - accepted DPO entries move from pending to accepted corpus with non-empty `chosen`
@@ -60,6 +60,6 @@ Expected: **BUILD FAILED** because DPO review UI/store types do not exist.
 
 ```bash
 git add MerlinTests/Unit/DPOReviewStoreTests.swift MerlinTests/Unit/DPOReviewQueueViewTests.swift
-git commit -m "Phase 224a - DPOReviewQueueTests (failing)"
+git commit -m "Task 224a - DPOReviewQueueTests (failing)"
 ```
 

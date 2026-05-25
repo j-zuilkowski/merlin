@@ -1,10 +1,10 @@
-# Phase 101b — ModelPerformanceTracker
+# Task 101b — ModelPerformanceTracker
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 101a complete: failing tests in place.
+Task 101a complete: failing tests in place.
 
 ---
 
@@ -277,5 +277,5 @@ Expected: BUILD SUCCEEDED; ModelPerformanceTrackerTests → 6 pass; zero warning
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ModelPerformanceTracker.swift \
         project.yml
-git commit -m "Phase 101b — ModelPerformanceTracker (empirical per-model × domain × task-type profiles)"
+git commit -m "Task 101b — ModelPerformanceTracker (empirical per-model × domain × task-type profiles)"
 ```

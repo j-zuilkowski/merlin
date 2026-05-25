@@ -1,10 +1,10 @@
-# Phase 142b — Semantic Fault Injection Implementation
+# Task 142b — Semantic Fault Injection Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 142a complete: failing semantic fault injection tests in place.
+Task 142a complete: failing semantic fault injection tests in place.
 
 Addresses the "semantic fault injection" mitigation from:
 "Context Decay, Orchestration Drift, and the Rise of Silent Failures in AI Systems" — VentureBeat
@@ -92,5 +92,5 @@ git add TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift
 git add TestHelpers/SemanticFaults/TruncatingMockProvider.swift
 git add TestHelpers/SemanticFaults/EmptyToolResultRouter.swift
 git add TestHelpers/SemanticFaults/DroppingContextManager.swift
-git commit -m "Phase 142b — semantic fault injection test doubles: stale retrieval, truncation, empty tools, context drop"
+git commit -m "Task 142b — semantic fault injection test doubles: stale retrieval, truncation, empty tools, context drop"
 ```

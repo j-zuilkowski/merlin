@@ -1,9 +1,9 @@
-# Phase diag-08b — Voice Dictation Implementation
+# Task diag-08b — Voice Dictation Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
-Phase diag-08a complete: VoiceDictationTests passing.
+Task diag-08a complete: VoiceDictationTests passing.
 
 Provides speech-to-text input for the chat bar. Uses `SFSpeechRecognizer` (Speech framework).
 The engine is a `@MainActor` singleton guarded by both a runtime-availability check
@@ -108,5 +108,5 @@ Expected: BUILD SUCCEEDED, VoiceDictationTests passed.
 cd ~/Documents/localProject/merlin
 git add Merlin/Voice/VoiceDictationEngine.swift \
         tasks/task-diag-08b-voice-dictation.md
-git commit -m "Phase diag-08b — VoiceDictationEngine"
+git commit -m "Task diag-08b — VoiceDictationEngine"
 ```

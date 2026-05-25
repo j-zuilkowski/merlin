@@ -1,12 +1,12 @@
-# Phase 266b — Finding Dedup Key
+# Task 266b — Finding Dedup Key
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 266a complete: failing tests for `Finding.dedupKey` and queue idempotency.
+Task 266a complete: failing tests for `Finding.dedupKey` and queue idempotency.
 
-This phase gives `Finding` a stable, content-derived idempotency key and re-keys
+This task gives `Finding` a stable, content-derived idempotency key and re-keys
 `PendingAttentionQueue` by that key. After this fix a re-scan of an unchanged project
 collapses onto the existing queue entries instead of growing `pending.json` without bound.
 
@@ -22,7 +22,7 @@ import Foundation
 // MARK: - FindingCategory
 
 enum FindingCategory: String, Codable, Sendable, CaseIterable {
-    case phaseDrift
+    case taskDrift
     case manualCoverageGap
     case docStaleReference
     case whyCommentMissing
@@ -224,7 +224,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 266a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 266a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -232,5 +232,5 @@ Expected: **BUILD SUCCEEDED** and all phase 266a tests pass. No prior phase regr
 git add tasks/task-266b-finding-dedup-key.md \
     Merlin/Discipline/Finding.swift \
     Merlin/Discipline/PendingAttentionQueue.swift
-git commit -m "Phase 266b — Finding dedup key"
+git commit -m "Task 266b — Finding dedup key"
 ```

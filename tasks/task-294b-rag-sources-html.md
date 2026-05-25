@@ -1,8 +1,8 @@
-# Phase 294b — RAG Sources HTML (implementation)
+# Task 294b — RAG Sources HTML (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 294a complete: failing tests in `RAGSourcesHTMLTests`.
+Task 294a complete: failing tests in `RAGSourcesHTMLTests`.
 Unit B1 of the wiring plan.
 
 ## Edit: Merlin/Views/Chat/ConversationHTMLRenderer.swift
@@ -102,5 +102,5 @@ git add Merlin/Views/Chat/ConversationHTMLRenderer.swift \
   MerlinTests/Unit/RAGSourceAttributionTests.swift Merlin/Docs/DeveloperManual.md \
   tasks/task-294b-rag-sources-html.md
 git rm Merlin/Views/RAGSourcesView.swift
-git commit -m "Phase 294b — RAG sources HTML"
+git commit -m "Task 294b — RAG sources HTML"
 ```

@@ -1,10 +1,10 @@
-# Phase 199b — Parallel Worker Execution Implementation
+# Task 199b — Parallel Worker Execution Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 199a complete: failing tests in place.
+Task 199a complete: failing tests in place.
 
 ---
 
@@ -264,5 +264,5 @@ Expected: BUILD SUCCEEDED, all 199a tests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Engine/PlannerEngine.swift
-git commit -m "Phase 199b — Parallel worker execution (spawn_agent + plan batching)"
+git commit -m "Task 199b — Parallel worker execution (spawn_agent + plan batching)"
 ```

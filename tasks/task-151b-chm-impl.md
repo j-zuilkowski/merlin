@@ -1,9 +1,9 @@
-# Phase 151b — CHM: Real ITSF/HTML Metadata and Text Extraction
+# Task 151b — CHM: Real ITSF/HTML Metadata and Text Extraction
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 151a complete: CHM tests written and failing (expected — missing chmlib dependency and updated extractors).
+Task 151a complete: CHM tests written and failing (expected — missing chmlib dependency and updated extractors).
 
 ## Edit: `processing/Cargo.toml`
 
@@ -157,5 +157,5 @@ git add processing/Cargo.toml \
         processing/src/text/chm.rs \
         processing/src/error.rs \
         processing/tests/chm_metadata_tests.rs
-git commit -m "Phase 151b — CHM real ITSF/HTML metadata and text extraction"
+git commit -m "Task 151b — CHM real ITSF/HTML metadata and text extraction"
 ```

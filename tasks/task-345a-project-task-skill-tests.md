@@ -3,7 +3,7 @@
 ## Context
 
 The core artifact cutover is complete. The built-in `/project:*` skills must now be
-first-class SDD producers and validators, not partially renamed phase-era instructions.
+first-class SDD producers and validators, not partially renamed legacy instructions.
 
 ## Behavior
 
@@ -23,10 +23,9 @@ Write failing tests in `MerlinTests/Unit/ProjectTaskSkillCutoverTests.swift`.
 The tests must assert:
 
 - `Merlin/Skills/Builtin/project-task/SKILL.md` exists;
-- `Merlin/Skills/Builtin/project-phase/SKILL.md` does not exist;
+- the retired project construction skill path does not exist;
 - project skill text contains `/project:task`;
-- project skill text does not contain `/project:phase`, `project-phase`, `CLAUDE.md`,
-  `architecture.md`, `phases/`, or `phase-`;
+- project skill text does not contain retired command, path, or artifact names;
 - `project:init`, `project:adopt`, `project:revise`, and `project:release` use
   `constitution.md`, `spec.md`, `tasks/`, and task vocabulary.
 

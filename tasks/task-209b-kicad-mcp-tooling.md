@@ -1,10 +1,10 @@
-# Phase 209b — KiCad MCP Tooling Boundary
+# Task 209b — KiCad MCP Tooling Boundary
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 209a complete: failing KiCad MCP tooling tests exist.
+Task 209a complete: failing KiCad MCP tooling tests exist.
 
 ---
 
@@ -24,7 +24,7 @@ Rules:
 2. Missing server/tooling maps to `.blockedTooling`.
 3. KiCad major version `< 10` maps to `.blockedVersion`.
 4. Tool results encode as `KiCadToolResult`.
-5. Do not implement actual KiCad behavior in this phase; this phase creates the boundary.
+5. Do not implement actual KiCad behavior in this task; this task creates the boundary.
 
 ---
 
@@ -55,5 +55,5 @@ Expected: **BUILD SUCCEEDED**. `KiCadMCPToolingTests` pass.
 
 ```bash
 git add Merlin/Electronics/KiCadMCPTooling.swift Merlin/Engine/ToolRouter.swift
-git commit -m "Phase 209b — KiCad MCP tooling boundary"
+git commit -m "Task 209b — KiCad MCP tooling boundary"
 ```

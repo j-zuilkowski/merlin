@@ -1,10 +1,10 @@
-# Phase 141a — Grounding Confidence Signal Tests (failing)
+# Task 141a — Grounding Confidence Signal Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 140b complete: circuit breaker in place. All prior tests pass.
+Task 140b complete: circuit breaker in place. All prior tests pass.
 
 Motivation (from production AI reliability analysis):
 Context degradation is the failure mode where the model reasons over stale or incomplete
@@ -12,7 +12,7 @@ data in a way that is invisible to the user. The answer looks polished; the grou
 gone. Adding a `GroundingReport` makes this visible per-turn — how many chunks backed
 the answer, how confident the retrieval was, and whether memory chunks are stale.
 
-New surface introduced in phase 141b:
+New surface introduced in task 141b:
   - `GroundingReport` struct — emitted after RAG search each turn:
       `totalChunks: Int`, `memoryChunks: Int`, `bookChunks: Int`,
       `averageScore: Double`, `oldestMemoryAgeDays: Int?`,
@@ -229,5 +229,5 @@ Expected: BUILD FAILED — `GroundingReport`, `AgentEvent.groundingReport`,
 ## Commit
 ```bash
 git add MerlinTests/Unit/GroundingConfidenceTests.swift
-git commit -m "Phase 141a — grounding confidence signal tests (failing)"
+git commit -m "Task 141a — grounding confidence signal tests (failing)"
 ```

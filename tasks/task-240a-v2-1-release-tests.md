@@ -1,27 +1,27 @@
-# Phase 240a — v2.1.0 Release Tests
+# Task 240a — v2.1.0 Release Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phases 232b–239b complete: budget-aware execution shipped end to end.
+Tasks 232b–239b complete: budget-aware execution shipped end to end.
 
 This is the release milestone for v2.1.0 — "Budget-Aware Execution." Per the versioning policy
 in `spec.md` § Versioning Policy:
-  - new feature / phase milestone / behaviour change → minor bump → MARKETING_VERSION `2.0.0` → `2.1.0`
+  - new feature / task milestone / behaviour change → minor bump → MARKETING_VERSION `2.0.0` → `2.1.0`
   - CURRENT_PROJECT_VERSION `15` → `16` (strictly-increasing integer)
 
-New surface introduced in phase 240b:
+New surface introduced in task 240b:
   - `project.yml` carries `MARKETING_VERSION: "2.1.0"` and `CURRENT_PROJECT_VERSION: 16`.
-  - `RELEASE-v2.1.0.md` at repo root summarising the eight-phase budget-aware execution work,
+  - `RELEASE-v2.1.0.md` at repo root summarising the eight-task budget-aware execution work,
     matching the existing `RELEASE-v2.0.0.md` format.
   - "About Merlin" displays version `2.1.0` (verified manually post-build; an automated test
     asserts the bundle's `CFBundleShortVersionString` via `Bundle.main.infoDictionary`).
   - `constitution.md` "Current version" line updated.
 
 `spec.md` already contains the "V2.1 — Budget-Aware Execution" section (written before
-the phase series began). Phase 240b does **not** modify `spec.md`. The architectural
-content of v2.1.0 is its source of truth; phases only need to *match* it, not extend it.
+the task series began). Task 240b does **not** modify `spec.md`. The architectural
+content of v2.1.0 is its source of truth;  tasks only need to *match* it, not extend it.
 
 TDD coverage:
   File 1 — `MerlinTests/Unit/AppVersionTests.swift`: `Bundle.main.infoDictionary?["CFBundleShortVersionString"]
@@ -69,5 +69,5 @@ Expected: `AppVersionTests` and `ReleaseNotesPresenceTests` fail; all other test
 git add tasks/task-240a-v2-1-release-tests.md \
     MerlinTests/Unit/AppVersionTests.swift \
     MerlinTests/Unit/ReleaseNotesPresenceTests.swift
-git commit -m "Phase 240a — V2_1ReleaseTests (failing)"
+git commit -m "Task 240a — V2_1ReleaseTests (failing)"
 ```

@@ -1,13 +1,13 @@
-# Phase 267b — Doc Reference Dangling Detection
+# Task 267b — Doc Reference Dangling Detection
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 267a complete: failing tests for `DocReferenceGraph.danglingReferences` and the
+Task 267a complete: failing tests for `DocReferenceGraph.danglingReferences` and the
 `DisciplineEngine` integration.
 
-This phase adds dangling-reference detection to `DocReferenceGraph` and rewires
+This task adds dangling-reference detection to `DocReferenceGraph` and rewires
 `DisciplineEngine.scan()` to emit a `docStaleReference` finding only for genuinely broken
 doc references — symbol-shaped identifiers mentioned in docs that have no matching source
 declaration. Note: `build()` and `staleReferences(against:)` stay in place; `build()` is
@@ -284,7 +284,7 @@ references instead of the full reference graph.
   declaration. `build()` and `staleReferences(against:)` are retained.
 - `DocReferenceGraph.build()` restructured to a single per-line pass so `docSection`
   reflects the heading each reference appears under (this also resolves the section
-  bug addressed alongside phase 268; see 268b).
+  bug addressed alongside task 268; see 268b).
 - `DisciplineEngine.scan()` now emits one `docStaleReference` finding per dangling
   reference, instead of one per entry in the full (healthy) reference graph.
 
@@ -306,7 +306,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 267a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 267a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -314,5 +314,5 @@ Expected: **BUILD SUCCEEDED** and all phase 267a tests pass. No prior phase regr
 git add tasks/task-267b-doc-reference-dangling.md \
     Merlin/Discipline/DocReferenceGraph.swift \
     Merlin/Discipline/DisciplineEngine.swift
-git commit -m "Phase 267b — DocReferenceGraph dangling-reference detection"
+git commit -m "Task 267b — DocReferenceGraph dangling-reference detection"
 ```

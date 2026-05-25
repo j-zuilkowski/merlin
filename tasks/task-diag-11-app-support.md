@@ -1,4 +1,4 @@
-# Phase diag-11 — App Support Files
+# Task diag-11 — App Support Files
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
@@ -50,7 +50,7 @@ extension FocusedValues {
 
 Minimal App Intents registration required to avoid an Xcode warning about missing
 `AppIntent` implementations. `MerlinMetadataIntent` is a stub — Siri integration
-is deferred to a future phase.
+is deferred to a future task.
 
 ```swift
 import AppIntents
@@ -121,5 +121,5 @@ git add Merlin/App/AppFocusedValues.swift \
         Merlin/Support/AppIntentsSupport.swift \
         Merlin/Engine/ContextUsageTracker.swift \
         tasks/task-diag-11-app-support.md
-git commit -m "Phase diag-11 — AppFocusedValues + AppIntentsSupport + ContextUsageTracker"
+git commit -m "Task diag-11 — AppFocusedValues + AppIntentsSupport + ContextUsageTracker"
 ```

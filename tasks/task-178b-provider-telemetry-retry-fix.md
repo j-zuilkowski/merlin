@@ -1,10 +1,10 @@
-# Phase 178b — Fix: catch URLError as retriable in OpenAICompatibleProvider
+# Task 178b — Fix: catch URLError as retriable in OpenAICompatibleProvider
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 178a complete: ProviderTelemetry URLError retry failure documented.
+Task 178a complete: ProviderTelemetry URLError retry failure documented.
 
 ## Root Cause
 
@@ -129,5 +129,5 @@ Expected: BUILD SUCCEEDED; `testOpenAICompatibleEmitsRetryEvent` passes.
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/OpenAICompatibleProvider.swift \
         tasks/task-178b-provider-telemetry-retry-fix.md
-git commit -m "Phase 178b — Fix: catch URLError as retriable; emit request.retry with attempt+1"
+git commit -m "Task 178b — Fix: catch URLError as retriable; emit request.retry with attempt+1"
 ```

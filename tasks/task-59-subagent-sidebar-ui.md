@@ -1,12 +1,12 @@
-# Phase 59 — SubagentSidebar UI (V4b Worker Entries + Diff View)
+# Task 59 — SubagentSidebar UI (V4b Worker Entries + Diff View)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 58b complete: WorkerSubagentEngine V4b in place.
+Task 58b complete: WorkerSubagentEngine V4b in place.
 
-This phase promotes write-capable worker subagents from inline chat blocks to named child
+This task promotes write-capable worker subagents from inline chat blocks to named child
 entries in SessionSidebar. Each worker entry is indented under its parent session and has its
 own diff view showing the StagingBuffer for that worktree. No a/b split.
 Tests in `MerlinTests/Unit/SubagentSidebarViewModelTests.swift`.
@@ -339,5 +339,5 @@ git add MerlinTests/Unit/SubagentSidebarViewModelTests.swift \
         Merlin/UI/Sidebar/SubagentSidebarViewModel.swift \
         Merlin/UI/Sidebar/SubagentSidebarRowView.swift \
         Merlin/UI/Sidebar/WorkerDiffView.swift
-git commit -m "Phase 59 — SubagentSidebar UI (worker entries indented under parent, worktree diff view)"
+git commit -m "Task 59 — SubagentSidebar UI (worker entries indented under parent, worktree diff view)"
 ```

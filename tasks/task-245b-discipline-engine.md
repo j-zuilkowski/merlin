@@ -1,14 +1,14 @@
-# Phase 245b — DisciplineEngine
+# Task 245b — DisciplineEngine
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 245a complete: failing tests for DisciplineEngine, ScanReport, and the circuit breaker.
+Task 245a complete: failing tests for DisciplineEngine, ScanReport, and the circuit breaker.
 
-This phase also introduces stub actors for the scanners not yet implemented (ManualCoverageScanner,
+This task also introduces stub actors for the scanners not yet implemented (ManualCoverageScanner,
 DocReferenceGraph, WhyCommentScanner, ProseReadabilityChecker). Each stub returns empty results.
-Later phases (249–256) replace the stubs with real implementations.
+Later  tasks (249–256) replace the stubs with real implementations.
 
 ---
 
@@ -110,7 +110,7 @@ actor DisciplineEngine {
             // Convert drift findings to queue findings
             for d in drift where d.severity == .red || d.severity == .orange {
                 let f = Finding(
-                    id: UUID(), category: .phaseDrift,
+                    id: UUID(), category: .taskDrift,
                     severity: d.severity == .red ? .block : .nudge,
                     summary: d.surface,
                     detail: d.evidence,
@@ -198,7 +198,7 @@ actor DisciplineEngine {
 ```swift
 import Foundation
 
-/// Stub implementation — replaced by full scanner in phase 249b.
+/// Stub implementation — replaced by full scanner in task 249b.
 actor ManualCoverageScanner {
     func scan(projectPath: String, adapter: ProjectAdapter) async -> [ManualCoverageGap] {
         []
@@ -218,7 +218,7 @@ struct ManualCoverageGap: Sendable {
 ```swift
 import Foundation
 
-/// Stub implementation — replaced by full graph in phase 251b.
+/// Stub implementation — replaced by full graph in task 251b.
 actor DocReferenceGraph {
     func build(projectPath: String) async -> [DocReference] { [] }
     func staleReferences(against changedSymbols: [String]) async -> [DocReference] { [] }
@@ -237,7 +237,7 @@ struct DocReference: Sendable {
 ```swift
 import Foundation
 
-/// Stub implementation — replaced by full scanner in phase 254b.
+/// Stub implementation — replaced by full scanner in task 254b.
 actor WhyCommentScanner {
     func scan(projectPath: String, adapter: ProjectAdapter) async -> [WhyCommentTrigger] { [] }
 }
@@ -257,7 +257,7 @@ struct WhyCommentTrigger: Sendable {
 ```swift
 import Foundation
 
-/// Stub implementation — replaced by full checker in phase 256b.
+/// Stub implementation — replaced by full checker in task 256b.
 actor ProseReadabilityChecker {
     func check(docFile: String, targetGrade: Double) async -> ReadabilityFinding {
         ReadabilityFinding(docFile: docFile, measuredGrade: 0,
@@ -291,7 +291,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 245a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 245a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -303,5 +303,5 @@ git add tasks/task-245b-discipline-engine.md \
     Merlin/Discipline/DocReferenceGraph.swift \
     Merlin/Discipline/WhyCommentScanner.swift \
     Merlin/Discipline/ProseReadabilityChecker.swift
-git commit -m "Phase 245b — DisciplineEngine + ScanReport + scanner stubs"
+git commit -m "Task 245b — DisciplineEngine + ScanReport + scanner stubs"
 ```

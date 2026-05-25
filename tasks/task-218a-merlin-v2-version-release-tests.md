@@ -1,12 +1,12 @@
-# Phase 218a — Merlin v2.0 Version Release Tests
+# Task 218a — Merlin v2.0 Version Release Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 217b complete: KiCad workflow orchestration exists.
+Task 217b complete: KiCad workflow orchestration exists.
 
-New surface introduced in phase 218b:
+New surface introduced in task 218b:
   - `MARKETING_VERSION` is `2.0.0`
   - `CURRENT_PROJECT_VERSION` is incremented
   - release notes mention Merlin v2.0 Electronics/KiCad
@@ -45,5 +45,5 @@ Expected: **BUILD FAILED** because version/release artifacts have not been bumpe
 
 ```bash
 git add MerlinTests/Unit/MerlinV2VersionTests.swift
-git commit -m "Phase 218a — MerlinV2VersionTests (failing)"
+git commit -m "Task 218a — MerlinV2VersionTests (failing)"
 ```

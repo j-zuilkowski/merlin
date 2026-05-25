@@ -1,12 +1,12 @@
-# Phase 201a — /compact Slash + Context-Length Recovery Tests (failing)
+# Task 201a — /compact Slash + Context-Length Recovery Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 200b complete: spawn_agent error isolation.
+Task 200b complete: spawn_agent error isolation.
 
-New surface introduced in phase 201b:
+New surface introduced in task 201b:
   - `ProviderError.isContextLengthExceeded: Bool` — true when HTTP 400 body signals context overflow
   - `AgenticEngine` — detects context-length errors during `runLoop`, triggers `context.forceCompaction()`, retries the failed turn once
   - `ChatView.handleSlashCommandIfNeeded` — `/compact` triggers immediate compaction and emits a systemNote
@@ -159,8 +159,8 @@ final class CompactSlashCommandTests: XCTestCase {
 
         // We can't call ChatView directly (it requires a live SwiftUI environment),
         // but we can verify that the engine was NOT invoked when /compact is handled.
-        // This test documents intent; the integration check is in the b-phase.
-        XCTAssertTrue(true, "placeholder — see phase 201b for ChatView wiring test")
+        // This test documents intent; the integration check is in the b-task.
+        XCTAssertTrue(true, "placeholder — see task 201b for ChatView wiring test")
     }
 }
 ```
@@ -183,5 +183,5 @@ Expected: **BUILD FAILED** — `ProviderError.isContextLengthExceeded`, `MockPro
 ```bash
 git add MerlinTests/Unit/ContextLengthRecoveryTests.swift \
         MerlinTests/Unit/CompactSlashCommandTests.swift
-git commit -m "Phase 201a — ContextLengthRecoveryTests + CompactSlashCommandTests (failing)"
+git commit -m "Task 201a — ContextLengthRecoveryTests + CompactSlashCommandTests (failing)"
 ```

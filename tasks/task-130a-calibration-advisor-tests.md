@@ -1,12 +1,12 @@
-# Phase 130a — CalibrationAdvisor Tests
+# Task 130a — CalibrationAdvisor Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 129b complete: CalibrationTypes, CalibrationSuite, CalibrationRunner in place.
+Task 129b complete: CalibrationTypes, CalibrationSuite, CalibrationRunner in place.
 
-New surface introduced in phase 130b:
+New surface introduced in task 130b:
 
   `CategoryScores` — struct: localAverage, referenceAverage, delta
   `CalibrationAdvisor` — struct (Sendable);
@@ -241,5 +241,5 @@ Expected: **BUILD FAILED** — `CalibrationAdvisor`, `CategoryScores` not define
 ## Commit
 ```bash
 git add MerlinTests/Unit/CalibrationAdvisorTests.swift
-git commit -m "Phase 130a — CalibrationAdvisorTests (failing)"
+git commit -m "Task 130a — CalibrationAdvisorTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 200b — SpawnAgent Error Isolation
+# Task 200b — SpawnAgent Error Isolation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 200a complete: failing tests in MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift.
+Task 200a complete: failing tests in MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift.
 
 Fixes BUG-001: spawn_agent with unknown agent type caused silent hard stop.
 Root cause: no warning emitted when name was unrecognised; subagent errors could propagate
@@ -144,7 +144,7 @@ Expected: BUILD SUCCEEDED. All four `SpawnAgentErrorIsolationTests` pass. No reg
 git add Merlin/Agents/AgentRegistry.swift \
         Merlin/Engine/AgenticEngine.swift \
         TestHelpers/MockProvider.swift
-git commit -m "Phase 200b — SpawnAgent error isolation: unknown-agent warning + subagent failure catch (BUG-001)"
+git commit -m "Task 200b — SpawnAgent error isolation: unknown-agent warning + subagent failure catch (BUG-001)"
 ```
 
 ## Fixes (BUG-001)

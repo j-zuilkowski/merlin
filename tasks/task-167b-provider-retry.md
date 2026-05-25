@@ -1,10 +1,10 @@
-# Phase 167b — Provider Retry Implementation
+# Task 167b — Provider Retry Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 167a complete: ProviderRetryPolicyTests and EngineProviderRetryTests failing.
+Task 167a complete: ProviderRetryPolicyTests and EngineProviderRetryTests failing.
 
 ---
 
@@ -390,7 +390,7 @@ git add Merlin/Providers/ProviderError.swift \
         Merlin/Views/ChatView.swift \
         TestHelpers/MockProvider.swift \
         tasks/task-167b-provider-retry.md
-git commit -m "Phase 167b — Provider retry policy (ProviderError + engine-level retry)"
+git commit -m "Task 167b — Provider retry policy (ProviderError + engine-level retry)"
 ```
 
 ---

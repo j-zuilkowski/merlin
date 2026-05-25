@@ -1,10 +1,10 @@
-# Phase 330 — Eval Operator Harness (S12–S17)
+# Task 330 — Eval Operator Harness (S12–S17)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 329 complete: render harness landed.
+Task 329 complete: render harness landed.
 
 W5 — the **M4 operator harness** for the operator/headless scenarios S12–S17. Most of
 the operator surface is *integration* by nature — write a config file / drop a trigger
@@ -12,7 +12,7 @@ file / define an automation, then launch or drive a running Merlin and observe �
 executed per the S12–S17 runsheets (FSEvents live-reload, hooks firing mid-loop, the
 `inject.txt` poll, cron automations, notification delivery all need a running app).
 
-This phase adds the **deterministic, pure-function operator checks** that *can* be a
+This task adds the **deterministic, pure-function operator checks** that *can* be a
 fast unit test — the parse/decode layer that, if it regresses, silently breaks every
 operator surface above it: MCP config parsing, `${VAR}` env expansion, and the hook-event
 set. These run in the `MerlinTests` scheme.
@@ -129,5 +129,5 @@ Expected: BUILD SUCCEEDED, zero warnings; all `OperatorConfigTests` pass.
 ## Commit
 ```
 git add MerlinTests/Unit/OperatorConfigTests.swift tasks/task-330-eval-operator-harness.md
-git commit -m "Phase 330 — Eval operator harness (S12–S17)"
+git commit -m "Task 330 — Eval operator harness (S12–S17)"
 ```

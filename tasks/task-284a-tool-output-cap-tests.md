@@ -1,4 +1,4 @@
-# Phase 284a — Tool Output Cap Tests (failing)
+# Task 284a — Tool Output Cap Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -14,7 +14,7 @@ the conversation context. On a large repo this overruns the provider's input win
 the request is rejected with HTTP 400 — even on a light task. Every production agent
 harness caps tool output at the source; Merlin does not.
 
-New surface introduced in phase 284b:
+New surface introduced in task 284b:
   - `ToolOutput` enum in `Merlin/Tools/ToolOutput.swift`:
     ```swift
     enum ToolOutput {
@@ -110,7 +110,7 @@ Expected: **BUILD FAILED** — errors naming the missing `ToolOutput` type and i
 git add tasks/task-284a-tool-output-cap-tests.md \
     MerlinTests/Unit/ToolOutputClampTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 284a — ToolOutputClampTests (failing)"
+git commit -m "Task 284a — ToolOutputClampTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file is registered before committing the

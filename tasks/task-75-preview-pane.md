@@ -1,10 +1,10 @@
-# Phase 75 — PreviewPane: WKWebView HTML/Markdown Renderer
+# Task 75 — PreviewPane: WKWebView HTML/Markdown Renderer
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 74 complete: TerminalPane with PTY shell.
+Task 74 complete: TerminalPane with PTY shell.
 
 Add `PreviewPane` — a SwiftUI view wrapping `WKWebView` via `NSViewRepresentable`.
 The pane accepts a `@Binding<URL?>` (for local HTML files) or a `@Binding<String>` for
@@ -72,5 +72,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/PreviewPane.swift
-git commit -m "Phase 75 — PreviewPane: WKWebView NSViewRepresentable for local HTML/file preview"
+git commit -m "Task 75 — PreviewPane: WKWebView NSViewRepresentable for local HTML/file preview"
 ```

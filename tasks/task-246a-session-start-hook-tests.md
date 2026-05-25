@@ -1,15 +1,15 @@
-# Phase 246a — SessionStart Hook Tests
+# Task 246a — SessionStart Hook Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 245b complete: DisciplineEngine, ScanReport, and scanner stubs live.
+Task 245b complete: DisciplineEngine, ScanReport, and scanner stubs live.
 
 Adds a `SessionStart` event to the existing `HookEngine`. When a session opens with a project
 loaded, the hook reads `.merlin/pending.json` and injects the top-3 findings as a system note.
 
-New surface introduced in phase 246b:
+New surface introduced in task 246b:
   - `HookEvent.sessionStart` — new case added to the existing `HookEvent` enum.
   - `HookEngine.runSessionStart(projectPath: String) async` — new method.
   - System-note injection: `HookEngine.runSessionStart` calls
@@ -44,7 +44,7 @@ final class SessionStartHookTests: XCTestCase {
         try FileManager.default.createDirectory(
             at: dir.appendingPathComponent(".merlin"), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
-            at: dir.appendingPathComponent("phases"), withIntermediateDirectories: true)
+            at: dir.appendingPathComponent(" tasks"), withIntermediateDirectories: true)
         return dir
     }
 
@@ -77,7 +77,7 @@ final class SessionStartHookTests: XCTestCase {
         let queue = PendingAttentionQueue(storePath: storePath)
         let now = Date()
         await queue.add(Finding(
-            id: UUID(), category: .phaseDrift, severity: .block,
+            id: UUID(), category: .taskDrift, severity: .block,
             summary: "ProviderBudget missing", detail: "Red drift finding",
             suggestedAction: "Restore symbol", createdAt: now, lastSeenAt: now
         ))
@@ -124,5 +124,5 @@ Expected: **BUILD FAILED** with errors naming `HookEvent.sessionStart` and
 ```bash
 git add tasks/task-246a-session-start-hook-tests.md \
     MerlinTests/Unit/SessionStartHookTests.swift
-git commit -m "Phase 246a — SessionStartHookTests (failing)"
+git commit -m "Task 246a — SessionStartHookTests (failing)"
 ```

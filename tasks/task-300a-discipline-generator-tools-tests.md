@@ -1,15 +1,15 @@
-# Phase 300a — Discipline Generator Tools Tests (failing)
+# Task 300a — Discipline Generator Tools Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Unit D1 of the wiring plan. Phases 294–299 complete.
+Unit D1 of the wiring plan. Tasks 294–299 complete.
 
 `APIDocGenerator`, `DevGuideGenerator`, `ValeStyleWriter`, `ManualSectionTemplateWriter`
 generate files but have no trigger. D1 registers them as agent-callable tools so the
 agent and the `project:*` skills can invoke them and the results are observable as tool
 output.
 
-New surface in phase 300b:
+New surface in task 300b:
   - Four `ToolDefinition`s in `ToolDefinitions` and four handlers registered on the
     `ToolRouter` (in `AppState.registerAllTools` / the builtin path):
     `generate_api_docs`, `generate_dev_guide`, `write_vale_styles`,
@@ -25,7 +25,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 300a — failing tests for discipline generator tools.
+/// Task 300a — failing tests for discipline generator tools.
 @MainActor
 final class DisciplineGeneratorToolsTests: XCTestCase {
 
@@ -54,7 +54,7 @@ xcodebuild -scheme MerlinTests test -destination 'platform=macOS' \
   | grep -E 'Test Case|TEST (SUCCEEDED|FAILED)|error:'
 ```
 Expected: BUILD SUCCEEDED; `testDisciplineGeneratorToolsAreRegistered` FAILS. This is a
-runtime-failure phase — the test compiles fine against the real `ToolRegistry` query
+runtime-failure task — the test compiles fine against the real `ToolRegistry` query
 API and fails because the four discipline tools are not registered yet (300b registers
 them). It must be verified with `test`, not `build-for-testing`, so the test actually
 runs.
@@ -62,5 +62,5 @@ runs.
 ## Commit
 ```
 git add MerlinTests/Unit/DisciplineGeneratorToolsTests.swift tasks/task-300a-discipline-generator-tools-tests.md
-git commit -m "Phase 300a — Discipline generator tools tests (failing)"
+git commit -m "Task 300a — Discipline generator tools tests (failing)"
 ```

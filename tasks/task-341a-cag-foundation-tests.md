@@ -1,18 +1,18 @@
-# Phase 341a — CAG Foundation Tests
+# Task 341a — CAG Foundation Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 340b complete: llama.cpp and slot-status documentation sweep landed.
+Task 340b complete: llama.cpp and slot-status documentation sweep landed.
 
 Recommended execution model: GPT-5.3-Codex.
 
 Architecture currently reserves CAG as "Cache-Augmented Generation" but the
-runtime only has an older stable-prefix helper. This phase turns CAG into a
+runtime only has an older stable-prefix helper. This task turns CAG into a
 first-class implementation surface without changing provider wire formats yet.
 
-New surface introduced in phase 341b:
+New surface introduced in task 341b:
   - `Merlin/CAG/CachePolicy.swift`
   - `CAGCachePolicy` request policy (`disabled` or `ephemeral`)
   - deterministic tool ordering/deduplication helper for cache-stable prefixes
@@ -113,5 +113,5 @@ git add MerlinTests/Unit/CAGCachePolicyTests.swift \
         MerlinTests/Unit/AppSettingsCAGTests.swift \
         MerlinTests/Unit/AgenticEngineCAGTests.swift \
         tasks/task-341a-cag-foundation-tests.md
-git commit -m "Phase 341a — CAG foundation tests (failing)"
+git commit -m "Task 341a — CAG foundation tests (failing)"
 ```

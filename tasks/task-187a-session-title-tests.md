@@ -1,12 +1,12 @@
-# Phase 187a — SessionTitleTests (failing)
+# Task 187a — SessionTitleTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 186b complete: single-window multi-project UI, picker sheet, persistence.
+Task 186b complete: single-window multi-project UI, picker sheet, persistence.
 
-New surface introduced in phase 187b:
+New surface introduced in task 187b:
   - `AgenticEngine.onTitleUpdate: ((String) -> Void)?` — fired once after the first turn
     when the session title is still "New Session" and a user message exists; passes the
     generated title (first 50 chars of first user message)
@@ -191,5 +191,5 @@ Expected: BUILD FAILED — `AgenticEngine.onTitleUpdate` and
 cd ~/Documents/localProject/merlin
 git add tasks/task-187a-session-title-tests.md \
         MerlinTests/Unit/SessionTitleTests.swift
-git commit -m "Phase 187a — SessionTitleTests (failing)"
+git commit -m "Task 187a — SessionTitleTests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 164a — Critic Retry Loop Tests
+# Task 164a — Critic Retry Loop Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 151b complete: ContextManager.compactIfNeededBeforeRun in place; HEAD 8253a8b.
+Task 151b complete: ContextManager.compactIfNeededBeforeRun in place; HEAD 8253a8b.
 
-New surface introduced in phase 164b:
+New surface introduced in task 164b:
   - `AppSettings.criticEnabled: Bool` — default `true`; TOML key `critic_enabled`
   - `AppSettings.maxCriticRetries: Int` — default `2`; TOML key `max_critic_retries`
   - AgenticEngine retry loop — on critic `.fail`, injects correction system message and
@@ -27,7 +27,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 164 — Critic retry loop + OutcomeSignals wiring
+// Tests for Task 164 — Critic retry loop + OutcomeSignals wiring
 //
 // Covers:
 //   - AppSettings.criticEnabled default is true
@@ -341,5 +341,5 @@ Expected: BUILD FAILED with errors naming `criticEnabled`, `maxCriticRetries` on
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineCriticRetryTests.swift
-git commit -m "Phase 164a — AgenticEngineCriticRetryTests (failing)"
+git commit -m "Task 164a — AgenticEngineCriticRetryTests (failing)"
 ```

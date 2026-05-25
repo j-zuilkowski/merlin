@@ -1,10 +1,10 @@
-# Phase 195b — ChatViewModel Persistence Implementation
+# Task 195b — ChatViewModel Persistence Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 195a complete: failing tests in place.
+Task 195a complete: failing tests in place.
 
 Three targeted edits. No new types. No API changes.
 
@@ -103,5 +103,5 @@ Expected: **TEST BUILD SUCCEEDED**, zero warnings.
 git add Merlin/Sessions/LiveSession.swift \
         Merlin/Views/WorkspaceView.swift \
         Merlin/Views/ChatView.swift
-git commit -m "Phase 195b — Own ChatViewModel on LiveSession so messages survive session switches"
+git commit -m "Task 195b — Own ChatViewModel on LiveSession so messages survive session switches"
 ```

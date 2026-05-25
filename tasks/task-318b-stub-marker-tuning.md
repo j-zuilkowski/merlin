@@ -1,10 +1,10 @@
-# Phase 318b — StubMarkerScanner Tuning
+# Task 318b — StubMarkerScanner Tuning
 
-> **Note:** phase 319b adds build/ + DerivedData/ skips to scan's file guard.
+> **Note:** task 319b adds build/ + DerivedData/ skips to scan's file guard.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 318a complete: failing runtime tests in `StubMarkerScannerTuningTests`.
+Task 318a complete: failing runtime tests in `StubMarkerScannerTuningTests`.
 
 Removes the two `stubbedImplementation` false positives: empty `.cancel`-role buttons
 (idiomatic SwiftUI) and markers inside `"""` multi-line string literals (template
@@ -73,7 +73,7 @@ The `markers` table and `isInsideStringLiteral(line:matchStart:)` are unchanged.
 ## 2. Edit: tasks/task-308b-stub-marker-scanner.md
 Add a one-line banner under that doc's title:
 ```
-> **Note:** the `scan` method here is refined by phase 318b (skip empty `.cancel`
+> **Note:** the `scan` method here is refined by task 318b (skip empty `.cancel`
 > buttons, track `"""` multi-line strings). Implement 318b's version.
 ```
 
@@ -96,5 +96,5 @@ pass; BUILD SUCCEEDED, zero warnings.
 ```
 git add Merlin/Discipline/StubMarkerScanner.swift tasks/task-308b-stub-marker-scanner.md \
   tasks/task-318b-stub-marker-tuning.md
-git commit -m "Phase 318b — StubMarkerScanner skips .cancel buttons and multi-line strings"
+git commit -m "Task 318b — StubMarkerScanner skips .cancel buttons and multi-line strings"
 ```

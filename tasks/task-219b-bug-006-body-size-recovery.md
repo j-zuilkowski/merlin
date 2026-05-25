@@ -1,10 +1,10 @@
-# Phase 219b - BUG-006 Body-Size Recovery
+# Task 219b - BUG-006 Body-Size Recovery
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 219a complete: failing body-size recovery tests exist.
+Task 219a complete: failing body-size recovery tests exist.
 
 ---
 
@@ -65,7 +65,7 @@ Expected: **BUILD SUCCEEDED**. `ContextLengthRecoveryTests` pass, including the 
 
 ```bash
 git add Merlin/Providers/ProviderError.swift Merlin/Engine/AgenticEngine.swift MerlinTests/Unit/ContextLengthRecoveryTests.swift
-git commit -m "Phase 219b - BUG-006 body-size HTTP 400 recovery"
+git commit -m "Task 219b - BUG-006 body-size HTTP 400 recovery"
 ```
 
 ## Fixes

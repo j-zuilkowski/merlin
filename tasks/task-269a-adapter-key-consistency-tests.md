@@ -1,10 +1,10 @@
-# Phase 269a — Adapter Key Consistency Tests
+# Task 269a — Adapter Key Consistency Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 268b complete: scanner accuracy fixes landed.
+Task 268b complete: scanner accuracy fixes landed.
 
 **Bug (High — adapter lookup mismatch).** `AdapterRegistry.loadFromDirectory` registers
 each parsed adapter under `adapter.language` — `"swift"`, `"rust"`. But `ProjectConfig`
@@ -13,7 +13,7 @@ TOML filename stem: `"swift-xcode"`, `"rust-cargo"`. A call to
 `registry.adapter(for: config.adapter)` therefore throws `AdapterError.notFound` for
 every real project, because no adapter is registered under `"swift-xcode"`.
 
-New surface introduced in phase 269b:
+New surface introduced in task 269b:
   - `AdapterRegistry.loadFromDirectory` registers each adapter under the TOML filename
     stem (`file.deletingPathExtension().lastPathComponent`) — the adapter-key — instead
     of `adapter.language`. `register(_:for:)` for explicit keys is retained.
@@ -77,12 +77,12 @@ xcodebuild -scheme MerlinTests test \
 
 Expected: **BUILD SUCCEEDED**, but `AdapterKeyConsistencyTests` FAILS at runtime —
 `loadFromDirectory` currently registers under `adapter.language` (`"swift"`, `"rust"`),
-so `adapter(for: "swift-xcode")` throws `notFound`. Phase 269b makes it pass.
+so `adapter(for: "swift-xcode")` throws `notFound`. Task 269b makes it pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-269a-adapter-key-consistency-tests.md \
     MerlinTests/Unit/AdapterKeyConsistencyTests.swift
-git commit -m "Phase 269a — AdapterKeyConsistencyTests (failing)"
+git commit -m "Task 269a — AdapterKeyConsistencyTests (failing)"
 ```

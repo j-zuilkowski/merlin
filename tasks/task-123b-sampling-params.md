@@ -1,10 +1,10 @@
-# Phase 123b — Sampling Parameters Implementation
+# Task 123b — Sampling Parameters Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 123a complete: 13 failing tests in CompletionRequestSamplingParamsTests.
+Task 123a complete: 13 failing tests in CompletionRequestSamplingParamsTests.
 
 ---
 
@@ -137,7 +137,7 @@ automatically omitted from the JSON body — no explicit `encodeIfPresent` calls
 ## Edit 3: Merlin/Settings/AppSettings.swift
 
 Add an `[inference]` section to AppSettings. Follow the exact pattern used by the `[lora]`
-section (phase 116b): `@Published` properties, TOML serialisation, TOML apply, `CodingKeys`.
+section (task 116b): `@Published` properties, TOML serialisation, TOML apply, `CodingKeys`.
 
 ### 3a — Add @Published properties (near the LoRA properties block)
 
@@ -259,5 +259,5 @@ git add Merlin/Providers/LLMProvider.swift
 git add Merlin/Providers/SSEParser.swift
 git add Merlin/Settings/AppSettings.swift
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 123b — expand CompletionRequest with 8 sampling params; AppSettings inference defaults"
+git commit -m "Task 123b — expand CompletionRequest with 8 sampling params; AppSettings inference defaults"
 ```

@@ -1,12 +1,12 @@
-# Phase diag-03a — Engine Telemetry Tests (failing)
+# Task diag-03a — Engine Telemetry Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-02b complete: provider telemetry instrumented.
+Task diag-02b complete: provider telemetry instrumented.
 
-New surface introduced in phase diag-03b:
+New surface introduced in task diag-03b:
   - `AgenticEngine.send()` emits:
       `engine.turn.start`    — turn, slot, provider_id, message_length
       `engine.turn.complete` — turn, slot, provider_id, total_duration_ms, tool_call_count, loop_count
@@ -277,5 +277,5 @@ Expected: BUILD FAILED — `engine.turn.start`, `engine.tool.dispatched` events 
 ## Commit
 ```bash
 git add MerlinTests/Unit/EngineTelemetryTests.swift
-git commit -m "Phase diag-03a — Engine telemetry tests (failing)"
+git commit -m "Task diag-03a — Engine telemetry tests (failing)"
 ```

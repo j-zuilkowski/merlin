@@ -1,10 +1,10 @@
-# Phase 48b — Hooks Implementation
+# Task 48b — Hooks Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 48a complete: failing tests in place.
+Task 48a complete: failing tests in place.
 
 New files:
   - `Merlin/Hooks/HookDecision.swift`
@@ -236,5 +236,5 @@ Expected: BUILD SUCCEEDED, all HookEngineTests pass.
 ```bash
 git add Merlin/Hooks/HookDecision.swift \
         Merlin/Hooks/HookEngine.swift
-git commit -m "Phase 48b — HookEngine (PreToolUse/PostToolUse/UserPromptSubmit/Stop lifecycle hooks)"
+git commit -m "Task 48b — HookEngine (PreToolUse/PostToolUse/UserPromptSubmit/Stop lifecycle hooks)"
 ```

@@ -1,10 +1,10 @@
-# Phase 147b — Adaptive Loop Ceiling
+# Task 147b — Adaptive Loop Ceiling
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 147a complete: failing tests in place.
+Task 147a complete: failing tests in place.
 
 ---
 
@@ -189,5 +189,5 @@ AdaptiveLoopCeilingEngineTests pass. BUILD SUCCEEDED. Zero warnings.
 ```bash
 git add Merlin/Engine/ProjectSizeObserver.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 147b — Adaptive loop ceiling based on project size"
+git commit -m "Task 147b — Adaptive loop ceiling based on project size"
 ```

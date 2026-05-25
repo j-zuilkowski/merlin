@@ -1,10 +1,10 @@
-# Phase 180a — PermissionModeTests: auth popup not triggered in ask mode (failing — pre-existing)
+# Task 180a — PermissionModeTests: auth popup not triggered in ask mode (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 179b complete: ThreadAutomationEngine loop interval fix.
+Task 179b complete: ThreadAutomationEngine loop interval fix.
 
 ## Problem
 
@@ -70,5 +70,5 @@ Expected: `testAskModeShowsAuthPopupForFileWrite` fails.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-180a-permission-mode-tests.md
-git commit -m "Phase 180a — PermissionModeTests auth-popup failure documented"
+git commit -m "Task 180a — PermissionModeTests auth-popup failure documented"
 ```

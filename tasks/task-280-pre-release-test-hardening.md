@@ -1,16 +1,16 @@
-# Phase 280 — Pre-Release Test-Suite Hardening
+# Task 280 — Pre-Release Test-Suite Hardening
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 279 is committed. Phases 278a/278b are pending.
+Task 279 is committed. Tasks 278a/278b are pending.
 
-This is a **cleanup phase** (single task file — no NNa/NNb pair). It removes the last
+This is a **cleanup task** (single task file — no NNa/NNb pair). It removes the last
 two known hazards before the v2.2.2 release so the release cycle completes without
 interruption.
 
-**Run this phase before 278a/278b.** Once it lands, the full `xcodebuild test` run no
+**Run this task before 278a/278b.** Once it lands, the full `xcodebuild test` run no
 longer hangs, so 278a and 278b verify cleanly with no special flags.
 
 ### Problem 1 — `XcodeToolTests.testSimulatorListReturnsJSON` hangs
@@ -94,7 +94,7 @@ flag is needed; the gate makes the run safe.
 git add tasks/task-280-pre-release-test-hardening.md \
     MerlinTests/Integration/XcodeToolTests.swift \
     .github/workflows/ci.yml
-git commit -m "Phase 280 — Gate flaky simctl test, fix CI build-step pipefail"
+git commit -m "Task 280 — Gate flaky simctl test, fix CI build-step pipefail"
 ```
 
 ## Fixes

@@ -1,10 +1,10 @@
-# Phase 164b — Critic Retry Loop Implementation
+# Task 164b — Critic Retry Loop Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 164a complete: failing tests in MerlinTests/Unit/AgenticEngineCriticRetryTests.swift.
+Task 164a complete: failing tests in MerlinTests/Unit/AgenticEngineCriticRetryTests.swift.
 
 ---
 
@@ -232,5 +232,5 @@ Expected: BUILD SUCCEEDED, all AgenticEngineCriticRetryTests pass.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 164b — Critic retry loop + OutcomeSignals wiring"
+git commit -m "Task 164b — Critic retry loop + OutcomeSignals wiring"
 ```

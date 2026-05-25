@@ -1,8 +1,8 @@
-# Phase 302b — Info.plist Permission Strings (implementation)
+# Task 302b — Info.plist Permission Strings (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 302a complete: failing tests in `InfoPlistPermissionsTests`.
+Task 302a complete: failing tests in `InfoPlistPermissionsTests`.
 
 ## Edit: Merlin/Info.plist
 Add the two usage-description keys inside the top-level `<dict>`, alongside the existing
@@ -31,5 +31,5 @@ Merlin's descriptions and that dictation works once granted.
 ## Commit
 ```
 git add Merlin/Info.plist tasks/task-302b-info-plist-permissions.md
-git commit -m "Phase 302b — Info.plist permission strings for voice dictation"
+git commit -m "Task 302b — Info.plist permission strings for voice dictation"
 ```

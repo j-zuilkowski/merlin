@@ -1,10 +1,10 @@
-# Phase 111b — rag_search Tool Source/ProjectPath Parameters
+# Task 111b — rag_search Tool Source/ProjectPath Parameters
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 111a complete: RAGSearchToolTests (failing) in place.
+Task 111a complete: RAGSearchToolTests (failing) in place.
 
 ---
 
@@ -171,5 +171,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/RAG/RAGTools.swift \
         Merlin/Tools/ToolDefinitions.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 111b — rag_search tool: source + project_path parameters"
+git commit -m "Task 111b — rag_search tool: source + project_path parameters"
 ```

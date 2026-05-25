@@ -1,10 +1,10 @@
-# Phase 32b — StagingBuffer Implementation
+# Task 32b — StagingBuffer Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 32a complete: failing StagingBufferTests in place.
+Task 32a complete: failing StagingBufferTests in place.
 
 ---
 
@@ -210,5 +210,5 @@ git add Merlin/Engine/StagingBuffer.swift \
         Merlin/Engine/ToolRouter.swift \
         Merlin/Sessions/LiveSession.swift \
         project.yml
-git commit -m "Phase 32b — StagingBuffer actor + ToolRouter intercept"
+git commit -m "Task 32b — StagingBuffer actor + ToolRouter intercept"
 ```

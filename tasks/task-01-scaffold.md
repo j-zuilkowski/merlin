@@ -1,4 +1,4 @@
-# Phase 01 — Project Scaffold
+# Task 01 — Project Scaffold
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -411,5 +411,5 @@ git add project.yml \
         Merlin/Views/ProviderHUD.swift \
         Merlin/Views/FirstLaunchSetupView.swift \
         Merlin/App/ToolRegistration.swift
-git commit -m "Phase 01 — project scaffold (xcodegen + all stub files)"
+git commit -m "Task 01 — project scaffold (xcodegen + all stub files)"
 ```

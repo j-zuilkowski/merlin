@@ -1,14 +1,14 @@
-# Phase 46c — AppSettings v5 Addendum
+# Task 46c — AppSettings v5 Addendum
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-**Authoritative current spec.** Phase 46b is outdated — read this document for all
-properties, nested types, and methods in the current `AppSettings`. Phase 46b covered
+**Authoritative current spec.** Task 46b is outdated — read this document for all
+properties, nested types, and methods in the current `AppSettings`. Task 46b covered
 only the original ~10 properties; the current class has 50+ `@Published` properties
-added across phases 60–165. A rebuilder should use task-46b for the file skeleton
+added across  tasks 60–165. A rebuilder should use task-46b for the file skeleton
 (class declaration, `load/save`, FSEvents watcher) and this document for all property
 additions. The current source is `Merlin/Config/AppSettings.swift`.
 
@@ -79,7 +79,7 @@ additions. The current source is `Merlin/Config/AppSettings.swift`.
 | `maxPlanRetries` | `Int` | `2` | `max_plan_retries` |
 | `maxLoopIterations` | `Int` | `100` | `max_loop_iterations` |
 
-### Subagent config (from earlier phases, kept here for completeness)
+### Subagent config (from earlier  tasks, kept here for completeness)
 | Property | Type | Default | TOML key |
 |---|---|---|---|
 | `maxSubagentThreads` | `Int` | `4` | `max_subagent_threads` |
@@ -198,5 +198,5 @@ xcodebuild -scheme MerlinTests test \
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-46c-appsettings-v5-addendum.md
-git commit -m "Phase 46c — AppSettings v5 addendum (LoRA + inference defaults + memory backend + circuit breaker + domain/slot config)"
+git commit -m "Task 46c — AppSettings v5 addendum (LoRA + inference defaults + memory backend + circuit breaker + domain/slot config)"
 ```

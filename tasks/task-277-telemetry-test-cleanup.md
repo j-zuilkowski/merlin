@@ -1,12 +1,12 @@
-# Phase 277 — Telemetry Test-Seam Cleanup
+# Task 277 — Telemetry Test-Seam Cleanup
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 276b complete: v2.2.1 + CI-readiness remediation landed; full suite green headless.
+Task 276b complete: v2.2.1 + CI-readiness remediation landed; full suite green headless.
 
-This is a **cleanup phase** (no new behaviour, single task file — no NNa/NNb pair).
+This is a **cleanup task** (no new behaviour, single task file — no NNa/NNb pair).
 Commit `ad67f38` ("Stabilize telemetry tests for full-suite runs") migrated ~9 telemetry
 tests from the in-memory `TelemetryEmitter.sink` + `TelemetryRecorder` seam to the
 file-based `resetForTesting(path:)` / `flushForTesting()` API. That migration was correct
@@ -18,12 +18,12 @@ file-based `resetForTesting(path:)` / `flushForTesting()` API. That migration wa
 3. `PendingAttentionViewModelTests.testEmptyQueueAfterLastDismiss` had its assertion
    weakened from `XCTAssertTrue(vm.findings.isEmpty)` to
    `XCTAssertFalse(vm.findings.contains(dismissed))`. The scan in that test legitimately
-   produces two findings (a `phaseDrift` and a `docStaleReference`); the test dismisses
+   produces two findings (a `taskDrift` and a `docStaleReference`); the test dismisses
    only one, so the strong assertion failed. The test name still claims "EmptyQueue
    AfterLastDismiss" — it must dismiss *every* finding and then assert empty.
 4. Four task docs still describe the removed `TelemetryRecorder` / `sink` seam.
 
-This phase removes the dead code, deduplicates the helper, fixes the misleading test,
+This task removes the dead code, deduplicates the helper, fixes the misleading test,
 and updates the documentation.
 
 ---
@@ -93,12 +93,12 @@ finding the scan produced, then assert the queue is empty.
         let projectRoot = makeTmpProject()
         defer { try? FileManager.default.removeItem(at: projectRoot) }
 
-        let tasksDir = projectRoot.appendingPathComponent("phases")
+        let tasksDir = projectRoot.appendingPathComponent(" tasks")
         try FileManager.default.createDirectory(at: tasksDir, withIntermediateDirectories: true)
         let taskDoc = """
-        # Phase 001b — Example
+        # Task 001b — Example
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `GhostTypeThatDoesNotExist` — a surface with no implementation
         """
         try taskDoc.write(
@@ -115,7 +115,7 @@ finding the scan produced, then assert the queue is empty.
         XCTAssertFalse(vm.findings.isEmpty, "scan must produce at least one finding")
 
         // Dismiss every finding the scan produced — the scan can yield more than one
-        // (e.g. a phaseDrift and a docStaleReference for the same ghost symbol).
+        // (e.g. a taskDrift and a docStaleReference for the same ghost symbol).
         var guardCount = 0
         while let finding = vm.findings.first, guardCount < 100 {
             await vm.dismiss(finding: finding, rationale: "done")
@@ -135,19 +135,19 @@ Four task docs still describe the removed seam. Update each:
   `tasks/task-232b-budget-telemetry.md` — these introduce `TelemetryRecorder` /
   `TelemetrySink` / `static var sink`. Add a superseded banner immediately under the
   title of each:
-  `> **Superseded by phase 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).`
+  `> **Superseded by task 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).`
 - `tasks/task-237a-executor-gate-tests.md` — the prose "reading it back via
   `TelemetryRecorder`" must be updated to "reading it back from the telemetry JSONL file
   via `readTelemetryEvents(fromFile:)`".
 - `tasks/task-245a-discipline-engine-tests.md` — the embedded test code uses
   `let recorder = TelemetryRecorder()`. Update that embedded snippet to the file-based
-  pattern (`resetForTesting` / `flushForTesting` / `readTelemetryEvents`) so the phase
+  pattern (`resetForTesting` / `flushForTesting` / `readTelemetryEvents`) so the task
   doc matches the committed test.
 - Then run a final check and fix anything missed:
   `grep -rn "TelemetryRecorder\|TelemetrySink\|TelemetryEmitter\.sink" --include="*.md" .`
-  — after this phase, the only `.md` hits allowed are inside this file
+  — after this task, the only `.md` hits allowed are inside this file
   (`task-277-telemetry-test-cleanup.md`) and the superseded banners.
-- `tasks/PASTE-LIST.md` — append phase 277 under the Project Discipline section.
+- `tasks/PASTE-LIST.md` — append task 277 under the Project Discipline section.
 
 ## Edit 5 — Regenerate the Xcode project
 
@@ -205,7 +205,7 @@ git add tasks/task-277-telemetry-test-cleanup.md \
     MerlinTests/Unit/TelemetryErrorBodyTests.swift \
     MerlinTests/Unit/PendingAttentionViewModelTests.swift
 git rm TestHelpers/TelemetryRecorder.swift
-git commit -m "Phase 277 — Remove dead telemetry test seam, dedup reader, fix dismiss test"
+git commit -m "Task 277 — Remove dead telemetry test seam, dedup reader, fix dismiss test"
 ```
 
 ## Fixes

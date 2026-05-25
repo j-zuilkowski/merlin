@@ -1,10 +1,10 @@
-# Phase 102b — CriticEngine (Stage 1 + Stage 2, graceful degradation)
+# Task 102b — CriticEngine (Stage 1 + Stage 2, graceful degradation)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 102a complete: failing CriticEngine tests in place.
+Task 102a complete: failing CriticEngine tests in place.
 
 ---
 
@@ -195,7 +195,7 @@ private var criticEngine: CriticEngine {
 }
 ```
 
-Note: The critic is not yet wired into `runLoop()` — that happens in Phase 103 (planner + complexity routing). This phase only establishes the `CriticEngine` actor and its two-stage logic.
+Note: The critic is not yet wired into `runLoop()` — that happens in Task 103 (planner + complexity routing). This task only establishes the `CriticEngine` actor and its two-stage logic.
 
 ---
 
@@ -230,7 +230,7 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/CriticEngine.swift \
         Merlin/Engine/AgenticEngine.swift \
         project.yml
-git commit -m "Phase 102b — CriticEngine (Stage 1 domain verification + Stage 2 reason slot, graceful degradation)"
+git commit -m "Task 102b — CriticEngine (Stage 1 domain verification + Stage 2 reason slot, graceful degradation)"
 ```
 
 ## Fixes

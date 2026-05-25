@@ -1,10 +1,10 @@
-# Phase 230b - App Intents Siri Integration
+# Task 230b - App Intents Siri Integration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 230a complete: failing App Intents support tests exist.
+Task 230a complete: failing App Intents support tests exist.
 
 ---
 
@@ -47,6 +47,6 @@ Expected: **BUILD SUCCEEDED**. App Intents support tests pass.
 
 ```bash
 git add Merlin/Support/AppIntentsSupport.swift Merlin/App/AppState.swift MerlinTests/Unit/AppIntentsSupportTests.swift
-git commit -m "Phase 230b - App Intents Siri integration"
+git commit -m "Task 230b - App Intents Siri integration"
 ```
 

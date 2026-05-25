@@ -707,7 +707,7 @@ Merlin can enforce construction discipline automatically — running scanners af
 
 | Skill | What it does |
 |---|---|
-| `/project:init` | Scaffold a new project with constitution.md, doc set, phase structure, and git hooks |
+| `/project:init` | Scaffold a new project with constitution.md, doc set, task structure, and git hooks |
 | `/project:task` | Build a TDD task pair (NNa failing tests + NNb implementation) for one new surface |
 | `/project:revise` | Run the discipline scanner, review findings, and accept or dismiss each one |
 | `/project:release` | Consolidated release gate — verifies tests, docs, version bump, then tags and publishes |

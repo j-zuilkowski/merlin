@@ -1,10 +1,10 @@
-# Phase diag-05b — Context, Planner & Critic Telemetry Implementation
+# Task diag-05b — Context, Planner & Critic Telemetry Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-05a complete: failing tests in place.
+Task diag-05a complete: failing tests in place.
 
 Instrument `ContextManager`, `PlannerEngine`, and `CriticEngine` with telemetry.
 
@@ -246,5 +246,5 @@ Expected: all ContextCompactionTelemetryTests, PlannerTelemetryTests, and Critic
 git add Merlin/Engine/ContextManager.swift \
         Merlin/Engine/PlannerEngine.swift \
         Merlin/Engine/CriticEngine.swift
-git commit -m "Phase diag-05b — Context, planner & critic telemetry instrumentation"
+git commit -m "Task diag-05b — Context, planner & critic telemetry instrumentation"
 ```

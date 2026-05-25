@@ -1,17 +1,17 @@
-# Phase 274b — Discipline Chip Freshness + CI Test Gate
+# Task 274b — Discipline Chip Freshness + CI Test Gate
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 274a complete: failing tests for the chip-freshness fix and the CI test gate.
+Task 274a complete: failing tests for the chip-freshness fix and the CI test gate.
 
-This phase fixes the two-queue staleness bug and gates the environment-dependent test
+This task fixes the two-queue staleness bug and gates the environment-dependent test
 methods so the suite is green on a headless runner (GitHub CI and Codex's sandbox).
 Confirmed against CI run 25890231419: the build SUCCEEDS on macos-15 / Xcode 16 — only
 runtime test failures are red.
 
-**Execution order:** 274b → 275 → 276. Phases 275 and 276 fix two genuine engine
+**Execution order:** 274b → 275 → 276. Tasks 275 and 276 fix two genuine engine
 regressions found during 274a's investigation (see "Deferred failures" below). 274b is
 committed first; the suite becomes fully green after 276b.
 
@@ -101,19 +101,19 @@ first line of that step's `run:` block, matching the "Run Unit Tests" step.
 
 ---
 
-## Deferred failures — handled in phases 275 and 276
+## Deferred failures — handled in  tasks 275 and 276
 
 274a's investigation found two **genuine engine regressions** (not stale tests, not
 environment-dependent). They are out of scope for 274b and fixed next:
 
 - `ContextLengthRecoveryTests.test_engine_retries_twice_then_surfaces_error_for_repeated_body_size_failures`
   — the engine makes ~199 provider calls on repeated body-size 400s instead of a small
-  bounded number, and surfaces no terminal event. **→ phase 275.**
+  bounded number, and surfaces no terminal event. **→ task 275.**
 - `ParallelWorkerTests.test_parseSteps_defaultsParallelSafeToFalse`
   — `parseSteps` drops a step whose `complexity` is `"high_stakes"` (returns 0 steps),
-  then the test crashes on `steps[0]`. **→ phase 276.**
+  then the test crashes on `steps[0]`. **→ task 276.**
 
-Do **not** gate or delete these — they are real bugs with their own fix phases.
+Do **not** gate or delete these — they are real bugs with their own fix  tasks.
 
 ---
 
@@ -137,7 +137,7 @@ Expected: **BUILD SUCCEEDED**. The test run is headless (`RUN_LIVE_TESTS` unset)
 gated engine methods report as **skipped**. `DisciplineChipFreshnessTests` and
 `CITestGateTests` pass. The **only** acceptable remaining failures are the two
 regressions named above (`ContextLengthRecoveryTests` and `ParallelWorkerTests`), which
-phases 275 and 276 fix. Any other failure is a genuine bug — stop and report.
+ tasks 275 and 276 fix. Any other failure is a genuine bug — stop and report.
 
 ## Commit
 
@@ -149,7 +149,7 @@ git add tasks/task-274b-chip-freshness-ci-gate.md \
     .github/workflows/ci.yml \
     <each gated test file> <updated task-264 test file(s)>
 git rm MerlinTests/Unit/MerlinV2VersionTests.swift
-git commit -m "Phase 274b — Chip freshness fix + live-environment CI test gate"
+git commit -m "Task 274b — Chip freshness fix + live-environment CI test gate"
 ```
 
 (List the specific gated test files explicitly — never `git add -A`.)

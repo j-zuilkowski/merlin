@@ -1,4 +1,4 @@
-# Phase 154a — PDB/eReader: Metadata Header Reading Tests
+# Task 154a — PDB/eReader: Metadata Header Reading Tests
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
@@ -9,7 +9,7 @@ Current state: PDB metadata reads only the 32-byte name field from the PDB heade
 
 PDB (Palm Database) files have a creator ID field (8 bytes at offset 60) that identifies the sub-format. For eReader PDBs with creator `PNPdPPrs` or `PNRdPPrs`, the first record is a 132-byte eReader header containing a `has_metadata` flag and `metadata_offset` field that points to a metadata record with title, author, publisher, and ISBN fields. The current stub ignores all of this — it returns only the 32-byte name as the title. No new crate dependency is needed.
 
-## New surface introduced in phase 154b
+## New surface introduced in task 154b
 
 - `metadata/pdb.rs`: read creator ID at offset 60 → if `PNPdPPrs` or `PNRdPPrs`, parse the 132-byte eReader header → read metadata record at `metadata_offset` → extract title, author, publisher, ISBN from null-separated fields
 
@@ -28,12 +28,12 @@ File — `processing/tests/pdb_ereader_tests.rs`:
 ```bash
 cd ~/Documents/localProject/xcalibre
 cargo test --package xcalibre-processing -- pdb_ereader 2>&1 | tail -10
-# Expected: compilation errors — new PDB eReader parser not yet implemented (phase 154b will fix)
+# Expected: compilation errors — new PDB eReader parser not yet implemented (task 154b will fix)
 ```
 
 ## Commit
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/pdb_ereader_tests.rs
-git commit -m "Phase 154a — PDB eReader metadata tests (failing)"
+git commit -m "Task 154a — PDB eReader metadata tests (failing)"
 ```

@@ -1,4 +1,4 @@
-# Phase 221a - Multi-Domain Session Tests
+# Task 221a - Multi-Domain Session Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Architecture currently supports one active domain and defers multi-domain sessions.
 
-New surface introduced in phase 221b:
+New surface introduced in task 221b:
   - `DomainRegistry.activeDomains()` - ordered active domain list
   - `DomainRegistry.setActiveDomains(ids:)`
   - `DomainRegistry.taskTypes()` merges all active domains
@@ -55,6 +55,6 @@ Expected: **BUILD FAILED** because only single-domain APIs exist.
 
 ```bash
 git add MerlinTests/Unit/MultiDomainRegistryTests.swift MerlinTests/Unit/MultiDomainSessionTests.swift
-git commit -m "Phase 221a - MultiDomainSessionTests (failing)"
+git commit -m "Task 221a - MultiDomainSessionTests (failing)"
 ```
 

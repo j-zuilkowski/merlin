@@ -1,11 +1,11 @@
-# Phase 158a — DjVu metadata + text tests (failing)
+# Task 158a — DjVu metadata + text tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 157b complete.
+Task 157b complete.
 
-New surface in phase 158b:
+New surface in task 158b:
   - `crate::metadata::djvu::extract(path)` — reads full file for Annot metadata (not just 2KB)
   - `crate::text::djvu::extract(path)` — parses IFF structure to find and decompress TXTz chunks
 
@@ -119,5 +119,5 @@ Expected: tests fail (current djvu extractors are stubs).
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/djvu_tests.rs processing/Cargo.toml
-git commit -m "Phase 158a — DjVu metadata + text tests (failing)"
+git commit -m "Task 158a — DjVu metadata + text tests (failing)"
 ```

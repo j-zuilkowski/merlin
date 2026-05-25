@@ -1,12 +1,12 @@
-# Phase 107a — V5 Skill Frontmatter Tests (failing)
+# Task 107a — V5 Skill Frontmatter Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 106 complete: V5 Settings UI in place.
+Task 106 complete: V5 Settings UI in place.
 
-New surface introduced in phase 107b:
+New surface introduced in task 107b:
   - `SkillFrontmatter` gains `role: AgentSlot?` and `complexity: ComplexityTier?` keys
   - `AgenticEngine.invokeSkill(_:arguments:)` respects frontmatter role and complexity overrides
   - Skill with `role: reason` always routes to reason slot
@@ -180,5 +180,5 @@ Expected: BUILD FAILED — `SkillFrontmatter.role`, `SkillFrontmatter.complexity
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SkillFrontmatterV5Tests.swift
-git commit -m "Phase 107a — SkillFrontmatterV5Tests (failing)"
+git commit -m "Task 107a — SkillFrontmatterV5Tests (failing)"
 ```

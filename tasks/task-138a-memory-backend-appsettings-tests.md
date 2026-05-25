@@ -1,12 +1,12 @@
-# Phase 138a — Memory Backend AppSettings Wiring Tests (failing)
+# Task 138a — Memory Backend AppSettings Wiring Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 137b complete: AgenticEngine uses MemoryBackendPlugin for writes and RAG.
+Task 137b complete: AgenticEngine uses MemoryBackendPlugin for writes and RAG.
 
-New surface introduced in phase 138b:
+New surface introduced in task 138b:
   - `AppSettings.memoryBackendID: String` — persisted in config.toml under `[memory]`.
     Default: `"local-vector"`.
   - `AppState.memoryRegistry: MemoryBackendRegistry` — created at init; registers
@@ -102,5 +102,5 @@ are undefined.
 ## Commit
 ```bash
 git add MerlinTests/Unit/MemoryBackendAppSettingsTests.swift
-git commit -m "Phase 138a — memory backend AppSettings wiring tests (failing)"
+git commit -m "Task 138a — memory backend AppSettings wiring tests (failing)"
 ```

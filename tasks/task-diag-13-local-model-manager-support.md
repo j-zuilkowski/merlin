@@ -1,4 +1,4 @@
-# Phase diag-13 — Local Model Manager Support Files
+# Task diag-13 — Local Model Manager Support Files
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
@@ -244,5 +244,5 @@ git add Merlin/Providers/LocalModelManager/LocalModelManagerProtocol.swift \
         Merlin/Providers/LocalModelManager/LocalModelManagerSupport.swift \
         Merlin/Providers/ProviderRegistry+ReasoningEffort.swift \
         tasks/task-diag-13-local-model-manager-support.md
-git commit -m "Phase diag-13 — LocalModelManagerProtocol + NullModelManager + LocalModelManagerSupport + ProviderRegistry+ReasoningEffort"
+git commit -m "Task diag-13 — LocalModelManagerProtocol + NullModelManager + LocalModelManagerSupport + ProviderRegistry+ReasoningEffort"
 ```

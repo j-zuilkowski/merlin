@@ -55,7 +55,7 @@ Question 4 is **not** in the corpus — the honest answer is "not found".
 - [ ] The grounding report shows retrieved chunks for Q1–Q3 and marks them grounded.
 - [ ] Q4 — Merlin says it cannot find the answer; the grounding report shows weak/no
       grounding. It must **not** hallucinate a rotational speed.
-- [ ] RAG "Sources" block (phase 294) renders the retrieved chunks in the chat.
+- [ ] RAG "Sources" block (task 294) renders the retrieved chunks in the chat.
 
 **Judgment:**
 - [ ] Citations point at the correct source document.

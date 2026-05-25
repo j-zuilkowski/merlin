@@ -1,4 +1,4 @@
-# Phase 222a - Streaming Shell Pane Tests
+# Task 222a - Streaming Shell Pane Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Architecture currently marks the streaming shell pane as deferred.
 
-New surface introduced in phase 222b:
+New surface introduced in task 222b:
   - `ShellStreamViewModel` - consumes `ShellTool.stream()` output incrementally.
   - `TerminalPane` displays live stdout/stderr lines and exit status.
   - Shell streaming can be canceled from UI without killing unrelated processes.
@@ -47,6 +47,6 @@ Expected: **BUILD FAILED** because `ShellStreamViewModel` does not exist.
 
 ```bash
 git add MerlinTests/Unit/ShellStreamViewModelTests.swift
-git commit -m "Phase 222a - ShellStreamViewModelTests (failing)"
+git commit -m "Task 222a - ShellStreamViewModelTests (failing)"
 ```
 

@@ -1,12 +1,12 @@
-# Phase 61a — Vision Attachment Tests
+# Task 61a — Vision Attachment Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 60b complete: skill re-injection after compaction.
+Task 60b complete: skill re-injection after compaction.
 
-New surface introduced in phase 61b:
+New surface introduced in task 61b:
   - `VisionQueryTool.query(imageData:prompt:provider: any LLMProvider)` — generalized from
     `LMStudioProvider` to `any LLMProvider`
   - `ContextInjector.inlineAttachment(url:visionProvider: (any LLMProvider)?)` — adds optional
@@ -146,5 +146,5 @@ Expected: `BUILD FAILED` — `inlineAttachment(url:visionProvider:)` signature n
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ContextInjectorVisionTests.swift
-git commit -m "Phase 61a — ContextInjectorVisionTests (failing)"
+git commit -m "Task 61a — ContextInjectorVisionTests (failing)"
 ```

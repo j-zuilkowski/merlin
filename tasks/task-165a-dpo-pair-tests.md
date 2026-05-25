@@ -1,12 +1,12 @@
-# Phase 165a — DPO Pair Collection Tests
+# Task 165a — DPO Pair Collection Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 164b complete: critic retry loop in AgenticEngine; `criticEnabled`/`maxCriticRetries` in AppSettings.
+Task 164b complete: critic retry loop in AgenticEngine; `criticEnabled`/`maxCriticRetries` in AppSettings.
 
-New surface introduced in phase 165b:
+New surface introduced in task 165b:
   - `DPOPendingEntry` struct — prompt, chosen, rejected, modelID, timestamp; `Codable + Sendable`
   - `DPOQueue` actor — `propose(entry:)` writes JSON to `~/.merlin/lora/pending/<uuid>.json`,
     `pendingEntries()` loads and returns all pending entries
@@ -29,7 +29,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 165 — DPOQueue pending entry persistence
+// Tests for Task 165 — DPOQueue pending entry persistence
 //
 // Covers:
 //   - DPOPendingEntry is Codable round-trips correctly
@@ -220,7 +220,7 @@ final class DPOQueueTests: XCTestCase {
 import XCTest
 @testable import Merlin
 
-// Tests for Phase 165 — DPO auto-filter: what sessions get proposed
+// Tests for Task 165 — DPO auto-filter: what sessions get proposed
 //
 // Covers:
 //   - AppSettings.dpoEnabled default is true
@@ -384,5 +384,5 @@ Expected: BUILD FAILED with errors naming `DPOPendingEntry`, `DPOQueue`, `dpoEna
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/DPOQueueTests.swift MerlinTests/Unit/DPOAutoFilterTests.swift
-git commit -m "Phase 165a — DPOQueueTests + DPOAutoFilterTests (failing)"
+git commit -m "Task 165a — DPOQueueTests + DPOAutoFilterTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 78 — Fix MerlinApp Settings Scene
+# Task 78 — Fix MerlinApp Settings Scene
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 77 complete: all workspace panes wired.
+Task 77 complete: all workspace panes wired.
 
 `MerlinApp.swift` still opens `ProviderSettingsView()` in the Settings scene instead of the
 full `SettingsWindowView`. Fix this. Also remove the `@EnvironmentObject private var registry`
@@ -111,5 +111,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/App/MerlinApp.swift \
         Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 78 — fix Settings scene: SettingsWindowView replaces ProviderSettingsView"
+git commit -m "Task 78 — fix Settings scene: SettingsWindowView replaces ProviderSettingsView"
 ```

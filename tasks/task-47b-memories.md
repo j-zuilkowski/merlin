@@ -1,10 +1,10 @@
-# Phase 47b — AI-Generated Memories Implementation
+# Task 47b — AI-Generated Memories Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 47a complete: failing tests in place.
+Task 47a complete: failing tests in place.
 
 New files:
   - `Merlin/Memories/MemoryEntry.swift`
@@ -255,5 +255,5 @@ Expected: BUILD SUCCEEDED, all MemoryEngineTests pass.
 git add Merlin/Memories/MemoryEntry.swift \
         Merlin/Memories/MemoryEngine.swift \
         Merlin/UI/Memories/MemoryReviewView.swift
-git commit -m "Phase 47b — MemoryEngine (idle timer, pending queue, sanitization)"
+git commit -m "Task 47b — MemoryEngine (idle timer, pending queue, sanitization)"
 ```

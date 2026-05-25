@@ -1,10 +1,10 @@
-# Phase 134b — MemoryBackendPlugin Implementation
+# Task 134b — MemoryBackendPlugin Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 134a complete: failing tests added for MemoryBackendPlugin protocol infrastructure.
+Task 134a complete: failing tests added for MemoryBackendPlugin protocol infrastructure.
 
 ---
 
@@ -95,7 +95,7 @@ struct MemorySearchResult: Sendable {
 ///
 /// Built-in plugins:
 ///   - `NullMemoryPlugin` ("null") — no-op default, used when memory storage is disabled.
-///   - `LocalVectorPlugin` ("local-vector") — SQLite + NLContextualEmbedding; added in phase 135b.
+///   - `LocalVectorPlugin` ("local-vector") — SQLite + NLContextualEmbedding; added in task 135b.
 protocol MemoryBackendPlugin: Actor {
     /// Stable identifier used to persist the active plugin choice in AppSettings.
     nonisolated var pluginID: String { get }
@@ -181,5 +181,5 @@ Expected: BUILD SUCCEEDED — all 134a tests pass, zero warnings.
 ## Commit
 ```bash
 git add Merlin/Memories/MemoryBackendPlugin.swift
-git commit -m "Phase 134b — MemoryBackendPlugin: protocol, registry, NullMemoryPlugin"
+git commit -m "Task 134b — MemoryBackendPlugin: protocol, registry, NullMemoryPlugin"
 ```

@@ -1,10 +1,10 @@
-# Phase 140a — Reasoning-Layer Circuit Breaker Tests (failing)
+# Task 140a — Reasoning-Layer Circuit Breaker Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 139 complete (or v9 phases in progress). All prior tests pass.
+Task 139 complete (or v9  tasks in progress). All prior tests pass.
 
 Motivation:
 Addresses the "safe halt conditions" mitigation from:
@@ -17,7 +17,7 @@ correctness." Two modes are provided: "warn" (surface the signal, keep running) 
 "halt" (stop cleanly, label the failure, require the user to start a new session).
 "halt" is the default.
 
-New surface introduced in phase 140b:
+New surface introduced in task 140b:
   - `AgenticEngine.consecutiveCriticFailures: Int` — increments on .fail, resets on
     .pass or .skipped.
   - `AppSettings.agentCircuitBreakerThreshold: Int` — TOML: `agent_circuit_breaker_threshold`.
@@ -227,5 +227,5 @@ Expected: BUILD FAILED — `AgenticEngine.consecutiveCriticFailures`,
 ## Commit
 ```bash
 git add MerlinTests/Unit/CircuitBreakerTests.swift
-git commit -m "Phase 140a — circuit breaker tests (failing)"
+git commit -m "Task 140a — circuit breaker tests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 26a — Multi-Provider Tests
+# Task 26a — Multi-Provider Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 25b complete: RAG integration done.
+Task 25b complete: RAG integration done.
 
-New types introduced in phase 26b:
+New types introduced in task 26b:
   - `ProviderConfig` (struct) + `ProviderKind` (enum)
   - `ProviderRegistry` (@MainActor ObservableObject)
   - `OpenAICompatibleProvider` (LLMProvider)
@@ -510,5 +510,5 @@ git add MerlinTests/Unit/ProviderRegistryTests.swift \
         MerlinTests/Unit/OpenAICompatibleProviderTests.swift \
         MerlinTests/Unit/AnthropicProviderTests.swift \
         MerlinTests/Unit/AgenticEngineProviderTests.swift
-git commit -m "Phase 26a — multi-provider tests (failing)"
+git commit -m "Task 26a — multi-provider tests (failing)"
 ```

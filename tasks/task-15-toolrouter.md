@@ -1,11 +1,11 @@
-# Phase 15 — ToolRouter
+# Task 15 — ToolRouter
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All tool implementations exist (phases 07–11). AuthGate exists (phase 13b).
+All tool implementations exist ( tasks 07–11). AuthGate exists (task 13b).
 
 ---
 
@@ -110,5 +110,5 @@ Expected: `Test Suite 'ToolRouterTests' passed` with 2 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ToolRouter.swift MerlinTests/Unit/ToolRouterTests.swift
-git commit -m "Phase 15 — ToolRouter + tests (2 tests passing)"
+git commit -m "Task 15 — ToolRouter + tests (2 tests passing)"
 ```

@@ -1,17 +1,17 @@
-# Phase 116a — LoRA AppSettings Tests (failing)
+# Task 116a — LoRA AppSettings Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 115b complete: critic-gated memory write in place.
+Task 115b complete: critic-gated memory write in place.
 
 Current state: AppSettings has no LoRA-related properties. V6 introduces local LoRA
 self-training via MLX-LM on the M4 Mac (128 GB unified memory). All LoRA behaviour is
 opt-in behind a master toggle; the app builds and runs cleanly with every setting at its
 default (all off / empty).
 
-New surface introduced in phase 116b:
+New surface introduced in task 116b:
   - `AppSettings.loraEnabled: Bool` — master switch; default false
   - `AppSettings.loraAutoTrain: Bool` — trigger training when threshold reached; default false
   - `AppSettings.loraAutoLoad: Bool` — route execute slot through adapter server; default false
@@ -182,5 +182,5 @@ Expected: BUILD FAILED — `AppSettings.loraEnabled` (and the other six properti
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRASettingsTests.swift
-git commit -m "Phase 116a — LoRASettingsTests (failing)"
+git commit -m "Task 116a — LoRASettingsTests (failing)"
 ```

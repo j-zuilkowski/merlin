@@ -1,12 +1,12 @@
-# Phase 182a — SessionRestoreTests (failing)
+# Task 182a — SessionRestoreTests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 181b complete: Session.archived + SessionStore project-scoped path + archive/unarchive.
+Task 181b complete: Session.archived + SessionStore project-scoped path + archive/unarchive.
 
-New surface introduced in phase 182b:
+New surface introduced in task 182b:
   - `LiveSession.init(projectRef:initialMessages:sessionStore:)` — accepts optional pre-loaded
     messages and a shared SessionStore; injects messages into ContextManager, fires
     compactIfNeededBeforeRun if estimatedTokens > preRunCompactionThreshold
@@ -179,5 +179,5 @@ Expected: BUILD FAILED — `ContextManager.load(_:)`, `SessionManager.restore(se
 cd ~/Documents/localProject/merlin
 git add tasks/task-182a-session-restore-tests.md \
         MerlinTests/Unit/SessionRestoreTests.swift
-git commit -m "Phase 182a — SessionRestoreTests (failing)"
+git commit -m "Task 182a — SessionRestoreTests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 45b — ToolRegistry Implementation
+# Task 45b — ToolRegistry Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 45a complete: failing tests in place.
+Task 45a complete: failing tests in place.
 
-This phase replaces the constraint "ToolDefinitions.all is dynamic — no fixed count" with a dynamic
+This task replaces the constraint "ToolDefinitions.all is dynamic — no fixed count" with a dynamic
 actor-based registry. The static ToolDefinitions.all array becomes the seed for registerBuiltins()
 and is no longer the live tool set.
 
@@ -17,7 +17,7 @@ Edits:
   - `Merlin/Tools/ToolDefinitions.swift` — no content change; static `all` array stays as-is
     and becomes the source for `registerBuiltins()`
   - Anywhere in the engine that calls `ToolDefinitions.all` directly should eventually
-    switch to `await ToolRegistry.shared.all()`, but that migration is in scope for this phase
+    switch to `await ToolRegistry.shared.all()`, but that migration is in scope for this task
     only if it's needed to pass tests. The tests use a fresh `ToolRegistry()` instance, not shared.
 
 ---
@@ -101,5 +101,5 @@ Expected: BUILD SUCCEEDED, all ToolRegistryTests pass.
 ## Commit
 ```bash
 git add Merlin/Tools/ToolRegistry.swift
-git commit -m "Phase 45b — ToolRegistry (dynamic actor-based tool set)"
+git commit -m "Task 45b — ToolRegistry (dynamic actor-based tool set)"
 ```

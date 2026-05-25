@@ -1,10 +1,10 @@
-# Phase 55b — SubagentEngine V4a Implementation
+# Task 55b — SubagentEngine V4a Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 55a complete: failing tests in place.
+Task 55a complete: failing tests in place.
 
 New files:
   - `Merlin/Agents/SubagentEvent.swift`
@@ -356,5 +356,5 @@ git add Merlin/Agents/SubagentEvent.swift \
         Merlin/Agents/SpawnAgentTool.swift \
         Merlin/Tools/ToolDefinitions.swift \
         Merlin/Config/AppSettings.swift
-git commit -m "Phase 55b — SubagentEngine V4a (streaming events, depth/thread limits, explorer tool set)"
+git commit -m "Task 55b — SubagentEngine V4a (streaming events, depth/thread limits, explorer tool set)"
 ```

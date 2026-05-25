@@ -1,16 +1,16 @@
-# Phase 113a — OutcomeRecord Persistence Tests (failing)
+# Task 113a — OutcomeRecord Persistence Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 112b complete: ragRerank + ragChunkLimit configurable.
+Task 112b complete: ragRerank + ragChunkLimit configurable.
 
 Current state: ModelPerformanceProfile is already persisted to ~/.merlin/performance/<model>.json.
 The raw OutcomeRecord array (records dict) is in-memory only — lost on every restart.
 This is the V6 prerequisite: LoRA training needs accumulated raw records to build a training dataset.
 
-New surface introduced in phase 113b:
+New surface introduced in task 113b:
   - `ModelPerformanceTracker` persists raw `OutcomeRecord` arrays alongside profiles
   - Records file: `~/.merlin/performance/records-<sanitised-model-id>.json`
   - `ModelPerformanceTracker.records(for:taskType:)` — returns persisted records for a model+taskType
@@ -174,5 +174,5 @@ Expected: BUILD FAILED — `ModelPerformanceTracker.records(for:taskType:)` and
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/OutcomeRecordPersistenceTests.swift
-git commit -m "Phase 113a — OutcomeRecordPersistenceTests (failing)"
+git commit -m "Task 113a — OutcomeRecordPersistenceTests (failing)"
 ```

@@ -1,12 +1,12 @@
-# Phase 27a — Model Picker Tests
+# Task 27a — Model Picker Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 26b complete: ProviderRegistry with updateModel(_:for:) exists.
+Task 26b complete: ProviderRegistry with updateModel(_:for:) exists.
 
-New surface introduced in phase 27b:
+New surface introduced in task 27b:
   - `ProviderRegistry.knownModels: [String: [String]]` (static, not Codable)
 
 TDD coverage:
@@ -116,5 +116,5 @@ Expected: `BUILD FAILED` with errors referencing `ProviderRegistry.knownModels`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ProviderModelPickerTests.swift
-git commit -m "Phase 27a — ProviderModelPickerTests (failing)"
+git commit -m "Task 27a — ProviderModelPickerTests (failing)"
 ```

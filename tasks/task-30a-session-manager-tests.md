@@ -1,19 +1,19 @@
-# Phase 30a — SessionManager Tests
+# Task 30a — SessionManager Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 29 complete: ProjectRef, RecentProjectsStore, ProjectPickerView, multi-window WindowGroup.
+Task 29 complete: ProjectRef, RecentProjectsStore, ProjectPickerView, multi-window WindowGroup.
 
-New surface introduced in phase 30b:
+New surface introduced in task 30b:
   - `LiveSession` — @MainActor ObservableObject wrapping one AgenticEngine + AppState per session
   - `SessionManager` — @MainActor ObservableObject owning [LiveSession], scoped to one ProjectRef
   - `SessionManager.newSession(mode:)` — creates a LiveSession, appends to liveSessions, activates it
   - `SessionManager.closeSession(_:)` — removes from liveSessions, removes git worktree if applicable
   - `SessionManager.switchSession(to:)` — sets activeSessionID
   - `LiveSession.title` — derived from first user message, defaults to "New Session"
-  - `LiveSession.permissionMode` — PermissionMode value (from phase 31; stub as `.ask` here)
+  - `LiveSession.permissionMode` — PermissionMode value (from task 31; stub as `.ask` here)
 
 TDD coverage:
   File 1 — SessionManagerTests: newSession creates a LiveSession; switchSession changes active;
@@ -161,5 +161,5 @@ Expected: `BUILD FAILED` with errors referencing `SessionManager`, `LiveSession`
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SessionManagerTests.swift
-git commit -m "Phase 30a — SessionManagerTests (failing)"
+git commit -m "Task 30a — SessionManagerTests (failing)"
 ```

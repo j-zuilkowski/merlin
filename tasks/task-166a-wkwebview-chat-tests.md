@@ -1,18 +1,18 @@
-# Phase 166a — WKWebView Chat Renderer Tests
+# Task 166a — WKWebView Chat Renderer Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 165b complete: DPO pair persistence.
+Task 165b complete: DPO pair persistence.
 
 SwiftUI `Text`-per-message cannot share a selection context across view boundaries —
 cross-message drag selection is architecturally impossible. The fix is a single
-`WKWebView` rendering the entire conversation as one HTML document. This phase
+`WKWebView` rendering the entire conversation as one HTML document. This task
 writes the failing tests for the pure-Swift HTML generation layer, which can be
 exercised without a live WKWebView instance.
 
-New surface introduced in phase 166b:
+New surface introduced in task 166b:
 
 - `ConversationHTMLRenderer.render(_:)` — builds a full HTML document from `[ChatEntry]`
 - `ConversationHTMLRenderer.messageHTML(for:)` — renders one `ChatEntry` as an HTML fragment
@@ -338,5 +338,5 @@ The test file itself must compile structurally — only the missing implementati
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ConversationHTMLRendererTests.swift \
         tasks/task-166a-wkwebview-chat-tests.md
-git commit -m "Phase 166a — ConversationHTMLRendererTests (failing)"
+git commit -m "Task 166a — ConversationHTMLRendererTests (failing)"
 ```

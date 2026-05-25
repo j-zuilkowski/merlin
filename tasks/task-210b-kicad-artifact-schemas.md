@@ -1,10 +1,10 @@
-# Phase 210b — KiCad Artifact Schemas
+# Task 210b — KiCad Artifact Schemas
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 210a complete: failing artifact schema tests exist.
+Task 210a complete: failing artifact schema tests exist.
 
 ---
 
@@ -66,5 +66,5 @@ Expected: **BUILD SUCCEEDED**. `KiCadArtifactSchemasTests` pass.
 
 ```bash
 git add Merlin/Electronics/KiCadArtifacts.swift Merlin/Electronics/KiCadArtifactStore.swift
-git commit -m "Phase 210b — KiCad artifact schemas and store"
+git commit -m "Task 210b — KiCad artifact schemas and store"
 ```

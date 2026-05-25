@@ -1,12 +1,12 @@
-# Phase 213a — Components, Footprints, Libraries, and BOM Tests
+# Task 213a — Components, Footprints, Libraries, and BOM Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 212b complete: extraction policy and clarification planning exist.
+Task 212b complete: extraction policy and clarification planning exist.
 
-New surface introduced in phase 213b:
+New surface introduced in task 213b:
   - `FootprintAssignmentPolicy`
   - `ComponentLibraryPolicy`
   - `LibraryVerificationPolicy`
@@ -46,5 +46,5 @@ Expected: **BUILD FAILED** with missing component/footprint/BOM policy symbols.
 
 ```bash
 git add MerlinTests/Unit/ComponentsFootprintsBOMTests.swift
-git commit -m "Phase 213a — ComponentsFootprintsBOMTests (failing)"
+git commit -m "Task 213a — ComponentsFootprintsBOMTests (failing)"
 ```

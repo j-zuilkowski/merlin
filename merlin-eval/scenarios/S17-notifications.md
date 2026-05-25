@@ -32,7 +32,7 @@ Also:
 **Score:** checks passed / 5.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built and installed.
+1. Tasks B–D, 301–306 merged; Merlin built and installed.
 2. Reset notification permission (`tccutil reset` or a fresh user) to test the prompt.
 3. Drive a turn to completion and a tool-permission request via `EvalHarness` or manually;
    watch the macOS Notification Center.

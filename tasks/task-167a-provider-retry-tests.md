@@ -1,10 +1,10 @@
-# Phase 167a — Provider Retry Policy Tests
+# Task 167a — Provider Retry Policy Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 166b complete: WKWebView chat renderer in place.
+Task 166b complete: WKWebView chat renderer in place.
 
 Transient provider errors (429, 5xx, network drops) currently kill the engine run immediately
 after the provider exhausts its internal retries. The fix introduces `ProviderError` — a
@@ -12,7 +12,7 @@ structured error type that classifies HTTP errors as retriable or non-retriable 
 engine-level retry loop around `provider.complete(request:)` so the run survives transient
 failures with a visible `systemNote` rather than dying.
 
-New surface introduced in phase 167b:
+New surface introduced in task 167b:
   - `ProviderError` — `Error` enum: `.httpError(statusCode:body:providerID:)`, `.networkError(underlying:providerID:)`
   - `ProviderError.isRetriable` — `Bool`; true for 429 and 500–599; retriable URLError codes
   - `ProviderError.retryDelay` — `TimeInterval`; 10s for 429, 5s for 5xx, 3s for network
@@ -224,5 +224,5 @@ cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ProviderRetryPolicyTests.swift \
         MerlinTests/Unit/EngineProviderRetryTests.swift \
         tasks/task-167a-provider-retry-tests.md
-git commit -m "Phase 167a — ProviderRetryPolicyTests, EngineProviderRetryTests (failing)"
+git commit -m "Task 167a — ProviderRetryPolicyTests, EngineProviderRetryTests (failing)"
 ```

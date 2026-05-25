@@ -1,12 +1,12 @@
-# Phase 283b — Local Model Picker
+# Task 283b — Local Model Picker
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 283a complete: failing test for the `allSlotPickerEntries` local-model contract.
+Task 283a complete: failing test for the `allSlotPickerEntries` local-model contract.
 
-After this phase, a local runner's individual loaded models are selectable from both
+After this task, a local runner's individual loaded models are selectable from both
 the role-slot picker and the chat-screen provider picker, the model list refreshes when
 either picker opens, and Merlin never sends the bare backend id as a model name.
 
@@ -75,10 +75,10 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**; all phase 283a tests pass; updated `SlotPickerEntriesTests`
-pass; no prior phase regresses.
+Expected: **BUILD SUCCEEDED**; all task 283a tests pass; updated `SlotPickerEntriesTests`
+pass; no prior task regresses.
 
-**Manual UI check** (required — this phase is mostly view wiring): build and launch the
+**Manual UI check** (required — this task is mostly view wiring): build and launch the
 app with LM Studio running and two models loaded. Open the chat provider picker
 (`ProviderHUD`) — it must list the two LM Studio models as separate choices, not a
 single "LM Studio". Open Settings → Providers & Slots — the slot pickers must show the
@@ -93,7 +93,7 @@ git add tasks/task-283b-local-model-picker.md \
     Merlin/Views/ProviderHUD.swift \
     Merlin/Views/Settings/RoleSlotSettingsView.swift \
     MerlinTests/Unit/SlotPickerEntriesTests.swift
-git commit -m "Phase 283b — Local model picker in chat HUD + slot picker; model-list refresh"
+git commit -m "Task 283b — Local model picker in chat HUD + slot picker; model-list refresh"
 ```
 
 ## Fixes
@@ -103,7 +103,7 @@ picker and the role-slot picker; both refresh the model list on open. The bare l
 base entry is no longer offered when real models are known, so Merlin never sends the
 backend id (`"lmstudio"`) as a model name.
 
-## Follow-up (not in this phase)
+## Follow-up (not in this task)
 
 `ProviderRegistry.fetchModels` uses `{baseURL}/models` (OpenAI standard) while
 `LMStudioModelManager.loadedModels` uses `{baseURL}/api/v1/models` (LM Studio's

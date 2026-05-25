@@ -1,16 +1,16 @@
-# Phase 249a — ManualCoverageScanner Tests
+# Task 249a — ManualCoverageScanner Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 248b complete: GitHookInstaller live.
+Task 248b complete: GitHookInstaller live.
 
-Replaces the `ManualCoverageScanner` stub (from phase 245b) with a real implementation.
+Replaces the `ManualCoverageScanner` stub (from task 245b) with a real implementation.
 The scanner enumerates user-facing surfaces via adapter regex patterns, then reads
 `<!-- covers: ... -->` blocks from doc files to build the coverage map.
 
-New surface introduced in phase 249b (replacing stub):
+New surface introduced in task 249b (replacing stub):
   - `ManualCoverageScanner.scan(projectPath:adapter:)` — real implementation that:
     1. Greps source files for adapter `manualCoveragePatterns` regexes.
     2. Reads all `.md` doc files for `<!-- covers: ... -->` blocks.
@@ -189,5 +189,5 @@ Expected: **BUILD FAILED** with errors naming `ManualCoverageScanner.buildCovera
 ```bash
 git add tasks/task-249a-manual-coverage-scanner-tests.md \
     MerlinTests/Unit/ManualCoverageScannerTests.swift
-git commit -m "Phase 249a — ManualCoverageScannerTests (failing)"
+git commit -m "Task 249a — ManualCoverageScannerTests (failing)"
 ```

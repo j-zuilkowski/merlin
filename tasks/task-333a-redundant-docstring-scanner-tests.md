@@ -1,14 +1,14 @@
-# Phase 333a — RedundantDocstringScanner Tests
+# Task 333a — RedundantDocstringScanner Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 332 complete: comment + doc cleanup pass landed; existing comment audits flagged
+Task 332 complete: comment + doc cleanup pass landed; existing comment audits flagged
 ~100+ remaining WHAT-docstrings as a long tail. constitution.md's "default to no comments"
 rule has no scanner to enforce it.
 
-New surface introduced in phase 333b:
+New surface introduced in task 333b:
   - `RedundantDocstring` (struct) — one finding from the scanner.
   - `RedundantDocstring.Reason` (enum) — `restatesIdentifier`, `knownWhatPhrase`, `multiLineWithoutWhyMarker`.
   - `RedundantDocstringScanner` (actor) — `scan(projectPath:)` walks `*.swift` files outside
@@ -209,5 +209,5 @@ Expected: BUILD FAILED with errors naming `RedundantDocstringScanner`, `Redundan
 ## Commit
 ```bash
 git add MerlinTests/Unit/RedundantDocstringScannerTests.swift tasks/task-333a-redundant-docstring-scanner-tests.md
-git commit -m "Phase 333a — RedundantDocstringScannerTests (failing)"
+git commit -m "Task 333a — RedundantDocstringScannerTests (failing)"
 ```

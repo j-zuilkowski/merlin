@@ -1,17 +1,17 @@
-# Phase 239a — Decompose-on-Overflow Tests
+# Task 239a — Decompose-on-Overflow Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 238b complete: critic gating active. Pre-flight overflow currently routes through
+Task 238b complete: critic gating active. Pre-flight overflow currently routes through
 `EscalationHandler` (237b) which already calls `planner.refineStep(reason: .preflightOverflow)`.
 
-This phase tightens that path into the documented ladder and adds cross-provider escalation as
+This task tightens that path into the documented ladder and adds cross-provider escalation as
 the *last-resort* fallback (the inverted priority order: decompose first, escalate to a bigger
 model only when the work is atomic).
 
-Behaviour after this phase:
+Behaviour after this task:
   1. Pre-flight overflow detected.
   2. Working-set caps re-applied + summary compaction (already done in 234b).
   3. If still over → `EscalationHandler.escalateOrStop(reason: .preflightOverflow)` →
@@ -21,7 +21,7 @@ Behaviour after this phase:
      slot whose `usableInputTokens >= step.minContextRequired`.
   6. If no larger slot configured or available → graceful `.cleanStop` (no recursion, no retry).
 
-New surface introduced in phase 239b:
+New surface introduced in task 239b:
   - `ProviderRegistry.providersOrderedByBudget() -> [(id: String, budget: ProviderBudget)]` —
     return all configured providers sorted by `usableInputTokens` descending. (Method name
     flexible — match local conventions on whatever type backs the registry.)
@@ -97,5 +97,5 @@ git add tasks/task-239a-decompose-on-overflow-tests.md \
     MerlinTests/Unit/ProviderRegistryOrderingTests.swift \
     MerlinTests/Unit/PerStepPreflightTests.swift \
     MerlinTests/Unit/CrossProviderRouteSystemNoteTests.swift
-git commit -m "Phase 239a — DecomposeOnOverflowTests (failing)"
+git commit -m "Task 239a — DecomposeOnOverflowTests (failing)"
 ```

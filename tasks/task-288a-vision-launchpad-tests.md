@@ -1,10 +1,10 @@
-# Phase 288a — Vision Launchpad Tests (failing)
+# Task 288a — Vision Launchpad Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 287 complete: external CLI tools are detected on first use.
+Task 287 complete: external CLI tools are detected on first use.
 
 **The gap.** The Project Discipline subsystem's documented pipeline starts at
 `spec.md` — there is no artifact upstream of it, so a raw idea has nowhere to
@@ -27,14 +27,14 @@ Capture mechanism (per the chosen design): `project:init` **seeds `vision.md` wi
 initial project idea** at scaffold time; later edits go through `project:revise`. No new
 skill is added.
 
-This phase asserts (failing) that the `project:init` skill scaffolds and seeds
-`vision.md`. Phase 288b updates the skill files and docs. No Swift production code — the
-"tests" are content assertions on the skill file, mirroring phase 259a.
+This task asserts (failing) that the `project:init` skill scaffolds and seeds
+`vision.md`. Task 288b updates the skill files and docs. No Swift production code — the
+"tests" are content assertions on the skill file, mirroring task 259a.
 
-New surface introduced in phase 288b:
+New surface introduced in task 288b:
   - `project:init` SKILL.md gains: an initial-idea capture step, a `vision.md` scaffold
     step (with `## Active` seeded / `## Deferred` empty), `vision.md` in both doc-set
-    tiers, and the vision→architecture→phase→code pipeline documented.
+    tiers, and the vision→architecture→task→code pipeline documented.
   - `project:adopt` SKILL.md gains: a step that incorporates an existing `vision.md` if
     the adopted project already has one, or creates the launchpad scaffold if not.
   - `project:revise` SKILL.md notes `vision.md` as a revisable doc (idea promotion).
@@ -43,7 +43,7 @@ New surface introduced in phase 288b:
 TDD coverage:
   File 1 — `MerlinTests/Unit/ProjectVisionLaunchpadTests.swift`: the installed
     `project:init` SKILL.md references `vision.md`, has an initial-idea capture/seed
-    step, and documents the vision→architecture→phase→code pipeline; the installed
+    step, and documents the vision→architecture→task→code pipeline; the installed
     `project:adopt` SKILL.md incorporates an existing `vision.md`.
 
 ---
@@ -54,7 +54,7 @@ TDD coverage:
 import XCTest
 
 /// Tests that the project:init skill scaffolds vision.md as the idea launchpad.
-/// These tests build clean but FAIL at runtime until phase 288b updates the skill.
+/// These tests build clean but FAIL at runtime until task 288b updates the skill.
 final class ProjectVisionLaunchpadTests: XCTestCase {
 
     private let skillPath: String = {
@@ -77,7 +77,7 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
 
     func testProjectInitSkillExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "project-init SKILL.md not found — phase 259b must have run first.")
+                      "project-init SKILL.md not found — task 259b must have run first.")
     }
 
     func testProjectInitScaffoldsVisionDoc() throws {
@@ -97,21 +97,21 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
     }
 
     func testProjectInitDocumentsThePipeline() throws {
-        // The vision → architecture → phase → code pipeline must be stated in the skill
+        // The vision → architecture → task → code pipeline must be stated in the skill
         // so the discipline workflow is explicit.
         let body = try skillBody().lowercased()
         let mentionsPipeline =
             body.contains("vision") && body.contains("architecture")
-            && body.contains("phase") && body.contains("code")
+            && body.contains("task") && body.contains("code")
         XCTAssertTrue(mentionsPipeline,
-                      "project:init must document the vision→architecture→phase→code pipeline.")
+                      "project:init must document the vision→architecture→task→code pipeline.")
     }
 
     func testProjectAdoptIncorporatesExistingVisionDoc() throws {
         // Adopting an existing project must recognise an existing vision.md rather than
         // ignore or clobber it, and give a vision-less project the launchpad scaffold.
         XCTAssertTrue(FileManager.default.fileExists(atPath: adoptSkillPath),
-                      "project-adopt SKILL.md not found — phase 263b must have run first.")
+                      "project-adopt SKILL.md not found — task 263b must have run first.")
         let body = try adoptSkillBody()
         XCTAssertTrue(body.contains("vision.md"),
                       "project:adopt must incorporate an existing vision.md.")
@@ -136,7 +136,7 @@ xcodebuild -scheme MerlinTests build-for-testing \
 Expected: **BUILD SUCCEEDED** (no missing symbols — the tests are file-content
 assertions), but `testProjectInitScaffoldsVisionDoc`, `testProjectInitSeedsTheInitialIdea`,
 `testProjectInitDocumentsThePipeline`, and `testProjectAdoptIncorporatesExistingVisionDoc`
-**FAIL at runtime** until phase 288b updates the skill files.
+**FAIL at runtime** until task 288b updates the skill files.
 
 ## Commit
 
@@ -144,7 +144,7 @@ assertions), but `testProjectInitScaffoldsVisionDoc`, `testProjectInitSeedsTheIn
 git add tasks/task-288a-vision-launchpad-tests.md \
     MerlinTests/Unit/ProjectVisionLaunchpadTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 288a — ProjectVisionLaunchpadTests (failing)"
+git commit -m "Task 288a — ProjectVisionLaunchpadTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file registers.)

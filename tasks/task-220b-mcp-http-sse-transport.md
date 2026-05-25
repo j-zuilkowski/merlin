@@ -1,10 +1,10 @@
-# Phase 220b - MCP HTTP/SSE Transport
+# Task 220b - MCP HTTP/SSE Transport
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 220a complete: failing MCP HTTP/SSE transport tests exist.
+Task 220a complete: failing MCP HTTP/SSE transport tests exist.
 
 ---
 
@@ -63,7 +63,7 @@ Expected: **BUILD SUCCEEDED**. New MCP transport tests pass.
 
 ```bash
 git add Merlin/MCP/MCPHTTPTransport.swift Merlin/MCP/MCPSSETransport.swift Merlin/MCP/MCPBridge.swift Merlin/Config/AppSettings.swift MerlinTests/Unit/MCPHTTPTransportTests.swift MerlinTests/Unit/MCPSSETransportTests.swift MerlinTests/Unit/MCPBridgeTransportSelectionTests.swift
-git commit -m "Phase 220b - MCP HTTP and SSE transports"
+git commit -m "Task 220b - MCP HTTP and SSE transports"
 ```
 
 ## Fixes

@@ -1,10 +1,10 @@
-# Phase 42b — PRMonitor Implementation
+# Task 42b — PRMonitor Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 42a complete: failing PRMonitorTests in place.
+Task 42a complete: failing PRMonitorTests in place.
 
 ---
 
@@ -244,5 +244,5 @@ Expected: `BUILD SUCCEEDED`; `PRMonitorTests` → 9 tests pass; all prior tests 
 cd ~/Documents/localProject/merlin
 git add Merlin/Connectors/PRMonitor.swift \
         project.yml
-git commit -m "Phase 42b — PRMonitor: GitHub polling + CI status + auto-merge"
+git commit -m "Task 42b — PRMonitor: GitHub polling + CI status + auto-merge"
 ```

@@ -1,4 +1,4 @@
-# Phase 01 — Project Scaffold
+# Task 01 — Project Scaffold
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -372,7 +372,7 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```
 
 Expected: `BUILD SUCCEEDED`. Warnings are acceptable, errors are not.
-# Phase 02a — Shared Types: Tests First
+# Task 02a — Shared Types: Tests First
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -444,7 +444,7 @@ final class SharedTypesTests: XCTestCase {
 
 ## Verify
 
-Run after writing the file. Expect build errors for missing types — that is correct for a test-first phase.
+Run after writing the file. Expect build errors for missing types — that is correct for a test-first task.
 
 ```bash
 cd ~/Documents/localProject/merlin
@@ -460,9 +460,9 @@ Expected: build errors referencing `Message`, `ToolCall`, etc. — not logic err
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SharedTypesTests.swift
-git commit -m "Phase 02a — SharedTypesTests (failing, types not yet defined)"
+git commit -m "Task 02a — SharedTypesTests (failing, types not yet defined)"
 ```
-# Phase 02b — Shared Types: Implementation
+# Task 02b — Shared Types: Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -675,16 +675,16 @@ Expected: `Test Suite 'SharedTypesTests' passed` with 5 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/LLMProvider.swift
-git commit -m "Phase 02b — Shared types + LLMProvider protocol (all Sendable)"
+git commit -m "Task 02b — Shared types + LLMProvider protocol (all Sendable)"
 ```
-# Phase 03a — Provider Tests (no network)
+# Task 03a — Provider Tests (no network)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -771,16 +771,16 @@ Expected: `BUILD FAILED` with errors referencing `DeepSeekProvider`, `LMStudioPr
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ProviderTests.swift
-git commit -m "Phase 03a — ProviderTests (failing, providers not yet defined)"
+git commit -m "Task 03a — ProviderTests (failing, providers not yet defined)"
 ```
-# Phase 03b — DeepSeekProvider + SSEParser
+# Task 03b — DeepSeekProvider + SSEParser
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 03a complete: ProviderTests.swift written. LLMProvider protocol in Merlin/Providers/LLMProvider.swift.
+Task 03a complete: ProviderTests.swift written. LLMProvider protocol in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -848,16 +848,16 @@ Expected: `Test Suite 'ProviderTests' passed` with 5 tests (6 assertions includi
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/DeepSeekProvider.swift Merlin/Providers/SSEParser.swift
-git commit -m "Phase 03b — DeepSeekProvider + SSEParser"
+git commit -m "Task 03b — DeepSeekProvider + SSEParser"
 ```
-# Phase 04 — LMStudioProvider
+# Task 04 — LMStudioProvider
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 03b complete: DeepSeekProvider and SSEParser exist.
+Task 03b complete: DeepSeekProvider and SSEParser exist.
 
 ---
 
@@ -928,9 +928,9 @@ Expected: test skips cleanly.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Providers/LMStudioProvider.swift MerlinLiveTests/LMStudioProviderLiveTests.swift
-git commit -m "Phase 04 — LMStudioProvider + live test skeleton"
+git commit -m "Task 04 — LMStudioProvider + live test skeleton"
 ```
-# Phase 05 — KeychainManager
+# Task 05 — KeychainManager
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -1016,16 +1016,16 @@ xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macO
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Keychain/KeychainManager.swift MerlinTests/Unit/KeychainTests.swift
-git commit -m "Phase 05 — KeychainManager + tests"
+git commit -m "Task 05 — KeychainManager + tests"
 ```
-# Phase 06 — Tool Definitions
+# Task 06 — Tool Definitions
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: JSONSchema and ToolDefinition types exist in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -1423,9 +1423,9 @@ Alternatively verify in code: `ToolDefinitions.all.count` > 0 (count is dynamic)
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/ToolDefinitions.swift
-git commit -m "Phase 06 — ToolDefinitions"
+git commit -m "Task 06 — ToolDefinitions"
 ```
-# Phase 07a — FileSystem + Shell Tests
+# Task 07a — FileSystem + Shell Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -1546,16 +1546,16 @@ Expected: `BUILD FAILED` with errors referencing `FileSystemTools` and `ShellToo
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/FileSystemToolTests.swift MerlinTests/Integration/ShellToolTests.swift
-git commit -m "Phase 07a — FileSystemToolTests + ShellToolTests (failing)"
+git commit -m "Task 07a — FileSystemToolTests + ShellToolTests (failing)"
 ```
-# Phase 07b — FileSystemTools + ShellTool Implementation
+# Task 07b — FileSystemTools + ShellTool Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
+Task 07a complete: FileSystemToolTests.swift and ShellToolTests.swift written.
 
 ---
 
@@ -1667,16 +1667,16 @@ Expected: `Test Suite 'FileSystemToolTests' passed` (5 tests), `Test Suite 'Shel
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/FileSystemTools.swift Merlin/Tools/ShellTool.swift
-git commit -m "Phase 07b — FileSystemTools + ShellTool (9 tests passing)"
+git commit -m "Task 07b — FileSystemTools + ShellTool (9 tests passing)"
 ```
-# Phase 08a — Xcode Tools Tests
+# Task 08a — Xcode Tools Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
+Task 07b complete: ShellTool exists in Merlin/Tools/ShellTool.swift.
 
 ---
 
@@ -1737,16 +1737,16 @@ Expected: `BUILD FAILED` with errors referencing `XcodeTools`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/XcodeToolTests.swift
-git commit -m "Phase 08a — XcodeToolTests (failing)"
+git commit -m "Task 08a — XcodeToolTests (failing)"
 ```
-# Phase 08b — XcodeTools Implementation
+# Task 08b — XcodeTools Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 08a complete: XcodeToolTests.swift written. ShellTool exists.
+Task 08a complete: XcodeToolTests.swift written. ShellTool exists.
 
 ---
 
@@ -1823,9 +1823,9 @@ Expected: all 4 tests pass (the xcresult fixture test may skip — that is accep
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/XcodeTools.swift
-git commit -m "Phase 08b — XcodeTools implementation"
+git commit -m "Task 08b — XcodeTools implementation"
 ```
-# Phase 09a — AX Inspector + Screen Capture Tests
+# Task 09a — AX Inspector + Screen Capture Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -1919,16 +1919,16 @@ Expected: `BUILD FAILED` with errors referencing the missing types.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Integration/AXInspectorTests.swift MerlinTests/Integration/ScreenCaptureTests.swift
-git commit -m "Phase 09a — AXInspectorTests + ScreenCaptureTests (failing)"
+git commit -m "Task 09a — AXInspectorTests + ScreenCaptureTests (failing)"
 ```
-# Phase 09b — AXInspectorTool + ScreenCaptureTool
+# Task 09b — AXInspectorTool + ScreenCaptureTool
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
+Task 09a complete: AXInspectorTests.swift and ScreenCaptureTests.swift written.
 
 ---
 
@@ -2034,16 +2034,16 @@ Expected: AXInspectorTests pass if Accessibility is granted (Finder probe). Scre
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/AXInspectorTool.swift Merlin/Tools/ScreenCaptureTool.swift
-git commit -m "Phase 09b — AXInspectorTool + ScreenCaptureTool"
+git commit -m "Task 09b — AXInspectorTool + ScreenCaptureTool"
 ```
-# Phase 10 — CGEventTool + VisionQueryTool
+# Task 10 — CGEventTool + VisionQueryTool
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 04 complete: LMStudioProvider exists. Phase 09b complete: ScreenCaptureTool exists.
+Task 04 complete: LMStudioProvider exists. Task 09b complete: ScreenCaptureTool exists.
 
 ---
 
@@ -2169,16 +2169,16 @@ Expected: `Test Suite 'CGEventToolTests' passed` with 2 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/CGEventTool.swift Merlin/Tools/VisionQueryTool.swift MerlinTests/Unit/CGEventToolTests.swift
-git commit -m "Phase 10 — CGEventTool + VisionQueryTool + tests"
+git commit -m "Task 10 — CGEventTool + VisionQueryTool + tests"
 ```
-# Phase 11 — AppControlTools + ToolDiscovery
+# Task 11 — AppControlTools + ToolDiscovery
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 07b complete: ShellTool exists.
+Task 07b complete: ShellTool exists.
 
 ---
 
@@ -2314,9 +2314,9 @@ Expected: both test suites pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Tools/AppControlTools.swift Merlin/Tools/ToolDiscovery.swift \
     MerlinTests/Unit/AppControlTests.swift MerlinTests/Unit/ToolDiscoveryTests.swift
-git commit -m "Phase 11 — AppControlTools + ToolDiscovery + tests"
+git commit -m "Task 11 — AppControlTools + ToolDiscovery + tests"
 ```
-# Phase 12a — PatternMatcher + AuthMemory Tests
+# Task 12a — PatternMatcher + AuthMemory Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -2418,16 +2418,16 @@ Expected: `BUILD FAILED` with errors referencing `PatternMatcher` and `AuthMemor
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/PatternMatcherTests.swift MerlinTests/Unit/AuthMemoryTests.swift
-git commit -m "Phase 12a — PatternMatcherTests + AuthMemoryTests (failing)"
+git commit -m "Task 12a — PatternMatcherTests + AuthMemoryTests (failing)"
 ```
-# Phase 12b — PatternMatcher + AuthMemory Implementation
+# Task 12b — PatternMatcher + AuthMemory Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
+Task 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
 
 ---
 
@@ -2512,16 +2512,16 @@ Expected: `PatternMatcherTests` passes (5 tests), `AuthMemoryTests` passes (3 te
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Auth/PatternMatcher.swift Merlin/Auth/AuthMemory.swift
-git commit -m "Phase 12b — PatternMatcher + AuthMemory (8 tests passing)"
+git commit -m "Task 12b — PatternMatcher + AuthMemory (8 tests passing)"
 ```
-# Phase 13a — AuthGate Tests
+# Task 13a — AuthGate Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 12b complete: AuthMemory and PatternMatcher exist.
+Task 12b complete: AuthMemory and PatternMatcher exist.
 
 Note: `NullAuthPresenter` and `CapturingAuthPresenter` are defined in TestHelpers/NullAuthPresenter.swift
 and are available to all three test targets. Do NOT redefine them in this file.
@@ -2604,16 +2604,16 @@ Expected: `BUILD FAILED` with errors referencing `AuthGate` and `AuthDecision`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AuthGateTests.swift
-git commit -m "Phase 13a — AuthGateTests (failing)"
+git commit -m "Task 13a — AuthGateTests (failing)"
 ```
-# Phase 13b — AuthGate Implementation
+# Task 13b — AuthGate Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
+Task 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
 
 ---
 
@@ -2708,16 +2708,16 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Auth/AuthGate.swift
-git commit -m "Phase 13b — AuthGate implementation (4 tests passing)"
+git commit -m "Task 13b — AuthGate implementation (4 tests passing)"
 ```
-# Phase 14a — ContextManager Tests
+# Task 14a — ContextManager Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: Message type exists in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: Message type exists in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -2801,16 +2801,16 @@ Expected: `BUILD FAILED` with errors referencing `ContextManager`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ContextManagerTests.swift
-git commit -m "Phase 14a — ContextManagerTests (failing)"
+git commit -m "Task 14a — ContextManagerTests (failing)"
 ```
-# Phase 14b — ContextManager Implementation
+# Task 14b — ContextManager Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 14a complete: ContextManagerTests.swift written.
+Task 14a complete: ContextManagerTests.swift written.
 
 ---
 
@@ -2871,16 +2871,16 @@ Expected: `Test Suite 'ContextManagerTests' passed` with 5 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift
-git commit -m "Phase 14b — ContextManager with compaction (5 tests passing)"
+git commit -m "Task 14b — ContextManager with compaction (5 tests passing)"
 ```
-# Phase 15 — ToolRouter
+# Task 15 — ToolRouter
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All tool implementations exist (phases 07–11). AuthGate exists (phase 13b).
+All tool implementations exist ( tasks 07–11). AuthGate exists (task 13b).
 
 ---
 
@@ -2985,16 +2985,16 @@ Expected: `Test Suite 'ToolRouterTests' passed` with 2 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ToolRouter.swift MerlinTests/Unit/ToolRouterTests.swift
-git commit -m "Phase 15 — ToolRouter + tests (2 tests passing)"
+git commit -m "Task 15 — ToolRouter + tests (2 tests passing)"
 ```
-# Phase 16 — ThinkingModeDetector
+# Task 16 — ThinkingModeDetector
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: ThinkingConfig type exists in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: ThinkingConfig type exists in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -3078,9 +3078,9 @@ Expected: `Test Suite 'ThinkingModeDetectorTests' passed` with 6 tests.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ThinkingModeDetector.swift MerlinTests/Unit/ThinkingModeDetectorTests.swift
-git commit -m "Phase 16 — ThinkingModeDetector + tests (6 tests passing)"
+git commit -m "Task 16 — ThinkingModeDetector + tests (6 tests passing)"
 ```
-# Phase 17a — AgenticEngine Tests
+# Task 17a — AgenticEngine Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -3088,7 +3088,7 @@ All value types: Sendable. OpenAI function calling format. Dynamic tool registry
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 All engine components exist: ContextManager (14b), ToolRouter (15), ThinkingModeDetector (16), providers (03b, 04).
-TestHelpers/MockProvider.swift and TestHelpers/EngineFactory.swift are already written (phase 01 scaffold).
+TestHelpers/MockProvider.swift and TestHelpers/EngineFactory.swift are already written (task 01 scaffold).
 `MockProvider`, `MockLLMResponse`, `NullAuthPresenter`, `makeEngine` are available in the test targets.
 
 ---
@@ -3182,16 +3182,16 @@ Expected: `BUILD FAILED` with errors referencing `AgenticEngine` and `AgentEvent
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineTests.swift
-git commit -m "Phase 17a — AgenticEngineTests (failing)"
+git commit -m "Task 17a — AgenticEngineTests (failing)"
 ```
-# Phase 17b — AgenticEngine Implementation
+# Task 17b — AgenticEngine Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 17a complete: AgenticEngineTests.swift written. All engine components exist.
+Task 17a complete: AgenticEngineTests.swift written. All engine components exist.
 
 ---
 
@@ -3322,16 +3322,16 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 17b — AgenticEngine implementation (4 tests passing)"
+git commit -m "Task 17b — AgenticEngine implementation (4 tests passing)"
 ```
-# Phase 18 — Session + SessionStore
+# Task 18 — Session + SessionStore
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: Message type exists.
+Task 02b complete: Message type exists.
 
 ---
 
@@ -3448,16 +3448,16 @@ Expected: `Test Suite 'SessionSerializationTests' passed` with 4 tests.
 cd ~/Documents/localProject/merlin
 git add Merlin/Sessions/Session.swift Merlin/Sessions/SessionStore.swift \
     MerlinTests/Unit/SessionSerializationTests.swift
-git commit -m "Phase 18 — Session + SessionStore + tests (4 tests passing)"
+git commit -m "Task 18 — Session + SessionStore + tests (4 tests passing)"
 ```
-# Phase 19 — AppState + MerlinApp Entry Point
+# Task 19 — AppState + MerlinApp Entry Point
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All engine + session components exist (phases 13b–18). ToolRegistration will be written in phase 19b.
+All engine + session components exist ( tasks 13b–18). ToolRegistration will be written in task 19b.
 
 ---
 
@@ -3536,7 +3536,7 @@ Implement `AppState.init` in this exact order:
    // authStorePath = ~/Library/Application Support/Merlin/auth.json
 2. let gate = AuthGate(memory: authMemory, presenter: self)
 3. let toolRouter = ToolRouter(authGate: gate)
-4. registerAllTools(router: toolRouter)          // phase 19b
+4. registerAllTools(router: toolRouter)          // task 19b
 5. Override run_shell handler for streaming:
    toolRouter.register(name: "run_shell") { [weak self] args in
        struct A: Decodable { var command: String; var cwd: String?; var timeout_seconds: Int? }
@@ -3626,16 +3626,16 @@ Expected: `BUILD SUCCEEDED`. Zero errors.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/AppState.swift Merlin/App/MerlinApp.swift
-git commit -m "Phase 19 — AppState wiring + MerlinApp entry point"
+git commit -m "Task 19 — AppState wiring + MerlinApp entry point"
 ```
-# Phase 19b — Tool Handler Registration
+# Task 19b — Tool Handler Registration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
+All tool implementations exist ( tasks 07–11). ToolRouter exists (task 15). AppState skeleton exists (task 19).
 
 ---
 
@@ -3911,16 +3911,16 @@ Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.cou
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/ToolRegistration.swift
-git commit -m "Phase 19b — registerAllTools"
+git commit -m "Task 19b — registerAllTools"
 ```
-# Phase 20 — ContentView + ChatView + ProviderHUD
+# Task 20 — ContentView + ChatView + ProviderHUD
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
+Task 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
 
 ---
 
@@ -4018,7 +4018,7 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 
 Expected: `BUILD SUCCEEDED`.
 
-Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not fully implemented yet. They must at least compile as stubs (their stub files were created in phase 01). Ensure the stubs have the correct signatures:
+Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not fully implemented yet. They must at least compile as stubs (their stub files were created in task 01). Ensure the stubs have the correct signatures:
 - `AuthPopupView(tool:argument:reasoningStep:suggestedPattern:onDecision:)`
 - `ToolLogView()` — reads from `appState.toolLogLines`
 - `ScreenPreviewView()` — reads from `appState.lastScreenshot`
@@ -4030,16 +4030,16 @@ Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not f
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ContentView.swift Merlin/Views/ChatView.swift Merlin/Views/ProviderHUD.swift
-git commit -m "Phase 20 — ContentView + ChatView + ProviderHUD"
+git commit -m "Task 20 — ContentView + ChatView + ProviderHUD"
 ```
-# Phase 21 — ToolLogView + ScreenPreviewView
+# Task 21 — ToolLogView + ScreenPreviewView
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
+Task 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
 
 ---
 
@@ -4171,16 +4171,16 @@ Expected: both visual layout tests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ToolLogView.swift Merlin/Views/ScreenPreviewView.swift \
     MerlinE2ETests/VisualLayoutTests.swift
-git commit -m "Phase 21 — ToolLogView + ScreenPreviewView + visual layout tests"
+git commit -m "Task 21 — ToolLogView + ScreenPreviewView + visual layout tests"
 ```
-# Phase 22 — AuthPopupView + FirstLaunchSetupView
+# Task 22 — AuthPopupView + FirstLaunchSetupView
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (phase 13b). KeychainManager exists (phase 05).
+Task 19 complete: AppState has showAuthPopup, pendingAuthRequest, resolveAuth(). AuthGate and AuthDecision exist (task 13b). KeychainManager exists (task 05).
 
 ---
 
@@ -4293,16 +4293,16 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/AuthPopupView.swift Merlin/Views/FirstLaunchSetupView.swift \
     MerlinE2ETests/VisualLayoutTests.swift
-git commit -m "Phase 22 — AuthPopupView + FirstLaunchSetupView"
+git commit -m "Task 22 — AuthPopupView + FirstLaunchSetupView"
 ```
-# Phase 23 — TestTargetApp (GUI Automation Fixture)
+# Task 23 — TestTargetApp (GUI Automation Fixture)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 09b complete: AXInspectorTool exists. Phase 10 complete: CGEventTool exists. Phase 09b: ScreenCaptureTool exists.
+Task 09b complete: AXInspectorTool exists. Task 10 complete: CGEventTool exists. Task 09b: ScreenCaptureTool exists.
 
 ---
 
@@ -4481,16 +4481,16 @@ Expected: `BUILD SUCCEEDED`. All 3 GUIAutomation tests skip cleanly without `RUN
 cd ~/Documents/localProject/merlin
 git add TestTargetApp/TestTargetAppMain.swift TestTargetApp/ContentView.swift \
     MerlinE2ETests/GUIAutomationE2ETests.swift
-git commit -m "Phase 23 — TestTargetApp fixture + GUIAutomationE2ETests"
+git commit -m "Task 23 — TestTargetApp fixture + GUIAutomationE2ETests"
 ```
-# Phase 24 — Live Provider Tests + Full E2E
+# Task 24 — Live Provider Tests + Full E2E
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All components complete. This is the final integration phase.
+All components complete. This is the final integration task.
 
 ---
 
@@ -4650,7 +4650,7 @@ Expected: `BUILD SUCCEEDED` with zero errors and zero warnings.
 cd ~/Documents/localProject/merlin
 git add MerlinLiveTests/DeepSeekProviderLiveTests.swift \
     MerlinE2ETests/AgenticLoopE2ETests.swift
-git commit -m "Phase 24 — Live provider tests + full E2E loop"
+git commit -m "Task 24 — Live provider tests + full E2E loop"
 ```
 
 ---

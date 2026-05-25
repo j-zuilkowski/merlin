@@ -1,10 +1,10 @@
-# Phase 319a — DocReferenceGraph Precision Tests (failing)
+# Task 319a — DocReferenceGraph Precision Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 318b complete: scanner tuning 316–318 landed.
+Task 318b complete: scanner tuning 316–318 landed.
 
 The re-scan after 316–318 cut findings 1798 → 648, but `docStaleReference` was still 432.
 Two remaining causes:
@@ -15,12 +15,12 @@ Two remaining causes:
      in Merlin source — including legitimate mentions of Apple/standard-library types
      (`AppKit`, `AsyncThrowingStream`). It runs ~95% false positive.
 
-Phase 319b fixes both: all scanner file enumeration skips `build/` / `DerivedData/` /
+Task 319b fixes both: all scanner file enumeration skips `build/` / `DerivedData/` /
 `.build/`, and `danglingReferences` drops the loose check, keeping only the
 high-precision fenced-block enum-case check (the one that catches the real
 `versionBumpCandidate` class).
 
-**This is a runtime-failure phase.** The tests compile against the existing
+**This is a runtime-failure task.** The tests compile against the existing
 `DocReferenceGraph.danglingReferences` API and FAIL at runtime. Verify with `test`.
 
 TDD coverage: `MerlinTests/Unit/DocReferenceGraphPrecisionTests.swift`.
@@ -33,7 +33,7 @@ TDD coverage: `MerlinTests/Unit/DocReferenceGraphPrecisionTests.swift`.
 import XCTest
 @testable import Merlin
 
-/// Phase 319a — failing tests for DocReferenceGraph precision.
+/// Task 319a — failing tests for DocReferenceGraph precision.
 final class DocReferenceGraphPrecisionTests: XCTestCase {
 
     /// Writes `[relativePath: content]`, creating intermediate directories.
@@ -67,7 +67,7 @@ final class DocReferenceGraphPrecisionTests: XCTestCase {
 
         let dangling = await DocReferenceGraph().danglingReferences(projectPath: proj.path)
         XCTAssertFalse(dangling.contains { $0.codeSymbol == "LooseDanglingIdentifier" },
-                       "the loose backticked-identifier check is dropped in phase 319")
+                       "the loose backticked-identifier check is dropped in task 319")
         XCTAssertTrue(dangling.contains { $0.codeSymbol == "ghostFencedCase" },
                       "the high-precision fenced-block enum-case check is retained")
     }
@@ -108,5 +108,5 @@ Expected: BUILD SUCCEEDED; both tests **FAIL** against today's scanner. Verified
 ## Commit
 ```
 git add MerlinTests/Unit/DocReferenceGraphPrecisionTests.swift tasks/task-319a-doc-reference-precision-tests.md
-git commit -m "Phase 319a — DocReferenceGraph precision tests (failing)"
+git commit -m "Task 319a — DocReferenceGraph precision tests (failing)"
 ```

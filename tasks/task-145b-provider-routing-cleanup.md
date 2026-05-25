@@ -1,10 +1,10 @@
-# Phase 145b — Provider Routing Cleanup
+# Task 145b — Provider Routing Cleanup
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 145a complete: failing tests in place.
+Task 145a complete: failing tests in place.
 
 ---
 
@@ -194,5 +194,5 @@ Expected: all ProviderRoutingCleanupTests pass, BUILD SUCCEEDED, zero warnings.
 git add Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift \
         Merlin/Providers/ProviderConfig.swift
-git commit -m "Phase 145b — Remove proProvider/flashProvider/visionProvider, simplify routing"
+git commit -m "Task 145b — Remove proProvider/flashProvider/visionProvider, simplify routing"
 ```

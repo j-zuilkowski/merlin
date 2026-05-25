@@ -1,10 +1,10 @@
-# Phase 328 — Eval Surface Harness (S7–S11)
+# Task 328 — Eval Surface Harness (S7–S11)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 327 complete: agent-tool census landed. Phase 325 added the 12 missing
+Task 327 complete: agent-tool census landed. Task 325 added the 12 missing
 `AccessibilityID`s — XCUITest can now reach every control.
 
 W5 — the **M2 surface harness**: `XCUIApplication`-driven tests over Merlin's own UI for
@@ -53,7 +53,7 @@ final class SurfaceUITests: XCTestCase {
                       "⌘, must open the Settings scene")
     }
 
-    /// The three View-menu commands that were dead before phase 305 now fire.
+    /// The three View-menu commands that were dead before task 305 now fire.
     /// Regression net for the dead-control bug class.
     func testFormerlyDeadViewMenuCommands() {
         let app = launchMerlin()
@@ -91,7 +91,7 @@ final class SurfaceUITests: XCTestCase {
 
     // MARK: - S9 — workspace panels
 
-    /// The six workspace toolbar toggles (AX-IDs added in phase 325) each show a panel.
+    /// The six workspace toolbar toggles (AX-IDs added in task 325) each show a panel.
     func testAllSixWorkspaceToggles() {
         let app = launchMerlin()
         defer { app.terminate() }
@@ -162,10 +162,10 @@ xcodebuild -scheme MerlinTests-Live build-for-testing -destination 'platform=mac
 ```
 Expected: BUILD SUCCEEDED, zero warnings — the surface harness compiles against the real
 `XCUIApplication` / `AccessibilityID` / `SettingsSection` API. Not run here (the proving
-run is a separate step). Depends on phase 325 (the AX-IDs the toggle tests reference).
+run is a separate step). Depends on task 325 (the AX-IDs the toggle tests reference).
 
 ## Commit
 ```
 git add MerlinE2ETests/SurfaceUITests.swift tasks/task-328-eval-surface-harness.md
-git commit -m "Phase 328 — Eval surface harness (S7–S11)"
+git commit -m "Task 328 — Eval surface harness (S7–S11)"
 ```

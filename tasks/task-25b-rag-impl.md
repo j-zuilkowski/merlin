@@ -1,10 +1,10 @@
-# Phase 25b — RAG Integration Implementation
+# Task 25b — RAG Integration Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 25a complete: XcalibreClientTests.swift and RAGToolsTests.swift written (failing).
+Task 25a complete: XcalibreClientTests.swift and RAGToolsTests.swift written (failing).
 
 xcalibre-server facts:
   Base URL:      http://localhost:8083 (default; override via XCALIBRE_BASE_URL env var)
@@ -514,7 +514,7 @@ git add Merlin/RAG/XcalibreClient.swift \
         Merlin/Tools/ToolDefinitions.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 25b — RAG integration: XcalibreClient + auto-inject + rag_search + rag_list_books"
+git commit -m "Task 25b — RAG integration: XcalibreClient + auto-inject + rag_search + rag_list_books"
 ```
 
 ## Fixes

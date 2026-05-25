@@ -1,10 +1,10 @@
-# Phase 57b — WorktreeManager Implementation
+# Task 57b — WorktreeManager Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 57a complete: failing tests in place.
+Task 57a complete: failing tests in place.
 
 New files:
   - `Merlin/Agents/WorktreeManager.swift`
@@ -155,5 +155,5 @@ Expected: BUILD SUCCEEDED, all WorktreeManagerTests pass.
 ## Commit
 ```bash
 git add Merlin/Agents/WorktreeManager.swift
-git commit -m "Phase 57b — WorktreeManager (git worktree CRUD + exclusive locking for V4b)"
+git commit -m "Task 57b — WorktreeManager (git worktree CRUD + exclusive locking for V4b)"
 ```

@@ -1,11 +1,11 @@
-# Phase 13b — AuthGate Implementation
+# Task 13b — AuthGate Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
+Task 13a complete: AuthGateTests.swift written. AuthMemory + PatternMatcher exist.
 
 ---
 
@@ -100,5 +100,5 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Auth/AuthGate.swift
-git commit -m "Phase 13b — AuthGate implementation (4 tests passing)"
+git commit -m "Task 13b — AuthGate implementation (4 tests passing)"
 ```

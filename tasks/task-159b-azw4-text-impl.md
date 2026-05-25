@@ -1,9 +1,9 @@
-# Phase 159b — AZW4 text extraction implementation
+# Task 159b — AZW4 text extraction implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 159a complete: AZW4 tests failing.
+Task 159a complete: AZW4 tests failing.
 
 ## Edit: processing/src/text/azw4.rs
 
@@ -55,5 +55,5 @@ Expected: both AZW4 tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/text/azw4.rs processing/Cargo.toml
-git commit -m "Phase 159b — AZW4 text: detect embedded PDF and delegate to pdf extractor"
+git commit -m "Task 159b — AZW4 text: detect embedded PDF and delegate to pdf extractor"
 ```

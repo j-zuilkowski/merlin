@@ -1,10 +1,10 @@
-# Phase 171b — Fix: criticOverride must not suppress unverified note when no reason provider
+# Task 171b — Fix: criticOverride must not suppress unverified note when no reason provider
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 171a complete: AgenticEngineV5 unverified-event failure documented.
+Task 171a complete: AgenticEngineV5 unverified-event failure documented.
 
 ## Root Cause
 
@@ -50,5 +50,5 @@ Expected: BUILD SUCCEEDED; `testUnverifiedEventEmittedWhenCriticSkipped` passes.
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineV5Tests.swift \
         tasks/task-171b-unverified-event-fix.md
-git commit -m "Phase 171b — Fix: criticOverride nil when no reason provider in test helper"
+git commit -m "Task 171b — Fix: criticOverride nil when no reason provider in test helper"
 ```

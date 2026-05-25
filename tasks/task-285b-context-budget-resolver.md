@@ -1,12 +1,12 @@
-# Phase 285b — Context Budget Resolver
+# Task 285b — Context Budget Resolver
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 285a complete: failing tests for `ContextBudgetResolver` / `ContextBudgetStore`.
+Task 285a complete: failing tests for `ContextBudgetResolver` / `ContextBudgetStore`.
 
-After this phase the per-request budget is **discovered** from the active provider and
+After this task the per-request budget is **discovered** from the active provider and
 model, not read from a hardcoded `ProviderConfig.budget` default. Discovery has two
 tiers, backed by one durable store:
 
@@ -66,7 +66,7 @@ struct EphemeralBudgetStore: ContextBudgetStore {
   encodes the model for virtual IDs, so two models on the same runner resolve
   independently.) When `ttl == 0`, never serve from cache — always re-resolve.
 
-- `recordObservedLimit(contextTokens:for:)` — called by `PreflightGuard` (phase 286b)
+- `recordObservedLimit(contextTokens:for:)` — called by `PreflightGuard` (task 286b)
   when a provider rejects a request with a context-overflow 400. Persist the learned
   window via `store.persist(contextTokens:for: provider.id)` and refresh the in-memory
   cache entry so the *current* session also stops over-sending immediately. This is the
@@ -167,7 +167,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 285a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all task 285a tests pass, no prior task regresses.
 
 ## Commit
 
@@ -177,7 +177,7 @@ git add tasks/task-285b-context-budget-resolver.md \
     Merlin/Providers/ProviderConfig.swift \
     Merlin/Providers/LocalModelManager/LMStudioModelManager.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 285b — ContextBudgetResolver: discover and persist the model's real context window"
+git commit -m "Task 285b — ContextBudgetResolver: discover and persist the model's real context window"
 ```
 
 (Include `LMStudioModelManager.swift` only if the `loaded_context_length` fetch was
@@ -191,7 +191,7 @@ at 4 096 context is budgeted at 4 096, not 32 000. For commercial providers that
 no context-size field, the resolver starts conservative and learns the real window from
 the first context-overflow 400, **persisting it to `ProviderConfig.budget` in
 `providers.json`** — the same field a manually-entered budget uses — so the value
-survives restarts and the 400 is never paid twice. Phase 286's universal guard consumes
+survives restarts and the 400 is never paid twice. Task 286's universal guard consumes
 this resolver (and feeds `recordObservedLimit` on a 400), so enforcement is correct on
 every model and provider with no user configuration.
 

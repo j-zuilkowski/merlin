@@ -1,12 +1,12 @@
-# Phase 204a — /btw Side-Question Overlay Tests (failing)
+# Task 204a — /btw Side-Question Overlay Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 203b complete: /rewind checkpoint restoration.
+Task 203b complete: /rewind checkpoint restoration.
 
-New surface introduced in phase 204b:
+New surface introduced in task 204b:
   - `BtwSession` — `@MainActor ObservableObject`; holds `question: String`, `answer: String?`, `isLoading: Bool`, `error: String?`; `ask(question:provider:)` sends directly to provider without touching ContextManager
   - `BtwOverlayView` — SwiftUI `View`; floating panel with text field and streaming answer display; dismissed by Esc or clicking outside; accepts `onDismiss: () -> Void`
   - `ChatView.handleSlashCommandIfNeeded` — `/btw <question>` opens overlay pre-filled with the question text, or just opens empty overlay if no argument
@@ -162,5 +162,5 @@ Expected: **BUILD FAILED** — `BtwSession`, `MockProvider(response:delay:)` do 
 
 ```bash
 git add MerlinTests/Unit/BtwSessionTests.swift
-git commit -m "Phase 204a — BtwSessionTests (failing)"
+git commit -m "Task 204a — BtwSessionTests (failing)"
 ```

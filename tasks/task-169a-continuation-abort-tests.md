@@ -1,10 +1,10 @@
-# Phase 169a — Continuation Abort Tests (failing)
+# Task 169a — Continuation Abort Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 168b complete: context compaction fix (remove complete exchange pairs).
+Task 168b complete: context compaction fix (remove complete exchange pairs).
 
 ## Problem being tested
 
@@ -18,7 +18,7 @@ The fix: `schedulePendingContinuation()` appends an abort instruction to the inj
 message; when the model emits `[STEP_ALREADY_DONE]` in its response, `runLoop` clears
 `pendingContinuationSteps` and skips the next `schedulePendingContinuation()` call.
 
-## New surface introduced in phase 169b
+## New surface introduced in task 169b
 
 - `AgenticEngine.runLoop` — detects `[STEP_ALREADY_DONE]` in `fullText` / `lastResponseText`
   during continuation turns; calls `pendingContinuationSteps.removeAll()` and suppresses
@@ -134,7 +134,7 @@ final class ContinuationAbortTests: XCTestCase {
             to: injectURL,
             completedCount: 1,
             steps: ["Run cargo test", "Run clippy", "Commit"],
-            originalTask: "Phase 22c fix"
+            originalTask: "Task 22c fix"
         )
 
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
@@ -176,7 +176,7 @@ final class ContinuationAbortTests: XCTestCase {
             to: injectURL,
             completedCount: 2,
             steps: ["Write task doc"],
-            originalTask: "Phase 22c fix"
+            originalTask: "Task 22c fix"
         )
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
         for await _ in engine.send(userMessage: msg) {}
@@ -230,7 +230,7 @@ final class ContinuationAbortTests: XCTestCase {
             to: injectURL,
             completedCount: 1,
             steps: ["Run cargo test", "Run clippy"],
-            originalTask: "Phase 22c fix"
+            originalTask: "Task 22c fix"
         )
         let msg = try String(contentsOf: injectURL, encoding: .utf8)
         for await _ in engine.send(userMessage: msg) {}
@@ -338,5 +338,5 @@ test compilation failures referencing missing behaviour.
 cd ~/Documents/localProject/merlin
 git add tasks/task-169a-continuation-abort-tests.md \
         MerlinTests/Unit/ContinuationAbortTests.swift
-git commit -m "Phase 169a — ContinuationAbortTests (failing)"
+git commit -m "Task 169a — ContinuationAbortTests (failing)"
 ```

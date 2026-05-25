@@ -1,12 +1,12 @@
-# Phase 58a — SubagentEngine V4b (Write-Capable Worker) Tests
+# Task 58a — SubagentEngine V4b (Write-Capable Worker) Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 57b complete: WorktreeManager in place.
+Task 57b complete: WorktreeManager in place.
 
-New surface introduced in phase 58b:
+New surface introduced in task 58b:
   - `WorkerSubagentEngine` — actor; extends SubagentEngine pattern for write-capable workers
   - `WorkerSubagentEngine.init(definition:prompt:provider:hookEngine:depth:worktreeManager:repoURL:)`
   - `WorkerSubagentEngine.worktreePath: URL?` — path to this worker's isolated worktree
@@ -196,5 +196,5 @@ Expected: BUILD FAILED — `WorkerSubagentEngine` not yet defined.
 ## Commit
 ```bash
 git add MerlinTests/Unit/WorkerSubagentEngineTests.swift
-git commit -m "Phase 58a — WorkerSubagentEngineTests (failing)"
+git commit -m "Task 58a — WorkerSubagentEngineTests (failing)"
 ```

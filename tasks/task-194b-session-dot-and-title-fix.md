@@ -1,12 +1,12 @@
-# Phase 194b — Session Dot & Title Fix Implementation
+# Task 194b — Session Dot & Title Fix Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 194a complete: failing tests in place.
+Task 194a complete: failing tests in place.
 
-Two root causes fixed in this phase:
+Two root causes fixed in this task:
 
 **Bug A — Activity dot never clears for non-active sessions**
 Fix: `LiveSessionRow` gains `@ObservedObject var appState: AppState` with a custom
@@ -210,7 +210,7 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Sessions/SessionManager.swift \
         Merlin/Sessions/SessionStore.swift \
         Merlin/Views/SessionSidebar.swift
-git commit -m "Phase 194b — Fix session dot (observe appState directly) and auto-title (sessionID lookup)"
+git commit -m "Task 194b — Fix session dot (observe appState directly) and auto-title (sessionID lookup)"
 ```
 
 ## Incidental Fixes

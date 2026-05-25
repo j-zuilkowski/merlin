@@ -80,7 +80,7 @@ User says any of:
 When run against `~/Documents/localProject/merlin`:
 - Adapter: `swift-xcode`
 - Expected baseline gap: non-zero (many existing surfaces, partially documented)
-- Task drift: mostly green (230+ phases, well-maintained)
+- Task drift: mostly green (230+  tasks, well-maintained)
 - WHY-comment violations: present in engine files (Task.sleep, try?)
 - Prose readability: spec.md targets grade 11; user-manual.md targets grade 9
 

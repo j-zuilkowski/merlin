@@ -1,17 +1,17 @@
-# Phase 255a — WHY-Comment Pre-Commit Hook Tests
+# Task 255a — WHY-Comment Pre-Commit Hook Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 254b complete: WhyCommentScanner real implementation live.
+Task 254b complete: WhyCommentScanner real implementation live.
 
 Introduces the WHY-comment pre-commit gate and the override-annotation parser.
 The pre-commit hook (shell script installed by `GitHookInstaller`) calls `merlin-discipline
-why-comment-check <projectPath>`. This phase wires up the Swift side: a `WHYCommentGate`
+why-comment-check <projectPath>`. This task wires up the Swift side: a `WHYCommentGate`
 actor that produces a gate result used by the hook script.
 
-New surface introduced in phase 255b:
+New surface introduced in task 255b:
   - `WHYCommentGate` actor in `Merlin/Discipline/WHYCommentGate.swift`:
     `func check(projectPath: String, adapter: ProjectAdapter) async -> WHYGateResult`
   - `WHYGateResult: Sendable` — `case pass`, `case block(violations: [WhyCommentTrigger])`.
@@ -181,5 +181,5 @@ Expected: **BUILD FAILED** with errors naming `WHYCommentGate`, `WHYGateResult`,
 git add tasks/task-255a-why-comment-hook-tests.md \
     MerlinTests/Unit/WHYCommentGateTests.swift \
     MerlinTests/Unit/OverrideAnnotationParserTests.swift
-git commit -m "Phase 255a — WHYCommentGateTests (failing)"
+git commit -m "Task 255a — WHYCommentGateTests (failing)"
 ```

@@ -1,4 +1,4 @@
-# Phase 05 — KeychainManager
+# Task 05 — KeychainManager
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -84,7 +84,7 @@ xcodebuild -scheme MerlinTests test-without-building -destination 'platform=macO
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Keychain/KeychainManager.swift MerlinTests/Unit/KeychainTests.swift
-git commit -m "Phase 05 — KeychainManager + tests"
+git commit -m "Task 05 — KeychainManager + tests"
 ```
 
 ---

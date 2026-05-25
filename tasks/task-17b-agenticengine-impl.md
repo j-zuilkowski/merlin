@@ -1,7 +1,7 @@
-# Phase 17b — AgenticEngine Implementation
+# Task 17b — AgenticEngine Implementation
 
-> ⚠️ **SEVERELY OUTDATED** — This phase documents the original single-provider loop only.
-> The current `AgenticEngine.swift` is 1340 lines with 50+ methods added across phases 18–151.
+> ⚠️ **SEVERELY OUTDATED** — This task documents the original single-provider loop only.
+> The current `AgenticEngine.swift` is 1340 lines with 50+ methods added across  tasks 18–151.
 > **Do not use this document alone to rebuild AgenticEngine.**
 > Read `task-17c-agenticengine-v5-addendum.md` which documents the complete v5+ surface.
 > `task-17c` is the authoritative spec for all current behaviour.
@@ -11,7 +11,7 @@ Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party pack
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 17a complete: AgenticEngineTests.swift written. All engine components exist.
+Task 17a complete: AgenticEngineTests.swift written. All engine components exist.
 
 ---
 
@@ -142,5 +142,5 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 17b — AgenticEngine implementation (4 tests passing)"
+git commit -m "Task 17b — AgenticEngine implementation (4 tests passing)"
 ```

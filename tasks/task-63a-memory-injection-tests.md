@@ -1,12 +1,12 @@
-# Phase 63a — Memory Injection Tests
+# Task 63a — Memory Injection Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 62b complete: MemoryEngine real LLM generation + AppSettings fields.
+Task 62b complete: MemoryEngine real LLM generation + AppSettings fields.
 
-New surface introduced in phase 63b:
+New surface introduced in task 63b:
   - `ConstitutionLoader.memoriesBlock(acceptedDir:)` — reads *.md files from dir, wraps in
     `[Memories]…[/Memories]` block; returns empty string when dir is empty or missing
   - `AgenticEngine.memoriesContent: String` — injected into system prompt after constitutionContent
@@ -146,5 +146,5 @@ Expected: `BUILD FAILED` — `memoriesBlock(acceptedDir:)` and `memoriesContent`
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/MemoryInjectionTests.swift
-git commit -m "Phase 63a — MemoryInjectionTests (failing)"
+git commit -m "Task 63a — MemoryInjectionTests (failing)"
 ```

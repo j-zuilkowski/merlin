@@ -1,12 +1,12 @@
-# Phase 200a — SpawnAgent Error Isolation Tests (failing)
+# Task 200a — SpawnAgent Error Isolation Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 199b complete: parallel spawn_agent execution with `handleSpawnAgents` using `withTaskGroup`.
+Task 199b complete: parallel spawn_agent execution with `handleSpawnAgents` using `withTaskGroup`.
 
-New surface introduced in phase 200b:
+New surface introduced in task 200b:
   - `AgentRegistry.knownNames() -> Set<String>` — returns the set of registered agent names
   - `AgenticEngine.handleSpawnAgents` — emits `.systemNote` when requested agent name is unknown; wraps each subagent event loop in do-catch so subagent failure yields `.systemNote` error description instead of silently dropping
   - `SubagentEngine.isFallback: Bool` — set to `true` when the definition was resolved via fallback (name wasn't found in registry)
@@ -151,5 +151,5 @@ Expected: **BUILD FAILED** — `AgentRegistry.knownNames()`, `EngineFactory.make
 
 ```bash
 git add MerlinTests/Unit/SpawnAgentErrorIsolationTests.swift
-git commit -m "Phase 200a — SpawnAgentErrorIsolationTests (failing)"
+git commit -m "Task 200a — SpawnAgentErrorIsolationTests (failing)"
 ```

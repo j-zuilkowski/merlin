@@ -1,11 +1,11 @@
-# Phase 160a — LIT text extraction tests (failing)
+# Task 160a — LIT text extraction tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 159b complete.
+Task 159b complete.
 
-New surface in phase 160b:
+New surface in task 160b:
   - `crate::text::lit::extract(path)` — scans LIT binary for embedded HTML fragments
 
 ## Write to: processing/tests/lit_text_tests.rs
@@ -76,5 +76,5 @@ Expected: tests fail.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/lit_text_tests.rs processing/Cargo.toml
-git commit -m "Phase 160a — LIT text extraction tests (failing)"
+git commit -m "Task 160a — LIT text extraction tests (failing)"
 ```

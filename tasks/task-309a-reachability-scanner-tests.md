@@ -1,10 +1,10 @@
-# Phase 309a — ReachabilityScanner Tests (failing)
+# Task 309a — ReachabilityScanner Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 308b complete: `StubMarkerScanner` wired into `DisciplineEngine`.
+Task 308b complete: `StubMarkerScanner` wired into `DisciplineEngine`.
 
 Liveness Discipline batch, unit 3 of 6. `ReachabilityScanner` catches *unwired
 components* — code that compiles green but is never reached. Two heuristic checks:
@@ -19,7 +19,7 @@ components* — code that compiles green but is never reached. Two heuristic che
 
 Both are heuristics surfaced as `nudge` findings for human triage, not blocking gates.
 
-New surface introduced in phase 309b:
+New surface introduced in task 309b:
   - `UnwiredComponentFinding` — `symbol: String`, `file: String`, `kind: String`,
     `detail: String`.
   - `actor ReachabilityScanner` with `scan(projectPath:) async -> [UnwiredComponentFinding]`.
@@ -37,7 +37,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 309a — failing tests for ReachabilityScanner.
+/// Task 309a — failing tests for ReachabilityScanner.
 final class ReachabilityScannerTests: XCTestCase {
 
     /// Writes `[filename: content]` into a fresh temp project directory.
@@ -121,5 +121,5 @@ exist yet.
 ## Commit
 ```
 git add MerlinTests/Unit/ReachabilityScannerTests.swift tasks/task-309a-reachability-scanner-tests.md
-git commit -m "Phase 309a — ReachabilityScanner tests (failing)"
+git commit -m "Task 309a — ReachabilityScanner tests (failing)"
 ```

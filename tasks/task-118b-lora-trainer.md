@@ -1,10 +1,10 @@
-# Phase 118b — LoRATrainer
+# Task 118b — LoRATrainer
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 118a complete: LoRATrainerTests (failing) in place.
+Task 118a complete: LoRATrainerTests (failing) in place.
 
 ---
 
@@ -197,7 +197,7 @@ Expected: BUILD SUCCEEDED; LoRATrainerTests → 5 pass; all prior tests pass; ze
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/LoRATrainer.swift
-git commit -m "Phase 118b — LoRATrainer (JSONL export + mlx_lm.lora shell invocation)"
+git commit -m "Task 118b — LoRATrainer (JSONL export + mlx_lm.lora shell invocation)"
 ```
 
 ## Fixes

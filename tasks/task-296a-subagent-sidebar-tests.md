@@ -1,15 +1,15 @@
-# Phase 296a — Subagent Sidebar Tests (failing)
+# Task 296a — Subagent Sidebar Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Unit B3 of the wiring plan. Phases 294–295 complete.
+Unit B3 of the wiring plan. Tasks 294–295 complete.
 
 `SubagentSidebarViewModel`, `SubagentSidebarRowView`, `WorkerDiffView`,
 `SubagentSidebarEntry` are referenced by nothing. B3 makes `LiveSession` own a
 `SubagentSidebarViewModel`, feeds it from the engine's subagent events via
 `ChatViewModel`, and renders it as an "Active Subagents" section in `SessionSidebar`.
 
-New surface in phase 296b:
+New surface in task 296b:
   - `ChatViewModel.subagentSidebar: SubagentSidebarViewModel?` (weak) — the sidebar VM
     `ChatViewModel` feeds alongside the inline blocks.
   - `LiveSession.subagentSidebar: SubagentSidebarViewModel` — created in init, linked
@@ -28,7 +28,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 296a — failing tests for subagent-sidebar wiring.
+/// Task 296a — failing tests for subagent-sidebar wiring.
 @MainActor
 final class SubagentSidebarWiringTests: XCTestCase {
 
@@ -69,5 +69,5 @@ Expected: BUILD FAILED — `ChatViewModel.subagentSidebar` does not exist.
 ## Commit
 ```
 git add MerlinTests/Unit/SubagentSidebarWiringTests.swift tasks/task-296a-subagent-sidebar-tests.md
-git commit -m "Phase 296a — Subagent sidebar tests (failing)"
+git commit -m "Task 296a — Subagent sidebar tests (failing)"
 ```

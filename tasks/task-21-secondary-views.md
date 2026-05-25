@@ -1,11 +1,11 @@
-# Phase 21 — ToolLogView + ScreenPreviewView
+# Task 21 — ToolLogView + ScreenPreviewView
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
+Task 20 complete: ContentView composes these views. AppState has toolLogLines and lastScreenshot.
 
 ---
 
@@ -137,5 +137,5 @@ Expected: both visual layout tests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ToolLogView.swift Merlin/Views/ScreenPreviewView.swift \
     MerlinE2ETests/VisualLayoutTests.swift
-git commit -m "Phase 21 — ToolLogView + ScreenPreviewView + visual layout tests"
+git commit -m "Task 21 — ToolLogView + ScreenPreviewView + visual layout tests"
 ```

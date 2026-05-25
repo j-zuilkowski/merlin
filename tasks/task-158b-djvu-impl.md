@@ -1,9 +1,9 @@
-# Phase 158b — DjVu metadata + text implementation
+# Task 158b — DjVu metadata + text implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 158a complete: DjVu tests failing.
+Task 158a complete: DjVu tests failing.
 
 Check that `flate2` is in `[dependencies]` of `processing/Cargo.toml`. If not, add:
 ```toml
@@ -155,5 +155,5 @@ Expected: all 3 DjVu tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/djvu.rs processing/src/text/djvu.rs processing/Cargo.toml
-git commit -m "Phase 158b — DjVu metadata full-file scan + TXTz text layer extraction"
+git commit -m "Task 158b — DjVu metadata full-file scan + TXTz text layer extraction"
 ```

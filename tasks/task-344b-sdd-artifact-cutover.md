@@ -19,14 +19,13 @@ configuration keys and in-memory settings.
 
 ## Implementation
 
-- Rename `CLAUDE.md` to `constitution.md`.
-- Rename `architecture.md` to `spec.md`.
-- Rename `phases/` to `tasks/`.
-- Rename tracked historical `phase-*` files to `task-*`.
-- Rename `CLAUDEMDLoader` to `ConstitutionLoader`.
-- Rename `PhaseScanner` to `TaskScanner`.
-- Rename CAG settings from `pin_claude_md` / `pinned_phase_docs` to
-  `pin_constitution` / `pinned_task_docs`.
+- Rename `constitution.md` to `constitution.md`.
+- Rename `spec.md` to `spec.md`.
+- Rename `tasks/` to `tasks/`.
+- Rename tracked historical `task-*` files to `task-*`.
+- Rename `ConstitutionLoader` to `ConstitutionLoader`.
+- Rename `TaskScanner` to `TaskScanner`.
+- Rename CAG settings to `pin_constitution` and `pinned_task_docs`.
 
 ## Verify
 

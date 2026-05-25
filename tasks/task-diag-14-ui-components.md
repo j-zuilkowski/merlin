@@ -1,4 +1,4 @@
-# Phase diag-14 — UI Support Components
+# Task diag-14 — UI Support Components
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
@@ -100,7 +100,7 @@ Two-pane file-diff viewer for a `SubagentSidebarEntry`. Left pane: list of
 files in the staging buffer, color-coded by operation (create/delete/edit).
 Right pane: diff placeholder for the selected file. Toolbar buttons for
 "Reject All" and "Accept & Merge" (actions wired to full staging integration
-in later phases).
+in later  tasks).
 
 Key design decisions:
 - `HSplitView` gives the user a resizable split without fixed frame constraints
@@ -246,5 +246,5 @@ git add Merlin/Views/Shared/AdvisoryRow.swift \
         Merlin/UI/Sidebar/WorkerDiffView.swift \
         Merlin/Views/Calibration/CalibrationFlowView.swift \
         tasks/task-diag-14-ui-components.md
-git commit -m "Phase diag-14 — AdvisoryRow + WorkerDiffView + CalibrationFlowView"
+git commit -m "Task diag-14 — AdvisoryRow + WorkerDiffView + CalibrationFlowView"
 ```

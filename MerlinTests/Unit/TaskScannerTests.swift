@@ -18,7 +18,7 @@ final class TaskScannerTests: XCTestCase {
 
     private func writeTaskNNb(_ dir: URL, taskID: String, surface: String) throws {
         let content = """
-        # Task \(taskID) — Test Phase
+        # Task \(taskID) — Test Task
 
         ## Context
         Test task file.
@@ -79,7 +79,7 @@ final class TaskScannerTests: XCTestCase {
         XCTAssertTrue(reds.isEmpty, "Should not be red when symbol is present")
     }
 
-    // MARK: - orange: public symbol not declared in any phase
+    // MARK: - orange: public symbol not declared in any task
 
     func testOrangeWhenUndeclaredPublicSymbol() async throws {
         let proj = try makeProject()
@@ -141,7 +141,7 @@ final class TaskScannerTests: XCTestCase {
                       "task documents at the configured baseline are still scanned")
     }
 
-    // MARK: - empty phases directory
+    // MARK: - empty  tasks directory
 
     func testEmptyTasksDirDoesNotCrash() async throws {
         let proj = try makeProject()

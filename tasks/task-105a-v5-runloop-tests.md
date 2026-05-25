@@ -1,12 +1,12 @@
-# Phase 105a — V5 AgenticEngine Run Loop Integration Tests (failing)
+# Task 105a — V5 AgenticEngine Run Loop Integration Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 104 complete: system_prompt_addendum wired. CriticEngine and PlannerEngine both built.
+Task 104 complete: system_prompt_addendum wired. CriticEngine and PlannerEngine both built.
 
-New surface introduced in phase 105b:
+New surface introduced in task 105b:
   - `AgenticEngine.send(userMessage:)` now runs through PlannerEngine (classify → possibly decompose)
   - Routine tasks bypass critic; standard tasks run critic after execution; high-stakes use reason slot
   - `AgentEvent.criticResult(CriticResult)` — new event type for critic feedback
@@ -219,5 +219,5 @@ Expected: BUILD FAILED — protocols (`XcalibreClientProtocol`, `ModelPerformanc
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineV5Tests.swift
-git commit -m "Phase 105a — AgenticEngineV5Tests (failing)"
+git commit -m "Task 105a — AgenticEngineV5Tests (failing)"
 ```

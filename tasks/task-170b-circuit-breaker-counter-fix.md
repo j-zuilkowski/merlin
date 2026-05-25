@@ -1,10 +1,10 @@
-# Phase 170b — CircuitBreakerTests Fix: Counter increments once per turn
+# Task 170b — CircuitBreakerTests Fix: Counter increments once per turn
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 170a complete: pre-existing CircuitBreakerTests failures documented.
+Task 170a complete: pre-existing CircuitBreakerTests failures documented.
 
 ## Root Cause
 
@@ -110,5 +110,5 @@ Expected: BUILD SUCCEEDED; all CircuitBreakerTests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift \
         tasks/task-170b-circuit-breaker-counter-fix.md
-git commit -m "Phase 170b — Fix: consecutiveCriticFailures increments once per turn not per retry"
+git commit -m "Task 170b — Fix: consecutiveCriticFailures increments once per turn not per retry"
 ```

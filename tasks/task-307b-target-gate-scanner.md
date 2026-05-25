@@ -1,11 +1,11 @@
-# Phase 307b — TargetGateScanner (implementation)
+# Task 307b — TargetGateScanner (implementation)
 
-> **Note:** the `scan` method here is superseded by phase 314b, which adds
+> **Note:** the `scan` method here is superseded by task 314b, which adds
 > transitive `dependencies:` following. Implement 314b's version.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 307a complete: failing tests in `TargetGateScannerTests`.
+Task 307a complete: failing tests in `TargetGateScannerTests`.
 
 `TargetGateScanner` reads `project.yml`, finds targets the build gate never compiles,
 and feeds `ungatedTarget` findings into the discipline queue. Pure Foundation — the file
@@ -32,7 +32,7 @@ struct UngatedTargetFinding: Sendable, Equatable {
 ///
 /// A target the gate never compiles rots silently the moment an API it depends on
 /// changes — exactly how `MerlinLiveTests` / `MerlinE2ETests` bit-rotted for ~160
-/// phases. This scanner makes that condition a first-class discipline finding.
+///  tasks. This scanner makes that condition a first-class discipline finding.
 actor TargetGateScanner {
 
     /// Reports targets declared in `project.yml` that no scheme builds, or — when
@@ -145,7 +145,7 @@ actor TargetGateScanner {
 Add one case to `FindingCategory`:
 ```swift
 enum FindingCategory: String, Codable, Sendable, CaseIterable {
-    case phaseDrift
+    case taskDrift
     case manualCoverageGap
     case docStaleReference
     case whyCommentMissing
@@ -246,7 +246,7 @@ manual_coverage_baseline = 0
 decay_per_release = 0
 gating_schemes = ["MerlinTests"]
 ```
-`MerlinTests-Live` is intentionally absent — it is not yet a gating scheme. Phase 312
+`MerlinTests-Live` is intentionally absent — it is not yet a gating scheme. Task 312
 adds it once the live scheme is folded into the build gate. Until then, a discipline
 scan of the Merlin repo will correctly flag `MerlinLiveTests`, `MerlinE2ETests`, and
 `TestTargetApp` as ungated.
@@ -271,5 +271,5 @@ warnings.
 git add Merlin/Discipline/TargetGateScanner.swift Merlin/Discipline/Finding.swift \
   Merlin/Discipline/DisciplineEngine.swift MerlinTests/Unit/FindingModelTests.swift \
   .merlin/project.toml tasks/task-307b-target-gate-scanner.md
-git commit -m "Phase 307b — TargetGateScanner: flag targets the build gate never compiles"
+git commit -m "Task 307b — TargetGateScanner: flag targets the build gate never compiles"
 ```

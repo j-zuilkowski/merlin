@@ -1,10 +1,10 @@
-# Phase 130b — CalibrationAdvisor Implementation
+# Task 130b — CalibrationAdvisor Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 130a complete: failing CalibrationAdvisorTests in place.
+Task 130a complete: failing CalibrationAdvisorTests in place.
 
 ---
 
@@ -221,5 +221,5 @@ Expected: **BUILD SUCCEEDED** — all CalibrationAdvisorTests pass; all prior te
 ## Commit
 ```bash
 git add Merlin/Calibration/CalibrationAdvisor.swift
-git commit -m "Phase 130b — CalibrationAdvisor: maps score gaps to ParameterAdvisory (context/temp/tokens/repeat)"
+git commit -m "Task 130b — CalibrationAdvisor: maps score gaps to ParameterAdvisory (context/temp/tokens/repeat)"
 ```

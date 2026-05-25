@@ -1,11 +1,11 @@
-# Phase 19b — Tool Handler Registration
+# Task 19b — Tool Handler Registration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All tool implementations exist (phases 07–11). ToolRouter exists (phase 15). AppState skeleton exists (phase 19).
+All tool implementations exist ( tasks 07–11). ToolRouter exists (task 15). AppState skeleton exists (task 19).
 
 ---
 
@@ -281,5 +281,5 @@ Expected: `BUILD SUCCEEDED`. The grep count should match ToolDefinitions.all.cou
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/App/ToolRegistration.swift
-git commit -m "Phase 19b — registerAllTools"
+git commit -m "Task 19b — registerAllTools"
 ```

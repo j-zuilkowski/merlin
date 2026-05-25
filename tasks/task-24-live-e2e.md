@@ -1,11 +1,11 @@
-# Phase 24 — Live Provider Tests + Full E2E
+# Task 24 — Live Provider Tests + Full E2E
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-All components complete. This is the final integration phase.
+All components complete. This is the final integration task.
 
 ---
 
@@ -165,7 +165,7 @@ Expected: `BUILD SUCCEEDED` with zero errors and zero warnings.
 cd ~/Documents/localProject/merlin
 git add MerlinLiveTests/DeepSeekProviderLiveTests.swift \
     MerlinE2ETests/AgenticLoopE2ETests.swift
-git commit -m "Phase 24 — Live provider tests + full E2E loop"
+git commit -m "Task 24 — Live provider tests + full E2E loop"
 ```
 
 ---

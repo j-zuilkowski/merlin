@@ -1,12 +1,12 @@
-# Phase 212a — Schematic Extraction Policy Tests
+# Task 212a — Schematic Extraction Policy Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 211b complete: `.kicad_sch` parser/writer exists.
+Task 211b complete: `.kicad_sch` parser/writer exists.
 
-New surface introduced in phase 212b:
+New surface introduced in task 212b:
   - `SchematicExtractionPolicy`
   - `ExtractionConfidenceCalculator`
   - `ClarificationPlanner`
@@ -46,5 +46,5 @@ Expected: **BUILD FAILED** with missing extraction policy symbols.
 
 ```bash
 git add MerlinTests/Unit/SchematicExtractionPolicyTests.swift
-git commit -m "Phase 212a — SchematicExtractionPolicyTests (failing)"
+git commit -m "Task 212a — SchematicExtractionPolicyTests (failing)"
 ```

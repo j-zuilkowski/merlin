@@ -1,13 +1,13 @@
-# Phase 17c — AgenticEngine v5+ Addendum
+# Task 17c — AgenticEngine v5+ Addendum
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete.
 Working dir: ~/Documents/localProject/merlin
 
-**Authoritative current spec.** Phase 17b is severely outdated — use this document to
-rebuild `AgenticEngine`. Phase 17b covered only the original single-provider loop;
-the current engine has 1340 lines with 50+ methods added across phases 18–165.
+**Authoritative current spec.** Task 17b is severely outdated — use this document to
+rebuild `AgenticEngine`. Task 17b covered only the original single-provider loop;
+the current engine has 1340 lines with 50+ methods added across  tasks 18–165.
 This document is complete: a rebuilder needs only this document (not task-17b) to
 implement the full engine. The current source is `Merlin/Engine/AgenticEngine.swift`.
 
@@ -305,7 +305,7 @@ xcodebuild -scheme MerlinTests test \
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-17c-agenticengine-v5-addendum.md
-git commit -m "Phase 17c — AgenticEngine v5+ addendum (subagents + critic + slots + planning + RAG + LoRA + loop continuation)"
+git commit -m "Task 17c — AgenticEngine v5+ addendum (subagents + critic + slots + planning + RAG + LoRA + loop continuation)"
 ```
 
 ---

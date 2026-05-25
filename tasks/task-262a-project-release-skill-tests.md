@@ -1,12 +1,12 @@
-# Phase 262a — project:release Skill Tests
+# Task 262a — project:release Skill Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 261b complete: project:revise SKILL.md installed.
+Task 261b complete: project:revise SKILL.md installed.
 
-New surface introduced in phase 262b:
+New surface introduced in task 262b:
   - `~/.merlin/skills/project-release/SKILL.md` — the `project:release` skill file.
 
 TDD coverage:
@@ -34,7 +34,7 @@ final class ProjectReleaseSkillTests: XCTestCase {
 
     func testSkillFileExists() {
         XCTAssertTrue(FileManager.default.fileExists(atPath: skillPath),
-                      "~/.merlin/skills/project-release/SKILL.md not found. Run phase 262b.")
+                      "~/.merlin/skills/project-release/SKILL.md not found. Run task 262b.")
     }
 
     func testSkillHasRequiredSections() throws {
@@ -90,5 +90,5 @@ Expected: **BUILD SUCCEEDED** but tests **FAIL** at runtime.
 ```bash
 git add tasks/task-262a-project-release-skill-tests.md \
     MerlinTests/Unit/ProjectReleaseSkillTests.swift
-git commit -m "Phase 262a — ProjectReleaseSkillTests (failing)"
+git commit -m "Task 262a — ProjectReleaseSkillTests (failing)"
 ```

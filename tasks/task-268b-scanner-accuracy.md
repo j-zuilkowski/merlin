@@ -1,12 +1,12 @@
-# Phase 268b — Scanner Accuracy Fixes
+# Task 268b — Scanner Accuracy Fixes
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 268a complete: failing tests for the three scanner accuracy bugs.
+Task 268a complete: failing tests for the three scanner accuracy bugs.
 
-This phase fixes the test-file exclusion in `TaskScanner`, the comment/string-literal
+This task fixes the test-file exclusion in `TaskScanner`, the comment/string-literal
 false positives in `WhyCommentScanner`, and confirms the per-section reference
 association in `DocReferenceGraph.build()`.
 
@@ -125,10 +125,10 @@ The `scan(projectPath:adapter:)` method is unchanged.
 
 ## DocReferenceGraph.build() — section tracking
 
-`DocReferenceGraph.build()` was already restructured to a single per-line pass in phase
+`DocReferenceGraph.build()` was already restructured to a single per-line pass in task
 267b, so each reference is associated with the heading active at the line it appears on.
-No further edit is needed here; `DocReferenceSectionTests` (phase 268a) locks that
-behaviour. This phase does not modify `DocReferenceGraph.swift`.
+No further edit is needed here; `DocReferenceSectionTests` (task 268a) locks that
+behaviour. This task does not modify `DocReferenceGraph.swift`.
 
 ---
 
@@ -161,7 +161,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 268a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 268a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -169,5 +169,5 @@ Expected: **BUILD SUCCEEDED** and all phase 268a tests pass. No prior phase regr
 git add tasks/task-268b-scanner-accuracy.md \
     Merlin/Discipline/TaskScanner.swift \
     Merlin/Discipline/WhyCommentScanner.swift
-git commit -m "Phase 268b — Scanner accuracy fixes"
+git commit -m "Task 268b — Scanner accuracy fixes"
 ```

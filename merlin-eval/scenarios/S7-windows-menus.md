@@ -5,7 +5,7 @@ fires, and every slash command works. Covers `SURFACE-INVENTORY.md` sections A, 
 
 ## Mechanism
 M2 (XCUITest) for windows/menus/shortcuts; M1 (`EvalHarness`) for slash commands.
-**Prerequisite:** phase 306 (AccessibilityID pass) and phase 305 (the dead View-menu
+**Prerequisite:** task 306 (AccessibilityID pass) and task 305 (the dead View-menu
 fix) must be merged.
 
 ## What is exercised
@@ -18,7 +18,7 @@ Developer Manual.
 observable effect — About; New Project Workspace (⌘N → picker appears); Stop (⌘. →
 engine stops); Compact Context (⌘⇧K); Pop Out Session (⌘⇧P); each Provider-menu entry
 (→ active provider changes); **Toggle Terminal (⌃`), Toggle Side Chat (⌘⇧/), Review
-Memories (⌘⇧M)** — regression for phase 305, the formerly-dead commands; Copy
+Memories (⌘⇧M)** — regression for task 305, the formerly-dead commands; Copy
 Conversation (⌘⇧A → clipboard holds the transcript); User Guide / Developer Manual.
 
 **Standard macOS menu bar (B2):** `MerlinCommands` customises only the B1 groups —
@@ -39,7 +39,7 @@ assert it fires the same effect. Includes the dialog shortcuts (Return / ⌘Retu
 calibration sheet; checkpoint restore; btw overlay).
 
 ## Accessibility-ID coverage
-Phase 306b's `AccessibilityID` pass ran without this catalogue (it was missing from the
+Task 306b's `AccessibilityID` pass ran without this catalogue (it was missing from the
 checkout) and was driven from source — substantial (~110 identifiers), but not
 verified-exhaustive. Before the M2 portion, confirm coverage for sections A–B: SwiftUI
 menu commands are addressed by menu-item title (a `Commands`-API constraint — by design,
@@ -64,7 +64,7 @@ Every check logs the observed effect/value, not just a tick (see SURFACE-INVENTO
 **Score:** items passed / total. Any dead command is a finding.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built.
+1. Tasks B–D, 301–306 merged; Merlin built.
 2. Run the S7 XCUITest suite (windows/menus/shortcuts).
 3. Manually press each keyboard shortcut and each slash command; record effects.
 4. Score; write `results/S7-<date>.md`. Dead/incorrect commands → findings backlog.

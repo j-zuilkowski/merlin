@@ -1,10 +1,10 @@
-# Phase 149a — LM Studio Context Auto-Resize Tests
+# Task 149a — LM Studio Context Auto-Resize Tests
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 148b complete: two-tier document verification in place.
+Task 148b complete: two-tier document verification in place.
 
 ## Problem
 
@@ -17,7 +17,7 @@ The fix: before issuing the Stage 2 critic request, query the LM Studio v0 API
 for the model's current and maximum context lengths, and reload the model with the
 next power-of-two context length if the estimated prompt won't fit.
 
-## New surface introduced in phase 149b
+## New surface introduced in task 149b
 
 - `LocalModelManagerProtocol.ensureContextLength(modelID:minimumTokens:)` — async throws, default no-op
 - `LMStudioModelManager.ensureContextLength(modelID:minimumTokens:)` — queries `/api/v0/models`, reloads if needed
@@ -50,5 +50,5 @@ xcodebuild -scheme MerlinTests build-for-testing \
 ```bash
 git add MerlinTests/Unit/LMStudioContextAutoResizeTests.swift \
         MerlinTests/Unit/CriticEngineContextAutoResizeTests.swift
-git commit -m "Phase 149a — LM Studio context auto-resize tests (failing)"
+git commit -m "Task 149a — LM Studio context auto-resize tests (failing)"
 ```

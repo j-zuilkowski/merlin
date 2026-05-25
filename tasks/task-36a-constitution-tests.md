@@ -1,12 +1,12 @@
-# Phase 36a — ConstitutionLoader Tests
+# Task 36a — ConstitutionLoader Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 35b complete: inline diff commenting + submitDiffComments.
+Task 35b complete: inline diff commenting + submitDiffComments.
 
-New surface introduced in phase 36b:
+New surface introduced in task 36b:
   - `ConstitutionLoader` — struct with static method:
     `load(projectPath: String) -> String`
     Searches upward from projectPath for constitution.md and .merlin/constitution.md, then ~/constitution.md.
@@ -35,7 +35,7 @@ final class ConstitutionLoaderTests: XCTestCase {
     override func setUp() {
         super.setUp()
         tmpDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("merlin-claudemd-\(UUID().uuidString)")
+            .appendingPathComponent("merlin-constitution-\(UUID().uuidString)")
         try! FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
     }
 
@@ -142,5 +142,5 @@ Expected: `BUILD FAILED` with errors referencing `ConstitutionLoader`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ConstitutionLoaderTests.swift
-git commit -m "Phase 36a — ConstitutionLoaderTests (failing)"
+git commit -m "Task 36a — ConstitutionLoaderTests (failing)"
 ```

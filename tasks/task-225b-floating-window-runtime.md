@@ -1,10 +1,10 @@
-# Phase 225b - Floating Window Runtime
+# Task 225b - Floating Window Runtime
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 225a complete: failing floating-window runtime tests exist.
+Task 225a complete: failing floating-window runtime tests exist.
 
 ---
 
@@ -41,6 +41,6 @@ Expected: **BUILD SUCCEEDED**. Floating window runtime tests pass.
 
 ```bash
 git add Merlin/Windows/FloatingWindowManager.swift MerlinTests/Unit/FloatingWindowRuntimeTests.swift
-git commit -m "Phase 225b - floating window real runtime"
+git commit -m "Task 225b - floating window real runtime"
 ```
 

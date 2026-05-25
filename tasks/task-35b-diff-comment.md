@@ -1,10 +1,10 @@
-# Phase 35b — Inline Diff Commenting Implementation
+# Task 35b — Inline Diff Commenting Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 35a complete: failing DiffCommentTests in place.
+Task 35a complete: failing DiffCommentTests in place.
 
 ---
 
@@ -188,5 +188,5 @@ git add Merlin/Engine/DiffComment.swift \
         Merlin/Views/DiffPane.swift \
         Merlin/Views/WorkspaceView.swift \
         project.yml
-git commit -m "Phase 35b — inline diff commenting + submitDiffComments"
+git commit -m "Task 35b — inline diff commenting + submitDiffComments"
 ```

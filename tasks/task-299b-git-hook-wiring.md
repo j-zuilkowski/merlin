@@ -1,8 +1,8 @@
-# Phase 299b — Git Hook Wiring (implementation)
+# Task 299b — Git Hook Wiring (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 299a complete: failing test in `GitHookWiringTests`. Unit C3 of the plan.
+Task 299a complete: failing test in `GitHookWiringTests`. Unit C3 of the plan.
 
 ## Edit: Merlin/Discipline/GitHookInstaller.swift
 Change `makePostCommitScript()` / `makePrePushScript()` to invoke the binary by absolute
@@ -75,5 +75,5 @@ exists with the marker.
 ```
 git add Merlin/Discipline/GitHookInstaller.swift Merlin/Discipline/DisciplineBinaryInstaller.swift \
   Merlin/UI/Settings/SettingsWindowView.swift project.yml tasks/task-299b-git-hook-wiring.md
-git commit -m "Phase 299b — Git hook wiring"
+git commit -m "Task 299b — Git hook wiring"
 ```

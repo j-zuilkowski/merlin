@@ -1,18 +1,18 @@
-# Phase 232a — Budget Telemetry Tests
+# Task 232a — Budget Telemetry Tests
 
-> **Superseded by phase 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).
+> **Superseded by task 277.** The `TelemetryRecorder` / `TelemetrySink` / `TelemetryEmitter.sink` seam was removed. Telemetry tests now write to a temp JSONL file via `TelemetryEmitter.resetForTesting(path:)` / `flushForTesting()` and read it with `readTelemetryEvents(fromFile:)` (`TestHelpers/TelemetryTestSupport.swift`).
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 231b complete: release-blocker isolation, lifecycle, and config-watch fixes are in place.
+Task 231b complete: release-blocker isolation, lifecycle, and config-watch fixes are in place.
 
-This phase opens the Budget-Aware Execution overhaul (phases 232–240). It is observability-only
-— no behaviour change. It captures the data needed to calibrate every later phase and to confirm
+This task opens the Budget-Aware Execution overhaul ( tasks 232–240). It is observability-only
+— no behaviour change. It captures the data needed to calibrate every later task and to confirm
 diagnoses for context-overrun and ReAct-stall failure modes.
 
-New surface introduced in phase 232b:
+New surface introduced in task 232b:
   - `TelemetryEmitter` enriches the existing `engine.turn.error` event with two new fields when
     the error is a `ProviderError.httpError`: `error_body` (first 500 chars of the response body,
     redacted of any `sk-` / `pk-` / `Bearer ` token-shaped substrings) and `error_status` (int).
@@ -73,5 +73,5 @@ git add tasks/task-232a-budget-telemetry-tests.md \
     MerlinTests/Unit/PreflightTelemetryTests.swift \
     MerlinTests/Unit/PlannerStepTelemetryTests.swift \
     TestHelpers/TelemetryTestSupport.swift
-git commit -m "Phase 232a — BudgetTelemetryTests (failing)"
+git commit -m "Task 232a — BudgetTelemetryTests (failing)"
 ```

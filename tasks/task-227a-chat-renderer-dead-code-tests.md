@@ -1,12 +1,12 @@
-# Phase 227a - Chat Renderer Dead-Code Tests
+# Task 227a - Chat Renderer Dead-Code Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 166b replaced SwiftUI message rendering with `ConversationWebView`, but left superseded renderer helpers for follow-up cleanup.
+Task 166b replaced SwiftUI message rendering with `ConversationWebView`, but left superseded renderer helpers for follow-up cleanup.
 
-New surface introduced in phase 227b:
+New surface introduced in task 227b:
   - `ChatView.swift` contains no dead `RenderedMessage` type or legacy markdown helpers.
   - Conversation rendering remains covered by `ConversationHTMLRenderer`.
 
@@ -43,6 +43,6 @@ Expected: **BUILD FAILED** because `RenderedMessage` still exists in `ChatView.s
 
 ```bash
 git add MerlinTests/Unit/ChatRendererCleanupTests.swift
-git commit -m "Phase 227a - ChatRendererCleanupTests (failing)"
+git commit -m "Task 227a - ChatRendererCleanupTests (failing)"
 ```
 

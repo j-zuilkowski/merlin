@@ -1,10 +1,10 @@
-# Phase 261b — project:revise Skill
+# Task 261b — project:revise Skill
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 261a complete: failing tests asserting project:revise SKILL.md exists.
+Task 261a complete: failing tests asserting project:revise SKILL.md exists.
 
 ---
 
@@ -47,7 +47,7 @@ User says any of:
 
 3. **For each finding, prompt for action**:
    - **Accept proposed patch** — apply the suggested fix. For task-drift findings,
-     either update the phase NNb file or create a phase NNc addendum.
+     either update the task NNb file or create a task NNc addendum.
    - **Modify** — open the finding in context; user edits; validate and apply.
    - **Dismiss with rationale** — call `DisciplineEngine.dismiss(findingID:rationale:)`.
      Log to `OverrideAuditLog`. Display override count for this category.
@@ -58,7 +58,7 @@ User says any of:
    ```
    Revise: fix N discipline findings
    
-   - [phaseDrift] ProviderBudget: restore or write addendum
+   - [taskDrift] ProviderBudget: restore or write addendum
    - [manualCoverageGap] AppSettings.activeProviderID: added manual section
    ```
 
@@ -66,7 +66,7 @@ User says any of:
 
 ## Output
 
-- Modified task files (addendum phases or updated NNb files).
+- Modified task files (addendum  tasks or updated NNb files).
 - New manual sections in doc files.
 - Dismissed findings logged to `.merlin/override-log.jsonl`.
 - A single git commit per revision batch (never per individual finding).
@@ -91,11 +91,11 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 261a `ProjectReviseSkillTests` pass.
+Expected: **BUILD SUCCEEDED** and all task 261a `ProjectReviseSkillTests` pass.
 
 ## Commit
 
 ```bash
 git add tasks/task-261b-project-revise-skill.md
-git commit -m "Phase 261b — project:revise skill (SKILL.md)"
+git commit -m "Task 261b — project:revise skill (SKILL.md)"
 ```

@@ -1,10 +1,10 @@
-# Phase 151b — Context Pre-Run Compaction Implementation
+# Task 151b — Context Pre-Run Compaction Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 151a complete: failing tests in place.
+Task 151a complete: failing tests in place.
 
 ---
 
@@ -42,7 +42,7 @@ In `runLoop(userMessage:continuation:contextOverride:depth:)`, find the block th
 Insert the pre-run compaction call immediately before that `context.append`:
 
 ```swift
-        // Phase 151b — compact before appending if session has grown large.
+        // Task 151b — compact before appending if session has grown large.
         // Skip for continuations: they depend on recent tool results staying intact.
         context.compactIfNeededBeforeRun(isContinuation: isContinuation)
         context.append(Message(role: .user, content: .text(effectiveMessage), timestamp: Date()))
@@ -90,5 +90,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ContextManager.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/MerlinCommands.swift
-git commit -m "Phase 151b — context pre-run compaction: auto + Cmd+Shift+K manual"
+git commit -m "Task 151b — context pre-run compaction: auto + Cmd+Shift+K manual"
 ```

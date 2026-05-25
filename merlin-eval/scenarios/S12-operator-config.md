@@ -45,7 +45,7 @@ with `--show-auth-popup-for-testing`; assert the auth popup is forced.
 **Score:** config sections / 12 + hook events / 5 + the MCP / inject / automation / env checks.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built. Back up the real `~/.merlin/` first.
+1. Tasks B–D, 301–306 merged; Merlin built. Back up the real `~/.merlin/` first.
 2. For each surface: write the config/file/automation, launch or drive Merlin, observe.
 3. For the live-reload check, edit `config.toml` with Merlin running.
 4. Score; write `results/S12-<date>.md`. A setting silently ignored is a finding.

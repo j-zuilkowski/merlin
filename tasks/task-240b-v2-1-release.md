@@ -1,12 +1,12 @@
-# Phase 240b — v2.1.0 Release
+# Task 240b — v2.1.0 Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 240a complete: failing version + release-notes tests are in place.
+Task 240a complete: failing version + release-notes tests are in place.
 
-This phase ships v2.1.0 — Budget-Aware Execution. Follow `spec.md` § Versioning Policy
+This task ships v2.1.0 — Budget-Aware Execution. Follow `spec.md` § Versioning Policy
 step-by-step. **Do not skip** the `xcodegen generate` step or the GitHub release step.
 
 ---
@@ -49,7 +49,7 @@ step-by-step. **Do not skip** the `xcodegen generate` step or the GitHub release
           `(maxInputTokens: 32_000, reservedOutputTokens: 4_096)`.
         - No user data migration required.
 - **Do not modify `spec.md`.** The "V2.1 — Budget-Aware Execution" section was written
-  before this phase series began and is the architectural source of truth. The `## Versioning
+  before this task series began and is the architectural source of truth. The `## Versioning
   Policy` section it references is unchanged.
 - After all edits, run:
     ```bash
@@ -80,7 +80,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and **all phase 240a tests pass** (version is now 2.1.0, release
+Expected: **BUILD SUCCEEDED** and **all task 240a tests pass** (version is now 2.1.0, release
 notes file exists).
 
 Then build a Release archive and launch from `build/Debug/Merlin.app`; manually confirm
@@ -96,7 +96,7 @@ git add tasks/task-240b-v2-1-release.md \
     constitution.md \
     RELEASE-v2.1.0.md \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 240b — Bump version to 2.1.0 (Budget-Aware Execution)"
+git commit -m "Task 240b — Bump version to 2.1.0 (Budget-Aware Execution)"
 
 git tag v2.1.0
 git push
@@ -111,5 +111,5 @@ gh release create v2.1.0 \
 
 ## PASTE-LIST update
 
-Append phase 240a/240b under the "Budget-Aware Execution (v2.1.0)" section. Mark the section
+Append task 240a/240b under the "Budget-Aware Execution (v2.1.0)" section. Mark the section
 **RELEASED** with the tag `v2.1.0`.

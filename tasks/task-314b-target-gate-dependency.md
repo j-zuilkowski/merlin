@@ -1,10 +1,10 @@
-# Phase 314b — TargetGateScanner Dependency-Following
+# Task 314b — TargetGateScanner Dependency-Following
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 314a complete: failing runtime test in `TargetGateScannerTests`.
+Task 314a complete: failing runtime test in `TargetGateScannerTests`.
 
-Refines `TargetGateScanner` (phase 307b) so a target reached transitively through
+Refines `TargetGateScanner` (task 307b) so a target reached transitively through
 `dependencies:` from a scheme-built target counts as gated. This removes the
 false-positive class that blocked a real commit when the gate went live: `merlin-discipline`
 is built as a dependency of `Merlin` but is named in no scheme block.
@@ -112,13 +112,13 @@ both the app and the `merlin-discipline` CLI. Keep it that way.
     }
 ```
 
-`childKeys`, `block`, and `mentions` are unchanged from phase 307b — reuse them.
+`childKeys`, `block`, and `mentions` are unchanged from task 307b — reuse them.
 
 ## 2. Edit: tasks/task-307b-target-gate-scanner.md
 Add a one-line banner under that doc's title so the rebuild source of truth stays
 honest:
 ```
-> **Note:** the `scan` method here is superseded by phase 314b, which adds
+> **Note:** the `scan` method here is superseded by task 314b, which adds
 > transitive `dependencies:` following. Implement 314b's version.
 ```
 
@@ -142,5 +142,5 @@ SUCCEEDED, zero warnings.
 ```
 git add Merlin/Discipline/TargetGateScanner.swift tasks/task-307b-target-gate-scanner.md \
   tasks/task-314b-target-gate-dependency.md
-git commit -m "Phase 314b — TargetGateScanner follows transitive project.yml dependencies"
+git commit -m "Task 314b — TargetGateScanner follows transitive project.yml dependencies"
 ```

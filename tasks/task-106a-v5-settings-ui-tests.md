@@ -1,12 +1,12 @@
-# Phase 106a — V5 Settings UI Tests (failing)
+# Task 106a — V5 Settings UI Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 105b complete: full V5 run loop wired.
+Task 105b complete: full V5 run loop wired.
 
-New surface introduced in phase 106:
+New surface introduced in task 106:
   - `RoleSlotSettingsView` — SwiftUI view type (compile-time symbol check)
   - `PerformanceDashboardView` — SwiftUI view type (compile-time symbol check)
   - `AppSettings.slotAssignments: [AgentSlot: String]` — persisted slot→providerID mapping
@@ -140,5 +140,5 @@ and `AppSettings.checkCommand` not defined.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/V5SettingsUITests.swift
-git commit -m "Phase 106a — V5SettingsUITests (failing)"
+git commit -m "Task 106a — V5SettingsUITests (failing)"
 ```

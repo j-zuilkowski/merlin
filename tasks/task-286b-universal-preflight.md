@@ -1,14 +1,14 @@
-# Phase 286b — Universal Pre-flight Guard
+# Task 286b — Universal Pre-flight Guard
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 286a complete: failing tests for `PreflightGuard.fit`.
-Phase 285 complete: `ContextBudgetResolver` discovers the active model's real context
+Task 286a complete: failing tests for `PreflightGuard.fit`.
+Task 285 complete: `ContextBudgetResolver` discovers the active model's real context
 window — the guard takes its budget from the resolver, never a hardcoded value.
 
-After this phase, **every** LLM request is sized to fit the provider's input window
+After this task, **every** LLM request is sized to fit the provider's input window
 before it is sent — not just the main turn loop. The HTTP 400 context-overflow class
 becomes structurally impossible regardless of which engine path makes the call.
 
@@ -76,7 +76,7 @@ enum PreflightGuard {
 }
 ```
 
-Reuse `ToolOutput.clamp` (phase 284) for the per-message truncation. Emit a
+Reuse `ToolOutput.clamp` (task 284) for the per-message truncation. Emit a
 `engine.preflight.guard_clamped` telemetry event with the before/after estimate when a
 request is clamped, so this is observable.
 
@@ -153,7 +153,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 286a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all task 286a tests pass, no prior task regresses.
 
 Then confirm no un-guarded send remains:
 
@@ -181,7 +181,7 @@ git add tasks/task-286b-universal-preflight.md \
     Merlin/Views/BtwSession.swift \
     Merlin/Calibration/CalibrationCoordinator.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 286b — Route every provider send through PreflightGuard"
+git commit -m "Task 286b — Route every provider send through PreflightGuard"
 ```
 
 ## Fixes

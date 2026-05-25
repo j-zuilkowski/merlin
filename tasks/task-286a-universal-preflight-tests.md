@@ -1,11 +1,11 @@
-# Phase 286a — Universal Pre-flight Guard Tests (failing)
+# Task 286a — Universal Pre-flight Guard Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 284 complete: `run_shell` / `read_file` output is capped.
-Phase 285 complete: `ContextBudgetResolver` discovers the active model's real context
+Task 284 complete: `run_shell` / `read_file` output is capped.
+Task 285 complete: `ContextBudgetResolver` discovers the active model's real context
 window.
 
 **The bug.** `spec.md` states every LLM request is sized to the provider's
@@ -17,7 +17,7 @@ loop. `PlannerEngine` (decompose / classify / refineStep), `CriticEngine`,
 `CalibrationCoordinator` all send requests with no budget check at all. A bloated
 context on any of those paths goes straight to the provider and is rejected HTTP 400.
 
-New surface introduced in phase 286b:
+New surface introduced in task 286b:
   - `PreflightGuard` enum in `Merlin/Engine/PreflightGuard.swift`:
     ```swift
     enum PreflightGuard {
@@ -115,7 +115,7 @@ Expected: **BUILD FAILED** — errors naming the missing `PreflightGuard` type /
 git add tasks/task-286a-universal-preflight-tests.md \
     MerlinTests/Unit/PreflightGuardTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 286a — PreflightGuardTests (failing)"
+git commit -m "Task 286a — PreflightGuardTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file registers.)

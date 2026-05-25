@@ -1,12 +1,12 @@
-# Phase 214a — Board, Net-Class, Placement, and Routing Policy Tests
+# Task 214a — Board, Net-Class, Placement, and Routing Policy Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 213b complete: component, footprint, library, and BOM policies exist.
+Task 213b complete: component, footprint, library, and BOM policies exist.
 
-New surface introduced in phase 214b:
+New surface introduced in task 214b:
   - `BoardProfileCatalog`
   - `NetClassPlanner`
   - `PlacementPlanner`
@@ -47,5 +47,5 @@ Expected: **BUILD FAILED** with missing board/routing policy symbols.
 
 ```bash
 git add MerlinTests/Unit/BoardRoutingPolicyTests.swift
-git commit -m "Phase 214a — BoardRoutingPolicyTests (failing)"
+git commit -m "Task 214a — BoardRoutingPolicyTests (failing)"
 ```

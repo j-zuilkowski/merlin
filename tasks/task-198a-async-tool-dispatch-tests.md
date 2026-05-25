@@ -1,10 +1,10 @@
-# Phase 198a — Async Tool Dispatch Tests (failing)
+# Task 198a — Async Tool Dispatch Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 197b complete: stable prefix cache for system prompt.
+Task 197b complete: stable prefix cache for system prompt.
 
 ## Problem
 `AgenticEngine` calls `toolRouter.dispatch([singleCall])` inside a sequential `for` loop —
@@ -14,21 +14,21 @@ passed. When the model emits N tool calls in one streaming response (e.g. readin
 execution is fully sequential even though the calls are independent.
 
 ## Fix (implemented in 198b)
-Replace the per-call dispatch loop with a two-phase approach:
+Replace the per-call dispatch loop with a two-task approach:
 
-**Phase 1 — sequential pre-hooks** (preserves hook ordering guarantees):
+**Task 1 — sequential pre-hooks** (preserves hook ordering guarantees):
 Iterate `regularCalls`, run `hookEngine.runPreToolUse` for each. Collect allowed calls;
 produce denied `ToolResult` inline for blocked ones.
 
-**Phase 2 — batch dispatch**:
+**Task 2 — batch dispatch**:
 Pass ALL allowed calls to `toolRouter.dispatch(allowedCalls)` in a single call. The
 existing `TaskGroup` inside `ToolRouter.dispatch` runs them in parallel.
 
-**Phase 3 — sequential context updates**:
+**Task 3 — sequential context updates**:
 Walk the results in original call order. Emit telemetry, append tool messages to context,
 run `hookEngine.runPostToolUse` — preserving message ordering for the OpenAI wire format.
 
-## New surface in phase 198b
+## New surface in task 198b
 - `AgenticEngine` pre-hook + batch dispatch pattern (no new public API — internal refactor)
 - `ToolRouter` unchanged — its existing `dispatch(_ calls: [ToolCall])` signature is correct
 
@@ -43,7 +43,7 @@ Note: `MockToolRouter` must be added to `TestHelpers/` so it is available to all
 
 ```swift
 // MockToolRouter.swift
-// Phase 198a — records how dispatch() is called for inspection in tests.
+// Task 198a — records how dispatch() is called for inspection in tests.
 import Foundation
 @testable import Merlin
 
@@ -73,7 +73,7 @@ final class MockToolRouter: ToolRouter {
 
 ```swift
 // AsyncToolDispatchTests.swift
-// Phase 198a — failing tests for batch tool dispatch.
+// Task 198a — failing tests for batch tool dispatch.
 import XCTest
 @testable import Merlin
 
@@ -199,5 +199,5 @@ Expected: BUILD FAILED — `dispatchRegularCalls()` does not exist on `AgenticEn
 cd ~/Documents/localProject/merlin
 git add TestHelpers/MockToolRouter.swift \
         MerlinTests/Unit/AsyncToolDispatchTests.swift
-git commit -m "Phase 198a — AsyncToolDispatchTests (failing)"
+git commit -m "Task 198a — AsyncToolDispatchTests (failing)"
 ```

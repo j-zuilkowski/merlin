@@ -1,14 +1,14 @@
-# Phase 268a — Scanner Accuracy Tests
+# Task 268a — Scanner Accuracy Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 267b complete: dangling-reference detection wired into `DisciplineEngine`.
+Task 267b complete: dangling-reference detection wired into `DisciplineEngine`.
 
-This phase covers three High-priority scanner accuracy bugs. All three touch symbols
+This task covers three High-priority scanner accuracy bugs. All three touch symbols
 that already exist, so the build will NOT fail — the new test classes assert the
-correct post-fix behaviour and FAIL at runtime until phase 268b lands.
+correct post-fix behaviour and FAIL at runtime until task 268b lands.
 
 **Bug A — `TaskScanner` test-file filter.** `TaskScanner.enumerateSourceDeclarations`
 skips paths containing `"/Tests/"` (with a leading slash). That literal does NOT match
@@ -23,11 +23,11 @@ As a pre-commit hard gate this blocks legitimate commits.
 
 **Bug C — `DocReferenceGraph` section tracking.** In the pre-267b `build()`, the
 `currentSection` loop ran to completion *before* symbol association, so every reference
-in a file received the file's LAST heading as `docSection`. Phase 267b already
-restructured `build()` to a single pass; this phase adds the regression test that locks
+in a file received the file's LAST heading as `docSection`. Task 267b already
+restructured `build()` to a single pass; this task adds the regression test that locks
 the corrected per-section behaviour.
 
-New surface introduced in phase 268b:
+New surface introduced in task 268b:
   - `TaskScanner` source enumeration excludes any file whose path has a component
     ending in `"Tests"` (`MerlinTests`, `MerlinLiveTests`, `MerlinE2ETests`, ...).
   - `WhyCommentScanner.scanLines` skips trigger matches that fall inside a `//` comment
@@ -79,9 +79,9 @@ final class TaskScannerTestExclusionTests: XCTestCase {
 
     func testPublicTestSymbolsAreNotFlaggedAsUndocumented() async throws {
         try writeFile("tasks/task-001b-x.md", """
-        # Phase 001b — X
+        # Task 001b — X
 
-        New surface introduced in phase 001b:
+        New surface introduced in task 001b:
           - `RealType` — a real production type.
         """)
         try writeFile("Merlin/Real.swift", """
@@ -296,8 +296,8 @@ xcodebuild -scheme MerlinTests test \
 Expected: **BUILD SUCCEEDED**, but the three new test classes FAIL at runtime —
 `TaskScannerTestExclusionTests`, `WhyCommentFalsePositiveTests`, and
 `DocReferenceSectionTests` all reference existing symbols whose behaviour is still
-wrong (the `DocReferenceSectionTests` case may already pass if phase 267b's single-pass
-`build()` is in place — that is acceptable; the other two must fail). Phase 268b makes
+wrong (the `DocReferenceSectionTests` case may already pass if task 267b's single-pass
+`build()` is in place — that is acceptable; the other two must fail). Task 268b makes
 all three pass.
 
 ## Commit
@@ -307,5 +307,5 @@ git add tasks/task-268a-scanner-accuracy-tests.md \
     MerlinTests/Unit/TaskScannerTestExclusionTests.swift \
     MerlinTests/Unit/WhyCommentFalsePositiveTests.swift \
     MerlinTests/Unit/DocReferenceSectionTests.swift
-git commit -m "Phase 268a — Scanner accuracy tests (failing)"
+git commit -m "Task 268a — Scanner accuracy tests (failing)"
 ```

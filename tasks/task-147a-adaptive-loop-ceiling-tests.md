@@ -1,12 +1,12 @@
-# Phase 147a — Adaptive Loop Ceiling Tests (failing)
+# Task 147a — Adaptive Loop Ceiling Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 146b complete: provider settings UI with dynamic model picker.
+Task 146b complete: provider settings UI with dynamic model picker.
 
-New surface introduced in phase 147b:
+New surface introduced in task 147b:
   - `ProjectSizeMetrics` — value type holding `sourceFileCount: Int` and
     `adaptiveCeiling(for: ComplexityTier) -> Int`. Formula:
     `clamp(10 + floor(log2(sourceFileCount + 1)) * 4, 10, 80)` × tier multiplier
@@ -376,5 +376,5 @@ Expected: BUILD FAILED — `ProjectSizeMetrics`, `ProjectSizeObserver`, and
 git add MerlinTests/Unit/ProjectSizeMetricsTests.swift \
         MerlinTests/Unit/ProjectSizeObserverTests.swift \
         MerlinTests/Unit/AdaptiveLoopCeilingEngineTests.swift
-git commit -m "Phase 147a — Adaptive loop ceiling tests (failing)"
+git commit -m "Task 147a — Adaptive loop ceiling tests (failing)"
 ```

@@ -1,17 +1,17 @@
-# Phase 120a — LoRA Provider Routing Tests (failing)
+# Task 120a — LoRA Provider Routing Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 119b complete: LoRACoordinator auto-train trigger in place.
+Task 119b complete: LoRACoordinator auto-train trigger in place.
 
 Current state: AgenticEngine.provider(for: .execute) always returns proProvider.
 When a trained adapter is available and loraAutoLoad=true, the execute slot should route
 through a local mlx_lm.server instead — an OpenAI-compatible endpoint at loraServerURL.
 The critic (.reason slot) always uses the unmodified base model to keep evaluation unbiased.
 
-New surface introduced in phase 120b:
+New surface introduced in task 120b:
   - `AgenticEngine.loraProvider: (any LLMProvider)?` — set by AppState via Combine when
     loraEnabled + loraAutoLoad + loraAdapterPath file exists + loraServerURL non-empty;
     cleared when any condition fails.
@@ -117,5 +117,5 @@ Expected: BUILD FAILED — `AgenticEngine.loraProvider` not defined.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRAProviderRoutingTests.swift
-git commit -m "Phase 120a — LoRAProviderRoutingTests (failing)"
+git commit -m "Task 120a — LoRAProviderRoutingTests (failing)"
 ```

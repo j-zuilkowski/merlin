@@ -1,4 +1,4 @@
-# Phase 220a - MCP HTTP/SSE Transport Tests
+# Task 220a - MCP HTTP/SSE Transport Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 Architecture currently says MCP is stdio-only and HTTP/SSE is deferred to v3.
 
-New surface introduced in phase 220b:
+New surface introduced in task 220b:
   - `MCPTransportKind` - `stdio`, `http`, `sse`
   - `MCPHTTPTransport` - JSON-RPC over HTTP POST
   - `MCPSSETransport` - SSE event stream with JSON-RPC message dispatch
@@ -71,6 +71,6 @@ Expected: **BUILD FAILED** because HTTP/SSE MCP transport types do not exist.
 
 ```bash
 git add MerlinTests/Unit/MCPHTTPTransportTests.swift MerlinTests/Unit/MCPSSETransportTests.swift MerlinTests/Unit/MCPBridgeTransportSelectionTests.swift
-git commit -m "Phase 220a - MCPHTTPTransportTests and MCPSSETransportTests (failing)"
+git commit -m "Task 220a - MCPHTTPTransportTests and MCPSSETransportTests (failing)"
 ```
 

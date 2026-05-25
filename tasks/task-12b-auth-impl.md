@@ -1,11 +1,11 @@
-# Phase 12b — PatternMatcher + AuthMemory Implementation
+# Task 12b — PatternMatcher + AuthMemory Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
+Task 12a complete: PatternMatcherTests.swift and AuthMemoryTests.swift written.
 
 ---
 
@@ -90,5 +90,5 @@ Expected: `PatternMatcherTests` passes (5 tests), `AuthMemoryTests` passes (3 te
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Auth/PatternMatcher.swift Merlin/Auth/AuthMemory.swift
-git commit -m "Phase 12b — PatternMatcher + AuthMemory (8 tests passing)"
+git commit -m "Task 12b — PatternMatcher + AuthMemory (8 tests passing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 108b — RAG Source Attribution
+# Task 108b — RAG Source Attribution
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 108a complete: RAGSourceAttributionTests (failing) in place.
+Task 108a complete: RAGSourceAttributionTests (failing) in place.
 
 ---
 
@@ -200,5 +200,5 @@ git add Merlin/Engine/AgenticEngine.swift \
         Merlin/Views/RAGSourcesView.swift \
         Merlin/Views/ChatView.swift \
         project.yml
-git commit -m "Phase 108b — RAG source attribution (.ragSources event + Sources footer in chat)"
+git commit -m "Task 108b — RAG source attribution (.ragSources event + Sources footer in chat)"
 ```

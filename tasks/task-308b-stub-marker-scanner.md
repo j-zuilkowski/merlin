@@ -1,13 +1,13 @@
-# Phase 308b — StubMarkerScanner (implementation)
+# Task 308b — StubMarkerScanner (implementation)
 
-> **Note:** the `scan` method here is refined by phase 318b (skip empty `.cancel`
+> **Note:** the `scan` method here is refined by task 318b (skip empty `.cancel`
 > buttons, track `"""` multi-line strings). Implement 318b's version.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 308a complete: failing tests in `StubMarkerScannerTests`.
+Task 308a complete: failing tests in `StubMarkerScannerTests`.
 
-`StubMarkerScanner` is a peer of `TargetGateScanner` (phase 307). Pure Foundation —
+`StubMarkerScanner` is a peer of `TargetGateScanner` (task 307). Pure Foundation —
 lands in `Merlin/Discipline/` (compiled into both the app and the `merlin-discipline`
 CLI), so no SwiftUI/AppKit imports.
 
@@ -107,7 +107,7 @@ Add `case stubbedImplementation` to `FindingCategory` (after `ungatedTarget`).
 alongside the other per-case assertions, and adjust any `allCases.count` assertion.
 
 ## 3. Edit: Merlin/Discipline/DisciplineEngine.swift
-Same wiring pattern phase 307b established for `TargetGateScanner`:
+Same wiring pattern task 307b established for `TargetGateScanner`:
 
 - **Stored property:** `private let stubMarkerScanner: StubMarkerScanner`
 - **Init parameter** (defaulted, so existing call sites are unaffected) — insert after
@@ -167,5 +167,5 @@ warnings.
 git add Merlin/Discipline/StubMarkerScanner.swift Merlin/Discipline/Finding.swift \
   Merlin/Discipline/DisciplineEngine.swift MerlinTests/Unit/FindingModelTests.swift \
   tasks/task-308b-stub-marker-scanner.md
-git commit -m "Phase 308b — StubMarkerScanner: surface unfinished code as discipline findings"
+git commit -m "Task 308b — StubMarkerScanner: surface unfinished code as discipline findings"
 ```

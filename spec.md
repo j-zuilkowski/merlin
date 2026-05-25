@@ -13,10 +13,10 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded — LM Studio and vLLM-Metal are alternative MLX-native serving targets), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 shipped provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
 **[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
-**[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (phase 140); grounding confidence signal (phase 141).
+**[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (task 140); grounding confidence signal (task 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
-**[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. (phases 181–184)
-**[v1.6]** Multi-project workspace: single `WindowGroup("Merlin", id: "workspace")` replaces per-project windows; `WorkspaceCoordinator` (testable `init(workspaceURL:)`, workspace persistence to `~/.merlin/workspace.json`, `activeProjectManager`); `SessionSidebar` iterates all open projects; Terminal and SideChat panes follow active project; `ProjectPickerView` sheet mode; session auto-title via `AgenticEngine.onTitleUpdate` + `applyTitleUpdateIfNeeded`. (phases 185–188, tag v1.6.0) — **v1.6.1** patch: `ChatView` `@EnvironmentObject SessionManager` → `@FocusedObject SessionManager?`; `WorkspaceView` exposes `activeProjectManager` as `.focusedObject()` — fixes `EXC_BREAKPOINT` crash on session activation. (phase 189, tag v1.6.1)
+**[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. ( tasks 181–184)
+**[v1.6]** Multi-project workspace: single `WindowGroup("Merlin", id: "workspace")` replaces per-project windows; `WorkspaceCoordinator` (testable `init(workspaceURL:)`, workspace persistence to `~/.merlin/workspace.json`, `activeProjectManager`); `SessionSidebar` iterates all open projects; Terminal and SideChat panes follow active project; `ProjectPickerView` sheet mode; session auto-title via `AgenticEngine.onTitleUpdate` + `applyTitleUpdateIfNeeded`. ( tasks 185–188, tag v1.6.0) — **v1.6.1** patch: `ChatView` `@EnvironmentObject SessionManager` → `@FocusedObject SessionManager?`; `WorkspaceView` exposes `activeProjectManager` as `.focusedObject()` — fixes `EXC_BREAKPOINT` crash on session activation. (task 189, tag v1.6.1)
 
 **[v1.7.0]** Knowledge-Augmented Generation (KAG): `KAGBackendPlugin` protocol; `NullKAGPlugin` (default); `LocalKAGPlugin` (SQLite graph at `~/.merlin/kag/graph.sqlite`); `XcalibreKAGPlugin` (preferred — writes session triples to xcalibre-server via `POST /api/v1/graph/triples`, reads fused book+session graph via `GET /api/v1/graph/traverse`); `KAGEngine` post-turn triple extraction (idle timer, background LLM call, domain-agnostic); `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `KAGBackendRegistry` + `AppSettings` additions (`kagEnabled`, `kagHops`, `kagXcalibreURL`). Task files: `tasks/task-190a/190b` (KAGTriple + NullKAGPlugin + KAGBackendRegistry + LocalKAGPlugin + KAGEngine stub), `tasks/task-191a/191b` (XcalibreKAGPlugin + KAGEngine real extraction + RAGTools extension + AppSettings wiring). **Shipped v1.7.0.**
 
@@ -28,7 +28,7 @@ Merlin is a personal, non-distributed agentic development assistant for macOS. I
 
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
-**[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `phase`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
+**[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `task`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
 **[v2.3]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
@@ -735,9 +735,9 @@ Merlin's v9 reliability features were designed against the failure taxonomy in:
 
 | Failure pattern | Description | Merlin response |
 |---|---|---|
-| Context degradation | Retrieval becomes stale or incomplete, so answers look polished but lose grounding | `GroundingReport` (phase 141) tracks staleness, average score, and `isWellGrounded` |
+| Context degradation | Retrieval becomes stale or incomplete, so answers look polished but lose grounding | `GroundingReport` (task 141) tracks staleness, average score, and `isWellGrounded` |
 | Orchestration drift | Multi-step runs diverge under load | `CriticEngine` evaluates each turn; `ModelParameterAdvisor` tracks score trends |
-| Silent partial failure | A subsystem degrades before it fully breaks | `consecutiveCriticFailures` plus the circuit breaker (phase 140) surfaces sustained degradation |
+| Silent partial failure | A subsystem degrades before it fully breaks | `consecutiveCriticFailures` plus the circuit breaker (task 140) surfaces sustained degradation |
 | Automation blast radius | A bad step propagates into later steps and decisions | `AuthGate` blocks unauthorised tool calls; critic failure suppresses backend memory writes |
 
 #### Mitigations
@@ -745,7 +745,7 @@ Merlin's v9 reliability features were designed against the failure taxonomy in:
 | Mitigation | Description | Merlin implementation |
 |---|---|---|
 | Behavioral telemetry | Track grounding, fallback, and confidence per turn | `PerformanceTracker`, `ModelParameterAdvisor`, `AgentEvent.ragSources`, `AgentEvent.groundingReport` |
-| Semantic fault injection | Simulate stale retrieval, truncation, empty tools, and context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (phase 142) |
+| Semantic fault injection | Simulate stale retrieval, truncation, empty tools, and context drop | `StalenessInjectingMemoryBackend`, `TruncatingMockProvider`, `EmptyToolResultRouter`, `DroppingContextManager` in `TestHelpers/SemanticFaults/` (task 142) |
 | Safe halt conditions | Stop cleanly when confidence cannot be maintained | `agentCircuitBreakerMode = "halt"` (default) halts after repeated critic failures and surfaces the failure to the user |
 | Shared ownership | Each reliability signal has one owner | `CriticEngine` owns per-turn quality, `ModelParameterAdvisor` owns trend detection, `GroundingReport` owns retrieval confidence, and the circuit breaker owns halt decisions |
 
@@ -892,7 +892,7 @@ CAG is now implemented as a request policy and deterministic prefix discipline, 
 - `CompletionRequest.cachePolicy` carries per-request cache intent.
 - `CompletionRequest.systemPromptSegments` carries split cacheable/hot system blocks for providers that can mark cache blocks explicitly.
 - `AppSettings.cagEnabled`, `AppSettings.cagPinConstitution`, and `AppSettings.cagPinnedTaskDocs` persist under `[cag]`.
-- `AgenticEngine.buildStablePrefix()` honors `cagPinConstitution` and folds configured pinned phase/task docs into the stable prefix when CAG is enabled.
+- `AgenticEngine.buildStablePrefix()` honors `cagPinConstitution` and folds configured pinned task/task docs into the stable prefix when CAG is enabled.
 - `AgenticEngine.buildCAGSystemPromptSegments()` keeps unpinned constitution.md in the request as hot system content instead of dropping it.
 - `CAGMetricsPane` surfaces cache read/create/uncached totals in the workspace beside the other optional panes.
 
@@ -1813,7 +1813,7 @@ A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` sce
 
 ### Navigation model
 
-`NavigationSplitView` with a list sidebar on the left and a detail view on the right — macOS System Settings style. Sections grow as v3 features are added; each feature phase contributes its own section.
+`NavigationSplitView` with a list sidebar on the left and a detail view on the right — macOS System Settings style. Sections grow as v3 features are added; each feature task contributes its own section.
 
 ### AppSettings
 
@@ -1826,7 +1826,7 @@ A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` sce
 | Keychain | Provider API keys in Release builds; connector tokens; search API key |
 | UserDefaults | UI-only state — theme, fonts, font sizes, message density, window layout |
 
-`config.toml` is watched via FSEvents; external edits update `AppSettings` live. `ConnectorsView` (phase 43) is absorbed into the Connectors section and removed as a standalone view.
+`config.toml` is watched via FSEvents; external edits update `AppSettings` live. `ConnectorsView` (task 43) is absorbed into the Connectors section and removed as a standalone view.
 
 ### Sections
 
@@ -1856,7 +1856,7 @@ A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` sce
 
 ### Build order
 
-Settings window shell (navigation + Appearance + AppSettings stub) is built in the config.toml foundation phase. Each subsequent v3 phase adds its own section to the list.
+Settings window shell (navigation + Appearance + AppSettings stub) is built in the config.toml foundation task. Each subsequent v3 task adds its own section to the list.
 
 ---
 
@@ -2070,7 +2070,7 @@ MCP servers are external processes (stdio). No Swift package dependency introduc
 
 ## Testing Strategy [v1]
 
-All implementation phases are preceded by a test phase.
+All implementation  tasks are preceded by a test task.
 
 ### Test Layers
 
@@ -3486,7 +3486,7 @@ complexity: high-stakes   # always routes this skill to the stronger worker slot
 
 ## V5 — Legacy RAG Memory Extension
 
-> **xcalibre-server Phase 18 is shipped** — migration `0028_memory_chunks.sql`, `POST /api/v1/memory`, `DELETE /api/v1/memory/:id`, and unified `GET /api/v1/search/chunks?source=all` are all live. Merlin-side implementation can proceed.
+> **xcalibre-server Task 18 is shipped** — migration `0028_memory_chunks.sql`, `POST /api/v1/memory`, `DELETE /api/v1/memory/:id`, and unified `GET /api/v1/search/chunks?source=all` are all live. Merlin-side implementation can proceed.
 
 This was the original Merlin memory design: xcalibre-server acted as the persistent memory store for Merlin. v9 supersedes it with a local SQLite backend, but the historical flow remains documented here for reference. Local LLMs have limited context windows; precision-retrieved prior memory lets a 4k context window punch above its weight.
 
@@ -3577,7 +3577,7 @@ fact_extraction = true      # async fact extraction post-session
 
 | Decision | v5 memory |
 |---|---|
-| Memory store | xcalibre-server `memory_chunks` table (new in xcalibre Phase 18) |
+| Memory store | xcalibre-server `memory_chunks` table (new in xcalibre Task 18) |
 | Retrieval | Unified — xcalibre `GET /api/v1/search/chunks?source=all` with RRF merge |
 | Episodic write trigger | Session end OR `MemoryEngine` idle fire |
 | Fact extraction | Execute slot, async background, post-session |
@@ -3883,7 +3883,7 @@ None — no new user-configurable settings. Archive/recall is purely structural.
 
 ### Implementation Order
 
-| Phase | Description |
+| Task | Description |
 |---|---|
 | 181a/b | `Session.archived` field + `SessionStore` project-scoped path + `archive`/`unarchive`/`activeSessions`/`archivedSessions` |
 | 182a/b | `SessionManager.restore(session:)` + message injection into `ContextManager` |
@@ -4096,7 +4096,7 @@ CommandGroup(replacing: .newItem) {
 
 ### Implementation Order (completed)
 
-| Phase | Description |
+| Task | Description |
 |---|---|
 | 185a/b | `WorkspaceCoordinator` — multi-project state, persistence, `activeProjectManager`, testable init |
 | 186b | `WorkspaceView`, `SessionSidebar`, `SideChatPane`, `MerlinCommands`, `MerlinApp` — single-window, coordinator-driven UI, picker sheet, pane wiring |
@@ -4591,7 +4591,7 @@ What v2.1 changes that callers should know:
 - `AgenticEngine` removes `contextLengthRetryCount`, `maxContextOverrunRecoveryAttempts`,
   `contextOverrunRecoveryDirective`. Internal-only — no external consumers.
 - `AgentEvent` gains `.cleanStop(reason: String, summary: String)`. UI consumers fall through
-  to `.systemNote` rendering until a distinct UI affordance ships in a later phase.
+  to `.systemNote` rendering until a distinct UI affordance ships in a later task.
 - `SkillFrontmatter` gains `critic: CriticMode?`. Absent value preserves heuristic behaviour;
   no skill needs updating to keep working.
 - `AppSettings.ragChunkLimit` semantics shift from "the number to retrieve" to "the maximum
@@ -4603,9 +4603,9 @@ No user data migration required.
 
 ### Implementation order
 
-Eight task pairs plus a release phase, in dependency order:
+Eight task pairs plus a release task, in dependency order:
 
-| Phases | Concern |
+| Tasks | Concern |
 |---|---|
 | 232a / 232b | Budget telemetry (observability only) |
 | 233a / 233b | `ProviderBudget` + `TokenEstimator` + pre-flight gate + lowered thresholds |
@@ -4629,7 +4629,7 @@ Dependency graph:
                              └──► 240 (release)
 ```
 
-Phases 235 and 238 are leaves and can defer if needed. Phases 232, 233, 234, 236, 237, 239
+Tasks 235 and 238 are leaves and can defer if needed. Tasks 232, 233, 234, 236, 237, 239
 are the critical path to budget-aware execution. 240 is the milestone release.
 
 ### Honest trade-offs
@@ -4664,7 +4664,7 @@ mode in agents: *"Discipline that depends on remembering doesn't survive contact
 Friday afternoon."*
 
 V2.2 builds the discipline directly into Merlin. Skills handle *creation* (init a project,
-build a phase, propose a release). Hooks and a new `DisciplineEngine` handle *enforcement*
+build a task, propose a release). Hooks and a new `DisciplineEngine` handle *enforcement*
 (scan for drift, block bad commits, surface pending attention at session start). The user
 invokes the creation skills when they choose to; the enforcement layer runs whether the user
 remembers it or not.
@@ -4819,7 +4819,7 @@ patterns = [
     { regex = "\\.expect\\(", reason = "panic point needs justification" },
     { regex = "transmute\\(", reason = "always needs justification" },
     { regex = "#\\[allow\\(", reason = "lint suppression needs rationale" },
-    { regex = "todo!\\(\\)", reason = "must reference issue/phase" },
+    { regex = "todo!\\(\\)", reason = "must reference issue/task" },
     { regex = "Duration::from_millis\\(", reason = "duration is judgment" },
 ]
 ```
@@ -4868,7 +4868,7 @@ than the installed adapter; the user runs `/project:revise --update-adapter` to 
       command.md.template
       slash-command.md.template
       major-feature.md.template
-    phase/
+    task/
       NNa-skeleton.md.template
       NNb-skeleton.md.template
     vale/
@@ -4898,7 +4898,7 @@ enum DriftSeverity: Sendable {
     case green       // surface present, shape unchanged
     case yellow      // surface present, signature changed (likely refactor)
     case red         // surface absent from code (deletion without addendum)
-    case orange      // code surface not declared in any phase (undocumented)
+    case orange      // code surface not declared in any task (undocumented)
 }
 
 struct DriftFinding: Sendable, Identifiable {
@@ -4915,20 +4915,20 @@ actor TaskScanner {
 }
 ```
 
-The scanner parses each NNb's "New surface introduced in phase NNb:" block (the convention
+The scanner parses each NNb's "New surface introduced in task NNb:" block (the convention
 already used throughout `tasks/`). It greps for each named symbol against the current source
-tree. Yellow/red findings produce a proposed patch (either updating the phase to match current
+tree. Yellow/red findings produce a proposed patch (either updating the task to match current
 code, or creating a `task-NNc-supersedes-NNb.md` addendum per the existing constitution.md
 convention).
 
-The scanner is the load-bearing component of v2.2 — it validates that the phase methodology
+The scanner is the load-bearing component of v2.2 — it validates that the task methodology
 remains rebuildable from its active task files, which constitution.md already declares as the
 source of truth. A project can set `task_scan_min_number` in `.merlin/project.toml` when
-adopting discipline after a long historical phase archive; phase documents before that
+adopting discipline after a long historical task archive; task documents before that
 number are treated as immutable archive, not current drift obligations. A project can also
 set `task_scan_public_undeclared = false` to disable retroactive orange findings for old
 public symbols that predate the discipline baseline. Merlin itself uses those settings to
-scan the active phase baseline forward while preserving the older phase corpus as reference
+scan the active task baseline forward while preserving the older task corpus as reference
 material.
 
 ### ManualCoverageScanner
@@ -4995,7 +4995,7 @@ The marker:
 The user manual is a hard constraint — not just synced, **comprehensive**. Four layers
 together make a release with uncovered surfaces structurally impossible.
 
-1. **Phase template extension.** Every NNb that adds user-facing surface includes a
+1. **Task template extension.** Every NNb that adds user-facing surface includes a
    `## Manual updates` section listing the manual sections to add or modify. Worker writes
    both code and manual section in the same commit.
 2. **Critic Stage 2 check.** After NNb implementation, the critic prompt extension asks:
@@ -5175,18 +5175,18 @@ Produces:
 - `.vale.ini` + Merlin style folder copy
 - Initial git commit
 
-#### project:phase
+#### project:task
 
 Build an NNa/NNb task pair. Asks structuring questions rather than auto-decomposing:
 
-- What is the one abstraction this phase introduces?
-- What prior phase state does it depend on?
+- What is the one abstraction this task introduces?
+- What prior task state does it depend on?
 - What surfaces does NNb introduce?
 - What deletions does NNb perform? (regression-guard tests added automatically if any)
-- Is this version-bump-eligible? (no for substantive phases; yes only for release milestones)
+- Is this version-bump-eligible? (no for substantive  tasks; yes only for release milestones)
 
 Calls `PlannerEngine.refineStep` internally to validate the decomposition (depends on v2.1).
-Critic Stage 2 verifies the resulting phase shape (single concern, tests precede impl,
+Critic Stage 2 verifies the resulting task shape (single concern, tests precede impl,
 deletions guarded, manual sections planned for any user-facing surface).
 
 Writes both task files plus a `PASTE-LIST.md` update plus an orchestrator-prompt snippet.
@@ -5209,7 +5209,7 @@ addressed finding.
 The consolidated release gate. Runs:
 
 ```
-□ All phase 232a–239b tests pass (or equivalent for the current milestone)
+□ All task 232a–239b tests pass (or equivalent for the current milestone)
 □ api.md regenerated and committed (autogen from doc comments)
 □ developer-guide.md mechanical sections regenerated
 □ user-manual.md: zero new uncovered surfaces; baseline reduced by ≥ N
@@ -5283,7 +5283,7 @@ struct Finding: Sendable, Identifiable, Codable {
 }
 
 enum FindingCategory: String, Codable, Sendable {
-    case phaseDrift
+    case taskDrift
     case manualCoverageGap
     case docStaleReference
     case whyCommentMissing
@@ -5389,14 +5389,14 @@ equivalent of `DisciplineEngine` into any project. Same methodology, lighter del
 
 ### Implementation order (v2.2.0)
 
-Approximately 24 task pairs plus a release phase. Numbers are placeholders pending v2.1.0
-completion (phases 241+).
+Approximately 24 task pairs plus a release task. Numbers are placeholders pending v2.1.0
+completion ( tasks 241+).
 
-| Phases | Concern |
+| Tasks | Concern |
 |---|---|
 | 241a/b | `AdapterRegistry` + adapter format + Swift+Rust seed adapters |
 | 242a/b | `.merlin/project.toml` schema + per-project config loader |
-| 243a/b | `TaskScanner` + drift report (validate against Merlin's existing 230+ phases) |
+| 243a/b | `TaskScanner` + drift report (validate against Merlin's existing 230+  tasks) |
 | 244a/b | `PendingAttention` queue persistence + dedupe |
 | 245a/b | `DisciplineEngine` actor + hook engine integration |
 | 246a/b | `SessionStart` hook event + system-reminder injection |
@@ -5413,7 +5413,7 @@ completion (phases 241+).
 | 257a/b | Vale pre-commit gate + critic Stage 2 prose check |
 | 258a/b | Override audit log + weekly review event |
 | 259a/b | `project:init` skill |
-| 260a/b | `project:phase` skill |
+| 260a/b | `project:task` skill |
 | 261a/b | `project:revise` skill |
 | 262a/b | `project:release` consolidated gate skill |
 | 263a/b | `project:adopt` skill — first target is Merlin itself |
@@ -5432,7 +5432,7 @@ Dependency graph:
 245 ──► 256 ──► 257
 245 ──► 258
 246+247+248+249+250+251+252+253 ──► 259 (init)
-259+243 ──► 260 (phase)
+259+243 ──► 260 (task)
 259+243+249+251+254+256+258 ──► 261 (revise)
 260+250+252+253+255+257 ──► 262 (release)
 259+all-scanners ──► 263 (adopt)
@@ -5440,10 +5440,10 @@ Dependency graph:
 all ──► 265 (release)
 ```
 
-Phases 241–248 are the engine + storage foundation. 249–258 are the individual scanners and
+Tasks 241–248 are the engine + storage foundation. 249–258 are the individual scanners and
 checkers. 259–263 are the user-facing skills. 264 is UI. 265 is the milestone release.
 
-Phases that can defer if scope pressure builds: 248 (git-hook installer can use a pre-existing
+Tasks that can defer if scope pressure builds: 248 (git-hook installer can use a pre-existing
 hook framework), 264 (UI chip; system-reminder injection from 246 is enough for v1), 263 (adopt
 can be a follow-up since init covers greenfield).
 
@@ -5478,7 +5478,7 @@ V2.2 makes seven kinds of construction discipline mechanical:
 
 | Discipline | Trigger | Required action | Hard gate |
 |---|---|---|---|
-| Task files stay in sync with code | Source changed | Phase updated or addendum written | Pre-commit on red drift |
+| Task files stay in sync with code | Source changed | Task updated or addendum written | Pre-commit on red drift |
 | Tests precede implementation | NNb commit | NNa exists, was committed first | Pre-commit on missing NNa |
 | Public API has doc comments | Public symbol added | Doc comment present | Lint at pre-commit |
 | Public API is documented | Public symbol added | api.md regenerated | Release gate |
@@ -5517,7 +5517,7 @@ decrease between releases.
 | Change type | `MARKETING_VERSION` | `CURRENT_PROJECT_VERSION` |
 |---|---|---|
 | Patch — bug fix, test fix, doc fix, no new user-visible surface | `1.0.x → 1.0.x+1` | +1 |
-| Minor — new feature, new phase milestone, behaviour change | `1.x.0 → 1.(x+1).0` | +1 |
+| Minor — new feature, new task milestone, behaviour change | `1.x.0 → 1.(x+1).0` | +1 |
 | Major — breaking API change, architectural overhaul | `x.0.0 → (x+1).0.0` | +1 |
 | Internal build — no user-visible change, not tagged | no change | +1 |
 

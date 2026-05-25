@@ -1,12 +1,12 @@
-# Phase 101a — ModelPerformanceTracker Tests (failing)
+# Task 101a — ModelPerformanceTracker Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 100b complete: AgenticEngine role slot routing in place.
+Task 100b complete: AgenticEngine role slot routing in place.
 
-New surface introduced in phase 101b:
+New surface introduced in task 101b:
   - `OutcomeSignals` struct — auto-collected session outcome data
   - `OutcomeRecord` struct — persisted single outcome (Codable)
   - `ModelPerformanceProfile` struct — rolling per-model × task-type profile
@@ -154,5 +154,5 @@ Expected: BUILD FAILED — `OutcomeSignals`, `OutcomeRecord`, `ModelPerformanceP
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ModelPerformanceTrackerTests.swift
-git commit -m "Phase 101a — ModelPerformanceTrackerTests (failing)"
+git commit -m "Task 101a — ModelPerformanceTrackerTests (failing)"
 ```

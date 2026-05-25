@@ -1,17 +1,17 @@
-# Phase 133 — V8 Documentation & Code Comment Update
+# Task 133 — V8 Documentation & Code Comment Update
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 132 complete: v7 docs and comments updated. All tests pass.
+Task 132 complete: v7 docs and comments updated. All tests pass.
 
-This is a documentation-only phase — no new symbols, no test changes.
-Update every file introduced in phases 129–131 so that:
+This is a documentation-only task — no new symbols, no test changes.
+Update every file introduced in  tasks 129–131 so that:
   1. All `///` doc-comments and `//` inline comments are complete and accurate.
   2. `spec.md` cross-references, flow diagrams, and file-layout tables are accurate.
   3. `FEATURES.md` has a complete `/calibrate` entry.
-  4. No stale references to "TODO", "Phase NNb", or placeholder text remain.
+  4. No stale references to "TODO", "Task NNb", or placeholder text remain.
 
 ---
 
@@ -110,7 +110,7 @@ Update every file introduced in phases 129–131 so that:
 - `CalibrationCategory.displayName` extension: note why this is a private extension rather than
   in the model layer (display strings belong in the view layer).
 
-### Merlin/App/AppState.swift (additions from Phase 131b)
+### Merlin/App/AppState.swift (additions from Task 131b)
 - `calibrationCoordinator`: `///` — lazy so CalibrationCoordinator can reference self via weak.
 - `provider(for:)`: one-line doc.
 - `configuredProviders`: one-line doc.
@@ -121,7 +121,7 @@ Update every file introduced in phases 129–131 so that:
 
 ## spec.md updates
 
-Verify the **Cross-Provider Calibration [v8]** section added in Phase 133 against the implementation:
+Verify the **Cross-Provider Calibration [v8]** section added in Task 133 against the implementation:
 
 1. **Flow diagram** — check all type names, method signatures, and threshold values match the code.
 2. **Prompt battery table** — confirm 18 prompts, correct category counts (5/5/4/4).
@@ -183,5 +183,5 @@ git add Merlin/Views/Calibration/CalibrationReportView.swift
 git add Merlin/App/AppState.swift
 git add spec.md
 git add FEATURES.md
-git commit -m "Phase 133 — V8 docs + code comments: CalibrationSuite, CalibrationRunner, CalibrationAdvisor, CalibrationCoordinator, report views"
+git commit -m "Task 133 — V8 docs + code comments: CalibrationSuite, CalibrationRunner, CalibrationAdvisor, CalibrationCoordinator, report views"
 ```

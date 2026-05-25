@@ -1,22 +1,22 @@
-# Phase 310a — DocReferenceGraph Fenced-Block Tests (failing)
+# Task 310a — DocReferenceGraph Fenced-Block Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 309b complete: `ReachabilityScanner` wired into `DisciplineEngine`.
+Task 309b complete: `ReachabilityScanner` wired into `DisciplineEngine`.
 
 Liveness Discipline batch, unit 4 of 6. `FindingCategory.docStaleReference` already
 exists — `DocReferenceGraph.danglingReferences` flags backticked doc identifiers absent
 from source. It misses **enum-case names inside fenced code blocks**: that is exactly
-how `versionBumpCandidate` lingered in `DeveloperManual.md` after phase 301 deleted the
+how `versionBumpCandidate` lingered in `DeveloperManual.md` after task 301 deleted the
 enum case — the case name was inside a ```` ```swift ```` block, not backticked.
 
-Phase 310b strengthens `danglingReferences` to also verify `case <name>` declarations
+Task 310b strengthens `danglingReferences` to also verify `case <name>` declarations
 inside fenced code blocks, and raises the `docStaleReference` finding severity from
 `.silent` to `.nudge` so stale docs surface on the discipline chip.
 
-**This is a runtime-failure phase.** The test compiles fine against the existing
+**This is a runtime-failure task.** The test compiles fine against the existing
 `DocReferenceGraph.danglingReferences` API and FAILS at runtime because today's
 implementation does not inspect fenced blocks. It MUST be verified with `test` (so the
 test actually runs), not `build-for-testing`.
@@ -32,7 +32,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 310a — failing test: a stale enum case inside a fenced doc code block must be
+/// Task 310a — failing test: a stale enum case inside a fenced doc code block must be
 /// reported as a dangling reference.
 final class DocReferenceGraphFencedBlockTests: XCTestCase {
 
@@ -97,5 +97,5 @@ the current `danglingReferences` does not inspect fenced code blocks. Verified w
 ## Commit
 ```
 git add MerlinTests/Unit/DocReferenceGraphFencedBlockTests.swift tasks/task-310a-doc-reference-fenced-block-tests.md
-git commit -m "Phase 310a — DocReferenceGraph fenced-block tests (failing)"
+git commit -m "Task 310a — DocReferenceGraph fenced-block tests (failing)"
 ```

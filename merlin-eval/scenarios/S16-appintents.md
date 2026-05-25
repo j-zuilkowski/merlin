@@ -37,7 +37,7 @@ Also:
 **Score:** checks passed / 6.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built and installed.
+1. Tasks B–D, 301–306 merged; Merlin built and installed.
 2. Open the macOS Shortcuts app; confirm Merlin's two actions appear.
 3. Build a Shortcut for each intent; run them (also try `shortcuts run` from a terminal).
 4. Try a Siri invocation of one intent (manual, M5).

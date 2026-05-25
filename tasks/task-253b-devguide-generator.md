@@ -1,10 +1,10 @@
-# Phase 253b — DevGuideGenerator
+# Task 253b — DevGuideGenerator
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 253a complete: failing tests for DevGuideGenerator.
+Task 253a complete: failing tests for DevGuideGenerator.
 
 ---
 
@@ -122,12 +122,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 253a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 253a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-253b-devguide-generator.md \
     Merlin/Discipline/DevGuideGenerator.swift
-git commit -m "Phase 253b — DevGuideGenerator mechanical-section generator"
+git commit -m "Task 253b — DevGuideGenerator mechanical-section generator"
 ```

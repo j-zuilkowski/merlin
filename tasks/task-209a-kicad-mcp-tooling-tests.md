@@ -1,12 +1,12 @@
-# Phase 209a — KiCad MCP Tooling Boundary Tests
+# Task 209a — KiCad MCP Tooling Boundary Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 208b complete: KiCad v2.0 core contracts and tool schemas exist.
+Task 208b complete: KiCad v2.0 core contracts and tool schemas exist.
 
-New surface introduced in phase 209b:
+New surface introduced in task 209b:
   - `KiCadMCPServerConfig` — server path, KiCad CLI path, FreeRouting path, required tool names
   - `KiCadMCPToolingStatus` — local tooling availability/capability report
   - `KiCadToolExecutor` protocol — typed async execution boundary for `kicad_*` tools
@@ -43,11 +43,11 @@ xcodebuild -scheme MerlinTests build-for-testing \
     | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD FAILED** with missing symbols for the phase 209b surface.
+Expected: **BUILD FAILED** with missing symbols for the task 209b surface.
 
 ## Commit
 
 ```bash
 git add MerlinTests/Unit/KiCadMCPToolingTests.swift
-git commit -m "Phase 209a — KiCadMCPToolingTests (failing)"
+git commit -m "Task 209a — KiCadMCPToolingTests (failing)"
 ```

@@ -1,11 +1,11 @@
-# Phase 13a — AuthGate Tests
+# Task 13a — AuthGate Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 12b complete: AuthMemory and PatternMatcher exist.
+Task 12b complete: AuthMemory and PatternMatcher exist.
 
 Note: `NullAuthPresenter` and `CapturingAuthPresenter` are defined in TestHelpers/NullAuthPresenter.swift
 and are available to all three test targets. Do NOT redefine them in this file.
@@ -88,5 +88,5 @@ Expected: `BUILD FAILED` with errors referencing `AuthGate` and `AuthDecision`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AuthGateTests.swift
-git commit -m "Phase 13a — AuthGateTests (failing)"
+git commit -m "Task 13a — AuthGateTests (failing)"
 ```

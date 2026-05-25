@@ -1,19 +1,19 @@
-# Phase 219a - BUG-006 Body-Size Recovery Tests
+# Task 219a - BUG-006 Body-Size Recovery Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 218b complete: Merlin v2.0 version release exists.
+Task 218b complete: Merlin v2.0 version release exists.
 
 Deep BUG-006 examination:
-  - Original BUG-006 root cause, "no mid-run compaction", is already addressed by phases 205b and 206b.
+  - Original BUG-006 root cause, "no mid-run compaction", is already addressed by  tasks 205b and 206b.
   - `AgenticEngine.runLoop` compacts after each regular tool batch via `compactWithSummaryIfNeeded(provider:)`.
   - `ProviderError.isContextLengthExceeded` catches context-window phrases but does not catch generic HTTP body-size phrases such as "request body too large" or "payload too large".
   - Remaining active slice: provider HTTP 400 body-size failures can still surface as fatal instead of compacting and restarting the turn.
   - Required behavior: context/body overruns are self-correcting like Codex/Claude-style long-run recovery: compact, inject explicit restart/resume directions, retry from the same user turn, and stop after a bounded counter.
 
-New surface introduced in phase 219b:
+New surface introduced in task 219b:
   - `ProviderError.isContextLengthExceeded` recognizes provider request/body-size overflow phrases.
   - `AgenticEngine` uses a bounded context-overrun recovery counter.
   - `AgenticEngine` injects restart/resume directions after compaction so the model continues the interrupted work instead of treating the retry as a fresh vague turn.
@@ -61,5 +61,5 @@ Expected: **BUILD FAILED** because body-size phrases are not yet classified by `
 
 ```bash
 git add MerlinTests/Unit/ContextLengthRecoveryTests.swift
-git commit -m "Phase 219a - BUG-006 body-size recovery tests (failing)"
+git commit -m "Task 219a - BUG-006 body-size recovery tests (failing)"
 ```

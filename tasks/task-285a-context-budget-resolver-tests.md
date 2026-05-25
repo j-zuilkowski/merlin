@@ -1,10 +1,10 @@
-# Phase 285a — Context Budget Resolver Tests (failing)
+# Task 285a — Context Budget Resolver Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 284 complete: tool output is capped.
+Task 284 complete: tool output is capped.
 
 **The problem.** The budget a request is sized against comes from `ProviderConfig.budget`
 — a value hardcoded per provider (`deepseek` 65 536, `.conservative` 32 000). That is a
@@ -26,7 +26,7 @@ persisted value is written to `ProviderConfig.budget` in `providers.json` — th
 field and file a manually-entered budget uses — so a learned limit is indistinguishable
 from a typed one and survives app restarts with no separate machine-only store.
 
-New surface introduced in phase 285b:
+New surface introduced in task 285b:
   - `ContextBudgetStore` protocol — reads/writes the durable per-provider context
     window. Injectable so tests are deterministic; the production implementation is
     backed by `ProviderConfig.budget` in `providers.json`.
@@ -58,7 +58,7 @@ New surface introduced in phase 285b:
 
         /// Records a context window learned from a provider 400. Persists it via the
         /// store (→ providers.json) so the same 400 is never paid twice, and refreshes
-        /// the in-memory cache. Called by `PreflightGuard` (phase 286b) when
+        /// the in-memory cache. Called by `PreflightGuard` (task 286b) when
         /// `ProviderError.isContextLengthExceeded` fires.
         func recordObservedLimit(contextTokens: Int, for provider: any LLMProvider) async
     }
@@ -232,7 +232,7 @@ Expected: **BUILD FAILED** — errors naming the missing `ContextBudgetResolver`
 git add tasks/task-285a-context-budget-resolver-tests.md \
     MerlinTests/Unit/ContextBudgetResolverTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 285a — ContextBudgetResolverTests (failing)"
+git commit -m "Task 285a — ContextBudgetResolverTests (failing)"
 ```
 
 (Run `xcodegen generate` so the new test file registers.)

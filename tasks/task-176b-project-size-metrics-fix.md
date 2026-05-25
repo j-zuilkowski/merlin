@@ -1,10 +1,10 @@
-# Phase 176b — Fix: ProjectSizeMetrics formula — base=10, ×4, cap=80, min=10
+# Task 176b — Fix: ProjectSizeMetrics formula — base=10, ×4, cap=80, min=10
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 176a complete: ProjectSizeMetrics formula failures documented.
+Task 176a complete: ProjectSizeMetrics formula failures documented.
 
 ## Fix
 
@@ -72,5 +72,5 @@ Expected: BUILD SUCCEEDED; all ProjectSizeMetricsTests and ProjectSizeObserverTe
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/ProjectSizeObserver.swift \
         tasks/task-176b-project-size-metrics-fix.md
-git commit -m "Phase 176b — Fix: ProjectSizeMetrics formula base=10 ×4 cap=80 min=10"
+git commit -m "Task 176b — Fix: ProjectSizeMetrics formula base=10 ×4 cap=80 min=10"
 ```

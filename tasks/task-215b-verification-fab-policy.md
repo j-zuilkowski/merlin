@@ -1,10 +1,10 @@
-# Phase 215b — Verification and Fabrication Policy
+# Task 215b — Verification and Fabrication Policy
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 215a complete: failing verification/fab policy tests exist.
+Task 215a complete: failing verification/fab policy tests exist.
 
 ---
 
@@ -43,5 +43,5 @@ Expected: **BUILD SUCCEEDED**. `VerificationFabPolicyTests` pass.
 
 ```bash
 git add Merlin/Electronics/VerificationFabPolicy.swift
-git commit -m "Phase 215b — verification gates fabrication and visual QA policy"
+git commit -m "Task 215b — verification gates fabrication and visual QA policy"
 ```

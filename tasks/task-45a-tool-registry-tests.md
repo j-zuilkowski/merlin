@@ -1,12 +1,12 @@
-# Phase 45a — ToolRegistry Tests
+# Task 45a — ToolRegistry Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 44b complete: TOMLDecoder in place.
+Task 44b complete: TOMLDecoder in place.
 
-New surface introduced in phase 45b:
+New surface introduced in task 45b:
   - `ToolRegistry` — actor; replaces static `ToolDefinitions.all`
   - `ToolRegistry.shared` — singleton
   - `register(_ tool: ToolDefinition)` — add a tool; no-op if already present
@@ -182,5 +182,5 @@ Expected: BUILD FAILED — `ToolRegistry` actor and `ToolDefinition.stub` not ye
 ## Commit
 ```bash
 git add MerlinTests/Unit/ToolRegistryTests.swift
-git commit -m "Phase 45a — ToolRegistryTests (failing)"
+git commit -m "Task 45a — ToolRegistryTests (failing)"
 ```

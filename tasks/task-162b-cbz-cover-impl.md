@@ -1,9 +1,9 @@
-# Phase 162b — CBZ/CBR cover extraction implementation
+# Task 162b — CBZ/CBR cover extraction implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 162a complete: CBZ cover tests failing.
+Task 162a complete: CBZ cover tests failing.
 
 ## Create: processing/src/cover/cbz.rs
 
@@ -109,5 +109,5 @@ Expected: all 3 CBZ tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/cover/cbz.rs processing/src/cover/mod.rs processing/src/pipeline/cover.rs
-git commit -m "Phase 162b — CBZ cover extraction: first alphabetical image from ZIP"
+git commit -m "Task 162b — CBZ cover extraction: first alphabetical image from ZIP"
 ```

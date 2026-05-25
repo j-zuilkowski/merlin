@@ -1,10 +1,10 @@
-# Phase 173b — Fix: remove double-pass fenced code block bug in markdownToHTML
+# Task 173b — Fix: remove double-pass fenced code block bug in markdownToHTML
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 173a complete: ConversationHTMLRenderer fenced code failures documented.
+Task 173a complete: ConversationHTMLRenderer fenced code failures documented.
 
 ## Root Cause
 
@@ -66,5 +66,5 @@ Expected: BUILD SUCCEEDED; all ConversationHTMLRendererTests pass.
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/Chat/ConversationHTMLRenderer.swift \
         tasks/task-173b-html-fenced-code-fix.md
-git commit -m "Phase 173b — Fix: remove double-pass fenced code block bug in markdownToHTML"
+git commit -m "Task 173b — Fix: remove double-pass fenced code block bug in markdownToHTML"
 ```

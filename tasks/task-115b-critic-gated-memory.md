@@ -1,10 +1,10 @@
-# Phase 115b — Critic-Gated Memory Write
+# Task 115b — Critic-Gated Memory Write
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 115a complete: CriticGatedMemoryTests (failing) in place.
+Task 115a complete: CriticGatedMemoryTests (failing) in place.
 
 ---
 
@@ -133,5 +133,5 @@ Expected: BUILD SUCCEEDED; CriticGatedMemoryTests → 7 pass; all prior tests pa
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 115b — critic-gated memory write (suppress xcalibre write on critic .fail)"
+git commit -m "Task 115b — critic-gated memory write (suppress xcalibre write on critic .fail)"
 ```

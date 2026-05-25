@@ -1,10 +1,10 @@
-# Phase 218b — Merlin v2.0 Version Release
+# Task 218b — Merlin v2.0 Version Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 218a complete: failing Merlin v2.0 version tests exist.
+Task 218a complete: failing Merlin v2.0 version tests exist.
 
 ---
 
@@ -61,7 +61,7 @@ Expected: **BUILD SUCCEEDED**. `MerlinV2VersionTests` pass.
 
 ```bash
 git add project.yml Merlin.xcodeproj RELEASE-v2.0.0.md MerlinTests/Unit/MerlinV2VersionTests.swift
-git commit -m "Phase 218b — Merlin v2.0 version release"
+git commit -m "Task 218b — Merlin v2.0 version release"
 ```
 
 ## Tag

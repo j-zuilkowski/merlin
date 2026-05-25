@@ -29,10 +29,10 @@ Merlin repo (`~/Documents/localProject/merlin/spec.md`).
 
 ## Non-Negotiable Rules (apply to every session)
 
-- **TDD always.** Tests are written first (phase `NNa`), confirmed failing, then
-  implementation follows (phase `NNb`). Never skip the failing-tests commit.
-- **Git commit after every phase.** Each phase ends with an explicit `git add` +
-  `git commit`. No exceptions — do not skip or batch commits across phases.
+- **TDD always.** Tests are written first (task `NNa`), confirmed failing, then
+  implementation follows (task `NNb`). Never skip the failing-tests commit.
+- **Git commit after every task.** Each task ends with an explicit `git add` +
+  `git commit`. No exceptions — do not skip or batch commits across  tasks.
 - **Zero warnings, zero errors.** Every file must compile clean.
   `SWIFT_STRICT_CONCURRENCY=complete` is on (set in `Package.swift`).
 - **No third-party Swift packages.** MCP is JSON-RPC 2.0 over stdio — implement it with
@@ -40,7 +40,7 @@ Merlin repo (`~/Documents/localProject/merlin/spec.md`).
   No SwiftPM dependencies in `Package.swift`.
 - **Task files must stay in sync with the code.** Any code change — bug fix, refactor,
   new feature — must also update or create the relevant task file(s) before the commit.
-  A bug fix with no new surface adds a `## Fixes` section to the relevant `b` phase.
+  A bug fix with no new surface adds a `## Fixes` section to the relevant `b` task.
 
 ---
 
@@ -83,14 +83,14 @@ swift build 2>&1 | grep -E 'error:|warning:|Compiling|Build complete' | tail -20
 swift test 2>&1 | grep -E 'Test Case|passed|failed|error:' | tail -40
 ```
 
-A phase `a` (failing tests) is expected to fail to build or fail at runtime — that is
-the TDD signal. A phase `b` must build clean and pass all of its `a` phase's tests.
+A task `a` (failing tests) is expected to fail to build or fail at runtime — that is
+the TDD signal. A task `b` must build clean and pass all of its `a` task's tests.
 
 ---
 
-## Phase Sheet Format
+## Task Sheet Format
 
-Two-phase TDD pattern, identical to the Merlin project:
+Two-task TDD pattern, identical to the Merlin project:
 
 - `tasks/task-NNa-<name>-tests.md` — write the failing tests first.
 - `tasks/task-NNb-<name>.md` — implement until the `NNa` tests pass.
@@ -102,17 +102,17 @@ explicit `git add` + `git commit`. See `tasks/ROADMAP.md` for the full decomposi
 
 ## Git Commit Protocol
 
-Every phase ends with:
+Every task ends with:
 
 ```bash
 cd ~/Documents/localProject/merlin/plugins/merlin-kicad-mcp
 git add <specific files — never git add -A>
-git commit -m "kicad-mcp Phase NNx — <Description>"
+git commit -m "kicad-mcp Task NNx — <Description>"
 ```
 
 Commits land in the **Merlin repo** (this package is a subdirectory of it) — prefix
-every message with `kicad-mcp` so they read clearly alongside Merlin's own phases.
-Never skip the commit. Never amend a prior phase commit. Never `git push` without an
+every message with `kicad-mcp` so they read clearly alongside Merlin's own  tasks.
+Never skip the commit. Never amend a prior task commit. Never `git push` without an
 explicit instruction.
 
 ---

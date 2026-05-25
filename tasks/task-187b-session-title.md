@@ -1,10 +1,10 @@
-# Phase 187b — Session Title Auto-Labeling Implementation
+# Task 187b — Session Title Auto-Labeling Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 187a complete: SessionTitleTests committed (failing).
+Task 187a complete: SessionTitleTests committed (failing).
 
 Sessions start with title "New Session". After the first turn completes, the title is
 auto-generated from the first user message (first 50 chars), matching Claude app and
@@ -148,5 +148,5 @@ git add tasks/task-187b-session-title.md \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Sessions/LiveSession.swift \
         TestHelpers/EngineFactory.swift
-git commit -m "Phase 187b — Session title auto-labeling from first user message"
+git commit -m "Task 187b — Session title auto-labeling from first user message"
 ```

@@ -1,10 +1,10 @@
-# Phase 141b — Grounding Confidence Signal Implementation
+# Task 141b — Grounding Confidence Signal Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 141a complete: failing tests for grounding confidence signal in place.
+Task 141a complete: failing tests for grounding confidence signal in place.
 
 ---
 
@@ -157,7 +157,7 @@ if abs(ragMinGroundingScore - 0.30) > 0.001 {
 
 ### 3 — Update runLoop: emit GroundingReport after RAG search
 
-Locate the RAG enrichment block (the one updated in phase 137b). After the block that
+Locate the RAG enrichment block (the one updated in task 137b). After the block that
 populates `ragChunks` (both memory + xcalibre search), before returning to the main
 turn logic, add:
 
@@ -231,7 +231,7 @@ don't fail to compile:
 
 ```swift
 case .groundingReport:
-    break  // stored/displayed by the view layer in a future phase
+    break  // stored/displayed by the view layer in a future task
 ```
 
 ---
@@ -253,5 +253,5 @@ add `case .groundingReport: break` to each switch site.
 git add Merlin/Engine/GroundingReport.swift
 git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/Config/AppSettings.swift
-git commit -m "Phase 141b — GroundingReport: per-turn grounding confidence signal"
+git commit -m "Task 141b — GroundingReport: per-turn grounding confidence signal"
 ```

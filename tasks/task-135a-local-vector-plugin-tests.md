@@ -1,12 +1,12 @@
-# Phase 135a — LocalVectorPlugin Tests (failing)
+# Task 135a — LocalVectorPlugin Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 134b complete: MemoryBackendPlugin protocol, registry, NullMemoryPlugin in place.
+Task 134b complete: MemoryBackendPlugin protocol, registry, NullMemoryPlugin in place.
 
-New surface introduced in phase 135b:
+New surface introduced in task 135b:
   - `EmbeddingProviderProtocol` — Sendable protocol: `embed(_ text: String) async throws -> [Float]`,
     `var dimension: Int { get }`
   - `NLContextualEmbeddingProvider` — production implementation using NaturalLanguage.framework
@@ -164,5 +164,5 @@ Expected: BUILD FAILED — `EmbeddingProviderProtocol`, `LocalVectorPlugin` are 
 ```bash
 git add MerlinTests/Unit/LocalVectorPluginTests.swift
 git add TestHelpers/MockEmbeddingProvider.swift
-git commit -m "Phase 135a — LocalVectorPlugin tests (failing)"
+git commit -m "Task 135a — LocalVectorPlugin tests (failing)"
 ```

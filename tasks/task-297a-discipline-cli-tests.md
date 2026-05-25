@@ -1,8 +1,8 @@
-# Phase 297a — merlin-discipline CLI Tests (failing)
+# Task 297a — merlin-discipline CLI Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Unit C1 of the wiring plan. Phases 294–296 complete.
+Unit C1 of the wiring plan. Tasks 294–296 complete.
 
 `ProseGate`, `WHYCommentGate`, `ManualBaselineManager` are designed to run from git
 hooks but the `merlin-discipline` binary the hooks call was never built. C1 adds an
@@ -11,7 +11,7 @@ core. The command-dispatch logic lives in `DisciplineCLI` (in `Merlin/Discipline
 compiles into the app target and is testable here); the executable target adds only a
 thin entry point.
 
-New surface in phase 297b:
+New surface in task 297b:
   - `DisciplineCLI.run(arguments:) async -> Int32` — dispatches `post-commit` / `pre-push`
     subcommands, runs the gates, returns a shell exit code (0 = pass, non-zero = block).
   - A `merlin-discipline` executable target in `project.yml`.
@@ -26,7 +26,7 @@ TDD coverage:
 import XCTest
 @testable import Merlin
 
-/// Phase 297a — failing tests for the merlin-discipline CLI command dispatcher.
+/// Task 297a — failing tests for the merlin-discipline CLI command dispatcher.
 final class DisciplineCLITests: XCTestCase {
 
     private func makeTmpProject() -> URL {
@@ -66,5 +66,5 @@ Expected: BUILD FAILED — `DisciplineCLI` does not exist.
 ## Commit
 ```
 git add MerlinTests/Unit/DisciplineCLITests.swift tasks/task-297a-discipline-cli-tests.md
-git commit -m "Phase 297a — merlin-discipline CLI tests (failing)"
+git commit -m "Task 297a — merlin-discipline CLI tests (failing)"
 ```

@@ -13,7 +13,7 @@ built on.
 
 - All 13 built-in skills now ship inside the app bundle: the 8 core skills (`commit`,
   `debug`, `explain`, `plan`, `refactor`, `review`, `summarise`, `test`) and the 5
-  `project:*` discipline skills (`project:init`, `project:phase`, `project:revise`,
+  `project:*` discipline skills (`project:init`, `project:task`, `project:revise`,
   `project:release`, `project:adopt`).
 - `installBuiltinSkills()` copies any missing skill to `~/.merlin/skills/` at launch;
   skills already present — including ones you have customised — are left untouched.

@@ -1,10 +1,10 @@
-# Phase 214b — Board, Net-Class, Placement, and Routing Policy
+# Task 214b — Board, Net-Class, Placement, and Routing Policy
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 214a complete: failing board/routing policy tests exist.
+Task 214a complete: failing board/routing policy tests exist.
 
 ---
 
@@ -19,7 +19,7 @@ Implement:
 5. `RouteRecoveryPolicy`
 6. `RouteIterationPolicy`
 
-No real FreeRouting process execution in this phase. This phase defines deterministic policies and config objects only.
+No real FreeRouting process execution in this task. This task defines deterministic policies and config objects only.
 
 ---
 
@@ -38,5 +38,5 @@ Expected: **BUILD SUCCEEDED**. `BoardRoutingPolicyTests` pass.
 
 ```bash
 git add Merlin/Electronics/BoardRoutingPolicy.swift
-git commit -m "Phase 214b — board profiles net classes placement and routing policy"
+git commit -m "Task 214b — board profiles net classes placement and routing policy"
 ```

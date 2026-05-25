@@ -2,7 +2,7 @@
 
 ## Context
 
-Merlin is moving from the old Claude/architecture/phase vocabulary to its own SDD
+Merlin is moving from the prior assistant-specific and legacy task vocabulary to its own SDD
 artifact model. This task pins the red test contract for the hard cutover.
 
 Canonical artifacts after the migration:
@@ -21,7 +21,7 @@ WHEN the repository is checked after the migration THE system SHALL contain the 
 SDD root files and task directory.
 
 WHEN the repository is checked after the migration THE system SHALL NOT retain legacy
-canonical root files or the legacy phase directory.
+canonical root files or the legacy task directory.
 
 WHEN Merlin loads project instructions THE system SHALL use constitution vocabulary and
 symbols, not `Constitution` vocabulary.

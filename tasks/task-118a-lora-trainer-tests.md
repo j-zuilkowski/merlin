@@ -1,15 +1,15 @@
-# Phase 118a — LoRATrainer Tests (failing)
+# Task 118a — LoRATrainer Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 117b complete: OutcomeRecord prompt/response fields in place.
+Task 117b complete: OutcomeRecord prompt/response fields in place.
 
-Current state: No LoRA training infrastructure exists. Phase 118b introduces LoRATrainer,
+Current state: No LoRA training infrastructure exists. Task 118b introduces LoRATrainer,
 which exports training data as MLX-LM JSONL and shells out to `python -m mlx_lm.lora`.
 
-New surface introduced in phase 118b:
+New surface introduced in task 118b:
   - `LoRATrainer` — actor
   - `LoRATrainer.exportJSONL(_ records: [OutcomeRecord], to url: URL) throws`
       Writes one JSON object per line:
@@ -200,5 +200,5 @@ Expected: BUILD FAILED — `LoRATrainer`, `LoRATrainingResult`, `ShellRunnerProt
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRATrainerTests.swift
-git commit -m "Phase 118a — LoRATrainerTests (failing)"
+git commit -m "Task 118a — LoRATrainerTests (failing)"
 ```

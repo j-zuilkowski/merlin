@@ -1,4 +1,4 @@
-# Phase 283a — Local Model Picker Tests (failing)
+# Task 283a — Local Model Picker Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -25,7 +25,7 @@ Three gaps remain:
 3. `modelsByProviderID` is fetched only at app launch and via a manual "Refresh
    Models" button, so a runner started after Merlin shows no models until relaunch.
 
-New surface introduced in phase 283b:
+New surface introduced in task 283b:
   - `ProviderRegistry.allSlotPickerEntries` — changed contract: a **local** provider
     whose `modelsByProviderID[id]` is non-empty contributes **only** its per-model
     virtual entries (no plain base entry). Remote providers, and local providers with
@@ -92,7 +92,7 @@ final class LocalModelPickerEntriesTests: XCTestCase {
     }
 
     /// A remote provider always keeps its plain base entry — its base config carries a
-    /// real model name. (Behaviour unchanged by phase 283b.)
+    /// real model name. (Behaviour unchanged by task 283b.)
     func testRemoteProviderKeepsBaseEntry() {
         let registry = ProviderRegistry()
         registry.setEnabled(true, for: "deepseek")
@@ -140,5 +140,5 @@ sources are a directory glob and a new file must be registered in the project.
 git add tasks/task-283a-local-model-picker-tests.md \
     MerlinTests/Unit/LocalModelPickerEntriesTests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 283a — LocalModelPickerEntriesTests (failing)"
+git commit -m "Task 283a — LocalModelPickerEntriesTests (failing)"
 ```

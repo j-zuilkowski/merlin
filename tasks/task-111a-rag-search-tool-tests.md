@@ -1,12 +1,12 @@
-# Phase 111a — rag_search Tool Source/ProjectPath Tests (failing)
+# Task 111a — rag_search Tool Source/ProjectPath Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 110b complete: memory browser in place.
+Task 110b complete: memory browser in place.
 
-New surface introduced in phase 111b:
+New surface introduced in task 111b:
   - `RAGTools.search(args:client:projectPath:)` gains an optional `projectPath` parameter
     so the tool handler can scope searches to the active project
   - `RAGTools.Args` struct gains `source: String?` and `projectPath: String?` decoded from tool args
@@ -180,5 +180,5 @@ Expected: BUILD FAILED — `RAGTools.search(args:client:projectPath:)` signature
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/RAGSearchToolTests.swift
-git commit -m "Phase 111a — RAGSearchToolTests (failing)"
+git commit -m "Task 111a — RAGSearchToolTests (failing)"
 ```

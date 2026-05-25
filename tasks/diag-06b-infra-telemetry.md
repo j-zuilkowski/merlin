@@ -1,10 +1,10 @@
-# Phase diag-06b — Infrastructure Telemetry Implementation
+# Task diag-06b — Infrastructure Telemetry Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-06a complete: failing tests in place.
+Task diag-06a complete: failing tests in place.
 
 Instrument `SessionStore`, `HookEngine`, and add `TelemetryEmitter.emitProcessMemory()`.
 
@@ -228,5 +228,5 @@ git add Merlin/Telemetry/TelemetryEmitter.swift \
         Merlin/Sessions/SessionStore.swift \
         Merlin/Hooks/HookEngine.swift \
         Merlin/MCP/MCPBridge.swift
-git commit -m "Phase diag-06b — Infrastructure telemetry instrumentation"
+git commit -m "Task diag-06b — Infrastructure telemetry instrumentation"
 ```

@@ -1,15 +1,15 @@
-# Phase 192a — KAGEngine AgenticEngine Wiring Tests
+# Task 192a — KAGEngine AgenticEngine Wiring Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 
-Phase 191b complete: KAGEngine, XcalibreKAGPlugin, LocalKAGPlugin, AppSettings KAG fields,
+Task 191b complete: KAGEngine, XcalibreKAGPlugin, LocalKAGPlugin, AppSettings KAG fields,
 and RAGTools enrichment are all implemented. However, `KAGEngine.shared.scheduleExtraction`
 is never called from `AgenticEngine` — extraction is built but never triggered.
 
-New surface introduced in phase 192b:
+New surface introduced in task 192b:
   - `KAGEngine.pendingTask` — changed from `private` to `private(set)` to allow test
     observation via `@testable import Merlin`
   - `AgenticEngine.kagEngine: KAGEngine` — injectable property (defaults to
@@ -135,5 +135,5 @@ Expected: **BUILD FAILED** — `AgenticEngineKAGWiringTests` references
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/AgenticEngineKAGWiringTests.swift
-git commit -m "Phase 192a — AgenticEngineKAGWiringTests (failing)"
+git commit -m "Task 192a — AgenticEngineKAGWiringTests (failing)"
 ```

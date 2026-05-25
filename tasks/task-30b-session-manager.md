@@ -1,10 +1,10 @@
-# Phase 30b — SessionManager Implementation
+# Task 30b — SessionManager Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 30a complete: failing SessionManagerTests in place.
+Task 30a complete: failing SessionManagerTests in place.
 
 Implement `LiveSession`, `SessionManager`, `SessionSidebar`, and replace the placeholder
 `WorkspaceView` with the real layout (sidebar + chat pane). Settings are wired back in.
@@ -26,7 +26,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let id: UUID
     @Published var title: String
     let appState: AppState
-    var permissionMode: PermissionMode = .ask   // expanded in phase 31b
+    var permissionMode: PermissionMode = .ask   // expanded in task 31b
     let createdAt: Date
 
     init(projectRef: ProjectRef) {
@@ -256,7 +256,7 @@ private struct SessionRowView: View {
     }
 }
 
-// Placeholder badge — replaced with real implementation in phase 31b
+// Placeholder badge — replaced with real implementation in task 31b
 private struct PermissionModeBadge: View {
     let mode: PermissionMode
     var body: some View {
@@ -331,5 +331,5 @@ git add Merlin/Sessions/LiveSession.swift \
         Merlin/Views/SessionSidebar.swift \
         Merlin/App/MerlinApp.swift \
         project.yml
-git commit -m "Phase 30b — SessionManager + LiveSession + WorkspaceView + SessionSidebar"
+git commit -m "Task 30b — SessionManager + LiveSession + WorkspaceView + SessionSidebar"
 ```

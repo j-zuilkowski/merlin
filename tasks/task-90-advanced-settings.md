@@ -1,10 +1,10 @@
-# Phase 90 — Complete Advanced Settings Section
+# Task 90 — Complete Advanced Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 89 complete: General + Appearance sections completed.
+Task 89 complete: General + Appearance sections completed.
 
 Replace the `AdvancedSettingsView` stub in `SettingsWindowView.swift` with real content:
 - "Show config file in Finder" button
@@ -134,5 +134,5 @@ Expected: `BUILD SUCCEEDED`.
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift
-git commit -m "Phase 90 — AdvancedSettingsView: Show in Finder buttons, reset to defaults with confirmation"
+git commit -m "Task 90 — AdvancedSettingsView: Show in Finder buttons, reset to defaults with confirmation"
 ```

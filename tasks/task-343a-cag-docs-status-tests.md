@@ -1,20 +1,20 @@
-# Phase 343a — CAG Documentation And Status Tests
+# Task 343a — CAG Documentation And Status Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 342b complete: CAG foundation, Anthropic prompt-cache support, and cache
+Task 342b complete: CAG foundation, Anthropic prompt-cache support, and cache
 metrics are implemented.
 
 Recommended execution model: GPT-5.3-Codex.
 
-This phase closes documentation drift:
+This task closes documentation drift:
 
 - Architecture still contains stale `v2.3 planned` labels for llama.cpp and
   slot status even though they are built.
 - The CAG section currently says "not implemented" and "planned" even after
-  phases 341/342 land.
+   tasks 341/342 land.
 - User/developer docs need a concise CAG description and settings surface.
 
 TDD coverage:
@@ -40,7 +40,7 @@ Assertions:
 - It must contain `## llama.cpp First-Class Local Provider [v2.3]`.
 - It must contain `## CAG — Cache-Augmented Generation [v11]`.
 - The CAG section must not contain `not implemented`, `planned`, or
-  `phase work is deferred`.
+  `task work is deferred`.
 - The CAG section must mention:
   - `Merlin/CAG/CachePolicy.swift`
   - `Merlin/CAG/CacheMetrics.swift`
@@ -81,5 +81,5 @@ labels and missing CAG docs.
 git add MerlinTests/Unit/ArchitectureStatusLabelTests.swift \
         MerlinTests/Unit/DocumentationSweepTests.swift \
         tasks/task-343a-cag-docs-status-tests.md
-git commit -m "Phase 343a — CAG docs and status tests (failing)"
+git commit -m "Task 343a — CAG docs and status tests (failing)"
 ```

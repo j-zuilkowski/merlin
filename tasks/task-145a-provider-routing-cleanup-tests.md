@@ -1,12 +1,12 @@
-# Phase 145a — Provider Routing Cleanup Tests (failing)
+# Task 145a — Provider Routing Cleanup Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 144b complete: virtual provider IDs in place, LMStudioProvider deleted.
+Task 144b complete: virtual provider IDs in place, LMStudioProvider deleted.
 
-New surface introduced in phase 145b:
+New surface introduced in task 145b:
   - `AgenticEngine.proProvider`, `flashProvider`, `visionProvider` — deleted.
     All routing goes through `registry` + `slotAssignments` exclusively.
   - `AgenticEngine.provider(for:)` fallback — when no slot assignment, falls back to
@@ -213,5 +213,5 @@ Expected: BUILD FAILED — `proProvider`/`flashProvider`/`visionProvider` still 
 ## Commit
 ```bash
 git add MerlinTests/Unit/ProviderRoutingCleanupTests.swift
-git commit -m "Phase 145a — Provider routing cleanup tests (failing)"
+git commit -m "Task 145a — Provider routing cleanup tests (failing)"
 ```

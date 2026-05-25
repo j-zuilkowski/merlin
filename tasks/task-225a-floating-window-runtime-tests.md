@@ -1,4 +1,4 @@
-# Phase 225a - Floating Window Runtime Tests
+# Task 225a - Floating Window Runtime Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -6,7 +6,7 @@ SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
 `FloatingWindowManager` still contains a `FloatingWindowStubView` fallback with placeholder text in test/runtime-unavailable contexts.
 
-New surface introduced in phase 225b:
+New surface introduced in task 225b:
   - Floating windows always host a real chat-capable view model.
   - Testability is achieved by injecting a deterministic runtime environment instead of rendering a placeholder UI.
 
@@ -44,6 +44,6 @@ Expected: **BUILD FAILED** because the manager still uses a placeholder fallback
 
 ```bash
 git add MerlinTests/Unit/FloatingWindowRuntimeTests.swift
-git commit -m "Phase 225a - FloatingWindowRuntimeTests (failing)"
+git commit -m "Task 225a - FloatingWindowRuntimeTests (failing)"
 ```
 

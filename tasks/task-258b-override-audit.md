@@ -1,10 +1,10 @@
-# Phase 258b — Override Audit Log
+# Task 258b — Override Audit Log
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 258a complete: failing tests for OverrideAuditLog and OverrideEntry.
+Task 258a complete: failing tests for OverrideAuditLog and OverrideEntry.
 
 ---
 
@@ -126,12 +126,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 258a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 258a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-258b-override-audit.md \
     Merlin/Discipline/OverrideAuditLog.swift
-git commit -m "Phase 258b — OverrideAuditLog + OverrideEntry + weekly review event"
+git commit -m "Task 258b — OverrideAuditLog + OverrideEntry + weekly review event"
 ```

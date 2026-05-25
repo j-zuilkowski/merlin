@@ -1,10 +1,10 @@
-# Phase 123a — Sampling Parameters Tests
+# Task 123a — Sampling Parameters Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 122b complete: accepted memories indexed in xcalibre-server. 659 tests passing.
+Task 122b complete: accepted memories indexed in xcalibre-server. 659 tests passing.
 
 Current state of `CompletionRequest` (Merlin/Providers/LLMProvider.swift):
 ```swift
@@ -22,7 +22,7 @@ struct CompletionRequest: Sendable {
 Current state of `encodeRequest` Body (Merlin/Providers/SSEParser.swift):
   Only encodes: model, messages, tools, stream, thinking, max_tokens, temperature.
 
-New surface introduced in phase 123b:
+New surface introduced in task 123b:
   CompletionRequest fields:
   - `topP: Double?`          → "top_p"
   - `topK: Int?`             → "top_k"
@@ -85,7 +85,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
 
-    // MARK: - Field existence (compile-time failures without phase 123b)
+    // MARK: - Field existence (compile-time failures without task 123b)
 
     func testTopKFieldExists() {
         var req = makeRequest()
@@ -208,7 +208,7 @@ final class CompletionRequestSamplingParamsTests: XCTestCase {
     // MARK: - AppSettings inference defaults
 
     func testAppSettingsInferenceTopKExists() {
-        // Compile-time proof — fails to build without phase 123b.
+        // Compile-time proof — fails to build without task 123b.
         let _ = AppSettings.shared.inferenceTopK
     }
 
@@ -257,5 +257,5 @@ Expected: **BUILD FAILED** — `CompletionRequest` has no `topK`, `topP`, etc.; 
 ## Commit
 ```bash
 git add MerlinTests/Unit/CompletionRequestSamplingParamsTests.swift
-git commit -m "Phase 123a — CompletionRequestSamplingParamsTests (failing)"
+git commit -m "Task 123a — CompletionRequestSamplingParamsTests (failing)"
 ```

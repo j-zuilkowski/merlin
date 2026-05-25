@@ -1,10 +1,10 @@
-# Phase 82 — ContextUsageTracker: Wire Into ProviderHUD
+# Task 82 — ContextUsageTracker: Wire Into ProviderHUD
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 81 complete: Scheduler in Settings.
+Task 81 complete: Scheduler in Settings.
 
 `ContextUsageTracker` exists but is never shown. Wire it into `AppState` (instantiate with
 `engine.contextManager`'s window size) and display it as a thin progress bar + label inside
@@ -162,5 +162,5 @@ git add Merlin/App/AppState.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/Sessions/LiveSession.swift \
         Merlin/Views/ProviderHUD.swift
-git commit -m "Phase 82 — ContextUsageTracker wired into AppState + shown as progress bar in ProviderHUD"
+git commit -m "Task 82 — ContextUsageTracker wired into AppState + shown as progress bar in ProviderHUD"
 ```

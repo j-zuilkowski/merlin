@@ -1,9 +1,9 @@
-# Phase 161b — TXT pipeline implementation
+# Task 161b — TXT pipeline implementation
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 161a complete: TXT tests failing.
+Task 161a complete: TXT tests failing.
 
 ## Create: processing/src/text/txt.rs
 
@@ -47,5 +47,5 @@ Expected: all 3 TXT tests pass, no clippy errors.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/src/text/txt.rs processing/src/text/mod.rs processing/src/pipeline/text.rs
-git commit -m "Phase 161b — TXT pipeline: plain-text UTF-8 extraction"
+git commit -m "Task 161b — TXT pipeline: plain-text UTF-8 extraction"
 ```

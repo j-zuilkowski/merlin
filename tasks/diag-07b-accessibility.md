@@ -1,10 +1,10 @@
-# Phase diag-07b — Accessibility Identifiers Implementation
+# Task diag-07b — Accessibility Identifiers Implementation
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase diag-07a complete: failing tests in place.
+Task diag-07a complete: failing tests in place.
 
 Create the `AccessibilityID` constant catalog, add `.accessibilityIdentifier(_:)` to all primary
 interactive controls, and add `TelemetryEmitter.emitGUIAction(_:identifier:)`.
@@ -231,5 +231,5 @@ git add Merlin/Support/AccessibilityID.swift \
         Merlin/Views/SessionSidebar.swift \
         Merlin/Views/ProviderHUD.swift \
         Merlin/Views/ContentView.swift
-git commit -m "Phase diag-07b — Accessibility identifiers and GUI action telemetry"
+git commit -m "Task diag-07b — Accessibility identifiers and GUI action telemetry"
 ```

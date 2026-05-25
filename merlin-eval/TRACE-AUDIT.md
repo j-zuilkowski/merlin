@@ -1,8 +1,8 @@
 # W4 — Trace-the-Calls Audit
 
 Deep audit of the live Merlin codebase (258 Swift files under `Merlin/`).
-Date: 2026-05-16. Repo HEAD: `819f3a1` (Phase 319b). Scanner baseline: 220 findings
-(214 `phaseDrift`, 4 `docStaleReference`, 2 `stubbedImplementation`).
+Date: 2026-05-16. Repo HEAD: `819f3a1` (Task 319b). Scanner baseline: 220 findings
+(214 `taskDrift`, 4 `docStaleReference`, 2 `stubbedImplementation`).
 
 Method: followed call chains directly — did not trust green builds. Every `@EnvironmentObject`
 consumer traced to its injecting ancestor; the two suspect subsystems (KAG, Telemetry)
@@ -15,14 +15,14 @@ its registration site to runtime; the 220 scanner findings triaged group by grou
 
 | # | Finding | Class | Action |
 |---|---|---|---|
-| F1 | `WorkerDiffView` "Reject All" / "Accept & Merge" buttons have empty `{ }` actions | **DEAD control** | Phase 320a/320b |
+| F1 | `WorkerDiffView` "Reject All" / "Accept & Merge" buttons have empty `{ }` actions | **DEAD control** | Task 320a/320b |
 | F2 | `spec.md` — stale `FindingCategory.versionBumpCandidate` + nonexistent `KAGTripleSource.domain` | **STALE doc** | Fixed directly (this session) |
-| F3 | `DocReferenceGraph.extractEnumCaseNames` flags identifiers inside `//` comments | **Scanner false positive** | Phase 321a/321b |
-| F4 | `TaskScanner` reads only `task-NNb` docs — misses the `a`-tier "New surface" blocks (200 docs) + `diag-*` | **Scanner blind spot** | Phase 323a/323b |
-| F5 | `TelemetryEmitter.setSession/setTurn/setLoop` — no callers anywhere | **DEAD code** | Phase 322 |
+| F3 | `DocReferenceGraph.extractEnumCaseNames` flags identifiers inside `//` comments | **Scanner false positive** | Task 321a/321b |
+| F4 | `TaskScanner` reads only `task-NNb` docs — misses the `a`-tier "New surface" blocks (200 docs) + `diag-*` | **Scanner blind spot** | Task 323a/323b |
+| F5 | `TelemetryEmitter.setSession/setTurn/setLoop` — no callers anywhere | **DEAD code** | Task 322 |
 | F6 | `.environmentObject(sessionManager)` injected with no consumer (×2) | **Harmless over-injection** | No action |
-| F7 | Phase 319b left `DocReferenceDanglingTests` (2 of 3 tests) failing since it landed | **Test rot** | Folded into phase 321b — see §8 |
-| F8 | Phase 323 exposed `TaskScanner`'s symbol matching as too crude — qualified names, enum cases, non-symbol backtick content (211 → 981 nudges) | **Scanner accuracy** | Phase 324a/324b — see §9 |
+| F7 | Task 319b left `DocReferenceDanglingTests` (2 of 3 tests) failing since it landed | **Test rot** | Folded into task 321b — see §8 |
+| F8 | Task 323 exposed `TaskScanner`'s symbol matching as too crude — qualified names, enum cases, non-symbol backtick content (211 → 981 nudges) | **Scanner accuracy** | Task 324a/324b — see §9 |
 | — | `@EnvironmentObject` injection wiring (23 consumers) | **VERIFIED CLEAN** | None — see §1 |
 | — | `DisciplineEngine.scan()` at `AppState.swift:286` | **VERIFIED LIVE** | None — see §2 |
 | — | KAG subsystem (8 public types) | **VERIFIED LIVE** | None — see §4 |
@@ -97,7 +97,7 @@ and — guarded by `!projectPath.isEmpty` — calls `await disciplineEngine.scan
 nothing. The view already loads `entry.stagingBuffer` (an `actor StagingBuffer`) and
 displays its entries. `StagingBuffer` exposes `rejectAll()` (sync, isolated) and
 `acceptAll() async throws` — the working `DiffPane` view drives the identical
-accept-all/reject-all pattern. **Fix authored: phase 320a/320b.**
+accept-all/reject-all pattern. **Fix authored: task 320a/320b.**
 
 Other sweeps: `SettingsWindowView.swift:935` `Button("Cancel", role: .cancel) {}` — an
 empty `.cancel`-role button is idiomatic SwiftUI (the dialog self-dismisses); the scanner
@@ -128,13 +128,13 @@ MCP, RAG, views). `TelemetryValue` / `TelemetryEvent` are exercised by every `em
 - Test-only surface (not dead, but never hit in production): `TelemetrySpan`, `begin(_:)`,
   `finish(data:)`, `emitProcessMemory()`, `flushForTesting()`, `resetForTesting(…)`.
 
-**Resolution:** the 3 dead setters are deleted by **phase 322** (a repo-wide grep
+**Resolution:** the 3 dead setters are deleted by **task 322** (a repo-wide grep
 confirmed zero callers in any target). `diag-01b` — the rebuild source for
-`TelemetryEmitter` — is updated in the same phase.
+`TelemetryEmitter` — is updated in the same task.
 
 ---
 
-## §5 — `phaseDrift` triage (214 findings)
+## §5 — `taskDrift` triage (214 findings)
 
 Every flagged symbol was checked against the source tree and the `tasks/` directory.
 **None of the 214 indicates dead, broken, or mis-wired code.** Breakdown:
@@ -143,13 +143,13 @@ Every flagged symbol was checked against the source tree and the `tasks/` direct
 |---|---|---|---|
 | `AccessibilityID` enum + ~155 `let …Button`/`…Field` constants | ~157 | introduced in `diag-07b-accessibility.md` | Scanner blind spot |
 | Telemetry types/methods | ~22 | introduced in `diag-01b-telemetry-emitter.md` | Scanner blind spot |
-| KAG types/methods | ~30 | `task-19{0,1,2}b` carry no "New surface" block | Phase-doc format gap |
+| KAG types/methods | ~30 | `task-19{0,1,2}b` carry no "New surface" block | Task-doc format gap |
 | `let shared` ×3 | 3 | generic singleton accessor name | Normalization noise |
 | `(block) git add` | 1 | a back-ticked git command parsed as a "surface" | Parser false positive |
 
 **F4 — `TaskScanner` reads the wrong doc tier.** `TaskScanner.extractDeclaredSurfaces`
 (`TaskScanner.swift:91-97`) only reads files matching the regex `task-\d+b-`. But the
-`New surface introduced in phase` block — the only thing it harvests declared surfaces
+`New surface introduced in task` block — the only thing it harvests declared surfaces
 from — lives in the **`a` (tests) doc** per the `constitution.md` template. A grep of `tasks/`
 confirms it: **200 of 263 `task-*a-*.md` carry the block versus 8 of 266
 `task-*b-*.md`.** The `diag-*` series is excluded by the regex entirely. So the scanner
@@ -158,9 +158,9 @@ and every `public` symbol it cannot match is flagged `orange`. (It also explains
 `green`/`yellow` findings — there is almost nothing to match against.)
 
 All 214 are `nudge` severity (advisory, non-blocking) and none is a code defect — but a
-task-drift scanner that is structurally blind across ~200 phases leaves the
+task-drift scanner that is structurally blind across ~200  tasks leaves the
 "task files are the rebuild source of truth" invariant unverified, which is a real
-latent risk. **Phase 323 fixes it:** `TaskScanner` reads every task doc (`a`, `b`,
+latent risk. **Task 323 fixes it:** `TaskScanner` reads every task doc (`a`, `b`,
 `diag-*`); and `DisciplineEngine` surfaces `red`/`yellow`/`orange` drift all as `.nudge`.
 The severity change is load-bearing — once the scanner can see 200 historical task docs
 it will find genuine `red` drift (symbols declared long ago and since refactored away),
@@ -176,11 +176,11 @@ backlog — a triage task, surfaced rather than hidden.
 whose name (≥4 chars) matches no source symbol.
 
 - **`versionBumpCandidate`** — `spec.md:4933`, in the `enum FindingCategory`
-  code block. **GENUINE STALE:** phase 301 deleted `FindingCategory.versionBumpCandidate`;
+  code block. **GENUINE STALE:** task 301 deleted `FindingCategory.versionBumpCandidate`;
   the doc block was missed. The block is also *missing* the three cases that exist today
   (`ungatedTarget`, `stubbedImplementation`, `unwiredComponent`).
 - **`domain`** — `spec.md:622`, `case domain` in the `enum KAGTripleSource`
-  example. **GENUINE STALE:** the shipped enum (`KAGTriple.swift`, phase 190b) has only
+  example. **GENUINE STALE:** the shipped enum (`KAGTriple.swift`, task 190b) has only
   `session` and `book`; `domain` was a design-doc aspiration never implemented.
 - **`shape`** — `spec.md:4546`. **SCANNER FALSE POSITIVE:** the word `shape`
   appears inside the `//` comment on `case green // surface present, shape unchanged`.
@@ -193,7 +193,7 @@ whose name (≥4 chars) matches no source symbol.
 session: `versionBumpCandidate` removed and the three real cases added; `KAGTripleSource`
 example's `case domain` removed and its inline `// .session | .book | .domain` comment
 fixed. F3 (the two false positives) — `DocReferenceGraph.extractEnumCaseNames` must strip
-`//` comments before comma-splitting; **fix authored: phase 321a/321b.**
+`//` comments before comma-splitting; **fix authored: task 321a/321b.**
 
 ---
 
@@ -204,15 +204,15 @@ at `FloatingWindowManager.swift:149` and `SideChatPane.swift:31` onto `ChatView`
 view consumes it via `@EnvironmentObject`. Harmless (an unused environment object never
 crashes) — leave it, or drop the two lines as cosmetic cleanup. Not task-worthy.
 
-**`(block) git add` phaseDrift entry.** A back-ticked `git add …` command in some phase
+**`(block) git add` taskDrift entry.** A back-ticked `git add …` command in some task
 doc's bullet list is parsed by `TaskScanner` as a declared surface named `git`. Cosmetic
 parser false positive; subsumed by the F4 scanner work.
 
 ---
 
-## §8 — Test rot from phase 319b (surfaced while executing 321b)
+## §8 — Test rot from task 319b (surfaced while executing 321b)
 
-Phase 319b deleted `DocReferenceGraph.danglingReferences`' loose backticked-identifier
+Task 319b deleted `DocReferenceGraph.danglingReferences`' loose backticked-identifier
 check and — correctly — rewrote `DocReferenceGraphScopeTests` to suit. It **missed
 `DocReferenceDanglingTests`**: that file's `testDanglingReferenceDetected` and
 `testEngineEmitsOneFindingPerDanglingReference` fixture *prose* backtick mentions
@@ -220,12 +220,12 @@ check and — correctly — rewrote `DocReferenceGraphScopeTests` to suit. It **
 failed at runtime since 319b was committed (`819f3a1`).
 
 It went unnoticed because 319b's Verify used `-only-testing` on three hand-picked classes
-and never ran `DocReferenceDanglingTests` or the full suite. The W4 phase 321b execution
+and never ran `DocReferenceDanglingTests` or the full suite. The W4 task 321b execution
 caught it — 321b's Verify did list that class, and Codex correctly halted on the
 mismatch rather than committing red.
 
 **Resolution:** the `DocReferenceDanglingTests` rewrite (onto the surviving fenced-block
-enum-case check) is folded into **phase 321b §2** — the same in-phase repair pattern 319b
+enum-case check) is folded into **task 321b §2** — the same in-task repair pattern 319b
 used for `DocReferenceGraphScopeTests`. 321b's Verify now runs all seven `DocReference*`
 test classes, not a subset, so a future loose-check change cannot rot a sibling unseen.
 
@@ -233,7 +233,7 @@ test classes, not a subset, so a future loose-check change cannot rot a sibling 
 
 ## Task docs authored (this session)
 
-| Phase | Title | Kind | Verify with |
+| Task | Title | Kind | Verify with |
 |---|---|---|---|
 | 320a | `WorkerDiffView` reject/accept tests (failing) | compile-failure | `build-for-testing` |
 | 320b | Wire `WorkerDiffView` reject-all / accept-and-merge | implementation | `test` |
@@ -245,17 +245,17 @@ test classes, not a subset, so a future loose-check change cannot rot a sibling 
 | 324a | TaskScanner symbol-matching accuracy tests (F8) | runtime-failure | `test` |
 | 324b | TaskScanner symbol-matching accuracy (F8) | implementation | `test` |
 
-Next free phase number after this batch: **325**.
+Next free task number after this batch: **325**.
 
-## §9 — F8: TaskScanner symbol-matching accuracy (phases 323 → 324)
+## §9 — F8: TaskScanner symbol-matching accuracy ( tasks 323 → 324)
 
-Phase 323 turned the scanner on — it now reads all ~200 task docs. The scan jumped
+Task 323 turned the scanner on — it now reads all ~200 task docs. The scan jumped
 211 → 981, but ~900 of those were false positives from crude symbol matching, not real
 drift: qualified names (`Type.member` in docs vs bare `member` in source), enum cases
 (never enumerated from source at all), non-symbol backtick content (`/compact`, `2.1.0`,
 `Notes.md`), and a `yellow` "signature drift" tier comparing free-form doc signatures.
 
-Phase 324 fixes the matching. **Verified** (full `MerlinTests` suite green — 1780 tests,
+Task 324 fixes the matching. **Verified** (full `MerlinTests` suite green — 1780 tests,
 0 failures; scanner rebuilt; scan **981 → 252**):
 - `canonicalDeclaration` strips declaration-kind keywords and leading `.`/`Type.`
   qualifiers; `enumerateSourceDeclarations` records enum `case` declarations;
@@ -277,14 +277,14 @@ follow-up (harvest declared symbols from `## Write to:` fences, or narrow the ov
 
 ## Re-scan trajectory
 
-| Stage | `phaseDrift` | other | total |
+| Stage | `taskDrift` | other | total |
 |---|---|---|---|
 | W4 start | 214 | 6 (`docStaleReference` 4 + `stubbedImplementation` 2) | **220** |
 | after 320–322 | 211 | 0 | **211** |
 | after 323 (scanner reads all docs) | 981 | 0 | **981** |
 | after 324 (matching fixed) | 252 | 0 | **252** |
 
-Every W4 code/doc defect (F1, F2, F3, F7) is resolved and verified; F5 by phase 322;
-F4/F8 by phases 323–324. **All of phases 320–324 are committed** (`54f9dec`, `90560a2`,
+Every W4 code/doc defect (F1, F2, F3, F7) is resolved and verified; F5 by task 322;
+F4/F8 by  tasks 323–324. **All of  tasks 320–324 are committed** (`54f9dec`, `90560a2`,
 `a11e595`, `66ebbb8`, `43c21d3`, `067bcfd`, `85878d0`, `9ea2dd3`, `6f4e0cb`). The
 post-324 `252` (61 red + 191 orange, all nudge) is the real task-doc drift metric.

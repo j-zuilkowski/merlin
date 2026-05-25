@@ -1,10 +1,10 @@
-# Phase 142a — Semantic Fault Injection Tests (failing)
+# Task 142a — Semantic Fault Injection Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 141b complete: GroundingReport per-turn signal in place. All prior tests pass.
+Task 141b complete: GroundingReport per-turn signal in place. All prior tests pass.
 
 Motivation:
 Addresses the "semantic fault injection" mitigation from:
@@ -17,11 +17,11 @@ model reasoning, orchestration logic, and downstream action."
 
 Traditional chaos engineering kills nodes. Semantic fault injection degrades the DATA
 and CONTEXT that flows through the system: stale retrieval results, truncated model
-outputs, semantically empty tool responses, token-boundary pressure. This phase adds
+outputs, semantically empty tool responses, token-boundary pressure. This task adds
 test doubles for each fault type and scenario tests verifying that Merlin's behavioral
 monitoring stack detects them.
 
-New test infrastructure introduced in phase 142b:
+New test infrastructure introduced in task 142b:
 
   TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift
     - MemoryBackendPlugin that returns results with a configurable createdAt age
@@ -387,5 +387,5 @@ Expected: BUILD FAILED — `StalenessInjectingMemoryBackend`, `TruncatingMockPro
 ## Commit
 ```bash
 git add MerlinTests/Unit/SemanticFaultInjectionTests.swift
-git commit -m "Phase 142a — semantic fault injection tests (failing)"
+git commit -m "Task 142a — semantic fault injection tests (failing)"
 ```

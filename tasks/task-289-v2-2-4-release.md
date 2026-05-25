@@ -1,15 +1,15 @@
-# Phase 289 — v2.2.4 Release
+# Task 289 — v2.2.4 Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phases 283–288 complete: local model picker (283), tool-output cap (284), context
+Tasks 283–288 complete: local model picker (283), tool-output cap (284), context
 budget resolver (285), universal pre-flight guard (286), tool-requirement checker (287),
 vision launchpad (288).
 
-This phase ships **v2.2.4** — phases 283–288 together. Follows `spec.md`
-§ Versioning Policy. Do not start this phase until phases 283–288 are all committed.
+This task ships **v2.2.4** —  tasks 283–288 together. Follows `spec.md`
+§ Versioning Policy. Do not start this task until  tasks 283–288 are all committed.
 
 ---
 
@@ -46,22 +46,22 @@ This phase ships **v2.2.4** — phases 283–288 together. Follows `spec.md`
 
   - **Context-overflow HTTP 400s are fixed at the source.** Three layers, end to end:
     tool output (`run_shell`, `read_file`) is capped before it can enter the model
-    context (phase 284); the per-request budget is discovered from the active model's
+    context (task 284); the per-request budget is discovered from the active model's
     real context window — queried live for local runners and OpenRouter, learned from
-    the first 400 and persisted for commercial providers (phase 285); and every LLM
+    the first 400 and persisted for commercial providers (task 285); and every LLM
     request on every engine path — planner, critic, subagents, summariser, memory,
     KAG, vision — is sized to fit the provider window before it is sent, not just the
-    main turn loop (phase 286).
+    main turn loop (task 286).
   - **Local model picker.** When a local runner has several models loaded, each can be
-    assigned to a role slot directly from the chat HUD and the slot picker (phase 283).
+    assigned to a role slot directly from the chat HUD and the slot picker (task 283).
   - **Missing-tool detection.** When a feature needs an external CLI tool that is not
     installed, Merlin detects it on first use and offers a one-click `brew install` for
     the Homebrew-safe tools, or shows the install command/URL for the rest — instead of
-    a raw "command not found" (phase 287).
+    a raw "command not found" (task 287).
   - **Vision launchpad.** `vision.md` is now the first artifact of the discipline
-    pipeline — `vision → architecture → phase → code`. `project:init` seeds it,
+    pipeline — `vision → architecture → task → code`. `project:init` seeds it,
     `project:adopt` incorporates an existing one, `project:revise` grows and promotes
-    ideas from it (phase 288).
+    ideas from it (task 288).
 
   ## Internal changes
 
@@ -121,11 +121,11 @@ git add tasks/task-289-v2-2-4-release.md \
     MerlinTests/Unit/AppVersion224Tests.swift \
     MerlinTests/Unit/ReleaseNotes224Tests.swift
 git rm MerlinTests/Unit/AppVersion223Tests.swift
-git commit -m "Phase 289 — Bump version to 2.2.4 (build 21)"
+git commit -m "Task 289 — Bump version to 2.2.4 (build 21)"
 git tag v2.2.4
 ```
 
-## Release — manual step (run yourself, not in the phase batch)
+## Release — manual step (run yourself, not in the task batch)
 
 Pushing and publishing a GitHub release are out-of-band actions. After the commit and
 local tag above, run these yourself when ready:
@@ -142,6 +142,6 @@ The DMG (`scripts/package-dmg.sh`) reads the version from `project.yml` and prod
 
 ## Fixes
 
-Ships phases 283–288 as v2.2.4. The headline is the context-overflow HTTP 400 class
+Ships  tasks 283–288 as v2.2.4. The headline is the context-overflow HTTP 400 class
 becoming structurally impossible (284 + 285 + 286): no tool result, and no LLM request
 on any engine path, can exceed the active model's discovered context window.

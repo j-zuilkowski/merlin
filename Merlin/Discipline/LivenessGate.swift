@@ -9,7 +9,7 @@ enum LivenessGateResult: Sendable, Equatable {
 /// The deterministic, blocking half of Liveness Discipline. Runs `TargetGateScanner`
 /// and blocks a commit when a target is built by no scheme - the zero-false-positive
 /// condition that let `MerlinLiveTests` / `MerlinE2ETests` rot uncompiled for roughly
-/// 160 phases. Heuristic liveness findings (stubs, unwired components) are advisory and
+/// 160  tasks. Heuristic liveness findings (stubs, unwired components) are advisory and
 /// are never enforced here.
 actor LivenessGate {
     func check(projectPath: String,

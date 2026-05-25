@@ -1,12 +1,12 @@
-# Phase 278b — v2.2.2 Release
+# Task 278b — v2.2.2 Release
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 278a complete: failing version + release-notes tests are in place.
+Task 278a complete: failing version + release-notes tests are in place.
 
-This phase ships **v2.2.2** — the phase 274–277 CI-readiness remediation and engine
+This task ships **v2.2.2** — the task 274–277 CI-readiness remediation and engine
 regression fixes, as a patch release. Follow `spec.md` § Versioning Policy.
 Tag locally only; the push and GitHub release are an explicit manual step (as with 273b).
 
@@ -81,7 +81,7 @@ full external-dependency inventory.
 ## Migration
 
 - No user data migration required.
-- The `v2.2.1` tag remains at the Phase 273b commit as an unreleased intermediate;
+- The `v2.2.1` tag remains at the Task 273b commit as an unreleased intermediate;
   v2.2.2 is the published successor to v2.2.0.
 ```
 
@@ -103,7 +103,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and **all phase 278a tests pass** (`AppVersion222Tests`,
+Expected: **BUILD SUCCEEDED** and **all task 278a tests pass** (`AppVersion222Tests`,
 `ReleaseNotes222Tests`). The full suite is green headless — zero failures. `AppVersion221Tests`
 is gone.
 
@@ -135,7 +135,7 @@ git add tasks/task-278b-v2-2-2-release.md \
     MerlinTests/Unit/ReleaseNotes222Tests.swift \
     tasks/task-278a-v2-2-2-release-tests.md
 git rm MerlinTests/Unit/AppVersion221Tests.swift MerlinTests/Unit/AppVersionTests.swift
-git commit -m "Phase 278b — Bump version to 2.2.2 (build 19)"
+git commit -m "Task 278b — Bump version to 2.2.2 (build 19)"
 
 git tag v2.2.2
 ```
@@ -145,5 +145,5 @@ Create the LOCAL tag only. **Do not** `git push` and **do not** run `gh release 
 
 ## PASTE-LIST update
 
-Append phase 278a/278b under the Project Discipline section and mark v2.2.2 as the
+Append task 278a/278b under the Project Discipline section and mark v2.2.2 as the
 release that ships the CI-readiness remediation.

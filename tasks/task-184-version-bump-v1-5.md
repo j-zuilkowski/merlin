@@ -1,12 +1,12 @@
-# Phase 184 — Version Bump to v1.5.0
+# Task 184 — Version Bump to v1.5.0
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 183b complete: SessionSidebar Prior Sessions + archive/recall + timestamps.
+Task 183b complete: SessionSidebar Prior Sessions + archive/recall + timestamps.
 
-This phase has no new tests. It bumps the marketing version to 1.5.0 (build 4),
+This task has no new tests. It bumps the marketing version to 1.5.0 (build 4),
 regenerates the Xcode project, confirms a clean build, and tags the release.
 
 ---

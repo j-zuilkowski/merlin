@@ -1,4 +1,4 @@
-# Phase 291a — Override Audit Wiring Tests (failing)
+# Task 291a — Override Audit Wiring Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
@@ -6,7 +6,7 @@ Unit A2 of the discipline-wiring plan. `OverrideAuditLog` is never invoked — d
 go only to `PendingAttentionQueue.dismiss`, and `weeklyReview` never runs, so the
 `overrideAuditAccumulation` finding is unreachable.
 
-New surface introduced in phase 291b:
+New surface introduced in task 291b:
   - `DisciplineEngine.dismiss(finding:rationale:)` — replaces `dismiss(findingID:rationale:)`;
     dismisses from the queue AND records an `OverrideEntry` to `.merlin/override-log.jsonl`.
   - `DisciplineEngine.runWeeklyOverrideReview()` — runs `OverrideAuditLog.weeklyReview`.
@@ -26,4 +26,4 @@ Expected: BUILD FAILED — missing `dismiss(finding:)`, `runWeeklyOverrideReview
 
 ## Commit
 git add MerlinTests/Unit/DisciplineOverrideAuditTests.swift tasks/task-291a-override-audit-wiring-tests.md
-git commit -m "Phase 291a — Override audit wiring tests (failing)"
+git commit -m "Task 291a — Override audit wiring tests (failing)"

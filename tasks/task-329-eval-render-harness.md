@@ -1,10 +1,10 @@
-# Phase 329 — Eval Render Harness (S10 chat rendering)
+# Task 329 — Eval Render Harness (S10 chat rendering)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 328 complete: surface harness landed.
+Task 328 complete: surface harness landed.
 
 W5 — the **M3 render harness** for scenario **S10** (chat rendering kinds).
 `ConversationHTMLRenderer` is a pure `[ChatEntry] -> String` function, so every render
@@ -185,5 +185,5 @@ content-marker assertion fails, the renderer dropped that kind — a finding. If
 ## Commit
 ```
 git add MerlinTests/Unit/ConversationRenderTests.swift tasks/task-329-eval-render-harness.md
-git commit -m "Phase 329 — Eval render harness (S10 chat rendering)"
+git commit -m "Task 329 — Eval render harness (S10 chat rendering)"
 ```

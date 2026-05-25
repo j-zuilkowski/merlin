@@ -1,12 +1,12 @@
-# Phase 121a — LoRA Settings UI Tests (failing)
+# Task 121a — LoRA Settings UI Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 120b complete: LoRA provider routing in place.
+Task 120b complete: LoRA provider routing in place.
 
-New surface introduced in phase 121b:
+New surface introduced in task 121b:
   - `LoRASettingsSection` — SwiftUI view; appears in the Settings window under a new
     "LoRA" tab / section. Contains:
       • Master toggle: "Enable LoRA fine-tuning" (loraEnabled)
@@ -96,5 +96,5 @@ Expected: BUILD FAILED — `LoRASettingsSection` not defined.
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/LoRASettingsUITests.swift
-git commit -m "Phase 121a — LoRASettingsUITests (failing)"
+git commit -m "Task 121a — LoRASettingsUITests (failing)"
 ```

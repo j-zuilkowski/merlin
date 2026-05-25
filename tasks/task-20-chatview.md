@@ -1,11 +1,11 @@
-# Phase 20 — ContentView + ChatView + ProviderHUD
+# Task 20 — ContentView + ChatView + ProviderHUD
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
+Task 19 complete: AppState exists with engine, sessionStore, toolLogLines, lastScreenshot, showAuthPopup, pendingAuthRequest, resolveAuth().
 
 ---
 
@@ -103,7 +103,7 @@ xcodebuild -scheme MerlinTests build-for-testing -destination 'platform=macOS' 2
 
 Expected: `BUILD SUCCEEDED`.
 
-Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not fully implemented yet. They must at least compile as stubs (their stub files were created in phase 01). Ensure the stubs have the correct signatures:
+Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not fully implemented yet. They must at least compile as stubs (their stub files were created in task 01). Ensure the stubs have the correct signatures:
 - `AuthPopupView(tool:argument:reasoningStep:suggestedPattern:onDecision:)`
 - `ToolLogView()` — reads from `appState.toolLogLines`
 - `ScreenPreviewView()` — reads from `appState.lastScreenshot`
@@ -115,5 +115,5 @@ Note: AuthPopupView, ToolLogView, and ScreenPreviewView are referenced but not f
 ```bash
 cd ~/Documents/localProject/merlin
 git add Merlin/Views/ContentView.swift Merlin/Views/ChatView.swift Merlin/Views/ProviderHUD.swift
-git commit -m "Phase 20 — ContentView + ChatView + ProviderHUD"
+git commit -m "Task 20 — ContentView + ChatView + ProviderHUD"
 ```

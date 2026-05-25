@@ -1,12 +1,12 @@
-# Phase 126a — Local Model Manager Extended Tests (Jan, LocalAI, Mistral.rs, vLLM-Metal)
+# Task 126a — Local Model Manager Extended Tests (Jan, LocalAI, Mistral.rs, vLLM-Metal)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 125b complete: Protocol + LMStudio + Ollama managers. All prior tests pass.
+Task 125b complete: Protocol + LMStudio + Ollama managers. All prior tests pass.
 
-New surface introduced in phase 126b:
+New surface introduced in task 126b:
 
   `JanModelManager` — Jan.ai REST API + model.json editing
     providerID = "jan"
@@ -195,5 +195,5 @@ Expected: **BUILD FAILED** — `JanModelManager`, `LocalAIModelManager`, `Mistra
 ## Commit
 ```bash
 git add MerlinTests/Unit/LocalModelManagerExtendedTests.swift
-git commit -m "Phase 126a — LocalModelManagerExtendedTests (failing)"
+git commit -m "Task 126a — LocalModelManagerExtendedTests (failing)"
 ```

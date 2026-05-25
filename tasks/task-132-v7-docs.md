@@ -1,17 +1,17 @@
-# Phase 132 — V7 Documentation & Code Comment Update
+# Task 132 — V7 Documentation & Code Comment Update
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 131b complete: all v7 and v8 implementation in place. All tests pass.
+Task 131b complete: all v7 and v8 implementation in place. All tests pass.
 
-This is a documentation-only phase — no new symbols, no test changes.
-Update every file touched in phases 122–128 so that:
+This is a documentation-only task — no new symbols, no test changes.
+Update every file touched in  tasks 122–128 so that:
   1. All `//` line comments and `///` doc-comments reflect the current implementation.
   2. `spec.md` cross-references and file-layout tables are accurate.
   3. `FEATURES.md` entries for the v7 surface are complete and accurate.
-  4. No stale references to "TODO", "Phase NNb", or pre-v7 type names remain.
+  4. No stale references to "TODO", "Task NNb", or pre-v7 type names remain.
 
 ---
 
@@ -154,5 +154,5 @@ git add Merlin/Engine/AgenticEngine.swift
 git add Merlin/Views/Settings/ModelControlView.swift
 git add spec.md
 git add FEATURES.md
-git commit -m "Phase 132 — V7 docs + code comments: inference params, ModelParameterAdvisor, LocalModelManagerProtocol, ModelControlView"
+git commit -m "Task 132 — V7 docs + code comments: inference params, ModelParameterAdvisor, LocalModelManagerProtocol, ModelControlView"
 ```

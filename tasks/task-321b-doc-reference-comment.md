@@ -1,18 +1,18 @@
-# Phase 321b — DocReferenceGraph extractEnumCaseNames Strips `//` Comments
+# Task 321b — DocReferenceGraph extractEnumCaseNames Strips `//` Comments
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 321a complete: failing runtime test in `DocReferenceGraphCommentTests`.
+Task 321a complete: failing runtime test in `DocReferenceGraphCommentTests`.
 
 W4 trace audit finding F3: `DocReferenceGraph.extractEnumCaseNames` comma-splits a `case`
 line before stripping its `//` line comment, so a comma inside the comment produces a
-phantom enum case. This phase strips the comment first. The helper feeds two callers —
+phantom enum case. This task strips the comment first. The helper feeds two callers —
 `danglingReferences` (doc fenced blocks) and `enumerateSourceSymbols` (real Swift) —
 and stripping a Swift `//` comment is correct for both.
 
-**Also fixed here (see `## Fixes`):** phase 319b deleted `danglingReferences`' loose
+**Also fixed here (see `## Fixes`):** task 319b deleted `danglingReferences`' loose
 backticked-identifier check but only rewrote `DocReferenceGraphScopeTests` — it missed
 `DocReferenceDanglingTests`, whose `testDanglingReferenceDetected` and
 `testEngineEmitsOneFindingPerDanglingReference` still fixture *prose* backtick mentions
@@ -24,10 +24,10 @@ the same repair 319b made for `DocReferenceGraphScopeTests`.
 
 ## 1. Edit: Merlin/Discipline/DocReferenceGraph.swift
 
-Replace the whole `extractEnumCaseNames(from:)` method. (If phase 321b was partially run
+Replace the whole `extractEnumCaseNames(from:)` method. (If task 321b was partially run
 already, this edit may be present — it is idempotent; confirm the body matches.)
 ```swift
-    /// Enum-case identifiers declared on a trimmed `line` - `case phaseDrift`, or a
+    /// Enum-case identifiers declared on a trimmed `line` - `case taskDrift`, or a
     /// comma list `case a, b = "x"`. A trailing `//` line comment is stripped first so a
     /// comma inside the comment is not mistaken for a case separator (e.g.
     /// `case green // present, shape unchanged` must not yield a phantom case `shape`).
@@ -54,14 +54,14 @@ already, this edit may be present — it is idempotent; confirm the body matches
 ## 2. Rewrite: MerlinTests/Unit/DocReferenceDanglingTests.swift
 
 The task-267-era fixtures here exercised the loose backticked-identifier check that
-phase 319b deleted (`danglingReferences` now keeps only the high-precision fenced-block
+task 319b deleted (`danglingReferences` now keeps only the high-precision fenced-block
 enum-case check). Replace the whole file with fenced-block fixtures:
 
 ```swift
 import XCTest
 @testable import Merlin
 
-/// Phase 267 originally; rewritten by phase 321b. After phase 319 the only
+/// Task 267 originally; rewritten by task 321b. After task 319 the only
 /// dangling-reference check is the fenced-block enum-case check, so these fixtures
 /// declare enum `case`s inside fenced code blocks rather than prose backticks.
 final class DocReferenceDanglingTests: XCTestCase {
@@ -178,13 +178,13 @@ final class DocReferenceDanglingTests: XCTestCase {
 ---
 
 ## Fixes
-Phase 319b removed `danglingReferences`' loose backticked-identifier check and rewrote
+Task 319b removed `danglingReferences`' loose backticked-identifier check and rewrote
 `DocReferenceGraphScopeTests` to suit — but it missed `DocReferenceDanglingTests`, which
 kept fixturing prose backtick mentions. `testDanglingReferenceDetected` and
 `testEngineEmitsOneFindingPerDanglingReference` have failed at runtime since 319b was
 committed (319b's Verify used `-only-testing` on three other classes, so the rot was
-never observed). Section 2 of this phase rewrites that file onto the surviving
-fenced-block check. Lesson applied below: this phase's Verify runs the whole
+never observed). Section 2 of this task rewrites that file onto the surviving
+fenced-block check. Lesson applied below: this task's Verify runs the whole
 `DocReference*` test family, not a hand-picked subset.
 
 ---
@@ -217,5 +217,5 @@ BUILD SUCCEEDED, zero warnings.
 git add Merlin/Discipline/DocReferenceGraph.swift \
   MerlinTests/Unit/DocReferenceDanglingTests.swift \
   tasks/task-321b-doc-reference-comment.md
-git commit -m "Phase 321b — DocReferenceGraph extractEnumCaseNames strips // comments"
+git commit -m "Task 321b — DocReferenceGraph extractEnumCaseNames strips // comments"
 ```

@@ -1,17 +1,17 @@
-# Phase 288b — Vision Launchpad
+# Task 288b — Vision Launchpad
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 288a complete: failing tests asserting `project:init` scaffolds and seeds
+Task 288a complete: failing tests asserting `project:init` scaffolds and seeds
 `vision.md`.
 
-After this phase, `vision.md` is the first-class launchpad of the discipline pipeline
+After this task, `vision.md` is the first-class launchpad of the discipline pipeline
 — `vision.md → spec.md → tasks/ → code`. `project:init` seeds it with the
 project's founding idea; `project:revise` handles later edits and promotion.
 
-No Swift production code — this phase edits two bundled skill files, two installed skill
+No Swift production code — this task edits two bundled skill files, two installed skill
 files, and this repo's own `vision.md`.
 
 ---
@@ -114,7 +114,7 @@ User says any of:
 12. **Run `AdapterRegistry.installSeedAdapters(into:)`** if
     `~/.merlin/adapters/` does not yet exist.
 
-13. **Initial git commit**: `git add -A && git commit -m "Phase 00 — scaffold"`
+13. **Initial git commit**: `git add -A && git commit -m "Task 00 — scaffold"`
 
 14. **Report to user**: project path, adapter chosen, baseline coverage gap (0 for new
     project), installed hooks, doc set, `vision.md` seeded with the founding idea, next
@@ -195,7 +195,7 @@ the skill now scaffolds:
   design.
 - Add a top-level `## Active` section. Merlin's recently-captured ideas (the universal
   pre-flight guard, the context-budget resolver, the tool-requirement checker, this
-  vision launchpad) have all been promoted to phases already — so seed `## Active` with
+  vision launchpad) have all been promoted to  tasks already — so seed `## Active` with
   a placeholder line: `_No ideas currently awaiting promotion._`
 - Add a top-level `## Deferred` section and nest the entire existing body under it:
   the current `## Electronics / KiCad Domain (v2.0)` heading becomes
@@ -222,7 +222,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED**, all phase 288a tests pass, no prior phase regresses.
+Expected: **BUILD SUCCEEDED**, all task 288a tests pass, no prior task regresses.
 
 **Manual check:** `vision.md` in the repo root opens with the launchpad framing and has
 exactly two top-level sections, `## Active` and `## Deferred`, with all prior content
@@ -237,12 +237,12 @@ git add tasks/task-288a-vision-launchpad-tests.md \
     Merlin/Skills/Builtin/project-adopt/SKILL.md \
     Merlin/Skills/Builtin/project-revise/SKILL.md \
     vision.md
-git commit -m "Phase 288b — vision.md launchpad: seed at init, vision→architecture→phase→code pipeline"
+git commit -m "Task 288b — vision.md launchpad: seed at init, vision→architecture→task→code pipeline"
 ```
 
 (The installed copies under `~/.merlin/skills/` are outside the repo — update them in
 place; they are not part of the commit. Add `MerlinTests/Unit/ProjectVisionLaunchpadTests.swift`
-and `Merlin.xcodeproj/project.pbxproj` to the commit if phase 288a did not already
+and `Merlin.xcodeproj/project.pbxproj` to the commit if task 288a did not already
 commit them.)
 
 ## Fixes
@@ -252,6 +252,6 @@ launchpad — `project:init` seeds it with the founding idea, `project:adopt` in
 an existing `vision.md` (or scaffolds one) when bringing an existing project under
 discipline, `project:revise` grows and promotes ideas from it, and the documented flow
 is `vision.md → spec.md → tasks/ → code`. This repo's own `vision.md` is
-restructured into `## Active` / `## Deferred` to match. Phase 259b's `project:init` skill content is superseded by the
-version in this phase — add a one-line "superseded by phase 288b" banner under phase
+restructured into `## Active` / `## Deferred` to match. Task 259b's `project:init` skill content is superseded by the
+version in this task — add a one-line "superseded by task 288b" banner under task
 259b's title.

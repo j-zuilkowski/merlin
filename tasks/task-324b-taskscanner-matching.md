@@ -1,13 +1,13 @@
-# Phase 324b — TaskScanner Symbol-Matching Accuracy
+# Task 324b — TaskScanner Symbol-Matching Accuracy
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 324a complete: failing tests in `TaskScannerMatchingTests`.
+Task 324a complete: failing tests in `TaskScannerMatchingTests`.
 
 W4 trace audit finding F8. Four edits to `Merlin/Discipline/TaskScanner.swift` make its
-symbol matching accurate, plus one test rewrite. After this phase `red` means "a declared
+symbol matching accurate, plus one test rewrite. After this task `red` means "a declared
 symbol is genuinely absent from source" — the actionable drift signal — `green` means
 "present", and the unreliable `yellow` signature-drift tier is no longer produced.
 
@@ -49,7 +49,7 @@ old `yellow` near-miss compared free-form doc signatures and was unreliable. Cha
                     surface: declaration.surface,
                     severity: .red,
                     evidence: "Symbol '\(declaredName)' not found in source tree",
-                    suggestedAction: "Restore symbol or write addendum phase"
+                    suggestedAction: "Restore symbol or write addendum task"
                 ))
             }
         }
@@ -76,7 +76,7 @@ to:
                     surface: declaration.surface,
                     severity: .red,
                     evidence: "Symbol '\(declaredName)' not found in source tree",
-                    suggestedAction: "Restore symbol or write addendum phase"
+                    suggestedAction: "Restore symbol or write addendum task"
                 ))
             }
         }
@@ -218,37 +218,37 @@ to:
     }
 ```
 
-## 5. Rewrite: MerlinTests/Unit/DisciplineEnginePhaseDriftSeverityTests.swift
+## 5. Rewrite: MerlinTests/Unit/DisciplineEngineTaskDriftSeverityTests.swift
 
-Phase 323a's version asserted the `yellow` tier is surfaced. Phase 324 removes `yellow`
+Task 323a's version asserted the `yellow` tier is surfaced. Task 324 removes `yellow`
 (a present symbol is `green`, an absent one is `red`). Replace the whole file:
 ```swift
 import XCTest
 @testable import Merlin
 
-/// Phase 323a, rewritten by phase 324b. DisciplineEngine must surface phaseDrift
-/// findings as `.nudge` (never `.block`). After phase 324 `TaskScanner` reports a
+/// Task 323a, rewritten by task 324b. DisciplineEngine must surface taskDrift
+/// findings as `.nudge` (never `.block`). After task 324 `TaskScanner` reports a
 /// declared symbol as `red` only when it is genuinely absent from source; a present
 /// symbol is `green` and is not surfaced as drift.
-final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
+final class DisciplineEngineTaskDriftSeverityTests: XCTestCase {
 
-    func testPhaseDriftFindingsAreNudgeNeverBlock() async throws {
+    func testTaskDriftFindingsAreNudgeNeverBlock() async throws {
         let proj = FileManager.default.temporaryDirectory
             .appendingPathComponent("drift-sev-\(UUID())")
         try FileManager.default.createDirectory(
-            at: proj.appendingPathComponent("phases"), withIntermediateDirectories: true)
+            at: proj.appendingPathComponent(" tasks"), withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
             at: proj.appendingPathComponent("Src"), withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: proj) }
 
         // A task doc declaring one absent symbol (red drift) and one present symbol.
         let doc = """
-        # Phase 701b — Drift Phase
+        # Task 701b — Drift Task
 
         ## Context
         Test task file.
 
-        New surface introduced in phase 701b:
+        New surface introduced in task 701b:
           - `func ghostMethod()` — absent surface
           - `Worker.presentMethod()` — present surface
 
@@ -277,12 +277,12 @@ final class DisciplineEnginePhaseDriftSeverityTests: XCTestCase {
         )
 
         let report = await engine.scan(projectPath: proj.path)
-        let drift = report.findings.filter { $0.category == .phaseDrift }
+        let drift = report.findings.filter { $0.category == .taskDrift }
 
         XCTAssertFalse(drift.isEmpty,
                        "the absent declared symbol must surface as drift")
         XCTAssertTrue(drift.allSatisfy { $0.severity == .nudge },
-                      "phaseDrift findings must be nudge severity — never block")
+                      "taskDrift findings must be nudge severity — never block")
         XCTAssertTrue(drift.contains { $0.summary.contains("ghostMethod") },
                       "the absent symbol (red drift) is surfaced as a nudge")
         XCTAssertFalse(drift.contains { $0.summary.contains("presentMethod") },
@@ -307,18 +307,18 @@ xcodebuild -scheme MerlinTests-Live build-for-testing -destination 'platform=mac
   | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 Expected: the full `MerlinTests` suite passes — including `TaskScannerMatchingTests`
-(324a's five tests) and the rewritten `DisciplineEnginePhaseDriftSeverityTests`;
+(324a's five tests) and the rewritten `DisciplineEngineTaskDriftSeverityTests`;
 `MerlinTests-Live` compiles; BUILD SUCCEEDED, zero warnings.
 
 The full suite is run deliberately: the matching change affects every test with a
 task-doc fixture. **If a failure appears in a test unrelated to `TaskScanner` /
 `DisciplineEngine` / discipline findings, it is pre-existing rot — STOP and report it;
-do not commit and do not try to fix it in this phase.**
+do not commit and do not try to fix it in this task.**
 
 ## Commit
 ```
 git add Merlin/Discipline/TaskScanner.swift \
-  MerlinTests/Unit/DisciplineEnginePhaseDriftSeverityTests.swift \
-  tasks/task-324b-phasescanner-matching.md
-git commit -m "Phase 324b — TaskScanner symbol-matching accuracy"
+  MerlinTests/Unit/DisciplineEngineTaskDriftSeverityTests.swift \
+  tasks/task-324b- taskscanner-matching.md
+git commit -m "Task 324b — TaskScanner symbol-matching accuracy"
 ```

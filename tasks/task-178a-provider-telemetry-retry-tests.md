@@ -1,10 +1,10 @@
-# Phase 178a — ProviderTelemetryTests: URLError retry event missing (failing — pre-existing)
+# Task 178a — ProviderTelemetryTests: URLError retry event missing (failing — pre-existing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 177b complete: provider(for:) NullProvider and vision fallback fix.
+Task 177b complete: provider(for:) NullProvider and vision fallback fix.
 
 ## Problem
 
@@ -66,5 +66,5 @@ Expected: `testOpenAICompatibleEmitsRetryEvent` fails.
 ```bash
 cd ~/Documents/localProject/merlin
 git add tasks/task-178a-provider-telemetry-retry-tests.md
-git commit -m "Phase 178a — ProviderTelemetry URLError retry failure documented"
+git commit -m "Task 178a — ProviderTelemetry URLError retry failure documented"
 ```

@@ -1,14 +1,14 @@
-# Phase 292b — User-Prompt Discipline Wiring (implementation)
+# Task 292b — User-Prompt Discipline Wiring (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 292a complete: failing test in `UserPromptDisciplineWiringTests`.
+Task 292a complete: failing test in `UserPromptDisciplineWiringTests`.
 Unit A3 of the discipline-wiring plan.
 
 ## Edit: Merlin/Engine/AgenticEngine.swift
 After `hookEngine.runUserPromptSubmit`, `send` now calls
 `UserPromptDisciplineChecker().check(prompt:projectPath:)` when a project path is set.
-On `.missingPhaseFile` it yields `.systemNote("⚠️ TDD discipline: …")`, so an unscoped
+On `.missingTaskFile` it yields `.systemNote("⚠️ TDD discipline: …")`, so an unscoped
 feature request is visible in the agent loop.
 
 ## Verify
@@ -19,4 +19,4 @@ Expected: BUILD SUCCEEDED, both tests pass.
 
 ## Commit
 git add Merlin/Engine/AgenticEngine.swift tasks/task-292b-user-prompt-discipline-wiring.md
-git commit -m "Phase 292b — User-prompt discipline wiring"
+git commit -m "Task 292b — User-prompt discipline wiring"

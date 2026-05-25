@@ -1,12 +1,12 @@
-# Phase 205a — Mid-loop Compaction Tests (failing)
+# Task 205a — Mid-loop Compaction Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 204b complete: BTW overlay wired.
+Task 204b complete: BTW overlay wired.
 
-New surface introduced in phase 205b:
+New surface introduced in task 205b:
   - `ContextManager.midLoopCompactionThreshold: Int` — default `40_000`; `var` so tests can override
   - `ContextManager.compactIfNeededMidLoop()` — calls `compact(force: true)` when `estimatedTokens > midLoopCompactionThreshold`; no-op when at or below threshold
   - `AgenticEngine.runLoop()` — calls `context.compactIfNeededMidLoop()` + `emitCompactionNoteIfNeeded()` at the bottom of each `while true` iteration, after `dispatchRegularCalls` and `handleSpawnAgents` return
@@ -164,5 +164,5 @@ Expected: **BUILD FAILED** — `ContextManager` has no `midLoopCompactionThresho
 
 ```bash
 git add MerlinTests/Unit/ContextManagerMidLoopCompactionTests.swift
-git commit -m "Phase 205a — ContextManagerMidLoopCompactionTests (failing)"
+git commit -m "Task 205a — ContextManagerMidLoopCompactionTests (failing)"
 ```

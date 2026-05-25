@@ -1,4 +1,4 @@
-# Phase 281 — Bundle Built-in Skills into the App
+# Task 281 — Bundle Built-in Skills into the App
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
@@ -20,7 +20,7 @@ bundled into the app**. Verified: a freshly built `Merlin.app` has no
 that resolves to the repo's `Merlin/Skills/Builtin` — so it only works on the machine
 where the app was compiled. A DMG installed on any other Mac installs **zero skills**:
 not the 8 built-ins (`commit`, `debug`, `explain`, `plan`, `refactor`, `review`,
-`summarise`, `test`), and not the 5 v2.2 `project:*` skills (`init`, `phase`, `revise`,
+`summarise`, `test`), and not the 5 v2.2 `project:*` skills (`init`, `task`, `revise`,
 `release`, `adopt`) — which were not in `Builtin/` at all.
 
 ### The fix
@@ -44,7 +44,7 @@ all 13 skill folders to `~/.merlin/skills/` on first launch — on any machine.
 
 - `Merlin/Skills/Builtin/project-init/SKILL.md`, `project-task/SKILL.md`,
   `project-revise/SKILL.md`, `project-release/SKILL.md`, `project-adopt/SKILL.md` —
-  the five `project:*` skill files (content from phases 259b–263b).
+  the five `project:*` skill files (content from  tasks 259b–263b).
 - `project.yml` — Merlin target `sources`: add
 
   ```yaml
@@ -53,7 +53,7 @@ all 13 skill folders to `~/.merlin/skills/` on first launch — on any machine.
   ```
 
 - Run `xcodegen generate` — `project.pbxproj` gains `Builtin` as a `folder`
-  `PBXFileReference` in the Merlin target's Resources build phase.
+  `PBXFileReference` in the Merlin target's Resources build task.
 
 No Swift changes — `installBuiltinSkills()` is already correct; it was only ever missing
 its input.
@@ -77,7 +77,7 @@ ls build/Release/Merlin.app/Contents/Resources/Builtin/
 ```
 
 Expected: **BUILD SUCCEEDED**, and `Contents/Resources/Builtin/` lists all **13** skill
-folders (8 built-ins + 5 `project-*`). Before this phase that directory does not exist.
+folders (8 built-ins + 5 `project-*`). Before this task that directory does not exist.
 
 ## Commit
 
@@ -90,7 +90,7 @@ git add tasks/task-281-bundle-builtin-skills.md \
     Merlin/Skills/Builtin/project-revise/SKILL.md \
     Merlin/Skills/Builtin/project-release/SKILL.md \
     Merlin/Skills/Builtin/project-adopt/SKILL.md
-git commit -m "Phase 281 — Bundle Builtin/ skills into the app (fixes skill install)"
+git commit -m "Task 281 — Bundle Builtin/ skills into the app (fixes skill install)"
 ```
 
 ## Fixes
@@ -101,9 +101,9 @@ git commit -m "Phase 281 — Bundle Builtin/ skills into the app (fixes skill in
 
 Ships in the next release (v2.2.3).
 
-## Follow-up (not in this phase)
+## Follow-up (not in this task)
 
 The `Project*SkillTests` suites assert `~/.merlin/skills/project-*/SKILL.md` and are
-gated behind `RUN_LIVE_TESTS` (phase 279). They could now instead verify the bundled
+gated behind `RUN_LIVE_TESTS` (task 279). They could now instead verify the bundled
 copy (`Bundle/Builtin/project-*/SKILL.md`) and be un-gated — a separate test-quality
 improvement.

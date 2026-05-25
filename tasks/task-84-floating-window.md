@@ -1,10 +1,10 @@
-# Phase 84 — FloatingWindowManager: Menu Item + Keyboard Shortcut
+# Task 84 — FloatingWindowManager: Menu Item + Keyboard Shortcut
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 83 complete: voice dictation button in ChatView.
+Task 83 complete: voice dictation button in ChatView.
 
 `FloatingWindowManager.shared` exists but nothing opens it. Add a "Pop Out Session"
 menu item and keyboard shortcut (⌘⇧P) to `MerlinCommands`. The command opens the
@@ -84,5 +84,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/App/MerlinCommands.swift \
         Merlin/Views/WorkspaceView.swift
-git commit -m "Phase 84 — FloatingWindowManager: Pop Out Session command (⌘⇧P) in MerlinCommands"
+git commit -m "Task 84 — FloatingWindowManager: Pop Out Session command (⌘⇧P) in MerlinCommands"
 ```

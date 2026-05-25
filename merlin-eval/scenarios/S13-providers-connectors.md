@@ -41,7 +41,7 @@ Each connector with NO token configured must fail gracefully (clear error, no cr
 **Score:** providers / 12 + connectors / 5 + the key-handling checks.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built. Use test/throwaway tokens where possible.
+1. Tasks B–D, 301–306 merged; Merlin built. Use test/throwaway tokens where possible.
 2. Configure providers and keys via Settings; inspect `~/.merlin/api-keys.json` perms.
 3. Configure each connector; run one agent task per connector via `EvalHarness` or manually.
 4. Grep logs/telemetry/memories for any token leakage.

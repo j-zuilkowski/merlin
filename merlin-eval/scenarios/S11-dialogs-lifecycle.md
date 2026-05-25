@@ -5,7 +5,7 @@ full session/project lifecycle is sound. Covers `SURFACE-INVENTORY.md` sections 
 
 ## Mechanism
 M2 (XCUITest) for navigation/dismissal; M1 (`EvalHarness`) to raise the agent dialogs.
-**Prerequisite:** phase 306 (AccessibilityID pass).
+**Prerequisite:** task 306 (AccessibilityID pass).
 
 ## What is exercised
 
@@ -30,7 +30,7 @@ project; multiple projects open at once. Assert state is correct after each tran
 (no orphaned windows, no lost history, the active session is right).
 
 ## Accessibility-ID coverage
-Phase 306b's `AccessibilityID` pass ran without this catalogue and was driven from
+Task 306b's `AccessibilityID` pass ran without this catalogue and was driven from
 source — substantial (~110 identifiers), but not verified-exhaustive. Before the M2
 portion, cross-check every modal/dialog control against
 `Merlin/Support/AccessibilityID.swift`. **Known-suspect gap:** the tool-requirement
@@ -50,7 +50,7 @@ other uncovered modal control as setup for this scenario.
 **Score:** modal surfaces / N + lifecycle transitions / M + auth paths / 3.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built.
+1. Tasks B–D, 301–306 merged; Merlin built.
 2. Run the S11 XCUITest suite.
 3. Use `EvalHarness` (or a manual run) to raise the auth popup and tool-requirement
    sheet; exercise each path.

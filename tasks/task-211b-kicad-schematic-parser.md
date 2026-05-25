@@ -1,10 +1,10 @@
-# Phase 211b — KiCad Schematic Parser
+# Task 211b — KiCad Schematic Parser
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 211a complete: failing schematic parser tests exist.
+Task 211a complete: failing schematic parser tests exist.
 
 ---
 
@@ -28,7 +28,7 @@ Rules:
 
 1. Preserve unknown but syntactically valid nodes as opaque nodes for round-trip safety.
 2. Reject malformed S-expressions with typed `KiCadSchematicParserError`.
-3. Do not infer electrical correctness here; this phase is syntax/document handling only.
+3. Do not infer electrical correctness here; this task is syntax/document handling only.
 
 ---
 
@@ -47,5 +47,5 @@ Expected: **BUILD SUCCEEDED**. `KiCadSchematicParserTests` pass.
 
 ```bash
 git add Merlin/Electronics/KiCadSchematicParser.swift
-git commit -m "Phase 211b — KiCad schematic parser and writer"
+git commit -m "Task 211b — KiCad schematic parser and writer"
 ```

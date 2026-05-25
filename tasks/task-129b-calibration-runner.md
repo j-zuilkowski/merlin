@@ -1,10 +1,10 @@
-# Phase 129b — CalibrationRunner Implementation
+# Task 129b — CalibrationRunner Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 129a complete: failing CalibrationRunnerTests in place.
+Task 129a complete: failing CalibrationRunnerTests in place.
 
 ---
 
@@ -307,5 +307,5 @@ Expected: **BUILD SUCCEEDED** — all CalibrationRunnerTests pass; all prior tes
 git add Merlin/Calibration/CalibrationTypes.swift
 git add Merlin/Calibration/CalibrationSuite.swift
 git add Merlin/Calibration/CalibrationRunner.swift
-git commit -m "Phase 129b — CalibrationTypes + CalibrationSuite (18-prompt battery) + CalibrationRunner"
+git commit -m "Task 129b — CalibrationTypes + CalibrationSuite (18-prompt battery) + CalibrationRunner"
 ```

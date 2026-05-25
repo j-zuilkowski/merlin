@@ -1,8 +1,8 @@
-# Phase 295b — Subagent Block HTML (implementation)
+# Task 295b — Subagent Block HTML (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 295a complete: failing tests in `SubagentBlockHTMLTests`. Unit B2 of the plan.
+Task 295a complete: failing tests in `SubagentBlockHTMLTests`. Unit B2 of the plan.
 
 The renderer is a pure `static` function over `[ChatEntry]` — it cannot read the
 `subagentVMs` dictionary. So the render-relevant subagent state is mirrored onto the
@@ -94,5 +94,5 @@ Runtime check: build + launch, run a turn that spawns a subagent, confirm an inl
 git add Merlin/Views/Chat/SubagentBlock.swift Merlin/Views/ChatView.swift \
   Merlin/Views/Chat/ConversationHTMLRenderer.swift tasks/task-295b-subagent-block-html.md
 git rm Merlin/UI/Chat/SubagentBlockView.swift
-git commit -m "Phase 295b — Subagent block HTML"
+git commit -m "Task 295b — Subagent block HTML"
 ```

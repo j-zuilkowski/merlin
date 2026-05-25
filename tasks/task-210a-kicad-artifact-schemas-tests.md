@@ -1,12 +1,12 @@
-# Phase 210a — KiCad Artifact Schemas Tests
+# Task 210a — KiCad Artifact Schemas Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 209b complete: KiCad MCP tooling boundary exists.
+Task 209b complete: KiCad MCP tooling boundary exists.
 
-New surface introduced in phase 210b:
+New surface introduced in task 210b:
   - Canonical Codable schemas from architecture: `DesignIntent`, `ExtractionReport`, `NormalizedBOM`, `NetClassPlan`, `PlacementPlan`, `SimulationScenario`, `FabPackage`, `VerificationReport`
   - `KiCadArtifactStore` — project-local `.merlin/electronics/` JSON persistence
 
@@ -43,5 +43,5 @@ Expected: **BUILD FAILED** with missing schema/store symbols.
 
 ```bash
 git add MerlinTests/Unit/KiCadArtifactSchemasTests.swift
-git commit -m "Phase 210a — KiCadArtifactSchemasTests (failing)"
+git commit -m "Task 210a — KiCadArtifactSchemasTests (failing)"
 ```

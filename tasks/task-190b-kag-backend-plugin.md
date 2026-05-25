@@ -1,13 +1,13 @@
-# Phase 190b — KAG Backend Plugin Implementation
+# Task 190b — KAG Backend Plugin Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 190a complete: failing KAG backend plugin tests in place.
+Task 190a complete: failing KAG backend plugin tests in place.
 
 Creates `Merlin/KAG/` with four Swift files. KAGEngine's extractor is stubbed (returns [])
-in this phase — real extraction comes in 191b.
+in this task — real extraction comes in 191b.
 
 ---
 
@@ -323,8 +323,8 @@ private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.sel
 //  KAGEngine.swift — post-turn idle-timer triple extraction.
 //
 //  After each assistant turn, the engine waits 2 seconds (idle timer) then calls
-//  extractTriples(text:domain:). In phase 190b the extractor is stubbed to return [].
-//  Phase 191b replaces the stub with a real LLM call.
+//  extractTriples(text:domain:). In task 190b the extractor is stubbed to return [].
+//  Task 191b replaces the stub with a real LLM call.
 
 import Foundation
 
@@ -428,5 +428,5 @@ git add \
   Merlin/KAG/KAGEngine.swift \
   project.yml \
   Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 190b — KAG backend plugin (LocalKAGPlugin + KAGEngine stub)"
+git commit -m "Task 190b — KAG backend plugin (LocalKAGPlugin + KAGEngine stub)"
 ```

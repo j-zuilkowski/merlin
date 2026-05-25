@@ -1,17 +1,17 @@
-# Phase 114a — StagingBuffer OutcomeSignals Tests (failing)
+# Task 114a — StagingBuffer OutcomeSignals Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 113b complete: OutcomeRecord persistence in place.
+Task 113b complete: OutcomeRecord persistence in place.
 
 Current state: AgenticEngine.runLoop hardcodes diffAccepted: true and diffEditedOnAccept: false
 in OutcomeSignals regardless of what the user actually did in the DiffPane. StagingBuffer has
 no accept/reject counters. The performance tracker therefore always records "accepted, not edited"
 even when the user rejected or corrected the diff.
 
-New surface introduced in phase 114b:
+New surface introduced in task 114b:
   - `StagingBuffer.acceptedCount: Int` — incremented on accept() and acceptAll()
   - `StagingBuffer.rejectedCount: Int` — incremented on reject() and rejectAll()
   - `StagingBuffer.editedOnAcceptCount: Int` — incremented when a change with comments is accepted
@@ -160,5 +160,5 @@ Expected: BUILD FAILED — `StagingBuffer.acceptedCount`, `StagingBuffer.rejecte
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/StagingBufferSignalsTests.swift
-git commit -m "Phase 114a — StagingBufferSignalsTests (failing)"
+git commit -m "Task 114a — StagingBufferSignalsTests (failing)"
 ```

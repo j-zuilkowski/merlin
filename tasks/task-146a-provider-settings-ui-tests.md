@@ -1,19 +1,19 @@
-# Phase 146a — Provider Settings UI Tests (failing)
+# Task 146a — Provider Settings UI Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 145b complete: routing fully through registry + slotAssignments.
+Task 145b complete: routing fully through registry + slotAssignments.
 
-New surface introduced in phase 146b:
+New surface introduced in task 146b:
   - `ProviderRegistry.allSlotPickerEntries` — computed property returning `[SlotPickerEntry]`.
     A `SlotPickerEntry` has `id: String`, `displayName: String`, `isVirtual: Bool`.
     Includes every enabled provider's plain ID plus all virtual `"backendID:modelID"` entries
     derived from `modelsByProviderID`. Sorted: plain IDs first, then virtual entries grouped
     by backend.
   - `ProviderSettingsView` uses `registry.modelsByProviderID[config.id]` (already wired in
-    phase 143b) and gains a **Refresh** button that calls `registry.fetchAllModels()` with a
+    task 143b) and gains a **Refresh** button that calls `registry.fetchAllModels()` with a
     loading state indicator.
   - `RoleSlotSettingsView.slotRow` Picker uses `registry.allSlotPickerEntries` so virtual IDs
     (e.g. `"lmstudio:phi-4"`) appear with their display names.
@@ -192,5 +192,5 @@ Expected: BUILD FAILED — `SlotPickerEntry` struct and `allSlotPickerEntries` n
 ## Commit
 ```bash
 git add MerlinTests/Unit/SlotPickerEntriesTests.swift
-git commit -m "Phase 146a — Provider settings UI tests (failing)"
+git commit -m "Task 146a — Provider settings UI tests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 207b — Instruction Distillation
+# Task 207b — Instruction Distillation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 207a complete: failing InstructionDistillationTests.
+Task 207a complete: failing InstructionDistillationTests.
 
 See also: FEATURES.md § "Prompt Compression — Instruction distillation"
 Reference: https://machinelearningmastery.com/implementing-prompt-compression-to-reduce-agentic-loop-costs/
@@ -256,5 +256,5 @@ Manual verification:
 git add Merlin/Config/AppSettings.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/UI/Settings/AgentSettingsView.swift
-git commit -m "Phase 207b — instruction distillation: distilled core prompt + cached constitution.md compression"
+git commit -m "Task 207b — instruction distillation: distilled core prompt + cached constitution.md compression"
 ```

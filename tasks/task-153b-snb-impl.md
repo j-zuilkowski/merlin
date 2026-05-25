@@ -1,9 +1,9 @@
-# Phase 153b — SNB: SNBF Container Parsing
+# Task 153b — SNB: SNBF Container Parsing
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 153a complete: SNB tests written and failing (expected — updated metadata extractor not yet implemented).
+Task 153a complete: SNB tests written and failing (expected — updated metadata extractor not yet implemented).
 
 ## Edit: `processing/src/metadata/snb.rs`
 
@@ -195,5 +195,5 @@ cargo clippy --workspace -- -D warnings 2>&1 | tail -5
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/snb.rs \
         processing/tests/snb_metadata_tests.rs
-git commit -m "Phase 153b — SNB SNBF container parsing with book.snbf metadata XML"
+git commit -m "Task 153b — SNB SNBF container parsing with book.snbf metadata XML"
 ```

@@ -1,10 +1,10 @@
-# Phase 318a — StubMarkerScanner Tuning Tests (failing)
+# Task 318a — StubMarkerScanner Tuning Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin.
-Phase 317b complete: `ReachabilityScanner` injection detection fixed.
+Task 317b complete: `ReachabilityScanner` injection detection fixed.
 
 The first real `merlin-discipline scan` produced 4 `stubbedImplementation` findings; 2
 are false positives:
@@ -13,10 +13,10 @@ are false positives:
   2. A `TODO` inside a `"""` multi-line string (template content the code emits) — the
      scanner's `isInsideStringLiteral` only understands single-line `"..."` strings.
 
-Phase 318b fixes both: skip empty `.cancel`-role buttons, and track `"""` multi-line
+Task 318b fixes both: skip empty `.cancel`-role buttons, and track `"""` multi-line
 string fences so markers inside them are treated as content.
 
-**This is a runtime-failure phase.** The tests compile against the existing
+**This is a runtime-failure task.** The tests compile against the existing
 `StubMarkerScanner.scan` API and FAIL at runtime. Verify with `test`.
 
 TDD coverage: `MerlinTests/Unit/StubMarkerScannerTuningTests.swift`.
@@ -29,7 +29,7 @@ TDD coverage: `MerlinTests/Unit/StubMarkerScannerTuningTests.swift`.
 import XCTest
 @testable import Merlin
 
-/// Phase 318a — failing tests for StubMarkerScanner tuning.
+/// Task 318a — failing tests for StubMarkerScanner tuning.
 final class StubMarkerScannerTuningTests: XCTestCase {
 
     private func makeTmpProject(file: String, content: String) throws -> URL {
@@ -102,5 +102,5 @@ Expected: BUILD SUCCEEDED; both tests **FAIL** against today's scanner. Verified
 ## Commit
 ```
 git add MerlinTests/Unit/StubMarkerScannerTuningTests.swift tasks/task-318a-stub-marker-tuning-tests.md
-git commit -m "Phase 318a — StubMarkerScanner tuning tests (failing)"
+git commit -m "Task 318a — StubMarkerScanner tuning tests (failing)"
 ```

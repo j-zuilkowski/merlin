@@ -1,12 +1,12 @@
-# Phase 207a — Instruction Distillation Tests (failing)
+# Task 207a — Instruction Distillation Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 206b complete: LLM summarisation wired in the execute loop.
+Task 206b complete: LLM summarisation wired in the execute loop.
 
-New surface introduced in phase 207b:
+New surface introduced in task 207b:
   - `AppSettings.promptCompressionEnabled: Bool` — `@Published var`, default `false`; persisted as `prompt_compression_enabled` in `config.toml`
   - `AgenticEngine.distilledCoreSystemPrompt: String` — static computed property; a compact, symbol-dense version of `coreSystemPrompt`. Functionally equivalent but uses shorthand to save ~60% of core prompt tokens.
   - `AgenticEngine.constitutionDistilledContent: String` — instance property, initially `""`; set by `refreshDistilledConstitution(using:)`
@@ -184,5 +184,5 @@ Expected: **BUILD FAILED** — `AppSettings` has no `promptCompressionEnabled` p
 
 ```bash
 git add MerlinTests/Unit/InstructionDistillationTests.swift
-git commit -m "Phase 207a — InstructionDistillationTests (failing)"
+git commit -m "Task 207a — InstructionDistillationTests (failing)"
 ```

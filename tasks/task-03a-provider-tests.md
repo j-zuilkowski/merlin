@@ -1,11 +1,11 @@
-# Phase 03a — Provider Tests (no network)
+# Task 03a — Provider Tests (no network)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. OpenAI function calling format. Dynamic tool registry (ToolRegistry actor).
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
+Task 02b complete: Message, ToolCall, CompletionRequest, LLMProvider, SSEParser types exist in Merlin/Providers/LLMProvider.swift.
 
 ---
 
@@ -92,5 +92,5 @@ Expected: `BUILD FAILED` with errors referencing `DeepSeekProvider`, `LMStudioPr
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ProviderTests.swift
-git commit -m "Phase 03a — ProviderTests (failing, providers not yet defined)"
+git commit -m "Task 03a — ProviderTests (failing, providers not yet defined)"
 ```

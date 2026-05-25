@@ -1,15 +1,15 @@
-# Phase 254a — WhyCommentScanner Tests
+# Task 254a — WhyCommentScanner Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 253b complete: DevGuideGenerator live.
+Task 253b complete: DevGuideGenerator live.
 
 Replaces the `WhyCommentScanner` stub with a real implementation. Scans source files for
 trigger patterns defined in the adapter and checks for nearby explanatory comments.
 
-New surface introduced in phase 254b (replacing stub):
+New surface introduced in task 254b (replacing stub):
   - `WhyCommentScanner.scan(projectPath:adapter:) async -> [WhyCommentTrigger]` — real
     implementation. For each match of an adapter WHY-trigger regex, checks ±3 lines for a
     comment. Sets `hasNearbyComment = true` when found.
@@ -157,5 +157,5 @@ returns empty results and the `hasNearbyComment = false` test would fail.
 ```bash
 git add tasks/task-254a-why-comment-scanner-tests.md \
     MerlinTests/Unit/WhyCommentScannerTests.swift
-git commit -m "Phase 254a — WhyCommentScannerTests (failing)"
+git commit -m "Task 254a — WhyCommentScannerTests (failing)"
 ```

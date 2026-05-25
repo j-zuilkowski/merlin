@@ -16,7 +16,7 @@ the surface-coverage scenarios this inventory defines.
 | M5 | Manual runsheet | Voice dictation, visual judgement, KiCad GUI |
 
 **Prerequisite for M2 (exhaustive UI automation):** every interactive control needs an
-`AccessibilityID`. Phase 306 added ~110 identifiers across the UI — but that pass ran
+`AccessibilityID`. Task 306 added ~110 identifiers across the UI — but that pass ran
 without this catalogue (it was missing from the checkout) and was driven from source, so
 it is substantial yet not verified-exhaustive. Each of S7–S11 cross-checks its catalogue
 section against `Merlin/Support/AccessibilityID.swift` and adds any missing identifier as
@@ -33,7 +33,7 @@ The deep dive is also a bug hunt. Found so far — must be fixed before the prov
 - **DEAD MENU ITEMS** — `MerlinCommands.swift:87–94`: the View menu's **"Toggle Terminal"
   (⌃`)**, **"Toggle Side Chat" (⌘⇧/)**, and **"Review Memories" (⌘⇧M)** have empty `{}`
   action bodies. Three menu commands + their keyboard shortcuts do nothing — the
-  dead-control bug class again. Needs a fix phase.
+  dead-control bug class again. Needs a fix task.
 
 Running S7–S17 will surface more; each is logged to `BLOCKED.md` or the fix backlog.
 

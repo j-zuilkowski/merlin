@@ -119,7 +119,7 @@ calibrationDoneButton calibrationApplyAllButton`
 (Staged Changes, File Viewer, Terminal, Preview, Side Chat, Memories), the
 `ScreenPreviewView` expand/collapse button, the `PreviewPane` close button, the 3
 `ToolRequirementSheet` buttons (Install/Cancel/Done), and the `AdvisoryRow` "Fix this"
-button (the performance pane's only control). → **Phase 325 authored** (`tasks/
+button (the performance pane's only control). → **Task 325 authored** (`tasks/
 task-325{a,b}-accessibility-id-gap*`) — adds all 12 constants + applies them.
 
 ## 1.3 — Modal / overlay surfaces — 18
@@ -309,7 +309,7 @@ click/drag/type/key/scroll) · vision query (`VisionQueryTool`).
    `app_quit`, the 12 `xcode_*`, the 4 discipline generators, `tool_discover`,
    `vision_query` etc. had no dedicated coverage. → **CLOSED — `scenarios/S18-agent-tools.md`
    authored**, covers all ~67 tools + a registry-census check.
-2. **The 12 un-IDed controls** (§1.2) — **CLOSED — phase 325a/325b authored** (adds the
+2. **The 12 un-IDed controls** (§1.2) — **CLOSED — task 325a/325b authored** (adds the
    12 `AccessibilityID` constants and applies `.accessibilityIdentifier(...)`).
 3. **`MerlinMetadataIntent`** — a 3rd AppIntent the old inventory missed; S16 updated to
    cover all 3.

@@ -43,7 +43,7 @@ Integration:
 - Per-language adapter config gets a `[[redundant_docstring_known_what_phrases]]` table so the rule list stays declarative.
 - Override comment: `// docstring-not-redundant: <reason>` (logged), parallel to `// rationale-not-needed`.
 
-## TDD coverage (phase 333a)
+## TDD coverage (task 333a)
 
 **`MerlinTests/Unit/RedundantDocstringScannerTests.swift`** — 8–12 tests:
 
@@ -57,7 +57,7 @@ Integration:
 - `testAdapterPhrasesAreUserConfigurable` — Rust adapter with different "WHAT" phrases produces different findings on the same Swift fixture.
 - Edge cases: empty docstring, single-character symbol, generic-parameter-only docstring.
 
-## Implementation skeleton (phase 333b)
+## Implementation skeleton (task 333b)
 
 - Levenshtein-based comparison of doc-comment first sentence vs. identifier (camelCase-split + lowercased, threshold 0.7 similarity).
 - Known-WHAT-phrase regex list ships in `swift-xcode.toml`: `^\s*(Returns?|The|A) `, `^\s*Get\s`, `^\s*Set\s`, etc.

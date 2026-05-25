@@ -1,10 +1,10 @@
-# Phase 336b — LoRA Serving Target Implementation
+# Task 336b — LoRA Serving Target Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 336a complete: failing `LoRAServingTargetSettingsTests` (4 tests) in place.
+Task 336a complete: failing `LoRAServingTargetSettingsTests` (4 tests) in place.
 
 ---
 
@@ -59,5 +59,5 @@ Expected: `** TEST BUILD SUCCEEDED **`.
 git add Merlin/Config/AppSettings.swift \
         Merlin/Views/Settings/LoRASettingsSection.swift \
         tasks/task-336b-lora-serving-target.md
-git commit -m "Phase 336b — LoRA serving-target picker (mlx_lm.server / vLLM-Metal / LM Studio / custom)"
+git commit -m "Task 336b — LoRA serving-target picker (mlx_lm.server / vLLM-Metal / LM Studio / custom)"
 ```

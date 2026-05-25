@@ -1,10 +1,10 @@
-# Phase 43b — Connectors Implementation (GitHub, Slack, Linear)
+# Task 43b — Connectors Implementation (GitHub, Slack, Linear)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 43a complete: failing ConnectorTests in place.
+Task 43a complete: failing ConnectorTests in place.
 
 ---
 
@@ -376,5 +376,5 @@ git add Merlin/Connectors/ConnectorCredentials.swift \
         Merlin/Connectors/LinearConnector.swift \
         Merlin/Views/ConnectorsView.swift \
         project.yml
-git commit -m "Phase 43b — GitHub + Slack + Linear connectors + ConnectorCredentials"
+git commit -m "Task 43b — GitHub + Slack + Linear connectors + ConnectorCredentials"
 ```

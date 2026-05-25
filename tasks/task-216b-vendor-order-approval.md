@@ -1,10 +1,10 @@
-# Phase 216b — Vendor Order and Electronics Approval
+# Task 216b — Vendor Order and Electronics Approval
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 216a complete: failing vendor/order/approval tests exist.
+Task 216a complete: failing vendor/order/approval tests exist.
 
 ---
 
@@ -21,13 +21,13 @@ Implement:
 7. `ElectronicsApprovalRequest`
 8. `ElectronicsApprovalEvaluator`
 
-No real vendor network calls or order submission in this phase.
+No real vendor network calls or order submission in this task.
 
 Rules:
 
 1. default flow prepares carts/orders only
 2. submission requires explicit approval
-3. credentials/tokens are not stored here; later connector phases use Keychain
+3. credentials/tokens are not stored here; later connector  tasks use Keychain
 4. full payment details are never persisted
 
 ---
@@ -47,5 +47,5 @@ Expected: **BUILD SUCCEEDED**. `VendorOrderApprovalTests` pass.
 
 ```bash
 git add Merlin/Electronics/VendorOrderApproval.swift
-git commit -m "Phase 216b — vendor BOM order and electronics approval policy"
+git commit -m "Task 216b — vendor BOM order and electronics approval policy"
 ```

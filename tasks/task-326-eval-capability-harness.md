@@ -1,12 +1,12 @@
-# Phase 326 — Eval Capability Harness (S1–S6)
+# Task 326 — Eval Capability Harness (S1–S6)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 325b complete: AccessibilityID gap-fill landed.
+Task 325b complete: AccessibilityID gap-fill landed.
 
-W5 — the proving suite. `EvalHarness` already exists (phase 303); this phase adds the
+W5 — the proving suite. `EvalHarness` already exists (task 303); this task adds the
 **M1 capability harness**: the `MerlinE2ETests` tests that drive the S1–S6 capability
 scenarios over their fixtures.
 
@@ -493,10 +493,10 @@ bounded, in-repo lookup, **not** a manual step at proving time.
 ```
 git add MerlinE2ETests/EvalSupport.swift MerlinE2ETests/CapabilityScenarioTests.swift \
   tasks/task-326-eval-capability-harness.md
-git commit -m "Phase 326 — Eval capability harness (S1–S6), self-launching services"
+git commit -m "Task 326 — Eval capability harness (S1–S6), self-launching services"
 ```
 
 ## Fixes
-Phase 332 relocated `merlin-eval/` into the merlin repo (`merlin/merlin-eval/`).
+Task 332 relocated `merlin-eval/` into the merlin repo (`merlin/merlin-eval/`).
 `EvalPaths.fixture(_:)` and `EvalLog`'s results directory now resolve
 `merlin/merlin-eval/...`; `EvalPaths.root` and `EvalPaths.sibling(_:)` are unchanged.

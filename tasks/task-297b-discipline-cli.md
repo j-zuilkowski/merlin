@@ -1,8 +1,8 @@
-# Phase 297b — merlin-discipline CLI (implementation)
+# Task 297b — merlin-discipline CLI (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 297a complete: failing tests in `DisciplineCLITests`. Unit C1 of the plan.
+Task 297a complete: failing tests in `DisciplineCLITests`. Unit C1 of the plan.
 
 Goal: a `merlin-discipline` executable that runs the discipline gates at git
 commit/push time, sharing the exact `Merlin/Discipline/` code (no second implementation).
@@ -21,7 +21,7 @@ static func run(arguments: [String]) async -> Int32
   project's changed `.md` docs (use `git diff --name-only` against the upstream, or all
   `.md` files if that is unavailable); on any block return `1`, else `0`.
 - Unknown subcommand or missing path: print usage to stderr, return `2`.
-- Every step also appends a structured event line (phase 298 defines the format) — for
+- Every step also appends a structured event line (task 298 defines the format) — for
   297b a plain `print()` of human-readable progress to stdout is sufficient; 298 adds the
   JSONL stream.
 
@@ -82,5 +82,5 @@ exit 0 + human-readable output.
 ```
 git add Merlin/Discipline/DisciplineCLI.swift MerlinDisciplineCLI/MerlinDisciplineMain.swift \
   project.yml tasks/task-297b-discipline-cli.md
-git commit -m "Phase 297b — merlin-discipline CLI"
+git commit -m "Task 297b — merlin-discipline CLI"
 ```

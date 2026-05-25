@@ -1,11 +1,11 @@
-# Phase 157a — LRF metadata + text tests (failing)
+# Task 157a — LRF metadata + text tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 156b complete.
+Task 156b complete.
 
-New surface in phase 157b:
+New surface in task 157b:
   - `crate::metadata::lrf::extract(path)` — parses title/author from LRF object header
   - `crate::text::lrf::extract(path)` — scans LRF text blocks for readable content
 
@@ -92,5 +92,5 @@ Expected: tests fail.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/lrf_tests.rs processing/Cargo.toml
-git commit -m "Phase 157a — LRF metadata + text tests (failing)"
+git commit -m "Task 157a — LRF metadata + text tests (failing)"
 ```

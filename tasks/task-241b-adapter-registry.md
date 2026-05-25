@@ -1,10 +1,10 @@
-# Phase 241b — AdapterRegistry
+# Task 241b — AdapterRegistry
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 241a complete: failing tests for AdapterRegistry, ProjectAdapter, WHYTriggerSpec,
+Task 241a complete: failing tests for AdapterRegistry, ProjectAdapter, WHYTriggerSpec,
 ManualCoveragePattern, and seed adapter installation.
 
 ---
@@ -253,7 +253,7 @@ actor AdapterRegistry {
 
     [[why_comment_triggers]]
     regex = "todo!\\(\\)"
-    reason = "must reference issue/phase"
+    reason = "must reference issue/task"
 
     [[why_comment_triggers]]
     regex = "Duration::from_millis\\("
@@ -409,7 +409,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 241a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 241a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -418,5 +418,5 @@ git add tasks/task-241b-adapter-registry.md \
     Merlin/Discipline/ProjectAdapter.swift \
     Merlin/Discipline/AdapterRegistry.swift \
     Merlin/Discipline/TOMLAdapterParser.swift
-git commit -m "Phase 241b — AdapterRegistry + ProjectAdapter + seed adapters"
+git commit -m "Task 241b — AdapterRegistry + ProjectAdapter + seed adapters"
 ```

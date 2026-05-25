@@ -1,19 +1,19 @@
-# Phase 278a — v2.2.2 Release Tests (failing)
+# Task 278a — v2.2.2 Release Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 277 complete: telemetry test-seam cleanup landed; full suite green headless.
+Task 277 complete: telemetry test-seam cleanup landed; full suite green headless.
 `origin/main` pushed to `152654d`.
 
-v2.2.2 is a **patch release**. It ships the phase 274–277 work — the CI-readiness
+v2.2.2 is a **patch release**. It ships the task 274–277 work — the CI-readiness
 remediation, two engine regression fixes (the ~199-retry escalation loop and the
 `ComplexityTier` step-drop crash), and the telemetry test-seam cleanup — as a numbered
 version. The `v2.2.1` tag stays at `0e34986` as an unreleased intermediate; v2.2.2 is
 tagged at the current HEAD so the release contains those fixes.
 
-New surface introduced in phase 278b:
+New surface introduced in task 278b:
   - `project.yml`: `MARKETING_VERSION "2.2.2"`, `CURRENT_PROJECT_VERSION 19`.
   - `RELEASE-v2.2.2.md` at the repository root.
 
@@ -131,5 +131,5 @@ git add tasks/task-278a-v2-2-2-release-tests.md \
     MerlinTests/Unit/AppVersion222Tests.swift \
     MerlinTests/Unit/ReleaseNotes222Tests.swift \
     Merlin.xcodeproj/project.pbxproj
-git commit -m "Phase 278a — V2_2_2ReleaseTests (failing)"
+git commit -m "Task 278a — V2_2_2ReleaseTests (failing)"
 ```

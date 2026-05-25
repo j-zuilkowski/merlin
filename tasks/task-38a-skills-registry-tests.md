@@ -1,12 +1,12 @@
-# Phase 38a — SkillsRegistry Tests
+# Task 38a — SkillsRegistry Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 37b complete: ContextInjector (@mention, attachment, drag-drop).
+Task 37b complete: ContextInjector (@mention, attachment, drag-drop).
 
-New surface introduced in phase 38b:
+New surface introduced in task 38b:
   - `SkillFrontmatter` — Codable struct from YAML frontmatter: name, description,
     argumentHint, model, userInvocable, disableModelInvocation, allowedTools, context
   - `Skill` — struct: name (String), frontmatter (SkillFrontmatter), body (String),
@@ -195,5 +195,5 @@ Expected: `BUILD FAILED` with errors referencing `SkillsRegistry`, `Skill`, `Ski
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/SkillsRegistryTests.swift
-git commit -m "Phase 38a — SkillsRegistryTests (failing)"
+git commit -m "Task 38a — SkillsRegistryTests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 109b — Project Path AppSettings Wiring
+# Task 109b — Project Path AppSettings Wiring
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 109a complete: ProjectPathSettingsTests (failing) in place.
+Task 109a complete: ProjectPathSettingsTests (failing) in place.
 
 ---
 
@@ -112,5 +112,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Config/AppSettings.swift \
         Merlin/App/AppState.swift \
         Merlin/Views/Settings/RoleSlotSettingsView.swift
-git commit -m "Phase 109b — AppSettings.projectPath wired into engine and Settings UI"
+git commit -m "Task 109b — AppSettings.projectPath wired into engine and Settings UI"
 ```

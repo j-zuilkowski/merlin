@@ -1,7 +1,7 @@
 # Merlin — Rebuild Guide
 
 This document is the definitive reference for reconstructing Merlin from scratch using the
-task files in this directory. Follow it sequentially. Each phase builds on the last.
+task files in this directory. Follow it sequentially. Each task builds on the last.
 
 ---
 
@@ -23,38 +23,38 @@ swift --version
 ## How to Use This Guide
 
 1. Read `spec.md` first — understand the layered design before writing any code.
-2. Run each phase's **Verify** command. If it says "BUILD FAILED", that is expected for `a`
-   phases (tests-first). If it says "BUILD SUCCEEDED" with passing tests, move on.
-3. Run each phase's **Commit** command exactly as written.
-4. Never batch commits across phases.
+2. Run each task's **Verify** command. If it says "BUILD FAILED", that is expected for `a`
+    tasks (tests-first). If it says "BUILD SUCCEEDED" with passing tests, move on.
+3. Run each task's **Commit** command exactly as written.
+4. Never batch commits across  tasks.
 5. After any `project.yml` change, run `xcodegen generate` before building.
 
 ---
 
 ## Layer Map
 
-Merlin is built in 9 vertical layers. Phases in lower layers must be complete before
+Merlin is built in 9 vertical layers. Tasks in lower layers must be complete before
 starting higher ones.
 
 ```
-Layer 9 — Self-Improvement (LoRA, DPO, Calibration)    phases 116–131, 165
-Layer 8 — Reliability & Observability (v9)              phases 133, 140–150
-Layer 7 — Local Model Management (v7)                   phases 125–132
-Layer 6 — Memory Backend Plugins (v6 / v9)              phases 113–115, 134–138
-Layer 5 — Agent Reliability Framework (v5)              phases 95–115, 116–128
-Layer 4 — Subagents & Multi-Agent (v4)                  phases 54–80
-Layer 3 — Skills, RAG, Memory (v3)                      phases 38–53
-Layer 2 — Core Engine & Providers (v2)                  phases 25–37
-Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
+Layer 9 — Self-Improvement (LoRA, DPO, Calibration)     tasks 116–131, 165
+Layer 8 — Reliability & Observability (v9)               tasks 133, 140–150
+Layer 7 — Local Model Management (v7)                    tasks 125–132
+Layer 6 — Memory Backend Plugins (v6 / v9)               tasks 113–115, 134–138
+Layer 5 — Agent Reliability Framework (v5)               tasks 95–115, 116–128
+Layer 4 — Subagents & Multi-Agent (v4)                   tasks 54–80
+Layer 3 — Skills, RAG, Memory (v3)                       tasks 38–53
+Layer 2 — Core Engine & Providers (v2)                   tasks 25–37
+Layer 1 — Foundation (scaffold, types, tools)            tasks 00–24
 ```
 
 ---
 
-## Phase Reference
+## Task Reference
 
 ### Layer 1 — Foundation
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 00 | `task-00-preflight.sh` | Repo scaffold, project.yml, xcodegen |
 | 01 | `task-01-scaffold.md` | MerlinApp, AppState, ContentView skeleton |
@@ -84,13 +84,13 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 > **See also:** `task-14c-contextmanager-v5-addendum.md` and
 > `task-17c-agenticengine-v5-addendum.md` for all extensions made to these
-> files in later phases.
+> files in later  tasks.
 
 ---
 
 ### Layer 2 — Core Engine & Providers
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 25a/b | `task-25a/b-rag` | XcalibreClient, RAGTools (basic search) |
 | 26a/b | `task-26a/b-provider` | OpenAICompatibleProvider, AnthropicProvider, SSEParser |
@@ -103,14 +103,14 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 | 33a/b | `task-33a/b-diff-engine` | DiffEngine, DiffPane v2 |
 | 34 | `task-34-chatview-v2.md` | ChatView v2 (markdown rendering, code blocks) |
 | 35a/b | `task-35a/b-diff-comment` | DiffComment, diff review flow |
-| 36a/b | `task-36a/b-claude-md` | ConstitutionLoader — reads constitution.md into system prompt |
+| 36a/b | `task-36a/b-constitution` | ConstitutionLoader — reads constitution.md into system prompt |
 | 37a/b | `task-37a/b-context-injection` | ContextInjector, project-path injection |
 
 ---
 
 ### Layer 3 — Skills, RAG, Memory
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 38a/b | `task-38a/b-skills-registry` | SkillsRegistry, Skill, skill loading from ~/.merlin/skills/ |
 | 39a/b | `task-39a/b-skill-invocation` | AgenticEngine.invokeSkill(), SkillsPicker |
@@ -122,16 +122,16 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 | 53 | *(see task file)* | End of Layer 3 |
 
 > **See also:** `task-46c-appsettings-v5-addendum.md` for all properties added
-> to AppSettings in phases 46–165.
+> to AppSettings in  tasks 46–165.
 
-> **Note:** Phases 40–53 should be followed in file-sort order. Use
+> **Note:** Tasks 40–53 should be followed in file-sort order. Use
 > `ls tasks/ | sort -V | grep "task-[34][0-9]"` to get the precise list.
 
 ---
 
 ### Layer 4 — Subagents & Multi-Agent (v4)
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 54a/b | Subagent engine | SubagentEngine, SubagentEvent, SubagentBlockView |
 | 55a/b | Worker subagent | WorkerSubagentEngine, worktree isolation |
@@ -143,7 +143,7 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 ### Layer 5 — Agent Reliability Framework (v5)
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 95–106 | *(see task files)* | DomainRegistry, SoftwareDomain, AgentSlot, PlannerEngine, CriticEngine, slot-based system prompt addendum, V5 Settings UI |
 | 107a/b | `task-107a/b-skill-frontmatter-v5` | SkillFrontmatter v5 (context, slot, domain annotations) |
@@ -160,7 +160,7 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 ### Layer 6 — Self-Training Data (v6 partial)
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 116a/b | LoRA AppSettings | loraEnabled, loraAutoTrain, etc. in AppSettings |
 | 117a/b | OutcomeRecord training fields | prompt/response capture in OutcomeRecord |
@@ -174,7 +174,7 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 ### Layer 7 — Inference Defaults & Model Management
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 123a/b | Sampling params | InferenceDefaults in AppSettings, CompletionRequest fields |
 | 124a/b | Parameter advisor | ModelParameterAdvisor, ParameterAdvisory, AdvisoryRow |
@@ -192,7 +192,7 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 ### Layer 8 — Reliability & Observability (v8/v9)
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 133 | `task-133-v8-docs.md` | v8 architecture notes |
 | 134a/b | MemoryBackendPlugin | MemoryBackendPlugin protocol, NullMemoryPlugin |
@@ -213,9 +213,9 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 | 149a/b | LMStudio context auto-resize | LMStudioModelManager.ensureContextLength() |
 | 150a/b | Loop continuation | Batch-split + continuation injection for long tasks |
 
-**Diagnostic phases** (can be applied after Layer 8 or interleaved):
+**Diagnostic  tasks** (can be applied after Layer 8 or interleaved):
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | diag-01a/b | TelemetryEmitter | TelemetryEmitter, TelemetryEvent, TelemetrySpan |
 | diag-02a/b | Provider telemetry | TTFT/TPS metrics emitted per provider |
@@ -230,49 +230,49 @@ Layer 1 — Foundation (scaffold, types, tools)           phases 00–24
 
 ### Layer 9 — Xcalibre Integration & Context Management
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 151a/b (Merlin) | Context pre-run compaction | ContextManager.compactIfNeededBeforeRun() |
 | 151a/b (xcalibre) | CHM extraction | xcalibre-processing CHM support |
-| 152–163 | *(xcalibre processing phases)* | LIT, SNB, PDB, TCR, LRF, DjVu, AZW4, TXT, CBZ, PDB metadata |
+| 152–163 | *(xcalibre processing  tasks)* | LIT, SNB, PDB, TCR, LRF, DjVu, AZW4, TXT, CBZ, PDB metadata |
 
 ---
 
 ### Layer 9b — Self-Improvement (continued)
 
-| Phase | File | Delivers |
+| Task | File | Delivers |
 |-------|------|----------|
 | 164a/b | Critic retry loop | AgenticEngine retries on critic failure up to maxCriticRetries |
 | 165a/b | DPO pair collection | DPOQueue, DPOPendingEntry, correction-triggered pair capture |
 
 ---
 
-## Supplementary Files (No Dedicated Phase)
+## Supplementary Files (No Dedicated Task)
 
 These source files exist in the codebase but are not the primary deliverable of a numbered
-phase. They were introduced as support code within other phases or as later additions.
-A rebuild must include them — see the linked phase for context.
+task. They were introduced as support code within other  tasks or as later additions.
+A rebuild must include them — see the linked task for context.
 
 | File | Where Introduced | Notes |
 |------|-----------------|-------|
-| `App/AppFocusedValues.swift` | Phase 20 / v5 | `FocusedValues` keys for `isEngineRunning`, `activeProviderID` |
-| `Support/AppIntentsSupport.swift` | Phase 19 | `MerlinMetadataIntent` — minimal App Intents registration |
-| `Engine/ContextUsageTracker.swift` | Phase 14 / diag | `@Published usedTokens`, `percentUsed`, `statusString` |
-| `Engine/Protocols/CriticEngineProtocol.swift` | Phase 95–102 | Protocol + default impl; `CriticEngine` conforms |
-| `Engine/Protocols/ModelPerformanceTrackerProtocol.swift` | Phase 113 | Protocol; `ModelPerformanceTracker` conforms |
-| `Engine/Protocols/PlannerEngineProtocol.swift` | Phase 95 | Protocol; `PlannerEngine` conforms |
-| `Engine/Protocols/XcalibreClientProtocol.swift` | Phase 25 | Protocol; `XcalibreClient` conforms |
-| `Providers/ProviderRegistry+ReasoningEffort.swift` | Phase 109 | `reasoningEffortSupported(for:overrides:)` static helper |
-| `Providers/LocalModelManager/NullModelManager.swift` | Phase 126c | No-op manager for unknown provider IDs |
-| `Providers/LocalModelManager/LocalModelManagerSupport.swift` | Phase 126c | `normalizedOpenAICompatibleBaseURL()`, `shellQuote()` |
-| `Views/Shared/AdvisoryRow.swift` | Phase 124 | Single-advisory row view used by ModelControlView |
-| `UI/Sidebar/WorkerDiffView.swift` | Phase 55 | Diff review panel for worker subagent output |
-| `Views/Calibration/CalibrationFlowView.swift` | Phase 128/129 | Sheet coordinator driving the 3-step calibration flow |
-| `Windows/FloatingWindowManager.swift` | Phase 72 | Pop-out session windows (always-on-top NSWindow) |
-| `Windows/HelpWindowManager.swift` | Phase 28 / v5 | Retains NSWindow references to prevent ARC dealloc |
-| `Windows/HelpWindowView.swift` | Phase 28 / v5 | WKWebView-based Markdown documentation viewer |
-| `Toolbar/ToolbarAction.swift` | Phase 80+ | `ToolbarAction` model — label, command, shortcut |
-| `Toolbar/ToolbarActionStore.swift` | Phase 80+ | Actor managing ordered toolbar action persistence |
+| `App/AppFocusedValues.swift` | Task 20 / v5 | `FocusedValues` keys for `isEngineRunning`, `activeProviderID` |
+| `Support/AppIntentsSupport.swift` | Task 19 | `MerlinMetadataIntent` — minimal App Intents registration |
+| `Engine/ContextUsageTracker.swift` | Task 14 / diag | `@Published usedTokens`, `percentUsed`, `statusString` |
+| `Engine/Protocols/CriticEngineProtocol.swift` | Task 95–102 | Protocol + default impl; `CriticEngine` conforms |
+| `Engine/Protocols/ModelPerformanceTrackerProtocol.swift` | Task 113 | Protocol; `ModelPerformanceTracker` conforms |
+| `Engine/Protocols/PlannerEngineProtocol.swift` | Task 95 | Protocol; `PlannerEngine` conforms |
+| `Engine/Protocols/XcalibreClientProtocol.swift` | Task 25 | Protocol; `XcalibreClient` conforms |
+| `Providers/ProviderRegistry+ReasoningEffort.swift` | Task 109 | `reasoningEffortSupported(for:overrides:)` static helper |
+| `Providers/LocalModelManager/NullModelManager.swift` | Task 126c | No-op manager for unknown provider IDs |
+| `Providers/LocalModelManager/LocalModelManagerSupport.swift` | Task 126c | `normalizedOpenAICompatibleBaseURL()`, `shellQuote()` |
+| `Views/Shared/AdvisoryRow.swift` | Task 124 | Single-advisory row view used by ModelControlView |
+| `UI/Sidebar/WorkerDiffView.swift` | Task 55 | Diff review panel for worker subagent output |
+| `Views/Calibration/CalibrationFlowView.swift` | Task 128/129 | Sheet coordinator driving the 3-step calibration flow |
+| `Windows/FloatingWindowManager.swift` | Task 72 | Pop-out session windows (always-on-top NSWindow) |
+| `Windows/HelpWindowManager.swift` | Task 28 / v5 | Retains NSWindow references to prevent ARC dealloc |
+| `Windows/HelpWindowView.swift` | Task 28 / v5 | WKWebView-based Markdown documentation viewer |
+| `Toolbar/ToolbarAction.swift` | Task 80+ | `ToolbarAction` model — label, command, shortcut |
+| `Toolbar/ToolbarActionStore.swift` | Task 80+ | Actor managing ordered toolbar action persistence |
 
 ---
 
@@ -280,19 +280,19 @@ A rebuild must include them — see the linked phase for context.
 
 Before writing any code, understand these or you will build the wrong thing:
 
-1. **TDD always.** The `a` phase writes failing tests; the `b` phase makes them pass.
-   Never write production code in an `a` phase.
+1. **TDD always.** The `a` task writes failing tests; the `b` task makes them pass.
+   Never write production code in an `a` task.
 
-2. **AgenticEngine grows across many phases.** Phase 17b is version 1. By phase 165 it has
+2. **AgenticEngine grows across many  tasks.** Task 17b is version 1. By task 165 it has
    ~1400 lines. The addendum docs (`task-17c`, `task-17d`) describe the key extensions.
    Read them before modifying AgenticEngine.
 
 3. **AppSettings is the single source of truth.** No feature reads `UserDefaults` or config
    files directly. Everything goes through `AppSettings.shared`. The addendum
-   `task-46c-appsettings-v5-addendum.md` documents all properties added after phase 46b.
+   `task-46c-appsettings-v5-addendum.md` documents all properties added after task 46b.
 
-4. **ContextManager.compactIfNeededBeforeRun() and skill reinjection.** Phase 14b implements
-   basic compaction. Phase 60b adds skill reinjection after compaction — critical for
+4. **ContextManager.compactIfNeededBeforeRun() and skill reinjection.** Task 14b implements
+   basic compaction. Task 60b adds skill reinjection after compaction — critical for
    maintaining skill context in long sessions. The addendum `task-14c` documents this.
 
 5. **Slot-based provider routing.** From v5 onward, `AgentSlot` (.execute, .reason, .vision,

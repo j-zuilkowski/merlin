@@ -1,11 +1,11 @@
-# Phase 159a — AZW4 text extraction tests (failing)
+# Task 159a — AZW4 text extraction tests (failing)
 
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 158b complete.
+Task 158b complete.
 
-New surface in phase 159b:
+New surface in task 159b:
   - `crate::text::azw4::extract(path)` — detects embedded PDF and delegates to pdf extractor
 
 ## Write to: processing/tests/azw4_text_tests.rs
@@ -68,5 +68,5 @@ Expected: tests fail.
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/azw4_text_tests.rs processing/Cargo.toml
-git commit -m "Phase 159a — AZW4 text extraction tests (failing)"
+git commit -m "Task 159a — AZW4 text extraction tests (failing)"
 ```

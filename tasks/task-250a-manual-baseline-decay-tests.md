@@ -1,15 +1,15 @@
-# Phase 250a — Manual Baseline Decay Tests
+# Task 250a — Manual Baseline Decay Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 249b complete: ManualCoverageScanner full implementation live.
+Task 249b complete: ManualCoverageScanner full implementation live.
 
 Introduces the decaying baseline mechanism that allows `/project:adopt` to grandfather existing
 gaps while enforcing forward progress. Also introduces manual section template writing.
 
-New surface introduced in phase 250b:
+New surface introduced in task 250b:
   - `ManualBaselineManager` actor in `Merlin/Discipline/ManualBaselineManager.swift`:
     `func currentBaseline(projectPath: String) async -> Int`
     `func recordRelease(projectPath: String, uncoveredCount: Int) async throws`
@@ -206,5 +206,5 @@ and `ManualSectionTemplateWriter`.
 git add tasks/task-250a-manual-baseline-decay-tests.md \
     MerlinTests/Unit/ManualBaselineDecayTests.swift \
     MerlinTests/Unit/ManualSectionTemplateWriterTests.swift
-git commit -m "Phase 250a — ManualBaselineDecayTests (failing)"
+git commit -m "Task 250a — ManualBaselineDecayTests (failing)"
 ```

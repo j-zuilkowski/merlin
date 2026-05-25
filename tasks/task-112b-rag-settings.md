@@ -1,10 +1,10 @@
-# Phase 112b — RAG Settings (ragRerank + ragChunkLimit)
+# Task 112b — RAG Settings (ragRerank + ragChunkLimit)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 112a complete: RAGSettingsTests (failing) in place.
+Task 112a complete: RAGSettingsTests (failing) in place.
 
 ---
 
@@ -117,7 +117,7 @@ AppSettings.shared.$ragChunkLimit
 
 ## Edit: Merlin/Views/Settings/RoleSlotSettingsView.swift — Library section
 
-In the Library section (added in phase 109b), add the two new rows:
+In the Library section (added in task 109b), add the two new rows:
 
 ```swift
 Section("Library") {
@@ -211,5 +211,5 @@ git add Merlin/Config/AppSettings.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift \
         Merlin/Views/Settings/RoleSlotSettingsView.swift
-git commit -m "Phase 112b — ragRerank + ragChunkLimit configurable (default off, safe for RTX 2070)"
+git commit -m "Task 112b — ragRerank + ragChunkLimit configurable (default off, safe for RTX 2070)"
 ```

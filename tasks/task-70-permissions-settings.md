@@ -1,10 +1,10 @@
-# Phase 70 — Permissions Settings Section
+# Task 70 — Permissions Settings Section
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 69 complete: SearchSettingsView with Brave API key.
+Task 69 complete: SearchSettingsView with Brave API key.
 
 Replace the stub `PermissionsSettingsView` in `SettingsWindowView.swift` with a real view that
 reads from `AuthMemory` (stored at `~/.merlin/auth.json`) and displays allow/deny patterns
@@ -120,5 +120,5 @@ Expected: `BUILD SUCCEEDED`.
 cd ~/Documents/localProject/merlin
 git add Merlin/UI/Settings/SettingsWindowView.swift \
         Merlin/Auth/AuthMemory.swift
-git commit -m "Phase 70 — PermissionsSettingsView: allow/deny pattern list with remove buttons"
+git commit -m "Task 70 — PermissionsSettingsView: allow/deny pattern list with remove buttons"
 ```

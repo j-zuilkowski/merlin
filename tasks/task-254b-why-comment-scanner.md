@@ -1,10 +1,10 @@
-# Phase 254b — WhyCommentScanner
+# Task 254b — WhyCommentScanner
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 254a complete: failing tests for the real WhyCommentScanner.
+Task 254a complete: failing tests for the real WhyCommentScanner.
 
 Replaces the stub in `Merlin/Discipline/WhyCommentScanner.swift`.
 
@@ -115,12 +115,12 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 254a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 254a tests pass. No prior task regresses.
 
 ## Commit
 
 ```bash
 git add tasks/task-254b-why-comment-scanner.md \
     Merlin/Discipline/WhyCommentScanner.swift
-git commit -m "Phase 254b — WhyCommentScanner real implementation + rationale-not-needed annotation"
+git commit -m "Task 254b — WhyCommentScanner real implementation + rationale-not-needed annotation"
 ```

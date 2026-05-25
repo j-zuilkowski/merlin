@@ -1,8 +1,8 @@
-# Phase 300b — Discipline Generator Tools (implementation)
+# Task 300b — Discipline Generator Tools (implementation)
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 300a complete: failing test in `DisciplineGeneratorToolsTests`. Unit D1 of the plan.
+Task 300a complete: failing test in `DisciplineGeneratorToolsTests`. Unit D1 of the plan.
 
 ## Edit: Merlin/Tools/ToolDefinitions.swift
 Add four `ToolDefinition`s in the existing OpenAI function-calling format (match the
@@ -66,5 +66,5 @@ confirm the tool runs and its result appears as a tool-call row.
 ```
 git add Merlin/Tools/ToolDefinitions.swift Merlin/App/AppState.swift \
   tasks/task-300b-discipline-generator-tools.md
-git commit -m "Phase 300b — Discipline generator tools"
+git commit -m "Task 300b — Discipline generator tools"
 ```

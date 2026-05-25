@@ -1,12 +1,12 @@
-# Phase 271a — Process Safety + Git-Hook Hardening Tests
+# Task 271a — Process Safety + Git-Hook Hardening Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 270b complete: prose-readability path is functional end to end.
+Task 270b complete: prose-readability path is functional end to end.
 
-This phase covers three Medium-priority safety bugs.
+This task covers three Medium-priority safety bugs.
 
 **Bug A — foreign-hook clobber.** `GitHookInstaller.install()` writes `post-commit` and
 `pre-push` atomically, overwriting any pre-existing hook a project already had — silent
@@ -22,7 +22,7 @@ caller hangs forever.
 `(line + "\n").data(using: .utf8)!` — a force-unwrap, which the project rules forbid in
 production code.
 
-New surface introduced in phase 271b:
+New surface introduced in task 271b:
   - `GitHookInstaller.HookError.foreignHookPresent(String)` — thrown by `install()` when
     a non-Merlin hook already occupies `post-commit` / `pre-push`.
   - `APIDocGenerator` and `ProseReadabilityChecker` gain an injectable process timeout
@@ -181,7 +181,7 @@ xcodebuild -scheme MerlinTests build-for-testing \
 
 Expected: **BUILD FAILED** — the test file references symbols that do not exist yet:
 `GitHookInstaller.HookError.foreignHookPresent`, the `APIDocGenerator(timeoutSeconds:)`
-initializer, and the `APIDocGenerator.runForTesting(...)` test seam. Phase 271b adds them.
+initializer, and the `APIDocGenerator.runForTesting(...)` test seam. Task 271b adds them.
 
 ## Commit
 
@@ -189,5 +189,5 @@ initializer, and the `APIDocGenerator.runForTesting(...)` test seam. Phase 271b 
 git add tasks/task-271a-process-safety-tests.md \
     MerlinTests/Unit/GitHookHardeningTests.swift \
     MerlinTests/Unit/ProcessTimeoutTests.swift
-git commit -m "Phase 271a — Process safety and git-hook hardening tests (failing)"
+git commit -m "Task 271a — Process safety and git-hook hardening tests (failing)"
 ```

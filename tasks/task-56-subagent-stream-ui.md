@@ -1,13 +1,13 @@
-# Phase 56 — SubagentStream UI (V4a Inline Collapsible Blocks)
+# Task 56 — SubagentStream UI (V4a Inline Collapsible Blocks)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 55b complete: SubagentEngine V4a streaming events in place.
+Task 55b complete: SubagentEngine V4a streaming events in place.
 
-This phase wires subagent streaming events into the parent chat UI as inline collapsible blocks.
-No a/b split — UI phase only. Tests in `MerlinTests/Unit/SubagentBlockViewModelTests.swift`.
+This task wires subagent streaming events into the parent chat UI as inline collapsible blocks.
+No a/b split — UI task only. Tests in `MerlinTests/Unit/SubagentBlockViewModelTests.swift`.
 
 Each block shows:
   - Header: agent name + status (running / completed / failed)
@@ -284,5 +284,5 @@ Expected: BUILD SUCCEEDED, all SubagentBlockViewModelTests pass.
 git add MerlinTests/Unit/SubagentBlockViewModelTests.swift \
         Merlin/UI/Chat/SubagentBlockViewModel.swift \
         Merlin/UI/Chat/SubagentBlockView.swift
-git commit -m "Phase 56 — SubagentStreamUI (inline collapsible blocks for V4a subagent activity)"
+git commit -m "Task 56 — SubagentStreamUI (inline collapsible blocks for V4a subagent activity)"
 ```

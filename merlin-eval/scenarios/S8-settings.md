@@ -8,7 +8,7 @@ gap). Counts come from the census, not an estimate.
 
 ## Mechanism
 M2 (XCUITest navigation + control manipulation) + M4 (read back `config.toml` to confirm
-persistence). **Prerequisite:** phase 306 (AccessibilityID pass).
+persistence). **Prerequisite:** task 306 (AccessibilityID pass).
 
 ## What is exercised
 
@@ -35,7 +35,7 @@ Pane-specific deep checks:
 - **connectors** — save each token; confirm stored (Keychain) and reloaded.
 
 ## Accessibility-ID coverage
-Phase 306b's `AccessibilityID` pass ran without this catalogue and was driven from
+Task 306b's `AccessibilityID` pass ran without this catalogue and was driven from
 source — substantial (~110 identifiers), but not verified-exhaustive. Before the
 pane-walk, cross-check every control in all 17 panes against
 `Merlin/Support/AccessibilityID.swift`. **Known-suspect gaps:** the `library`,
@@ -55,7 +55,7 @@ lacking an identifier gets one added (extend `AccessibilityID.swift` + apply
 **Score:** controls verified / ~90, plus panes-rendered / 17.
 
 ## Runsheet
-1. Phases B–D, 301–306 merged; Merlin built; back up any real `config.toml` first.
+1. Tasks B–D, 301–306 merged; Merlin built; back up any real `config.toml` first.
 2. Run the S8 XCUITest pane-walk suite.
 3. For settings not auto-checkable, manually set + relaunch + verify; diff `config.toml`.
 4. Score; write `results/S8-<date>.md`. Any control that does nothing, fails to persist,

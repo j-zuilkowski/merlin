@@ -1,10 +1,10 @@
-# Phase 321a — DocReferenceGraph Comment-Stripping Tests (failing)
+# Task 321a — DocReferenceGraph Comment-Stripping Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 320b complete: WorkerDiffView toolbar buttons wired.
+Task 320b complete: WorkerDiffView toolbar buttons wired.
 
 W4 trace audit finding F3: `DocReferenceGraph.extractEnumCaseNames` splits a `case` line
 on commas **without first stripping a trailing `//` comment**. A comma inside the comment
@@ -19,9 +19,9 @@ Live example — `spec.md:4546-4547`:
 yields phantom dangling references `shape` and `signature` (2 of the 4
 `docStaleReference` findings in the current scan).
 
-Phase 321b fixes `extractEnumCaseNames` to drop the `//` comment before comma-splitting.
+Task 321b fixes `extractEnumCaseNames` to drop the `//` comment before comma-splitting.
 
-**This is a runtime-failure phase.** The test compiles against the existing
+**This is a runtime-failure task.** The test compiles against the existing
 `DocReferenceGraph.danglingReferences` API and FAILS at runtime (today's scanner reports
 the phantom case). Verify with `test`.
 
@@ -35,7 +35,7 @@ TDD coverage: `MerlinTests/Unit/DocReferenceGraphCommentTests.swift`.
 import XCTest
 @testable import Merlin
 
-/// Phase 321a — failing test for DocReferenceGraph comment-aware enum-case parsing.
+/// Task 321a — failing test for DocReferenceGraph comment-aware enum-case parsing.
 final class DocReferenceGraphCommentTests: XCTestCase {
 
     /// Writes `[relativePath: content]`, creating intermediate directories.
@@ -93,5 +93,5 @@ against today's scanner (it reports the phantom `commentword` case). Verified wi
 ## Commit
 ```
 git add MerlinTests/Unit/DocReferenceGraphCommentTests.swift tasks/task-321a-doc-reference-comment-tests.md
-git commit -m "Phase 321a — DocReferenceGraphCommentTests (failing)"
+git commit -m "Task 321a — DocReferenceGraphCommentTests (failing)"
 ```

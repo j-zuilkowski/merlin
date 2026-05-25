@@ -1,10 +1,10 @@
-# Phase 165b — DPO Pair Collection Implementation
+# Task 165b — DPO Pair Collection Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 165a complete: failing tests in DPOQueueTests.swift + DPOAutoFilterTests.swift.
+Task 165a complete: failing tests in DPOQueueTests.swift + DPOAutoFilterTests.swift.
 
 ---
 
@@ -262,7 +262,7 @@ In the `send(userMessage:)` method (or at the start of `runLoop`), add before an
 > pending review queue where the user can Accept + Edit (filling in the chosen response)
 > or Decline. Leaving `chosen` empty at proposal time matches the queue UX — the user
 > supplies the preferred version during review. A non-empty `chosen` will be added in a
-> future phase that wires the review queue UI.
+> future task that wires the review queue UI.
 
 ---
 
@@ -281,5 +281,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Engine/DPOQueue.swift \
         Merlin/Config/AppSettings.swift \
         Merlin/Engine/AgenticEngine.swift
-git commit -m "Phase 165b — DPOQueue + correction-triggered DPO pair collection"
+git commit -m "Task 165b — DPOQueue + correction-triggered DPO pair collection"
 ```

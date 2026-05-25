@@ -1,8 +1,8 @@
-# Phase 315b — `merlin-discipline scan` Command
+# Task 315b — `merlin-discipline scan` Command
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
-Phase 315a complete: failing tests in `DisciplineScanReportTests`.
+Task 315a complete: failing tests in `DisciplineScanReportTests`.
 
 Adds a `scan` subcommand to the `merlin-discipline` CLI. It builds a `DisciplineEngine`,
 runs the full scan, and prints every finding grouped by category. It is informational —
@@ -40,7 +40,7 @@ static func formatScanReport(_ findings: [Finding]) -> String {
 
 **3. Add the `runScan` handler** (next to `runPostCommit` / `runPrePush` /
 `runPreCommit`). It constructs a `DisciplineEngine` with the six explicit scanners; the
-liveness scanners added in phases 307–309 come in through their defaulted init
+liveness scanners added in  tasks 307–309 come in through their defaulted init
 parameters, so the full scan runs:
 ```swift
 private static func runScan(projectPath: String) async -> Int32 {
@@ -86,5 +86,5 @@ Expected: `DisciplineScanReportTests` and `DisciplineCLITests` pass; the
 ## Commit
 ```
 git add Merlin/Discipline/DisciplineCLI.swift tasks/task-315b-discipline-scan-command.md
-git commit -m "Phase 315b — merlin-discipline scan: print all discipline findings"
+git commit -m "Task 315b — merlin-discipline scan: print all discipline findings"
 ```

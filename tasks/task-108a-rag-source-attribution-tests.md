@@ -1,12 +1,12 @@
-# Phase 108a — RAG Source Attribution Tests (failing)
+# Task 108a — RAG Source Attribution Tests (failing)
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 107b complete: skill frontmatter role/complexity declarations in place.
+Task 107b complete: skill frontmatter role/complexity declarations in place.
 
-New surface introduced in phase 108b:
+New surface introduced in task 108b:
   - `AgentEvent.ragSources([RAGChunk])` — new event case emitted by runLoop when chunks are retrieved
   - `AgenticEngine` yields `.ragSources` immediately after chunks are found, before the enriched message is sent
   - `ChatViewModel` handles `.ragSources`: stores chunks as the most-recent turn's source list
@@ -187,5 +187,5 @@ Expected: BUILD FAILED — `AgentEvent.ragSources` not defined; `RAGSourcesView`
 ```bash
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/RAGSourceAttributionTests.swift
-git commit -m "Phase 108a — RAGSourceAttributionTests (failing)"
+git commit -m "Task 108a — RAGSourceAttributionTests (failing)"
 ```

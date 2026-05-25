@@ -1,12 +1,12 @@
-# Phase 269b — Adapter Key Consistency
+# Task 269b — Adapter Key Consistency
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 269a complete: failing test for adapter-key lookup.
+Task 269a complete: failing test for adapter-key lookup.
 
-This phase makes `AdapterRegistry.loadFromDirectory` register adapters under the TOML
+This task makes `AdapterRegistry.loadFromDirectory` register adapters under the TOML
 filename stem (the adapter-key) so `registry.adapter(for: config.adapter)` resolves for
 real projects, where `config.adapter` is `"swift-xcode"` / `"rust-cargo"`.
 
@@ -48,7 +48,7 @@ works, and the seed install path (`installSeedAdapters`) already writes
 
 ---
 
-## Regression note — phase 241 adapter tests
+## Regression note — task 241 adapter tests
 
 `loadFromDirectory` previously keyed by `adapter.language`, so existing tests that load
 seed/fixture adapters and then look them up by `"swift"` / `"rust"` will now fail —
@@ -97,8 +97,8 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 269a tests pass. The updated
-`AdapterSeedTests` assertions pass with the new keys. No other prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 269a tests pass. The updated
+`AdapterSeedTests` assertions pass with the new keys. No other prior task regresses.
 
 ## Commit
 
@@ -106,7 +106,7 @@ Expected: **BUILD SUCCEEDED** and all phase 269a tests pass. The updated
 git add tasks/task-269b-adapter-key-consistency.md \
     Merlin/Discipline/AdapterRegistry.swift \
     MerlinTests/Unit/AdapterSeedTests.swift
-git commit -m "Phase 269b — AdapterRegistry key consistency"
+git commit -m "Task 269b — AdapterRegistry key consistency"
 ```
 
 If `AdapterRegistryTests.swift` also required changes, add it to the `git add` list above.

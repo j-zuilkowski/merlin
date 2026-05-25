@@ -19,17 +19,10 @@ and task vocabulary.
 
 Write failing tests in `MerlinTests/Unit/SDDDocumentationSweepTests.swift`.
 
-The tests must scan tracked text files and fail on:
-
-- `CLAUDE.md`
-- `CLAUDEMD`
-- `claude-md`
-- `architecture.md`
-- `phases/`
-- `phase-`
-- `/project:phase`
-- `project-phase`
-- standalone `phase` / `Phase`
+The tests must scan tracked text files and fail on the retired instruction filename,
+retired loader symbol, retired design filename, retired task directory, retired task
+filename prefix, retired project construction command, retired skill path, and the
+standalone retired task vocabulary word.
 
 The test may exclude itself and the explicit negative-assertion cutover tests, but should
 otherwise cover docs, task files, code comments, skills, prompts, scripts, and release

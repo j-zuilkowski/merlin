@@ -1,10 +1,10 @@
-# Phase 223b - Grounding Report UI
+# Task 223b - Grounding Report UI
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 223a complete: failing grounding report UI tests exist.
+Task 223a complete: failing grounding report UI tests exist.
 
 ---
 
@@ -49,6 +49,6 @@ Expected: **BUILD SUCCEEDED**. `GroundingReportUITests` pass.
 
 ```bash
 git add Merlin/Views/ChatView.swift Merlin/Views/Chat/ConversationHTMLRenderer.swift MerlinTests/Unit/GroundingReportUITests.swift
-git commit -m "Phase 223b - grounding report chat UI"
+git commit -m "Task 223b - grounding report chat UI"
 ```
 

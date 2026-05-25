@@ -14,7 +14,7 @@ construction-discipline layer directly into Merlin.
 - `.merlin/project.toml` + `ProjectConfigLoader` — per-project adapter selection and
   decaying-baseline configuration.
 
-### Phase Validation (243)
+### Task Validation (243)
 
 - `TaskScanner` — reads `tasks/` and cross-checks declared surfaces against the current
   codebase. Four-colour drift report: green / yellow / red / orange.

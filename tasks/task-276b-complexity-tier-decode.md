@@ -1,12 +1,12 @@
-# Phase 276b — ComplexityTier Decode Tolerance
+# Task 276b — ComplexityTier Decode Tolerance
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 276a complete: failing tests for tolerant `ComplexityTier` decoding.
+Task 276a complete: failing tests for tolerant `ComplexityTier` decoding.
 
-This phase fixes the regression where a planner step with `"complexity": "high_stakes"`
+This task fixes the regression where a planner step with `"complexity": "high_stakes"`
 is silently dropped by `parseSteps`, because `ComplexityTier`'s raw value is the
 hyphenated `"high-stakes"`.
 
@@ -72,7 +72,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 276a tests pass. With phases 274b, 275b, and
+Expected: **BUILD SUCCEEDED** and all task 276a tests pass. With  tasks 274b, 275b, and
 276b landed, the full `MerlinTests` suite is green under a headless run
 (`RUN_LIVE_TESTS` unset → engine tests skip; zero failures) — CI will be green on push.
 
@@ -81,7 +81,7 @@ Expected: **BUILD SUCCEEDED** and all phase 276a tests pass. With phases 274b, 2
 ```bash
 git add tasks/task-276b-complexity-tier-decode.md \
     Merlin/Engine/PlannerEngine.swift
-git commit -m "Phase 276b — Tolerant ComplexityTier decoding; stop dropping high_stakes steps"
+git commit -m "Task 276b — Tolerant ComplexityTier decoding; stop dropping high_stakes steps"
 ```
 
 ## Fixes
@@ -93,5 +93,5 @@ snake_case form.
 
 ## PASTE-LIST update
 
-Append phases 274a/274b, 275a/275b, 276a/276b under the Project Discipline section as
+Append  tasks 274a/274b, 275a/275b, 276a/276b under the Project Discipline section as
 the CI-readiness remediation. After 276b the suite is green headless — safe to push.

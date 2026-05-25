@@ -1,10 +1,10 @@
-# Phase 135b — LocalVectorPlugin Implementation
+# Task 135b — LocalVectorPlugin Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 135a complete: failing tests for LocalVectorPlugin and EmbeddingProviderProtocol in place.
+Task 135a complete: failing tests for LocalVectorPlugin and EmbeddingProviderProtocol in place.
 
 ---
 
@@ -356,5 +356,5 @@ Expected: BUILD SUCCEEDED — all 135a tests pass, zero warnings.
 ```bash
 git add Merlin/Memories/EmbeddingProvider.swift
 git add Merlin/Memories/LocalVectorPlugin.swift
-git commit -m "Phase 135b — LocalVectorPlugin: SQLite + NLContextualEmbedding cosine search"
+git commit -m "Task 135b — LocalVectorPlugin: SQLite + NLContextualEmbedding cosine search"
 ```

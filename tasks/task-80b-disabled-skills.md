@@ -1,10 +1,10 @@
-# Phase 80b — DisabledSkillNames Enforcement Implementation
+# Task 80b — DisabledSkillNames Enforcement Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 80a complete: failing DisabledSkillsTests in place.
+Task 80a complete: failing DisabledSkillsTests in place.
 
 ---
 
@@ -104,5 +104,5 @@ cd ~/Documents/localProject/merlin
 git add Merlin/Skills/SkillsRegistry.swift \
         Merlin/Engine/ContextManager.swift \
         Merlin/Sessions/LiveSession.swift
-git commit -m "Phase 80b — enforce AppSettings.disabledSkillNames in SkillsRegistry + ContextManager"
+git commit -m "Task 80b — enforce AppSettings.disabledSkillNames in SkillsRegistry + ContextManager"
 ```

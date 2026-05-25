@@ -13,7 +13,7 @@ struct UngatedTargetFinding: Sendable, Equatable {
 ///
 /// A target the gate never compiles rots silently the moment an API it depends on
 /// changes — exactly how `MerlinLiveTests` / `MerlinE2ETests` bit-rotted for ~160
-/// phases. This scanner makes that condition a first-class discipline finding.
+///  tasks. This scanner makes that condition a first-class discipline finding.
 actor TargetGateScanner {
 
     /// Reports targets declared in `project.yml` that no scheme builds, or — when

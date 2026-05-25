@@ -1,10 +1,10 @@
-# Phase 26b — Multi-Provider Implementation
+# Task 26b — Multi-Provider Implementation
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 All value types: Sendable. SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 26a complete: ProviderRegistryTests, OpenAICompatibleProviderTests, AnthropicProviderTests written (failing).
+Task 26a complete: ProviderRegistryTests, OpenAICompatibleProviderTests, AnthropicProviderTests written (failing).
 
 Existing provider files kept for backward compat with live tests:
   - Merlin/Providers/DeepSeekProvider.swift
@@ -875,7 +875,7 @@ git add Merlin/Providers/ProviderConfig.swift \
         Merlin/Views/Settings/ProviderSettingsView.swift \
         Merlin/Engine/AgenticEngine.swift \
         Merlin/App/AppState.swift
-git commit -m "Phase 26b — multi-provider: OpenAICompatibleProvider + AnthropicProvider + ProviderRegistry"
+git commit -m "Task 26b — multi-provider: OpenAICompatibleProvider + AnthropicProvider + ProviderRegistry"
 ```
 
 ---

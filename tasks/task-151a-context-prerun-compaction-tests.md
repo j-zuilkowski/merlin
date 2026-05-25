@@ -1,12 +1,12 @@
-# Phase 151a — Context Pre-Run Compaction Tests
+# Task 151a — Context Pre-Run Compaction Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 150i complete: Copy Conversation (Cmd+Shift+A) in Edit menu.
+Task 150i complete: Copy Conversation (Cmd+Shift+A) in Edit menu.
 
-New surface introduced in phase 151b:
+New surface introduced in task 151b:
   - `ContextManager.preRunCompactionThreshold: Int` — token count above which `compactIfNeededBeforeRun` fires; default 10 000
   - `ContextManager.compactIfNeededBeforeRun(isContinuation: Bool)` — compacts when `estimatedTokens > preRunCompactionThreshold` and `isContinuation == false`
   - `AgenticEngine.runLoop(...)` — calls `context.compactIfNeededBeforeRun(isContinuation:)` before appending the user message
@@ -199,5 +199,5 @@ Expected: BUILD FAILED with errors naming `preRunCompactionThreshold` and `compa
 cd ~/Documents/localProject/merlin
 git add MerlinTests/Unit/ContextPreRunCompactionTests.swift \
         MerlinTests/Unit/EnginePreRunCompactionIntegrationTests.swift
-git commit -m "Phase 151a — context pre-run compaction tests (failing)"
+git commit -m "Task 151a — context pre-run compaction tests (failing)"
 ```

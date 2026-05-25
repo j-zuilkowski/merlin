@@ -1,10 +1,10 @@
-# Phase 217b — KiCad Workflow Orchestration
+# Task 217b — KiCad Workflow Orchestration
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 217a complete: failing KiCad workflow orchestration tests exist.
+Task 217a complete: failing KiCad workflow orchestration tests exist.
 
 ---
 
@@ -43,5 +43,5 @@ Expected: **BUILD SUCCEEDED**. `KiCadWorkflowOrchestrationTests` pass.
 
 ```bash
 git add Merlin/Electronics/KiCadWorkflowOrchestrator.swift
-git commit -m "Phase 217b — KiCad workflow orchestration"
+git commit -m "Task 217b — KiCad workflow orchestration"
 ```

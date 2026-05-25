@@ -1,12 +1,12 @@
-# Phase 231a — Release Blocker Hardening Tests
+# Task 231a — Release Blocker Hardening Tests
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 230b complete: App Intents/Siri support is in place.
+Task 230b complete: App Intents/Siri support is in place.
 
-New surface introduced in phase 231b:
+New surface introduced in task 231b:
   - `MemoryBackendPlugin.search(query:topK:projectPath:)` — scoped memory retrieval for the active project.
   - `LiveSession.close()` / `LiveSession.isClosed` — explicit teardown for per-session resources.
   - `AppSettings.scheduleWatchedConfigReload(for:delay:)` — debounced config reload scheduling for file-watch events.
@@ -40,7 +40,7 @@ xcodebuild -scheme MerlinTests build-for-testing \
     | grep -E 'error:|warning:|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD FAILED** with errors naming the missing phase 231b surfaces.
+Expected: **BUILD FAILED** with errors naming the missing task 231b surfaces.
 
 ## Commit
 
@@ -51,5 +51,5 @@ git add tasks/task-231a-release-blocker-hardening-tests.md \
     MerlinTests/Unit/AppStateSessionTests.swift \
     MerlinTests/Unit/SessionManagerTests.swift \
     MerlinTests/Unit/AppSettingsTests.swift
-git commit -m "Phase 231a — ReleaseBlockerHardeningTests (failing)"
+git commit -m "Task 231a — ReleaseBlockerHardeningTests (failing)"
 ```

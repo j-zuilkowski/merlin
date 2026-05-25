@@ -1,4 +1,4 @@
-# Phase 152a — LIT: OPF Metadata Extraction Tests
+# Task 152a — LIT: OPF Metadata Extraction Tests
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
@@ -9,7 +9,7 @@ Current state: LIT metadata uses `recover_title()` fallback. No OPF metadata ext
 
 LIT files (Microsoft Reader) embed an OPF metadata section at the `/meta` entry of the LIT container. The OPF block uses a binary-tagged format that is readable without LZX decompression. The current stub only scans raw bytes for readable strings — it cannot access the structured title and author fields that are already present in the container. No new crate dependency is needed.
 
-## New surface introduced in phase 152b
+## New surface introduced in task 152b
 
 - `metadata/lit.rs`: scan LIT file for the `/meta` container entry → parse the OPF binary-tagged format → extract title and author directly from the OPF structure
 
@@ -26,12 +26,12 @@ File — `processing/tests/lit_metadata_tests.rs`:
 ```bash
 cd ~/Documents/localProject/xcalibre
 cargo test --package xcalibre-processing -- lit_metadata 2>&1 | tail -10
-# Expected: compilation errors — new LIT metadata parser not yet implemented (phase 152b will fix)
+# Expected: compilation errors — new LIT metadata parser not yet implemented (task 152b will fix)
 ```
 
 ## Commit
 ```bash
 cd ~/Documents/localProject/xcalibre
 git add processing/tests/lit_metadata_tests.rs
-git commit -m "Phase 152a — LIT OPF metadata tests (failing)"
+git commit -m "Task 152a — LIT OPF metadata tests (failing)"
 ```

@@ -1,10 +1,10 @@
-# Phase 243b — TaskScanner
+# Task 243b — TaskScanner
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
 Working dir: ~/Documents/localProject/merlin
-Phase 243a complete: failing tests for DriftSeverity, DriftFinding, and TaskScanner.
+Task 243a complete: failing tests for DriftSeverity, DriftFinding, and TaskScanner.
 
 ---
 
@@ -51,7 +51,7 @@ actor TaskScanner {
 
     func scan(projectPath: String) async -> [DriftFinding] {
         let root = URL(fileURLWithPath: projectPath)
-        let tasksDir = root.appendingPathComponent("phases")
+        let tasksDir = root.appendingPathComponent(" tasks")
         var findings: [DriftFinding] = []
 
         // 1. Extract declared surfaces from NNb task files
@@ -75,12 +75,12 @@ actor TaskScanner {
                     id: UUID(), taskID: taskID, surface: surface,
                     severity: .red,
                     evidence: "Symbol '\(symbol)' not found in source tree",
-                    suggestedAction: "Restore symbol or write addendum phase"
+                    suggestedAction: "Restore symbol or write addendum task"
                 ))
             }
         }
 
-        // 4. Orange: public symbols in source not referenced in any phase
+        // 4. Orange: public symbols in source not referenced in any task
         let declaredNames = Set(declaredSurfaces.map { normaliseSymbol($0.surface) })
         for sym in sourceSymbols where sym.hasPrefix("public ") {
             let name = extractSymbolName(sym)
@@ -89,8 +89,8 @@ actor TaskScanner {
                     id: UUID(), taskID: nil,
                     surface: sym,
                     severity: .orange,
-                    evidence: "Public symbol not declared in any phase NNb file",
-                    suggestedAction: "Add to a phase NNb 'New surface' block"
+                    evidence: "Public symbol not declared in any task NNb file",
+                    suggestedAction: "Add to a task NNb 'New surface' block"
                 ))
             }
         }
@@ -124,14 +124,14 @@ actor TaskScanner {
 
         for file in nnbFiles {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            let taskID = extractPhaseID(from: file.lastPathComponent)
+            let taskID = extractTaskID(from: file.lastPathComponent)
             let surfaces = extractSurfaces(from: text)
             result.append(contentsOf: surfaces.map { ($0, taskID) })
         }
         return result
     }
 
-    private func extractPhaseID(from filename: String) -> String {
+    private func extractTaskID(from filename: String) -> String {
         // "task-233b-provider-budget.md" -> "233b"
         let parts = filename.components(separatedBy: "-")
         if parts.count >= 2 { return parts[1] }
@@ -142,7 +142,7 @@ actor TaskScanner {
         var surfaces: [String] = []
         var inBlock = false
         for line in taskText.components(separatedBy: .newlines) {
-            if line.contains("New surface introduced in phase") {
+            if line.contains("New surface introduced in task") {
                 inBlock = true
                 continue
             }
@@ -233,7 +233,7 @@ xcodebuild -scheme MerlinTests test \
     | grep -E 'Test.*passed|Test.*failed|BUILD SUCCEEDED|BUILD FAILED' | head -40
 ```
 
-Expected: **BUILD SUCCEEDED** and all phase 243a tests pass. No prior phase regresses.
+Expected: **BUILD SUCCEEDED** and all task 243a tests pass. No prior task regresses.
 
 ## Commit
 
@@ -241,5 +241,5 @@ Expected: **BUILD SUCCEEDED** and all phase 243a tests pass. No prior phase regr
 git add tasks/task-243b-task-scanner.md \
     Merlin/Discipline/DriftFinding.swift \
     Merlin/Discipline/TaskScanner.swift
-git commit -m "Phase 243b — TaskScanner + DriftFinding + DriftSeverity"
+git commit -m "Task 243b — TaskScanner + DriftFinding + DriftSeverity"
 ```

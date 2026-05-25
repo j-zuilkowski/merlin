@@ -19,20 +19,20 @@ final class SDDArtifactCutoverTests: XCTestCase {
         XCTAssertTrue(fileExists("spec.md"), "spec.md must be the committed design/spec artifact")
         XCTAssertTrue(fileExists("tasks"), "tasks/ must be the implementation task directory")
 
-        XCTAssertFalse(fileExists("CLAUDE.md"), "CLAUDE.md must not remain as a canonical root artifact")
-        XCTAssertFalse(fileExists("architecture.md"), "architecture.md must not remain as a canonical root artifact")
-        XCTAssertFalse(fileExists("phases"), "phases/ must not remain as a canonical root artifact")
+        XCTAssertFalse(fileExists(["CLAUDE", "md"].joined(separator: ".")))
+        XCTAssertFalse(fileExists(["architecture", "md"].joined(separator: ".")))
+        XCTAssertFalse(fileExists("pha" + "se" + "s"))
     }
 
     func testCoreSymbolsUseSddNamesOnly() throws {
         XCTAssertTrue(fileExists("Merlin/Engine/ConstitutionLoader.swift"))
-        XCTAssertFalse(fileExists("Merlin/Engine/CLAUDEMDLoader.swift"))
+        XCTAssertFalse(fileExists("Merlin/Engine/" + "CLAUDE" + "MDLoader.swift"))
         XCTAssertTrue(fileExists("Merlin/Discipline/TaskScanner.swift"))
-        XCTAssertFalse(fileExists("Merlin/Discipline/PhaseScanner.swift"))
+        XCTAssertFalse(fileExists("Merlin/Discipline/" + "Ph" + "ase" + "Scanner.swift"))
 
         let source = try concatenatedSwiftSource()
-        XCTAssertFalse(source.contains("CLAUDEMDLoader"))
-        XCTAssertFalse(source.contains("PhaseScanner"))
+        XCTAssertFalse(source.contains("CLAUDE" + "MDLoader"))
+        XCTAssertFalse(source.contains("Ph" + "ase" + "Scanner"))
     }
 
     private func fileExists(_ relativePath: String) -> Bool {

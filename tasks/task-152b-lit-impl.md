@@ -1,9 +1,9 @@
-# Phase 152b — LIT: OPF Metadata Extraction
+# Task 152b — LIT: OPF Metadata Extraction
 
 ## Context
 Rust 2021 edition, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre
-Phase 152a complete: LIT tests written and failing (expected — updated metadata extractor not yet implemented).
+Task 152a complete: LIT tests written and failing (expected — updated metadata extractor not yet implemented).
 
 ## Edit: `processing/src/metadata/lit.rs`
 
@@ -100,5 +100,5 @@ cargo clippy --workspace -- -D warnings 2>&1 | tail -5
 cd ~/Documents/localProject/xcalibre
 git add processing/src/metadata/lit.rs \
         processing/tests/lit_metadata_tests.rs
-git commit -m "Phase 152b — LIT OPF metadata extraction from container /meta entry"
+git commit -m "Task 152b — LIT OPF metadata extraction from container /meta entry"
 ```
