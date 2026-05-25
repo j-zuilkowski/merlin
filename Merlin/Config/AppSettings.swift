@@ -56,6 +56,9 @@ final class AppSettings: ObservableObject {
     @Published var kagEnabled: Bool = false
     @Published var kagHops: Int = 2
     @Published var kagXcalibreURL: String = ""
+    @Published var cagEnabled: Bool = false
+    @Published var cagPinClaudeMD: Bool = true
+    @Published var cagPinnedPhaseDocs: [String] = []
     /// TOML key `rag_freshness_threshold_days`. Memory chunks older than this many days are flagged as stale in GroundingReport.
     @Published var ragFreshnessThresholdDays: Int = 90
     /// TOML key `rag_min_grounding_score`. Average RAG score below this threshold makes GroundingReport.isWellGrounded false.
@@ -170,6 +173,9 @@ final class AppSettings: ObservableObject {
         kagEnabled = false
         kagHops = 2
         kagXcalibreURL = ""
+        cagEnabled = false
+        cagPinClaudeMD = true
+        cagPinnedPhaseDocs = []
         ragFreshnessThresholdDays = 90
         ragMinGroundingScore = 0.30
         agentCircuitBreakerThreshold = 3
@@ -255,6 +261,7 @@ final class AppSettings: ObservableObject {
         var ragRerank: Bool?
         var ragChunkLimit: Int?
         var kag: KAGConfig?
+        var cag: CAGConfig?
         var ragFreshnessThresholdDays: Int?
         var ragMinGroundingScore: Double?
         var agentCircuitBreakerThreshold: Int?
@@ -342,6 +349,18 @@ final class AppSettings: ObservableObject {
             }
         }
 
+        struct CAGConfig: Codable, Sendable {
+            var enabled: Bool?
+            var pinClaudeMD: Bool?
+            var pinnedPhaseDocs: [String]?
+
+            enum CodingKeys: String, CodingKey {
+                case enabled
+                case pinClaudeMD = "pin_claude_md"
+                case pinnedPhaseDocs = "pinned_phase_docs"
+            }
+        }
+
         struct InferenceConfig: Codable, Sendable {
             var temperature: Double?
             var maxTokens: Int?
@@ -392,6 +411,7 @@ final class AppSettings: ObservableObject {
             case ragRerank = "rag_rerank"
             case ragChunkLimit = "rag_chunk_limit"
             case kag
+            case cag
             case ragFreshnessThresholdDays = "rag_freshness_threshold_days"
             case ragMinGroundingScore = "rag_min_grounding_score"
             case agentCircuitBreakerThreshold = "agent_circuit_breaker_threshold"
@@ -496,6 +516,20 @@ final class AppSettings: ObservableObject {
         }
         if ragChunkLimit != 3 {
             lines.append("rag_chunk_limit = \(ragChunkLimit)")
+        }
+        if cagEnabled || !cagPinClaudeMD || !cagPinnedPhaseDocs.isEmpty {
+            lines.append("")
+            lines.append("[cag]")
+            if cagEnabled {
+                lines.append("enabled = true")
+            }
+            if !cagPinClaudeMD {
+                lines.append("pin_claude_md = false")
+            }
+            if !cagPinnedPhaseDocs.isEmpty {
+                let docs = cagPinnedPhaseDocs.map { quoted($0) }.joined(separator: ", ")
+                lines.append("pinned_phase_docs = [\(docs)]")
+            }
         }
         if kagEnabled || kagHops != 2 || !kagXcalibreURL.isEmpty {
             lines.append("")
@@ -887,6 +921,17 @@ final class AppSettings: ObservableObject {
             }
             if let value = kag.xcalibreURL {
                 kagXcalibreURL = value
+            }
+        }
+        if let cag = config.cag {
+            if let value = cag.enabled {
+                cagEnabled = value
+            }
+            if let value = cag.pinClaudeMD {
+                cagPinClaudeMD = value
+            }
+            if let value = cag.pinnedPhaseDocs {
+                cagPinnedPhaseDocs = value
             }
         }
         if let value = config.ragFreshnessThresholdDays {

@@ -1030,7 +1030,8 @@ final class AgenticEngine {
                     messages: rawMessages,
                     thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
                 )
-                request.tools = offeredTools()
+                request.cachePolicy = AppSettings.shared.cagEnabled ? .ephemeral : .disabled
+                request.tools = CAGToolOrdering.stable(offeredTools())
                 AppSettings.shared.applyInferenceDefaults(to: &request)
                 // Per-provider max_tokens override: takes precedence over the global default.
                 // Allows each provider to use its documented output limit (e.g. 131 072 for

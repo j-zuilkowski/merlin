@@ -144,6 +144,8 @@ struct CompletionRequest: Sendable {
     var seed: Int?
     /// Stop sequences that terminate generation; `nil` or empty keeps defaults.
     var stop: [String]?
+    /// Request-level prompt cache policy.
+    var cachePolicy: CAGCachePolicy = .disabled
 }
 
 struct ThinkingConfig: Codable, Sendable {
