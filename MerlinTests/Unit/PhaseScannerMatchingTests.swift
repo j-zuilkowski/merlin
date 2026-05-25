@@ -105,6 +105,53 @@ final class PhaseScannerMatchingTests: XCTestCase {
                       "a genuine declared symbol is still scanned (control)")
     }
 
+    func testExamplePhaseBlocksInsideFencedCodeAreIgnored() async throws {
+        let proj = try makeProject()
+        defer { try? FileManager.default.removeItem(at: proj) }
+
+        let content = """
+        # Phase 805a — Scanner Fixture
+
+        ```swift
+        let doc = \"\"\"
+        New surface introduced in phase 001b:
+          - `GhostTypeThatDoesNotExist` — fixture-only missing symbol
+        \"\"\"
+        ```
+        """
+        try content.write(
+            to: proj.appendingPathComponent("phases/phase-805a-fixture.md"),
+            atomically: true,
+            encoding: .utf8)
+
+        let findings = await PhaseScanner().scan(projectPath: proj.path)
+
+        XCTAssertFalse(findings.contains { $0.surface.contains("GhostTypeThatDoesNotExist") },
+                       "phase examples embedded in fenced code are fixtures, not surfaces")
+    }
+
+    func testRetiredPhaseSurfacesAreIgnored() async throws {
+        let proj = try makeProject()
+        defer { try? FileManager.default.removeItem(at: proj) }
+
+        try writeDoc(proj, filename: "phase-806a-old-panel-tests.md",
+                     phaseID: "806a", surfaces: ["OldPanelView"])
+        let retirement = """
+        # Phase 807b — Retire old panel
+
+        `OldPanelView` is retired; routing status now lives in `NewPanelView`.
+        """
+        try retirement.write(
+            to: proj.appendingPathComponent("phases/phase-807b-retire-panel.md"),
+            atomically: true,
+            encoding: .utf8)
+
+        let findings = await PhaseScanner().scan(projectPath: proj.path)
+
+        XCTAssertFalse(findings.contains { $0.surface.contains("OldPanelView") },
+                       "a later retirement note must suppress historical phase drift")
+    }
+
     /// A doc declaring a bare type name must match `actor`/`struct`/`class Name` in
     /// source as green — not yellow (signature drift).
     func testBareTypeNameMatchesKeywordedDeclaration() async throws {

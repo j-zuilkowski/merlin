@@ -6,6 +6,7 @@ struct WorkspaceLayout: Codable, Sendable {
     var showTerminalPane: Bool
     var showPreviewPane: Bool
     var showSideChat: Bool
+    var showCAGPane: Bool
     var sidebarWidth: Double
     var chatWidth: Double
 
@@ -15,8 +16,41 @@ struct WorkspaceLayout: Codable, Sendable {
         case showTerminalPane = "show_terminal_pane"
         case showPreviewPane = "show_preview_pane"
         case showSideChat = "show_side_chat"
+        case showCAGPane = "show_cag_pane"
         case sidebarWidth = "sidebar_width"
         case chatWidth = "chat_width"
+    }
+
+    init(
+        showDiffPane: Bool,
+        showFilePane: Bool,
+        showTerminalPane: Bool,
+        showPreviewPane: Bool,
+        showSideChat: Bool,
+        showCAGPane: Bool,
+        sidebarWidth: Double,
+        chatWidth: Double
+    ) {
+        self.showDiffPane = showDiffPane
+        self.showFilePane = showFilePane
+        self.showTerminalPane = showTerminalPane
+        self.showPreviewPane = showPreviewPane
+        self.showSideChat = showSideChat
+        self.showCAGPane = showCAGPane
+        self.sidebarWidth = sidebarWidth
+        self.chatWidth = chatWidth
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        showDiffPane = try c.decodeIfPresent(Bool.self, forKey: .showDiffPane) ?? false
+        showFilePane = try c.decodeIfPresent(Bool.self, forKey: .showFilePane) ?? true
+        showTerminalPane = try c.decodeIfPresent(Bool.self, forKey: .showTerminalPane) ?? false
+        showPreviewPane = try c.decodeIfPresent(Bool.self, forKey: .showPreviewPane) ?? false
+        showSideChat = try c.decodeIfPresent(Bool.self, forKey: .showSideChat) ?? false
+        showCAGPane = try c.decodeIfPresent(Bool.self, forKey: .showCAGPane) ?? false
+        sidebarWidth = try c.decodeIfPresent(Double.self, forKey: .sidebarWidth) ?? 200
+        chatWidth = try c.decodeIfPresent(Double.self, forKey: .chatWidth) ?? 300
     }
 }
 
@@ -30,6 +64,7 @@ struct WorkspaceLayoutManager: Sendable {
             showTerminalPane: false,
             showPreviewPane: false,
             showSideChat: false,
+            showCAGPane: false,
             sidebarWidth: 200,
             chatWidth: 300
         )

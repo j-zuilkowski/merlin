@@ -79,30 +79,30 @@ enum ConversationHTMLRenderer {
         result = replaceFencedCodeBlocks(in: result)
 
         // Inline image: ![alt](url) — before bold/italic so * inside alt isn't mangled
-        result = inlineImagePattern.stringByReplacingMatches(
+        result = replaceMatches(
+            using: inlineImagePattern,
             in: result,
-            range: NSRange(result.startIndex..., in: result),
             withTemplate: "<img src=\"$2\" alt=\"$1\">"
         )
 
         // Inline code (single backtick)
-        result = inlineCodePattern.stringByReplacingMatches(
+        result = replaceMatches(
+            using: inlineCodePattern,
             in: result,
-            range: NSRange(result.startIndex..., in: result),
             withTemplate: "<code>$1</code>"
         )
 
         // Bold (**text**)
-        result = boldPattern.stringByReplacingMatches(
+        result = replaceMatches(
+            using: boldPattern,
             in: result,
-            range: NSRange(result.startIndex..., in: result),
             withTemplate: "<strong>$1</strong>"
         )
 
         // Italic (*text*) — run after bold so ** is already consumed
-        result = italicPattern.stringByReplacingMatches(
+        result = replaceMatches(
+            using: italicPattern,
             in: result,
-            range: NSRange(result.startIndex..., in: result),
             withTemplate: "<em>$1</em>"
         )
 
@@ -288,10 +288,7 @@ enum ConversationHTMLRenderer {
         // Pattern: ```lang\ncontent\n```
         // Captures: (1) language tag (may be empty), (2) content
         var result = text
-        let pattern = try! NSRegularExpression(
-            pattern: #"```(\w*)\n([\s\S]*?)```"#,
-            options: []
-        )
+        guard let pattern = fencedCodeBlockCapturePattern else { return result }
         // Work backwards so replacement ranges stay valid
         let matches = pattern.matches(in: result, range: NSRange(result.startIndex..., in: result))
         for match in matches.reversed() {
@@ -309,20 +306,33 @@ enum ConversationHTMLRenderer {
 
     // MARK: - Compiled regex patterns
 
-    private static let fencedCodeBlockPattern = try! NSRegularExpression(
-        pattern: #"```(\w*)\n[\s\S]*?```"#, options: [])
+    private static let fencedCodeBlockCapturePattern = try? NSRegularExpression(
+        pattern: #"```(\w*)\n([\s\S]*?)```"#, options: [])
 
-    private static let inlineImagePattern = try! NSRegularExpression(
+    private static let inlineImagePattern = try? NSRegularExpression(
         pattern: #"!\[([^\]]*)\]\(((?:https?://|data:)[^)]+)\)"#, options: [])
 
-    private static let inlineCodePattern = try! NSRegularExpression(
+    private static let inlineCodePattern = try? NSRegularExpression(
         pattern: #"`([^`]+)`"#, options: [])
 
-    private static let boldPattern = try! NSRegularExpression(
+    private static let boldPattern = try? NSRegularExpression(
         pattern: #"\*\*([^*]+)\*\*"#, options: [])
 
-    private static let italicPattern = try! NSRegularExpression(
+    private static let italicPattern = try? NSRegularExpression(
         pattern: #"(?<!\*)\*([^*]+)\*(?!\*)"#, options: [])
+
+    private static func replaceMatches(
+        using pattern: NSRegularExpression?,
+        in text: String,
+        withTemplate template: String
+    ) -> String {
+        guard let pattern else { return text }
+        return pattern.stringByReplacingMatches(
+            in: text,
+            range: NSRange(text.startIndex..., in: text),
+            withTemplate: template
+        )
+    }
 
     // MARK: - HTML document template
 

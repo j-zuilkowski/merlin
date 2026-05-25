@@ -48,7 +48,7 @@ Local provider status (validated live on May 22, 2026):
 | LM Studio | Fully supported | General + vision pair passed live calibration |
 | Jan.ai | Fully supported | General + vision pair passed live calibration |
 | LocalAI | Fully supported | General + vision pair passed live calibration |
-| llama.cpp (router mode) | Pending calibration | First-class provider at `http://localhost:8081/v1`; pending fresh live sweep |
+| llama.cpp (router mode) | Live smoke validated | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local general+vision GGUF pair on May 25, 2026 |
 | Ollama | Not recommended | General passed; vision runtime crashed on real image requests |
 | vLLM-Metal | Not recommended | General passed; vision unsupported in `vllm-metal` on Metal |
 | Mistral.rs | Currently unusable | Your Qwen3 MoE GGUF model loads, then fails on first inference on Metal |
@@ -61,7 +61,9 @@ Upstream blocker tracking for the malfunctioning local providers lives in
 Routing is driven by explicit slot assignments (Execute, Reason, Orchestrate, Vision) in
 Settings → Role Slots. The sidebar slot-status panel reflects those assignments directly;
 enabled provider inventory alone does not configure routing. API keys are stored in
-macOS Keychain.
+`~/.merlin/api-keys.json` during Debug/dev-loop builds and in macOS Keychain for
+Release builds. The release/pre-push path and CI block tracked local-only key
+files such as `api-keys.json`, `.env*`, and `secrets.json`.
 
 ---
 

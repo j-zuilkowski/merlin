@@ -15,12 +15,14 @@ struct ModelControlView: View {
     let providerID: String
     let modelID: String
     @EnvironmentObject private var appState: AppState
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var config = LocalModelConfig()
     @State private var isReloading = false
     @State private var reloadError: String? = nil
     @State private var showRestartSheet = false
     @State private var restartInstructions: RestartInstructions? = nil
+    @State private var llamaApiKeyDraft = ""
 
     var body: some View {
         Form {
@@ -85,6 +87,35 @@ struct ModelControlView: View {
                 }
             }
 
+            if providerID == "llamacpp" {
+                Section("llama.cpp Runtime") {
+                    TextField("llama-server path", text: llamaBinding(\.serverPath))
+                    Toggle("Router mode", isOn: llamaBinding(\.routerEnabled))
+                    TextField("Models directory", text: llamaBinding(\.modelsDir))
+                    TextField("Models preset path", text: llamaBinding(\.modelsPresetPath))
+                    TextField("Single-model path", text: llamaBinding(\.modelPath))
+                    TextField("Model alias", text: llamaBinding(\.modelAlias))
+                    TextField("Vision mmproj path", text: llamaBinding(\.mmprojPath))
+                    IntField("Parallel slots", value: llamaOptionalIntBinding(\.parallelSlots), placeholder: 2)
+                    IntField("Micro-batch size", value: llamaOptionalIntBinding(\.ubatchSize), placeholder: 512)
+                    TextField("Chat template", text: llamaBinding(\.chatTemplate))
+                    SecureField("Local API key", text: $llamaApiKeyDraft)
+                    Toggle("Autoload models before requests", isOn: llamaBinding(\.autoloadModels))
+
+                    Button("Save Runtime Settings") {
+                        settings.llamaCppRuntime.apiKey = ""
+                        if llamaApiKeyDraft.isEmpty {
+                            try? KeychainManager.deleteAPIKey(for: "llamacpp")
+                        } else {
+                            try? KeychainManager.writeAPIKey(llamaApiKeyDraft, for: "llamacpp")
+                        }
+                        try? settings.save()
+                        appState.reloadProviders()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+
             Section {
                 if let err = reloadError {
                     Text(err)
@@ -118,6 +149,12 @@ struct ModelControlView: View {
                 RestartInstructionsSheet(instructions: instr)
             }
         }
+        .onAppear {
+            if providerID == "llamacpp" {
+                llamaApiKeyDraft = KeychainManager.readAPIKey(for: "llamacpp") ?? ""
+                settings.llamaCppRuntime.apiKey = ""
+            }
+        }
     }
 
     // MARK: - Private
@@ -138,6 +175,27 @@ struct ModelControlView: View {
 
     private func supports(_ param: LoadParam) -> Bool {
         manager.capabilities.supportedLoadParams.contains(param)
+    }
+
+    private func llamaBinding(_ keyPath: WritableKeyPath<LlamaCppRuntimeSettings, String>) -> Binding<String> {
+        Binding(
+            get: { settings.llamaCppRuntime[keyPath: keyPath] },
+            set: { newValue in settings.llamaCppRuntime[keyPath: keyPath] = newValue }
+        )
+    }
+
+    private func llamaBinding(_ keyPath: WritableKeyPath<LlamaCppRuntimeSettings, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { settings.llamaCppRuntime[keyPath: keyPath] },
+            set: { newValue in settings.llamaCppRuntime[keyPath: keyPath] = newValue }
+        )
+    }
+
+    private func llamaOptionalIntBinding(_ keyPath: WritableKeyPath<LlamaCppRuntimeSettings, Int?>) -> Binding<Int?> {
+        Binding(
+            get: { settings.llamaCppRuntime[keyPath: keyPath] },
+            set: { newValue in settings.llamaCppRuntime[keyPath: keyPath] = newValue }
+        )
     }
 
     private func applyAndReload() async {

@@ -22,6 +22,7 @@ final class WorkspaceLayoutManagerTests: XCTestCase {
         XCTAssertFalse(layout.showTerminalPane)
         XCTAssertFalse(layout.showPreviewPane)
         XCTAssertFalse(layout.showSideChat)
+        XCTAssertFalse(layout.showCAGPane)
         XCTAssertGreaterThan(layout.sidebarWidth, 0)
         XCTAssertGreaterThan(layout.chatWidth, 0)
     }
@@ -40,6 +41,7 @@ final class WorkspaceLayoutManagerTests: XCTestCase {
         layout.showTerminalPane = true
         layout.showPreviewPane = true
         layout.showSideChat = true
+        layout.showCAGPane = true
         layout.sidebarWidth = 123.0
         layout.chatWidth = 456.0
 
@@ -50,8 +52,26 @@ final class WorkspaceLayoutManagerTests: XCTestCase {
         XCTAssertTrue(loaded.showTerminalPane)
         XCTAssertTrue(loaded.showPreviewPane)
         XCTAssertTrue(loaded.showSideChat)
+        XCTAssertTrue(loaded.showCAGPane)
         XCTAssertEqual(loaded.sidebarWidth, 123.0, accuracy: 0.01)
         XCTAssertEqual(loaded.chatWidth, 456.0, accuracy: 0.01)
+    }
+
+    func testLegacyLayoutWithoutCAGPaneDecodesWithDefaultFalse() throws {
+        try """
+        {
+          "show_diff_pane": false,
+          "show_file_pane": true,
+          "show_terminal_pane": false,
+          "show_preview_pane": false,
+          "show_side_chat": false,
+          "sidebar_width": 200,
+          "chat_width": 300
+        }
+        """.write(to: tempFile, atomically: true, encoding: .utf8)
+        let layout = try WorkspaceLayoutManager(url: tempFile).load()
+
+        XCTAssertFalse(layout.showCAGPane)
     }
 
     func testCorruptFileThrows() throws {

@@ -31,7 +31,15 @@ actor CAGCacheMetricsStore {
         usageByProviderID[providerID] ?? .zero
     }
 
+    func snapshotAll() -> [String: CAGCacheUsage] {
+        usageByProviderID
+    }
+
     func reset(providerID: String) {
         usageByProviderID[providerID] = .zero
+    }
+
+    func resetAll() {
+        usageByProviderID = [:]
     }
 }

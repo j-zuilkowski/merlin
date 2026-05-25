@@ -19,6 +19,11 @@ Merlin.xcodeproj/
 # Credentials — never commit
 *.p12
 *.mobileprovision
+api-keys.json
+**/api-keys.json
+.merlin/api-keys.json
+.env
+.env.local
 dist/
 
 # Claude Code workspace files

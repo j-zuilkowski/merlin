@@ -134,6 +134,13 @@ actor ReachabilityScanner {
             || line.contains("@ObservedObject") else { return [] }
         var types: Set<String> = []
 
+        if line.range(
+            of: #"\.environmentObject\([^)]*\.registry\s*\)"#,
+            options: .regularExpression
+        ) != nil {
+            types.insert("ProviderRegistry")
+        }
+
         // Inline-constructed types: `SomeType(...)`.
         if let ctor = try? NSRegularExpression(
             pattern: #"\b([A-Z][A-Za-z0-9_]*)\s*\("#) {

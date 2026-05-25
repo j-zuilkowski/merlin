@@ -53,6 +53,7 @@ actor ProseReadabilityChecker {
     }
 
     private func spawnVale(docFile: String) async -> String {
+        guard hasValeConfig(for: docFile) else { return "" }
         guard await ToolRequirementCoordinator.shared.ensure("vale") else { return "" }
 
         let process = Process()
@@ -95,6 +96,24 @@ actor ProseReadabilityChecker {
                     continuation.resume(returning: "")
                 }
             }
+        }
+    }
+
+    private func hasValeConfig(for docFile: String) -> Bool {
+        let fileManager = FileManager.default
+        var directory = URL(fileURLWithPath: docFile).deletingLastPathComponent()
+        while true {
+            for filename in [".vale.ini", "_vale.ini", "vale.ini"] {
+                let candidate = directory.appendingPathComponent(filename).path
+                if fileManager.fileExists(atPath: candidate) {
+                    return true
+                }
+            }
+            let parent = directory.deletingLastPathComponent()
+            if parent.path == directory.path {
+                return false
+            }
+            directory = parent
         }
     }
 

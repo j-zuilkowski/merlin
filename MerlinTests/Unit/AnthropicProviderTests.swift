@@ -162,6 +162,25 @@ final class AnthropicMessageEncoderTests: XCTestCase {
         XCTAssertEqual((first?["cache_control"] as? [String: Any])?["type"] as? String, "ephemeral")
     }
 
+    func testCAGSystemSegmentsCacheOnlyStableBlock() throws {
+        let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
+        var req = CompletionRequest(model: "claude-opus-4-7", messages: [
+            Message(role: .system, content: .text("Stable\n\nHot"), timestamp: Date())
+        ], tools: nil)
+        req.cachePolicy = .ephemeral
+        req.systemPromptSegments = CAGSystemPromptSegments(cacheable: "Stable", hot: "Hot")
+
+        let urlRequest = try provider.buildRequest(req)
+        let body = try JSONSerialization.jsonObject(with: try XCTUnwrap(urlRequest.httpBody)) as! [String: Any]
+        let system = try XCTUnwrap(body["system"] as? [[String: Any]])
+
+        XCTAssertEqual(system.count, 2)
+        XCTAssertEqual(system[0]["text"] as? String, "Stable")
+        XCTAssertEqual((system[0]["cache_control"] as? [String: Any])?["type"] as? String, "ephemeral")
+        XCTAssertEqual(system[1]["text"] as? String, "Hot")
+        XCTAssertNil(system[1]["cache_control"])
+    }
+
     func testCAGEnabledMarksLastToolEphemeral() throws {
         let provider = AnthropicProvider(apiKey: "sk-ant-test", modelID: "claude-opus-4-7")
         let tools = [

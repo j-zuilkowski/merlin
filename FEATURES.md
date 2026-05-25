@@ -23,7 +23,7 @@ explicit slot assignments, not by selecting a provider from the chat header.
 | LM Studio | Fully supported | Recommended. General + vision pair passed live calibration. |
 | Jan.ai | Fully supported | Recommended. General + vision pair passed live calibration. |
 | LocalAI | Fully supported | Recommended. General + vision pair passed live calibration. |
-| llama.cpp (router mode) | Pending calibration | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; run the fresh sweep before production recommendation. |
+| llama.cpp (router mode) | Live smoke validated | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair on May 25, 2026. |
 | Ollama | Not recommended | General model works, but the tested vision model crashes the runner on real image requests. |
 | vLLM-Metal | Not recommended | General model works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | Mistral.rs | Currently unusable | The tested Qwen3 MoE GGUF model fails on first inference on Metal. |
@@ -31,7 +31,7 @@ explicit slot assignments, not by selecting a provider from the chat header.
 Upstream issue tracking for the malfunctioning local providers is recorded in
 [`docs/local-provider-configs/RESULTS.md`](docs/local-provider-configs/RESULTS.md).
 
-All providers share a single configuration surface (Settings → Providers). API keys are stored in macOS Keychain — never written to disk. Local providers are auto-probed for availability at launch.
+All providers share a single configuration surface (Settings → Providers). API keys are file-backed at `~/.merlin/api-keys.json` for Debug/dev-loop builds and stored in macOS Keychain for Release builds. The pre-push and CI gates block tracked local-only key files. Local providers are auto-probed for availability at launch.
 
 ---
 
@@ -53,11 +53,12 @@ All providers share a single configuration surface (Settings → Providers). API
 
 ## CAG — Cache-Augmented Generation
 
-- CAG caches the cold, stable prefix: system prompt, project instructions, domain addenda, and stable tool schemas.
+- CAG caches the cold, stable prefix: system prompt, project instructions, domain addenda, pinned docs, and stable tool schemas.
+- CLAUDE.md can be kept hot with `pin_claude_md = false`; it remains in the request but outside Anthropic's cache-marked block.
 - RAG/KAG enrichment, tool results, and user turns remain hot suffix content and are not part of the cacheable prefix.
 - Anthropic uses explicit prompt-cache markers (`cache_control`) plus the prompt-caching beta header.
 - OpenAI-compatible, DeepSeek, and local providers do not receive Anthropic-specific fields; they benefit from stable prefix bytes when server-side automatic cache or KV reuse is available.
-- Cache metrics track read, creation, and uncached input token usage through `CAGCacheUsage`.
+- Cache metrics track read, creation, and uncached input token usage through `CAGCacheUsage` and surface in Settings plus the workspace CAG Metrics panel.
 
 ---
 

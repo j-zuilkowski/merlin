@@ -59,7 +59,7 @@ struct FirstLaunchSetupView: View {
                             .foregroundStyle(.red)
                     }
 
-                    Text("Stored securely in macOS Keychain — never written to disk.")
+                    Text("Stored in \(KeychainManager.storageDescription).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

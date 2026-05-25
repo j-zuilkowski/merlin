@@ -99,6 +99,48 @@ final class PhaseScannerTests: XCTestCase {
         )
     }
 
+    func testProjectConfigCanDisableUndeclaredPublicArchaeology() async throws {
+        let proj = try makeProject()
+        defer { try? FileManager.default.removeItem(at: proj) }
+        try FileManager.default.createDirectory(
+            at: proj.appendingPathComponent(".merlin"),
+            withIntermediateDirectories: true)
+        try "phase_scan_public_undeclared = false\n".write(
+            to: proj.appendingPathComponent(".merlin/project.toml"),
+            atomically: true,
+            encoding: .utf8)
+        try writeSwiftSource(proj, name: "Undeclared", content: """
+        import Foundation
+        public func undeclaredPublic() { }
+        """)
+
+        let findings = await PhaseScanner().scan(projectPath: proj.path)
+
+        XCTAssertFalse(findings.contains { $0.severity == .orange },
+                       "configured projects can disable retroactive public-symbol archaeology")
+    }
+
+    func testProjectConfigCanLimitPhaseArchiveBaseline() async throws {
+        let proj = try makeProject()
+        defer { try? FileManager.default.removeItem(at: proj) }
+        try FileManager.default.createDirectory(
+            at: proj.appendingPathComponent(".merlin"),
+            withIntermediateDirectories: true)
+        try "phase_scan_min_number = 100\n".write(
+            to: proj.appendingPathComponent(".merlin/project.toml"),
+            atomically: true,
+            encoding: .utf8)
+        try writePhaseNNb(proj, phaseID: "099a", surface: "OldMissingType")
+        try writePhaseNNb(proj, phaseID: "100a", surface: "CurrentMissingType")
+
+        let findings = await PhaseScanner().scan(projectPath: proj.path)
+
+        XCTAssertFalse(findings.contains { $0.surface.contains("OldMissingType") },
+                       "phase documents before the configured baseline are archive history")
+        XCTAssertTrue(findings.contains { $0.surface.contains("CurrentMissingType") },
+                      "phase documents at the configured baseline are still scanned")
+    }
+
     // MARK: - empty phases directory
 
     func testEmptyPhasesDirDoesNotCrash() async throws {

@@ -125,7 +125,14 @@ enum AXInspectorTool {
         }
 
         if let array = value as? [Any] {
-            return array.map { $0 as! AXUIElement }
+            return array.compactMap { item in
+                guard CFGetTypeID(item as CFTypeRef) == AXUIElementGetTypeID() else {
+                    return nil
+                }
+                // AXUIElement is a CoreFoundation type; Swift has no useful optional cast.
+                let element: AXUIElement = item as! AXUIElement
+                return element
+            }
         }
 
         return []
@@ -177,6 +184,7 @@ enum AXInspectorTool {
             return .zero
         }
 
+        // AXValue is a CoreFoundation type; the CFGetTypeID guards above validate it.
         let positionAXValue = positionValue as! AXValue
         let sizeAXValue = sizeValue as! AXValue
         guard AXValueGetType(positionAXValue) == .cgPoint,

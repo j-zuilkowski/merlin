@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Block local-only credential files
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)api-keys\.json$|(^|/)\.env(\.|$)|(^|/)secrets\.json$|(^|/)\.merlin/api-keys\.json$'; then
+            echo "Local-only credential file is tracked. Remove it before pushing."
+            exit 1
+          fi
+
       - name: Select Xcode
         run: |
           # Use the latest Xcode available on the runner

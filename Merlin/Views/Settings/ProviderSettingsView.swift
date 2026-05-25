@@ -29,6 +29,7 @@ struct ProviderSettingsView: View {
                             onModelChange: { registry.updateModel($0, for: config.id) },
                             onMaxOutputTokensChange: { registry.updateMaxOutputTokens($0, for: config.id) }
                         )
+                        CAGMetricsRow(providerID: config.id)
 
                         if config.isLocal, let manager = appState.manager(for: config.id) {
                             Divider()
@@ -81,6 +82,27 @@ struct ProviderSettingsView: View {
                     editingKeyFor = nil
                 }
             )
+        }
+    }
+}
+
+private struct CAGMetricsRow: View {
+    let providerID: String
+    @State private var usage: CAGCacheUsage = .zero
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Label("CAG", systemImage: "bolt.horizontal.circle")
+                .font(.caption.weight(.semibold))
+            Text("read \(usage.readTokens.formatted())")
+            Text("created \(usage.creationTokens.formatted())")
+            Text("uncached \(usage.uncachedInputTokens.formatted())")
+            Text(String(format: "hit %.0f%%", usage.hitRate * 100))
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .task(id: providerID) {
+            usage = await CAGCacheMetricsStore.shared.snapshot(providerID: providerID)
         }
     }
 }

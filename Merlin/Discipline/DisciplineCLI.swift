@@ -141,11 +141,35 @@ enum DisciplineCLI {
         let log = eventLog(projectPath: projectPath)
         let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: projectPath)
 
+        let localOnlyViolations = LocalOnlyFileGate().check(projectPath: projectPath)
         let whyResult = await WHYCommentGate().check(projectPath: projectPath, adapter: adapter)
         let changedDocs = changedMarkdownDocs(projectPath: projectPath)
         let proseResult = await ProseGate().check(changedDocFiles: changedDocs, adapter: adapter)
 
         var shouldBlock = false
+        if localOnlyViolations.isEmpty {
+            print("merlin-discipline: local-only file gate passed")
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "local-only-file-gate",
+                detail: "no tracked local-only credential files",
+                passed: true
+            )
+        } else {
+            for violation in localOnlyViolations {
+                print("merlin-discipline: local-only file violation \(violation.path) - \(violation.reason)")
+            }
+            await record(
+                log: log,
+                subcommand: "pre-push",
+                step: "local-only-file-gate",
+                detail: "\(localOnlyViolations.count) local-only credential file(s)",
+                passed: false
+            )
+            shouldBlock = true
+        }
+
         switch whyResult {
         case .pass:
             print("merlin-discipline: WHY comment gate passed")

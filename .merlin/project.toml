@@ -4,3 +4,5 @@ discipline_layers = ["soft_prompt", "pre_commit"]
 manual_coverage_baseline = 0
 decay_per_release = 0
 gating_schemes = ["MerlinTests", "MerlinTests-Live"]
+phase_scan_min_number = 338
+phase_scan_public_undeclared = false

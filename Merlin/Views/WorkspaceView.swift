@@ -77,6 +77,7 @@ struct WorkspaceView: View {
             .onChange(of: layout.showTerminalPane) { _, _ in saveLayoutIfLoaded() }
             .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
             .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showCAGPane)      { _, _ in saveLayoutIfLoaded() }
             .onReceive(NotificationCenter.default.publisher(for: .merlinToggleTerminal)) { _ in
                 layout.showTerminalPane.toggle()
             }
@@ -171,6 +172,15 @@ struct WorkspaceView: View {
                         .frame(minWidth: 280, idealWidth: 340, maxWidth: 420)
                 }
 
+                if layout.showCAGPane {
+                    Divider()
+                    CAGMetricsPane(
+                        providers: session.appState.registry.providers,
+                        isVisible: $layout.showCAGPane
+                    )
+                    .frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
+                }
+
                 if layout.showSideChat {
                     Divider()
                     SideChatPane(
@@ -240,6 +250,14 @@ struct WorkspaceView: View {
             .tint(layout.showPreviewPane ? .accentColor : .accessibleSecondary)
             .help("Toggle preview")
             .accessibilityIdentifier(AccessibilityID.workspaceTogglePreviewButton)
+
+            Button { layout.showCAGPane.toggle() } label: {
+                Label("CAG Metrics", systemImage: "bolt.horizontal.circle")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showCAGPane ? .accentColor : .accessibleSecondary)
+            .help("Toggle CAG metrics")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleCAGMetricsButton)
 
             Button { layout.showSideChat.toggle() } label: {
                 Label("Side Chat", systemImage: "bubble.right")

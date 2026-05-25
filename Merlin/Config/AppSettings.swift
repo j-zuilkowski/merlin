@@ -59,6 +59,7 @@ final class AppSettings: ObservableObject {
     @Published var cagEnabled: Bool = false
     @Published var cagPinClaudeMD: Bool = true
     @Published var cagPinnedPhaseDocs: [String] = []
+    @Published var llamaCppRuntime: LlamaCppRuntimeSettings = LlamaCppRuntimeSettings()
     /// TOML key `rag_freshness_threshold_days`. Memory chunks older than this many days are flagged as stale in GroundingReport.
     @Published var ragFreshnessThresholdDays: Int = 90
     /// TOML key `rag_min_grounding_score`. Average RAG score below this threshold makes GroundingReport.isWellGrounded false.
@@ -176,6 +177,7 @@ final class AppSettings: ObservableObject {
         cagEnabled = false
         cagPinClaudeMD = true
         cagPinnedPhaseDocs = []
+        llamaCppRuntime = LlamaCppRuntimeSettings()
         ragFreshnessThresholdDays = 90
         ragMinGroundingScore = 0.30
         agentCircuitBreakerThreshold = 3
@@ -262,6 +264,7 @@ final class AppSettings: ObservableObject {
         var ragChunkLimit: Int?
         var kag: KAGConfig?
         var cag: CAGConfig?
+        var llamacpp: LlamaCppRuntimeSettings?
         var ragFreshnessThresholdDays: Int?
         var ragMinGroundingScore: Double?
         var agentCircuitBreakerThreshold: Int?
@@ -531,6 +534,33 @@ final class AppSettings: ObservableObject {
                 lines.append("pinned_phase_docs = [\(docs)]")
             }
         }
+        if llamaCppRuntime != LlamaCppRuntimeSettings() {
+            lines.append("")
+            lines.append("[llamacpp]")
+            lines.append("server_path = \(quoted(llamaCppRuntime.serverPath))")
+            lines.append("router_enabled = \(llamaCppRuntime.routerEnabled ? "true" : "false")")
+            lines.append("models_dir = \(quoted(llamaCppRuntime.modelsDir))")
+            lines.append("models_preset_path = \(quoted(llamaCppRuntime.modelsPresetPath))")
+            if !llamaCppRuntime.modelPath.isEmpty {
+                lines.append("model_path = \(quoted(llamaCppRuntime.modelPath))")
+            }
+            if !llamaCppRuntime.modelAlias.isEmpty {
+                lines.append("model_alias = \(quoted(llamaCppRuntime.modelAlias))")
+            }
+            if !llamaCppRuntime.mmprojPath.isEmpty {
+                lines.append("mmproj_path = \(quoted(llamaCppRuntime.mmprojPath))")
+            }
+            if let value = llamaCppRuntime.parallelSlots {
+                lines.append("parallel_slots = \(value)")
+            }
+            if let value = llamaCppRuntime.ubatchSize {
+                lines.append("ubatch_size = \(value)")
+            }
+            if !llamaCppRuntime.chatTemplate.isEmpty {
+                lines.append("chat_template = \(quoted(llamaCppRuntime.chatTemplate))")
+            }
+            lines.append("autoload_models = \(llamaCppRuntime.autoloadModels ? "true" : "false")")
+        }
         if kagEnabled || kagHops != 2 || !kagXcalibreURL.isEmpty {
             lines.append("")
             lines.append("[kag]")
@@ -738,6 +768,7 @@ final class AppSettings: ObservableObject {
             apply(config)
         }
         applyLoRASection(from: toml)
+        applyLlamaCppSection(from: toml)
     }
 
     func propose(_ change: SettingsProposal) async -> Bool {
@@ -934,6 +965,13 @@ final class AppSettings: ObservableObject {
                 cagPinnedPhaseDocs = value
             }
         }
+        if var value = config.llamacpp {
+            if !value.apiKey.isEmpty {
+                try? KeychainManager.writeAPIKey(value.apiKey, for: "llamacpp")
+                value.apiKey = ""
+            }
+            llamaCppRuntime = value
+        }
         if let value = config.ragFreshnessThresholdDays {
             ragFreshnessThresholdDays = value
         }
@@ -1096,6 +1134,62 @@ final class AppSettings: ObservableObject {
             } else if let value = parsedStringValue(from: line, key: "lora_serving_target") {
                 loraServingTarget = value
             }
+        }
+    }
+
+    private func applyLlamaCppSection(from toml: String) {
+        let lines = toml.split(separator: "\n", omittingEmptySubsequences: false)
+        var inSection = false
+        var runtime = llamaCppRuntime
+
+        for rawLine in lines {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            if line == "[llamacpp]" {
+                inSection = true
+                continue
+            }
+            if line.hasPrefix("[") && line != "[llamacpp]" {
+                if inSection {
+                    break
+                }
+                continue
+            }
+            guard inSection, !line.isEmpty, !line.hasPrefix("#") else {
+                continue
+            }
+
+            if let value = parsedStringValue(from: line, key: "server_path") {
+                runtime.serverPath = value
+            } else if let value = parsedBoolValue(from: line, key: "router_enabled") {
+                runtime.routerEnabled = value
+            } else if let value = parsedStringValue(from: line, key: "models_dir") {
+                runtime.modelsDir = value
+            } else if let value = parsedStringValue(from: line, key: "models_preset_path") {
+                runtime.modelsPresetPath = value
+            } else if let value = parsedStringValue(from: line, key: "model_path") {
+                runtime.modelPath = value
+            } else if let value = parsedStringValue(from: line, key: "model_alias") {
+                runtime.modelAlias = value
+            } else if let value = parsedStringValue(from: line, key: "mmproj_path") {
+                runtime.mmprojPath = value
+            } else if let value = parsedIntValue(from: line, key: "parallel_slots") {
+                runtime.parallelSlots = value
+            } else if let value = parsedIntValue(from: line, key: "ubatch_size") {
+                runtime.ubatchSize = value
+            } else if let value = parsedStringValue(from: line, key: "chat_template") {
+                runtime.chatTemplate = value
+            } else if let value = parsedStringValue(from: line, key: "api_key") {
+                if !value.isEmpty {
+                    try? KeychainManager.writeAPIKey(value, for: "llamacpp")
+                }
+                runtime.apiKey = ""
+            } else if let value = parsedBoolValue(from: line, key: "autoload_models") {
+                runtime.autoloadModels = value
+            }
+        }
+
+        if inSection {
+            llamaCppRuntime = runtime
         }
     }
 

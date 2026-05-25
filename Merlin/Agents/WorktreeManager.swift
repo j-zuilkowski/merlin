@@ -48,8 +48,7 @@ actor WorktreeManager {
 
         try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         let path = base.appendingPathComponent(sessionID.uuidString)
-        let command = "git -C \(shellEscape(repo.path)) worktree add \(shellEscape(path.path)) HEAD"
-        let result = await shell(command)
+        let result = await git(["-C", repo.path, "worktree", "add", path.path, "HEAD"])
         guard result.exitCode == 0 else {
             throw WorktreeError.gitCommandFailed(result.output)
         }
@@ -66,13 +65,12 @@ actor WorktreeManager {
         let repo = repositories[sessionID]
 
         locks.remove(sessionID)
-        let command: String
+        let result: (output: String, exitCode: Int)
         if let repo {
-            command = "git -C \(shellEscape(repo.path)) worktree remove --force \(shellEscape(path.path))"
+            result = await git(["-C", repo.path, "worktree", "remove", "--force", path.path])
         } else {
-            command = "git worktree remove --force \(shellEscape(path.path))"
+            result = await git(["worktree", "remove", "--force", path.path])
         }
-        let result = await shell(command)
         if result.exitCode != 0 {
             throw WorktreeError.gitCommandFailed(result.output)
         }
@@ -105,16 +103,15 @@ actor WorktreeManager {
     }
 
     private func isGitRepo(_ url: URL) async -> Bool {
-        let command = "git -C \(shellEscape(url.path)) rev-parse --git-dir"
-        let result = await shell(command)
+        let result = await git(["-C", url.path, "rev-parse", "--git-dir"])
         return result.exitCode == 0
     }
 
-    private func shell(_ command: String) async -> (output: String, exitCode: Int) {
+    private func git(_ arguments: [String]) async -> (output: String, exitCode: Int) {
         await withCheckedContinuation { continuation in
             let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/bin/sh")
-            process.arguments = ["-c", command]
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["git"] + arguments
 
             let pipe = Pipe()
             process.standardOutput = pipe
@@ -130,9 +127,5 @@ actor WorktreeManager {
                 continuation.resume(returning: ("\(error)", 1))
             }
         }
-    }
-
-    private func shellEscape(_ value: String) -> String {
-        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 }

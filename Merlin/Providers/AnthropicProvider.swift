@@ -37,18 +37,21 @@ final class AnthropicProvider: LLMProvider, @unchecked Sendable {
             "messages": AnthropicMessageEncoder.encodeMessages(request.messages)
         ]
 
-        if let systemMsg = request.messages.first(where: { $0.role == .system }),
-           case .text(let text) = systemMsg.content,
-           !text.isEmpty {
-            if request.cachePolicy.isCacheable {
-                body["system"] = [[
+        if let segments = request.systemPromptSegments, request.cachePolicy.isCacheable {
+            let blocks = systemBlocks(from: segments)
+            if !blocks.isEmpty {
+                body["system"] = blocks
+            }
+        } else if let systemMsg = request.messages.first(where: { $0.role == .system }),
+                  case .text(let text) = systemMsg.content,
+                  !text.isEmpty {
+            body["system"] = request.cachePolicy.isCacheable
+                ? [[
                     "type": "text",
                     "text": text,
                     "cache_control": ["type": "ephemeral"]
                 ]]
-            } else {
-                body["system"] = text
-            }
+                : text
         }
 
         if let tools = request.tools, !tools.isEmpty {
@@ -97,6 +100,26 @@ final class AnthropicProvider: LLMProvider, @unchecked Sendable {
                 task.cancel()
             }
         }
+    }
+
+    private func systemBlocks(from segments: CAGSystemPromptSegments) -> [[String: Any]] {
+        var blocks: [[String: Any]] = []
+        let cacheable = segments.cacheable.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cacheable.isEmpty {
+            blocks.append([
+                "type": "text",
+                "text": cacheable,
+                "cache_control": ["type": "ephemeral"]
+            ])
+        }
+        let hot = segments.hot.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !hot.isEmpty {
+            blocks.append([
+                "type": "text",
+                "text": hot
+            ])
+        }
+        return blocks
     }
 }
 

@@ -909,7 +909,9 @@ final class AppState: ObservableObject {
         case "vllm":
             return VLLMModelManager(baseURL: url)
         case "llamacpp":
-            return LlamaCppModelManager(baseURL: url)
+            var runtime = AppSettings.shared.llamaCppRuntime
+            runtime.apiKey = KeychainManager.readAPIKey(for: "llamacpp") ?? ""
+            return LlamaCppModelManager(baseURL: url, runtimeSettings: runtime)
         default:
             // Unknown local provider IDs use a NullModelManager rather than failing the settings UI.
             return NullModelManager(providerID: config.id)

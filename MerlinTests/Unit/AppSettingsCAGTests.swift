@@ -50,4 +50,47 @@ final class AppSettingsCAGTests: XCTestCase {
         XCTAssertFalse(settings.cagPinClaudeMD)
         XCTAssertEqual(settings.cagPinnedPhaseDocs, ["phases/phase-341a-cag-foundation-tests.md"])
     }
+
+    func testLlamaCppRuntimeSettingsRoundTrip() throws {
+        let settings = makeSettings()
+        try? KeychainManager.deleteAPIKey(for: "llamacpp")
+        settings.llamaCppRuntime.serverPath = "/opt/homebrew/bin/llama-server"
+        settings.llamaCppRuntime.routerEnabled = true
+        settings.llamaCppRuntime.modelsDir = "/Models/gguf"
+        settings.llamaCppRuntime.modelsPresetPath = "/tmp/router.ini"
+        settings.llamaCppRuntime.modelPath = "/Models/general.gguf"
+        settings.llamaCppRuntime.mmprojPath = "/Models/mmproj.gguf"
+        settings.llamaCppRuntime.parallelSlots = 2
+        settings.llamaCppRuntime.ubatchSize = 256
+        settings.llamaCppRuntime.autoloadModels = false
+
+        try settings.save()
+
+        let disk = try String(contentsOf: settings.configURL, encoding: .utf8)
+        XCTAssertTrue(disk.contains("[llamacpp]"))
+        XCTAssertTrue(disk.contains("models_dir = \"/Models/gguf\""))
+        XCTAssertTrue(disk.contains("parallel_slots = 2"))
+        XCTAssertTrue(disk.contains("autoload_models = false"))
+        XCTAssertFalse(disk.contains("api_key"))
+
+        let reloaded = AppSettings(configURL: settings.configURL)
+        XCTAssertEqual(reloaded.llamaCppRuntime.modelsDir, "/Models/gguf")
+        XCTAssertEqual(reloaded.llamaCppRuntime.parallelSlots, 2)
+        XCTAssertEqual(reloaded.llamaCppRuntime.ubatchSize, 256)
+        XCTAssertFalse(reloaded.llamaCppRuntime.autoloadModels)
+        try? KeychainManager.deleteAPIKey(for: "llamacpp")
+    }
+
+    func testLlamaCppLegacyAPIKeyMigratesOutOfConfig() throws {
+        try? KeychainManager.deleteAPIKey(for: "llamacpp")
+        let settings = makeSettings()
+        settings.applyTOML("""
+        [llamacpp]
+        api_key = "local-router-token"
+        """)
+
+        XCTAssertEqual(KeychainManager.readAPIKey(for: "llamacpp"), "local-router-token")
+        XCTAssertTrue(settings.llamaCppRuntime.apiKey.isEmpty)
+        try? KeychainManager.deleteAPIKey(for: "llamacpp")
+    }
 }

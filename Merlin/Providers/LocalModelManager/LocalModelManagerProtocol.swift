@@ -49,6 +49,57 @@ struct LocalModelConfig: Sendable {
     var useMlock: Bool?
 }
 
+// MARK: - LlamaCppRuntimeSettings
+
+/// Provider-specific runtime configuration for Merlin-managed llama.cpp launch guidance.
+struct LlamaCppRuntimeSettings: Codable, Sendable, Equatable {
+    var serverPath: String = "/opt/homebrew/bin/llama-server"
+    var routerEnabled: Bool = true
+    var modelsDir: String = "$HOME/Models/gguf"
+    var modelsPresetPath: String = "$HOME/.config/llama.cpp/router-preset.ini"
+    var modelPath: String = ""
+    var modelAlias: String = ""
+    var mmprojPath: String = ""
+    var parallelSlots: Int?
+    var ubatchSize: Int?
+    var chatTemplate: String = ""
+    var apiKey: String = ""
+    var autoloadModels: Bool = true
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case serverPath = "server_path"
+        case routerEnabled = "router_enabled"
+        case modelsDir = "models_dir"
+        case modelsPresetPath = "models_preset_path"
+        case modelPath = "model_path"
+        case modelAlias = "model_alias"
+        case mmprojPath = "mmproj_path"
+        case parallelSlots = "parallel_slots"
+        case ubatchSize = "ubatch_size"
+        case chatTemplate = "chat_template"
+        case apiKey = "api_key"
+        case autoloadModels = "autoload_models"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        serverPath = try c.decodeIfPresent(String.self, forKey: .serverPath) ?? serverPath
+        routerEnabled = try c.decodeIfPresent(Bool.self, forKey: .routerEnabled) ?? routerEnabled
+        modelsDir = try c.decodeIfPresent(String.self, forKey: .modelsDir) ?? modelsDir
+        modelsPresetPath = try c.decodeIfPresent(String.self, forKey: .modelsPresetPath) ?? modelsPresetPath
+        modelPath = try c.decodeIfPresent(String.self, forKey: .modelPath) ?? modelPath
+        modelAlias = try c.decodeIfPresent(String.self, forKey: .modelAlias) ?? modelAlias
+        mmprojPath = try c.decodeIfPresent(String.self, forKey: .mmprojPath) ?? mmprojPath
+        parallelSlots = try c.decodeIfPresent(Int.self, forKey: .parallelSlots)
+        ubatchSize = try c.decodeIfPresent(Int.self, forKey: .ubatchSize)
+        chatTemplate = try c.decodeIfPresent(String.self, forKey: .chatTemplate) ?? chatTemplate
+        apiKey = try c.decodeIfPresent(String.self, forKey: .apiKey) ?? apiKey
+        autoloadModels = try c.decodeIfPresent(Bool.self, forKey: .autoloadModels) ?? autoloadModels
+    }
+}
+
 // MARK: - ModelManagerCapabilities
 
 /// Declares whether a local provider can reload in-place and which load-time

@@ -76,7 +76,7 @@ in this order — (1) EARS `## Behavior` template change; (2) structural rename 
 (3) backfill EARS + SDD vocabulary into the existing renamed task files; (4) the
 vision↔spec↔task consistency gate in `DisciplineEngine`.
 
-_Status: held in `## Active` — not yet promoted to the spec._
+_Status: deferred for now — this is a broad mechanical rename and should only be promoted when the repository is ready to rename `architecture.md`/`phases/` and all related tooling in one coordinated sweep._
 
 ### Runtime plugin architecture + the electronics plugin
 
@@ -169,9 +169,7 @@ window; (5+) the electronics plugin — the KiCad/FreeRouting ~23-tool contract 
 old `merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable `DomainPlugin`, with the
 local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
 
-_Status: held in `## Active` — architecture clarified, not yet promoted. The
-`merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the
-above._
+_Status: deferred until after the SDD rename or a separate roadmap branch — this is an architectural pivot, not remediation cleanup. The `merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the above when this is promoted._
 
 ## Deferred
 

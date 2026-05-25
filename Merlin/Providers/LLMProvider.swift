@@ -146,6 +146,22 @@ struct CompletionRequest: Sendable {
     var stop: [String]?
     /// Request-level prompt cache policy.
     var cachePolicy: CAGCachePolicy = .disabled
+    /// Optional split system prompt for providers that can mark only selected
+    /// blocks as cacheable. When nil, providers fall back to the first system
+    /// message in `messages`.
+    var systemPromptSegments: CAGSystemPromptSegments?
+}
+
+struct CAGSystemPromptSegments: Sendable, Equatable {
+    var cacheable: String
+    var hot: String = ""
+
+    var merged: String {
+        [cacheable, hot]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
+    }
 }
 
 struct ThinkingConfig: Codable, Sendable {

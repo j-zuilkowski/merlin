@@ -501,11 +501,11 @@ Circuit breaker: three consecutive scan failures disable the engine for the sess
 
 Per-language config consumed by all scanners. Declared in `~/.merlin/adapters/<name>.toml`. Key fields: `build_command`, `test_command`, `versioning_file`, `versioning_field`, `[why_comment_triggers]` patterns, `[manual_coverage] surface_patterns`. Seed adapters: `swift-xcode.toml`, `rust-cargo.toml`.
 
-Per-project config lives in `<project>/.merlin/project.toml`: adapter selection, active discipline layers, `manual_coverage_baseline`.
+Per-project config lives in `<project>/.merlin/project.toml`: adapter selection, active discipline layers, `manual_coverage_baseline`, and optional phase-scan baseline settings.
 
 ### Scanners
 
-**`PhaseScanner`** — reads `phases/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration).
+**`PhaseScanner`** — reads `phases/` NNb files, extracts declared surfaces from the "New surface introduced in phase NNb:" block, greps against the source tree. Four drift severities: `green` (present, unchanged), `yellow` (present, signature changed), `red` (absent — deleted without addendum), `orange` (code surface with no phase declaration). Projects with historical phase archives can set `phase_scan_min_number` to scan only the active baseline forward, and `phase_scan_public_undeclared = false` to avoid retroactive orange findings for public symbols that predate the baseline.
 
 **`ManualCoverageScanner`** — enumerates user-facing surfaces via adapter regex patterns, cross-checks against `<!-- covers: ... -->` markers in doc files. Gaps and stale references become findings. Surfaces escape the requirement via `// manual: not-user-facing — <rationale>` (logged to override audit).
 
@@ -723,20 +723,35 @@ Merlin ships CAG as a request policy for cache-stable prefixes.
 - `CAGCacheUsage` (`Merlin/CAG/CacheMetrics.swift`) stores read/create/uncached token usage and computes hit rate.
 - `CAGCacheMetricsStore` (`Merlin/CAG/CacheMetrics.swift`) aggregates usage by provider ID.
 - `CompletionRequest.cachePolicy` carries the policy from engine wiring to provider adapters.
+- `CompletionRequest.systemPromptSegments` carries split cacheable/hot system blocks for providers that support block-level cache markers.
+- `buildStablePrefix()` honors `[cag] pin_claude_md` and includes files listed in `pinned_phase_docs` when CAG is enabled.
+- `buildCAGSystemPromptSegments()` keeps CLAUDE.md in the hot system block when `pin_claude_md = false`; the content remains in the request but outside Anthropic's cache-marked block.
 
 ### Provider behavior
 
 - `AnthropicProvider` emits explicit prompt-cache markers (`cache_control`) and `anthropic-beta: prompt-caching-2024-07-31` for cacheable requests.
+- `AnthropicProvider` emits a cache-marked system block for stable content and a separate unmarked block for hot system content.
 - `AnthropicSSEParser` reads cache token usage fields from `usage` payloads and surfaces them as `CompletionChunk.cacheUsage`.
 - OpenAI-compatible, DeepSeek, and local providers do not emit Anthropic-specific fields; CAG relies on stable prefix bytes and backend automatic cache/KV reuse when available.
+- `ProviderSettingsView` displays read/create/uncached token counters and hit rate from `CAGCacheMetricsStore`.
+- `CAGMetricsPane` provides the workspace panel for per-provider totals, refresh, and reset.
 
 ### Invariant
 
 RAG/KAG enrichment remains hot suffix content and must stay outside the cacheable stable prefix.
+Pinned CAG docs are bounded to regular files inside the current project, eight files total, 64 KiB per file.
 
 ---
 
 ## Auth & Permission System
+
+### Provider Credential Storage
+
+Provider keys are written through `KeychainManager`. Debug/dev-loop builds use
+`~/.merlin/api-keys.json` with owner-only file permissions; Release builds use
+macOS Keychain. `LocalOnlyFileGate` blocks tracked `api-keys.json`, `.env*`,
+`secrets.json`, and `.merlin/api-keys.json` files during pre-push/release checks,
+and CI repeats the same guard.
 
 ### AuthGate
 

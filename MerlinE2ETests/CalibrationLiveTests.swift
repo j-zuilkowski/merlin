@@ -58,12 +58,12 @@ final class CalibrationLiveTests: XCTestCase {
                 let verdict = ((try? await Self.complete(
                     provider: reference, model: "deepseek-v4-pro", prompt: judge)) ?? "")
                     .trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-                if verdict.hasPrefix("PASS") { return 1.0 }
-                if verdict.hasPrefix("FAIL") { return 0.0 }
-                return 0.5
+                if verdict.hasPrefix("PASS") { return .scored(1.0) }
+                if verdict.hasPrefix("FAIL") { return .scored(0.0) }
+                return .fallback(note: "Reference scorer returned an ambiguous verdict.")
             })
 
-        let responses = try await runner.run(suite: .default)
+        let responses = try await runner.run(suite: CalibrationSuite.default)
         let advisories = CalibrationAdvisor().analyze(
             responses: responses, localModelID: localModelID, localProviderID: "lmstudio")
 

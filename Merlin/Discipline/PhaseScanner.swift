@@ -7,8 +7,11 @@ actor PhaseScanner {
     func scan(projectPath: String) async -> [DriftFinding] {
         let root = URL(fileURLWithPath: projectPath)
         let phasesDir = root.appendingPathComponent("phases")
+        let config = scanConfig(projectRoot: root)
 
-        let declaredSurfaces = extractDeclaredSurfaces(phasesDir: phasesDir)
+        let declaredSurfaces = extractDeclaredSurfaces(
+            phasesDir: phasesDir,
+            minimumPhaseNumber: config.minimumPhaseNumber)
         let sourceDeclarations = enumerateSourceDeclarations(root: root)
 
         var findings: [DriftFinding] = []
@@ -39,8 +42,9 @@ actor PhaseScanner {
             }
         }
 
-        for symbol in sourceDeclarations where symbol.isPublic {
-            if !declaredNames.contains(symbol.name) {
+        if config.checkUndeclaredPublicSymbols {
+            for symbol in sourceDeclarations where symbol.isPublic
+                && !declaredNames.contains(symbol.name) {
                 findings.append(DriftFinding(
                     id: UUID(),
                     phaseID: nil,
@@ -69,7 +73,15 @@ actor PhaseScanner {
         let file: URL
     }
 
-    private func extractDeclaredSurfaces(phasesDir: URL) -> [DeclaredSurface] {
+    private struct PhaseScanConfig {
+        let minimumPhaseNumber: Int?
+        let checkUndeclaredPublicSymbols: Bool
+    }
+
+    private func extractDeclaredSurfaces(
+        phasesDir: URL,
+        minimumPhaseNumber: Int?
+    ) -> [DeclaredSurface] {
         // A project with no phases/ directory has no declared surfaces. Check
         // existence first so the missing path never constructs an NSError.
         guard FileManager.default.fileExists(atPath: phasesDir.path),
@@ -91,14 +103,24 @@ actor PhaseScanner {
                 return name.hasSuffix(".md")
                     && (name.hasPrefix("phase-") || name.hasPrefix("diag-"))
             }
+            .filter { file in
+                guard let minimumPhaseNumber else { return true }
+                guard let number = phaseNumber(from: file.lastPathComponent) else { return false }
+                return number >= minimumPhaseNumber
+            }
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
+
+        let retiredNames = extractRetiredSurfaceNames(from: phaseDocFiles)
 
         var result: [DeclaredSurface] = []
         for file in phaseDocFiles {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let phaseID = extractPhaseID(from: file.lastPathComponent)
             let surfaces = extractSurfaces(from: text)
-            result.append(contentsOf: surfaces.map { DeclaredSurface(surface: $0, phaseID: phaseID) })
+                .filter { !retiredNames.contains(normalisedName(surface: $0)) }
+            result.append(contentsOf: surfaces.map {
+                DeclaredSurface(surface: $0, phaseID: phaseID)
+            })
         }
 
         return result
@@ -112,11 +134,61 @@ actor PhaseScanner {
         return filename
     }
 
+    private func phaseNumber(from filename: String) -> Int? {
+        let parts = filename.components(separatedBy: "-")
+        guard parts.count >= 2 else { return nil }
+        let digits = parts[1].prefix { $0.isNumber }
+        return digits.isEmpty ? nil : Int(digits)
+    }
+
+    private func scanConfig(projectRoot: URL) -> PhaseScanConfig {
+        let defaults = PhaseScanConfig(
+            minimumPhaseNumber: nil,
+            checkUndeclaredPublicSymbols: true)
+        let configURL = projectRoot.appendingPathComponent(".merlin/project.toml")
+        guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
+            return defaults
+        }
+
+        var minimumPhaseNumber: Int?
+        var checkUndeclaredPublic = defaults.checkUndeclaredPublicSymbols
+        for rawLine in text.components(separatedBy: .newlines) {
+            let line = rawLine.split(separator: "#", maxSplits: 1)
+                .first?
+                .trimmingCharacters(in: .whitespaces) ?? ""
+            guard !line.isEmpty else { continue }
+            let pieces = line.split(separator: "=", maxSplits: 1).map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            guard pieces.count == 2 else { continue }
+            switch pieces[0] {
+            case "phase_scan_min_number":
+                minimumPhaseNumber = Int(pieces[1])
+            case "phase_scan_public_undeclared":
+                checkUndeclaredPublic = ["true", "1", "yes"]
+                    .contains(pieces[1].lowercased())
+            default:
+                continue
+            }
+        }
+        return PhaseScanConfig(
+            minimumPhaseNumber: minimumPhaseNumber,
+            checkUndeclaredPublicSymbols: checkUndeclaredPublic)
+    }
+
     private func extractSurfaces(from phaseText: String) -> [String] {
         var surfaces: [String] = []
         var inBlock = false
+        var inFence = false
 
         for line in phaseText.components(separatedBy: .newlines) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("```") {
+                inFence.toggle()
+                continue
+            }
+            guard !inFence else { continue }
+
             if line.contains("New surface introduced in phase") {
                 inBlock = true
                 continue
@@ -124,7 +196,6 @@ actor PhaseScanner {
 
             guard inBlock else { continue }
 
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty {
                 if !surfaces.isEmpty {
                     break
@@ -134,7 +205,6 @@ actor PhaseScanner {
             if trimmed.hasPrefix("---") || trimmed.hasPrefix("##") {
                 break
             }
-
             guard trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") else {
                 continue
             }
@@ -151,16 +221,85 @@ actor PhaseScanner {
         return surfaces
     }
 
+    private func extractRetiredSurfaceNames(from phaseDocFiles: [URL]) -> Set<String> {
+        var retired: Set<String> = []
+        for file in phaseDocFiles {
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            var inFence = false
+            for line in text.components(separatedBy: .newlines) {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.hasPrefix("```") {
+                    inFence.toggle()
+                    continue
+                }
+                guard !inFence else { continue }
+                let lower = trimmed.lowercased()
+                guard lower.contains("retired")
+                    || lower.contains("delete")
+                    || lower.contains("remove")
+                    || lower.contains("removed")
+                    || lower.contains("no longer")
+                    || lower.contains("superseded")
+                else { continue }
+                for symbol in backtickSymbols(in: trimmed) {
+                    if let retiredName = retiredName(from: symbol) {
+                        retired.insert(retiredName)
+                    }
+                }
+            }
+        }
+        return retired
+    }
+
+    private func backtickSymbols(in line: String) -> [String] {
+        var result: [String] = []
+        var remainder = line[...]
+        while let opening = remainder.firstIndex(of: "`") {
+            let afterOpening = remainder[remainder.index(after: opening)...]
+            guard let closing = afterOpening.firstIndex(of: "`") else { break }
+            result.append(String(afterOpening[..<closing]))
+            remainder = afterOpening[afterOpening.index(after: closing)...]
+        }
+        return result
+    }
+
+    private func retiredName(from raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasSuffix(".swift") {
+            let basename = URL(fileURLWithPath: trimmed).deletingPathExtension().lastPathComponent
+            return basename.isEmpty ? nil : normalisedName(surface: basename)
+        }
+        guard isLikelyCodeSymbol(trimmed) else { return nil }
+        return normalisedName(surface: trimmed)
+    }
+
     /// A backtick-quoted "New surface" entry is a code symbol only if it looks like a
     /// Swift declaration — not a slash-command (`/compact`), a version (`2.1.0`), a
     /// file name (`Foo.swift`), or a tag (`#high-stakes`).
     private func isLikelyCodeSymbol(_ raw: String) -> Bool {
         let s = raw.trimmingCharacters(in: .whitespaces)
         guard !s.isEmpty, !s.contains("/"), !s.contains("#") else { return false }
+        if s.contains("$") || s.contains("::") {
+            return false
+        }
+        if s.contains("-"), !s.contains("->") {
+            return false
+        }
+        if s.contains(" "), !s.contains("(") {
+            return false
+        }
+        if s.range(of: #"^[a-z0-9_]+$"#, options: .regularExpression) != nil,
+           s.contains("_") {
+            return false
+        }
+        if s.range(of: #"^[a-z0-9_.]+$"#, options: .regularExpression) != nil,
+           s.contains(".") {
+            return false
+        }
         if s.range(of: #"^\d+(\.\d+)+$"#, options: .regularExpression) != nil {
             return false
         }
-        for ext in [".swift", ".md", ".json", ".toml", ".txt", ".png", ".plist"]
+        for ext in [".swift", ".md", ".json", ".toml", ".txt", ".png", ".plist", ".yml", ".yaml"]
         where s.hasSuffix(ext) {
             return false
         }
@@ -206,7 +345,12 @@ actor PhaseScanner {
 
         let canonical = normalisedSignature(sourceLine: line)
         let name = normalisedName(signature: canonical)
-        let isPublic = line.hasPrefix("public ") || line.contains(" public ")
+        let isStoredValue = line.contains(" let ") || line.contains(" var ")
+        let isAccessibilityNamespace = file.lastPathComponent == "AccessibilityID.swift"
+            && name == "AccessibilityID"
+        let isPublic = !isStoredValue
+            && !isAccessibilityNamespace
+            && (line.hasPrefix("public ") || line.contains(" public "))
         return SourceSymbol(name: name, signature: canonical, isPublic: isPublic, file: file)
     }
 

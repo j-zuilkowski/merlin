@@ -30,6 +30,7 @@ failing check. The user must fix or dismiss with rationale before re-running.
 □  DocReferenceGraph: no red findings (stale references)
 □  WhyCommentScanner: zero violations or all have rationale-not-needed annotation
 □  ProseReadabilityChecker: all doc files at or under target grade
+□  LocalOnlyFileGate: no tracked `api-keys.json`, `.env*`, or `secrets.json` files
 □  RELEASE-vX.Y.Z.md present and non-empty
 □  CHANGELOG.md updated (section for vX.Y.Z present)
 □  PhaseScanner: no red/orange drift findings

@@ -1,6 +1,6 @@
 # Local Provider Configs — testing matrix + per-provider reference
 
-Validated against live runs on **May 22, 2026**.
+Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026**.
 
 Per-provider artifacts and configuration notes for the local providers
 Merlin can route to (LM Studio is the always-on baseline; the others are
@@ -8,9 +8,9 @@ exercised via this directory). Each provider serves the same model class —
 `Qwen3-Coder-30B-A3B-Instruct` — but the runtime, format, and feature set vary.
 
 Shared on-disk assets:
-- GGUF (Q8_0, 32 GB): `~/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` — used by Ollama, Jan.ai, LocalAI
+- GGUF (Q8_0, 32 GB): `~/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` — used by Ollama, Jan.ai, LocalAI, and llama.cpp
 - MLX-8bit dir (already in LM Studio's cache): `~/.lmstudio/models/lmstudio-community/Qwen3-Coder-30B-A3B-Instruct-MLX-8bit/` — used by LM Studio AND vLLM-Metal
-- VL pair (Q8_0 GGUF + mmproj): `~/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf` + `mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf` — text-only smoke first; mmproj wiring per provider is a follow-up.
+- VL pair (Q8_0 GGUF + mmproj): `~/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf` + `mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf` — provider-specific vision status is recorded below.
 
 Each provider registers its model under whatever name the user chooses. Merlin
 discovers the live model list from each `/v1/models` endpoint at runtime via
@@ -27,7 +27,7 @@ name is hardcoded in `ProviderConfig`.**
 | LM Studio | Fully supported | Pass | Pass | Use freely |
 | Jan.ai | Fully supported | Pass | Pass | Use freely |
 | LocalAI | Fully supported | Pass | Pass | Use freely |
-| llama.cpp (router mode) | Pending fresh sweep | Pending | Pending | First-class provider at `http://localhost:8081/v1`; calibrate before recommending |
+| llama.cpp (router mode) | Live smoke validated | Pass | Pass | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local GGUF general+vision pair |
 | Ollama | Not recommended | Pass | Fail | Keep available only for text-only fallback |
 | vLLM-Metal | Not recommended | Pass | Fail | Keep available only for text-only fallback |
 | Mistral.rs | Currently unusable | Fail | Not pursued | Do not use for the tested Qwen3 MoE model |
@@ -49,18 +49,24 @@ configuration tips, known limitations.
 - **Vision:** supported (the MLX-VL models load with their projector bundled in the directory).
 - **Notes:** the live baseline against which other providers are calibrated. General + vision pair passed end to end in live testing and completed the timed calibration run successfully.
 
-### llama.cpp (router mode, pending fresh sweep)
+### llama.cpp (router mode, live smoke validated)
 
 - **Endpoint:** `http://localhost:8081/v1`
 - **Install:** `brew install llama.cpp` (provides `/opt/homebrew/bin/llama-server`)
 - **Launch:** one router-mode process on port `8081` with `--models-dir` and
   `--models-preset` (do not run separate general/vision servers)
+- **Merlin settings:** Settings → Providers → llama.cpp exposes the persisted
+  `[llamacpp]` runtime fields (`server_path`, `router_enabled`, `models_dir`,
+  `models_preset_path`, single-model fallback paths, `mmproj_path`,
+  `parallel_slots`, `ubatch_size`, and `autoload_models`). The optional local
+  API key is stored through Merlin's provider credential store rather than in
+  `config.toml`.
 - **Formats:** GGUF (+ optional mmproj for VL models)
 - **Architectures:** anything the installed `llama.cpp` build supports
 - **LoRA serving:** **fuse + convert** — `mlx_lm.fuse`, then `llama.cpp/convert_hf_to_gguf.py`, then serve the converted GGUF
 - **Tool calling:** OpenAI-compatible via llama-server router mode
 - **Vision:** router mode can host a paired general + vision catalog in one process
-- **Notes:** Merlin treats router mode as first-class (`llamacpp` provider + `LlamaCppModelManager`). Runtime load/unload uses `/models/load` and `/models/unload` when available; plain single-model `/v1/models` servers fall back to restart guidance.
+- **Notes:** Merlin treats router mode as first-class (`llamacpp` provider + `LlamaCppModelManager`). Runtime load/unload uses `/models/load` and `/models/unload` when available; plain single-model `/v1/models` servers fall back to restart guidance. May 25 validation used Homebrew `llama-server` 9290 with `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf`, `Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf`, and `mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf`; `/health`, `/v1/models`, text completion, streaming, tool-call request shape, and a data-URI image request returned HTTP 200.
 
 ### Ollama (not recommended)
 
@@ -133,6 +139,7 @@ configuration tips, known limitations.
 | LM Studio | MLX | ✓ | General + vision passed | Fully supported |
 | Jan.ai | GGUF | ✓ | General + vision passed | Fully supported |
 | LocalAI | GGUF | ✓ | General + vision passed | Fully supported |
+| llama.cpp | GGUF | ✓ | Router smoke + image request passed | Fully supported for router-mode smoke |
 | Ollama | GGUF | ✓ for general | Vision failed at runtime | Not recommended |
 | vLLM-Metal | MLX | ✓ for general | Vision failed upstream on Metal | Not recommended |
 | **Mistral.rs** | **GGUF / safetensors / ISQ** | **✗ for tested MoE-on-Metal path** | **General failed; vision not pursued** | **Currently unusable** |
@@ -170,8 +177,8 @@ per-provider:
 - **vLLM-Metal**: failed in live testing. The tested runtime threw `NotImplementedError: Multimodal encoder execution is not wired on Metal yet`.
 - **Mistral.rs**: not pursued because the tested general MoE model already fails on first inference on Metal.
 
-For Merlin's current local pair workflow, treat LM Studio, Jan, and LocalAI as
-the supported vision-capable providers.
+For Merlin's current local pair workflow, treat LM Studio, Jan, LocalAI, and
+llama.cpp router mode as the supported vision-capable providers.
 
 ## Upstream issue tracking
 

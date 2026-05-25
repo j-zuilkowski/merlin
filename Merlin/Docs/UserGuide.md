@@ -43,9 +43,9 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 
 When you first open Merlin you will see the **Project Picker**. Click **Open Project…** and select the root folder of the codebase you want to work with. Recent projects appear in the list and can be re-opened with a single click.
 
-Before the AI can respond you need a provider API key. Merlin defaults to **DeepSeek**. Go to **Settings → Providers**, find DeepSeek, and paste your API key. The key is stored in the macOS Keychain — it is never written to disk in plaintext.
+Before the AI can respond you need a provider API key. Merlin defaults to **DeepSeek**. Go to **Settings → Providers**, find DeepSeek, and paste your API key. Debug/dev-loop builds store provider keys in `~/.merlin/api-keys.json` with owner-only permissions; Release builds store them in macOS Keychain. Merlin's pre-push/release checks and CI block tracked local-only key files so the Debug key file cannot ship as part of the repo.
 
-If you want to use a local model no API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 24, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, and **LocalAI**. **llama.cpp** is now a first-class local provider (`llamacpp`) at `http://localhost:8081/v1` and is pending a fresh calibration sweep. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
+If you want to use a local model no remote API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 25, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, **LocalAI**, and **llama.cpp**. llama.cpp is a first-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair, including the vision `mmproj`, in live smoke validation. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
 
 Upstream issue tracking for the malfunctioning local providers is maintained in
 [`docs/local-provider-configs/RESULTS.md`](../../docs/local-provider-configs/RESULTS.md).
@@ -211,7 +211,7 @@ Available providers:
 | LM Studio | Local | `localhost:1234`. Fully supported. Supports vision and passed live pair calibration. |
 | Jan.ai | Local | `localhost:1337`. Fully supported and passed live pair calibration. |
 | LocalAI | Local | `localhost:8080`. Fully supported and passed live pair calibration. |
-| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Runtime load/unload uses router endpoints when available, and restart guidance uses the current `--models-dir` / `--models-preset` llama-server flags. Pending fresh calibration numbers. |
+| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Runtime load/unload uses router endpoints when available, restart guidance uses the current `--models-dir` / `--models-preset` llama-server flags, and the local Qwen3 Coder + Qwen3-VL pair passed live smoke validation on May 25, 2026. |
 | Mistral.rs | Local | `localhost:1235`. Currently unusable for the tested Qwen3 MoE model on Apple Metal. |
 | vLLM-Metal | Local | `localhost:8000`. Not recommended: general works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |
@@ -225,16 +225,21 @@ Configure API keys, base URLs, and model names in **Settings → Providers**.
 CAG reduces repeat input cost by keeping a cacheable stable prefix for each session request.
 
 - Stable prefix: system prompt, project instructions, domain addenda, and stable tool schemas.
-- Hot suffix: conversation turns, tool results, and all RAG/KAG enrichment.
+- Hot suffix: conversation turns, tool results, all RAG/KAG enrichment, and CLAUDE.md when `pin_claude_md = false`.
 - Anthropic requests use explicit `cache_control` prompt-cache markers.
 - OpenAI-compatible, DeepSeek, and local providers rely on stable prefix bytes and automatic cache/KV reuse when supported by their servers.
+- Pinned CAG docs must be regular files inside the current project and no larger than 64 KiB each.
 
 Enable CAG in config:
 
 ```toml
 [cag]
 enabled = true
+pin_claude_md = true
+pinned_phase_docs = ["phases/phase-341b-cag-foundation.md"]
 ```
+
+Provider settings show per-provider CAG read/create/uncached token counters and hit rate when providers report cache usage. The workspace toolbar also has a **CAG Metrics** panel, similar to the file viewer, with refresh and reset controls.
 
 CAG does not replace RAG/KAG retrieval and does not train or fine-tune a model.
 

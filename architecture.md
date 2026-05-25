@@ -471,7 +471,7 @@ Required behavior:
 2. `loadedModels()` returns all addressable router models so `ProviderRegistry.allSlotPickerEntries` can expose `llamacpp:<model-id>` entries.
 3. `ensureModelLoaded(modelID:)` calls `POST /models/load` when the router reports the model as unloaded, sleeping, or absent from active memory but available in the catalog.
 4. `unloadModel(modelID:)` calls `POST /models/unload` for explicit user unloads and for future memory-pressure policy.
-5. `reload(modelID:config:)` in router mode unloads and reloads the same model with the selected load parameters. In single-model mode it throws `.requiresRestart`.
+5. `reload(modelID:config:)` uses router load/unload for model presence. When the user changes load-time parameters, Merlin returns restart/preset guidance because upstream llama-server applies those values from command-line or preset configuration when the runtime child process starts.
 6. `restartInstructions(...)` generates either a router-mode launch command or a single-model launch command, depending on the user's selected local runtime mode.
 7. Provider creation remains synchronous. Runtime autoload happens in an async preflight immediately before the request, not inside `ProviderRegistry.provider(for:)`.
 
@@ -504,35 +504,36 @@ Additional first-class llama.cpp runtime settings are required because they are 
 | `parallelSlots` | llama-server `--parallel` concurrency setting |
 | `ubatchSize` | llama-server micro-batch setting |
 | `chatTemplate` | Explicit chat template override when GGUF metadata is insufficient |
-| `apiKey` | Optional local bearer token if the user starts llama-server with auth |
+| `apiKey` | Optional local bearer token if the user starts llama-server with auth; stored through `KeychainManager` / Debug key-file storage, not persisted in `[llamacpp]` |
 | `autoloadModels` | Whether Merlin should call `ensureModelLoaded` before the first request |
 
 These should be persisted as provider-specific local runtime configuration, not added directly to the generic `ProviderConfig` unless they apply to every provider. `ProviderConfig` should continue to hold the wire identity (`id`, `baseURL`, `model`, flags). llama.cpp launch/runtime details belong in a local manager settings record keyed by `providerID`.
+
+Implementation status: Merlin persists non-secret settings in the `[llamacpp]` config section as `LlamaCppRuntimeSettings`. `AppState.makeManager(for:)` injects the optional local bearer token from `KeychainManager` into the runtime record before constructing `LlamaCppModelManager`; `ModelControlView` exposes the fields for editing and save/reload; restart guidance is generated from this persisted runtime record.
 
 ### Router Preset Shape
 
 Router mode should be documented and generated as an `.ini` file when the user wants Merlin-managed launch commands:
 
 ```ini
-[server]
-host = 127.0.0.1
-port = 8081
-models-dir = /Users/you/Models/gguf
+version = 1
+
+[*]
 parallel = 2
 
-[model.qwen3-coder-30b-a3b-instruct-q8_0]
+[qwen3-coder-30b-a3b-instruct-q8_0]
 model = /Users/you/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
-ctx-size = 32768
+c = 32768
 n-gpu-layers = -1
 
-[model.qwen3-vl-8b-instruct-q8_0]
+[qwen3-vl-8b-instruct-q8_0]
 model = /Users/you/Models/gguf/Qwen3-VL-8B-Instruct-Q8_0.gguf
 mmproj = /Users/you/Models/gguf/mmproj-Qwen3-VL-8B-Instruct-f16.gguf
-ctx-size = 16384
+c = 16384
 n-gpu-layers = -1
 ```
 
-The exact upstream preset syntax must be validated during implementation against the installed llama.cpp version. The architectural contract is stable: one Merlin provider, one base URL, many addressable model IDs.
+The preset syntax above matches llama.cpp router-mode `.ini` semantics: `version = 1`, optional global `[*]` settings, and one section per addressable model ID. The architectural contract is stable: one Merlin provider, one base URL, many addressable model IDs.
 
 ### Request Flow
 
@@ -577,8 +578,10 @@ First-class support is not complete until all of these pass:
 4. Assigning `execute = llamacpp:<general>` and `vision = llamacpp:<vision>` routes both slots through one base URL with different request model IDs.
 5. Router `POST /models/load` and `POST /models/unload` are covered by unit tests with mocked URLSession responses.
 6. Single-model fallback returns restart instructions instead of pretending runtime reload is available.
-7. Live smoke test covers text completion, tool-call prompt shape, vision image request, `/health`, `/v1/models`, and no HTTP 400 responses.
+7. Live smoke test covers text completion, streaming, tool-call prompt shape, vision image request, `/health`, `/v1/models`, and no HTTP 400 responses.
 8. Local-provider docs state the one-local-provider-pair-at-a-time rule: do not run llama.cpp router beside LM Studio/Jan/LocalAI pairs during calibration unless memory pressure has been measured.
+
+May 25, 2026 validation status: passed against Homebrew `llama-server` 9290 with one router-mode server on `127.0.0.1:8081`, `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf`, `Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf`, and `mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf`. `/health`, `/v1/models`, `/models/load`, text completion, streaming, tool-call request shape, and data-URI image request returned HTTP 200.
 
 ---
 
@@ -887,22 +890,28 @@ CAG is now implemented as a request policy and deterministic prefix discipline, 
 - `Merlin/CAG/CachePolicy.swift` defines `CAGCachePolicy` and `CAGToolOrdering`.
 - `Merlin/CAG/CacheMetrics.swift` defines `CAGCacheUsage` and `CAGCacheMetricsStore`.
 - `CompletionRequest.cachePolicy` carries per-request cache intent.
+- `CompletionRequest.systemPromptSegments` carries split cacheable/hot system blocks for providers that can mark cache blocks explicitly.
 - `AppSettings.cagEnabled`, `AppSettings.cagPinClaudeMD`, and `AppSettings.cagPinnedPhaseDocs` persist under `[cag]`.
+- `AgenticEngine.buildStablePrefix()` honors `cagPinClaudeMD` and folds configured pinned phase/task docs into the stable prefix when CAG is enabled.
+- `AgenticEngine.buildCAGSystemPromptSegments()` keeps unpinned CLAUDE.md in the request as hot system content instead of dropping it.
+- `CAGMetricsPane` surfaces cache read/create/uncached totals in the workspace beside the other optional panes.
 
 ### Cache boundary and invariants
 
 CAG keeps stable prefix content cacheable and turn-variant content hot:
 
 - **Cacheable stable prefix**: system prompt, project instructions, domain addenda, and stable tool schemas.
+- **Hot system block**: unpinned CLAUDE.md and per-turn system warnings.
 - **Hot suffix**: conversation history, tool results, current user turn, and all RAG/KAG enrichment content.
 
 RAG/KAG remain retrieval features and must stay in the hot suffix. They are never folded into the cacheable system prefix.
+Pinned CAG documents are capped at eight regular files inside the current project and 64 KiB per file.
 
 ### Provider behavior
 
 | Provider family | CAG behavior |
 |---|---|
-| `AnthropicProvider` | Uses explicit prompt cache markers: `anthropic-beta: prompt-caching-2024-07-31`, system text block with `cache_control`, and final tool schema cache marker. Parses cache usage fields from SSE `usage`. |
+| `AnthropicProvider` | Uses explicit prompt cache markers: `anthropic-beta: prompt-caching-2024-07-31`, cache-marked stable system block, unmarked hot system block when present, and final tool schema cache marker. Parses cache usage fields from SSE `usage`. |
 | OpenAI-compatible, DeepSeek, local providers (`llama.cpp`, LM Studio, Jan.ai, LocalAI, etc.) | No Anthropic-specific fields are emitted. CAG relies on stable prefix bytes so provider/server-side automatic cache or KV reuse can hit when supported. |
 
 ### Request flow
@@ -910,6 +919,7 @@ RAG/KAG remain retrieval features and must stay in the hot suffix. They are neve
 ```text
 AgenticEngine.send(userMessage:)
   ├── buildStablePrefix()                  # cold prefix
+  ├── buildCAGSystemPromptSegments()       # cacheable + hot system blocks
   ├── RAG/KAG enrich user message          # hot suffix only
   ├── request.cachePolicy = .ephemeral/.disabled
   ├── request.tools = CAGToolOrdering.stable(...)
@@ -927,6 +937,7 @@ AgenticEngine.send(userMessage:)
 - `usage.input_tokens` -> `CAGCacheUsage.uncachedInputTokens`
 
 `AnthropicProvider` records parsed usage with `CAGCacheMetricsStore.shared.record(..., providerID: id)` so cache hit/read/create accounting is available for budget surfaces.
+`ProviderSettingsView` surfaces those per-provider CAG counters next to provider configuration, and `CAGMetricsPane` provides the workspace panel with refresh/reset controls.
 
 
 ---
@@ -984,7 +995,7 @@ struct ProviderConfig: Codable, Sendable, Identifiable {
 
 ### ProviderRegistry [v1]
 
-`ProviderRegistry` is a `@MainActor ObservableObject` that owns all provider configuration. Config persists to `~/Library/Application Support/Merlin/providers.json`. API keys are in Keychain, one item per provider (`com.merlin.provider.<id> / api-key`).
+`ProviderRegistry` is a `@MainActor ObservableObject` that owns all provider configuration. Config persists to `~/Library/Application Support/Merlin/providers.json`. API keys are read/written through `KeychainManager`: Debug/dev-loop builds use `~/.merlin/api-keys.json` with mode `0600`; Release builds use one Keychain item per provider.
 
 ```swift
 @MainActor
@@ -1811,7 +1822,8 @@ A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` sce
 | Backing store | What lives there |
 |---|---|
 | `~/.merlin/config.toml` | Memories toggle, idle timeout, hooks, search config, reasoning overrides, toolbar actions, agent standing instructions |
-| Keychain | API keys, connector tokens, search API key |
+| `~/.merlin/api-keys.json` | Provider API keys in Debug/dev-loop builds; file mode `0600` |
+| Keychain | Provider API keys in Release builds; connector tokens; search API key |
 | UserDefaults | UI-only state — theme, fonts, font sizes, message density, window layout |
 
 `config.toml` is watched via FSEvents; external edits update `AppSettings` live. `ConnectorsView` (phase 43) is absorbed into the Connectors section and removed as a standalone view.
@@ -1850,7 +1862,13 @@ Settings window shell (navigation + Appearance + AppSettings stub) is built in t
 
 ## API Key Management [v1]
 
-One Keychain item per remote provider. Local providers require no key.
+Provider API key storage is build-mode aware:
+
+- Debug/dev-loop builds use `~/.merlin/api-keys.json` with file mode `0600` so ad-hoc rebuilds do not churn Keychain ACLs.
+- Release builds use one Keychain item per remote provider.
+- Each mode migrates existing keys from the other backing store on first read.
+
+Local providers require no key unless a local server is explicitly launched with bearer-token auth.
 
 ```
 Service:   com.merlin.provider.<id>
@@ -1869,7 +1887,8 @@ com.merlin.provider.openrouter/ api-key
 
 > **Note:** The xcalibre RAG server token (`xcalibre_token`) is **not** stored in Keychain. It lives in `~/.merlin/config.toml` and is read via `AppSettings.xcalibreToken`. Local services with no secret value do not warrant Keychain storage.
 
-`ProviderRegistry.setAPIKey(_:for:)` writes and `readAPIKey(for:)` reads. Keys never written to disk in plaintext, never included in session JSON, never logged.
+`ProviderRegistry.setAPIKey(_:for:)` writes and `readAPIKey(for:)` reads through `KeychainManager`, which selects the backing store for the active build mode. Keys are never included in session JSON and never logged.
+`LocalOnlyFileGate` runs in the pre-push/release path and CI mirrors the same check so `api-keys.json`, `.env*`, `secrets.json`, and `.merlin/api-keys.json` cannot be tracked or pushed as project files.
 
 `ProviderSettingsView` lets the user enter API keys and toggle providers from the settings sheet. On the first launch for any remote provider, `FirstLaunchSetupView` prompts for the active provider's key and writes it via `ProviderRegistry`.
 
@@ -2103,7 +2122,7 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 | MCP transport | N/A | stdio only (HTTP/SSE deferred to v3) |
 | Tool call wire format | OpenAI function calling | Unchanged |
 | LLM providers | DeepSeek (remote) + LM Studio (local) | 10 providers via OpenAICompatibleProvider + AnthropicProvider; ProviderRegistry |
-| Provider config | Hardcoded in AppState | ProviderConfig JSON + Keychain per provider; ProviderSettingsView |
+| Provider config | Hardcoded in AppState | ProviderConfig JSON + build-mode-aware provider key storage; ProviderSettingsView |
 | API key storage | Single Keychain item (`com.merlin.deepseek`) | One item per provider (`com.merlin.provider.<id>`); connector tokens added per-service |
 | Thinking mode | Always injected when detector fires | Gated by `supportsThinking` flag on active ProviderConfig |
 | Vision routing | Fixed to LM Studio | First local provider with `supportsVision = true` |
@@ -2414,13 +2433,14 @@ actor DomainRegistry {
 
     func register(_ plugin: DomainPlugin) async
     func unregister(id: String) async
-    func activeDomain() -> DomainPlugin        // falls back to SoftwareDomain if none set
-    func taskTypes() -> [DomainTaskType]       // active domain only (multi-domain deferred)
+    func activeDomain(ids: [String]) -> DomainPlugin
+    func activeDomains(ids: [String]) -> [DomainPlugin]
+    func taskTypes(ids: [String]) -> [DomainTaskType]
     func plugin(for id: String) -> DomainPlugin?
 }
 ```
 
-Domains register at MCP server startup and unregister when the server disconnects. The active domain is set in `AppSettings` and shown in the toolbar alongside the active provider. One active domain at a time — multi-domain sessions are deferred.
+Domains register at MCP server startup and unregister when the server disconnects. Active domain IDs are session-scoped and stored on each `LiveSession`; the UI resolves status from the current session rather than a toolbar-level singleton. Multi-domain sessions are shipped and use the `DomainRegistry.activeDomains(ids:)` / `taskTypes(ids:)` stateless helpers.
 
 ### Built-in: Software Domain
 
@@ -2475,7 +2495,7 @@ The tracker, critic, planner, and routing all adapt automatically to whatever th
 | Verification | `VerificationBackend` protocol — domain provides check commands |
 | Remote execution | `verify_command` can be any shell string, including SSH |
 | Default domain | `SoftwareDomain` — always registered, cannot be removed |
-| Multi-domain | One active domain at a time — multi-domain sessions deferred |
+| Multi-domain | Session-scoped `activeDomainIDs`; `DomainRegistry.activeDomains(ids:)` and `taskTypes(ids:)` resolve without global mutable state |
 | Core changes on new domain | None required |
 
 ## Merlin v2.0 — Electronics/KiCad Feature Set
@@ -4688,7 +4708,8 @@ Three layers, only one of which the user invokes.
 │ Layer 3 — Git hooks (hard enforcement, blocks bad commits)               │
 │   pre-commit        — block on uncommented WHY-triggers, missing docs,   │
 │                       missing manual coverage, TODO without reference    │
-│   pre-push          — block tag/version mismatch                         │
+│   pre-push          — block tag/version mismatch and tracked local-only   │
+│                       credential files                                    │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -4901,8 +4922,14 @@ code, or creating a `phase-NNc-supersedes-NNb.md` addendum per the existing CLAU
 convention).
 
 The scanner is the load-bearing component of v2.2 — it validates that the phase methodology
-remains rebuildable from its phase files, which CLAUDE.md already declares as the source of
-truth.
+remains rebuildable from its active phase files, which CLAUDE.md already declares as the
+source of truth. A project can set `phase_scan_min_number` in `.merlin/project.toml` when
+adopting discipline after a long historical phase archive; phase documents before that
+number are treated as immutable archive, not current drift obligations. A project can also
+set `phase_scan_public_undeclared = false` to disable retroactive orange findings for old
+public symbols that predate the discipline baseline. Merlin itself uses those settings to
+scan the active phase baseline forward while preserving the older phase corpus as reference
+material.
 
 ### ManualCoverageScanner
 

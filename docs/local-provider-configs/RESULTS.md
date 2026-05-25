@@ -1,6 +1,6 @@
 # Local Provider Testing Matrix — Results
 
-Validated against live runs on **May 22, 2026**.
+Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026**.
 
 Compare each local provider's calibration output against the LM Studio MLX-8bit
 baseline. All five serve the same `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` (or
@@ -26,7 +26,7 @@ Run order per provider:
 | **ollama** | ✓ | ✗ | general only | Not recommended | Vision requests crashed the runner with `EOF` / `exit status 2` |
 | **vllm** (vLLM-Metal) | ✓ | ✗ | general only | Not recommended | Vision failed upstream with `NotImplementedError` on Metal |
 | **mistralrs** | ✗ | not pursued | — | Currently unusable | Tested Qwen3 MoE GGUF loads, then fails on first inference on Metal |
-| **llamacpp** | pending | pending | pending | Pending calibration | Router-mode provider landed at `http://localhost:8081/v1`; fresh live sweep not yet recorded |
+| **llamacpp** | ✓ | ✓ | smoke | Live smoke validated | One router-mode `llama-server` served the local Qwen3 Coder + Qwen3-VL GGUF pair with `mmproj`; `/health`, `/v1/models`, `/models/load`, text completion, streaming, tool-call request shape, and image request returned HTTP 200 |
 
 ## Timed calibration matrix — 2026-05-22
 
@@ -38,7 +38,7 @@ Run order per provider:
 | **ollama** | `520.890` | `0.8611` | `0.8056` | `codex-calibration-logs/ollama/calibration-report.json` |
 | **vllm** (vLLM-Metal) | `592.440` | `0.8889` | `0.7778` | `codex-calibration-logs/vllm/calibration-report.json` |
 | **mistralrs** | — | — | — | No successful calibration run |
-| **llamacpp** | — | — | — | Pending fresh calibration run |
+| **llamacpp** | smoke run | pass | pass | `/tmp/merlin-llamacpp-smoke.txt` |
 
 ## Provider-specific outcomes
 
@@ -77,10 +77,16 @@ vision runtime failed on the first real image request with:
 That is an upstream runtime limitation, not a Merlin configuration issue.
 
 ### llamacpp
-Pending fresh calibration. Merlin now ships a first-class `llamacpp` provider
-and `LlamaCppModelManager` targeting one router-mode `llama-server` process on
-`http://localhost:8081/v1`. Runtime load/unload is available when `/models`
-router endpoints are present; single-model servers fall back to restart guidance.
+Live smoke validated on May 25, 2026. Merlin ships a first-class `llamacpp`
+provider and `LlamaCppModelManager` targeting one router-mode `llama-server`
+process on `http://localhost:8081/v1`. Runtime load/unload is available through
+`POST /models/load` and `POST /models/unload` when `/models` router endpoints
+are present; single-model servers fall back to restart guidance. The refreshed
+validation used `/opt/homebrew/bin/llama-server` 9290 with
+`Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf`,
+`Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf`, and
+`mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf`. Text, streaming, tool-call shape,
+and a data-URI image request all returned HTTP 200.
 
 ## Upstream issue tracking — 2026-05-22
 
@@ -106,9 +112,11 @@ router endpoints are present; single-model servers fall back to restart guidance
 - **LM Studio**
 - **Jan.ai**
 - **LocalAI**
+- **llama.cpp** for router-mode live smoke validation of the GGUF general+vision pair
 
-Each of those passed both model roles in a general+vision pair and completed a
-timed calibration run.
+LM Studio, Jan.ai, and LocalAI passed both model roles and completed a timed
+calibration run. llama.cpp passed the May 25 router-mode smoke and image
+validation against the same local GGUF pair.
 
 **Not recommended local providers:**
 - **Ollama** — general works, vision runner crashes on real image requests
@@ -117,10 +125,6 @@ timed calibration run.
 **Currently unusable for the tested model:**
 - **Mistral.rs** — the tested Qwen3 MoE GGUF path fails on first inference on
   Apple Metal
-
-**Pending fresh local sweep:**
-- **llama.cpp** (`llamacpp`) — provider + router runtime support shipped; live
-  calibration numbers not recorded yet
 
 **Memory rule remains strict:** run one provider at a time, then shut it down.
 Concurrent local daemons caused avoidable failures earlier in the sweep.

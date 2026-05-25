@@ -3,6 +3,8 @@ import Foundation
 /// llama.cpp manager backed by one router-mode `llama-server` process.
 /// The manager can discover models from `/models` or `/v1/models` and uses
 /// runtime load/unload endpoints when router mode is available.
+/// `@unchecked Sendable` rationale: immutable URL/runtime settings plus URLSession;
+/// no mutable shared state is stored on the manager.
 final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable {
 
     let providerID = "llamacpp"
@@ -28,9 +30,15 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
     private let baseURL: URL
     private let session: URLSession
+    private let runtimeSettings: LlamaCppRuntimeSettings
 
-    init(baseURL: URL, session: URLSession = .shared) {
+    init(
+        baseURL: URL,
+        runtimeSettings: LlamaCppRuntimeSettings = LlamaCppRuntimeSettings(),
+        session: URLSession = .shared
+    ) {
         self.baseURL = baseURL
+        self.runtimeSettings = runtimeSettings
         self.session = session
     }
 
@@ -55,6 +63,7 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
     }
 
     func ensureModelLoaded(modelID: String) async throws {
+        guard runtimeSettings.autoloadModels else { return }
         if let routerEntries = try await fetchRouterCatalog() {
             if routerEntries.contains(where: { $0.id == modelID && $0.isRuntimeLoaded }) {
                 return
@@ -97,37 +106,56 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
     }
 
     func restartInstructions(modelID: String, config: LocalModelConfig) -> RestartInstructions? {
-        let command = [
-            "LLAMA_SERVER=\"/opt/homebrew/bin/llama-server\"",
-            "MODEL_DIR=\"${MODEL_DIR:-$HOME/Models/gguf}\"",
-            "PRESET_FILE=\"${PRESET_FILE:-$HOME/.config/llama.cpp/router-preset.ini}\"",
-            "\"$LLAMA_SERVER\"",
-            "--host 127.0.0.1",
-            "--port 8081",
-            "--models-dir \"$MODEL_DIR\"",
-            "--models-preset \"$PRESET_FILE\""
-        ].joined(separator: " ")
+        let command = runtimeSettings.routerEnabled
+            ? routerLaunchCommand(config: config)
+            : singleModelLaunchCommand(modelID: modelID, config: config)
 
         return RestartInstructions(
             shellCommand: command,
-            configSnippet: nil,
-            explanation: "llama.cpp runtime load/unload requires router mode. Relaunch one router-mode llama-server process on port 8081."
+            configSnippet: runtimeSettings.routerEnabled ? routerPresetSnippet(modelID: modelID, config: config) : nil,
+            explanation: runtimeSettings.routerEnabled
+                ? "llama.cpp runtime load/unload requires one router-mode llama-server process on port 8081."
+                : "This llama.cpp configuration is single-model mode. Restart llama-server to change the loaded model or load parameters."
         )
     }
 
     private struct RouterCatalogEntry: Decodable {
         var id: String
         var state: String?
-        var status: String?
+        var status: Status?
+        var legacyStatus: String?
+
+        struct Status: Decodable {
+            var value: String?
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case id, state, status
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(String.self, forKey: .id)
+            state = try c.decodeIfPresent(String.self, forKey: .state)
+            status = try c.decodeIfPresent(Status.self, forKey: .status)
+            legacyStatus = try? c.decodeIfPresent(String.self, forKey: .status)
+        }
 
         var isRuntimeLoaded: Bool {
-            let value = (state ?? status ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            return value == "loaded" || value == "active"
+            let value = (state ?? status?.value ?? legacyStatus ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            return value == "loaded" || value == "active" || value == "sleeping"
         }
     }
 
     private struct RouterCatalogResponse: Decodable {
-        var models: [RouterCatalogEntry]
+        var data: [RouterCatalogEntry]?
+        var models: [RouterCatalogEntry]?
+
+        var entries: [RouterCatalogEntry] {
+            data ?? models ?? []
+        }
     }
 
     private struct OpenAIModelEntry: Decodable {
@@ -141,7 +169,7 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
     private func fetchRouterCatalog() async throws -> [RouterCatalogEntry]? {
         let url = routerRootURL().appendingPathComponent("models")
         guard let data = try await getIfSuccess(url: url) else { return nil }
-        return try JSONDecoder().decode(RouterCatalogResponse.self, from: data).models
+        return try JSONDecoder().decode(RouterCatalogResponse.self, from: data).entries
     }
 
     private func fetchOpenAIModelList() async throws -> [String]? {
@@ -156,7 +184,8 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["id": modelID])
+        applyAuth(to: &request)
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["model": modelID])
 
         let (_, response) = try await session.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
@@ -165,7 +194,9 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
     }
 
     private func getIfSuccess(url: URL) async throws -> Data? {
-        let (data, response) = try await session.data(from: url)
+        var request = URLRequest(url: url)
+        applyAuth(to: &request)
+        let (data, response) = try await session.data(for: request)
         guard let status = (response as? HTTPURLResponse)?.statusCode else {
             throw ModelManagerError.providerUnavailable
         }
@@ -189,6 +220,112 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
         }
         components.path = path
         return components.url ?? baseURL
+    }
+
+    private func applyAuth(to request: inout URLRequest) {
+        guard !runtimeSettings.apiKey.isEmpty else { return }
+        request.setValue("Bearer \(runtimeSettings.apiKey)", forHTTPHeaderField: "Authorization")
+    }
+
+    private func routerLaunchCommand(config: LocalModelConfig) -> String {
+        var parts = [
+            "LLAMA_SERVER=\(shellQuote(runtimeSettings.serverPath))",
+            "MODEL_DIR=\"${MODEL_DIR:-\(runtimeSettings.modelsDir)}\"",
+            "PRESET_FILE=\"${PRESET_FILE:-\(runtimeSettings.modelsPresetPath)}\"",
+            "\"$LLAMA_SERVER\"",
+            "--host 127.0.0.1",
+            "--port 8081",
+            "--models-dir \"$MODEL_DIR\"",
+            "--models-preset \"$PRESET_FILE\""
+        ]
+        appendCommonFlags(config: config, to: &parts)
+        if let value = runtimeSettings.parallelSlots {
+            parts.append("--parallel \(value)")
+        }
+        if let value = runtimeSettings.ubatchSize {
+            parts.append("--ubatch-size \(value)")
+        }
+        if !runtimeSettings.chatTemplate.isEmpty {
+            parts.append("--chat-template \(shellQuote(runtimeSettings.chatTemplate))")
+        }
+        if !runtimeSettings.autoloadModels {
+            parts.append("--no-models-autoload")
+        }
+        return parts.joined(separator: " ")
+    }
+
+    private func singleModelLaunchCommand(modelID: String, config: LocalModelConfig) -> String {
+        let model = runtimeSettings.modelPath.isEmpty ? modelID : runtimeSettings.modelPath
+        var parts = [
+            shellQuote(runtimeSettings.serverPath),
+            "--host 127.0.0.1",
+            "--port 8081",
+            "--model \(shellQuote(model))"
+        ]
+        if !runtimeSettings.modelAlias.isEmpty {
+            parts.append("--alias \(shellQuote(runtimeSettings.modelAlias))")
+        }
+        if !runtimeSettings.mmprojPath.isEmpty {
+            parts.append("--mmproj \(shellQuote(runtimeSettings.mmprojPath))")
+        }
+        appendCommonFlags(config: config, to: &parts)
+        return parts.joined(separator: " ")
+    }
+
+    private func appendCommonFlags(config: LocalModelConfig, to parts: inout [String]) {
+        if let value = config.contextLength { parts.append("--ctx-size \(value)") }
+        if let value = config.gpuLayers { parts.append("--n-gpu-layers \(value)") }
+        if let value = config.cpuThreads { parts.append("--threads \(value)") }
+        if config.flashAttention == true { parts.append("--flash-attn") }
+        if let value = config.cacheTypeK { parts.append("--cache-type-k \(shellQuote(value))") }
+        if let value = config.cacheTypeV { parts.append("--cache-type-v \(shellQuote(value))") }
+        if let value = config.ropeFrequencyBase { parts.append("--rope-freq-base \(value)") }
+        if let value = config.batchSize { parts.append("--batch-size \(value)") }
+        if config.useMmap == true { parts.append("--mmap") }
+        if config.useMmap == false { parts.append("--no-mmap") }
+        if config.useMlock == true { parts.append("--mlock") }
+    }
+
+    private func routerPresetSnippet(modelID: String, config: LocalModelConfig) -> String {
+        let sectionName = runtimeSettings.modelAlias.isEmpty ? modelID : runtimeSettings.modelAlias
+        var lines = [
+            "version = 1",
+            "",
+            "[*]"
+        ]
+        if let value = runtimeSettings.parallelSlots {
+            lines.append("parallel = \(value)")
+        }
+        if let value = runtimeSettings.ubatchSize {
+            lines.append("ubatch-size = \(value)")
+        }
+        if !runtimeSettings.chatTemplate.isEmpty {
+            lines.append("chat-template = \(runtimeSettings.chatTemplate)")
+        }
+        lines.append(contentsOf: [
+            "",
+            "[\(sectionName)]",
+            "model = \(runtimeSettings.modelPath.isEmpty ? "<path-to-\(modelID).gguf>" : runtimeSettings.modelPath)"
+        ])
+        if !runtimeSettings.mmprojPath.isEmpty {
+            lines.append("mmproj = \(runtimeSettings.mmprojPath)")
+        }
+        if let value = config.contextLength { lines.append("c = \(value)") }
+        if let value = config.gpuLayers { lines.append("n-gpu-layers = \(value)") }
+        if let value = config.cpuThreads { lines.append("threads = \(value)") }
+        if config.flashAttention == true { lines.append("flash-attn = on") }
+        if let value = config.cacheTypeK { lines.append("cache-type-k = \(value)") }
+        if let value = config.cacheTypeV { lines.append("cache-type-v = \(value)") }
+        if let value = config.ropeFrequencyBase { lines.append("rope-freq-base = \(value)") }
+        if let value = config.batchSize { lines.append("batch-size = \(value)") }
+        if config.useMmap == true { lines.append("mmap = true") }
+        if config.useMmap == false { lines.append("mmap = false") }
+        if config.useMlock == true { lines.append("mlock = true") }
+        return lines.joined(separator: "\n")
+    }
+
+    private func shellQuote(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 }
 

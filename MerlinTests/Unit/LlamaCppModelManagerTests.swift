@@ -30,7 +30,7 @@ final class LlamaCppModelManagerTests: XCTestCase {
     func testLoadedModelsReadsRouterCatalogFromModelsEndpoint() async throws {
         let session = Self.makeMockSession { request in
             XCTAssertEqual(request.url?.path, "/models")
-            let body = #"{"models":[{"id":"qwen3-coder","state":"loaded"},{"id":"qwen3-vl","state":"unloaded"}]}"#
+            let body = #"{"data":[{"id":"qwen3-coder","status":{"value":"loaded"}},{"id":"qwen3-vl","status":{"value":"unloaded"}}]}"#
             return Self.okResponse(for: request, data: Data(body.utf8))
         }
         let manager = LlamaCppModelManager(baseURL: URL(string: "http://127.0.0.1:8081/v1")!, session: session)
@@ -73,7 +73,7 @@ final class LlamaCppModelManagerTests: XCTestCase {
 
         try await manager.ensureModelLoaded(modelID: "qwen3-vl")
         let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: try XCTUnwrap(capturedBody.value)) as? [String: Any])
-        XCTAssertEqual(json["id"] as? String, "qwen3-vl")
+        XCTAssertEqual(json["model"] as? String, "qwen3-vl")
     }
 
     func testUnloadModelPostsModelsUnload() async throws {
@@ -88,7 +88,7 @@ final class LlamaCppModelManagerTests: XCTestCase {
 
         try await manager.unloadModel(modelID: "qwen3-vl")
         let json = try XCTUnwrap(try JSONSerialization.jsonObject(with: try XCTUnwrap(capturedBody.value)) as? [String: Any])
-        XCTAssertEqual(json["id"] as? String, "qwen3-vl")
+        XCTAssertEqual(json["model"] as? String, "qwen3-vl")
     }
 
     func testSingleModelServerFallsBackToRestartInstructions() async {
@@ -145,6 +145,9 @@ final class LlamaCppModelManagerTests: XCTestCase {
         XCTAssertFalse(instructions?.shellCommand.contains("--props ") == true)
         XCTAssertFalse(instructions?.shellCommand.contains("&&") == true)
         XCTAssertFalse(instructions?.shellCommand.contains("vision") == true)
+        XCTAssertTrue(instructions?.configSnippet?.contains("version = 1") == true)
+        XCTAssertTrue(instructions?.configSnippet?.contains("[qwen3-coder]") == true)
+        XCTAssertTrue(instructions?.configSnippet?.contains("c = 32768") == true)
     }
 }
 

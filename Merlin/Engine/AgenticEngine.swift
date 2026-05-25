@@ -221,6 +221,9 @@ final class AgenticEngine {
     var _stablePrefixDirty = true
     private var _stablePrefixCached = ""
     private var _stablePrefixCompressionEnabled = AppSettings.shared.promptCompressionEnabled
+    private var _stablePrefixCAGSignature = ""
+    private static let maxPinnedCAGDocuments = 8
+    private static let maxPinnedCAGDocumentBytes = 64 * 1024
 
     var currentProjectPath: String? {
         didSet {
@@ -1031,6 +1034,9 @@ final class AgenticEngine {
                     thinking: useThinking ? ThinkingModeDetector.config(for: userMessage) : nil
                 )
                 request.cachePolicy = AppSettings.shared.cagEnabled ? .ephemeral : .disabled
+                if AppSettings.shared.cagEnabled {
+                    request.systemPromptSegments = buildCAGSystemPromptSegments()
+                }
                 request.tools = CAGToolOrdering.stable(offeredTools())
                 AppSettings.shared.applyInferenceDefaults(to: &request)
                 // Per-provider max_tokens override: takes precedence over the global default.
@@ -2430,29 +2436,55 @@ final class AgenticEngine {
     }
 
     private func buildSystemPrompt() -> String {
-        var result = buildStablePrefix()
-        if let warning = nearCeilingWarningAddendum {
-            result += "\n\n" + warning
+        buildCAGSystemPromptSegments().merged
+    }
+
+    func buildCAGSystemPromptSegments() -> CAGSystemPromptSegments {
+        CAGSystemPromptSegments(cacheable: buildStablePrefix(), hot: buildHotSystemSuffix())
+    }
+
+    private func buildHotSystemSuffix() -> String {
+        let settings = AppSettings.shared
+        var parts: [String] = []
+        if settings.cagEnabled, !settings.cagPinClaudeMD, !claudeMDContent.isEmpty {
+            let mdToUse = settings.promptCompressionEnabled && !claudeMDDistilledContent.isEmpty
+                ? claudeMDDistilledContent
+                : claudeMDContent
+            parts.append(mdToUse)
         }
-        return result
+        if let warning = nearCeilingWarningAddendum {
+            parts.append(warning)
+        }
+        return parts.joined(separator: "\n\n")
     }
 
     /// Returns the stable (cacheable) portion of the system prompt.
     /// Excludes nearCeilingWarningAddendum, which varies per loop iteration.
     /// Internal for test access.
     func buildStablePrefix() -> String {
-        let compressionEnabled = AppSettings.shared.promptCompressionEnabled
-        if !_stablePrefixDirty && _stablePrefixCompressionEnabled == compressionEnabled {
+        let settings = AppSettings.shared
+        let compressionEnabled = settings.promptCompressionEnabled
+        let cagSignature = [
+            settings.cagEnabled ? "enabled" : "disabled",
+            settings.cagPinClaudeMD ? "pin-claude" : "skip-claude",
+            settings.cagPinnedPhaseDocs.joined(separator: "\u{1f}")
+        ].joined(separator: "\u{1e}")
+        if !_stablePrefixDirty,
+           _stablePrefixCompressionEnabled == compressionEnabled,
+           _stablePrefixCAGSignature == cagSignature {
             return _stablePrefixCached
         }
         var parts: [String] = []
 
         // CLAUDE.md: use distilled version when compression is on and distillation has run.
-        if !claudeMDContent.isEmpty {
+        if !claudeMDContent.isEmpty && (!settings.cagEnabled || settings.cagPinClaudeMD) {
             let mdToUse = compressionEnabled && !claudeMDDistilledContent.isEmpty
                 ? claudeMDDistilledContent
                 : claudeMDContent
             parts.append(mdToUse)
+        }
+        if settings.cagEnabled {
+            parts.append(contentsOf: pinnedCAGDocumentContents(settings.cagPinnedPhaseDocs))
         }
         if !memoriesContent.isEmpty {
             parts.append(memoriesContent)
@@ -2475,8 +2507,44 @@ final class AgenticEngine {
         }
         _stablePrefixCached = parts.joined(separator: "\n\n")
         _stablePrefixCompressionEnabled = compressionEnabled
+        _stablePrefixCAGSignature = cagSignature
         _stablePrefixDirty = false
         return _stablePrefixCached
+    }
+
+    private func pinnedCAGDocumentContents(_ paths: [String]) -> [String] {
+        guard !paths.isEmpty else { return [] }
+        let baseURL = currentProjectPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        return paths.sorted().prefix(Self.maxPinnedCAGDocuments).compactMap { rawPath in
+            let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            let url: URL
+            if trimmed.hasPrefix("/") {
+                url = URL(fileURLWithPath: trimmed).standardizedFileURL
+            } else if let baseURL {
+                url = baseURL.appendingPathComponent(trimmed).standardizedFileURL
+            } else {
+                url = URL(fileURLWithPath: trimmed).standardizedFileURL
+            }
+            if let baseURL {
+                let basePath = baseURL.standardizedFileURL.path
+                guard url.path == basePath || url.path.hasPrefix(basePath + "/") else {
+                    return "Pinned CAG document skipped: \(trimmed)\nReason: outside current project."
+                }
+            }
+            guard let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+                  values.isRegularFile == true else {
+                return "Pinned CAG document skipped: \(trimmed)\nReason: not a regular file."
+            }
+            guard (values.fileSize ?? 0) <= Self.maxPinnedCAGDocumentBytes else {
+                return "Pinned CAG document skipped: \(trimmed)\nReason: file exceeds 64 KiB limit."
+            }
+            guard let text = try? String(contentsOf: url, encoding: .utf8),
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
+            }
+            return "Pinned CAG document: \(trimmed)\n\n\(text)"
+        }
     }
 
     /// Distils `claudeMDContent` using `provider` when the content has changed since the last
