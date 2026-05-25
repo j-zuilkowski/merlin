@@ -26,6 +26,9 @@ final class AnthropicProvider: LLMProvider, @unchecked Sendable {
             urlRequest.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         }
         urlRequest.setValue(Self.anthropicVersion, forHTTPHeaderField: "anthropic-version")
+        if request.cachePolicy.isCacheable {
+            urlRequest.setValue("prompt-caching-2024-07-31", forHTTPHeaderField: "anthropic-beta")
+        }
 
         var body: [String: Any] = [
             "model": request.model.isEmpty ? modelID : request.model,
@@ -37,11 +40,19 @@ final class AnthropicProvider: LLMProvider, @unchecked Sendable {
         if let systemMsg = request.messages.first(where: { $0.role == .system }),
            case .text(let text) = systemMsg.content,
            !text.isEmpty {
-            body["system"] = text
+            if request.cachePolicy.isCacheable {
+                body["system"] = [[
+                    "type": "text",
+                    "text": text,
+                    "cache_control": ["type": "ephemeral"]
+                ]]
+            } else {
+                body["system"] = text
+            }
         }
 
         if let tools = request.tools, !tools.isEmpty {
-            body["tools"] = AnthropicMessageEncoder.encodeTools(tools)
+            body["tools"] = AnthropicMessageEncoder.encodeTools(tools, cachePolicy: request.cachePolicy)
         }
 
         if let thinking = request.thinking {
@@ -67,6 +78,9 @@ final class AnthropicProvider: LLMProvider, @unchecked Sendable {
 
                     for try await line in bytes.lines {
                         if let chunk = try AnthropicSSEParser.parseChunk(line) {
+                            if let usage = chunk.cacheUsage {
+                                await CAGCacheMetricsStore.shared.record(usage, providerID: id)
+                            }
                             continuation.yield(chunk)
                             if chunk.finishReason != nil {
                                 break
@@ -143,8 +157,8 @@ enum AnthropicMessageEncoder {
         return result
     }
 
-    static func encodeTools(_ tools: [ToolDefinition]) -> [[String: Any]] {
-        tools.compactMap { tool in
+    static func encodeTools(_ tools: [ToolDefinition], cachePolicy: CAGCachePolicy = .disabled) -> [[String: Any]] {
+        var encoded = tools.compactMap { tool -> [String: Any]? in
             guard let schemaData = try? JSONEncoder().encode(tool.function.parameters),
                   let schemaObject = try? JSONSerialization.jsonObject(with: schemaData) else {
                 return nil
@@ -156,6 +170,12 @@ enum AnthropicMessageEncoder {
                 "input_schema": schemaObject
             ]
         }
+
+        if cachePolicy.isCacheable, let lastIndex = encoded.indices.last {
+            encoded[lastIndex]["cache_control"] = ["type": "ephemeral"]
+        }
+
+        return encoded
     }
 
     private static func encodeAssistantContent(_ message: Message) -> [[String: Any]] {

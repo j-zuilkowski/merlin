@@ -161,20 +161,24 @@ struct ThinkingConfig: Codable, Sendable {
 struct CompletionChunk: Sendable {
     var delta: Delta?
     var finishReason: String?
+    var cacheUsage: CAGCacheUsage?
 
-    init(delta: Delta?, finishReason: String?) {
+    init(delta: Delta?, finishReason: String?, cacheUsage: CAGCacheUsage? = nil) {
         self.delta = delta
         self.finishReason = finishReason
+        self.cacheUsage = cacheUsage
     }
 
-    init(delta: String, finishReason: String?) {
+    init(delta: String, finishReason: String?, cacheUsage: CAGCacheUsage? = nil) {
         self.delta = Delta(content: delta)
         self.finishReason = finishReason
+        self.cacheUsage = cacheUsage
     }
 
-    init(delta: String, toolCallChunks: [Delta.ToolCallDelta], finishReason: String?) {
+    init(delta: String, toolCallChunks: [Delta.ToolCallDelta], finishReason: String?, cacheUsage: CAGCacheUsage? = nil) {
         self.delta = Delta(content: delta, toolCalls: toolCallChunks)
         self.finishReason = finishReason
+        self.cacheUsage = cacheUsage
     }
 
     struct Delta: Sendable {
