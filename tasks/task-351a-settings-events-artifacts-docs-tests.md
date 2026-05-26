@@ -56,7 +56,7 @@ Add source/documentation assertions:
   flow, and code-comment rules.
 - User Guide and FEATURES mention the bus only where user-visible behavior
   exists.
-- `spec.md` no longer says the message bus is merely planned.
+- `spec.md` no longer says the message bus remains future-tense.
 - Changed code comments follow the spec rules: public API doc comments where
   useful, no redundant WHAT-comments, and `// See: Developer Manual § "..."`
   only where the code is non-obvious enough to need a cross-reference.

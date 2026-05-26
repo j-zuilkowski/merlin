@@ -68,7 +68,7 @@ xcodebuild -scheme Merlin build \
 ```
 
 ```bash
-rg -n "message bus.*planned|WorkspaceMessageBus.*planned|Status: not implemented|direct ToolRouter closure dispatch|canonical.*merlin-kicad-mcp" \
+rg -n "message bus future-status|WorkspaceMessageBus future-status|not-implemented status|ToolRouter closure bypass|canonical legacy KiCad MCP scaffold" \
     spec.md vision.md FEATURES.md Merlin/Docs/UserGuide.md Merlin/Docs/DeveloperManual.md plugins tasks
 ```
 

@@ -1,0 +1,17 @@
+{
+  "id": "electronics",
+  "display_name": "Electronics",
+  "version": "1.0.0",
+  "trust_tier": "tier1",
+  "enabled": true,
+  "domain_ids": ["electronics"],
+  "capabilities": [
+    {
+      "id": "plugin.electronics.kicad_route_pass",
+      "display_name": "kicad_route_pass",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_route_pass" },
+      "required_permission_scope": "externalSideEffect"
+    }
+  ]
+}

@@ -33,7 +33,7 @@ Update stale status labels:
 Update CAG:
 
 - Change `## CAG — Cache-Augmented Generation [v11, planned]` to `[v11]`.
-- Remove the "Status: not implemented" block.
+- Remove the "not-implemented status" block.
 - Replace planned file-layout/settings text with shipped surface:
   - `Merlin/CAG/CachePolicy.swift`
   - `Merlin/CAG/CacheMetrics.swift`
@@ -89,7 +89,7 @@ Expected: all tests pass, including `ArchitectureStatusLabelTests` and
 `DocumentationSweepTests`.
 
 ```bash
-rg -n "v2\\.3 planned|CAG.*planned|Status: not implemented|task work is deferred" \
+rg -n "v2\\.3 planned|CAG.*planned|not-implemented status|task work is deferred" \
     spec.md FEATURES.md Merlin/Docs/UserGuide.md Merlin/Docs/DeveloperManual.md
 ```
 Expected: no hits in release-current docs.

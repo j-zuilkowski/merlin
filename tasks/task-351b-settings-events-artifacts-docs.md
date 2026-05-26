@@ -71,7 +71,7 @@ xcodebuild -scheme MerlinTests test \
 ```
 
 ```bash
-rg -n "message bus.*planned|WorkspaceMessageBus.*planned|direct ToolRouter closure dispatch|Status: not implemented" \
+rg -n "message bus future-status|WorkspaceMessageBus future-status|ToolRouter closure bypass|not-implemented status" \
     spec.md vision.md FEATURES.md Merlin/Docs/UserGuide.md Merlin/Docs/DeveloperManual.md
 ```
 

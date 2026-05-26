@@ -410,6 +410,7 @@
 		79075C104FFF41F0771447DD /* ToolRequirementCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B288C37A340E4CF81646E8 /* ToolRequirementCoordinator.swift */; };
 		7934334B99982EE95AA78984 /* DisciplineEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207ECF3F7B432F625A72AF43 /* DisciplineEvent.swift */; };
 		79F8514D6C3AA9D22A2B761A /* SessionCheckpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA39E1D6983538C0D9EFF4B /* SessionCheckpoint.swift */; };
+		7A405B350425EC0A13ADCBDB /* ElectronicsRuntimePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F126705E860BDFC93C481F00 /* ElectronicsRuntimePlugin.swift */; };
 		7AC49C29D0A3961B65FDB381 /* RAGSourceAttributionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 814E0637CF12937447292FA1 /* RAGSourceAttributionTests.swift */; };
 		7B36E995A973E60E004E6010 /* ProjectConfigLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199E7B3579FD41943FF28C1B /* ProjectConfigLoaderTests.swift */; };
 		7C12EEF1D5A2507CF4FF2034 /* GroundingReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C82F6062102607DF26D4BAA /* GroundingReport.swift */; };
@@ -1441,6 +1442,7 @@
 		F048C72E3E76D0BBC84AA7BF /* AsyncToolDispatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncToolDispatchTests.swift; sourceTree = "<group>"; };
 		F0A7C624624770C89925386E /* WhyCommentScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhyCommentScanner.swift; sourceTree = "<group>"; };
 		F0D443F5C95FA28971345F30 /* HookDecision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HookDecision.swift; sourceTree = "<group>"; };
+		F126705E860BDFC93C481F00 /* ElectronicsRuntimePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsRuntimePlugin.swift; sourceTree = "<group>"; };
 		F21CCCC650CD027CD96A3CEF /* BoardRoutingPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardRoutingPolicy.swift; sourceTree = "<group>"; };
 		F26F883190E34EFA1262B19C /* VerificationBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationBackend.swift; sourceTree = "<group>"; };
 		F3CFFC6594895A4079ED2E87 /* UserPromptDisciplineChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPromptDisciplineChecker.swift; sourceTree = "<group>"; };
@@ -1640,6 +1642,7 @@
 		31171B2E3CA147C64E2AEEC3 /* Plugins */ = {
 			isa = PBXGroup;
 			children = (
+				F126705E860BDFC93C481F00 /* ElectronicsRuntimePlugin.swift */,
 				C9EDD46DF3587EEE37F6B076 /* RuntimePluginLoader.swift */,
 			);
 			path = Plugins;
@@ -3400,6 +3403,7 @@
 				0806AD6BFD4920D30D7CCE84 /* DomainPlugin.swift in Sources */,
 				FFF2740CB5F166FC2EFC77F7 /* DomainRegistry.swift in Sources */,
 				22147AB6DEB2142417E63FAC /* DriftFinding.swift in Sources */,
+				7A405B350425EC0A13ADCBDB /* ElectronicsRuntimePlugin.swift in Sources */,
 				C7D8FAA1F01100664A2DE1AB /* EmbeddingProvider.swift in Sources */,
 				ABAE692B0CF903EF12AB1D28 /* EscalationHandler.swift in Sources */,
 				C1B6E354EFC8DF8AD29795C3 /* FilePane.swift in Sources */,
