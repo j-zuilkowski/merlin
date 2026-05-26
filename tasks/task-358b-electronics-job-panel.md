@@ -2,9 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass / UI completion surface
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 358b is executed THE system SHALL implement the electronics job panel.
 
 GIVEN electronics workflows run through the workspace bus,
 WHEN a user needs to inspect or act on them,

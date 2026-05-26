@@ -2,10 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass / Required completion artifacts
-- spec.md — Hard completion gates
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 357a is executed THE system SHALL add electronics artifact and gate tests.
 
 GIVEN an electronics workflow reaches verification/export,
 WHEN any required gate or artifact is missing,

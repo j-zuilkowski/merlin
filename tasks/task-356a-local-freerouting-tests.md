@@ -2,9 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass / Routing backend policy
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 356a is executed THE system SHALL add local FreeRouting route-pass tests.
 
 GIVEN local FreeRouting is the required completion backend,
 WHEN `kicad_route_pass` runs,

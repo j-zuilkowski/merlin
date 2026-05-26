@@ -2,12 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass
-- FEATURES.md — V2.0 Electronics Domain
-- Merlin/Docs/UserGuide.md — Electronics / KiCad Domain
-- Merlin/Docs/DeveloperManual.md — Electronics / KiCad Domain
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 359b is executed THE system SHALL reconcile electronics completion documentation.
 
 GIVEN the electronics completion pass is implemented,
 WHEN a user or developer reads current docs,

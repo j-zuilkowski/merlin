@@ -2,10 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass / Required completion artifacts
-- spec.md — Hard completion gates
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 357b is executed THE system SHALL implement electronics artifact and gate enforcement.
 
 GIVEN an electronics workflow has produced design outputs,
 WHEN Merlin evaluates completion,

@@ -2,12 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass
-- FEATURES.md — V2.0 Electronics Domain
-- Merlin/Docs/UserGuide.md — Electronics / KiCad Domain
-- Merlin/Docs/DeveloperManual.md — Electronics / KiCad Domain
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 359a is executed THE system SHALL add electronics completion documentation tests.
 
 GIVEN the electronics completion pass is implemented,
 WHEN documentation sweep tests run,

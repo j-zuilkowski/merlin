@@ -2,10 +2,12 @@
 
 ## Traceability
 
-- vision.md — Runtime plugin architecture + electronics plugin
-- spec.md — V5 domain plugin system / workspace message bus
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#v5-domain-plugin-system--workspace-message-bus
 
 ## Behavior
+
+WHEN task 354a is executed THE system SHALL add documentation status and legacy archive tests.
 
 GIVEN the workspace message bus, Tier-1 loader, and electronics migration are implemented,
 WHEN the documentation sweep runs,

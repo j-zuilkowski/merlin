@@ -2,9 +2,12 @@
 
 ## Traceability
 
-- spec.md — Electronics Product Completion Pass / UI completion surface
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 358a is executed THE system SHALL add electronics job panel tests.
 
 GIVEN electronics jobs publish workspace bus events,
 WHEN the user opens the electronics job/status panel,

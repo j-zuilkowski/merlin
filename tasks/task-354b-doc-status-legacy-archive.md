@@ -2,10 +2,12 @@
 
 ## Traceability
 
-- vision.md — Runtime plugin architecture + electronics plugin
-- spec.md — V5 domain plugin system / workspace message bus
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#v5-domain-plugin-system--workspace-message-bus
 
 ## Behavior
+
+WHEN task 354b is executed THE system SHALL document current bus status and archive the legacy MCP scaffold.
 
 GIVEN the bus/plugin foundation has shipped,
 WHEN a reader opens `vision.md`, `spec.md`, `FEATURES.md`, or the in-app manuals,

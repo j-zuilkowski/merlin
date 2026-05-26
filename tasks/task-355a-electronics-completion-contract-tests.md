@@ -2,10 +2,12 @@
 
 ## Traceability
 
-- vision.md — Runtime plugin architecture + electronics plugin
-- spec.md — Electronics Product Completion Pass
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#electronics-product-completion-pass
 
 ## Behavior
+
+WHEN task 355a is executed THE system SHALL add electronics completion contract tests.
 
 GIVEN the electronics plugin is bus-backed,
 WHEN the completion pass begins,
