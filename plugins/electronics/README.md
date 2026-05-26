@@ -4,5 +4,5 @@
 It registers KiCad, FreeRouting, workflow, verification, settings, progress, and
 artifact capabilities through Merlin's workspace message bus.
 
-The older `plugins/merlin-kicad-mcp` directory is a legacy out-of-process
-transport scaffold and is no longer the architecture source of truth.
+The older `archive/legacy-merlin-kicad-mcp` directory is a legacy
+out-of-process transport scaffold kept only for historical reference.

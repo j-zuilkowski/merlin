@@ -148,7 +148,7 @@ final class MCPBridgeTests: XCTestCase {
             .deletingLastPathComponent() // Unit
             .deletingLastPathComponent() // MerlinTests
             .deletingLastPathComponent() // repo root
-            .appendingPathComponent("plugins/merlin-kicad-mcp/run")
+            .appendingPathComponent("archive/legacy-merlin-kicad-mcp/run")
             .path
     }
 }

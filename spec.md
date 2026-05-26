@@ -2366,7 +2366,7 @@ The committed runtime design is a workspace message bus. It is Merlin's general 
 3. All model-visible tool calls flow through `WorkspaceMessageBus`; there is no parallel direct `ToolRouter` closure dispatch path.
 4. First-party in-process plugins and out-of-process MCP/store plugins use the same message model as built-in tools; only their transport differs.
 
-This is the required foundation before the runtime plugin loader and before moving electronics into `plugins/electronics/`.
+This foundation is implemented: the runtime plugin loader, electronics plugin migration, and model-visible bus dispatch now use this control plane.
 
 ### Workspace-Scoped Message Bus
 
@@ -2731,9 +2731,9 @@ The electronics plugin is the first Tier-1 plugin target. It registers bus-backe
 
 `kicad_route_pass` supports the local FreeRouting app and the optional hosted API behind one bus address. Progress, routing iterations, blocked states, generated DSN/SES files, Gerbers, drill files, BOMs, reports, and approval requests are emitted as bus events so all sessions in the workspace can observe the same electronics job state.
 
-### Message Bus Implementation Sequence
+### Completed Message Bus Implementation Sequence
 
-The bus architecture must be implemented in this order:
+The bus architecture was implemented in this order. The sequence is retained as completion history and as the current invariant list for future work:
 
 1. Add shared message contracts with envelope types, origin/scope, settings schema, capability declarations, and bootstrap metadata.
 2. Add `WorkspaceRuntime` and make `WorkspaceCoordinator` provide one runtime per workspace.

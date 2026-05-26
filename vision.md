@@ -108,10 +108,10 @@ and the same KiCad DSN/SES interchange:
 a standalone out-of-process MCP server (stdio JSON-RPC). Under the runtime-plugin model
 the electronics plugin is **in-process** — a loadable `DomainPlugin`, not a server
 process. The KiCad/FreeRouting *logic* and the ~23-tool contract survive; the stdio MCP
-transport does not. The `merlin/plugins/merlin-kicad-mcp/` scaffold (constitution,
-ROADMAP,  tasks 00/01a/01b) must be reconceived as `merlin/plugins/electronics/` with
-its ROADMAP rewritten — task 01 is no longer "MCP stdio server" but "loadable
-`DomainPlugin` bundle + factory entry point".
+transport does not. The former `merlin/plugins/merlin-kicad-mcp/` scaffold
+(constitution, ROADMAP, tasks 00/01a/01b) is archived at
+`archive/legacy-merlin-kicad-mcp/` for historical reference; active electronics work
+lives under `merlin/plugins/electronics/`.
 
 **Infrastructure this needs first (before the electronics plugin):**
 - A **workspace message bus** — one `WorkspaceMessageBus` per `WorkspaceRuntime`, shared
@@ -170,7 +170,7 @@ electronics plugin — the KiCad/FreeRouting ~23-tool contract from the old
 `merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable plugin with bus handlers and
 the local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
 
-_Status: promoted to `spec.md` as a workspace-scoped Merlin message bus architecture. Implementation must start with `WorkspaceRuntime`, `WorkspaceMessageBus`, and the shared message contracts before the Tier-1 loader or electronics migration. The `merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the above during that implementation._
+_Status: promoted to `spec.md` and implemented as the workspace-scoped Merlin control plane. The message bus foundation is implemented: `WorkspaceRuntime`, `WorkspaceMessageBus`, shared contracts, bus-backed tool routing, MCP bus transports, workspace settings/events/artifacts, Tier-1 loading, and the electronics bus migration are active. Full KiCad/FreeRouting product completion remains separate follow-on work; the former `merlin/plugins/merlin-kicad-mcp/` scaffold is archived under `archive/legacy-merlin-kicad-mcp/` for historical reference._
 
 ## Deferred
 
