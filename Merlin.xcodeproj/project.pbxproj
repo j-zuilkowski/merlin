@@ -669,6 +669,7 @@
 		D4FA8D51EC2A58729DAC603F /* AgenticEngineCancelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4879C74446B4356A1C75FFDF /* AgenticEngineCancelTests.swift */; };
 		D53B931F1EE0E7A478EAF82B /* LMStudioContextAutoResizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DCF8B3F74E3F3B73320C05B /* LMStudioContextAutoResizeTests.swift */; };
 		D612BF6961121D3D2FDEF863 /* DisciplineBinaryInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7A878652EE7E51A9967A4F6 /* DisciplineBinaryInstaller.swift */; };
+		D6BA74BEED5C8B23E9A72DD6 /* ElectronicsPluginEntrypoint.c in Sources */ = {isa = PBXBuildFile; fileRef = 25B6C63306306E3E39898864 /* ElectronicsPluginEntrypoint.c */; };
 		D730A15F97C392106774AD38 /* SpawnAgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7BA0465626E27DEA4B48D /* SpawnAgentTool.swift */; };
 		D73144C4E9B817A8EE50433A /* OutcomeRecordPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C2E98086E770D58BF81F4B /* OutcomeRecordPersistenceTests.swift */; };
 		D7C3241130158FCAA380A9AD /* ProjectConfigLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E42FB7308686AE99E7CA75B /* ProjectConfigLoader.swift */; };
@@ -857,6 +858,7 @@
 		0A10AEA61020C2142B2FE3AC /* RuntimePluginDynamicLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimePluginDynamicLoadingTests.swift; sourceTree = "<group>"; };
 		0B06E7E62E91DDEB30C7E997 /* GitHubConnector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubConnector.swift; sourceTree = "<group>"; };
 		0B140421E9646CD406677722 /* AdapterKeyConsistencyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdapterKeyConsistencyTests.swift; sourceTree = "<group>"; };
+		0B15BE3F14577693BE760A8A /* MerlinElectronicsPlugin.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = MerlinElectronicsPlugin.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C2F4BD807D941A239FCBBAE /* DisciplineCLITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisciplineCLITests.swift; sourceTree = "<group>"; };
 		0CE98B74ED0E8E45BAA52E7C /* CriticDocumentVerificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CriticDocumentVerificationTests.swift; sourceTree = "<group>"; };
 		0E3B10A60105A52F12D55D52 /* XcalibreKAGPluginTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcalibreKAGPluginTests.swift; sourceTree = "<group>"; };
@@ -921,6 +923,7 @@
 		23F8E0C2C36B2897C6684C60 /* DisciplineEngineTaskDriftSeverityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisciplineEngineTaskDriftSeverityTests.swift; sourceTree = "<group>"; };
 		242CEBD98C06B235C7583EBF /* DiffCommentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffCommentTests.swift; sourceTree = "<group>"; };
 		24D9D01BCBB160532CDA6AA4 /* EscalationDecomposeFirstTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EscalationDecomposeFirstTests.swift; sourceTree = "<group>"; };
+		25B6C63306306E3E39898864 /* ElectronicsPluginEntrypoint.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ElectronicsPluginEntrypoint.c; sourceTree = "<group>"; };
 		25C0F4E6E7657B9EA9E50748 /* ElectronicsArtifactGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsArtifactGateTests.swift; sourceTree = "<group>"; };
 		25E37318D4F725AD12ABAEF1 /* WorkspaceMessageBusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceMessageBusTests.swift; sourceTree = "<group>"; };
 		25F5B6EE7386FA67B864FCE3 /* SettingsProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsProposal.swift; sourceTree = "<group>"; };
@@ -1596,6 +1599,14 @@
 				A231B0513B388FE4EB74817E /* WorkspaceLayoutManager.swift */,
 			);
 			path = Windows;
+			sourceTree = "<group>";
+		};
+		153C5E8B4EB5FD06B4221C66 /* plugins */ = {
+			isa = PBXGroup;
+			children = (
+				C91BB4E0BD1A7AECB7F57487 /* electronics */,
+			);
+			path = plugins;
 			sourceTree = "<group>";
 		};
 		15EC6C4F1C8F48CCD5F11F1D /* Agents */ = {
@@ -2386,6 +2397,7 @@
 				4E0DBE08F230DF2F77EFC8C6 /* MerlinLiveTests */,
 				7F25BBD86A3A994704E3BC6D /* MerlinTests */,
 				8BD36D001D2052A2C6FE0AC1 /* MerlinUITests */,
+				153C5E8B4EB5FD06B4221C66 /* plugins */,
 				034B724CAE0655C45176D1C7 /* TestHelpers */,
 				DA139766DAAEA72ED13400D4 /* TestTargetApp */,
 				F78241B7CF488B5508DF7633 /* Frameworks */,
@@ -2445,6 +2457,7 @@
 				6B3FFAA83489D6D447620E8E /* merlin-discipline */,
 				8CC0B0933C39B2548E6C8723 /* Merlin.app */,
 				1AEAE21270C7E4046B66899D /* MerlinE2ETests.xctest */,
+				0B15BE3F14577693BE760A8A /* MerlinElectronicsPlugin.dylib */,
 				BE08B29406E6E9F70336D85E /* MerlinLiveTests.xctest */,
 				FBC98AE09D2DC4ED58987185 /* MerlinTests.xctest */,
 				3AFCA9087452A28BA08B72C7 /* MerlinUITests.xctest */,
@@ -2543,6 +2556,14 @@
 				687C6A519B2608A257E827A7 /* WorkspaceSettingsStore.swift */,
 			);
 			path = Runtime;
+			sourceTree = "<group>";
+		};
+		C91BB4E0BD1A7AECB7F57487 /* electronics */ = {
+			isa = PBXGroup;
+			children = (
+				E79DAF7890D77C87A17F3E8F /* Sources */,
+			);
+			path = electronics;
 			sourceTree = "<group>";
 		};
 		D2BC92F331296E95FF91CE22 /* Docs */ = {
@@ -2663,6 +2684,14 @@
 				DBB0FB3851F7BECBFE838B38 /* GUIAutomationE2ETests.swift */,
 			);
 			path = MerlinE2ETests;
+			sourceTree = "<group>";
+		};
+		E79DAF7890D77C87A17F3E8F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				25B6C63306306E3E39898864 /* ElectronicsPluginEntrypoint.c */,
+			);
+			path = Sources;
 			sourceTree = "<group>";
 		};
 		ECD81EE24197ABF80F960F7C /* WebSearch */ = {
@@ -2827,6 +2856,24 @@
 			productReference = BE08B29406E6E9F70336D85E /* MerlinLiveTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		CDD4AC26F747344590D25E7C /* MerlinElectronicsPlugin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DB5A60A9008229FDB5077CF1 /* Build configuration list for PBXNativeTarget "MerlinElectronicsPlugin" */;
+			buildPhases = (
+				07572633E18682FC1FC785FD /* Sources */,
+				F9C07143F2FABF98C6E143BF /* Copy first-party electronics plugin dylib */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MerlinElectronicsPlugin;
+			packageProductDependencies = (
+			);
+			productName = MerlinElectronicsPlugin;
+			productReference = 0B15BE3F14577693BE760A8A /* MerlinElectronicsPlugin.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		EB7A87E829B38358C6891F8C /* Merlin */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 3C79E92197119E22882E2DAC /* Build configuration list for PBXNativeTarget "Merlin" */;
@@ -2882,6 +2929,10 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
+					CDD4AC26F747344590D25E7C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Manual;
+					};
 					EB7A87E829B38358C6891F8C = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
@@ -2904,6 +2955,7 @@
 			targets = (
 				EB7A87E829B38358C6891F8C /* Merlin */,
 				5BCEBE7705469324F2DF842E /* MerlinE2ETests */,
+				CDD4AC26F747344590D25E7C /* MerlinElectronicsPlugin */,
 				B3E1198C4CA1697C8813C0D0 /* MerlinLiveTests */,
 				45F5AA9308A6B051F344C2CD /* MerlinTests */,
 				7B9279B6F7094929F0CB4972 /* MerlinUITests */,
@@ -2927,7 +2979,36 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		F9C07143F2FABF98C6E143BF /* Copy first-party electronics plugin dylib */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy first-party electronics plugin dylib";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "mkdir -p \"$SRCROOT/plugins/electronics\"\ncp \"$BUILT_PRODUCTS_DIR/MerlinElectronicsPlugin.dylib\" \"$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
+		07572633E18682FC1FC785FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6BA74BEED5C8B23E9A72DD6 /* ElectronicsPluginEntrypoint.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		1299573E441FDE1D14C82D61 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -4125,6 +4206,36 @@
 			};
 			name = Release;
 		};
+		D42C481035682BDABAE4683C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_BUNDLE_IDENTIFIER = com.merlin.plugins.electronics;
+				PRODUCT_NAME = MerlinElectronicsPlugin;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		F0F1C8C16AB45A3EE03A36F9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACH_O_TYPE = mh_dylib;
+				PRODUCT_BUNDLE_IDENTIFIER = com.merlin.plugins.electronics;
+				PRODUCT_NAME = MerlinElectronicsPlugin;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
 		F17C612A9922A5C9D918744B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -4214,6 +4325,15 @@
 			buildConfigurations = (
 				F17C612A9922A5C9D918744B /* Debug */,
 				18E67CEA3FB1E0BF6C4485E1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DB5A60A9008229FDB5077CF1 /* Build configuration list for PBXNativeTarget "MerlinElectronicsPlugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D42C481035682BDABAE4683C /* Debug */,
+				F0F1C8C16AB45A3EE03A36F9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

@@ -25,6 +25,7 @@ api-keys.json
 .env
 .env.local
 dist/
+plugins/electronics/*.dylib
 
 # Claude Code workspace files
 .claude/

@@ -44,14 +44,14 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
         let project = try writeFixtureFile(name: "board.kicad_pro", text: "{}")
 
-        let erc = await sendElectronics(runtime, capability: "kicad_run_erc", payload: #"{"project_path":"\#(project.path)"}"#)
+        let erc = await sendElectronics(runtime, capability: "kicad_run_erc", payload: #"{"project_path":"\#(project.path)","kicad_cli_path":"/not/a/kicad-cli"}"#)
         let ercResult = try XCTUnwrap(erc.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertEqual(erc.status, .blocked)
         XCTAssertNotEqual(ercResult.status, .complete)
         XCTAssertTrue(ercResult.warnings.contains { $0.code == "KICAD_CLI_REQUIRED" })
 
         let fabOutput = temporaryDirectory("fab-output")
-        let fab = await sendElectronics(runtime, capability: "kicad_export_fab", payload: #"{"project_path":"\#(project.path)","output_directory":"\#(fabOutput.path)","fabricator_profile_id":"jlcpcb_2layer_default"}"#)
+        let fab = await sendElectronics(runtime, capability: "kicad_export_fab", payload: #"{"project_path":"\#(project.path)","kicad_cli_path":"/not/a/kicad-cli","output_directory":"\#(fabOutput.path)","fabricator_profile_id":"jlcpcb_2layer_default"}"#)
         let fabResult = try XCTUnwrap(fab.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertEqual(fab.status, .blocked)
         XCTAssertNotEqual(fabResult.status, .complete)

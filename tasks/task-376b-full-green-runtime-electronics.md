@@ -2,9 +2,9 @@
 
 ## Traceability
 
-- Vision: `vision.md#runtime-plugin-architecture--the-electronics-plugin`
-- Spec: `spec.md#workspace-message-bus--runtime-plugin-architecture`
-- Spec: `spec.md#merlin-v20--electronicskicad-feature-set`
+- Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
+- Spec reference: spec.md#workspace-message-bus--runtime-plugin-architecture
+- Spec reference: spec.md#merlin-v20--electronicskicad-feature-set
 
 ## Behavior
 

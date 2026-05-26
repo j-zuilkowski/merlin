@@ -19,6 +19,7 @@ struct RuntimePluginMetadata: Codable, Sendable, Equatable {
     var dynamicLibraryPath: String?
     var bootstrapSymbol: String?
     var handlerSymbol: String?
+    var manifestDirectory: URL? = nil
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -54,7 +55,9 @@ struct RuntimePluginLoader {
                 let manifestURL = directory.appendingPathComponent("plugin.json")
                 guard FileManager.default.fileExists(atPath: manifestURL.path) else { continue }
                 let data = try Data(contentsOf: manifestURL)
-                plugins.append(try decoder.decode(RuntimePluginMetadata.self, from: data))
+                var plugin = try decoder.decode(RuntimePluginMetadata.self, from: data)
+                plugin.manifestDirectory = directory
+                plugins.append(plugin)
             }
         }
         return plugins.sorted { $0.id < $1.id }
@@ -66,16 +69,15 @@ struct RuntimePluginLoader {
             guard plugin.enabled else { continue }
             switch plugin.trustTier {
             case .tier1:
-                if plugin.builtInFactory == "electronics" || plugin.id == "electronics" {
-                    try await ElectronicsRuntimePlugin().register(into: runtime)
-                    continue
-                }
-
                 guard let dynamicPlugin = try DynamicRuntimePlugin(metadata: plugin) else {
                     await runtime.bus.publish(healthEvent(plugin: plugin, status: "entrypoint-missing"))
                     continue
                 }
-                _ = dynamicPlugin.bootstrap()
+                let bootstrap = dynamicPlugin.bootstrap()
+                if bootstrap?.contains(#""factory":"electronics""#) == true {
+                    try await ElectronicsRuntimePlugin(loadStatus: "loaded-dynamic").register(into: runtime)
+                    continue
+                }
                 if let schema = plugin.settingsSchema {
                     await runtime.bus.registerSettingsSchema(schema)
                 }
@@ -120,7 +122,8 @@ private final class DynamicRuntimePlugin: @unchecked Sendable {
             return nil
         }
 
-        guard let handle = dlopen(libraryPath, RTLD_NOW | RTLD_LOCAL) else {
+        let resolvedLibraryPath = Self.resolveLibraryPath(libraryPath, manifestDirectory: metadata.manifestDirectory)
+        guard let handle = dlopen(resolvedLibraryPath, RTLD_NOW | RTLD_LOCAL) else {
             throw RuntimePluginLoaderError.dynamicLoadFailed(String(cString: dlerror()))
         }
         guard let handlerPointer = dlsym(handle, handlerSymbol) else {
@@ -137,6 +140,36 @@ private final class DynamicRuntimePlugin: @unchecked Sendable {
         } else {
             self.bootstrapFunction = nil
         }
+    }
+
+    private static func resolveLibraryPath(_ path: String, manifestDirectory: URL?) -> String {
+        let url = URL(fileURLWithPath: path)
+        if url.path == path, url.path.hasPrefix("/"), FileManager.default.fileExists(atPath: url.path) {
+            return url.path
+        }
+        if FileManager.default.fileExists(atPath: path) {
+            return path
+        }
+        if let manifestDirectory {
+            let adjacent = manifestDirectory.appendingPathComponent(url.lastPathComponent).path
+            if FileManager.default.fileExists(atPath: adjacent) {
+                return adjacent
+            }
+            let relativeToManifestParent = manifestDirectory.deletingLastPathComponent().appendingPathComponent(path).path
+            if FileManager.default.fileExists(atPath: relativeToManifestParent) {
+                return relativeToManifestParent
+            }
+        }
+        let sourceTree = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent(path)
+            .path
+        if FileManager.default.fileExists(atPath: sourceTree) {
+            return sourceTree
+        }
+        return path
     }
 
     deinit {

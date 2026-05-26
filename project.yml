@@ -62,6 +62,22 @@ targets:
         SWIFT_VERSION: "5.10"
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: MERLIN_DISCIPLINE_CLI
 
+  MerlinElectronicsPlugin:
+    type: library.dynamic
+    platform: macOS
+    sources:
+      - plugins/electronics/Sources
+    postBuildScripts:
+      - name: Copy first-party electronics plugin dylib
+        script: |
+          mkdir -p "$SRCROOT/plugins/electronics"
+          cp "$BUILT_PRODUCTS_DIR/MerlinElectronicsPlugin.dylib" "$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.merlin.plugins.electronics
+        PRODUCT_NAME: MerlinElectronicsPlugin
+        MACH_O_TYPE: mh_dylib
+
   TestTargetApp:
     type: application
     platform: macOS
@@ -138,11 +154,13 @@ schemes:
   Merlin:
     build:
       targets:
+        MerlinElectronicsPlugin: all
         Merlin: all
 
   MerlinTests:
     build:
       targets:
+        MerlinElectronicsPlugin: all
         Merlin: all
         merlin-discipline: all
         MerlinTests: [test]

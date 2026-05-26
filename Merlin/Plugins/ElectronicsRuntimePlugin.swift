@@ -4,13 +4,16 @@ struct ElectronicsRuntimePlugin {
     let metadata: RuntimePluginMetadata
     private let tooling: ElectronicsToolingState
     private let routeBackend: any ElectronicsRoutePassRunning
+    private let loadStatus: String
 
     init(
         tooling: ElectronicsToolingState = .available,
-        routeBackend: any ElectronicsRoutePassRunning = LocalFreeRoutingBackend()
+        routeBackend: any ElectronicsRoutePassRunning = LocalFreeRoutingBackend(),
+        loadStatus: String = "loaded"
     ) {
         self.tooling = tooling
         self.routeBackend = routeBackend
+        self.loadStatus = loadStatus
         let toolCapabilities = KiCadToolDefinitions.requiredToolNames.map { toolName in
             WorkspaceCapability(
                 id: "plugin.electronics.\(toolName)",
@@ -58,8 +61,7 @@ struct ElectronicsRuntimePlugin {
             enabled: true,
             domainIDs: [ElectronicsDomain.defaultID],
             capabilities: toolCapabilities + workflowCapabilities,
-            settingsSchema: ElectronicsDomain().settingsSchema,
-            builtInFactory: "electronics"
+            settingsSchema: ElectronicsDomain().settingsSchema
         )
     }
 
@@ -85,7 +87,7 @@ struct ElectronicsRuntimePlugin {
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "health"),
             origin: nil,
             kind: .healthChanged,
-            payload: .jsonString(#"{"status":"loaded"}"#)
+            payload: .jsonString(#"{"status":"\#(loadStatus)"}"#)
         ))
     }
 }
@@ -307,11 +309,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         case "kicad_compile_project":
             return handleCompileProject(request, context: context)
         case "kicad_apply_board_profile":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["pcb", "drc"],
                 outputKind: "board_profile",
-                outputBody: #"{"status":"applied","profile":"jlcpcb_2layer_default"}"#
+                outputFileName: "board-profile-report.json"
             )
         case "kicad_generate_net_classes":
             return fileBackedTransform(
@@ -322,50 +325,49 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputBody: #"{"status":"generated","classes":["power","ground","signal","differential"]}"#
             )
         case "kicad_place_components":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["pcb", "drc"],
                 outputKind: "placement_plan",
-                outputBody: #"{"status":"placed","congestion":"low","routability":"acceptable"}"#
+                outputFileName: "placement-report.json"
             )
         case "kicad_route_pass":
             return await handleRoutePass(request, context: context)
         case "kicad_check_connectivity":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["pcb", "drc"],
                 outputKind: "connectivity_report",
-                outputBody: #"{"status":"pass","unrouted_nets":0,"ratsnest":"clear"}"#
+                outputFileName: "connectivity-report.json"
             )
         case "kicad_run_erc":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["sch", "erc"],
                 outputKind: "erc_report",
-                outputBody: #"{"status":"pass","violations":[]}"#
+                outputFileName: "erc-report.json"
             )
         case "kicad_run_drc":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["pcb", "drc"],
                 outputKind: "drc_report",
-                outputBody: #"{"status":"pass","violations":[]}"#
+                outputFileName: "drc-report.json"
             )
         case "kicad_check_parity":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["sch", "export", "netlist"],
                 outputKind: "parity_report",
-                outputBody: #"{"status":"pass","schematic_pcb_delta":[]}"#
+                outputFileName: "parity-netlist.json"
             )
         case "kicad_run_spice":
-            return fileBackedTransform(
-                request,
-                context: context,
-                requiredPathKeys: ["project_path", "scenario_path"],
-                outputKind: "spice_measurements",
-                outputBody: #"{"status":"pass","measurements":{}}"#
-            )
+            return simulatorBackedReport(request, context: context)
         case "kicad_evaluate_simulation":
             return fileBackedTransform(
                 request,
@@ -375,11 +377,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputBody: #"{"status":"pass","tolerance_failures":[]}"#
             )
         case "kicad_visual_inspect":
-            return projectBackedReport(
+            return kiCadBackedReport(
                 request,
                 context: context,
+                arguments: ["pcb", "drc"],
                 outputKind: "visual_qa_report",
-                outputBody: #"{"status":"pass","findings":[]}"#
+                outputFileName: "visual-qa-report.json"
             )
         case "kicad_export_fab":
             return handleFabExport(request, context: context)
@@ -490,6 +493,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         context: WorkspaceHandlerContext
     ) -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              FileManager.default.fileExists(atPath: designIntentPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Compile project requires an existing design_intent_path.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "DESIGN_INTENT_REQUIRED",
+                    message: "Compile project requires an existing design_intent_path.",
+                    affectedRefs: affectedRefs(from: request),
+                    suggestedAction: "Build or attach a DesignIntent artifact before compiling the KiCad project."
+                )]
+            )
+        }
         guard let outputDirectory = object["output_directory"] as? String, !outputDirectory.isEmpty else {
             return structuredBlock(request, reason: .missingProjectFile, message: "Compile project requires output_directory.", context: context)
         }
@@ -500,9 +518,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let projectURL = directoryURL.appendingPathComponent("\(base).kicad_pro")
             let schematicURL = directoryURL.appendingPathComponent("\(base).kicad_sch")
             let boardURL = directoryURL.appendingPathComponent("\(base).kicad_pcb")
-            try #"{"meta":{"version":1},"generated_by":"Merlin"}"#.write(to: projectURL, atomically: true, encoding: .utf8)
-            try "(kicad_sch (version 20250114) (generator Merlin))\n".write(to: schematicURL, atomically: true, encoding: .utf8)
-            try "(kicad_pcb (version 20250114) (generator Merlin))\n".write(to: boardURL, atomically: true, encoding: .utf8)
+            let designIntent = (try? String(contentsOfFile: designIntentPath, encoding: .utf8)) ?? "{}"
+            try #"{"meta":{"version":1},"generated_by":"Merlin","design_intent_path":"\#(designIntentPath)"}"#.write(to: projectURL, atomically: true, encoding: .utf8)
+            try "(kicad_sch (version 20250114) (generator Merlin) (uuid \(UUID().uuidString)) (paper \"A4\") (comment 1 \"\(escapedSExpression(designIntent.prefix(80)))\"))\n".write(to: schematicURL, atomically: true, encoding: .utf8)
+            try "(kicad_pcb (version 20250114) (generator Merlin) (general (thickness 1.6)) (paper \"A4\"))\n".write(to: boardURL, atomically: true, encoding: .utf8)
             return complete(
                 request,
                 artifacts: [
@@ -528,21 +547,42 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         guard let projectPath = object["project_path"] as? String, FileManager.default.fileExists(atPath: projectPath) else {
             return structuredBlock(request, reason: .missingProjectFile, message: "Fabrication export requires an existing KiCad project.", context: context)
         }
+        guard let cliPath = executablePath(from: object, key: "kicad_cli_path", defaultCandidates: defaultKiCadCLICandidates()) else {
+            return requiredExecutableBlock(
+                request,
+                context: context,
+                code: "KICAD_CLI_REQUIRED",
+                message: "Fabrication export requires an executable KiCad CLI path."
+            )
+        }
         do {
             let directoryURL = URL(fileURLWithPath: outputDirectory, isDirectory: true)
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-            let files: [(String, String, String)] = [
-                ("gerbers.gbr", "gerber", "G04 Merlin generated Gerber fixture*"),
-                ("drills.drl", "excellon_drill", "M48\nMETRIC,TZ\nM30\n"),
-                ("bom.csv", "bom", "RefDes,Value,MPN,Quantity\n"),
-                ("pick_place.csv", "pick_and_place", "Designator,Mid X,Mid Y,Layer,Rotation\n"),
-                ("cam_report.json", "cam_report", #"{"status":"pass","fabricator":"\#(object["fabricator_profile_id"] as? String ?? "custom")"}"#),
-            ]
-            let artifacts = try files.map { name, kind, body in
-                let url = directoryURL.appendingPathComponent(name)
-                try body.write(to: url, atomically: true, encoding: .utf8)
-                return ArtifactRef(path: url.path, kind: kind)
+            let gerberURL = directoryURL.appendingPathComponent("gerbers")
+            let drillURL = directoryURL.appendingPathComponent("drills")
+            try FileManager.default.createDirectory(at: gerberURL, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: drillURL, withIntermediateDirectories: true)
+            let gerberRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "gerbers", "--output", gerberURL.path, projectPath])
+            guard gerberRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_GERBER_EXPORT_FAILED", run: gerberRun)
             }
+            let drillRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "drill", "--output", drillURL.path, projectPath])
+            guard drillRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_DRILL_EXPORT_FAILED", run: drillRun)
+            }
+            let bomURL = directoryURL.appendingPathComponent("bom.csv")
+            let pnpURL = directoryURL.appendingPathComponent("pick_place.csv")
+            let camURL = directoryURL.appendingPathComponent("cam_report.json")
+            try "RefDes,Value,MPN,Quantity\n".write(to: bomURL, atomically: true, encoding: .utf8)
+            try "Designator,Mid X,Mid Y,Layer,Rotation\n".write(to: pnpURL, atomically: true, encoding: .utf8)
+            try #"{"status":"pass","fabricator":"\#(object["fabricator_profile_id"] as? String ?? "custom")","gerber_command":"\#(jsonEscaped(gerberRun.output))","drill_command":"\#(jsonEscaped(drillRun.output))"}"#.write(to: camURL, atomically: true, encoding: .utf8)
+            let artifacts = [
+                ArtifactRef(path: gerberURL.path, kind: "gerbers"),
+                ArtifactRef(path: drillURL.path, kind: "drills"),
+                ArtifactRef(path: bomURL.path, kind: "bom"),
+                ArtifactRef(path: pnpURL.path, kind: "pick_and_place"),
+                ArtifactRef(path: camURL.path, kind: "cam_report"),
+            ]
             return complete(request, artifacts: artifacts, nextActions: ["package_release"])
         } catch {
             return structuredBlock(request, reason: .missingArtifact, message: "Failed to export fabrication artifacts: \(error.localizedDescription)", context: context)
@@ -563,6 +603,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 nextActions: ["record_high_stakes_signoff", "attach_verification_report"]
             )
         }
+        let requiredPaths = ["project_path", "fab_package_path", "verification_report_path"]
+        let missing = requiredPaths.filter { key in
+            guard let path = object[key] as? String else { return true }
+            return !FileManager.default.fileExists(atPath: path)
+        }
+        guard missing.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Release packaging requires existing artifacts for: \(missing.joined(separator: ", ")).",
+                context: context
+            )
+        }
         return complete(
             request,
             artifacts: [writeArtifact(request, context: context, kind: "release_package", body: request.payload.stringValue())],
@@ -570,13 +623,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         )
     }
 
-    private func projectBackedReport(
+    private func kiCadBackedReport(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext,
+        arguments: [String],
         outputKind: String,
-        outputBody: String
+        outputFileName: String
     ) -> WorkspaceMessageResponse {
-        guard let projectPath = request.payload.jsonObject()?["project_path"] as? String,
+        let object = request.payload.jsonObject() ?? [:]
+        guard let projectPath = object["project_path"] as? String,
               FileManager.default.fileExists(atPath: projectPath) else {
             return structuredBlock(
                 request,
@@ -585,10 +640,74 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
+        guard let cliPath = executablePath(from: object, key: "kicad_cli_path", defaultCandidates: defaultKiCadCLICandidates()) else {
+            return requiredExecutableBlock(
+                request,
+                context: context,
+                code: "KICAD_CLI_REQUIRED",
+                message: "\(request.address.capability) requires an executable KiCad CLI path."
+            )
+        }
+        let outputURL = artifactDirectory(context: context).appendingPathComponent("\(request.id.uuidString)-\(outputFileName)")
+        try? FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let run = runProcess(executablePath: cliPath, arguments: arguments + ["--output", outputURL.path, projectPath])
+        guard run.exitCode == 0 else {
+            return commandFailureBlock(request, context: context, code: "KICAD_CLI_FAILED", run: run)
+        }
+        guard FileManager.default.fileExists(atPath: outputURL.path) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "\(request.address.capability) completed but did not produce \(outputURL.lastPathComponent).",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "KICAD_OUTPUT_MISSING",
+                    message: "\(request.address.capability) completed but did not produce \(outputURL.lastPathComponent).",
+                    affectedRefs: [outputURL.path],
+                    suggestedAction: "Inspect the KiCad CLI output and retry."
+                )]
+            )
+        }
         return complete(
             request,
-            artifacts: [writeArtifact(request, context: context, kind: outputKind, body: outputBody)]
+            artifacts: [ArtifactRef(path: outputURL.path, kind: outputKind)]
         )
+    }
+
+    private func simulatorBackedReport(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        let missing = ["project_path", "scenario_path"].filter { key in
+            guard let path = object[key] as? String else { return true }
+            return !FileManager.default.fileExists(atPath: path)
+        }
+        guard missing.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE simulation requires existing artifacts for: \(missing.joined(separator: ", ")).",
+                context: context
+            )
+        }
+        guard let simulatorPath = executablePath(from: object, key: "ngspice_path", defaultCandidates: ["/opt/homebrew/bin/ngspice", "/usr/local/bin/ngspice"]) else {
+            return requiredExecutableBlock(
+                request,
+                context: context,
+                code: "SPICE_SIMULATOR_REQUIRED",
+                message: "SPICE simulation requires an executable ngspice_path."
+            )
+        }
+        let outputURL = artifactDirectory(context: context).appendingPathComponent("\(request.id.uuidString)-spice.log")
+        let run = runProcess(executablePath: simulatorPath, arguments: ["-b", "-o", outputURL.path, object["scenario_path"] as? String ?? ""])
+        guard run.exitCode == 0 else {
+            return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: run)
+        }
+        if !FileManager.default.fileExists(atPath: outputURL.path) {
+            try? run.output.write(to: outputURL, atomically: true, encoding: .utf8)
+        }
+        return complete(request, artifacts: [ArtifactRef(path: outputURL.path, kind: "spice_measurements")])
     }
 
     private func fileBackedTransform(
@@ -773,6 +892,101 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return #"{"vendor_id":"\#(object["vendor_id"] as? String ?? "unknown")","quantity":\#(object["quantity"] as? Int ?? 1),"status":"prepared"}"#
     }
 
+    private func artifactDirectory(context: WorkspaceHandlerContext) -> URL {
+        let directoryURL = context.workspaceRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        return directoryURL
+    }
+
+    private func executablePath(from object: [String: Any], key: String, defaultCandidates: [String]) -> String? {
+        if let configured = object[key] as? String {
+            return FileManager.default.isExecutableFile(atPath: configured) ? configured : nil
+        }
+        return defaultCandidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
+
+    private func defaultKiCadCLICandidates() -> [String] {
+        [
+            "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
+            "/Applications/KiCad.app/Contents/MacOS/kicad-cli",
+            "/opt/homebrew/bin/kicad-cli",
+            "/usr/local/bin/kicad-cli",
+        ]
+    }
+
+    private func requiredExecutableBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        message: String
+    ) -> WorkspaceMessageResponse {
+        structuredBlock(
+            request,
+            reason: .missingKiCad,
+            message: message,
+            context: context,
+            warnings: [KiCadWarning(
+                code: code,
+                message: message,
+                affectedRefs: affectedRefs(from: request),
+                suggestedAction: "Install the required local executable or provide its absolute path in the request payload."
+            )]
+        )
+    }
+
+    private func commandFailureBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        run: ElectronicsCommandRun
+    ) -> WorkspaceMessageResponse {
+        structuredBlock(
+            request,
+            reason: .failedGate,
+            message: "\(request.address.capability) command failed with exit code \(run.exitCode).",
+            context: context,
+            warnings: [KiCadWarning(
+                code: code,
+                message: run.output.isEmpty ? "Command failed with exit code \(run.exitCode)." : run.output,
+                affectedRefs: run.arguments,
+                suggestedAction: "Inspect the local tool output and retry after fixing the reported issue."
+            )]
+        )
+    }
+
+    private func runProcess(executablePath: String, arguments: [String]) -> ElectronicsCommandRun {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        do {
+            try process.run()
+            process.waitUntilExit()
+            let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+            return ElectronicsCommandRun(exitCode: process.terminationStatus, output: output, arguments: [executablePath] + arguments)
+        } catch {
+            return ElectronicsCommandRun(exitCode: -1, output: error.localizedDescription, arguments: [executablePath] + arguments)
+        }
+    }
+
+    private func escapedSExpression(_ value: Substring) -> String {
+        String(value)
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private func jsonEscaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+    }
+
     private func publishDiagnostic(
         reason: ElectronicsBlockedReason,
         request: WorkspaceMessageRequest,
@@ -848,6 +1062,12 @@ private struct ElectronicsRoutePassRequestPayload: Codable, Sendable, Equatable 
             maxIterations: maxIterations ?? FreeRoutingProfile.default.maxIterations
         )
     }
+}
+
+private struct ElectronicsCommandRun: Sendable, Equatable {
+    var exitCode: Int32
+    var output: String
+    var arguments: [String]
 }
 
 private extension WorkspaceMessagePayload {
