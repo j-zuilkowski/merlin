@@ -156,6 +156,36 @@ final class DocumentationSweepTests: XCTestCase {
             "structural rename and should only be promoted"))
     }
 
+    func testElectronicsDocsDescribeActiveBusBackedPlugin() throws {
+        let docs = try [
+            repoFile("FEATURES.md"),
+            repoFile("Merlin/Docs/UserGuide.md"),
+            repoFile("Merlin/Docs/DeveloperManual.md"),
+        ].joined(separator: "\n")
+
+        XCTAssertTrue(docs.contains("plugins/electronics"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("workspace bus"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("powered by an external MCP server"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains("execution is delegated to `merlin-kicad-mcp`"))
+    }
+
+    func testElectronicsDocsDescribeCompletionBackendArtifactsGatesAndPanel() throws {
+        let docs = try [
+            repoFile("FEATURES.md"),
+            repoFile("Merlin/Docs/UserGuide.md"),
+            repoFile("Merlin/Docs/DeveloperManual.md"),
+        ].joined(separator: "\n")
+
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("local FreeRouting"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("hosted FreeRouting"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("Gerbers"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("Excellon"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("pick-and-place"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("verification report"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("electronics job"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("blocked"))
+    }
+
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
         return try String(contentsOf: url, encoding: .utf8)
