@@ -90,7 +90,7 @@ expected later but explicitly deferred.
 consolidates *all* KiCad and FreeRouting work into one directory: the current in-app
 KiCad client (`Merlin/Electronics/` — contracts, schemas, the `.kicad_sch` parser,
 `KiCadToolDefinitions`, `KiCadWorkflowOrchestrator`, policies) plus the `kicad-cli` /
-FreeRouting execution the `merlin-kicad-mcp` scaffold was started for. One plugin, one
+FreeRouting execution that replaced the archived MCP scaffold. One plugin, one
 directory.
 
 **FreeRouting backend — local or hosted.** Routing (`kicad_route_pass`) supports two
@@ -166,8 +166,8 @@ implementation order is now: (1) shared message contracts; (2) `WorkspaceRuntime
 subagent origin/scope propagation; (6) MCP tools as bus transports; (7) domain
 capabilities and verification through the bus; (8) host-rendered dynamic settings
 panels; (9) the Tier-1 in-process loader + launch scan and build wiring; (10+) the
-electronics plugin — the KiCad/FreeRouting ~23-tool contract from the old
-`merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable plugin with bus handlers and
+electronics plugin — the KiCad/FreeRouting ~23-tool contract from the archived
+MCP roadmap, re-homed as a Tier-1 loadable plugin with bus handlers and
 the local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
 
 _Status: promoted to `spec.md` and implemented as the workspace-scoped Merlin control plane. The message bus foundation is implemented: `WorkspaceRuntime`, `WorkspaceMessageBus`, shared contracts, bus-backed tool routing, MCP bus transports, workspace settings/events/artifacts, Tier-1 loading, and the electronics bus migration are active. Electronics completion routes are evidence-gated: `LocalFreeRoutingBackend` handles route passes, workflows require artifacts plus gate evidence before returning complete, and missing KiCad/FreeRouting/project/gate evidence returns explicit blocked diagnostics. The former `merlin/plugins/merlin-kicad-mcp/` scaffold is archived under `archive/legacy-merlin-kicad-mcp/` for historical reference._

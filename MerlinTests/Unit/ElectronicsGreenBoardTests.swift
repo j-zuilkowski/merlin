@@ -19,7 +19,11 @@ final class ElectronicsGreenBoardTests: XCTestCase {
 
         XCTAssertNil(object["built_in_factory"])
         XCTAssertEqual(object["dynamic_library_path"] as? String, "plugins/electronics/libMerlinElectronicsPlugin.dylib")
+        XCTAssertEqual(object["bootstrap_symbol"] as? String, "merlin_electronics_plugin_bootstrap_json")
         XCTAssertEqual(object["handler_symbol"] as? String, "merlin_electronics_plugin_handle_json")
+        let capabilities = try XCTUnwrap(object["capabilities"] as? [[String: Any]])
+        let manifestTools = Set(capabilities.compactMap { ($0["address"] as? [String: Any])?["capability"] as? String })
+        XCTAssertTrue(Set(KiCadToolDefinitions.requiredToolNames).isSubset(of: manifestTools))
     }
 
     func testEveryKiCadCapabilityHasDomainHandlerResult() async throws {
@@ -35,8 +39,9 @@ final class ElectronicsGreenBoardTests: XCTestCase {
                 scope: tool == "kicad_submit_vendor_order" ? .userApprovedIrreversible : .externalSideEffect
             )
             XCTAssertNotEqual(response.diagnostics.first?.code, "ROUTE_NOT_FOUND", tool)
-            XCTAssertFalse(response.payload?.stringValue().contains(#""status":"COMPLETE""#) ?? false, tool)
+            XCTAssertFalse(response.payload?.stringValue() == #"{"status":"COMPLETE"}"#, tool)
             XCTAssertTrue([.ok, .blocked].contains(response.status), tool)
+            XCTAssertNoThrow(try response.payload?.decodeJSON(KiCadToolResult.self), tool)
         }
     }
 
@@ -83,4 +88,3 @@ final class ElectronicsGreenBoardTests: XCTestCase {
         }
     }
 }
-

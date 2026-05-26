@@ -4,15 +4,199 @@
   "version": "1.0.0",
   "trust_tier": "tier1",
   "enabled": true,
-  "built_in_factory": "electronics",
+  "dynamic_library_path": "plugins/electronics/libMerlinElectronicsPlugin.dylib",
+  "bootstrap_symbol": "merlin_electronics_plugin_bootstrap_json",
+  "handler_symbol": "merlin_electronics_plugin_handle_json",
   "domain_ids": ["electronics"],
   "capabilities": [
+    {
+      "id": "plugin.electronics.kicad_check_version",
+      "display_name": "kicad_check_version",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_check_version" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_ingest_schematic",
+      "display_name": "kicad_ingest_schematic",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_ingest_schematic" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_answer_clarification",
+      "display_name": "kicad_answer_clarification",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_answer_clarification" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_build_intent_model",
+      "display_name": "kicad_build_intent_model",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_build_intent_model" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_select_components",
+      "display_name": "kicad_select_components",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_select_components" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_prepare_libraries",
+      "display_name": "kicad_prepare_libraries",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_prepare_libraries" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_assign_footprints",
+      "display_name": "kicad_assign_footprints",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_assign_footprints" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_compile_project",
+      "display_name": "kicad_compile_project",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_compile_project" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_board_profile",
+      "display_name": "kicad_apply_board_profile",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_board_profile" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_generate_net_classes",
+      "display_name": "kicad_generate_net_classes",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_generate_net_classes" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_place_components",
+      "display_name": "kicad_place_components",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_place_components" },
+      "required_permission_scope": "externalSideEffect"
+    },
     {
       "id": "plugin.electronics.kicad_route_pass",
       "display_name": "kicad_route_pass",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_route_pass" },
       "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_check_connectivity",
+      "display_name": "kicad_check_connectivity",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_check_connectivity" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_run_erc",
+      "display_name": "kicad_run_erc",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_run_erc" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_run_drc",
+      "display_name": "kicad_run_drc",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_run_drc" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_check_parity",
+      "display_name": "kicad_check_parity",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_check_parity" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_run_spice",
+      "display_name": "kicad_run_spice",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_run_spice" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_evaluate_simulation",
+      "display_name": "kicad_evaluate_simulation",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_evaluate_simulation" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_visual_inspect",
+      "display_name": "kicad_visual_inspect",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_visual_inspect" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_export_fab",
+      "display_name": "kicad_export_fab",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_export_fab" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_prepare_vendor_order",
+      "display_name": "kicad_prepare_vendor_order",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_prepare_vendor_order" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_submit_vendor_order",
+      "display_name": "kicad_submit_vendor_order",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_submit_vendor_order" },
+      "required_permission_scope": "userApprovedIrreversible"
+    },
+    {
+      "id": "plugin.electronics.kicad_package_release",
+      "display_name": "kicad_package_release",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_package_release" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.workflow.schematic_to_pcb",
+      "display_name": "Schematic to PCB",
+      "kind": "workflow",
+      "address": { "namespace": "plugin.electronics", "capability": "workflow.schematic_to_pcb" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.workflow.requirements_to_pcb",
+      "display_name": "Requirements to PCB",
+      "kind": "workflow",
+      "address": { "namespace": "plugin.electronics", "capability": "workflow.requirements_to_pcb" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.verify",
+      "display_name": "Electronics Verification",
+      "kind": "verification",
+      "address": { "namespace": "plugin.electronics", "capability": "verify.electronics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.settings.validate",
+      "display_name": "Electronics Settings Validation",
+      "kind": "settings",
+      "address": { "namespace": "plugin.electronics", "capability": "settings.validate" },
+      "required_permission_scope": "readOnly"
     }
   ]
 }
