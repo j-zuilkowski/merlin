@@ -721,6 +721,11 @@ Three layers enforce discipline. Only the first requires you to act.
 
 **Layer 2 — DisciplineEngine + hooks (automatic).** After every turn, the engine scans the project for drift and queues findings in `.merlin/pending.json`. At session start, the top findings appear as a system reminder. Silent when everything is healthy.
 
+**SDD traceability gate.** Task documents carry `## Traceability` links to `vision.md`
+and `spec.md`, plus `## Behavior` EARS acceptance criteria. `DisciplineEngine.scan`
+reports `sddTraceability` findings when a task omits those blocks, points at missing
+vision/spec files, or describes behavior without a testable `SHALL` statement.
+
 **Layer 3 — Git hooks (hard gates).** Installed by `/project:init` or `/project:adopt`. Block commits when violations are present: missing WHY-comments, user-facing surfaces with no manual coverage, task files that no longer match the code.
 
 ### Adopting an existing project

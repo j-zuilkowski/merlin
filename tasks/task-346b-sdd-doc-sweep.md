@@ -1,5 +1,10 @@
 # Task 346b — SDD Documentation Sweep
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 Task 346a added the stale-reference sweep. This task completes the repo-wide vocabulary

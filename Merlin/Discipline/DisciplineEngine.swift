@@ -15,6 +15,7 @@ actor DisciplineEngine {
     private let targetGateScanner: TargetGateScanner
     private let stubMarkerScanner: StubMarkerScanner
     private let reachabilityScanner: ReachabilityScanner
+    private let sddTraceabilityScanner: SDDTraceabilityScanner
     private let queue: PendingAttentionQueue
     private let overrideLog: OverrideAuditLog
 
@@ -40,6 +41,7 @@ actor DisciplineEngine {
         targetGateScanner: TargetGateScanner = TargetGateScanner(),
         stubMarkerScanner: StubMarkerScanner = StubMarkerScanner(),
         reachabilityScanner: ReachabilityScanner = ReachabilityScanner(),
+        sddTraceabilityScanner: SDDTraceabilityScanner = SDDTraceabilityScanner(),
         storePath: String,
         forceErrorForTesting: Bool = false
     ) {
@@ -52,6 +54,7 @@ actor DisciplineEngine {
         self.targetGateScanner = targetGateScanner
         self.stubMarkerScanner = stubMarkerScanner
         self.reachabilityScanner = reachabilityScanner
+        self.sddTraceabilityScanner = sddTraceabilityScanner
         self.queue = PendingAttentionQueue(storePath: storePath)
         self.overrideLog = OverrideAuditLog(
             logPath: URL(fileURLWithPath: storePath)
@@ -88,10 +91,11 @@ actor DisciplineEngine {
                 gatingSchemes: Self.gatingSchemes(projectPath: projectPath))
             async let stubMarkers = stubMarkerScanner.scan(projectPath: projectPath)
             async let unwiredComponents = reachabilityScanner.scan(projectPath: projectPath)
+            async let sddTraceability = sddTraceabilityScanner.scan(projectPath: projectPath)
 
-            let (drift, gaps, refs, why, ungated, stubs, unwired) = await (
+            let (drift, gaps, refs, why, ungated, stubs, unwired, sdd) = await (
                 driftFindings, coverageGaps, docRefs, whyTriggers,
-                ungatedTargets, stubMarkers, unwiredComponents)
+                ungatedTargets, stubMarkers, unwiredComponents, sddTraceability)
 
             var findings: [Finding] = []
             let now = Date()
@@ -226,6 +230,23 @@ actor DisciplineEngine {
                     summary: component.symbol,
                     detail: component.detail,
                     suggestedAction: "Wire this component into the app, or delete it if obsolete.",
+                    createdAt: now,
+                    lastSeenAt: now
+                )
+                await queue.add(f)
+                findings.append(f)
+            }
+
+            // SDD traceability - pre-implementation coherence between vision, spec,
+            // task behavior, and task trace links.
+            for trace in sdd {
+                let f = Finding(
+                    id: UUID(),
+                    category: .sddTraceability,
+                    severity: .nudge,
+                    summary: trace.file,
+                    detail: "\(trace.issue): \(trace.detail)",
+                    suggestedAction: trace.suggestedAction,
                     createdAt: now,
                     lastSeenAt: now
                 )

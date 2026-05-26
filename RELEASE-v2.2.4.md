@@ -24,7 +24,7 @@ artifact of the Project Discipline pipeline.
   the Homebrew-safe tools, or shows the install command/URL for the rest — instead of
   a raw "command not found" (task 287).
 - **Vision launchpad.** `vision.md` is now the first artifact of the discipline
-  pipeline — `vision → architecture → task → code`. `project:init` seeds it,
+  pipeline — `vision → spec → task → code`. `project:init` seeds it,
   `project:adopt` incorporates an existing one, `project:revise` grows and promotes
   ideas from it (task 288).
 

@@ -591,6 +591,17 @@ Applies discipline to an existing project without rewriting its history.
 
 After adoption, run `/project:revise` to start working through the backlog. New surfaces must be covered from the moment of adoption; the pre-existing gap closes at a configurable rate.
 
+### SDD Task Traceability
+
+Every task document includes:
+
+- `## Traceability` with links to the source vision item and committed spec section.
+- `## Behavior` with EARS acceptance criteria, usually `WHEN ... THE ... SHALL ...`.
+
+The project scanner checks these before implementation. If a task is missing the blocks,
+uses prose without a `SHALL` acceptance statement, or points at missing `vision.md` /
+`spec.md` files, Merlin reports an `sddTraceability` finding in Pending Attention.
+
 ### Automatic enforcement
 
 The `DisciplineEngine` runs without you doing anything:

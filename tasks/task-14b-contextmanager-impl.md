@@ -1,9 +1,18 @@
 # Task 14b — ContextManager Implementation
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > ⚠️ **OUTDATED** — This task documents the original v1 implementation only.
 > The current `ContextManager.swift` includes significant v5 additions.
 > **Read `task-14c-contextmanager-v5-addendum.md` alongside this document** to get the
 > complete current implementation. `task-14c` is the authoritative spec for the live code.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.

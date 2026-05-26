@@ -1,6 +1,15 @@
 # Task 316a — DocReferenceGraph Scope Tests (failing)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** the test file from this task is rewritten by task 319b. Use 319b's version.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Non-sandboxed. No third-party packages.

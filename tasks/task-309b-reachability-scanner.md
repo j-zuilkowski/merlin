@@ -1,7 +1,16 @@
 # Task 309b — ReachabilityScanner (implementation)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** `injectedTypes` and the per-line loop here are refined by task 317b
 > (annotation-based injection detection, comment-line skip). Implement 317b's version.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

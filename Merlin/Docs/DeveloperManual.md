@@ -562,6 +562,13 @@ Five `~/.merlin/skills/project-*/SKILL.md` files implement the user-facing layer
 | `project:release` | 262a/b | Consolidated release gate |
 | `project:adopt` | 263a/b | Adopt existing project; record baseline |
 
+Task documents are also part of the SDD contract. `project:task` writes `## Traceability`
+and `## Behavior` blocks into both the test and implementation task sheets. The
+traceability block links to `vision.md` and `spec.md`; the behavior block uses EARS
+statements. `SDDTraceabilityScanner` runs inside `DisciplineEngine.scan` and emits
+`.sddTraceability` findings for missing blocks, missing `SHALL` behavior, or dangling
+vision/spec links.
+
 ### Decaying coverage baseline
 
 `/project:adopt` records the gap count at adoption as `manual_coverage_baseline`. The release gate then requires: (a) no new uncovered surfaces in the current release diff, and (b) the baseline decreases by at least N (default 10) per release. The gap closes within approximately `baseline / 10` releases while forward work continues in parallel.

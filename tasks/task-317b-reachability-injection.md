@@ -1,6 +1,15 @@
 # Task 317b — ReachabilityScanner Injection-Detection Fix
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** task 319b adds build/ + DerivedData/ skips to swiftFiles.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

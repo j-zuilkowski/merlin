@@ -1,5 +1,10 @@
 # Task 345b — Project Task Skill
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 Task 345a added the project-skill cutover tests. This task reconciles the bundled

@@ -1,5 +1,10 @@
 # Task 346a — SDD Documentation Sweep Tests
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 The runtime and project skills now use the SDD artifact names. The remaining risk is

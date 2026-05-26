@@ -1,5 +1,14 @@
 # Task 160a — LIT text extraction tests (failing)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Rust 2021, cargo workspace. No new warnings. Clippy clean.
 Working dir: ~/Documents/localProject/xcalibre

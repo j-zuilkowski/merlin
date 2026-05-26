@@ -1,7 +1,16 @@
 # Task 308b — StubMarkerScanner (implementation)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** the `scan` method here is refined by task 318b (skip empty `.cancel`
 > buttons, track `"""` multi-line strings). Implement 318b's version.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

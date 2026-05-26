@@ -4,6 +4,30 @@
 
 Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, llama.cpp) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
+## Spec-Driven Development Methodology
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec scope: all sections
+
+Merlin uses Spec-Driven Development as its project-discipline spine:
+`constitution.md` defines project rules, `vision.md` captures intent, `spec.md`
+commits design, `tasks/` decomposes the design into TDD work, and verification
+proves the produced artifact.
+
+Every task document carries two required SDD blocks:
+
+- `## Traceability` links the task to `vision.md` and `spec.md`.
+- `## Behavior` states acceptance criteria in EARS form. Use `WHEN [trigger] THE
+  [system] SHALL [response]` by default, and use `WHILE`, `IF ... THEN`, or
+  `WHERE` forms when those are clearer.
+
+`SDDTraceabilityScanner` runs inside `DisciplineEngine.scan`. It reports
+`.sddTraceability` findings when task documents omit traceability, point at
+missing vision/spec artifacts, omit the behavior block, or include behavior prose
+without a testable `SHALL` statement. The gate is intentionally pre-implementation:
+task files must explain the intended behavior and its upstream design link before
+code is written.
+
 **[v1]** Single serial session, direct file writes, fixed layout.
 **[v2]** Multiple windows (one per project), parallel sessions in Git worktrees, staged diff/review layer, draggable pane workspace, skills, MCP, scheduling, PR monitoring, external connectors.
 **[v2.0]** Electronics/KiCad feature set: `merlin-kicad-mcp`, raster/PDF schematic ingestion, KiCad project generation, FreeRouting-backed route loop, ERC/DRC/parity/SPICE/fab gates, vendor-native BOM/order workflows.

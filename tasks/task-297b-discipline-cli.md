@@ -1,5 +1,14 @@
 # Task 297b — merlin-discipline CLI (implementation)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Task 297a complete: failing tests in `DisciplineCLITests`. Unit C1 of the plan.

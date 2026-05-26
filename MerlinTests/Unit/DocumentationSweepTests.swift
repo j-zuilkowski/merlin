@@ -137,6 +137,25 @@ final class DocumentationSweepTests: XCTestCase {
         )
     }
 
+    func testDocsDescribeSDDTraceabilityAsImplemented() throws {
+        let docs = try [
+            repoFile("FEATURES.md"),
+            repoFile("Merlin/Docs/UserGuide.md"),
+            repoFile("Merlin/Docs/DeveloperManual.md"),
+            repoFile("spec.md"),
+            repoFile("vision.md"),
+        ].joined(separator: "\n")
+
+        XCTAssertTrue(docs.contains("SDDTraceabilityScanner"))
+        XCTAssertTrue(docs.contains("sddTraceability"))
+        XCTAssertTrue(docs.contains("## Behavior"))
+        XCTAssertTrue(docs.contains("## Traceability"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains(
+            "sdd rename as deferred"))
+        XCTAssertFalse(docs.localizedCaseInsensitiveContains(
+            "structural rename and should only be promoted"))
+    }
+
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
         return try String(contentsOf: url, encoding: .utf8)

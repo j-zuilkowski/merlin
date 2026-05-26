@@ -1,9 +1,20 @@
 # Task 46b — AppSettings Implementation
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > ⚠️ **OUTDATED** — This task documents the original v1 AppSettings only (~10 properties).
 > The current `AppSettings.swift` has 50+ properties added across  tasks 60–165.
 > **Read `task-46c-appsettings-v5-addendum.md` alongside this document** for the complete
-> current property set, nested types, and TOML serialization.
+> current property set, nested types, and TOML seriali
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
+zation.
 > `task-46c` is the authoritative spec for the live code.
 
 ## Context

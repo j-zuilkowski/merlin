@@ -12,6 +12,7 @@ enum FindingCategory: String, Codable, Sendable, CaseIterable {
     case ungatedTarget
     case stubbedImplementation
     case unwiredComponent
+    case sddTraceability
 }
 
 // MARK: - Severity

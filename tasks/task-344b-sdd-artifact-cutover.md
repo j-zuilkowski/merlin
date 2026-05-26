@@ -1,5 +1,10 @@
 # Task 344b — SDD Artifact Cutover
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 Task 344a added the failing cutover contract. This task implements the hard migration

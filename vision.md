@@ -11,22 +11,22 @@ upstream of committed design.
 
 ### Spec-Driven Development alignment
 
-Merlin's discipline subsystem already practices Spec-Driven Development (SDD) under its
-own names: `constitution.md` is the constitution, `spec.md` is the spec/plan,
-`tasks/` are the tasks, and the `vision → architecture → task → code` pipeline is the
-SDD workflow. This initiative formalizes that alignment so the methodology is named,
+Merlin's discipline subsystem now uses Spec-Driven Development (SDD) terms directly:
+`constitution.md` is the constitution, `vision.md` is the idea launchpad, `spec.md`
+is the committed design/spec, `tasks/` are the task decomposition, and the
+`vision → spec → task → code` pipeline is the SDD workflow. The methodology is named,
 consistent, and legible to the wider SDD ecosystem (GitHub Spec Kit, Amazon Kiro).
 
 **What:**
-- **Vocabulary rename** — adopt SDD terms across the docs and the `project:*` skill
-  subsystem: *constitution* (`constitution.md`), *spec* (`spec.md`), *tasks*
-  (`tasks/`), *vision* (`vision.md`).
-- **EARS acceptance criteria** — add a `## Behavior` block to the task/task template
+- **Vocabulary rename** — completed across code, docs, historical task sheets, and the
+  `project:*` skill subsystem: *constitution* (`constitution.md`), *spec* (`spec.md`),
+  *tasks* (`tasks/`), *vision* (`vision.md`).
+- **EARS acceptance criteria** — add a `## Behavior` block to the task template
   using EARS notation (`WHEN [trigger] THE [system] SHALL [response]`, plus `WHILE`,
   `IF … THEN`, `WHERE`, and ubiquitous forms). Each task states its intended behavior
   in a standardized, testable form that the `a`-task TDD tests verify directly.
 - **Backfill** — retrofit the EARS `## Behavior` block and the SDD vocabulary into the
-  existing committed task files, not new  tasks only.
+  existing committed task files, not new tasks only.
 - **Consistency gate** — extend `DisciplineEngine` with a vision↔spec↔task coherence
   check (the SDD `/analyze` equivalent), run before implementation rather than only as
   post-hoc drift detection. It verifies that every task traces to a spec section and
@@ -38,18 +38,15 @@ subsystem legible to the ecosystem, and the consistency gate catches spec/task
 divergence before code is written. SDD is additive here — keep the task-file + TDD
 engine; do not swap the `project:*` subsystem for Spec Kit's CLI.
 
-**Rename scope — decided: structural rename.** `tasks/` → `tasks/` (and each
-`task-NNx-*.md` → `task-NNx-*.md`); `spec.md` → `spec.md`. `constitution.md` keeps
-its filename — Claude Code auto-loads `constitution.md` by name, so renaming it would break
-the toolchain; it is *designated* the constitution in place. The rename touches every
-task file, the `DisciplineEngine` / `TaskScanner` code that walks `tasks/`,
-`REBUILD-GUIDE.md`, `PASTE-LIST.md`, `ALL-TASKS.md`, and **all five `project:*` skills
-(`init`, `adopt`, `task`, `revise`, `release`)** — all updated together in one
-mechanical task.
+**Rename scope — completed: structural rename.** The repository now uses
+`constitution.md`, `vision.md`, `spec.md`, and `tasks/` consistently. The cutover touched
+the task files, the discipline scanner code that walks `tasks/`, `REBUILD-GUIDE.md`,
+`PASTE-LIST.md`, `ALL-TASKS.md`, and all five `project:*` skills (`init`, `adopt`,
+`task`, `revise`, `release`).
 
 For the `project:*` skills the rename is **two-sided**: not only their own prose but
 also the artifacts they *scaffold* must change — `project:init` and `project:adopt`
-write `spec.md` / `tasks/` (not `spec.md` / `tasks/`), `project:task` and
+write `spec.md` / `tasks/`, `project:task` and
 `project:revise` operate on `tasks/`, and the doc templates under
 `~/.merlin/templates/docs/` follow suit. So every project Merlin creates or adopts after
 the rename uses the SDD names from the start, not just the Merlin repo itself.
@@ -71,12 +68,11 @@ the spec *governs and gates* rather than *regenerates*. The `spec.md` methodolog
 section must state this explicitly, so the EARS `## Behavior` blocks and the consistency
 gate are written to *verify* hardware artifacts, not regenerate them.
 
-**Promotion:** promote to `spec.md` as a methodology section, then decompose into tasks
-in this order — (1) EARS `## Behavior` template change; (2) structural rename sweep;
-(3) backfill EARS + SDD vocabulary into the existing renamed task files; (4) the
-vision↔spec↔task consistency gate in `DisciplineEngine`.
-
-_Status: deferred for now — this is a broad mechanical rename and should only be promoted when the repository is ready to rename `spec.md`/`tasks/` and all related tooling in one coordinated sweep._
+**Status: promoted and implemented.** The structural rename is complete. `spec.md` now
+defines the SDD methodology, `project:task` and `project:init` create task documents with
+`## Traceability` and `## Behavior`, existing task sheets are backfilled, and
+`SDDTraceabilityScanner` runs through `DisciplineEngine.scan` to flag missing or dangling
+vision/spec/task coherence before implementation starts.
 
 ### Runtime plugin architecture + the electronics plugin
 

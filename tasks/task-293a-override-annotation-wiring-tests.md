@@ -1,5 +1,14 @@
 # Task 293a — Override-Annotation Wiring Tests (failing)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Unit A4 of the discipline-wiring plan. `WhyCommentScanner` skips

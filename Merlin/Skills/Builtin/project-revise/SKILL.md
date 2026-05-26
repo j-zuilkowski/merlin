@@ -42,6 +42,9 @@ Vision edits are committed in the same batch commit as other revision findings.
    - **Dismiss with rationale** — call `DisciplineEngine.dismiss(findingID:rationale:)`.
      Log to `OverrideAuditLog`. Display override count for this category.
    - **Defer** — leave in `pending.json` unchanged.
+   - **SDD traceability** — add or repair `## Traceability` and `## Behavior`
+     blocks so task docs point at `vision.md` and `spec.md` and contain EARS
+     `SHALL` statements.
 
 4. **Batch commit**: After processing a set of accepted findings, produce a single commit
    with a structured message:

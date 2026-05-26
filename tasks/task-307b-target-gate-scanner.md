@@ -1,7 +1,16 @@
 # Task 307b — TargetGateScanner (implementation)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** the `scan` method here is superseded by task 314b, which adds
 > transitive `dependencies:` following. Implement 314b's version.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

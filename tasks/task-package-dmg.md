@@ -1,5 +1,14 @@
 # Task — Package Merlin as DMG
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 macOS non-sandboxed app. Bundle ID: `com.merlin.app`. Product name: `Merlin`.
 No third-party packages. No tests. No sequence number — run this task on demand

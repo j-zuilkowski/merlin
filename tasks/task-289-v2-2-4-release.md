@@ -1,5 +1,14 @@
 # Task 289 — v2.2.4 Release
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
@@ -59,7 +68,7 @@ This task ships **v2.2.4** —  tasks 283–288 together. Follows `spec.md`
     the Homebrew-safe tools, or shows the install command/URL for the rest — instead of
     a raw "command not found" (task 287).
   - **Vision launchpad.** `vision.md` is now the first artifact of the discipline
-    pipeline — `vision → architecture → task → code`. `project:init` seeds it,
+    pipeline — `vision → spec → task → code`. `project:init` seeds it,
     `project:adopt` incorporates an existing one, `project:revise` grows and promotes
     ideas from it (task 288).
 

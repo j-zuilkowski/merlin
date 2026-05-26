@@ -1,5 +1,10 @@
 # Task 345a — Project Task Skill Tests
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 The core artifact cutover is complete. The built-in `/project:*` skills must now be

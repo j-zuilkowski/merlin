@@ -24,6 +24,9 @@ final class ProjectTaskSkillCutoverTests: XCTestCase {
         assertNoLegacyArtifactReferences(text, file: "project-task")
         XCTAssertTrue(text.contains("tasks/task-NNa-<name>-tests.md"))
         XCTAssertTrue(text.contains("New surface introduced in task NNb:"))
+        XCTAssertTrue(text.contains("## Traceability") || text.contains("`## Traceability`"))
+        XCTAssertTrue(text.contains("## Behavior") || text.contains("`## Behavior`"))
+        XCTAssertTrue(text.contains("WHEN [trigger] THE [system] SHALL [response]"))
     }
 
     func testProjectSkillsScaffoldAndValidateSddArtifactsOnly() throws {

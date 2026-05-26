@@ -63,6 +63,12 @@ User says any of:
    (`constitution.md` from step 5 and `vision.md` from step 6 are written in both tiers.)
 
 8. **Write `tasks/` directory** with `task-00-scaffold.md` documenting the initial state.
+   The scaffold task must include:
+   - `## Traceability`
+     - `Vision reference: vision.md#active`
+     - `Spec reference: spec.md#overview`
+   - `## Behavior`
+     - `WHEN the scaffold task is executed THE project SHALL contain the initial Merlin discipline artifacts.`
 
 9. **Install git hooks** (if Layer 3 opted in):
    Call `GitHookInstaller.install(projectPath:)` — writes `post-commit` and `pre-push`.

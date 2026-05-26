@@ -1,7 +1,16 @@
 # Task 310b — DocReferenceGraph Fenced-Block Strengthening
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** `danglingReferences` and `enumerateSourceSymbols` here are superseded by
 > task 316b (skip `tasks/`, include test symbols). Implement 316b's versions.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

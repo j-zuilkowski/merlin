@@ -1,10 +1,19 @@
 # Task 17b — AgenticEngine Implementation
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > ⚠️ **SEVERELY OUTDATED** — This task documents the original single-provider loop only.
 > The current `AgenticEngine.swift` is 1340 lines with 50+ methods added across  tasks 18–151.
 > **Do not use this document alone to rebuild AgenticEngine.**
 > Read `task-17c-agenticengine-v5-addendum.md` which documents the complete v5+ surface.
 > `task-17c` is the authoritative spec for all current behaviour.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.

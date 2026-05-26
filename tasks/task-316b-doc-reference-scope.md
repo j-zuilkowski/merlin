@@ -1,6 +1,15 @@
 # Task 316b — DocReferenceGraph Scope Fix
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 > **Note:** these methods are further refined by task 319b (skip build/, drop the loose backticked check). Implement 319b's versions.
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
 
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.

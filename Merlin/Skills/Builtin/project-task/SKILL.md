@@ -31,6 +31,12 @@ User says any of:
 
 4. **Write task NNa** (`tasks/task-NNa-<name>-tests.md`):
    - Context block with prior-task state summary.
+   - `## Traceability` block with:
+     - `Vision reference: vision.md#<active-or-promoted-item>`
+     - `Spec reference: spec.md#<committed-design-section>`
+   - `## Behavior` block with EARS acceptance criteria. Use one or more
+     `WHEN [trigger] THE [system] SHALL [response]` statements; use `WHILE`,
+     `IF ... THEN`, or `WHERE` forms when they fit better.
    - "New surface introduced in task NNb:" listing every surface.
    - Full Swift test file content for every test case described in structuring questions.
    - Verify block: expected **BUILD FAILED** with missing-symbol errors.
@@ -38,6 +44,8 @@ User says any of:
 
 5. **Write task NNb** (`tasks/task-NNb-<name>.md`):
    - Context block updated to "Task NNa complete."
+   - Same `## Traceability` references as NNa.
+   - `## Behavior` block restating the accepted behavior NNb implements.
    - Full implementation file content (or precise edit instructions for existing files).
    - If user-facing surfaces: add `## Manual updates` section listing sections to add/modify.
    - Verify block: expected **BUILD SUCCEEDED** + all NNa tests pass.

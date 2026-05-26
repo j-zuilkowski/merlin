@@ -1,5 +1,14 @@
 # Task 292a — User-Prompt Discipline Wiring Tests (failing)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Swift 5.10, macOS 14+. Working dir: ~/Documents/localProject/merlin.
 Unit A3 of the discipline-wiring plan. `UserPromptDisciplineChecker` is unit-tested but

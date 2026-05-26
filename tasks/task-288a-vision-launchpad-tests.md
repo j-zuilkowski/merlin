@@ -1,5 +1,14 @@
 # Task 288a — Vision Launchpad Tests (failing)
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
+## Behavior
+
+WHEN this task is executed THE system SHALL deliver the behavior, verification, or documentation outcome described by this task file.
+
 ## Context
 Swift 5.10, macOS 14+, SwiftUI + async/await. Non-sandboxed. No third-party packages.
 SWIFT_STRICT_CONCURRENCY=complete. Zero warnings, zero errors required.
@@ -97,14 +106,14 @@ final class ProjectVisionLaunchpadTests: XCTestCase {
     }
 
     func testProjectInitDocumentsThePipeline() throws {
-        // The vision → architecture → task → code pipeline must be stated in the skill
+        // The vision → spec → task → code pipeline must be stated in the skill
         // so the discipline workflow is explicit.
         let body = try skillBody().lowercased()
         let mentionsPipeline =
-            body.contains("vision") && body.contains("architecture")
+            body.contains("vision") && body.contains("spec")
             && body.contains("task") && body.contains("code")
         XCTAssertTrue(mentionsPipeline,
-                      "project:init must document the vision→architecture→task→code pipeline.")
+                      "project:init must document the vision→spec→task→code pipeline.")
     }
 
     func testProjectAdoptIncorporatesExistingVisionDoc() throws {

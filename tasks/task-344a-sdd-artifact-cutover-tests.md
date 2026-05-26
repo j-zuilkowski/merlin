@@ -1,5 +1,10 @@
 # Task 344a — SDD Artifact Cutover Tests
 
+## Traceability
+
+- Vision reference: vision.md#active
+- Spec reference: spec.md#overview
+
 ## Context
 
 Merlin is moving from the prior assistant-specific and legacy task vocabulary to its own SDD
