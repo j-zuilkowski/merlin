@@ -69,6 +69,7 @@
 		13547D401FDD63A6407990B6 /* BoardRoutingPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21CCCC650CD027CD96A3CEF /* BoardRoutingPolicy.swift */; };
 		139B08DE9CAD83274ED63481 /* ToolRequirement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7155D35486C5A81D3B14758F /* ToolRequirement.swift */; };
 		143A9D8192F6ECB0D6D347CC /* EngineTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5D6405DFE19D25D73F32754 /* EngineTelemetryTests.swift */; };
+		14CDFE256F2A5C249DB894A5 /* ElectronicsJobStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD922A6F728D69FBB63E205C /* ElectronicsJobStoreTests.swift */; };
 		14D5C55EAB705A7468A11C87 /* DisciplineGateInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E5AA216459E8B30CDECA493 /* DisciplineGateInstaller.swift */; };
 		15BA213E9B98B18CC711DFBE /* SDDArtifactCutoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7A6795ADB79CAA580FD432A /* SDDArtifactCutoverTests.swift */; };
 		15BAE009EA2C0110CA70AF86 /* MemoryTelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17FFC29E928FEE1EBC28CC6B /* MemoryTelemetryTests.swift */; };
@@ -462,6 +463,7 @@
 		89EEA017C05C812B03517C69 /* LoRASettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E6FB41E80811F714059A39 /* LoRASettingsTests.swift */; };
 		89F37DE06F881757B54932FE /* DocReferenceGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7013A8BC625A83D38AF562CB /* DocReferenceGraphTests.swift */; };
 		8A8155870F6B91FDD938B6D1 /* RedundantDocstringScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D283D087CDE54C1212F231B /* RedundantDocstringScanner.swift */; };
+		8AE86AAFE923EB9D1FAB964C /* ElectronicsJobPanelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB9B87A63A48920183477A3B /* ElectronicsJobPanelTests.swift */; };
 		8AE8D54B85DFA9D9AB94C278 /* ContextBudgetResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A61A1FCDB118CC773B5C843 /* ContextBudgetResolverTests.swift */; };
 		8B2D85CFECAB592ACBE1E98B /* TokenEstimatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34891F5580C332770CBF01D7 /* TokenEstimatorTests.swift */; };
 		8B474257A5B7C90468CD0591 /* PerStepPreflightTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D22E3837D70E40B9E73C67AF /* PerStepPreflightTests.swift */; };
@@ -1479,6 +1481,7 @@
 		FA118C49233346F6DF26DC3C /* ProjectTaskSkillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectTaskSkillTests.swift; sourceTree = "<group>"; };
 		FB592DE05AB89FF71E587C0A /* Merlin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Merlin.entitlements; sourceTree = "<group>"; };
 		FB63718E38C096E40A8A2532 /* RAGToolsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGToolsTests.swift; sourceTree = "<group>"; };
+		FB9B87A63A48920183477A3B /* ElectronicsJobPanelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsJobPanelTests.swift; sourceTree = "<group>"; };
 		FBB2A96091EC0E11425E796C /* DocReferenceGraphFencedBlockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocReferenceGraphFencedBlockTests.swift; sourceTree = "<group>"; };
 		FBC98AE09D2DC4ED58987185 /* MerlinTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MerlinTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FBE91528B70860D12EC1079B /* ProjectRef.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRef.swift; sourceTree = "<group>"; };
@@ -1488,6 +1491,7 @@
 		FCA6A6D2EA3397CDA0D10999 /* ManualCoverageScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualCoverageScannerTests.swift; sourceTree = "<group>"; };
 		FD835CD70F8981918C4502B7 /* RAGTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGTelemetryTests.swift; sourceTree = "<group>"; };
 		FD886551A64C574A90DA0C59 /* SubagentEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubagentEngineTests.swift; sourceTree = "<group>"; };
+		FD922A6F728D69FBB63E205C /* ElectronicsJobStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsJobStoreTests.swift; sourceTree = "<group>"; };
 		FE9E53CB46C94F340E441BE7 /* DisciplineOverrideAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisciplineOverrideAuditTests.swift; sourceTree = "<group>"; };
 		FEC8A2E0E4B34555293C63F3 /* ManualSectionTemplateWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualSectionTemplateWriter.swift; sourceTree = "<group>"; };
 		FF28B4CAB0CC692EE7B86812 /* AdvisoryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdvisoryRow.swift; sourceTree = "<group>"; };
@@ -1938,6 +1942,8 @@
 				05A4FB0BCD25E830FF92A904 /* DynamicModelFetchTests.swift */,
 				25C0F4E6E7657B9EA9E50748 /* ElectronicsArtifactGateTests.swift */,
 				EE2DD150EB4942DD11BBCE27 /* ElectronicsCompletionContractTests.swift */,
+				FB9B87A63A48920183477A3B /* ElectronicsJobPanelTests.swift */,
+				FD922A6F728D69FBB63E205C /* ElectronicsJobStoreTests.swift */,
 				B82ABD5D485376B6394F77C6 /* ElectronicsPluginMigrationTests.swift */,
 				DDFC43D9F73397EA7D4B359C /* ElectronicsRoutingBackendTests.swift */,
 				860F4746759A2765E339BD40 /* EnginePreRunCompactionIntegrationTests.swift */,
@@ -3071,6 +3077,8 @@
 				343C7CCF9D968DF7E8D42CD7 /* DynamicModelFetchTests.swift in Sources */,
 				A8EA5F8B4F07968D1C5F72FD /* ElectronicsArtifactGateTests.swift in Sources */,
 				3F0ACD78F10FCA58A793F0EF /* ElectronicsCompletionContractTests.swift in Sources */,
+				8AE86AAFE923EB9D1FAB964C /* ElectronicsJobPanelTests.swift in Sources */,
+				14CDFE256F2A5C249DB894A5 /* ElectronicsJobStoreTests.swift in Sources */,
 				24888889CD4E6D9654EFEAFB /* ElectronicsPluginMigrationTests.swift in Sources */,
 				3C8B715604E099525744F3C1 /* ElectronicsRoutingBackendTests.swift in Sources */,
 				1EE0A083F698D15A19F9E71B /* EmptyToolResultRouter.swift in Sources */,
