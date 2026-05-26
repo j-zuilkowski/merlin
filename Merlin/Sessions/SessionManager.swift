@@ -11,6 +11,7 @@ final class SessionManager: ObservableObject {
 
     let projectRef: ProjectRef
     let sessionStore: SessionStore
+    let workspaceRuntime: WorkspaceRuntime
     @Published private(set) var liveSessions: [LiveSession] = []
     @Published private(set) var activeSessionID: UUID?
 
@@ -21,6 +22,7 @@ final class SessionManager: ObservableObject {
     init(projectRef: ProjectRef) {
         self.projectRef = projectRef
         self.sessionStore = SessionStore(projectPath: projectRef.path)
+        self.workspaceRuntime = try! WorkspaceRuntime(rootURL: URL(fileURLWithPath: projectRef.path))
     }
 
     @discardableResult
@@ -33,6 +35,7 @@ final class SessionManager: ObservableObject {
         let session = LiveSession(
             projectRef: projectRef,
             sessionStore: sessionStore,
+            workspaceRuntime: workspaceRuntime,
             activeDomainIDs: activeDomainIDs
         )
         session.permissionMode = mode
@@ -59,6 +62,7 @@ final class SessionManager: ObservableObject {
             projectRef: projectRef,
             initialMessages: session.messages,
             sessionStore: sessionStore,
+            workspaceRuntime: workspaceRuntime,
             activeDomainIDs: normalizedDomainIDs
         )
         live.title = session.title

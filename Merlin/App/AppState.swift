@@ -53,6 +53,7 @@ private struct DisciplineToolArgs: Decodable {
 @MainActor
 final class AppState: ObservableObject {
     let projectPath: String
+    let workspaceRuntime: WorkspaceRuntime
     private let initialActiveDomainIDs: [String]
     private var activeDomainIDs: [String]
     let registry = ProviderRegistry()
@@ -119,8 +120,15 @@ final class AppState: ObservableObject {
     private var disciplineEventPollTask: Task<Void, Never>?
     private var calibrationCoordinatorCancellable: AnyCancellable?
 
-    init(projectPath: String = "", activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
+    init(
+        projectPath: String = "",
+        activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
+        workspaceRuntime: WorkspaceRuntime? = nil
+    ) {
         self.projectPath = projectPath
+        self.workspaceRuntime = workspaceRuntime ?? (try! WorkspaceRuntime(
+            rootURL: URL(fileURLWithPath: projectPath.isEmpty ? NSTemporaryDirectory() : projectPath)
+        ))
         let resolvedActiveDomainIDs = Self.inferredActiveDomainIDs(
             requested: activeDomainIDs,
             projectPath: projectPath
@@ -192,7 +200,15 @@ final class AppState: ObservableObject {
         }
 
         let gate = AuthGate(memory: authMemory, presenter: self)
-        let toolRouter = ToolRouter(authGate: gate)
+        let runtime = self.workspaceRuntime
+        let toolRouter = ToolRouter(authGate: gate, workspaceRuntime: runtime) { [weak self] route in
+            WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: self?.engine?.sessionID,
+                activeDomainIDs: self?.activeDomainIDs ?? SoftwareDomain.defaultActiveDomainIDs,
+                permissionScope: route.requiredPermissionScope
+            )
+        }
         registerAllTools(
             router: toolRouter,
             visionProvider: { [weak self] in self?.engine?.provider(for: .vision) })

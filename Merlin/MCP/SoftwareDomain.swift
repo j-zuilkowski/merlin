@@ -36,6 +36,18 @@ struct SoftwareDomain: DomainPlugin {
     var verificationBackend: any VerificationBackend {
         SoftwareVerificationBackend()
     }
+
+    var capabilities: [WorkspaceCapability] {
+        [
+            WorkspaceCapability(
+                id: "domain.software.verify",
+                displayName: "Software Verification",
+                kind: .verification,
+                address: WorkspaceMessageAddress(namespace: "domain.software", capability: "verify"),
+                requiredPermissionScope: .externalSideEffect
+            )
+        ]
+    }
 }
 
 struct ElectronicsDomain: DomainPlugin {
@@ -69,6 +81,43 @@ struct ElectronicsDomain: DomainPlugin {
 
     var verificationBackend: any VerificationBackend {
         NullVerificationBackend()
+    }
+
+    var capabilities: [WorkspaceCapability] {
+        [
+            WorkspaceCapability(
+                id: "domain.electronics.verify",
+                displayName: "Electronics Verification",
+                kind: .verification,
+                address: WorkspaceMessageAddress(namespace: "domain.electronics", capability: "verify"),
+                requiredPermissionScope: .externalSideEffect
+            )
+        ] + KiCadToolDefinitions.requiredToolNames.map { toolName in
+            WorkspaceCapability(
+                id: "domain.electronics.\(toolName)",
+                displayName: toolName,
+                kind: .tool,
+                address: WorkspaceMessageAddress(namespace: "domain.electronics", capability: toolName),
+                requiredPermissionScope: toolName == "kicad_submit_vendor_order" ? .userApprovedIrreversible : .externalSideEffect
+            )
+        }
+    }
+
+    var settingsSchema: WorkspaceSettingsSchema? {
+        WorkspaceSettingsSchema(
+            namespace: "domain.electronics",
+            title: "Electronics",
+            fields: [
+                WorkspaceSettingsField(
+                    key: "kicad_cli_path",
+                    label: "KiCad CLI Path",
+                    kind: .path,
+                    defaultValue: nil,
+                    isSecret: false,
+                    help: "Path to kicad-cli."
+                )
+            ]
+        )
     }
 
     static func suggestedActivation(

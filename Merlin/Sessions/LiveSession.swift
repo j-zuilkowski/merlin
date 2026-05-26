@@ -29,6 +29,7 @@ final class LiveSession: ObservableObject, Identifiable {
     let id: UUID
     @Published var title: String
     let appState: AppState
+    let workspaceRuntime: WorkspaceRuntime
     let skillsRegistry: SkillsRegistry
     let chatViewModel = ChatViewModel()
     let subagentSidebar: SubagentSidebarViewModel
@@ -53,8 +54,10 @@ final class LiveSession: ObservableObject, Identifiable {
     init(projectRef: ProjectRef,
          initialMessages: [Message] = [],
          sessionStore: SessionStore? = nil,
+         workspaceRuntime: WorkspaceRuntime? = nil,
          activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
         self.id = UUID()
+        self.workspaceRuntime = workspaceRuntime ?? (try! WorkspaceRuntime(rootURL: URL(fileURLWithPath: projectRef.path)))
         self.subagentSidebar = SubagentSidebarViewModel(parentSessionID: self.id)
         self.title = "New Session"
         self.createdAt = Date()
@@ -62,7 +65,11 @@ final class LiveSession: ObservableObject, Identifiable {
             requested: activeDomainIDs,
             projectPath: projectRef.path
         )
-        self.appState = AppState(projectPath: projectRef.path, activeDomainIDs: self.activeDomainIDs)
+        self.appState = AppState(
+            projectPath: projectRef.path,
+            activeDomainIDs: self.activeDomainIDs,
+            workspaceRuntime: self.workspaceRuntime
+        )
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry
         self.appState.engine.constitutionContent = ConstitutionLoader.systemPromptBlock(projectPath: projectRef.path)

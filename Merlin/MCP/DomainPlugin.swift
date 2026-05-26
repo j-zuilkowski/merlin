@@ -26,11 +26,15 @@ protocol DomainPlugin: Sendable {
     var systemPromptAddendum: String? { get }
     /// MCP tool names contributed by this domain (used by ToolRegistry at domain activation).
     var mcpToolNames: [String] { get }
+    var capabilities: [WorkspaceCapability] { get }
+    var settingsSchema: WorkspaceSettingsSchema? { get }
 }
 
 extension DomainPlugin {
     var canonicalDomainID: String { id }
     var isUserSelectable: Bool { true }
+    var capabilities: [WorkspaceCapability] { [] }
+    var settingsSchema: WorkspaceSettingsSchema? { nil }
 }
 
 // MARK: - DomainManifest (MCP wire format)
@@ -88,6 +92,8 @@ struct MCPDomainAdapter: DomainPlugin {
     let mcpToolNames: [String]
     let verificationBackend: any VerificationBackend
     let mcpServerID: String
+    let capabilities: [WorkspaceCapability]
+    let settingsSchema: WorkspaceSettingsSchema?
 
     @MainActor
     init(manifest: DomainManifest, mcpServerID: String, mcpToolNames: [String]) {
@@ -100,6 +106,16 @@ struct MCPDomainAdapter: DomainPlugin {
         self.mcpToolNames = mcpToolNames
         self.verificationBackend = ManifestVerificationBackend(commands: manifest.verificationCommands)
         self.mcpServerID = mcpServerID
+        self.capabilities = mcpToolNames.map { toolName in
+            WorkspaceCapability(
+                id: toolName,
+                displayName: toolName,
+                kind: .tool,
+                address: WorkspaceMessageAddress(namespace: "mcp.\(mcpServerID)", capability: toolName),
+                requiredPermissionScope: .externalSideEffect
+            )
+        }
+        self.settingsSchema = nil
     }
 
     private static func normalizeCanonicalDomainID(_ rawID: String) -> String {

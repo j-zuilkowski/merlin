@@ -41,6 +41,54 @@ struct WorkspaceMessageOrigin: Codable, Sendable, Equatable {
     var subagentDepth: Int
     var permissionScope: WorkspacePermissionScope
     var activeDomainIDs: [String]
+
+    static func parentSession(
+        workspaceID: String,
+        sessionID: UUID?,
+        activeDomainIDs: [String],
+        permissionScope: WorkspacePermissionScope = .workspaceWrite
+    ) -> WorkspaceMessageOrigin {
+        WorkspaceMessageOrigin(
+            workspaceID: workspaceID,
+            sessionID: sessionID,
+            agentID: nil,
+            subagentID: nil,
+            worktreeID: nil,
+            subagentDepth: 0,
+            permissionScope: permissionScope,
+            activeDomainIDs: activeDomainIDs
+        )
+    }
+
+    static func subagent(
+        workspaceID: String,
+        sessionID: UUID?,
+        subagentID: UUID,
+        role: AgentRole,
+        depth: Int,
+        worktreeID: String?,
+        activeDomainIDs: [String]
+    ) -> WorkspaceMessageOrigin {
+        let scope: WorkspacePermissionScope
+        switch role {
+        case .explorer:
+            scope = .readOnly
+        case .worker:
+            scope = .worktreeWrite
+        case .default:
+            scope = .workspaceWrite
+        }
+        return WorkspaceMessageOrigin(
+            workspaceID: workspaceID,
+            sessionID: sessionID,
+            agentID: nil,
+            subagentID: subagentID,
+            worktreeID: worktreeID,
+            subagentDepth: depth,
+            permissionScope: scope,
+            activeDomainIDs: activeDomainIDs
+        )
+    }
 }
 
 struct WorkspaceMessagePayload: Codable, Sendable, Equatable {
