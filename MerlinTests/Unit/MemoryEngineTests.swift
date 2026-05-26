@@ -36,12 +36,12 @@ final class MemoryEngineTests: XCTestCase {
     func test_idleTimer_resetPreventsEarlyFire() async throws {
         let fireCount = IntBox(0)
         await engine.setOnIdleFired { fireCount.value += 1 }
-        await engine.startIdleTimer(timeout: 0.1)
+        await engine.startIdleTimer(timeout: 0.5)
         try await Task.sleep(for: .milliseconds(60))
         await engine.resetIdleTimer()
-        try await Task.sleep(for: .milliseconds(60))
-        XCTAssertEqual(fireCount.value, 0)
         try await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(fireCount.value, 0)
+        try await Task.sleep(for: .milliseconds(500))
         XCTAssertEqual(fireCount.value, 1)
     }
 

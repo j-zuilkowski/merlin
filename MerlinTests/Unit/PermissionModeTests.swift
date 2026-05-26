@@ -138,13 +138,16 @@ final class PermissionModeTests: XCTestCase {
         registry.add(provider)
         registry.activeProviderID = provider.id
 
+        let router = ToolRouter(authGate: AuthGate(
+            memory: AuthMemory(storePath: "/tmp/auth-perm2-\(UUID().uuidString).json"),
+            presenter: presenter
+        ))
+        registerAllTools(router: router)
+
         return AgenticEngine(
             slotAssignments: [.execute: provider.id, .reason: provider.id, .vision: provider.id],
             registry: registry,
-            toolRouter: ToolRouter(authGate: AuthGate(
-                memory: AuthMemory(storePath: "/tmp/auth-perm2-\(UUID().uuidString).json"),
-                presenter: presenter
-            )),
+            toolRouter: router,
             contextManager: ContextManager()
         )
     }

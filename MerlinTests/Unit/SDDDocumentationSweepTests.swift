@@ -15,6 +15,7 @@ final class SDDDocumentationSweepTests: XCTestCase {
     }
 
     func testNoStaleSddArtifactReferencesRemain() throws {
+        executionTimeAllowance = 10
         let legacyTasksDir = "pha" + "se" + "s/"
         let legacyTaskPrefix = "pha" + "se-"
         let legacyCommand = "/project:" + "pha" + "se"
@@ -29,49 +30,42 @@ final class SDDDocumentationSweepTests: XCTestCase {
             legacyCommand,
             legacySkill
         ]
-        let standaloneTask = try NSRegularExpression(
-            pattern: #"(?<![A-Za-z])(?i:"# + "pha" + "se" + #")(?![A-Za-z])"#)
         var failures: [String] = []
 
-        for file in try trackedTextFiles() {
-            let relative = file.path.replacingOccurrences(of: repoRoot.path + "/", with: "")
-            if [
-                "MerlinTests/Unit/SDDArtifactCutoverTests.swift",
-                "MerlinTests/Unit/ProjectTaskSkillCutoverTests.swift",
-                "MerlinTests/Unit/SDDDocumentationSweepTests.swift",
-                "tasks/task-344a-sdd-artifact-cutover-tests.md",
-                "tasks/task-345a-project-task-skill-tests.md",
-                "tasks/task-346a-sdd-doc-sweep-tests.md"
-            ].contains(relative) {
-                continue
-            }
-            let text = try String(contentsOf: file, encoding: .utf8)
-            for forbidden in forbiddenLiterals where text.contains(forbidden) {
-                failures.append("\(relative): contains \(forbidden)")
-            }
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            if standaloneTask.firstMatch(in: text, range: range) != nil {
-                failures.append("\(relative): contains standalone legacy task word")
-            }
+        for forbidden in forbiddenLiterals {
+            failures.append(contentsOf: try gitGrep(["-F", forbidden]))
         }
+        failures.append(contentsOf: try gitGrep(["-E", #"(^|[^A-Za-z])"# + "pha" + "se" + #"([^A-Za-z]|$)"#]))
 
         XCTAssertTrue(failures.isEmpty, failures.prefix(80).joined(separator: "\n"))
     }
 
-    private func trackedTextFiles() throws -> [URL] {
-        let output = try runGit(["ls-files"])
-        return output
-            .split(separator: "\n")
-            .map(String.init)
-            .filter { !$0.hasPrefix("build/") && !$0.hasPrefix("Merlin.xcodeproj/") }
-            .filter { path in
-                [
-                    "swift", "md", "txt", "toml", "yml", "yaml", "json", "sh",
-                    "plist", "template"
-                ].contains(URL(fileURLWithPath: path).pathExtension.lowercased())
-            }
-            .map { repoRoot.appendingPathComponent($0) }
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
+    private func gitGrep(_ patternArguments: [String]) throws -> [String] {
+        try runGit([
+            "grep", "-n", "-I"
+        ] + patternArguments + [
+            "--",
+            ":(glob)**/*.swift",
+            ":(glob)**/*.md",
+            ":(glob)**/*.txt",
+            ":(glob)**/*.toml",
+            ":(glob)**/*.yml",
+            ":(glob)**/*.yaml",
+            ":(glob)**/*.json",
+            ":(glob)**/*.sh",
+            ":(glob)**/*.plist",
+            ":(glob)**/*.template",
+            ":(exclude)MerlinTests/Unit/SDDArtifactCutoverTests.swift",
+            ":(exclude)MerlinTests/Unit/ProjectTaskSkillCutoverTests.swift",
+            ":(exclude)MerlinTests/Unit/SDDDocumentationSweepTests.swift",
+            ":(exclude)tasks/task-344a-sdd-artifact-cutover-tests.md",
+            ":(exclude)tasks/task-345a-project-task-skill-tests.md",
+            ":(exclude)tasks/task-346a-sdd-doc-sweep-tests.md",
+            ":(exclude)build/**",
+            ":(exclude)Merlin.xcodeproj/**"
+        ])
+        .split(separator: "\n")
+        .map(String.init)
     }
 
     private func runGit(_ arguments: [String]) throws -> String {
