@@ -169,11 +169,11 @@ actor WorkspaceMessageBus {
 
 final class ClosureWorkspaceMessageHandler: WorkspaceMessageHandler, @unchecked Sendable {
     private let requiredScope: WorkspacePermissionScope
-    private let handler: @Sendable (String) async throws -> String
+    private let handler: (String) async throws -> String
 
     init(
         requiredScope: WorkspacePermissionScope,
-        handler: @escaping @Sendable (String) async throws -> String
+        handler: @escaping (String) async throws -> String
     ) {
         self.requiredScope = requiredScope
         self.handler = handler

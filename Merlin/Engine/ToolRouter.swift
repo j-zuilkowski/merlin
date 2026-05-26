@@ -1,28 +1,46 @@
-// ToolRouter — dispatches tool calls from AgenticEngine to registered handlers.
-//
-// Responsibilities (in order):
-//   1. Decide whether to stage a file-write call instead of executing it (Plan mode)
-//   2. Run AuthGate to check allow/deny patterns and surface the auth popup if needed
-//   3. Route to the correct handler (local registry or MCP)
-//   4. Retry once on failure before returning an error result
-//
-// All calls in a single LLM response are dispatched in parallel via TaskGroup.
-//
-// See: Developer Manual § "Tool System → ToolRouter"
 import Foundation
+
+typealias ToolRouterOriginProvider = @MainActor (ToolRoute) -> WorkspaceMessageOrigin
 
 @MainActor
 class ToolRouter {
     private let authGate: AuthGate
-    private var handlers: [String: (String) async throws -> String] = [:]
-    private var mcpHandlers: [String: (String) async throws -> String] = [:]
+    private let workspaceRuntime: WorkspaceRuntime
+    private var routes: [String: ToolRoute] = [:]
+    private var registrationTasks: [String: Task<Void, Never>] = [:]
     private var mcpDefinitions: [ToolDefinition] = []
     private var mcpDomainScopes: [String: String?] = [:]
+    private var originProvider: ToolRouterOriginProvider
     var stagingBuffer: StagingBuffer?
     var permissionMode: PermissionMode = .ask
 
-    init(authGate: AuthGate) {
+    convenience init(authGate: AuthGate) {
+        let runtime = try! WorkspaceRuntime(
+            rootURL: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("merlin-default-workspace"),
+            merlinHomeURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-default-runtime-\(UUID().uuidString)")
+        )
+        self.init(authGate: authGate, workspaceRuntime: runtime)
+    }
+
+    init(
+        authGate: AuthGate,
+        workspaceRuntime: WorkspaceRuntime,
+        originProvider: ToolRouterOriginProvider? = nil
+    ) {
         self.authGate = authGate
+        self.workspaceRuntime = workspaceRuntime
+        self.originProvider = originProvider ?? { route in
+            WorkspaceMessageOrigin(
+                workspaceID: workspaceRuntime.workspaceID,
+                sessionID: nil,
+                agentID: nil,
+                subagentID: nil,
+                worktreeID: nil,
+                subagentDepth: 0,
+                permissionScope: route.requiredPermissionScope,
+                activeDomainIDs: SoftwareDomain.defaultActiveDomainIDs
+            )
+        }
     }
 
     func dispatch(
@@ -52,12 +70,47 @@ class ToolRouter {
     }
 
     func register(name: String, handler: @escaping (String) async throws -> String) {
-        handlers[name] = handler
+        register(
+            name: name,
+            namespace: namespace(for: name),
+            capability: name,
+            timeout: timeout(for: name),
+            requiredScope: requiredScope(for: name),
+            handler: handler
+        )
     }
 
-    // Idempotent by tool name: re-registering a tool (e.g. an MCP server that
-    // reconnects) replaces the existing definition rather than appending a
-    // duplicate, so `mcpToolDefinitions()` never lists the same tool twice.
+    func register(
+        name: String,
+        namespace: String,
+        capability: String,
+        timeout: Duration? = nil,
+        requiredScope: WorkspacePermissionScope = .readOnly,
+        handler: @escaping (String) async throws -> String
+    ) {
+        let route = ToolRoute(
+            toolName: name,
+            address: WorkspaceMessageAddress(namespace: namespace, capability: capability),
+            timeout: timeout ?? self.timeout(for: name),
+            requiredPermissionScope: requiredScope
+        )
+        routes[name] = route
+        registrationTasks[name] = Task {
+            await workspaceRuntime.bus.register(
+                ClosureWorkspaceMessageHandler(requiredScope: requiredScope, handler: handler),
+                for: route.address
+            )
+        }
+    }
+
+    func route(for toolName: String) -> ToolRoute? {
+        routes[toolName]
+    }
+
+    func registeredRoutes() -> [ToolRoute] {
+        routes.values.sorted { $0.toolName < $1.toolName }
+    }
+
     func registerMCPTool(_ definition: ToolDefinition,
                          scopedToDomainID domainID: String? = nil,
                          handler: @MainActor @escaping ([String: Any]) async -> String) {
@@ -68,7 +121,14 @@ class ToolRouter {
             mcpDefinitions.append(definition)
         }
         mcpDomainScopes[name] = domainID
-        mcpHandlers[name] = { arguments in
+        let serverName = Self.mcpServerName(fromToolName: name) ?? "unknown"
+        register(
+            name: name,
+            namespace: "mcp.\(serverName)",
+            capability: name,
+            timeout: .seconds(120),
+            requiredScope: .externalSideEffect
+        ) { arguments in
             await handler(Self.dictionary(from: arguments))
         }
     }
@@ -77,14 +137,18 @@ class ToolRouter {
         let nameSet = Set(names)
         mcpDefinitions.removeAll { nameSet.contains($0.function.name) }
         for name in nameSet {
-            mcpHandlers.removeValue(forKey: name)
+            if let route = routes[name] {
+                Task { await workspaceRuntime.bus.unregister(address: route.address) }
+            }
+            routes.removeValue(forKey: name)
+            registrationTasks.removeValue(forKey: name)
             mcpDomainScopes.removeValue(forKey: name)
         }
     }
 
     func registerKiCadTools(executor: any KiCadToolExecutor) {
         for toolName in KiCadToolDefinitions.requiredToolNames {
-            register(name: toolName) { argumentsJSON in
+            register(name: toolName, namespace: "domain.electronics", capability: toolName, requiredScope: .externalSideEffect) { argumentsJSON in
                 let result = try await executor.execute(toolName: toolName, argumentsJSON: argumentsJSON)
                 let data = try JSONEncoder().encode(result)
                 return String(data: data, encoding: .utf8) ?? "{}"
@@ -131,38 +195,43 @@ class ToolRouter {
             return await stageFileWrite(call: call, buffer: effectiveStagingBuffer)
         }
 
+        let toolName = call.function.name
+        guard let route = routes[toolName] else {
+            return ToolResult(toolCallId: call.id, content: "ROUTE_NOT_FOUND: Unknown tool: \(toolName)", isError: true)
+        }
+
         let argument = primaryArgument(from: call.function.arguments)
         if effectivePermissionMode != .autoAccept {
-            let decision = await authGate.check(tool: call.function.name, argument: argument)
+            let decision = await authGate.check(tool: toolName, argument: argument)
             guard decision == .allow else {
                 return ToolResult(toolCallId: call.id, content: "Denied by user", isError: true)
             }
         }
 
-        let toolName = call.function.name
-        let handler: ((String) async throws -> String)?
-        if let mcpHandler = mcpHandlers[toolName] {
-            handler = mcpHandler
-        } else {
-            handler = handlers[toolName]
+        await registrationTasks[toolName]?.value
+        let request = WorkspaceMessageRequest(
+            id: UUID(),
+            address: route.address,
+            origin: originProvider(route),
+            payload: .jsonString(call.function.arguments),
+            cancellationGroup: nil
+        )
+        let first = await workspaceRuntime.bus.send(request, timeout: route.timeout)
+        if first.status == .failed {
+            authGate.reportFailure(tool: toolName, argument: argument)
+            let retry = await workspaceRuntime.bus.send(request, timeout: route.timeout)
+            return toolResult(from: retry, toolCallID: call.id)
         }
+        return toolResult(from: first, toolCallID: call.id)
+    }
 
-        guard let handler else {
-            return ToolResult(toolCallId: call.id, content: "Unknown tool: \(call.function.name)", isError: true)
-        }
-
-        do {
-            let output = try await handler(call.function.arguments)
-            return ToolResult(toolCallId: call.id, content: output, isError: false)
-        } catch {
-            authGate.reportFailure(tool: call.function.name, argument: argument)
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            do {
-                let output = try await handler(call.function.arguments)
-                return ToolResult(toolCallId: call.id, content: output, isError: false)
-            } catch {
-                return ToolResult(toolCallId: call.id, content: String(describing: error), isError: true)
-            }
+    private func toolResult(from response: WorkspaceMessageResponse, toolCallID: String) -> ToolResult {
+        switch response.status {
+        case .ok:
+            return ToolResult(toolCallId: toolCallID, content: response.payload?.stringValue() ?? "", isError: false)
+        case .blocked, .failed, .cancelled, .timedOut, .unauthorized:
+            let diagnosticText = response.diagnostics.map { "\($0.code): \($0.message)" }.joined(separator: "\n")
+            return ToolResult(toolCallId: toolCallID, content: diagnosticText.isEmpty ? response.status.rawValue : diagnosticText, isError: true)
         }
     }
 
@@ -183,9 +252,6 @@ class ToolRouter {
         ["write_file", "create_file", "delete_file", "move_file"].contains(name)
     }
 
-    // Stage instead of execute when: a staging buffer is attached (Plan mode) AND
-    // the tool mutates the file system. The buffer shows the diff in the DiffPane
-    // for user review before any bytes hit disk.
     private func shouldStage(
         _ toolName: String,
         stagingBuffer: StagingBuffer?,
@@ -235,17 +301,57 @@ class ToolRouter {
 
     private func stringArguments(from json: String) -> [String: String] {
         guard let data = json.data(using: .utf8),
-              let jsonObject = try? JSONSerialization.jsonObject(with: data) else {
-            return [:]
-        }
-
-        guard let dictionary = jsonObject as? [String: Any] else {
+              let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let dictionary = jsonObject as? [String: Any] else {
             return [:]
         }
 
         return dictionary.reduce(into: [:]) { result, pair in
             result[pair.key] = String(describing: pair.value)
         }
+    }
+
+    private func namespace(for toolName: String) -> String {
+        switch toolName {
+        case "read_file", "write_file", "create_file", "delete_file", "list_directory", "move_file", "search_files":
+            return "builtin.files"
+        case "run_shell", "bash":
+            return "builtin.shell"
+        case let name where name.hasPrefix("xcode_"):
+            return "builtin.xcode"
+        case let name where name.hasPrefix("ui_") || name == "vision_query":
+            return "builtin.ui"
+        case let name where name.hasPrefix("app_"):
+            return "builtin.app"
+        case "rag_search", "rag_list_books":
+            return "builtin.knowledge"
+        case "generate_api_docs", "generate_dev_guide", "write_vale_styles", "scaffold_manual_coverage":
+            return "builtin.discipline"
+        case "tool_discover":
+            return "builtin.app"
+        default:
+            return "builtin.tools"
+        }
+    }
+
+    private func requiredScope(for toolName: String) -> WorkspacePermissionScope {
+        switch toolName {
+        case "read_file", "list_directory", "search_files", "tool_discover", "rag_search", "rag_list_books":
+            return .readOnly
+        case "write_file", "create_file", "delete_file", "move_file", "generate_api_docs", "generate_dev_guide", "write_vale_styles", "scaffold_manual_coverage":
+            return .workspaceWrite
+        case "app_launch", "app_quit", "app_focus", "run_shell", "bash":
+            return .externalSideEffect
+        default:
+            return .externalSideEffect
+        }
+    }
+
+    private func timeout(for toolName: String) -> Duration {
+        if toolName.hasPrefix("xcode_") {
+            return .seconds(600)
+        }
+        return .seconds(120)
     }
 
     private static func dictionary(from json: String) -> [String: Any] {

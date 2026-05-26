@@ -1,4 +1,5 @@
 // MCPBridge — launches MCP servers and registers their tools with ToolRouter.
+// ToolRouter converts those MCP registrations into WorkspaceMessageBus routes.
 //
 // On start(), each configured server is launched as a child process.
 // The bridge sends JSON-RPC over stdio to call tools/list, collects schemas,

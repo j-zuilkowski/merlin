@@ -105,6 +105,47 @@ func registerAllTools(
         return tools.map { "\($0.name): \($0.path)" }.joined(separator: "\n")
     }
 
+    // MARK: Knowledge
+    router.register(name: "rag_search") { _ in
+        "RAG service not configured."
+    }
+    router.register(name: "rag_list_books") { _ in
+        "RAG service not configured."
+    }
+
+    // MARK: Discipline
+    router.register(name: "generate_api_docs") { args in
+        let a = try decode(args, as: ProjectPathArgs.self)
+        let path = a.projectPath ?? AppSettings.shared.projectPath
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+        let out = try await APIDocGenerator().generate(projectPath: path, adapter: adapter)
+        return "API docs generated: \(out)"
+    }
+    router.register(name: "generate_dev_guide") { args in
+        let a = try decode(args, as: ProjectPathArgs.self)
+        let path = a.projectPath ?? AppSettings.shared.projectPath
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+        try await DevGuideGenerator().generate(projectPath: path, adapter: adapter)
+        return "Developer guide updated."
+    }
+    router.register(name: "write_vale_styles") { args in
+        let a = try decode(args, as: ProjectPathArgs.self)
+        let path = a.projectPath ?? AppSettings.shared.projectPath
+        try await ValeStyleWriter().writeStyles(to: path + "/.vale/styles")
+        return "Vale styles written to .vale/styles."
+    }
+    router.register(name: "scaffold_manual_coverage") { args in
+        let a = try decode(args, as: ProjectPathArgs.self)
+        let path = a.projectPath ?? AppSettings.shared.projectPath
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: path)
+        let gaps = await ManualCoverageScanner().scan(projectPath: path, adapter: adapter)
+        let writer = ManualSectionTemplateWriter()
+        for gap in gaps {
+            try await writer.write(gap: gap, to: path + "/docs/manual-coverage.md")
+        }
+        return "Scaffolded \(gaps.count) manual-coverage section(s)."
+    }
+
     // MARK: Xcode
     router.register(name: "xcode_build") { args in
         let a = try decode(args, as: XcodeBuildArgs.self)
@@ -311,3 +352,4 @@ private struct KeyArgs: Decodable { var key: String }
 private struct ScrollArgs: Decodable { var x: Double; var y: Double; var deltaX: Double; var deltaY: Double }
 private struct ScreenshotArgs: Decodable { var bundleId: String?; var quality: Double? }
 private struct VisionQueryArgs: Decodable { var imageId: String; var prompt: String }
+private struct ProjectPathArgs: Decodable { var projectPath: String? }
