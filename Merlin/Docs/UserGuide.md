@@ -476,7 +476,7 @@ Select a memory and click **Delete**. The chunk is immediately removed from the 
 
 ## Electronics / KiCad Domain (v2.0)
 
-Merlin v2.0 adds a complete electronics workflow for designing PCBs with KiCad. The domain is powered by an external MCP server (`merlin-kicad-mcp`) that Merlin launches and communicates with automatically when an electronics session is active.
+Merlin v2.0 adds a complete electronics workflow for designing PCBs with KiCad. Active electronics behavior lives in `plugins/electronics` and communicates through the workspace bus, so tool calls, progress events, artifacts, diagnostics, approvals, and final reports are shared by sessions in the same workspace.
 
 ### Starting an Electronics Session
 
@@ -493,6 +493,12 @@ When you open a project that contains a KiCad project file (`.kicad_pro`), Merli
 | Run ERC / DRC verification | Ask Merlin to verify; results appear in the conversation |
 | Generate BOM and vendor quotes | Ask Merlin to prepare a BOM; Merlin checks Digi-Key and Mouser |
 | Export Gerbers for fabrication | Ask Merlin to export fab files |
+
+### Routing, Artifacts, and Gates
+
+Local FreeRouting is the required completion backend for route passes. Hosted FreeRouting is optional and used only when configured. If KiCad, local FreeRouting, project files, route results, ERC/DRC/parity/CAM checks, or required artifacts are missing, the workflow is blocked with an actionable diagnostic instead of being marked complete.
+
+Completion produces KiCad project files, DSN/SES route artifacts, Gerbers, Excellon drills, BOM, pick-and-place files, drawings, approvals, and a verification report. The electronics job panel shows backend health, progress, artifacts, diagnostics, approvals, and final reports for the active workspace.
 
 ### High-Stakes Signoff
 

@@ -1063,41 +1063,43 @@ Designed against the failure taxonomy in ["Context Decay, Orchestration Drift, a
 
 ## Electronics / KiCad Domain (v2.0)
 
-**Files:** `Merlin/Electronics/`
+**Files:** `Merlin/Electronics/`, `Merlin/Plugins/ElectronicsRuntimePlugin.swift`, `plugins/electronics`
 
-The KiCad domain is Merlin's first non-software domain plugin. It adds a full PCB design workflow on top of the existing MCP and domain-plugin infrastructure.
+The KiCad domain is Merlin's first non-software domain plugin. It adds a full PCB design workflow on top of the workspace bus, runtime-plugin, and domain-plugin infrastructure.
 
 ### Architecture
 
-The domain does not contain any KiCad logic itself. It defines the policy and contract layer; execution is delegated to `merlin-kicad-mcp`, an external MCP server process (not part of this repo) that wraps KiCad CLI and Python scripting.
+Active electronics behavior lives in `plugins/electronics`. The Tier-1 runtime plugin registers bus-backed workflow, tool, verification, settings, artifact, progress, diagnostic, and approval routes. The archived `archive/legacy-merlin-kicad-mcp` scaffold is historical reference only, not an active route.
 
 ```
 AgenticEngine
-    │  calls tools via ToolRouter
+    │  sends tool/workflow requests
     ▼
-MCPBridge ──→ merlin-kicad-mcp (external process, stdio JSON-RPC)
-                    │
-                    ▼
-              KiCad CLI / Python API
+WorkspaceMessageBus ──→ plugins/electronics
+                            │
+                            ▼
+                      KiCad CLI / local FreeRouting
 ```
+
+Local FreeRouting is the required completion backend for `kicad_route_pass`; hosted FreeRouting is optional and configured behind the same bus address. Route passes exchange DSN/SES artifacts, publish progress, support cancellation/timeout, and return blocked diagnostics when tooling, route output, or route completion is missing.
 
 ### Tool Contract
 
-22 tools across 7 workflow stages. All use OpenAI function-calling wire format:
+The product workflow is workflow-first. `workflow.requirements_to_pcb` and `workflow.schematic_to_pcb` are the completion routes; lower-level KiCad tools support those workflows and deterministic verification.
 
 | Stage | Tools |
 |---|---|
 | Ingestion | `kicad_ingest_schematic` |
 | Project generation | `kicad_create_project`, `kicad_write_schematic`, `kicad_assign_footprints` |
 | Board setup | `kicad_set_board_constraints`, `kicad_set_netclasses` |
-| Placement & routing | `kicad_place_components`, `kicad_route_pass`, `kicad_run_freerouting` |
+| Placement & routing | `kicad_place_components`, `kicad_route_pass` |
 | Verification | `kicad_run_erc`, `kicad_run_drc`, `kicad_check_parity`, `kicad_run_spice` |
 | Visual QA | `kicad_capture_schematic_png`, `kicad_capture_pcb_png` |
 | Output | `kicad_export_bom`, `kicad_query_vendor`, `kicad_export_fab`, `kicad_run_cam_checks`, `kicad_submit_order_approval`, `kicad_release_approval` |
 
 ### Hard Gates
 
-Seven verification results block forward progress until they return `PASS` or the operator explicitly overrides:
+Verification results block forward progress until they return `PASS` or the operator explicitly approves a policy-permitted exception. High-stakes signoff cannot be bypassed by permission mode.
 
 1. `ERC_PASS` — no schematic errors
 2. `DRC_PASS` — no layout rule violations
@@ -1106,6 +1108,12 @@ Seven verification results block forward progress until they return `PASS` or th
 5. `CAM_PASS` — Gerber/drill files are structurally valid
 6. `VENDOR_CONFIRMED` — BOM priced and in-stock from at least one vendor
 7. `RELEASE_APPROVED` — operator signoff before any manufacturing action
+
+Required completion artifacts include KiCad project files, DSN/SES routing interchange and result artifacts, Gerbers, Excellon drills, drill reports, BOM, pick-and-place/centroid files, drawings, approval records, and a consolidated verification report. Missing required artifacts or failed gates return a blocked status, never `COMPLETE`.
+
+### Electronics Job Panel
+
+`ElectronicsJobStore` consumes workspace bus events for the active workspace. `ElectronicsJobPanelView` shows backend health, jobs, progress, artifacts, diagnostics, approvals, and reports. Multiple sessions in the same workspace see the same electronics job state because they read from the same workspace bus event stream.
 
 ### Domain Plugin Registration
 
