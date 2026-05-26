@@ -116,6 +116,7 @@
 		1F1667729E16C86F80821A0A /* EngineProviderRetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17E91CB24512371A3FC1E1E2 /* EngineProviderRetryTests.swift */; };
 		1F42954DF9826A4AF007197D /* LocalVectorPluginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E868BA8C00D69D8E23C52863 /* LocalVectorPluginTests.swift */; };
 		205A7FC89ECA9E2507B89E7E /* StepCriterion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D15AB7FB0F2263041179ECA7 /* StepCriterion.swift */; };
+		2061E123DED89A8315BD3006 /* FullGreenRuntimeElectronicsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56A22896B2E6DFFC9907073C /* FullGreenRuntimeElectronicsTests.swift */; };
 		20CE7E1B8ED6F5F66F12B50D /* ModelPerformanceTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89702EADAB9966D9D5BF0D0 /* ModelPerformanceTracker.swift */; };
 		210DEF0084AF315215BDAA4E /* EngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4781CD2816F2B1105F71278 /* EngineFactory.swift */; };
 		21632A8F637164701920CBB1 /* DriftFinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038A2C41C72C6F02BB32904A /* DriftFinding.swift */; };
@@ -1034,6 +1035,7 @@
 		5588F01231256EFA06F34BE5 /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
 		55F40E9AAFB218E238C971D2 /* MistralRSModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MistralRSModelManager.swift; sourceTree = "<group>"; };
 		5656F8B4E67B92EC713547BB /* RetryCounterDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryCounterDeletionTests.swift; sourceTree = "<group>"; };
+		56A22896B2E6DFFC9907073C /* FullGreenRuntimeElectronicsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullGreenRuntimeElectronicsTests.swift; sourceTree = "<group>"; };
 		56D9DD78F980656E3ADB96C8 /* DisciplineEventLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisciplineEventLog.swift; sourceTree = "<group>"; };
 		56E6FB41E80811F714059A39 /* LoRASettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRASettingsTests.swift; sourceTree = "<group>"; };
 		56FE9F8159C0E386EAAA8525 /* WorkspaceRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceRuntimeTests.swift; sourceTree = "<group>"; };
@@ -1992,6 +1994,7 @@
 				A3B2DCF9DAE890AA57D97E3C /* FindingDedupKeyTests.swift */,
 				C2726CB8B65064BAB92A69F1 /* FindingModelTests.swift */,
 				9A81E538FE3358642C714076 /* FloatingWindowRuntimeTests.swift */,
+				56A22896B2E6DFFC9907073C /* FullGreenRuntimeElectronicsTests.swift */,
 				CB2120256176B87BC2BC20D0 /* GitHookHardeningTests.swift */,
 				806574DB9774AB8A504AAF94 /* GitHookInstallerTests.swift */,
 				CE5A0D4973079B49376C181A /* GitHookWiringTests.swift */,
@@ -3142,6 +3145,7 @@
 				22589DB731B05AF273572A95 /* FindingDedupKeyTests.swift in Sources */,
 				C83E71C187931DE53D78802A /* FindingModelTests.swift in Sources */,
 				7C8A884AAFC06E4F33185162 /* FloatingWindowRuntimeTests.swift in Sources */,
+				2061E123DED89A8315BD3006 /* FullGreenRuntimeElectronicsTests.swift in Sources */,
 				FB7F5C506B103EF80063FA4B /* GUIActionTelemetryTests.swift in Sources */,
 				1DE5D704BCDED45CA7855032 /* GitHookHardeningTests.swift in Sources */,
 				645A2804D917956F6C95D429 /* GitHookInstallerTests.swift in Sources */,
