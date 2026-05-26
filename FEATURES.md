@@ -330,6 +330,11 @@ Merlin stores approved memories and session summaries in a local SQLite database
 - `None` disables memory persistence for ephemeral sessions.
 - xcalibre-server remains available as an optional book-content source; it is no longer used for Merlin session memory.
 
+**Workspace message bus** — each workspace owns a shared `WorkspaceRuntime` and
+`WorkspaceMessageBus`. Built-in tools, MCP transports, domain verification,
+settings schemas, progress events, and artifact metadata use the same
+workspace-scoped control plane across all sessions in that project.
+
 ---
 
 ## Behavioral Reliability

@@ -7,6 +7,8 @@ final class WorkspaceRuntime: ObservableObject {
     let merlinHomeURL: URL
     let stateRootURL: URL
     let bus: WorkspaceMessageBus
+    lazy var settingsStore = WorkspaceSettingsStore(runtime: self)
+    lazy var artifactStore = WorkspaceArtifactStore(runtime: self)
     let eventCapacity: Int
 
     convenience init(rootURL: URL) throws {

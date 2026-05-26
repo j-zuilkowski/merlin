@@ -586,6 +586,10 @@ vision/spec links.
 **File:** `Merlin/Engine/ToolRouter.swift`
 
 `ToolRouter` dispatches tool calls from the engine to registered handlers. It is `@MainActor`.
+Production dispatch is bus-backed: a tool name resolves to a `ToolRoute`, then
+the router sends a `WorkspaceMessageRequest` to the active workspace's
+`WorkspaceMessageBus`. Registration conveniences install bus handlers; they are
+not a separate runtime route.
 
 **Dispatch pipeline for each call:**
 
@@ -593,11 +597,92 @@ vision/spec links.
 2. Extract the primary argument (path/command) for auth checking
 3. Skip auth for file-write tools in `autoAccept` mode
 4. Call `authGate.check()` — may suspend to present the auth popup
-5. Look up the handler (local registry first, then MCP)
-6. Execute. On failure, retry once after a 1-second delay
+5. Resolve the `ToolRoute` and build `WorkspaceMessageOrigin`
+6. Send the request to `WorkspaceMessageBus`. On failed handler responses, retry once
 7. Return `ToolResult`
 
 All tool calls in a single LLM response are dispatched in **parallel** via `TaskGroup`.
+
+### WorkspaceRuntime
+
+**Files:** `Merlin/Runtime/WorkspaceRuntime.swift`, `Merlin/Runtime/WorkspaceMessaging.swift`
+
+`WorkspaceRuntime` is the per-workspace runtime container. Each project path gets
+a persisted random workspace UUID under `~/.merlin/workspaces/index.toml`; state
+for that workspace lives under `~/.merlin/workspaces/<workspace-id>/`. All live
+sessions for the same project share the same runtime, bus, settings store, and
+artifact store.
+
+### WorkspaceMessageBus
+
+**File:** `Merlin/Runtime/WorkspaceMessageBus.swift`
+
+`WorkspaceMessageBus` is the workspace control plane. It registers handlers by
+`WorkspaceMessageAddress`, sends request/response messages with timeout and
+cancellation status, publishes recent events, and keeps capability/settings
+schema metadata. `WorkspaceMessageOrigin` records workspace ID, session ID,
+subagent ID, worktree ID, subagent depth, active domains, and permission scope.
+
+### Tool handler groups
+
+The phrase "tool handler groups" refers to these namespace-backed handler
+families.
+
+Built-in tools are grouped by namespace: `builtin.files`, `builtin.shell`,
+`builtin.xcode`, `builtin.ui`, `builtin.app`, `builtin.knowledge`, and
+`builtin.discipline`. Tool utilities such as `FileSystemTools` and `ShellTool`
+remain ordinary implementation helpers behind bus handlers.
+
+### MCP bus transport
+
+`MCPBridge` still owns server lifecycle and tool discovery. MCP tools are
+registered as `mcp.<server>` bus routes through `ToolRouter.registerMCPTool()`,
+so model-visible MCP calls use the same bus path as built-in tools while keeping
+domain filtering and cleanup on disconnect.
+
+### Domain capability routing
+
+The phrase "domain capability routing" refers to `WorkspaceCapability` metadata
+owned by domains.
+
+`DomainPlugin.capabilities` exposes bus-backed tool, verification, workflow,
+settings, and artifact-provider routes. Built-in domains provide Swift metadata;
+`MCPDomainAdapter` maps external manifests to the same `WorkspaceCapability`
+shape.
+
+### Verification routing
+
+The phrase "verification routing" refers to deterministic verification requests
+sent through the workspace bus.
+
+**File:** `Merlin/Runtime/VerificationMessageHandler.swift`
+
+Deterministic verification can run behind a bus route. Existing
+`VerificationBackend` implementations still provide commands, but the runtime
+surface is a `verification` capability addressed through the workspace bus.
+
+### Settings schemas
+
+The phrase "settings schemas" refers to declarative `WorkspaceSettingsSchema`
+metadata rendered and persisted by Merlin.
+
+**File:** `Merlin/Runtime/WorkspaceSettingsStore.swift`
+
+Plugins and domains expose declarative `WorkspaceSettingsSchema` values. Merlin
+persists workspace-specific values under
+`~/.merlin/workspaces/<workspace-id>/settings/<namespace>.toml`; secret fields
+are declared in schema and omitted from the TOML store.
+
+### Event/artifact flow
+
+The phrase "event/artifact flow" refers to recent bus events plus persisted
+artifact metadata.
+
+**File:** `Merlin/Runtime/WorkspaceArtifactStore.swift`
+
+Handlers publish progress, health, diagnostics, approval, settings, and artifact
+events on `WorkspaceMessageBus`. The bus keeps a bounded recent-event buffer;
+artifact metadata is persisted separately in the workspace artifact store.
 
 ### ToolRegistry
 

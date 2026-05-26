@@ -218,6 +218,11 @@ Available providers:
 
 Configure API keys, base URLs, and model names in **Settings → Providers**.
 
+Merlin also has a workspace message bus under the hood. You do not configure it
+directly; it keeps tool calls, MCP tools, domain verification, settings updates,
+progress events, and artifact metadata scoped to the active project and shared by
+that project's sessions.
+
 ---
 
 ## CAG (Cache-Augmented Generation)
