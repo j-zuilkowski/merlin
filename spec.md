@@ -1418,7 +1418,7 @@ See `skill-standard.md` for the full specification. Summary:
 
 ## MCP Server Support [v2]
 
-`MCPBridge` starts configured servers (stdio transport via `Foundation.Process`) and registers their tools into `ToolRouter` as `mcp:<server>:<tool>`. All MCP tool calls go through `AuthGate`. Server configs live in `~/.merlin/mcp.json` or a plugin's `.mcp.json`.
+`MCPBridge` starts configured servers (stdio transport via `Foundation.Process`) and currently registers their tools into `ToolRouter` as `mcp:<server>:<tool>`. The workspace message bus cutover changes the dispatch path: `MCPBridge` still owns server lifecycle and manifests, but MCP tools are registered as bus-backed routes handled by `MCPMessageTransport`. All MCP tool calls continue to go through `AuthGate`. Server configs live in `~/.merlin/mcp.json` or a plugin's `.mcp.json`.
 
 ```json
 {
@@ -1598,7 +1598,9 @@ actor ToolRegistry {
 }
 ```
 
-`ToolRouter` queries `ToolRegistry.shared.all()` for dispatch. There is no enforced count on built-in tools. Tests assert named tools are present via `contains(named:)`, not a total count.
+`ToolRouter` queries `ToolRegistry.shared.all()` for model-visible schemas. There is no enforced count on built-in tools. Tests assert named tools are present via `contains(named:)`, not a total count.
+
+Every model-visible tool is registered as an ordinary `ToolDefinition` plus a `ToolRoute` address. `ToolRegistry` exposes the schema to the model; `ToolRouter` owns dispatch and sends all tool calls through the active workspace's `WorkspaceMessageBus`. There is no supported direct closure dispatch path after the bus cutover.
 
 ### File System Tools [v1]
 
@@ -2355,7 +2357,413 @@ max_subagent_depth = 2     # max spawn_agent nesting depth
 
 Merlin is a general-purpose agentic assistant, not a software development tool. Current focus is software development (Swift/Xcode, any language via SSH or remote plugin), but the architecture is designed so that new domains — electronics (schematics, PCB gerber files), construction (building plans, wiring, plumbing, code compliance), culinary (recipes), or any other — can be added without modifying core Merlin code.
 
-A domain is packaged as an MCP server. It registers at startup and contributes domain-specific task types, a verification backend, complexity keywords, tools, and prompt guidance. The core V5 mechanisms (critic, tracker, planner, routing) consume whatever the active domain provides — they have no knowledge of which domain is running.
+A domain contributes domain-specific task types, verification behavior, complexity keywords, tools, settings schema, and prompt guidance. The core V5 mechanisms (critic, tracker, planner, routing) consume whatever the active domain provides — they have no knowledge of which domain is running.
+
+The committed runtime design is a workspace message bus. It is Merlin's general control plane, not a plugin-only subsystem. Plugins are one participant class on the bus alongside built-in tools, MCP transports, domains, subagents, workflow engines, settings panels, artifact producers, UI progress/status consumers, and future local or remote workers.
+
+1. The shared message contracts define bootstrap metadata, settings schema, message envelope types, capability declarations, and API-version negotiation. These contracts can start in the app target and later move into `MerlinPluginAPI` when the first external plugin target lands, without changing semantics.
+2. Runtime behavior flows through a workspace-scoped `WorkspaceMessageBus`, not through a large direct Swift API.
+3. All model-visible tool calls flow through `WorkspaceMessageBus`; there is no parallel direct `ToolRouter` closure dispatch path.
+4. First-party in-process plugins and out-of-process MCP/store plugins use the same message model as built-in tools; only their transport differs.
+
+This is the required foundation before the runtime plugin loader and before moving electronics into `plugins/electronics/`.
+
+### Workspace-Scoped Message Bus
+
+Each active workspace owns exactly one `WorkspaceRuntime`. The runtime owns the message bus and the shared runtime services for that workspace:
+
+```swift
+@MainActor
+final class WorkspaceRuntime: ObservableObject {
+    let workspaceID: String
+    let rootURL: URL
+    let bus: WorkspaceMessageBus
+    let domainRegistry: DomainRegistry
+    let artifactStore: WorkspaceArtifactStore
+}
+```
+
+`WorkspaceCoordinator` creates or locates a `WorkspaceRuntime` keyed by canonical workspace/project path. The runtime's `workspaceID` is a persisted random UUID, not a path hash. On first open, Merlin writes the UUID under `~/.merlin/workspaces/index.toml` (path → workspace ID) and stores workspace-owned state under `~/.merlin/workspaces/<workspace-id>/`. Moving a project can be handled by updating the index; the ID remains stable once assigned. Every `LiveSession` / `AppState` in that workspace receives a reference to the same runtime. There is no app-global message bus and no per-session message bus.
+
+```text
+WorkspaceCoordinator
+  └── WorkspaceRuntime(path: /project)
+        ├── WorkspaceMessageBus
+        ├── DomainRegistry
+        ├── MCP transports for this workspace
+        ├── built-in tool handlers
+        ├── first-party plugin handlers
+        ├── workflow handlers
+        └── artifact/event stores
+
+LiveSession A ─┐
+LiveSession B ─┼── ToolRouter → workspace WorkspaceMessageBus
+Subagents    ──┘
+```
+
+Shared workspace bus state includes built-in tool handlers, loaded workspace plugins, domain capability registration, MCP/domain transports, electronics/KiCad runtime state, artifact events, plugin/tool health, settings schema, and runtime settings for that workspace. Authorization is not inferred from workspace membership; every message carries origin and permission metadata.
+
+```swift
+struct WorkspaceMessageOrigin: Codable, Sendable, Equatable {
+    var workspaceID: String
+    var sessionID: UUID?
+    var agentID: UUID?
+    var subagentID: UUID?
+    var worktreeID: String?
+    var subagentDepth: Int
+    var permissionScope: WorkspacePermissionScope
+    var activeDomainIDs: [String]
+}
+
+enum WorkspacePermissionScope: String, Codable, Sendable {
+    case readOnly
+    case workspaceWrite
+    case worktreeWrite
+    case externalSideEffect
+    case userApprovedIrreversible
+}
+```
+
+Worker subagents pass a `worktreeID` and `worktreeWrite` scope for file mutations. Explorer subagents pass `readOnly`. Every handler must validate request origin and scope before executing operations with side effects.
+
+### Workspace Message Model
+
+The bus is an actor that routes typed request/response messages and publishes typed events:
+
+```swift
+actor WorkspaceMessageBus {
+    func register(_ handler: any WorkspaceMessageHandler, for address: WorkspaceMessageAddress)
+    func unregister(address: WorkspaceMessageAddress)
+
+    func send(_ request: WorkspaceMessageRequest, timeout: Duration?) async -> WorkspaceMessageResponse
+    func cancel(requestID: UUID) async
+
+    func subscribe(_ filter: WorkspaceMessageEventFilter) -> AsyncStream<WorkspaceMessageEvent>
+    func publish(_ event: WorkspaceMessageEvent) async
+}
+
+struct WorkspaceMessageAddress: Hashable, Codable, Sendable {
+    var namespace: String      // "plugin.electronics", "mcp.kicad", "builtin.software"
+    var capability: String     // "tool.kicad_route_pass", "verify", "settings.validate"
+}
+
+struct WorkspaceMessageRequest: Codable, Sendable {
+    var id: UUID
+    var address: WorkspaceMessageAddress
+    var origin: WorkspaceMessageOrigin
+    var payload: WorkspaceMessagePayload
+    var cancellationGroup: String?
+}
+
+struct WorkspaceMessageResponse: Codable, Sendable {
+    var requestID: UUID
+    var status: WorkspaceMessageResponseStatus
+    var payload: WorkspaceMessagePayload?
+    var artifacts: [WorkspaceArtifactRef]
+    var diagnostics: [WorkspaceDiagnostic]
+}
+
+enum WorkspaceMessageResponseStatus: String, Codable, Sendable {
+    case ok
+    case blocked
+    case failed
+    case cancelled
+    case timedOut
+    case unauthorized
+}
+
+struct WorkspaceMessageEvent: Codable, Sendable {
+    var id: UUID
+    var requestID: UUID?
+    var address: WorkspaceMessageAddress
+    var origin: WorkspaceMessageOrigin?
+    var kind: WorkspaceMessageEventKind
+    var payload: WorkspaceMessagePayload?
+}
+```
+
+Namespace convention:
+
+| Prefix | Owner |
+|---|---|
+| `builtin.files` | File-system tools |
+| `builtin.shell` | Shell/process tools |
+| `builtin.xcode` | Xcode and build tooling |
+| `builtin.ui` | Accessibility, screenshot, vision, and UI automation |
+| `builtin.app` | App launch/control tools |
+| `builtin.agent` | Agent/subagent tools |
+| `builtin.discipline` | Discipline/generator tools |
+| `builtin.knowledge` | RAG/KAG/CAG/search tools |
+| `mcp.<server>` | MCP server transport routes |
+| `domain.<domain>` | Domain verification and domain policy routes |
+| `plugin.<plugin>` | Plugin-owned tools/settings/workflows |
+| `workflow.<workflow>` | Workspace workflow orchestration routes |
+
+`WorkspaceMessagePayload` is encoded as canonical JSON (`Data` plus content type) so the same message can cross an in-process transport, JSON-RPC stdio, HTTP, or a future remote transport. Shared Swift types model the envelope and common payloads; handler-specific payloads are decoded by the handler that owns the address.
+
+Payload policy: request and response payloads are canonical JSON. Binary data is not embedded in bus messages; handlers emit `WorkspaceArtifactRef` values pointing to files or artifact-store entries. This keeps event streams bounded, makes logs inspectable, and avoids copying large KiCad, image, model, or build artifacts through the bus.
+
+Events are the runtime stream for progress, artifacts, health, diagnostics, user-approval needs, and settings validation:
+
+```swift
+enum WorkspaceMessageEventKind: String, Codable, Sendable {
+    case progress
+    case artifactProduced
+    case healthChanged
+    case diagnostic
+    case approvalRequired
+    case settingsChanged
+    case settingsValidation
+}
+```
+
+Each workspace bus keeps a bounded in-memory ring buffer of recent events. Default capacity is `1_000` events. Plugins and domains may request a larger or smaller capacity through their workspace settings schema, but Merlin clamps the effective value to a safe range so one domain cannot exhaust memory. Full event history is not persisted; Merlin persists artifact metadata and final job summaries instead.
+
+Route outcomes:
+
+| Condition | Response status | Diagnostic |
+|---|---|---|
+| Handler returns normal result | `.ok` | Optional diagnostics |
+| Domain/tool blocks on required input or domain condition | `.blocked` | Domain-specific code |
+| No route is registered for the address | `.failed` | `ROUTE_NOT_FOUND` |
+| Handler exceeds timeout | `.timedOut` | `REQUEST_TIMED_OUT` |
+| Request is cancelled | `.cancelled` | `REQUEST_CANCELLED` |
+| Origin lacks the required permission scope | `.unauthorized` | `UNAUTHORIZED_SCOPE` |
+
+Default route timeouts:
+
+| Route class | Timeout |
+|---|---|
+| Metadata/settings/schema | 10 seconds |
+| Normal tools | 120 seconds |
+| Xcode/build/long workflows | Explicit route timeout |
+
+`ToolRouter` runs `AuthGate` before sending side-effecting bus requests. Handlers still enforce `requiredPermissionScope` defensively. The bus itself does not run a second full `AuthGate`; it enforces route existence, timeout, cancellation, event delivery, and handler registration.
+
+### Bus-Backed Tool Calls
+
+`ToolRegistry` remains the source of model-visible tool schemas. `ToolRouter` has one production dispatch path: build a `WorkspaceMessageRequest` and send it to the active workspace's `WorkspaceMessageBus`. Tool implementations live behind cohesive message handlers. Existing helper code may be reused behind handlers, but direct `ToolRouter` closures are not a supported production route.
+
+```swift
+struct ToolRoute: Sendable, Equatable {
+    var toolName: String
+    var address: WorkspaceMessageAddress
+    var timeout: Duration
+    var requiredPermissionScope: WorkspacePermissionScope
+}
+```
+
+Dispatch flow:
+
+1. The model calls a tool by name.
+2. `ToolRouter` resolves the tool's route.
+3. `ToolRouter` builds a `WorkspaceMessageRequest` with the current session/subagent/worktree origin.
+4. `WorkspaceMessageBus.send` routes to the owning handler or transport.
+5. The handler returns `WorkspaceMessageResponse` and may publish progress/artifact events.
+6. `ToolRouter` converts the response into the existing tool-result string for the model.
+
+Completion requires every model-visible tool to use this path:
+
+```text
+AgenticEngine/SubagentEngine
+  → ToolRouter
+  → WorkspaceMessageBus
+  → registered handler or transport
+```
+
+No tool is considered converted while its production execution can bypass `WorkspaceMessageBus`. If old tool code remains, it must be natural domain utility code called by a message handler, not a second routing mechanism. Handler groups should be cohesive and readable rather than a pile of compatibility shims:
+
+- `FileSystemMessageHandler`
+- `ShellMessageHandler`
+- `XcodeMessageHandler`
+- `UIAutomationMessageHandler`
+- `AppControlMessageHandler`
+- `AgentMessageHandler`
+- `DisciplineMessageHandler`
+- `KnowledgeMessageHandler`
+- `MCPMessageTransport`
+
+Representative route addresses:
+
+```text
+builtin.files/read_file
+builtin.files/write_file
+builtin.shell/run_shell
+builtin.xcode/build
+builtin.ui/click
+builtin.agent/spawn_agent
+mcp.<server>/<tool>
+domain.electronics/verify
+plugin.electronics/settings.validate
+workflow.kicad/schematic_to_pcb
+```
+
+### Subagents and the Bus
+
+Subagents share their workspace's bus. They do not create private plugin runtimes and they do not get separate copies of MCP transports or domain handlers.
+
+```text
+Parent AgenticEngine
+  └── ToolRouter(origin: session)
+        └── workspace WorkspaceMessageBus
+
+WorkerSubagentEngine
+  └── ToolRouter(origin: session + subagent + worktree)
+        └── same workspace WorkspaceMessageBus
+```
+
+The bus enforces origin-aware routing rules:
+
+| Origin | Allowed default scope |
+|---|---|
+| Parent session | Session permission mode plus AuthGate decisions |
+| Explorer subagent | `readOnly` only |
+| Worker subagent | `worktreeWrite` for its own worktree; no direct workspace writes |
+| Default subagent | Same maximum scope as parent, still subject to AuthGate |
+
+Cancellation propagates by `requestID` and optional `cancellationGroup`. Cancelling a parent run cancels child bus requests associated with that run, including plugin jobs and MCP calls.
+
+### Runtime Plugin Transports
+
+The bus supports multiple transports behind one handler interface:
+
+```swift
+protocol WorkspaceMessageHandler: Sendable {
+    var addressPrefix: WorkspaceMessageAddress { get }
+    func handle(_ request: WorkspaceMessageRequest, context: WorkspaceHandlerContext) async -> WorkspaceMessageResponse
+}
+
+struct WorkspaceHandlerContext: Sendable {
+    var bus: WorkspaceMessageBus
+    var workspaceRoot: URL
+    var settings: WorkspaceSettingsNamespace
+}
+```
+
+Transport tiers:
+
+| Tier | Transport | Trust boundary | Use |
+|---|---|---|---|
+| Tier 0 | Built-in in-process handler | Merlin core | Built-in software helpers and migration shims |
+| Tier 1 | First-party in-process plugin handler loaded by Merlin | Trusted, built with Merlin | Electronics, future first-party Fusion |
+| Tier 2 | Out-of-process transport via MCP/JSON-RPC/HTTP | Untrusted or third-party | Store plugins, remote workers, external domain servers |
+
+Tier 1 handlers may be loaded through the future `dlopen` plugin loader, but once loaded they still register bus handlers rather than exposing a large direct method surface. Tier 2 handlers are represented by `MCPDomainAdapter` / transport adapters that translate bus requests to the external protocol. Built-in tools are Tier 0 handlers on the same bus, not privileged bypasses.
+
+### Domain Registry and Bus Capabilities
+
+`DomainPlugin` remains metadata and policy. It should not grow into the runtime behavior API. Runtime behavior is advertised as workspace capabilities:
+
+```swift
+struct WorkspaceCapability: Codable, Sendable, Equatable {
+    var id: String
+    var displayName: String
+    var kind: WorkspaceCapabilityKind
+    var address: WorkspaceMessageAddress
+    var requiredPermissionScope: WorkspacePermissionScope
+}
+
+enum WorkspaceCapabilityKind: String, Codable, Sendable {
+    case tool
+    case verification
+    case settings
+    case artifactProvider
+    case workflow
+}
+```
+
+Domains and handlers advertise:
+
+- task types
+- high-stakes keywords
+- system prompt addendum
+- verification capabilities
+- tool capabilities
+- settings schema
+- bus route addresses
+
+`DomainRegistry` stores domain metadata and capability routes. `ToolRegistry` exposes tool capabilities to the model. `CriticEngine` / Stage 1 verification can dispatch a `verification` capability through the bus instead of requiring only shell commands.
+
+### Plugin Settings Through the Bus
+
+Handlers and plugins do not ship SwiftUI settings views. They expose declarative settings schemas through the shared message contracts, and Merlin renders the host UI:
+
+```swift
+struct WorkspaceSettingsSchema: Codable, Sendable, Equatable {
+    var namespace: String
+    var title: String
+    var fields: [WorkspaceSettingsField]
+}
+
+struct WorkspaceSettingsField: Codable, Sendable, Equatable {
+    var key: String
+    var label: String
+    var kind: WorkspaceSettingsFieldKind
+    var defaultValue: WorkspaceSettingsValue?
+    var isSecret: Bool
+    var help: String?
+}
+```
+
+Settings persistence is workspace-scoped by default:
+
+```text
+~/.merlin/workspaces/<workspace-id>/settings/<namespace>.toml
+```
+
+Global defaults may exist, but the workspace value wins. When a user changes a setting, Merlin persists the value and publishes a `.settingsChanged` event on the workspace bus. Plugins validate settings with a `settings.validate` capability and report warnings or required restarts through `.settingsValidation` events.
+
+### Electronics Plugin Implications
+
+The electronics plugin is the first Tier-1 plugin target. It registers bus-backed capabilities for the KiCad/FreeRouting surface:
+
+- `tool.kicad_check_version`
+- `tool.kicad_ingest_schematic`
+- `tool.kicad_build_intent_model`
+- `tool.kicad_route_pass`
+- `tool.kicad_run_erc`
+- `tool.kicad_run_drc`
+- `tool.kicad_export_fab`
+- `workflow.schematic_to_pcb`
+- `workflow.requirements_to_pcb`
+- `verify.electronics`
+- `settings.validate`
+
+`kicad_route_pass` supports the local FreeRouting app and the optional hosted API behind one bus address. Progress, routing iterations, blocked states, generated DSN/SES files, Gerbers, drill files, BOMs, reports, and approval requests are emitted as bus events so all sessions in the workspace can observe the same electronics job state.
+
+### Message Bus Implementation Sequence
+
+The bus architecture must be implemented in this order:
+
+1. Add shared message contracts with envelope types, origin/scope, settings schema, capability declarations, and bootstrap metadata.
+2. Add `WorkspaceRuntime` and make `WorkspaceCoordinator` provide one runtime per workspace.
+3. Add `WorkspaceMessageBus` with in-process handler registration, request timeout, cancellation, and event subscriptions.
+4. Replace `ToolRouter` production dispatch with bus-backed `ToolRoute` resolution.
+5. Convert every built-in model-visible tool into natural handler groups on the bus.
+6. Wire parent sessions, default subagents, explorer subagents, and worker subagents to create correct `WorkspaceMessageOrigin` values.
+7. Represent MCP tools as bus-backed transport routes.
+8. Move domain tool/verification registration to capability metadata plus bus routes.
+9. Add workspace-scoped settings schema rendering, persistence, and validation through the bus.
+10. Add first-party plugin loading for Tier 1 handlers.
+11. Re-home electronics into `plugins/electronics/` as a Tier-1 bus-backed plugin.
+12. Perform the documentation and code-comment sweep before marking the bus complete:
+    - Update `spec.md`, `vision.md`, `FEATURES.md`, `Merlin/Docs/UserGuide.md`, and `Merlin/Docs/DeveloperManual.md`.
+    - Review every new or changed code comment against the spec's code-comment rules: default to no comments; public API additions get doc comments; WHY-comments are added only when the reason is non-obvious; redundant WHAT-comments are removed; `rationale-not-needed:` / `docstring-not-redundant:` overrides are used only with a real reason.
+    - Add or update Developer Manual sections for `WorkspaceRuntime`, `WorkspaceMessageBus`, `WorkspaceMessageOrigin`, tool handler groups, MCP bus transport, domain capability routing, verification routing, settings schemas, and event/artifact flow.
+    - Add code-comment cross references to the Developer Manual only where the code is non-obvious enough to warrant a comment, using the existing style: `// See: Developer Manual § "Section Name"`.
+    - Update the Developer Manual Code Map so every bus-related cross-reference has a matching manual section.
+
+Completion requires all of the following:
+
+- Every model-visible tool dispatches through `WorkspaceMessageBus`.
+- No production `ToolRouter` route bypasses the bus.
+- The same tool call works from the parent session, default subagent, explorer subagent where read-only, and worker subagent with worktree-scoped writes.
+- Authorization is enforced from `WorkspaceMessageOrigin`, not inferred from workspace membership.
+- MCP tools use the bus transport.
+- Domain verification has a bus path.
+- Settings schema, progress/events, artifact references, timeout, and cancellation are functional.
+- Temporary compatibility shims are removed before the work is marked complete.
+- The documentation and code-comment sweep is complete: comments obey the spec's WHY/public-API rules, bus comments cross-reference the Developer Manual where warranted, and the Developer Manual Code Map contains the new bus symbols.
 
 ### DomainPlugin Protocol
 
@@ -2370,12 +2778,16 @@ protocol DomainPlugin {
     var highStakesKeywords: [String] { get }        // elevates complexity tier on match
     var systemPromptAddendum: String? { get }       // domain-specific system prompt addition
     var mcpToolNames: [String] { get }              // tools this domain contributes via MCP
+    var capabilities: [WorkspaceCapability] { get }    // bus-backed tool/verification/workflow routes
+    var settingsSchema: WorkspaceSettingsSchema? { get }
 }
 ```
 
+Existing in-app domains may provide empty `capabilities` and `settingsSchema` during migration. New runtime handlers and plugins must provide capabilities and settings schema through the shared message contracts; direct Swift methods are not the runtime behavior surface.
+
 **MCP bridge — `MCPDomainAdapter`**
 
-MCP servers are external processes communicating via JSON-RPC — they cannot directly conform to a Swift protocol. An MCP domain server advertises its capabilities through a standard resource schema (`merlin://domain/manifest`), and a Swift `MCPDomainAdapter` reads that manifest at connection time and wraps it into a `DomainPlugin`:
+MCP servers are external processes communicating via JSON-RPC — they cannot directly conform to a Swift protocol. An MCP domain server advertises its metadata and bus routes through a standard resource schema (`merlin://domain/manifest`), and a Swift `MCPDomainAdapter` reads that manifest at connection time and wraps it into a `DomainPlugin` plus bus-backed transport routes:
 
 ```swift
 struct MCPDomainAdapter: DomainPlugin {
@@ -2389,11 +2801,13 @@ struct DomainManifest: Decodable {
     var taskTypes: [DomainTaskType]
     var highStakesKeywords: [String]
     var systemPromptAddendum: String?
-    var verificationCommands: [String: [VerificationCommand]]  // taskType.name → commands
+    var verificationCommands: [String: [VerificationCommand]]  // migration path for shell checks
+    var capabilities: [WorkspaceCapability]
+    var settingsSchema: WorkspaceSettingsSchema?
 }
 ```
 
-The built-in `SoftwareDomain` and `ElectronicsDomain` conform directly to `DomainPlugin` in Swift. External domains arrive via `MCPDomainAdapter`; manifest IDs such as `pcb` or `kicad` are canonicalised to the product-facing `electronics` domain where appropriate.
+The built-in `SoftwareDomain` and current in-app `ElectronicsDomain` conform directly to `DomainPlugin` in Swift. The runtime plugin cutover keeps `SoftwareDomain` as a built-in domain, moves electronics into a Tier-1 first-party plugin, and represents external domains through `MCPDomainAdapter` / bus transports. Manifest IDs such as `pcb` or `kicad` are canonicalised to the product-facing `electronics` domain where appropriate.
 
 ### DomainTaskType
 
@@ -2464,7 +2878,7 @@ actor DomainRegistry {
 }
 ```
 
-Domains register at MCP server startup and unregister when the server disconnects. Active domain IDs are session-scoped and stored on each `LiveSession`; the UI resolves status from the current session rather than a toolbar-level singleton. Multi-domain sessions are shipped and use the `DomainRegistry.activeDomains(ids:)` / `taskTypes(ids:)` stateless helpers.
+Domains register when the workspace runtime loads built-ins, first-party plugins, or external transports; they unregister when that plugin or transport disconnects. Active domain IDs are session-scoped and stored on each `LiveSession`; the UI resolves status from the current session rather than a toolbar-level singleton. Multi-domain sessions are shipped and use the `DomainRegistry.activeDomains(ids:)` / `taskTypes(ids:)` stateless helpers.
 
 ### Built-in: Software Domain
 
@@ -2505,18 +2919,19 @@ lint_command   = "swiftlint"
 
 To add a domain (e.g. PCB):
 
-1. Build an MCP server that exposes a `merlin://domain/manifest` resource — `MCPDomainAdapter` reads it at connection time and wraps it into a `DomainPlugin` automatically
-2. Provide `taskTypes`, `highStakesKeywords`, `verificationCommands`, and any MCP tools in the manifest
-3. Set `active_domain = "pcb"` in `config.toml` or switch in Settings
-4. No changes to core Merlin required
+1. Provide a `DomainPlugin` manifest through either a first-party Tier-1 plugin or an out-of-process Tier-2 transport.
+2. Provide `taskTypes`, `highStakesKeywords`, prompt addendum, `WorkspaceCapability` routes, and optional `settingsSchema`.
+3. For Tier 2, expose a `merlin://domain/manifest` resource — `MCPDomainAdapter` reads it at connection time and wraps it into a `DomainPlugin` plus bus-backed transport routes.
+4. Set `active_domain = "pcb"` in `config.toml` or switch in Settings.
+5. No changes to core Merlin required.
 
 The tracker, critic, planner, and routing all adapt automatically to whatever the registered domain provides.
 
 | Decision | Domain system |
 |---|---|
-| Extension mechanism | MCP server exposing `merlin://domain/manifest`; `MCPDomainAdapter` wraps it into `DomainPlugin` |
+| Extension mechanism | Tier-1 first-party plugin or Tier-2 MCP/out-of-process transport, both exposed as bus-backed `WorkspaceCapability` routes |
 | Task types | Domain-registered `DomainTaskType` — no hardcoded enum |
-| Verification | `VerificationBackend` protocol — domain provides check commands |
+| Verification | `VerificationBackend` migration path plus bus-backed `verification` capabilities |
 | Remote execution | `verify_command` can be any shell string, including SSH |
 | Default domain | `SoftwareDomain` — always registered, cannot be removed |
 | Multi-domain | Session-scoped `activeDomainIDs`; `DomainRegistry.activeDomains(ids:)` and `taskTypes(ids:)` resolve without global mutable state |

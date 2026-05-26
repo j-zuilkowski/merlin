@@ -114,19 +114,21 @@ its ROADMAP rewritten — task 01 is no longer "MCP stdio server" but "loadable
 `DomainPlugin` bundle + factory entry point".
 
 **Infrastructure this needs first (before the electronics plugin):**
-- A shared **`MerlinPluginAPI`** module — a dynamic library that both Merlin and every
-  plugin link against — defining the `DomainPlugin` contract (moved out of the app) and
-  a versioned plugin factory entry point. It must be genuinely *shared* (dynamically
-  linked), not statically linked into each side, or host and plugin end up with
-  separate copies of the type metadata. The contract also covers a plugin's
-  **settings schema** — a *declarative* description of the panel's fields, **not** a
-  shipped SwiftUI `View`. The host renders it. Declarative settings sidestep the
-  SwiftUI-across-`dlopen` sharp edge and are the only mechanism that also works for
-  out-of-process (Tier 2) plugins, so both tiers share one settings contract. Each
-  plugin gets its own settings-persistence namespace.
-- A **plugin loader** in Merlin: at launch, scan the plugins location, `dlopen` each
-  bundle, `dlsym` a `@_cdecl` factory symbol, instantiate, register with
-  `DomainRegistry`. Merlin is non-sandboxed, so `dlopen` of bundles is permitted.
+- A **workspace message bus** — one `WorkspaceMessageBus` per `WorkspaceRuntime`, shared
+  by every session and subagent in that workspace. It is Merlin's general control plane,
+  not plugin-only plumbing.
+- **Shared message contracts** — envelope types, origin/scope, settings schema,
+  capabilities, diagnostics, artifact references, timeout/cancellation, and event
+  payloads. These can start in the app target, then move into a shared
+  `MerlinPluginAPI` dynamic library when external plugin targets land.
+- **All tool dispatch through the bus** — `ToolRouter` becomes a bus client. Built-in
+  tools, MCP tools, domain verification, workflow actions, and future plugin tools all
+  use registered handlers/transports. Direct `ToolRouter` closure dispatch is not a
+  completed state.
+- A **plugin loader** in Merlin after the bus foundation: at launch, scan the plugins
+  location, `dlopen` each bundle, `dlsym` a `@_cdecl` factory symbol, instantiate, and
+  register handlers/capabilities. Merlin is non-sandboxed, so `dlopen` of bundles is
+  permitted.
 - **Build wiring** so every `merlin/plugins/*/` package builds to its shared library
   alongside the Merlin build.
 
@@ -145,10 +147,11 @@ for all:
   negligible for domains like electronics whose work is already `kicad-cli`-subprocess
   and HTTP bound.
 
-`DomainPlugin` is the one abstraction over both tiers; `MCPDomainAdapter` already
-bridges Tier 2. Design `MerlinPluginAPI` for both tiers from the start — do not assume
-every plugin is in-process, and do not over-invest in library-evolution resilience for
-a third-party-in-process case that should not exist.
+`DomainPlugin` is metadata and policy over both tiers; runtime behavior flows through
+workspace bus capabilities. `MCPDomainAdapter` bridges Tier 2 by translating bus
+requests to the external protocol. Design the shared message contracts for both tiers
+from the start — do not assume every plugin is in-process, and do not over-invest in
+library-evolution resilience for a third-party-in-process case that should not exist.
 
 **Future — plugin store.** Once the model is proven, a **plugins menu** lets the user
 browse, search, and install plugins from an online store (likely GitHub-hosted). Store
@@ -157,15 +160,17 @@ unsigned downloaded bundles) — never `dlopen`'d into Merlin. It is the marketp
 layer on top of the Tier-2 bridge; deferred until the in-repo first-party model is
 proven, not a prerequisite for it.
 
-**Promotion:** promote to `spec.md` as the plugin-architecture section, then  tasks —
-(1) the `MerlinPluginAPI` shared module (the `DomainPlugin` contract + declarative
-settings-schema, designed for both tiers); (2) the Tier-1 in-process loader + launch
-scan; (3) the build wiring; (4) host-rendered dynamic settings panels in the Settings
-window; (5+) the electronics plugin — the KiCad/FreeRouting ~23-tool contract from the
-old `merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable `DomainPlugin`, with the
-local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
+**Promotion:** promoted to `spec.md` as the workspace message bus architecture. The
+implementation order is now: (1) shared message contracts; (2) `WorkspaceRuntime`; (3)
+`WorkspaceMessageBus`; (4) all built-in tool dispatch converted to bus handlers; (5)
+subagent origin/scope propagation; (6) MCP tools as bus transports; (7) domain
+capabilities and verification through the bus; (8) host-rendered dynamic settings
+panels; (9) the Tier-1 in-process loader + launch scan and build wiring; (10+) the
+electronics plugin — the KiCad/FreeRouting ~23-tool contract from the old
+`merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable plugin with bus handlers and
+the local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
 
-_Status: deferred until after the SDD rename or a separate roadmap branch — this is an architectural pivot, not remediation cleanup. The `merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the above when this is promoted._
+_Status: promoted to `spec.md` as a workspace-scoped Merlin message bus architecture. Implementation must start with `WorkspaceRuntime`, `WorkspaceMessageBus`, and the shared message contracts before the Tier-1 loader or electronics migration. The `merlin/plugins/merlin-kicad-mcp/` scaffold must be reworked into `electronics/` per the above during that implementation._
 
 ## Deferred
 
