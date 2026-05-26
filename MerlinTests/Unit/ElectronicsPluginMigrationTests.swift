@@ -33,8 +33,21 @@ final class ElectronicsPluginMigrationTests: XCTestCase {
             rootURL: URL(fileURLWithPath: "/tmp"),
             merlinHomeURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-electronics-plugin-tests-\(UUID().uuidString)")
         )
-        let plugin = ElectronicsRuntimePlugin()
+        let plugin = ElectronicsRuntimePlugin(routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(
+            status: .complete,
+            artifacts: [ArtifactRef(path: "/tmp/route.ses", kind: ElectronicsArtifactKind.routingResult.rawValue)]
+        )))
         try await plugin.register(into: runtime)
+        let payload = """
+        {
+          "job_id": "migration-route",
+          "board_path": "/tmp/board.kicad_pcb",
+          "dsn_path": "/tmp/route.dsn",
+          "ses_path": "/tmp/route.ses",
+          "log_path": "/tmp/route.log",
+          "max_iterations": 3
+        }
+        """
         let response = await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_route_pass"),
@@ -44,7 +57,7 @@ final class ElectronicsPluginMigrationTests: XCTestCase {
                 activeDomainIDs: [ElectronicsDomain.defaultID],
                 permissionScope: .externalSideEffect
             ),
-            payload: .jsonString("{}"),
+            payload: .jsonString(payload),
             cancellationGroup: nil
         ))
 

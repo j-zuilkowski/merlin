@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "trust_tier": "tier1",
   "enabled": true,
+  "built_in_factory": "electronics",
   "domain_ids": ["electronics"],
   "capabilities": [
     {

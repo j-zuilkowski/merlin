@@ -81,7 +81,7 @@ func repoText(_ relative: String) throws -> String {
     try String(contentsOf: repoURL(relative), encoding: .utf8)
 }
 
-private actor RecordingElectronicsRouteBackend: ElectronicsRoutePassRunning {
+actor RecordingElectronicsRouteBackend: ElectronicsRoutePassRunning {
     private(set) var callCount = 0
     let result: KiCadToolResult
 
@@ -112,5 +112,9 @@ private actor RecordingElectronicsRouteBackend: ElectronicsRoutePassRunning {
             ))
         }
         return result
+    }
+
+    func recordedCallCount() -> Int {
+        callCount
     }
 }

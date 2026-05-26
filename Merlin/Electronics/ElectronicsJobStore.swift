@@ -92,10 +92,23 @@ final class ElectronicsJobStore: ObservableObject {
     private func applyArtifact(_ event: WorkspaceMessageEvent) {
         guard let eventPayload = event.payload,
               let artifact = try? eventPayload.decodeJSON(WorkspaceArtifactRef.self),
-              let jobID = artifact.metadata["job_id"] else { return }
+              let jobID = artifact.metadata["job_id"] else {
+            applyReport(event)
+            return
+        }
         var job = jobForUpdate(id: jobID)
         job.artifacts.removeAll { $0.id == artifact.id }
         job.artifacts.append(artifact)
+        upsert(job)
+    }
+
+    private func applyReport(_ event: WorkspaceMessageEvent) {
+        guard let eventPayload = event.payload,
+              let report = try? eventPayload.decodeJSON(ElectronicsFinalReport.self) else { return }
+        var job = jobForUpdate(id: report.jobID)
+        job.status = report.status
+        job.reports.removeAll { $0.jobID == report.jobID }
+        job.reports.append(report)
         upsert(job)
     }
 

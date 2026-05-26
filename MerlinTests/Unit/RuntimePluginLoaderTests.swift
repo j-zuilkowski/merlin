@@ -21,7 +21,7 @@ final class RuntimePluginLoaderTests: XCTestCase {
         XCTAssertEqual(plugins.first?.capabilities.first?.address.namespace, "plugin.electronics")
     }
 
-    func testEnabledTierOnePluginRegistersBusRoutes() async throws {
+    func testEnabledTierOnePluginWithoutEntrypointDoesNotRegisterPlaceholderRoutes() async throws {
         let root = try makePluginRoot()
         try writePlugin(root: root, id: "demo", displayName: "Demo", tier: "tier1", enabled: true)
         let runtime = try WorkspaceRuntime(
@@ -33,7 +33,9 @@ final class RuntimePluginLoaderTests: XCTestCase {
         try await loader.load(into: runtime)
 
         let hasRoute = await runtime.bus.hasRoute(WorkspaceMessageAddress(namespace: "plugin.demo", capability: "health"))
-        XCTAssertTrue(hasRoute)
+        XCTAssertFalse(hasRoute)
+        let events = await runtime.bus.recentEvents(matching: WorkspaceMessageEventFilter(namespacePrefix: "plugin.demo"))
+        XCTAssertTrue(events.contains { $0.kind == .healthChanged })
     }
 
     func testDisabledPluginDoesNotRegisterRoutesAndTierTwoIsTransportOnly() async throws {

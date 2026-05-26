@@ -170,13 +170,14 @@ electronics plugin — the KiCad/FreeRouting ~23-tool contract from the old
 `merlin-kicad-mcp` ROADMAP, re-homed as a Tier-1 loadable plugin with bus handlers and
 the local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu.
 
-_Status: promoted to `spec.md` and implemented as the workspace-scoped Merlin control plane. The message bus foundation is implemented: `WorkspaceRuntime`, `WorkspaceMessageBus`, shared contracts, bus-backed tool routing, MCP bus transports, workspace settings/events/artifacts, Tier-1 loading, and the electronics bus migration are active. Full KiCad/FreeRouting product completion remains separate follow-on work; the former `merlin/plugins/merlin-kicad-mcp/` scaffold is archived under `archive/legacy-merlin-kicad-mcp/` for historical reference._
+_Status: promoted to `spec.md` and implemented as the workspace-scoped Merlin control plane. The message bus foundation is implemented: `WorkspaceRuntime`, `WorkspaceMessageBus`, shared contracts, bus-backed tool routing, MCP bus transports, workspace settings/events/artifacts, Tier-1 loading, and the electronics bus migration are active. Electronics completion routes are evidence-gated: `LocalFreeRoutingBackend` handles route passes, workflows require artifacts plus gate evidence before returning complete, and missing KiCad/FreeRouting/project/gate evidence returns explicit blocked diagnostics. The former `merlin/plugins/merlin-kicad-mcp/` scaffold is archived under `archive/legacy-merlin-kicad-mcp/` for historical reference._
 
-_Electronics completion decision: the next product pass is workflow-first.
-Completion means requirements-to-PCB and schematic-to-PCB work end to end through
-local FreeRouting, deterministic gates, required artifacts, explicit blocked/error
-states, and an electronics job/status panel. Hosted FreeRouting is optional until
-its API contract is known. Archived MCP code is reference material only._
+_Electronics completion decision: the product pass is workflow-first and no longer
+allows placeholder success. Requirements-to-PCB and schematic-to-PCB routes complete
+only from evidence: local FreeRouting route output, deterministic gates, required
+artifacts, explicit blocked/error states, and the electronics job/status panel.
+Hosted FreeRouting is optional until its API contract is known. Archived MCP code
+is reference material only._
 
 ## Deferred
 
@@ -250,11 +251,11 @@ v2.0 targets single-board designs. Multi-board systems (motherboard + daughterbo
 
 #### Cloud/remote KiCad execution
 
-v2.0 runs `merlin-kicad-mcp` locally alongside the Merlin app. There is no remote/cloud KiCad execution.
+v2.0 runs active electronics behavior through `plugins/electronics` in the Merlin app. There is no remote/cloud KiCad execution.
 
 **Why deferred:** Local execution is simpler, has no per-job cost, and matches the rest of Merlin's local-first stance. KiCad is desktop software.
 
-**Reconsider when:** Routing or simulation jobs grow long enough that the local machine being tied up is a real productivity drag. Natural hook: the same `merlin-kicad-mcp` tool contracts targeting a remote KiCad worker over SSH (already a deferred-roadmap item for Merlin generally).
+**Reconsider when:** Routing or simulation jobs grow long enough that the local machine being tied up is a real productivity drag. Natural hook: the same bus-backed electronics tool contracts targeting a remote KiCad worker over SSH (already a deferred-roadmap item for Merlin generally).
 
 ---
 

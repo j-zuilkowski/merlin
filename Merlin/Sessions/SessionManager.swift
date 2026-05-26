@@ -23,6 +23,9 @@ final class SessionManager: ObservableObject {
         self.projectRef = projectRef
         self.sessionStore = SessionStore(projectPath: projectRef.path)
         self.workspaceRuntime = try! WorkspaceRuntime(rootURL: URL(fileURLWithPath: projectRef.path))
+        Task { [workspaceRuntime] in
+            try? await workspaceRuntime.loadPlugins()
+        }
     }
 
     @discardableResult

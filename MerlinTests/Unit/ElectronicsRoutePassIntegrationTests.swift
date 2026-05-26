@@ -23,7 +23,8 @@ final class ElectronicsRoutePassIntegrationTests: XCTestCase {
         """
         let response = await sendElectronics(runtime, capability: "kicad_route_pass", payload: payload)
         XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.ok)
-        XCTAssertEqual(await backend.callCount, 1)
+        let callCount = await backend.recordedCallCount()
+        XCTAssertEqual(callCount, 1)
         let events = await runtime.bus.recentEvents(matching: WorkspaceMessageEventFilter(namespacePrefix: "plugin.electronics"))
         XCTAssertTrue(events.contains { $0.kind == .artifactProduced })
     }

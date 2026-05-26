@@ -177,6 +177,15 @@ struct ElectronicsFinalReport: Codable, Sendable, Equatable {
     var approvals: [ElectronicsApprovalRecord]
     var blockedReasons: [ElectronicsBlockedReason]
 
+    enum CodingKeys: String, CodingKey {
+        case jobID = "jobId"
+        case status
+        case artifacts
+        case gates
+        case approvals
+        case blockedReasons
+    }
+
     init(jobID: String, evaluation: ElectronicsCompletionEvaluation) {
         self.jobID = jobID
         self.status = evaluation.status
@@ -191,23 +200,34 @@ struct ElectronicsToolingState: Codable, Sendable, Equatable {
     var kiCadAvailable: Bool
     var localFreeRoutingAvailable: Bool
     var hostedFreeRoutingConfigured: Bool
+    var unsupportedVersion: Bool = false
 
     static let available = ElectronicsToolingState(
         kiCadAvailable: true,
         localFreeRoutingAvailable: true,
-        hostedFreeRoutingConfigured: false
+        hostedFreeRoutingConfigured: false,
+        unsupportedVersion: false
     )
 
     static let missingKiCad = ElectronicsToolingState(
         kiCadAvailable: false,
         localFreeRoutingAvailable: true,
-        hostedFreeRoutingConfigured: false
+        hostedFreeRoutingConfigured: false,
+        unsupportedVersion: false
     )
 
     static let missingLocalFreeRouting = ElectronicsToolingState(
         kiCadAvailable: true,
         localFreeRoutingAvailable: false,
-        hostedFreeRoutingConfigured: false
+        hostedFreeRoutingConfigured: false,
+        unsupportedVersion: false
+    )
+
+    static let unsupportedVersion = ElectronicsToolingState(
+        kiCadAvailable: true,
+        localFreeRoutingAvailable: true,
+        hostedFreeRoutingConfigured: false,
+        unsupportedVersion: true
     )
 }
 
@@ -245,4 +265,37 @@ struct ElectronicsCompletionContract: Codable, Sendable, Equatable {
         requiredRoutingBackend: .localFreeRouting,
         hostedRoutingPolicy: .optionalConfigured
     )
+}
+
+struct ElectronicsWorkflowRequest: Codable, Sendable, Equatable {
+    var jobID: String
+    var evidence: ElectronicsCompletionEvidence?
+
+    enum CodingKeys: String, CodingKey {
+        case jobID = "jobId"
+        case evidence
+    }
+}
+
+struct ElectronicsEvidenceStore: Sendable {
+    var rootURL: URL
+
+    func save(report: ElectronicsFinalReport) throws -> URL {
+        let directory = rootURL
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics", isDirectory: true)
+            .appendingPathComponent(report.jobID, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent("final-report.json")
+        try WorkspaceJSON.encoder.encode(report).write(to: url, options: .atomic)
+        return url
+    }
+}
+
+struct ElectronicsGateRunner: Sendable {
+    var evaluator: ElectronicsCompletionEvaluator = ElectronicsCompletionEvaluator()
+
+    func finalReport(jobID: String, evidence: ElectronicsCompletionEvidence) -> ElectronicsFinalReport {
+        ElectronicsFinalReport(jobID: jobID, evaluation: evaluator.evaluate(evidence))
+    }
 }

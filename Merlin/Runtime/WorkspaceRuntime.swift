@@ -44,6 +44,10 @@ final class WorkspaceRuntime: ObservableObject {
             .appendingPathComponent("\(namespace).toml")
     }
 
+    func loadPlugins(pluginRoots: [URL] = RuntimePluginLoader.defaultPluginRoots()) async throws {
+        try await RuntimePluginLoader(pluginRoots: pluginRoots).load(into: self)
+    }
+
     nonisolated static func clampedEventCapacity(_ requested: Int) -> Int {
         min(max(requested, 100), 10_000)
     }
@@ -122,5 +126,17 @@ final class WorkspaceRuntime: ObservableObject {
         value
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+}
+
+extension RuntimePluginLoader {
+    static func defaultPluginRoots() -> [URL] {
+        var roots: [URL] = []
+        if let resourceURL = Bundle.main.resourceURL {
+            roots.append(resourceURL.appendingPathComponent("plugins", isDirectory: true))
+        }
+        roots.append(URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("plugins", isDirectory: true))
+        roots.append(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".merlin/plugins", isDirectory: true))
+        return roots
     }
 }

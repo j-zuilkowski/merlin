@@ -498,6 +498,8 @@ When you open a project that contains a KiCad project file (`.kicad_pro`), Merli
 
 Local FreeRouting is the required completion backend for route passes. Hosted FreeRouting is optional and used only when configured. If KiCad, local FreeRouting, project files, route results, ERC/DRC/parity/CAM checks, or required artifacts are missing, the workflow is blocked with an actionable diagnostic instead of being marked complete.
 
+Completion is evidence-gated. Merlin does not accept placeholder success for electronics workflows: required artifacts and gate results must be present before a workflow can return complete.
+
 Completion produces KiCad project files, DSN/SES route artifacts, Gerbers, Excellon drills, BOM, pick-and-place files, drawings, approvals, and a verification report. The electronics job panel shows backend health, progress, artifacts, diagnostics, approvals, and final reports for the active workspace.
 
 ### High-Stakes Signoff

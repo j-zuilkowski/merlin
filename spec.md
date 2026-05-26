@@ -3005,12 +3005,12 @@ The tracker, critic, planner, and routing all adapt automatically to whatever th
 
 This section is the architecture source of truth for KiCad integration requirements.
 
-KiCad and related electronics workflows are Merlin v2.0 scope. They use the v2 MCP/tool-registry foundation directly and are not deferred to the later generic DomainPlugin milestone.
+KiCad and related electronics workflows are Merlin v2.0 scope. Current active behavior is bus-backed through `plugins/electronics`; the former standalone MCP scaffold is historical reference only.
 
 #### Locked v2.0 decisions
 
 1. Raster/PDF schematic ingestion is in v2.0 scope.
-2. Merlin owns the KiCad MCP server (`merlin-kicad-mcp`).
+2. Merlin owns the electronics plugin surface in `plugins/electronics`; archived `merlin-kicad-mcp` material is reference only.
 3. Extraction confidence is computed from measurable multi-extractor agreement, not LLM self-report.
 4. Ambiguity resolution uses a targeted clarification loop.
 5. Footprint assignment order is: existing KiCad field, exact MPN, package constraint, project default, user clarification.
@@ -3021,7 +3021,7 @@ KiCad and related electronics workflows are Merlin v2.0 scope. They use the v2 M
 10. Distributor integration includes BOM export, pricing/availability lookup, order preparation, and order submission.
 11. Board-house profiles are required immediately, not deferred behind generic Gerber checks.
 12. Placement and net-class repair are allowed automatically; layer-count and fabrication-profile changes require user approval.
-13. Routing uses FreeRouting first, wrapped by `merlin-kicad-mcp` through KiCad DSN/SES interchange.
+13. Routing uses FreeRouting first through the `plugins/electronics` bus route and KiCad DSN/SES interchange.
 14. Schematic mutation uses a Merlin-owned `.kicad_sch` S-expression parser/writer with round-trip tests.
 
 #### Product intents
@@ -3040,13 +3040,11 @@ Merlin must not report success from schematic generation alone. Completion requi
    - GUI + vision: fallback and visual QA only, never sole pass authority.
 3. No KiCad core fork required for MVP; integration is external via CLI/MCP/automation.
 
-#### KiCad MCP server requirement
+#### KiCad plugin tooling requirement
 
-Merlin v2.0 owns the KiCad MCP integration layer. The target server is `merlin-kicad-mcp`, an external MCP server process that wraps KiCad CLI and KiCad's supported scripting/API surfaces behind OpenAI-compatible tool contracts.
+Merlin v2.0 owns the KiCad integration layer inside the active `plugins/electronics` runtime plugin. The archived `merlin-kicad-mcp` scaffold may be inspected for historical prior art, but production coverage is provided by the workspace message bus routes registered by the electronics plugin.
 
-The architecture does not depend on an unnamed community server. Community MCP servers may be inspected for prior art, but production coverage is provided by Merlin's server.
-
-Required MCP coverage:
+Required plugin coverage:
 
 1. Project creation and file discovery
 2. Schematic parse/read/write operations
@@ -3059,7 +3057,7 @@ Required MCP coverage:
 9. SPICE scenario generation, execution, and result parsing
 10. Screenshot/GUI attachment points for visual QA fallback
 
-If the required server or a required tool is unavailable, electronics workflows return `BLOCKED_TOOLING`.
+If required KiCad tooling, FreeRouting tooling, or a required plugin route is unavailable, electronics workflows return `BLOCKED_TOOLING`.
 
 #### Tool contract recommendation
 
@@ -3104,7 +3102,7 @@ Recommended v2.0 tool set:
 | `kicad_submit_vendor_order` | approved vendor cart/order payload | order confirmation or blocked approval/payment state |
 | `kicad_package_release` | fab outputs, verification report | signed release package or pending sign-off state |
 
-Routing decision: v2.0 wraps FreeRouting through `merlin-kicad-mcp` as the first autorouting backend using KiCad DSN/SES interchange, while Merlin owns placement, net-class generation, rule setup, route retry policy, and deterministic KiCad verification after every import. A future custom router can be added behind the same `kicad_route_pass` contract.
+Routing decision: v2.0 wraps FreeRouting through the `plugins/electronics` `kicad_route_pass` bus capability as the first autorouting backend using KiCad DSN/SES interchange, while Merlin owns placement, net-class generation, rule setup, route retry policy, and deterministic KiCad verification after every import. A future custom router can be added behind the same `kicad_route_pass` contract.
 
 Schematic mutation decision: v2.0 owns a strict `.kicad_sch` S-expression parser/writer with round-trip tests. GUI automation is fallback only for operations that cannot be safely expressed through file/API mutation.
 

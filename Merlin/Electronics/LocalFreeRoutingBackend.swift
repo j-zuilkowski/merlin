@@ -25,6 +25,14 @@ protocol FreeRoutingProcessRunning: Sendable {
     func run(executableURL: URL, arguments: [String], timeoutSeconds: Int) async -> FreeRoutingProcessResult
 }
 
+protocol ElectronicsRoutePassRunning: Sendable {
+    func route(
+        _ request: LocalFreeRoutingRequest,
+        bus: WorkspaceMessageBus,
+        origin: WorkspaceMessageOrigin
+    ) async -> KiCadToolResult
+}
+
 struct SystemFreeRoutingProcessRunner: FreeRoutingProcessRunning {
     func run(executableURL: URL, arguments: [String], timeoutSeconds: Int) async -> FreeRoutingProcessResult {
         await withCheckedContinuation { continuation in
@@ -69,7 +77,7 @@ struct SystemFreeRoutingProcessRunner: FreeRoutingProcessRunning {
     }
 }
 
-struct LocalFreeRoutingBackend: Sendable {
+struct LocalFreeRoutingBackend: Sendable, ElectronicsRoutePassRunning {
     var executableURL: URL
     var timeoutSeconds: Int
     var routingBackend: ElectronicsRoutingBackend { .localFreeRouting }

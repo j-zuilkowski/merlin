@@ -523,6 +523,9 @@ final class AppState: ObservableObject {
             showFirstLaunchSetup = false
         }
 
+        Task { [workspaceRuntime = self.workspaceRuntime] in
+            try? await workspaceRuntime.loadPlugins()
+        }
         MerlinAppIntentsSupport.install(appState: self)
     }
 

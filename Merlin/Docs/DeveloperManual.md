@@ -1081,7 +1081,7 @@ WorkspaceMessageBus ──→ plugins/electronics
                       KiCad CLI / local FreeRouting
 ```
 
-Local FreeRouting is the required completion backend for `kicad_route_pass`; hosted FreeRouting is optional and configured behind the same bus address. Route passes exchange DSN/SES artifacts, publish progress, support cancellation/timeout, and return blocked diagnostics when tooling, route output, or route completion is missing.
+Local FreeRouting is the required completion backend for `kicad_route_pass`; hosted FreeRouting is optional and configured behind the same bus address. `LocalFreeRoutingBackend` executes the local route pass, exchanges DSN/SES artifacts, publishes progress, supports cancellation/timeout, and returns blocked diagnostics when tooling, route output, or route completion is missing.
 
 ### Tool Contract
 
@@ -1109,7 +1109,7 @@ Verification results block forward progress until they return `PASS` or the oper
 6. `VENDOR_CONFIRMED` — BOM priced and in-stock from at least one vendor
 7. `RELEASE_APPROVED` — operator signoff before any manufacturing action
 
-Required completion artifacts include KiCad project files, DSN/SES routing interchange and result artifacts, Gerbers, Excellon drills, drill reports, BOM, pick-and-place/centroid files, drawings, approval records, and a consolidated verification report. Missing required artifacts or failed gates return a blocked status, never `COMPLETE`.
+Required completion artifacts include KiCad project files, DSN/SES routing interchange and result artifacts, Gerbers, Excellon drills, drill reports, BOM, pick-and-place/centroid files, drawings, approval records, and a consolidated verification report. Completion is evidence-gated: missing required artifacts or failed gates return a blocked status, and placeholder success responses are treated as defects rather than `COMPLETE`.
 
 ### Electronics Job Panel
 

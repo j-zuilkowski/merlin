@@ -16,9 +16,9 @@ final class WorkspaceRuntimePluginLaunchTests: XCTestCase {
         try await runtime.loadPlugins(pluginRoots: [root])
 
         let route = WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_route_pass")
-        XCTAssertTrue(await runtime.bus.hasRoute(route))
+        let hasRoute = await runtime.bus.hasRoute(route)
+        XCTAssertTrue(hasRoute)
         let events = await runtime.bus.recentEvents(matching: WorkspaceMessageEventFilter(namespacePrefix: "plugin.electronics"))
         XCTAssertTrue(events.contains { $0.kind == .healthChanged })
     }
 }
-
