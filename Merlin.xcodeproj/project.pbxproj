@@ -532,6 +532,7 @@
 		ABEE2B66DAC15E36AB17F326 /* TruncatingMockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E26A48408D5A97B15FB178A /* TruncatingMockProvider.swift */; };
 		AC9115019B64AA2B1B033D62 /* TOMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC940A41BD64C1D0F3201AEF /* TOMLParser.swift */; };
 		ACB3A7848F14F2685367D6B0 /* DocReferenceDanglingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC9284F1CA4DC19A4FDDC032 /* DocReferenceDanglingTests.swift */; };
+		ACEEB18918D01942C3655065 /* LocalFreeRoutingBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFF5BF8839DE3EFEE44BB6FB /* LocalFreeRoutingBackend.swift */; };
 		AD357A18591C5A9EA6ECCE93 /* CalibrationRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A94253A297677AD01FF8BAA /* CalibrationRunner.swift */; };
 		AF10D533F644FEBD64AFEFD5 /* AgenticEngineDocumentCriticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A50393525C9F4685A282CC0 /* AgenticEngineDocumentCriticTests.swift */; };
 		AF7B6C64B1D9AEB98460E23E /* VerificationBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26F883190E34EFA1262B19C /* VerificationBackend.swift */; };
@@ -1303,6 +1304,7 @@
 		BE2430DC88846E44A4B85B18 /* SDDTraceabilityScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SDDTraceabilityScannerTests.swift; sourceTree = "<group>"; };
 		BEA23F54842937B95DFEECB0 /* CalibrationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalibrationCoordinator.swift; sourceTree = "<group>"; };
 		BEF41D65339667C7A65B05B9 /* Connector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connector.swift; sourceTree = "<group>"; };
+		BFF5BF8839DE3EFEE44BB6FB /* LocalFreeRoutingBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFreeRoutingBackend.swift; sourceTree = "<group>"; };
 		BFFFADD7C05F6C91B351BEFA /* SlotPickerEntriesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlotPickerEntriesTests.swift; sourceTree = "<group>"; };
 		C078CB419E91E729C9FFF781 /* SchematicExtractionPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchematicExtractionPolicy.swift; sourceTree = "<group>"; };
 		C0FFAB3E5D9AFC65164EFA60 /* SharedTypesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypesTests.swift; sourceTree = "<group>"; };
@@ -1802,6 +1804,7 @@
 				53577D70935AB3A8612CAF2D /* KiCadToolDefinitions.swift */,
 				0379555CA364B57228C7FD6E /* KiCadV2Core.swift */,
 				1EF8BD263ED8F8E0C39D6E69 /* KiCadWorkflowOrchestrator.swift */,
+				BFF5BF8839DE3EFEE44BB6FB /* LocalFreeRoutingBackend.swift */,
 				C078CB419E91E729C9FFF781 /* SchematicExtractionPolicy.swift */,
 				69C56B827F5D7575DB2F99C4 /* VendorOrderApproval.swift */,
 				B590E503F3721174BB739045 /* VerificationFabPolicy.swift */,
@@ -3459,6 +3462,7 @@
 				B65FF54C8A58D8893D5F61DC /* LoRASettingsSection.swift in Sources */,
 				7F50927666335BC7708917BE /* LoRATrainer.swift in Sources */,
 				5B173BD3CF9D4C73B8775973 /* LocalAIModelManager.swift in Sources */,
+				ACEEB18918D01942C3655065 /* LocalFreeRoutingBackend.swift in Sources */,
 				EF6F3D72CD4F38544750F1B9 /* LocalKAGPlugin.swift in Sources */,
 				33C3F9C8593E8FBFCFC65AE7 /* LocalModelManagerProtocol.swift in Sources */,
 				B0165BB40FA30E0026A94E4B /* LocalModelManagerSupport.swift in Sources */,
