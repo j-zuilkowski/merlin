@@ -1,0 +1,4 @@
+{"timestamp":"2026-05-26T15:39:12.996150Z","level":"WARN","fields":{"message":"config file is world-readable","path":"/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-05-26-merlin-full-gui/rerun-live-20260526T153909Z/xcalibre-work/config.toml"},"target":"backend::config"}
+{"timestamp":"2026-05-26T15:39:12.997931Z","level":"WARN","fields":{"message":"SECURITY: base_url is HTTP and https_only is false. Session cookies will not have the Secure flag. Set server.https_only = true or use an HTTPS base_url in production."},"target":"backend::config"}
+{"timestamp":"2026-05-26T15:39:12.998043Z","level":"WARN","fields":{"message":"jwt_secret was blank; generated a new secret and wrote it back","path":"/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-05-26-merlin-full-gui/rerun-live-20260526T153909Z/xcalibre-work/config.toml"},"target":"backend::config"}
+Error: Address already in use (os error 48)

@@ -1,0 +1,22 @@
+{
+  "model": "qwen3-vl-local",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "An image is attached. Reply with exactly: MERLIN_LOCAL_VISION_OK"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR42mP8z8BQDwAFgwJ/lz9G7wAAAABJRU5ErkJggg=="
+          }
+        }
+      ]
+    }
+  ],
+  "max_tokens": 16,
+  "temperature": 0
+}

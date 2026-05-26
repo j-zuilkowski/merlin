@@ -1,0 +1,27 @@
+{"timestamp":"2026-05-26T14:47:39.159991Z","level":"WARN","fields":{"message":"config file is world-readable","path":"config.toml"},"target":"backend::config"}
+{"timestamp":"2026-05-26T14:47:39.161333Z","level":"WARN","fields":{"message":"SECURITY: base_url is HTTP and https_only is false. Session cookies will not have the Secure flag. Set server.https_only = true or use an HTTPS base_url in production."},"target":"backend::config"}
+{"timestamp":"2026-05-26T14:47:39.189625Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-1","error":"download object for extraction: /tmp/minimal.epub"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:47:44.192521Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-10","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:47:49.196525Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-11","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:47:54.200380Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-12","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:47:59.203717Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-13","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:04.210065Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-14","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:09.215301Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-15","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:14.218000Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-16","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:19.221240Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-17","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:24.224942Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-18","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:29.227810Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-19","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:34.231716Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-2","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:39.235357Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-20","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:44.237988Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-21","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:49.240761Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-22","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:54.243604Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-23","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:48:59.245830Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-24","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:04.248723Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-25","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:09.251551Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-3","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:14.255478Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-4","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:19.259967Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-5","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:24.262968Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-6","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:29.265430Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-7","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:34.267227Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-8","error":"book has no extractable format"},"target":"backend::ingest::text"}
+{"timestamp":"2026-05-26T14:49:39.269550Z","level":"WARN","fields":{"message":"failed to rechunk book","book_id":"book-9","error":"book has no extractable format"},"target":"backend::ingest::text"}

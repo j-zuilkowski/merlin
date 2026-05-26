@@ -1,0 +1,1071 @@
+0.00.077.959 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.077.975 I system_info: n_threads = 12 (n_threads_batch = 12) / 16 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | SME = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.00.077.976 I srv  llama_server: n_parallel is set to auto, using n_parallel = 4 and kv_unified = true
+0.00.077.984 I srv          init: running without SSL
+0.00.078.016 I srv          init: using 15 threads for HTTP server
+0.00.083.030 I srv   load_models: Loaded 0 cached model presets
+0.00.084.766 I srv   load_models: Loaded 3 custom model presets from /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-05-26-merlin-full-gui/llamacpp-router-models.ini
+0.00.085.452 I srv    operator(): Available models (3) (*: custom preset)
+0.00.085.455 I srv    operator():   * default
+0.00.085.456 I srv    operator():   * qwen3-coder-local
+0.00.085.456 I srv    operator():   * qwen3-vl-local
+0.00.085.495 I srv  llama_server: starting router server, no model will be loaded in this process
+0.00.085.497 I srv         start: binding port with default address family
+0.00.086.796 I srv  llama_server: router server is listening on http://127.0.0.1:8081
+0.00.086.797 W srv  llama_server: NOTE: router mode is experimental
+0.00.086.797 W srv  llama_server:       it is not recommended to use this mode in untrusted environments
+1.30.588.988 I srv          load: spawning server instance with name=qwen3-coder-local on port 59970
+1.30.589.013 I srv          load: spawning server instance with args:
+1.30.589.013 I srv          load:   /opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server
+1.30.589.014 I srv          load:   --host
+1.30.589.014 I srv          load:   127.0.0.1
+1.30.589.014 I srv          load:   --jinja
+1.30.589.014 I srv          load:   --metrics
+1.30.589.014 I srv          load:   --port
+1.30.589.015 I srv          load:   59970
+1.30.589.015 I srv          load:   --alias
+1.30.589.015 I srv          load:   qwen3-coder-local
+1.30.589.015 I srv          load:   --ctx-size
+1.30.589.015 I srv          load:   32768
+1.30.589.016 I srv          load:   --model
+1.30.589.016 I srv          load:   /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+1.30.589.016 I srv          load:   --n-gpu-layers
+1.30.589.016 I srv          load:   999
+1.30.589.016 I srv          load:   --parallel
+1.30.589.017 I srv          load:   1
+1.30.593.421 I srv  ensure_model: waiting until model name=qwen3-coder-local is fully loaded...
+[59970] 0.00.060.642 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+[59970] 0.00.060.644 I device_info:
+[59970] 0.00.060.645 I   - BLAS    : Accelerate (0 MiB, 0 MiB free)
+[59970] 0.00.060.650 I   - MTL0    : Apple M4 Max (110100 MiB, 110100 MiB free)
+[59970] 0.00.060.655 I   - CPU     : Apple M4 Max (131072 MiB, 131072 MiB free)
+[59970] 0.00.060.665 I system_info: n_threads = 12 (n_threads_batch = 12) / 16 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | SME = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | 
+[59970] 0.00.060.673 I srv          init: running without SSL
+[59970] 0.00.060.701 I srv          init: using 15 threads for HTTP server
+[59970] 0.00.060.750 I srv         start: binding port with default address family
+[59970] 0.00.062.079 I srv  llama_server: loading model
+[59970] 0.00.062.091 I srv    load_model: loading model '/Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf'
+[59970] 0.00.062.131 I common_init_result: fitting params to device memory ...
+[59970] 0.00.062.134 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+[59970] 0.00.265.060 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+[59970] 0.01.328.984 W llama_context: n_ctx_seq (32768) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+[59970] 0.01.484.099 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+[59970] 0.01.634.246 I srv    load_model: initializing slots, n_slots = 1
+[59970] 0.01.780.482 W common_speculative_init: no implementations specified for speculative decoding
+[59970] 0.01.780.489 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 32768
+[59970] 0.01.780.530 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+[59970] 0.01.780.532 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+[59970] 0.01.780.532 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+[59970] 0.01.780.545 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+[59970] 0.01.792.413 I init: chat template, example_format: '<|im_start|>system
+[59970] You are a helpful assistant<|im_end|>
+[59970] <|im_start|>user
+[59970] Hello<|im_end|>
+[59970] <|im_start|>assistant
+[59970] Hi there<|im_end|>
+[59970] <|im_start|>user
+[59970] How are you?<|im_end|>
+[59970] <|im_start|>assistant
+[59970] '
+[59970] 0.01.801.402 I srv          init: init: chat template, thinking = 0
+[59970] 0.01.801.409 I srv  llama_server: model loaded
+[59970] 0.01.801.411 I srv  llama_server: server is listening on http://127.0.0.1:59970
+[59970] cmd_child_to_router:ready
+[59970] cmd_child_to_router:info:{"id":"qwen3-coder-local","aliases":["qwen3-coder-local"],"tags":[],"object":"model","created":1779809118,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":32768,"n_ctx_train":262144,"n_embd":2048,"n_params":30532122624,"size":32477962240}}
+1.32.405.511 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.01.801.479 I srv  update_slots: all slots are idle
+[59970] 0.01.801.488 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
+[59970] 0.01.845.765 I srv  params_from_: Chat format: peg-native
+[59970] 0.01.847.918 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+[59970] 0.01.847.920 I srv  get_availabl: updating prompt cache
+[59970] 0.01.847.923 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
+[59970] 0.01.847.924 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 32768 tokens, 8589934592 est)
+[59970] 0.01.847.925 I srv  get_availabl: prompt cache update took 0.00 ms
+[59970] 0.01.848.228 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+[59970] 0.07.667.785 I slot print_timing: id  0 | task 0 | n_decoded =    100, tg =  77.12 t/s
+[59970] 0.08.357.501 I slot print_timing: id  0 | task 0 | prompt eval time =    4522.95 ms /  5222 tokens (    0.87 ms per token,  1154.56 tokens per second)
+[59970] 0.08.357.504 I slot print_timing: id  0 | task 0 |        eval time =    1986.32 ms /   151 tokens (   13.15 ms per token,    76.02 tokens per second)
+[59970] 0.08.357.504 I slot print_timing: id  0 | task 0 |       total time =    6509.26 ms /  5373 tokens
+[59970] 0.08.357.505 I slot print_timing: id  0 | task 0 |    graphs reused =        150
+[59970] 0.08.357.674 I slot      release: id  0 | task 0 | stop processing: n_tokens = 5372, truncated = 0
+[59970] 0.08.357.677 I srv  update_slots: all slots are idle
+1.38.999.699 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.08.459.548 I srv  params_from_: Chat format: peg-native
+[59970] 0.08.462.298 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 246990711160
+[59970] 0.08.462.299 I srv  get_availabl: updating prompt cache
+[59970] 0.08.462.461 W srv   prompt_save:  - saving prompt with length 5372, total state size = 503.688 MiB (draft: 0.000 MiB)
+[59970] 0.08.493.227 I srv          load:  - looking for better prompt, base f_keep = 0.077, sim = 0.065
+[59970] 0.08.493.233 I srv        update:  - cache state: 1 prompts, 503.688 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.08.493.234 I srv        update:    - prompt 0x80e432810:    5372 tokens, checkpoints:  0,   503.688 MiB
+[59970] 0.08.493.236 I srv  get_availabl: prompt cache update took 30.94 ms
+[59970] 0.08.493.713 I slot launch_slot_: id  0 | task 154 | processing task, is_child = 0
+[59970] 0.14.503.332 I slot print_timing: id  0 | task 154 | prompt eval time =    5516.88 ms /  5980 tokens (    0.92 ms per token,  1083.95 tokens per second)
+[59970] 0.14.503.336 I slot print_timing: id  0 | task 154 |        eval time =     492.72 ms /    37 tokens (   13.32 ms per token,    75.09 tokens per second)
+[59970] 0.14.503.337 I slot print_timing: id  0 | task 154 |       total time =    6009.60 ms /  6017 tokens
+[59970] 0.14.503.338 I slot print_timing: id  0 | task 154 |    graphs reused =        184
+[59970] 0.14.503.725 I slot      release: id  0 | task 154 | stop processing: n_tokens = 6431, truncated = 0
+[59970] 0.14.503.814 I srv  update_slots: all slots are idle
+1.45.155.847 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.14.620.122 I srv  params_from_: Chat format: peg-native
+[59970] 0.14.622.625 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.103 (> 0.100 thold), f_keep = 0.103
+[59970] 0.14.622.627 I srv  get_availabl: updating prompt cache
+[59970] 0.14.622.796 W srv   prompt_save:  - saving prompt with length 6431, total state size = 602.981 MiB (draft: 0.000 MiB)
+[59970] 0.14.655.477 I srv          load:  - looking for better prompt, base f_keep = 0.103, sim = 0.103
+[59970] 0.14.655.481 I srv        update:  - cache state: 2 prompts, 1106.669 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.14.655.482 I srv        update:    - prompt 0x80e432810:    5372 tokens, checkpoints:  0,   503.688 MiB
+[59970] 0.14.655.483 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.14.655.484 I srv  get_availabl: prompt cache update took 32.86 ms
+[59970] 0.14.655.854 I slot launch_slot_: id  0 | task 194 | processing task, is_child = 0
+[59970] 0.17.679.255 I slot print_timing: id  0 | task 194 | prompt processing, n_tokens =   4096, progress = 0.74, t =   3.02 s / 1354.77 tokens per second
+[59970] 0.21.468.559 I slot print_timing: id  0 | task 194 | n_decoded =    100, tg =  73.73 t/s
+[59970] 0.21.536.859 I slot print_timing: id  0 | task 194 | prompt eval time =    5456.45 ms /  5791 tokens (    0.94 ms per token,  1061.31 tokens per second)
+[59970] 0.21.536.860 I slot print_timing: id  0 | task 194 |        eval time =    1424.55 ms /   105 tokens (   13.57 ms per token,    73.71 tokens per second)
+[59970] 0.21.536.861 I slot print_timing: id  0 | task 194 |       total time =    6880.99 ms /  5896 tokens
+[59970] 0.21.536.861 I slot print_timing: id  0 | task 194 |    graphs reused =        287
+[59970] 0.21.537.032 I slot      release: id  0 | task 194 | stop processing: n_tokens = 6558, truncated = 0
+[59970] 0.21.537.083 I srv  update_slots: all slots are idle
+1.52.177.086 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.21.635.545 I srv  params_from_: Chat format: peg-native
+[59970] 0.21.638.340 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247003890518
+[59970] 0.21.638.342 I srv  get_availabl: updating prompt cache
+[59970] 0.21.638.553 W srv   prompt_save:  - saving prompt with length 6558, total state size = 614.889 MiB (draft: 0.000 MiB)
+[59970] 0.21.673.063 I srv          load:  - looking for better prompt, base f_keep = 0.096, sim = 0.095
+[59970] 0.21.673.070 I srv        update:  - cache state: 3 prompts, 1721.557 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.21.673.071 I srv        update:    - prompt 0x80e432810:    5372 tokens, checkpoints:  0,   503.688 MiB
+[59970] 0.21.673.071 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.21.673.071 I srv        update:    - prompt 0x80e430510:    6558 tokens, checkpoints:  0,   614.889 MiB
+[59970] 0.21.673.072 I srv  get_availabl: prompt cache update took 34.73 ms
+[59970] 0.21.673.418 I slot launch_slot_: id  0 | task 302 | processing task, is_child = 0
+[59970] 0.24.679.799 I slot print_timing: id  0 | task 302 | prompt processing, n_tokens =   4096, progress = 0.72, t =   3.01 s / 1362.44 tokens per second
+[59970] 0.28.776.381 I slot print_timing: id  0 | task 302 | n_decoded =    100, tg =  67.75 t/s
+[59970] 0.28.890.019 I slot print_timing: id  0 | task 302 | prompt eval time =    5626.99 ms /  5968 tokens (    0.94 ms per token,  1060.60 tokens per second)
+[59970] 0.28.890.023 I slot print_timing: id  0 | task 302 |        eval time =    1589.59 ms /   107 tokens (   14.86 ms per token,    67.31 tokens per second)
+[59970] 0.28.890.024 I slot print_timing: id  0 | task 302 |       total time =    7216.58 ms /  6075 tokens
+[59970] 0.28.890.024 I slot print_timing: id  0 | task 302 |    graphs reused =        391
+[59970] 0.28.890.363 I slot      release: id  0 | task 302 | stop processing: n_tokens = 6703, truncated = 0
+[59970] 0.28.890.485 I srv  update_slots: all slots are idle
+1.59.536.045 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.29.006.109 I srv  params_from_: Chat format: peg-native
+[59970] 0.29.008.768 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247011243850
+[59970] 0.29.008.770 I srv  get_availabl: updating prompt cache
+[59970] 0.29.008.970 W srv   prompt_save:  - saving prompt with length 6703, total state size = 628.484 MiB (draft: 0.000 MiB)
+[59970] 0.29.043.626 I srv          load:  - looking for better prompt, base f_keep = 0.062, sim = 0.061
+[59970] 0.29.043.631 I srv        update:  - cache state: 4 prompts, 2350.041 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.29.043.632 I srv        update:    - prompt 0x80e432810:    5372 tokens, checkpoints:  0,   503.688 MiB
+[59970] 0.29.043.632 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.29.043.632 I srv        update:    - prompt 0x80e430510:    6558 tokens, checkpoints:  0,   614.889 MiB
+[59970] 0.29.043.633 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 0.29.043.634 I srv  get_availabl: prompt cache update took 34.86 ms
+[59970] 0.29.043.988 I slot launch_slot_: id  0 | task 412 | processing task, is_child = 0
+[59970] 0.34.133.714 I slot print_timing: id  0 | task 412 | prompt processing, n_tokens =   6144, progress = 0.97, t =   5.09 s / 1207.14 tokens per second
+[59970] 0.36.383.516 I slot print_timing: id  0 | task 412 | n_decoded =    100, tg =  73.22 t/s
+[59970] 0.36.492.166 I slot print_timing: id  0 | task 412 | prompt eval time =    5973.80 ms /  6335 tokens (    0.94 ms per token,  1060.46 tokens per second)
+[59970] 0.36.492.169 I slot print_timing: id  0 | task 412 |        eval time =    1474.37 ms /   108 tokens (   13.65 ms per token,    73.25 tokens per second)
+[59970] 0.36.492.170 I slot print_timing: id  0 | task 412 |       total time =    7448.16 ms /  6443 tokens
+[59970] 0.36.492.170 I slot print_timing: id  0 | task 412 |    graphs reused =        497
+[59970] 0.36.492.362 I slot      release: id  0 | task 412 | stop processing: n_tokens = 6857, truncated = 0
+[59970] 0.36.492.414 I srv  update_slots: all slots are idle
+2.07.128.549 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.36.581.533 I srv  params_from_: Chat format: peg-native
+[59970] 0.36.584.166 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247018845849
+[59970] 0.36.584.167 I srv  get_availabl: updating prompt cache
+[59970] 0.36.584.359 W srv   prompt_save:  - saving prompt with length 6857, total state size = 642.923 MiB (draft: 0.000 MiB)
+[59970] 0.36.622.254 I srv          load:  - looking for better prompt, base f_keep = 0.061, sim = 0.060
+[59970] 0.36.622.261 I srv        update:  - cache state: 5 prompts, 2992.965 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.36.622.261 I srv        update:    - prompt 0x80e432810:    5372 tokens, checkpoints:  0,   503.688 MiB
+[59970] 0.36.622.262 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.36.622.262 I srv        update:    - prompt 0x80e430510:    6558 tokens, checkpoints:  0,   614.889 MiB
+[59970] 0.36.622.263 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 0.36.622.263 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 0.36.622.269 I srv  get_availabl: prompt cache update took 38.09 ms
+[59970] 0.36.622.669 I slot launch_slot_: id  0 | task 524 | processing task, is_child = 0
+[59970] 0.41.720.651 I slot print_timing: id  0 | task 524 | prompt processing, n_tokens =   6144, progress = 0.95, t =   5.10 s / 1205.18 tokens per second
+[59970] 0.44.157.233 I slot print_timing: id  0 | task 524 | n_decoded =    100, tg =  72.16 t/s
+[59970] 0.44.268.424 I slot print_timing: id  0 | task 524 | prompt eval time =    6148.73 ms /  6508 tokens (    0.94 ms per token,  1058.43 tokens per second)
+[59970] 0.44.268.427 I slot print_timing: id  0 | task 524 |        eval time =    1497.01 ms /   108 tokens (   13.86 ms per token,    72.14 tokens per second)
+[59970] 0.44.268.427 I slot print_timing: id  0 | task 524 |       total time =    7645.74 ms /  6616 tokens
+[59970] 0.44.268.428 I slot print_timing: id  0 | task 524 |    graphs reused =        603
+[59970] 0.44.268.621 I slot      release: id  0 | task 524 | stop processing: n_tokens = 7030, truncated = 0
+[59970] 0.44.268.679 I srv  update_slots: all slots are idle
+2.15.225.990 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.44.685.568 I srv  params_from_: Chat format: peg-native
+[59970] 0.44.688.073 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247026622108
+[59970] 0.44.688.074 I srv  get_availabl: updating prompt cache
+[59970] 0.44.688.277 W srv   prompt_save:  - saving prompt with length 7030, total state size = 659.144 MiB (draft: 0.000 MiB)
+[59970] 0.44.726.888 I srv          load:  - looking for better prompt, base f_keep = 0.059, sim = 0.057
+[59970] 0.44.726.896 I srv          load:  - found better prompt with f_keep = 0.972, sim = 0.718
+[59970] 0.44.735.650 I srv        update:  - cache state: 5 prompts, 3148.421 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.44.735.654 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.44.735.655 I srv        update:    - prompt 0x80e430510:    6558 tokens, checkpoints:  0,   614.889 MiB
+[59970] 0.44.735.655 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 0.44.735.655 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 0.44.735.655 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 0.44.735.657 I srv  get_availabl: prompt cache update took 47.58 ms
+[59970] 0.44.735.983 I slot launch_slot_: id  0 | task 636 | processing task, is_child = 0
+[59970] 0.48.471.541 I slot print_timing: id  0 | task 636 | n_decoded =    100, tg =  72.43 t/s
+[59970] 0.48.582.975 I slot print_timing: id  0 | task 636 | prompt eval time =    2354.82 ms /  2048 tokens (    1.15 ms per token,   869.70 tokens per second)
+[59970] 0.48.582.977 I slot print_timing: id  0 | task 636 |        eval time =    1492.16 ms /   108 tokens (   13.82 ms per token,    72.38 tokens per second)
+[59970] 0.48.582.977 I slot print_timing: id  0 | task 636 |       total time =    3846.98 ms /  2156 tokens
+[59970] 0.48.582.978 I slot print_timing: id  0 | task 636 |    graphs reused =        709
+[59970] 0.48.583.160 I slot      release: id  0 | task 636 | stop processing: n_tokens = 7377, truncated = 0
+[59970] 0.48.583.215 I srv  update_slots: all slots are idle
+2.19.818.469 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.49.293.406 I srv  params_from_: Chat format: peg-native
+[59970] 0.49.295.867 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247030936646
+[59970] 0.49.295.869 I srv  get_availabl: updating prompt cache
+[59970] 0.49.296.059 W srv   prompt_save:  - saving prompt with length 7377, total state size = 691.679 MiB (draft: 0.000 MiB)
+[59970] 0.49.334.085 I srv          load:  - looking for better prompt, base f_keep = 0.056, sim = 0.051
+[59970] 0.49.334.093 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.799
+[59970] 0.49.344.634 I srv        update:  - cache state: 5 prompts, 3225.212 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.49.344.637 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.49.344.637 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 0.49.344.638 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 0.49.344.638 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 0.49.344.638 I srv        update:    - prompt 0x80e4306f0:    7377 tokens, checkpoints:  0,   691.679 MiB
+[59970] 0.49.344.639 I srv  get_availabl: prompt cache update took 48.77 ms
+[59970] 0.49.344.986 I slot launch_slot_: id  0 | task 745 | processing task, is_child = 0
+[59970] 0.53.043.566 I slot print_timing: id  0 | task 745 | n_decoded =    100, tg =  65.47 t/s
+[59970] 0.53.136.134 I slot print_timing: id  0 | task 745 | prompt eval time =    2171.22 ms /  1653 tokens (    1.31 ms per token,   761.32 tokens per second)
+[59970] 0.53.136.137 I slot print_timing: id  0 | task 745 |        eval time =    1619.91 ms /   106 tokens (   15.28 ms per token,    65.44 tokens per second)
+[59970] 0.53.136.137 I slot print_timing: id  0 | task 745 |       total time =    3791.13 ms /  1759 tokens
+[59970] 0.53.136.138 I slot print_timing: id  0 | task 745 |    graphs reused =        813
+[59970] 0.53.136.443 I slot      release: id  0 | task 745 | stop processing: n_tokens = 8316, truncated = 0
+[59970] 0.53.136.510 I srv  update_slots: all slots are idle
+2.23.775.803 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.53.237.463 I srv  params_from_: Chat format: peg-native
+[59970] 0.53.239.857 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.854 (> 0.100 thold), f_keep = 1.000
+[59970] 0.53.240.197 I slot launch_slot_: id  0 | task 852 | processing task, is_child = 0
+[59970] 0.56.725.464 I slot print_timing: id  0 | task 852 | n_decoded =    100, tg =  67.67 t/s
+[59970] 0.56.932.401 I slot print_timing: id  0 | task 852 | prompt eval time =    2007.41 ms /  1420 tokens (    1.41 ms per token,   707.38 tokens per second)
+[59970] 0.56.932.404 I slot print_timing: id  0 | task 852 |        eval time =    1684.79 ms /   114 tokens (   14.78 ms per token,    67.66 tokens per second)
+[59970] 0.56.932.404 I slot print_timing: id  0 | task 852 |       total time =    3692.19 ms /  1534 tokens
+[59970] 0.56.932.404 I slot print_timing: id  0 | task 852 |    graphs reused =        925
+[59970] 0.56.932.626 I slot      release: id  0 | task 852 | stop processing: n_tokens = 9849, truncated = 0
+[59970] 0.56.932.679 I srv  update_slots: all slots are idle
+2.27.854.003 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.57.329.055 I srv  params_from_: Chat format: peg-native
+[59970] 0.57.331.523 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.994 (> 0.100 thold), f_keep = 1.000
+[59970] 0.57.331.866 I slot launch_slot_: id  0 | task 967 | processing task, is_child = 0
+[59970] 0.59.195.529 I slot print_timing: id  0 | task 967 | prompt eval time =     185.21 ms /    63 tokens (    2.94 ms per token,   340.15 tokens per second)
+[59970] 0.59.195.532 I slot print_timing: id  0 | task 967 |        eval time =    1678.44 ms /   107 tokens (   15.69 ms per token,    63.75 tokens per second)
+[59970] 0.59.195.532 I slot print_timing: id  0 | task 967 |       total time =    1863.65 ms /   170 tokens
+[59970] 0.59.195.533 I slot print_timing: id  0 | task 967 |    graphs reused =       1029
+[59970] 0.59.195.815 I slot      release: id  0 | task 967 | stop processing: n_tokens = 10018, truncated = 0
+[59970] 0.59.195.873 I srv  update_slots: all slots are idle
+2.29.834.578 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 0.59.291.258 I srv  params_from_: Chat format: peg-native
+[59970] 0.59.293.554 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247041549302
+[59970] 0.59.293.555 I srv  get_availabl: updating prompt cache
+[59970] 0.59.293.787 W srv   prompt_save:  - saving prompt with length 10018, total state size = 939.303 MiB (draft: 0.000 MiB)
+[59970] 0.59.345.036 I srv          load:  - looking for better prompt, base f_keep = 0.041, sim = 0.038
+[59970] 0.59.345.043 I srv        update:  - cache state: 6 prompts, 4164.515 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 0.59.345.043 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 0.59.345.044 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 0.59.345.044 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 0.59.345.045 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 0.59.345.045 I srv        update:    - prompt 0x80e4306f0:    7377 tokens, checkpoints:  0,   691.679 MiB
+[59970] 0.59.345.045 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 0.59.345.051 I srv  get_availabl: prompt cache update took 51.49 ms
+[59970] 0.59.345.412 I slot launch_slot_: id  0 | task 1075 | processing task, is_child = 0
+[59970] 1.04.441.441 I slot print_timing: id  0 | task 1075 | prompt processing, n_tokens =   6144, progress = 0.61, t =   5.10 s / 1205.65 tokens per second
+[59970] 1.06.952.105 I slot print_timing: id  0 | task 1075 | prompt processing, n_tokens =   8192, progress = 0.80, t =   7.61 s / 1076.95 tokens per second
+[59970] 1.09.828.879 I slot print_timing: id  0 | task 1075 | prompt processing, n_tokens =  10240, progress = 0.99, t =  10.48 s / 976.78 tokens per second
+[59970] 1.12.414.980 I slot print_timing: id  0 | task 1075 | n_decoded =    100, tg =  66.71 t/s
+[59970] 1.15.415.122 I slot print_timing: id  0 | task 1075 | n_decoded =    288, tg =  64.01 t/s
+[59970] 1.18.427.598 I slot print_timing: id  0 | task 1075 | n_decoded =    473, tg =  62.97 t/s
+[59970] 1.21.441.927 I slot print_timing: id  0 | task 1075 | n_decoded =    671, tg =  63.75 t/s
+[59970] 1.24.455.668 I slot print_timing: id  0 | task 1075 | n_decoded =    862, tg =  63.66 t/s
+[59970] 1.27.467.168 I slot print_timing: id  0 | task 1075 | n_decoded =   1055, tg =  63.74 t/s
+[59970] 1.30.477.020 I slot print_timing: id  0 | task 1075 | n_decoded =   1251, tg =  63.95 t/s
+[59970] 1.33.486.244 I slot print_timing: id  0 | task 1075 | n_decoded =   1437, tg =  63.67 t/s
+[59970] 1.35.835.142 I slot print_timing: id  0 | task 1075 | prompt eval time =   11570.50 ms / 10397 tokens (    1.11 ms per token,   898.58 tokens per second)
+[59970] 1.35.835.144 I slot print_timing: id  0 | task 1075 |        eval time =   24919.22 ms /  1588 tokens (   15.69 ms per token,    63.73 tokens per second)
+[59970] 1.35.835.145 I slot print_timing: id  0 | task 1075 |       total time =   36489.72 ms / 11985 tokens
+[59970] 1.35.835.145 I slot print_timing: id  0 | task 1075 |    graphs reused =       2609
+[59970] 1.35.835.403 I slot      release: id  0 | task 1075 | stop processing: n_tokens = 12399, truncated = 0
+[59970] 1.35.835.455 I srv  update_slots: all slots are idle
+3.06.471.925 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 1.35.942.122 I srv  params_from_: Chat format: peg-native
+[59970] 1.35.944.759 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247078188889
+[59970] 1.35.944.760 I srv  get_availabl: updating prompt cache
+[59970] 1.35.945.077 W srv   prompt_save:  - saving prompt with length 12399, total state size = 1162.549 MiB (draft: 0.000 MiB)
+[59970] 1.36.009.770 I srv          load:  - looking for better prompt, base f_keep = 0.033, sim = 0.035
+[59970] 1.36.009.777 I srv        update:  - cache state: 7 prompts, 5327.064 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 1.36.009.777 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 1.36.009.778 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 1.36.009.781 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 1.36.009.781 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 1.36.009.781 I srv        update:    - prompt 0x80e4306f0:    7377 tokens, checkpoints:  0,   691.679 MiB
+[59970] 1.36.009.782 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 1.36.009.782 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 1.36.009.783 I srv  get_availabl: prompt cache update took 65.02 ms
+[59970] 1.36.010.119 I slot launch_slot_: id  0 | task 2669 | processing task, is_child = 0
+[59970] 1.41.075.586 I slot print_timing: id  0 | task 2669 | prompt processing, n_tokens =   6144, progress = 0.55, t =   5.07 s / 1212.92 tokens per second
+[59970] 1.43.579.229 I slot print_timing: id  0 | task 2669 | prompt processing, n_tokens =   8192, progress = 0.72, t =   7.57 s / 1082.30 tokens per second
+[59970] 1.46.444.378 I slot print_timing: id  0 | task 2669 | prompt processing, n_tokens =  10240, progress = 0.89, t =  10.43 s / 981.38 tokens per second
+[59970] 1.51.087.270 I slot print_timing: id  0 | task 2669 | n_decoded =    100, tg =  60.96 t/s
+[59970] 1.51.216.381 I slot print_timing: id  0 | task 2669 | prompt eval time =   13436.60 ms / 11612 tokens (    1.16 ms per token,   864.21 tokens per second)
+[59970] 1.51.216.384 I slot print_timing: id  0 | task 2669 |        eval time =    1769.63 ms /   108 tokens (   16.39 ms per token,    61.03 tokens per second)
+[59970] 1.51.216.385 I slot print_timing: id  0 | task 2669 |       total time =   15206.24 ms / 11720 tokens
+[59970] 1.51.216.386 I slot print_timing: id  0 | task 2669 |    graphs reused =       2714
+[59970] 1.51.216.838 I slot      release: id  0 | task 2669 | stop processing: n_tokens = 12134, truncated = 0
+[59970] 1.51.216.908 I srv  update_slots: all slots are idle
+3.22.539.152 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 1.52.016.186 I srv  params_from_: Chat format: peg-native
+[59970] 1.52.018.686 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247093570326
+[59970] 1.52.018.687 I srv  get_availabl: updating prompt cache
+[59970] 1.52.018.979 W srv   prompt_save:  - saving prompt with length 12134, total state size = 1137.702 MiB (draft: 0.000 MiB)
+[59970] 1.52.082.428 I srv          load:  - looking for better prompt, base f_keep = 0.034, sim = 0.033
+[59970] 1.52.082.435 I srv        update:  - cache state: 8 prompts, 6464.767 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 1.52.082.436 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 1.52.082.436 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 1.52.082.437 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 1.52.082.440 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 1.52.082.440 I srv        update:    - prompt 0x80e4306f0:    7377 tokens, checkpoints:  0,   691.679 MiB
+[59970] 1.52.082.441 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 1.52.082.441 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 1.52.082.441 I srv        update:    - prompt 0x80e432590:   12134 tokens, checkpoints:  0,  1137.702 MiB
+[59970] 1.52.082.444 I srv  get_availabl: prompt cache update took 63.76 ms
+[59970] 1.52.082.815 I slot launch_slot_: id  0 | task 2783 | processing task, is_child = 0
+[59970] 1.57.153.409 I slot print_timing: id  0 | task 2783 | prompt processing, n_tokens =   6144, progress = 0.52, t =   5.07 s / 1211.69 tokens per second
+[59970] 1.59.645.029 I slot print_timing: id  0 | task 2783 | prompt processing, n_tokens =   8192, progress = 0.68, t =   7.56 s / 1083.28 tokens per second
+[59970] 2.02.513.393 I slot print_timing: id  0 | task 2783 | prompt processing, n_tokens =  10240, progress = 0.84, t =  10.43 s / 981.73 tokens per second
+[59970] 2.08.201.771 I slot print_timing: id  0 | task 2783 | n_decoded =    100, tg =  60.45 t/s
+[59970] 2.08.609.859 I slot print_timing: id  0 | task 2783 | prompt eval time =   14464.63 ms / 12240 tokens (    1.18 ms per token,   846.20 tokens per second)
+[59970] 2.08.609.863 I slot print_timing: id  0 | task 2783 |        eval time =    2062.40 ms /   124 tokens (   16.63 ms per token,    60.12 tokens per second)
+[59970] 2.08.609.864 I slot print_timing: id  0 | task 2783 |       total time =   16527.03 ms / 12364 tokens
+[59970] 2.08.609.865 I slot print_timing: id  0 | task 2783 |    graphs reused =       2836
+[59970] 2.08.610.409 I slot      release: id  0 | task 2783 | stop processing: n_tokens = 12778, truncated = 0
+[59970] 2.08.610.498 I srv  update_slots: all slots are idle
+3.39.547.489 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 2.09.024.933 I srv  params_from_: Chat format: peg-native
+[59970] 2.09.027.442 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.994 (> 0.100 thold), f_keep = 1.000
+[59970] 2.09.027.778 I slot launch_slot_: id  0 | task 2913 | processing task, is_child = 0
+[59970] 2.11.022.237 I slot print_timing: id  0 | task 2913 | prompt eval time =     229.80 ms /    79 tokens (    2.91 ms per token,   343.78 tokens per second)
+[59970] 2.11.022.240 I slot print_timing: id  0 | task 2913 |        eval time =    1764.64 ms /   114 tokens (   15.48 ms per token,    64.60 tokens per second)
+[59970] 2.11.022.240 I slot print_timing: id  0 | task 2913 |       total time =    1994.44 ms /   193 tokens
+[59970] 2.11.022.240 I slot print_timing: id  0 | task 2913 |    graphs reused =       2948
+[59970] 2.11.022.524 I slot      release: id  0 | task 2913 | stop processing: n_tokens = 12970, truncated = 0
+[59970] 2.11.022.568 I srv  update_slots: all slots are idle
+3.41.889.636 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 2.11.362.607 I srv  params_from_: Chat format: peg-native
+[59970] 2.11.365.229 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247113376011
+[59970] 2.11.365.230 I srv  get_availabl: updating prompt cache
+[59970] 2.11.365.535 W srv   prompt_save:  - saving prompt with length 12970, total state size = 1216.087 MiB (draft: 0.000 MiB)
+[59970] 2.11.433.011 I srv          load:  - looking for better prompt, base f_keep = 0.048, sim = 0.048
+[59970] 2.11.433.019 I srv        update:  - cache state: 9 prompts, 7680.854 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 2.11.433.019 I srv        update:    - prompt 0x80e430290:    6431 tokens, checkpoints:  0,   602.981 MiB
+[59970] 2.11.433.020 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 2.11.433.020 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 2.11.433.023 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 2.11.433.024 I srv        update:    - prompt 0x80e4306f0:    7377 tokens, checkpoints:  0,   691.679 MiB
+[59970] 2.11.433.024 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 2.11.433.024 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 2.11.433.025 I srv        update:    - prompt 0x80e432590:   12134 tokens, checkpoints:  0,  1137.702 MiB
+[59970] 2.11.433.025 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 2.11.433.030 I srv  get_availabl: prompt cache update took 67.80 ms
+[59970] 2.11.433.400 I slot launch_slot_: id  0 | task 3028 | processing task, is_child = 0
+[59970] 2.16.586.859 I slot print_timing: id  0 | task 3028 | prompt processing, n_tokens =   6144, progress = 0.52, t =   5.15 s / 1192.21 tokens per second
+[59970] 2.19.109.205 I slot print_timing: id  0 | task 3028 | prompt processing, n_tokens =   8192, progress = 0.68, t =   7.68 s / 1067.25 tokens per second
+[59970] 2.22.005.614 I slot print_timing: id  0 | task 3028 | prompt processing, n_tokens =  10240, progress = 0.83, t =  10.57 s / 968.58 tokens per second
+[59970] 2.25.268.582 I slot print_timing: id  0 | task 3028 | prompt processing, n_tokens =  12288, progress = 0.99, t =  13.84 s / 888.17 tokens per second
+[59970] 2.27.988.880 I slot print_timing: id  0 | task 3028 | n_decoded =    100, tg =  63.78 t/s
+[59970] 2.28.217.265 I slot print_timing: id  0 | task 3028 | prompt eval time =   14987.59 ms / 12406 tokens (    1.21 ms per token,   827.75 tokens per second)
+[59970] 2.28.217.270 I slot print_timing: id  0 | task 3028 |        eval time =    1796.26 ms /   114 tokens (   15.76 ms per token,    63.47 tokens per second)
+[59970] 2.28.217.271 I slot print_timing: id  0 | task 3028 |       total time =   16783.85 ms / 12520 tokens
+[59970] 2.28.217.272 I slot print_timing: id  0 | task 3028 |    graphs reused =       3059
+[59970] 2.28.217.813 I slot      release: id  0 | task 3028 | stop processing: n_tokens = 13148, truncated = 0
+[59970] 2.28.217.908 I srv  update_slots: all slots are idle
+3.59.127.904 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 2.28.600.952 I srv  params_from_: Chat format: peg-native
+[59970] 2.28.603.534 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247130571300
+[59970] 2.28.603.535 I srv  get_availabl: updating prompt cache
+[59970] 2.28.603.847 W srv   prompt_save:  - saving prompt with length 13148, total state size = 1232.777 MiB (draft: 0.000 MiB)
+[59970] 2.28.674.695 I srv          load:  - looking for better prompt, base f_keep = 0.050, sim = 0.050
+[59970] 2.28.674.705 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.558
+[59970] 2.28.686.771 W srv        update:  - cache size limit reached, removing oldest entry (size = 602.981 MiB)
+[59970] 2.28.686.775 I srv        update:  - cache state: 8 prompts, 7618.970 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 2.28.686.776 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 2.28.686.777 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 2.28.686.777 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 2.28.686.777 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 2.28.686.778 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 2.28.686.778 I srv        update:    - prompt 0x80e432590:   12134 tokens, checkpoints:  0,  1137.702 MiB
+[59970] 2.28.686.778 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 2.28.686.779 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 2.28.686.780 I srv  get_availabl: prompt cache update took 83.24 ms
+[59970] 2.28.687.153 I slot launch_slot_: id  0 | task 3149 | processing task, is_child = 0
+[59970] 2.33.731.859 I slot print_timing: id  0 | task 3149 | prompt processing, n_tokens =   4096, progress = 0.87, t =   5.04 s / 811.94 tokens per second
+[59970] 2.39.093.401 I slot print_timing: id  0 | task 3149 | n_decoded =    100, tg =  63.62 t/s
+[59970] 2.42.100.240 I slot print_timing: id  0 | task 3149 | n_decoded =    290, tg =  63.34 t/s
+[59970] 2.45.109.662 I slot print_timing: id  0 | task 3149 | n_decoded =    480, tg =  63.26 t/s
+[59970] 2.48.113.698 I slot print_timing: id  0 | task 3149 | n_decoded =    670, tg =  63.25 t/s
+[59970] 2.51.128.462 I slot print_timing: id  0 | task 3149 | n_decoded =    856, tg =  62.91 t/s
+[59970] 2.54.135.825 I slot print_timing: id  0 | task 3149 | n_decoded =   1043, tg =  62.78 t/s
+[59970] 2.57.118.960 I slot print_timing: id  0 | task 3149 | prompt eval time =    8834.31 ms /  5839 tokens (    1.51 ms per token,   660.95 tokens per second)
+[59970] 2.57.118.964 I slot print_timing: id  0 | task 3149 |        eval time =   19597.48 ms /  1219 tokens (   16.08 ms per token,    62.20 tokens per second)
+[59970] 2.57.118.965 I slot print_timing: id  0 | task 3149 |       total time =   28431.79 ms /  7058 tokens
+[59970] 2.57.118.966 I slot print_timing: id  0 | task 3149 |    graphs reused =       4271
+[59970] 2.57.119.516 I slot      release: id  0 | task 3149 | stop processing: n_tokens = 14434, truncated = 0
+[59970] 2.57.119.605 I srv  update_slots: all slots are idle
+4.27.765.777 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 2.57.242.650 I srv  params_from_: Chat format: peg-native
+[59970] 2.57.245.171 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247159473003
+[59970] 2.57.245.172 I srv  get_availabl: updating prompt cache
+[59970] 2.57.245.572 W srv   prompt_save:  - saving prompt with length 14434, total state size = 1353.354 MiB (draft: 0.000 MiB)
+[59970] 2.57.377.538 I srv          load:  - looking for better prompt, base f_keep = 0.029, sim = 0.029
+[59970] 2.57.377.549 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.840
+[59970] 2.57.397.651 I srv        update:  - cache state: 8 prompts, 7834.621 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 2.57.397.654 I srv        update:    - prompt 0x80ec935d0:    6703 tokens, checkpoints:  0,   628.484 MiB
+[59970] 2.57.397.655 I srv        update:    - prompt 0x80e431050:    6857 tokens, checkpoints:  0,   642.923 MiB
+[59970] 2.57.397.655 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 2.57.397.655 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 2.57.397.656 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 2.57.397.656 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 2.57.397.656 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 2.57.397.657 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 2.57.397.658 I srv  get_availabl: prompt cache update took 152.48 ms
+[59970] 2.57.398.047 I slot launch_slot_: id  0 | task 4371 | processing task, is_child = 0
+[59970] 3.03.120.345 I slot print_timing: id  0 | task 4371 | n_decoded =    100, tg =  62.38 t/s
+[59970] 3.03.262.533 I slot print_timing: id  0 | task 4371 | prompt eval time =    4119.20 ms /  2315 tokens (    1.78 ms per token,   562.00 tokens per second)
+[59970] 3.03.262.537 I slot print_timing: id  0 | task 4371 |        eval time =    1745.27 ms /   108 tokens (   16.16 ms per token,    61.88 tokens per second)
+[59970] 3.03.262.538 I slot print_timing: id  0 | task 4371 |       total time =    5864.47 ms /  2423 tokens
+[59970] 3.03.262.539 I slot print_timing: id  0 | task 4371 |    graphs reused =       4377
+[59970] 3.03.263.123 I slot      release: id  0 | task 4371 | stop processing: n_tokens = 14556, truncated = 0
+[59970] 3.03.263.201 I srv  update_slots: all slots are idle
+4.35.265.932 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 3.04.735.805 I srv  params_from_: Chat format: peg-native
+[59970] 3.04.738.350 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247165616610
+[59970] 3.04.738.351 I srv  get_availabl: updating prompt cache
+[59970] 3.04.738.710 W srv   prompt_save:  - saving prompt with length 14556, total state size = 1364.793 MiB (draft: 0.000 MiB)
+[59970] 3.04.877.064 I srv          load:  - looking for better prompt, base f_keep = 0.043, sim = 0.050
+[59970] 3.04.877.071 W srv        update:  - cache size limit reached, removing oldest entry (size = 628.484 MiB)
+[59970] 3.04.877.079 W srv        update:  - cache size limit reached, removing oldest entry (size = 642.923 MiB)
+[59970] 3.04.877.080 I srv        update:  - cache state: 7 prompts, 7928.007 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 3.04.877.081 I srv        update:    - prompt 0x80e433f30:    7030 tokens, checkpoints:  0,   659.144 MiB
+[59970] 3.04.877.083 I srv        update:    - prompt 0x80e430e70:   10018 tokens, checkpoints:  0,   939.303 MiB
+[59970] 3.04.877.084 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 3.04.877.084 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 3.04.877.084 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 3.04.877.085 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 3.04.877.085 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 3.04.877.086 I srv  get_availabl: prompt cache update took 138.73 ms
+[59970] 3.04.877.446 I slot launch_slot_: id  0 | task 4481 | processing task, is_child = 0
+[59970] 3.07.882.451 I slot print_timing: id  0 | task 4481 | prompt processing, n_tokens =   4096, progress = 0.38, t =   3.00 s / 1363.06 tokens per second
+[59970] 3.10.083.632 I slot print_timing: id  0 | task 4481 | prompt processing, n_tokens =   6144, progress = 0.54, t =   5.21 s / 1180.14 tokens per second
+[59970] 3.12.641.936 I slot print_timing: id  0 | task 4481 | prompt processing, n_tokens =   8192, progress = 0.71, t =   7.76 s / 1055.06 tokens per second
+[59970] 3.15.558.626 I slot print_timing: id  0 | task 4481 | prompt processing, n_tokens =  10240, progress = 0.87, t =  10.68 s / 958.70 tokens per second
+[59970] 3.20.754.723 I slot print_timing: id  0 | task 4481 | n_decoded =    100, tg =  60.99 t/s
+[59970] 3.20.876.252 I slot print_timing: id  0 | task 4481 | prompt eval time =   14237.75 ms / 11864 tokens (    1.20 ms per token,   833.28 tokens per second)
+[59970] 3.20.876.256 I slot print_timing: id  0 | task 4481 |        eval time =    1761.02 ms /   107 tokens (   16.46 ms per token,    60.76 tokens per second)
+[59970] 3.20.876.257 I slot print_timing: id  0 | task 4481 |       total time =   15998.77 ms / 11971 tokens
+[59970] 3.20.876.258 I slot print_timing: id  0 | task 4481 |    graphs reused =       4481
+[59970] 3.20.877.031 I slot      release: id  0 | task 4481 | stop processing: n_tokens = 12599, truncated = 0
+[59970] 3.20.877.118 I srv  update_slots: all slots are idle
+4.51.526.518 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 3.21.007.284 I srv  params_from_: Chat format: peg-native
+[59970] 3.21.009.837 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247183230519
+[59970] 3.21.009.838 I srv  get_availabl: updating prompt cache
+[59970] 3.21.010.150 W srv   prompt_save:  - saving prompt with length 12599, total state size = 1181.302 MiB (draft: 0.000 MiB)
+[59970] 3.21.126.730 I srv          load:  - looking for better prompt, base f_keep = 0.033, sim = 0.032
+[59970] 3.21.126.737 W srv        update:  - cache size limit reached, removing oldest entry (size = 659.144 MiB)
+[59970] 3.21.126.739 W srv        update:  - cache size limit reached, removing oldest entry (size = 939.303 MiB)
+[59970] 3.21.126.741 I srv        update:  - cache state: 6 prompts, 7510.861 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 3.21.126.742 I srv        update:    - prompt 0x80e430a10:   12399 tokens, checkpoints:  0,  1162.549 MiB
+[59970] 3.21.126.742 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 3.21.126.742 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 3.21.126.743 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 3.21.126.743 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 3.21.126.746 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 3.21.126.747 I srv  get_availabl: prompt cache update took 116.91 ms
+[59970] 3.21.127.130 I slot launch_slot_: id  0 | task 4594 | processing task, is_child = 0
+[59970] 3.26.221.770 I slot print_timing: id  0 | task 4594 | prompt processing, n_tokens =   6144, progress = 0.51, t =   5.09 s / 1205.97 tokens per second
+[59970] 3.28.730.830 I slot print_timing: id  0 | task 4594 | prompt processing, n_tokens =   8192, progress = 0.67, t =   7.60 s / 1077.37 tokens per second
+[59970] 3.31.585.968 I slot print_timing: id  0 | task 4594 | prompt processing, n_tokens =  10240, progress = 0.83, t =  10.46 s / 979.08 tokens per second
+[59970] 3.34.812.112 I slot print_timing: id  0 | task 4594 | prompt processing, n_tokens =  12288, progress = 0.99, t =  13.68 s / 897.92 tokens per second
+[59970] 3.37.602.631 I slot print_timing: id  0 | task 4594 | n_decoded =    100, tg =  62.36 t/s
+[59970] 3.40.603.689 I slot print_timing: id  0 | task 4594 | n_decoded =    281, tg =  61.03 t/s
+[59970] 3.43.611.301 I slot print_timing: id  0 | task 4594 | n_decoded =    462, tg =  60.69 t/s
+[59970] 3.46.619.762 I slot print_timing: id  0 | task 4594 | n_decoded =    641, tg =  60.35 t/s
+[59970] 3.48.460.293 I slot print_timing: id  0 | task 4594 | prompt eval time =   14872.02 ms / 12420 tokens (    1.20 ms per token,   835.13 tokens per second)
+[59970] 3.48.460.295 I slot print_timing: id  0 | task 4594 |        eval time =   12461.13 ms /   749 tokens (   16.64 ms per token,    60.11 tokens per second)
+[59970] 3.48.460.296 I slot print_timing: id  0 | task 4594 |       total time =   27333.15 ms / 13169 tokens
+[59970] 3.48.460.296 I slot print_timing: id  0 | task 4594 |    graphs reused =       5225
+[59970] 3.48.460.591 I slot      release: id  0 | task 4594 | stop processing: n_tokens = 13583, truncated = 0
+[59970] 3.48.460.637 I srv  update_slots: all slots are idle
+5.19.099.990 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 3.48.557.190 I srv  params_from_: Chat format: peg-native
+[59970] 3.48.560.153 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247210814078
+[59970] 3.48.560.156 I srv  get_availabl: updating prompt cache
+[59970] 3.48.560.489 W srv   prompt_save:  - saving prompt with length 13583, total state size = 1273.563 MiB (draft: 0.000 MiB)
+[59970] 3.48.631.899 I srv          load:  - looking for better prompt, base f_keep = 0.031, sim = 0.031
+[59970] 3.48.631.908 W srv        update:  - cache size limit reached, removing oldest entry (size = 1162.549 MiB)
+[59970] 3.48.631.914 I srv        update:  - cache state: 6 prompts, 7621.875 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 3.48.631.917 I srv        update:    - prompt 0x80e432bd0:   12970 tokens, checkpoints:  0,  1216.087 MiB
+[59970] 3.48.631.917 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 3.48.631.918 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 3.48.631.918 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 3.48.631.918 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 3.48.631.918 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 3.48.631.919 I srv  get_availabl: prompt cache update took 71.76 ms
+[59970] 3.48.632.284 I slot launch_slot_: id  0 | task 5350 | processing task, is_child = 0
+[59970] 3.53.716.308 I slot print_timing: id  0 | task 5350 | prompt processing, n_tokens =   6144, progress = 0.48, t =   5.08 s / 1208.49 tokens per second
+[59970] 3.56.222.567 I slot print_timing: id  0 | task 5350 | prompt processing, n_tokens =   8192, progress = 0.63, t =   7.59 s / 1079.28 tokens per second
+[59970] 3.59.068.370 I slot print_timing: id  0 | task 5350 | prompt processing, n_tokens =  10240, progress = 0.78, t =  10.44 s / 981.21 tokens per second
+[59970] 4.02.278.218 I slot print_timing: id  0 | task 5350 | prompt processing, n_tokens =  12288, progress = 0.93, t =  13.65 s / 900.49 tokens per second
+[59970] 4.06.284.499 I slot print_timing: id  0 | task 5350 | n_decoded =    100, tg =  63.81 t/s
+[59970] 4.06.409.303 I slot print_timing: id  0 | task 5350 | prompt eval time =   16084.93 ms / 13184 tokens (    1.22 ms per token,   819.65 tokens per second)
+[59970] 4.06.409.306 I slot print_timing: id  0 | task 5350 |        eval time =    1692.07 ms /   108 tokens (   15.67 ms per token,    63.83 tokens per second)
+[59970] 4.06.409.307 I slot print_timing: id  0 | task 5350 |       total time =   17777.01 ms / 13292 tokens
+[59970] 4.06.409.308 I slot print_timing: id  0 | task 5350 |    graphs reused =       5331
+[59970] 4.06.409.617 I slot      release: id  0 | task 5350 | stop processing: n_tokens = 13706, truncated = 0
+[59970] 4.06.409.669 I srv  update_slots: all slots are idle
+5.37.910.519 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 4.07.377.139 I srv  params_from_: Chat format: peg-native
+[59970] 4.07.379.683 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.102 (> 0.100 thold), f_keep = 0.106
+[59970] 4.07.379.684 I srv  get_availabl: updating prompt cache
+[59970] 4.07.380.031 W srv   prompt_save:  - saving prompt with length 13706, total state size = 1285.095 MiB (draft: 0.000 MiB)
+[59970] 4.07.454.883 I srv          load:  - looking for better prompt, base f_keep = 0.106, sim = 0.102
+[59970] 4.07.454.892 W srv        update:  - cache size limit reached, removing oldest entry (size = 1216.087 MiB)
+[59970] 4.07.454.895 I srv        update:  - cache state: 6 prompts, 7690.883 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 4.07.454.896 I srv        update:    - prompt 0x80ec926d0:   13148 tokens, checkpoints:  0,  1232.777 MiB
+[59970] 4.07.454.896 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 4.07.454.896 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 4.07.454.896 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 4.07.454.897 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 4.07.454.897 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 4.07.454.898 I srv  get_availabl: prompt cache update took 75.21 ms
+[59970] 4.07.455.279 I slot launch_slot_: id  0 | task 5465 | processing task, is_child = 0
+[59970] 4.10.702.783 I slot print_timing: id  0 | task 5465 | prompt processing, n_tokens =   4096, progress = 0.39, t =   3.25 s / 1261.28 tokens per second
+[59970] 4.13.045.793 I slot print_timing: id  0 | task 5465 | prompt processing, n_tokens =   6144, progress = 0.54, t =   5.59 s / 1099.01 tokens per second
+[59970] 4.15.747.464 I slot print_timing: id  0 | task 5465 | prompt processing, n_tokens =   8192, progress = 0.68, t =   8.29 s / 987.92 tokens per second
+[59970] 4.18.822.492 I slot print_timing: id  0 | task 5465 | prompt processing, n_tokens =  10240, progress = 0.82, t =  11.37 s / 900.84 tokens per second
+[59970] 4.22.255.079 I slot print_timing: id  0 | task 5465 | prompt processing, n_tokens =  12288, progress = 0.97, t =  14.80 s / 830.28 tokens per second
+[59970] 4.25.575.381 I slot print_timing: id  0 | task 5465 | n_decoded =    100, tg =  62.11 t/s
+[59970] 4.25.903.613 I slot print_timing: id  0 | task 5465 | prompt eval time =   16510.10 ms / 12724 tokens (    1.30 ms per token,   770.68 tokens per second)
+[59970] 4.25.903.616 I slot print_timing: id  0 | task 5465 |        eval time =    1938.21 ms /   120 tokens (   16.15 ms per token,    61.91 tokens per second)
+[59970] 4.25.903.616 I slot print_timing: id  0 | task 5465 |       total time =   18448.32 ms / 12844 tokens
+[59970] 4.25.903.617 I slot print_timing: id  0 | task 5465 |    graphs reused =       5449
+[59970] 4.25.903.956 I slot      release: id  0 | task 5465 | stop processing: n_tokens = 14294, truncated = 0
+[59970] 4.25.904.012 I srv  update_slots: all slots are idle
+5.56.758.320 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 4.26.224.765 I srv  params_from_: Chat format: peg-native
+[59970] 4.26.227.344 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247248257442
+[59970] 4.26.227.345 I srv  get_availabl: updating prompt cache
+[59970] 4.26.227.674 W srv   prompt_save:  - saving prompt with length 14294, total state size = 1340.227 MiB (draft: 0.000 MiB)
+[59970] 4.26.303.796 I srv          load:  - looking for better prompt, base f_keep = 0.029, sim = 0.029
+[59970] 4.26.303.805 W srv        update:  - cache size limit reached, removing oldest entry (size = 1232.777 MiB)
+[59970] 4.26.303.813 I srv        update:  - cache state: 6 prompts, 7798.334 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 4.26.303.814 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 4.26.303.814 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 4.26.303.815 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 4.26.303.815 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 4.26.303.815 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 4.26.303.816 I srv        update:    - prompt 0x80ec932b0:   14294 tokens, checkpoints:  0,  1340.227 MiB
+[59970] 4.26.303.817 I srv  get_availabl: prompt cache update took 76.47 ms
+[59970] 4.26.304.248 I slot launch_slot_: id  0 | task 5592 | processing task, is_child = 0
+[59970] 4.31.415.272 I slot print_timing: id  0 | task 5592 | prompt processing, n_tokens =   6144, progress = 0.46, t =   5.11 s / 1202.11 tokens per second
+[59970] 4.33.936.524 I slot print_timing: id  0 | task 5592 | prompt processing, n_tokens =   8192, progress = 0.60, t =   7.63 s / 1073.34 tokens per second
+[59970] 4.36.826.626 I slot print_timing: id  0 | task 5592 | prompt processing, n_tokens =  10240, progress = 0.74, t =  10.52 s / 973.16 tokens per second
+[59970] 4.40.070.876 I slot print_timing: id  0 | task 5592 | prompt processing, n_tokens =  12288, progress = 0.88, t =  13.77 s / 892.59 tokens per second
+[59970] 4.45.698.109 I slot print_timing: id  0 | task 5592 | n_decoded =    100, tg =  59.23 t/s
+[59970] 4.46.043.641 I slot print_timing: id  0 | task 5592 | prompt eval time =   17705.62 ms / 13950 tokens (    1.27 ms per token,   787.89 tokens per second)
+[59970] 4.46.043.645 I slot print_timing: id  0 | task 5592 |        eval time =    2033.74 ms /   120 tokens (   16.95 ms per token,    59.00 tokens per second)
+[59970] 4.46.043.646 I slot print_timing: id  0 | task 5592 |       total time =   19739.36 ms / 14070 tokens
+[59970] 4.46.043.647 I slot print_timing: id  0 | task 5592 |    graphs reused =       5567
+[59970] 4.46.044.860 I slot      release: id  0 | task 5592 | stop processing: n_tokens = 14484, truncated = 0
+[59970] 4.46.044.961 I srv  update_slots: all slots are idle
+6.16.886.396 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 4.46.353.755 I srv  params_from_: Chat format: peg-native
+[59970] 4.46.356.371 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247268398350
+[59970] 4.46.356.372 I srv  get_availabl: updating prompt cache
+[59970] 4.46.356.737 W srv   prompt_save:  - saving prompt with length 14484, total state size = 1358.042 MiB (draft: 0.000 MiB)
+[59970] 4.46.434.981 I srv          load:  - looking for better prompt, base f_keep = 0.029, sim = 0.029
+[59970] 4.46.434.991 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.982
+[59970] 4.46.459.415 I srv        update:  - cache state: 6 prompts, 7816.148 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 4.46.459.419 I srv        update:    - prompt 0x80e4301f0:   14434 tokens, checkpoints:  0,  1353.354 MiB
+[59970] 4.46.459.419 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 4.46.459.420 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 4.46.459.420 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 4.46.459.420 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 4.46.459.421 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 4.46.459.421 I srv  get_availabl: prompt cache update took 103.05 ms
+[59970] 4.46.459.837 I slot launch_slot_: id  0 | task 5719 | processing task, is_child = 0
+[59970] 4.48.704.201 I slot print_timing: id  0 | task 5719 | n_decoded =    104, tg =  61.43 t/s
+[59970] 4.48.871.976 I slot print_timing: id  0 | task 5719 | prompt eval time =     551.24 ms /   261 tokens (    2.11 ms per token,   473.48 tokens per second)
+[59970] 4.48.871.980 I slot print_timing: id  0 | task 5719 |        eval time =    1860.88 ms /   114 tokens (   16.32 ms per token,    61.26 tokens per second)
+[59970] 4.48.871.981 I slot print_timing: id  0 | task 5719 |       total time =    2412.11 ms /   375 tokens
+[59970] 4.48.871.982 I slot print_timing: id  0 | task 5719 |    graphs reused =       5678
+[59970] 4.48.872.904 I slot      release: id  0 | task 5719 | stop processing: n_tokens = 14668, truncated = 0
+[59970] 4.48.872.995 I srv  update_slots: all slots are idle
+6.19.756.744 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 4.49.225.516 I srv  params_from_: Chat format: peg-native
+[59970] 4.49.228.000 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247271226392
+[59970] 4.49.228.002 I srv  get_availabl: updating prompt cache
+[59970] 4.49.228.349 W srv   prompt_save:  - saving prompt with length 14668, total state size = 1375.294 MiB (draft: 0.000 MiB)
+[59970] 4.49.306.413 I srv          load:  - looking for better prompt, base f_keep = 0.028, sim = 0.028
+[59970] 4.49.306.421 W srv        update:  - cache size limit reached, removing oldest entry (size = 1353.354 MiB)
+[59970] 4.49.306.426 I srv        update:  - cache state: 6 prompts, 7838.088 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 4.49.306.426 I srv        update:    - prompt 0x80ec93710:   14556 tokens, checkpoints:  0,  1364.793 MiB
+[59970] 4.49.306.427 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 4.49.306.427 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 4.49.306.427 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 4.49.306.427 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 4.49.306.427 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 4.49.306.429 I srv  get_availabl: prompt cache update took 78.42 ms
+[59970] 4.49.306.795 I slot launch_slot_: id  0 | task 5834 | processing task, is_child = 0
+[59970] 4.54.428.215 I slot print_timing: id  0 | task 5834 | prompt processing, n_tokens =   6144, progress = 0.45, t =   5.12 s / 1199.67 tokens per second
+[59970] 4.56.962.616 I slot print_timing: id  0 | task 5834 | prompt processing, n_tokens =   8192, progress = 0.58, t =   7.66 s / 1070.04 tokens per second
+[59970] 4.59.843.012 I slot print_timing: id  0 | task 5834 | prompt processing, n_tokens =  10240, progress = 0.72, t =  10.54 s / 971.89 tokens per second
+[59970] 5.03.052.131 I slot print_timing: id  0 | task 5834 | prompt processing, n_tokens =  12288, progress = 0.86, t =  13.75 s / 893.98 tokens per second
+[59970] 5.09.143.887 I slot print_timing: id  0 | task 5834 | n_decoded =    100, tg =  61.79 t/s
+[59970] 5.09.391.003 I slot print_timing: id  0 | task 5834 | prompt eval time =   18218.60 ms / 14318 tokens (    1.27 ms per token,   785.90 tokens per second)
+[59970] 5.09.391.006 I slot print_timing: id  0 | task 5834 |        eval time =    1865.60 ms /   115 tokens (   16.22 ms per token,    61.64 tokens per second)
+[59970] 5.09.391.006 I slot print_timing: id  0 | task 5834 |       total time =   20084.19 ms / 14433 tokens
+[59970] 5.09.391.007 I slot print_timing: id  0 | task 5834 |    graphs reused =       5791
+[59970] 5.09.391.355 I slot      release: id  0 | task 5834 | stop processing: n_tokens = 14847, truncated = 0
+[59970] 5.09.391.400 I srv  update_slots: all slots are idle
+6.40.286.867 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 5.09.768.286 I srv  params_from_: Chat format: peg-native
+[59970] 5.09.770.742 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247291744842
+[59970] 5.09.770.743 I srv  get_availabl: updating prompt cache
+[59970] 5.09.771.090 W srv   prompt_save:  - saving prompt with length 14847, total state size = 1392.077 MiB (draft: 0.000 MiB)
+[59970] 5.09.850.267 I srv          load:  - looking for better prompt, base f_keep = 0.042, sim = 0.042
+[59970] 5.09.850.276 W srv        update:  - cache size limit reached, removing oldest entry (size = 1364.793 MiB)
+[59970] 5.09.850.280 I srv        update:  - cache state: 6 prompts, 7865.373 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 5.09.850.280 I srv        update:    - prompt 0x80e4312d0:   12599 tokens, checkpoints:  0,  1181.302 MiB
+[59970] 5.09.850.282 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 5.09.850.282 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 5.09.850.285 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 5.09.850.285 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 5.09.850.285 I srv        update:    - prompt 0x80e430a10:   14847 tokens, checkpoints:  0,  1392.077 MiB
+[59970] 5.09.850.286 I srv  get_availabl: prompt cache update took 79.54 ms
+[59970] 5.09.850.657 I slot launch_slot_: id  0 | task 5956 | processing task, is_child = 0
+[59970] 5.15.024.574 I slot print_timing: id  0 | task 5956 | prompt processing, n_tokens =   6144, progress = 0.45, t =   5.17 s / 1187.50 tokens per second
+[59970] 5.17.574.396 I slot print_timing: id  0 | task 5956 | prompt processing, n_tokens =   8192, progress = 0.59, t =   7.72 s / 1060.63 tokens per second
+[59970] 5.20.459.431 I slot print_timing: id  0 | task 5956 | prompt processing, n_tokens =  10240, progress = 0.73, t =  10.61 s / 965.24 tokens per second
+[59970] 5.23.707.807 I slot print_timing: id  0 | task 5956 | prompt processing, n_tokens =  12288, progress = 0.87, t =  13.86 s / 886.76 tokens per second
+[59970] 5.29.986.548 I slot print_timing: id  0 | task 5956 | n_decoded =    100, tg =  56.88 t/s
+[59970] 5.30.241.965 I slot print_timing: id  0 | task 5956 | prompt eval time =   18377.81 ms / 14280 tokens (    1.29 ms per token,   777.02 tokens per second)
+[59970] 5.30.241.971 I slot print_timing: id  0 | task 5956 |        eval time =    2013.47 ms /   114 tokens (   17.66 ms per token,    56.62 tokens per second)
+[59970] 5.30.241.972 I slot print_timing: id  0 | task 5956 |       total time =   20391.29 ms / 14394 tokens
+[59970] 5.30.241.972 I slot print_timing: id  0 | task 5956 |    graphs reused =       5903
+[59970] 5.30.243.056 I slot      release: id  0 | task 5956 | stop processing: n_tokens = 15022, truncated = 0
+[59970] 5.30.243.175 I srv  update_slots: all slots are idle
+7.01.143.392 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 5.30.628.506 I srv  params_from_: Chat format: peg-native
+[59970] 5.30.631.091 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247312596544
+[59970] 5.30.631.092 I srv  get_availabl: updating prompt cache
+[59970] 5.30.631.438 W srv   prompt_save:  - saving prompt with length 15022, total state size = 1408.486 MiB (draft: 0.000 MiB)
+[59970] 5.30.712.307 I srv          load:  - looking for better prompt, base f_keep = 0.028, sim = 0.027
+[59970] 5.30.712.316 W srv        update:  - cache size limit reached, removing oldest entry (size = 1181.302 MiB)
+[59970] 5.30.712.319 I srv        update:  - cache state: 6 prompts, 8092.557 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 5.30.712.323 I srv        update:    - prompt 0x80e433350:   13583 tokens, checkpoints:  0,  1273.563 MiB
+[59970] 5.30.712.323 I srv        update:    - prompt 0x80e431410:   13706 tokens, checkpoints:  0,  1285.095 MiB
+[59970] 5.30.712.324 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 5.30.712.324 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 5.30.712.324 I srv        update:    - prompt 0x80e430a10:   14847 tokens, checkpoints:  0,  1392.077 MiB
+[59970] 5.30.712.326 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 5.30.712.328 I srv  get_availabl: prompt cache update took 81.23 ms
+[59970] 5.30.712.700 I slot launch_slot_: id  0 | task 6077 | processing task, is_child = 0
+[59970] 5.35.809.991 I slot print_timing: id  0 | task 6077 | prompt processing, n_tokens =   6144, progress = 0.43, t =   5.10 s / 1205.35 tokens per second
+[59970] 5.38.307.676 I slot print_timing: id  0 | task 6077 | prompt processing, n_tokens =   8192, progress = 0.57, t =   7.59 s / 1078.61 tokens per second
+[59970] 5.41.212.327 I slot print_timing: id  0 | task 6077 | prompt processing, n_tokens =  10240, progress = 0.71, t =  10.50 s / 975.27 tokens per second
+[59970] 5.44.473.613 I slot print_timing: id  0 | task 6077 | prompt processing, n_tokens =  12288, progress = 0.84, t =  13.76 s / 892.96 tokens per second
+[59970] 5.48.064.205 I slot print_timing: id  0 | task 6077 | prompt processing, n_tokens =  14336, progress = 0.98, t =  17.35 s / 826.21 tokens per second
+[59970] 5.51.362.538 I slot print_timing: id  0 | task 6077 | n_decoded =    100, tg =  61.55 t/s
+[59970] 5.54.369.788 I slot print_timing: id  0 | task 6077 | n_decoded =    282, tg =  60.88 t/s
+[59970] 5.57.377.298 I slot print_timing: id  0 | task 6077 | n_decoded =    463, tg =  60.61 t/s
+[59970] 6.00.383.437 I slot print_timing: id  0 | task 6077 | n_decoded =    637, tg =  59.84 t/s
+[59970] 6.00.438.777 I slot print_timing: id  0 | task 6077 | prompt eval time =   19025.09 ms / 14691 tokens (    1.30 ms per token,   772.19 tokens per second)
+[59970] 6.00.438.781 I slot print_timing: id  0 | task 6077 |        eval time =   10700.97 ms /   640 tokens (   16.72 ms per token,    59.81 tokens per second)
+[59970] 6.00.438.782 I slot print_timing: id  0 | task 6077 |       total time =   29726.06 ms / 15331 tokens
+[59970] 6.00.438.783 I slot print_timing: id  0 | task 6077 |    graphs reused =       6539
+[59970] 6.00.439.548 I slot      release: id  0 | task 6077 | stop processing: n_tokens = 15745, truncated = 0
+[59970] 6.00.439.647 I srv  update_slots: all slots are idle
+7.31.085.648 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.00.566.639 I srv  params_from_: Chat format: peg-native
+[59970] 6.00.569.242 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247342793036
+[59970] 6.00.569.243 I srv  get_availabl: updating prompt cache
+[59970] 6.00.569.618 W srv   prompt_save:  - saving prompt with length 15745, total state size = 1476.275 MiB (draft: 0.000 MiB)
+[59970] 6.00.667.529 I srv          load:  - looking for better prompt, base f_keep = 0.026, sim = 0.026
+[59970] 6.00.667.541 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.860
+[59970] 6.00.689.656 W srv        update:  - cache size limit reached, removing oldest entry (size = 1285.095 MiB)
+[59970] 6.00.689.663 I srv        update:  - cache state: 5 prompts, 7010.174 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.00.689.664 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 6.00.689.664 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.00.689.665 I srv        update:    - prompt 0x80e430a10:   14847 tokens, checkpoints:  0,  1392.077 MiB
+[59970] 6.00.689.665 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.00.689.665 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.00.689.666 I srv  get_availabl: prompt cache update took 120.42 ms
+[59970] 6.00.690.052 I slot launch_slot_: id  0 | task 6725 | processing task, is_child = 0
+[59970] 6.05.279.034 I slot print_timing: id  0 | task 6725 | prompt eval time =    4191.30 ms /  2205 tokens (    1.90 ms per token,   526.09 tokens per second)
+[59970] 6.05.279.036 I slot print_timing: id  0 | task 6725 |        eval time =     397.67 ms /    25 tokens (   15.91 ms per token,    62.87 tokens per second)
+[59970] 6.05.279.036 I slot print_timing: id  0 | task 6725 |       total time =    4588.97 ms /  2230 tokens
+[59970] 6.05.279.037 I slot print_timing: id  0 | task 6725 |    graphs reused =       6562
+[59970] 6.05.279.354 I slot      release: id  0 | task 6725 | stop processing: n_tokens = 15812, truncated = 0
+[59970] 6.05.279.399 I srv  update_slots: all slots are idle
+7.35.931.253 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.05.407.512 I srv  params_from_: Chat format: peg-native
+[59970] 6.05.410.044 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247347632841
+[59970] 6.05.410.045 I srv  get_availabl: updating prompt cache
+[59970] 6.05.410.414 W srv   prompt_save:  - saving prompt with length 15812, total state size = 1482.557 MiB (draft: 0.000 MiB)
+[59970] 6.05.508.432 I srv          load:  - looking for better prompt, base f_keep = 0.074, sim = 0.073
+[59970] 6.05.508.442 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.937
+[59970] 6.05.532.535 I srv        update:  - cache state: 5 prompts, 7100.654 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.05.532.539 I srv        update:    - prompt 0x80e4324f0:   14484 tokens, checkpoints:  0,  1358.042 MiB
+[59970] 6.05.532.539 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.05.532.539 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.05.532.540 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.05.532.540 I srv        update:    - prompt 0x80e430290:   15812 tokens, checkpoints:  0,  1482.557 MiB
+[59970] 6.05.532.541 I srv  get_availabl: prompt cache update took 122.50 ms
+[59970] 6.05.532.913 I slot launch_slot_: id  0 | task 6752 | processing task, is_child = 0
+7.37.933.136 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.07.339.997 I srv  params_from_: Chat format: peg-native
+[59970] 6.07.886.652 I slot print_timing: id  0 | task 6752 | prompt eval time =    1927.13 ms /  1000 tokens (    1.93 ms per token,   518.91 tokens per second)
+[59970] 6.07.886.654 I slot print_timing: id  0 | task 6752 |        eval time =     426.59 ms /    26 tokens (   16.41 ms per token,    60.95 tokens per second)
+[59970] 6.07.886.655 I slot print_timing: id  0 | task 6752 |       total time =    2353.72 ms /  1026 tokens
+[59970] 6.07.886.655 I slot print_timing: id  0 | task 6752 |    graphs reused =       6586
+[59970] 6.07.886.976 I slot      release: id  0 | task 6752 | stop processing: n_tokens = 15872, truncated = 0
+[59970] 6.07.887.029 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247350240463
+[59970] 6.07.887.030 I srv  get_availabl: updating prompt cache
+[59970] 6.07.887.454 W srv   prompt_save:  - saving prompt with length 15872, total state size = 1488.183 MiB (draft: 0.000 MiB)
+7.38.551.114 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.08.008.143 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 6.08.008.148 W srv        update:  - cache size limit reached, removing oldest entry (size = 1358.042 MiB)
+[59970] 6.08.008.150 I srv        update:  - cache state: 5 prompts, 7230.794 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.08.008.151 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.08.008.151 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.08.008.151 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.08.008.152 I srv        update:    - prompt 0x80e430290:   15812 tokens, checkpoints:  0,  1482.557 MiB
+[59970] 6.08.008.152 I srv        update:    - prompt 0x80e431230:   15872 tokens, checkpoints:  0,  1488.183 MiB
+[59970] 6.08.008.153 I srv  get_availabl: prompt cache update took 121.12 ms
+[59970] 6.08.008.188 I slot launch_slot_: id  0 | task 6754 | processing task, is_child = 0
+[59970] 6.08.012.880 I srv  params_from_: Chat format: peg-native
+7.38.874.771 E srv    operator(): http client error: Connection handling canceled
+[59970] 6.08.281.077 W srv          stop: cancel task, id_task = 6754
+[59970] 6.08.292.369 I slot      release: id  0 | task 6754 | stop processing: n_tokens = 310, truncated = 0
+[59970] 6.08.292.412 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247350645856
+[59970] 6.08.292.414 I srv  get_availabl: updating prompt cache
+[59970] 6.08.292.456 W srv   prompt_save:  - saving prompt with length 310, total state size = 29.067 MiB (draft: 0.000 MiB)
+[59970] 6.08.295.590 I srv          load:  - looking for better prompt, base f_keep = 0.010, sim = 0.000
+[59970] 6.08.295.599 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.997
+[59970] 6.08.320.437 I srv        update:  - cache state: 5 prompts, 5771.679 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.08.320.440 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.08.320.441 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.08.320.441 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.08.320.442 I srv        update:    - prompt 0x80e430290:   15812 tokens, checkpoints:  0,  1482.557 MiB
+[59970] 6.08.320.442 I srv        update:    - prompt 0x80e433f30:     310 tokens, checkpoints:  0,    29.067 MiB
+[59970] 6.08.320.443 I srv  get_availabl: prompt cache update took 28.03 ms
+[59970] 6.08.320.812 I slot launch_slot_: id  0 | task 6781 | processing task, is_child = 0
+[59970] 6.08.914.712 I slot print_timing: id  0 | task 6781 | prompt eval time =     193.58 ms /    52 tokens (    3.72 ms per token,   268.63 tokens per second)
+[59970] 6.08.914.715 I slot print_timing: id  0 | task 6781 |        eval time =     400.31 ms /    25 tokens (   16.01 ms per token,    62.45 tokens per second)
+[59970] 6.08.914.715 I slot print_timing: id  0 | task 6781 |       total time =     593.89 ms /    77 tokens
+[59970] 6.08.914.715 I slot print_timing: id  0 | task 6781 |    graphs reused =       6611
+[59970] 6.08.915.029 I slot      release: id  0 | task 6781 | stop processing: n_tokens = 15948, truncated = 0
+[59970] 6.08.915.033 I srv  update_slots: all slots are idle
+7.39.593.196 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.09.075.988 I srv  params_from_: Chat format: peg-native
+[59970] 6.09.078.414 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247351268515
+[59970] 6.09.078.414 I srv  get_availabl: updating prompt cache
+[59970] 6.09.078.785 W srv   prompt_save:  - saving prompt with length 15948, total state size = 1495.309 MiB (draft: 0.000 MiB)
+[59970] 6.09.222.917 I srv          load:  - looking for better prompt, base f_keep = 0.073, sim = 0.073
+[59970] 6.09.222.930 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.988
+[59970] 6.09.277.243 I srv        update:  - cache state: 5 prompts, 5784.430 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.09.277.246 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.09.277.246 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.09.277.247 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.09.277.247 I srv        update:    - prompt 0x80e433f30:     310 tokens, checkpoints:  0,    29.067 MiB
+[59970] 6.09.277.247 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 6.09.277.248 I srv  get_availabl: prompt cache update took 198.83 ms
+[59970] 6.09.277.627 I slot launch_slot_: id  0 | task 6811 | processing task, is_child = 0
+7.41.593.492 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.11.000.713 I srv  params_from_: Chat format: peg-native
+[59970] 6.11.399.994 I slot print_timing: id  0 | task 6811 | n_decoded =    100, tg =  59.64 t/s
+[59970] 6.11.548.058 I slot print_timing: id  0 | task 6811 | prompt eval time =     445.55 ms /   186 tokens (    2.40 ms per token,   417.46 tokens per second)
+[59970] 6.11.548.061 I slot print_timing: id  0 | task 6811 |        eval time =    1824.87 ms /   108 tokens (   16.90 ms per token,    59.18 tokens per second)
+[59970] 6.11.548.061 I slot print_timing: id  0 | task 6811 |       total time =    2270.41 ms /   294 tokens
+[59970] 6.11.548.062 I slot print_timing: id  0 | task 6811 |    graphs reused =       6717
+[59970] 6.11.548.527 I slot      release: id  0 | task 6811 | stop processing: n_tokens = 16105, truncated = 0
+[59970] 6.11.548.664 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247353902015
+[59970] 6.11.548.665 I srv  get_availabl: updating prompt cache
+[59970] 6.11.549.114 W srv   prompt_save:  - saving prompt with length 16105, total state size = 1510.029 MiB (draft: 0.000 MiB)
+[59970] 6.11.691.829 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 6.11.691.834 I srv          load:  - found better prompt with f_keep = 0.990, sim = 1.000
+[59970] 6.11.694.114 I srv        update:  - cache state: 5 prompts, 7265.392 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.11.694.117 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.11.694.117 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.11.694.117 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.11.694.118 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 6.11.694.118 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 6.11.694.119 I srv  get_availabl: prompt cache update took 145.45 ms
+[59970] 6.11.694.165 I slot launch_slot_: id  0 | task 6890 | processing task, is_child = 0
+[59970] 6.11.694.172 W slot update_slots: id  0 | task 6890 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 6.11.694.172 W slot update_slots: id  0 | task 6890 | n_past was set to 306
+7.42.540.327 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+7.42.551.271 E srv    operator(): http client error: Connection handling canceled
+[59970] 6.11.958.158 W srv          stop: cancel task, id_task = 6890
+[59970] 6.11.969.475 I slot      release: id  0 | task 6890 | stop processing: n_tokens = 330, truncated = 0
+[59970] 6.11.969.519 I srv  update_slots: all slots are idle
+[59970] 6.12.011.280 I srv  params_from_: Chat format: peg-native
+[59970] 6.12.013.832 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247354322963
+[59970] 6.12.013.835 I srv  get_availabl: updating prompt cache
+[59970] 6.12.013.876 W srv   prompt_save:  - saving prompt with length 330, total state size = 30.942 MiB (draft: 0.000 MiB)
+[59970] 6.12.017.594 I srv          load:  - looking for better prompt, base f_keep = 0.009, sim = 0.000
+[59970] 6.12.017.603 I srv        update:  - cache state: 6 prompts, 7296.335 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.12.017.608 I srv        update:    - prompt 0x80ec92450:   14668 tokens, checkpoints:  0,  1375.294 MiB
+[59970] 6.12.017.609 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.12.017.609 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.12.017.609 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 6.12.017.609 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 6.12.017.610 I srv        update:    - prompt 0x80e431730:     330 tokens, checkpoints:  0,    30.942 MiB
+[59970] 6.12.017.611 I srv  get_availabl: prompt cache update took 3.77 ms
+[59970] 6.12.017.953 I slot launch_slot_: id  0 | task 6946 | processing task, is_child = 0
+7.44.545.968 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.13.953.240 I srv  params_from_: Chat format: peg-native
+[59970] 6.16.921.418 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =   6144, progress = 0.37, t =   4.90 s / 1252.99 tokens per second
+[59970] 6.19.378.907 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =   8192, progress = 0.50, t =   7.36 s / 1112.90 tokens per second
+[59970] 6.22.156.929 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =  10240, progress = 0.62, t =  10.14 s / 1009.96 tokens per second
+[59970] 6.25.287.434 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =  12288, progress = 0.75, t =  13.27 s / 926.04 tokens per second
+[59970] 6.28.807.420 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =  14336, progress = 0.87, t =  16.79 s / 853.87 tokens per second
+[59970] 6.32.668.252 I slot print_timing: id  0 | task 6946 | prompt processing, n_tokens =  16384, progress = 0.99, t =  20.65 s / 793.40 tokens per second
+[59970] 6.35.683.375 I slot print_timing: id  0 | task 6946 | n_decoded =    100, tg =  58.04 t/s
+[59970] 6.36.054.205 I slot print_timing: id  0 | task 6946 | prompt eval time =   21942.51 ms / 16473 tokens (    1.33 ms per token,   750.73 tokens per second)
+[59970] 6.36.054.212 I slot print_timing: id  0 | task 6946 |        eval time =    2093.72 ms /   120 tokens (   17.45 ms per token,    57.31 tokens per second)
+[59970] 6.36.054.213 I slot print_timing: id  0 | task 6946 |       total time =   24036.22 ms / 16593 tokens
+[59970] 6.36.054.216 I slot print_timing: id  0 | task 6946 |    graphs reused =       6858
+[59970] 6.36.055.288 I slot      release: id  0 | task 6946 | stop processing: n_tokens = 16595, truncated = 0
+[59970] 6.36.055.301 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247378408776
+[59970] 6.36.055.305 I srv  get_availabl: updating prompt cache
+[59970] 6.36.057.188 W srv   prompt_save:  - saving prompt with length 16595, total state size = 1555.972 MiB (draft: 0.000 MiB)
+[59970] 6.36.164.103 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 6.36.164.111 I srv          load:  - found better prompt with f_keep = 0.930, sim = 1.000
+[59970] 6.36.166.523 W srv        update:  - cache size limit reached, removing oldest entry (size = 1375.294 MiB)
+[59970] 6.36.166.527 I srv        update:  - cache state: 5 prompts, 7446.071 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.36.166.527 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.36.166.528 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.36.166.528 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 6.36.166.529 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 6.36.166.529 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 6.36.166.530 I srv  get_availabl: prompt cache update took 111.22 ms
+[59970] 6.36.166.579 I slot launch_slot_: id  0 | task 6949 | processing task, is_child = 0
+[59970] 6.36.166.585 W slot update_slots: id  0 | task 6949 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 6.36.166.586 W slot update_slots: id  0 | task 6949 | n_past was set to 306
+8.06.915.231 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+8.06.919.167 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.36.324.442 I srv  params_from_: Chat format: peg-native
+8.06.929.986 E srv    operator(): http client error: Connection handling canceled
+[59970] 6.36.336.617 W srv          stop: cancel task, id_task = 6949
+[59970] 6.36.347.436 I slot      release: id  0 | task 6949 | stop processing: n_tokens = 322, truncated = 0
+[59970] 6.36.347.483 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.953
+[59970] 6.36.347.518 I slot launch_slot_: id  0 | task 7090 | processing task, is_child = 0
+[59970] 6.36.347.522 W slot update_slots: id  0 | task 7090 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 6.36.347.523 W slot update_slots: id  0 | task 7090 | n_past was set to 306
+8.06.962.653 E srv    operator(): http client error: Connection handling canceled
+[59970] 6.36.369.228 W srv          stop: cancel task, id_task = 7090
+[59970] 6.36.380.037 I slot      release: id  0 | task 7090 | stop processing: n_tokens = 309, truncated = 0
+[59970] 6.36.380.042 I srv  update_slots: all slots are idle
+[59970] 6.36.385.337 I srv  params_from_: Chat format: peg-native
+[59970] 6.36.387.808 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247378733525
+[59970] 6.36.387.809 I srv  get_availabl: updating prompt cache
+[59970] 6.36.387.853 W srv   prompt_save:  - saving prompt with length 309, total state size = 28.973 MiB (draft: 0.000 MiB)
+[59970] 6.36.388.518 I srv          load:  - looking for better prompt, base f_keep = 0.010, sim = 0.000
+[59970] 6.36.388.523 I srv        update:  - cache state: 6 prompts, 7475.044 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 6.36.388.523 I srv        update:    - prompt 0x80e4329f0:   15022 tokens, checkpoints:  0,  1408.486 MiB
+[59970] 6.36.388.524 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 6.36.388.524 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 6.36.388.524 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 6.36.388.525 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 6.36.388.525 I srv        update:    - prompt 0x80ec93d50:     309 tokens, checkpoints:  0,    28.973 MiB
+[59970] 6.36.388.525 I srv  get_availabl: prompt cache update took 0.72 ms
+[59970] 6.36.388.854 I slot launch_slot_: id  0 | task 7098 | processing task, is_child = 0
+8.08.940.485 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 6.38.348.181 I srv  params_from_: Chat format: peg-native
+[59970] 6.41.290.757 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =   6144, progress = 0.37, t =   4.90 s / 1253.39 tokens per second
+[59970] 6.43.723.966 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =   8192, progress = 0.49, t =   7.34 s / 1116.82 tokens per second
+[59970] 6.46.534.666 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =  10240, progress = 0.61, t =  10.15 s / 1009.28 tokens per second
+[59970] 6.49.711.612 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =  12288, progress = 0.74, t =  13.32 s / 922.33 tokens per second
+[59970] 6.53.253.706 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =  14336, progress = 0.86, t =  16.86 s / 850.05 tokens per second
+[59970] 6.57.129.629 I slot print_timing: id  0 | task 7098 | prompt processing, n_tokens =  16384, progress = 0.98, t =  20.74 s / 789.94 tokens per second
+[59970] 7.00.604.848 I slot print_timing: id  0 | task 7098 | n_decoded =    100, tg =  54.26 t/s
+[59970] 7.00.868.230 I slot print_timing: id  0 | task 7098 | prompt eval time =   22372.94 ms / 16663 tokens (    1.34 ms per token,   744.78 tokens per second)
+[59970] 7.00.868.234 I slot print_timing: id  0 | task 7098 |        eval time =    2106.41 ms /   114 tokens (   18.48 ms per token,    54.12 tokens per second)
+[59970] 7.00.868.235 I slot print_timing: id  0 | task 7098 |       total time =   24479.35 ms / 16777 tokens
+[59970] 7.00.868.236 I slot print_timing: id  0 | task 7098 |    graphs reused =       6988
+[59970] 7.00.868.974 I slot      release: id  0 | task 7098 | stop processing: n_tokens = 16779, truncated = 0
+[59970] 7.00.868.988 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247403222465
+[59970] 7.00.868.989 I srv  get_availabl: updating prompt cache
+[59970] 7.00.871.369 W srv   prompt_save:  - saving prompt with length 16779, total state size = 1573.224 MiB (draft: 0.000 MiB)
+[59970] 7.00.976.852 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 7.00.976.856 I srv          load:  - found better prompt with f_keep = 0.994, sim = 1.000
+[59970] 7.00.978.622 W srv        update:  - cache size limit reached, removing oldest entry (size = 1408.486 MiB)
+[59970] 7.00.978.626 I srv        update:  - cache state: 5 prompts, 7610.810 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.00.978.627 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 7.00.978.627 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.00.978.628 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 7.00.978.628 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.00.978.628 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.00.978.629 I srv  get_availabl: prompt cache update took 109.64 ms
+[59970] 7.00.978.680 I slot launch_slot_: id  0 | task 7101 | processing task, is_child = 0
+[59970] 7.00.978.687 W slot update_slots: id  0 | task 7101 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 7.00.978.688 W slot update_slots: id  0 | task 7101 | n_past was set to 306
+8.31.733.251 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+8.31.738.794 E srv    operator(): http client error: Connection handling canceled
+[59970] 7.01.145.690 W srv          stop: cancel task, id_task = 7101
+[59970] 7.01.156.599 I slot      release: id  0 | task 7101 | stop processing: n_tokens = 322, truncated = 0
+[59970] 7.01.156.640 I srv  update_slots: all slots are idle
+[59970] 7.01.197.962 I srv  params_from_: Chat format: peg-native
+[59970] 7.01.200.354 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247403510086
+[59970] 7.01.200.355 I srv  get_availabl: updating prompt cache
+[59970] 7.01.200.397 W srv   prompt_save:  - saving prompt with length 322, total state size = 30.192 MiB (draft: 0.000 MiB)
+[59970] 7.01.202.191 I srv          load:  - looking for better prompt, base f_keep = 0.009, sim = 0.000
+[59970] 7.01.202.196 I srv        update:  - cache state: 6 prompts, 7641.002 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.01.202.196 I srv        update:    - prompt 0x80e433210:   15745 tokens, checkpoints:  0,  1476.275 MiB
+[59970] 7.01.202.197 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.01.202.197 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 7.01.202.198 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.01.202.198 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.01.202.198 I srv        update:    - prompt 0x80e430ab0:     322 tokens, checkpoints:  0,    30.192 MiB
+[59970] 7.01.202.204 I srv  get_availabl: prompt cache update took 1.84 ms
+[59970] 7.01.202.531 I slot launch_slot_: id  0 | task 7239 | processing task, is_child = 0
+8.33.738.598 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 7.03.145.521 I srv  params_from_: Chat format: peg-native
+[59970] 7.06.096.970 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =   6144, progress = 0.36, t =   4.89 s / 1255.30 tokens per second
+[59970] 7.08.541.489 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =   8192, progress = 0.49, t =   7.34 s / 1116.24 tokens per second
+[59970] 7.11.321.392 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =  10240, progress = 0.61, t =  10.12 s / 1011.97 tokens per second
+[59970] 7.14.470.703 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =  12288, progress = 0.73, t =  13.27 s / 926.13 tokens per second
+[59970] 7.17.960.408 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =  14336, progress = 0.85, t =  16.76 s / 855.48 tokens per second
+[59970] 7.21.804.517 I slot print_timing: id  0 | task 7239 | prompt processing, n_tokens =  16384, progress = 0.97, t =  20.60 s / 795.26 tokens per second
+[59970] 7.25.630.851 I slot print_timing: id  0 | task 7239 | n_decoded =    100, tg =  53.98 t/s
+[59970] 7.25.890.053 I slot print_timing: id  0 | task 7239 | prompt eval time =   22575.83 ms / 16841 tokens (    1.34 ms per token,   745.97 tokens per second)
+[59970] 7.25.890.058 I slot print_timing: id  0 | task 7239 |        eval time =    2111.67 ms /   114 tokens (   18.52 ms per token,    53.99 tokens per second)
+[59970] 7.25.890.059 I slot print_timing: id  0 | task 7239 |       total time =   24687.50 ms / 16955 tokens
+[59970] 7.25.890.060 I slot print_timing: id  0 | task 7239 |    graphs reused =       7114
+[59970] 7.25.890.849 I slot      release: id  0 | task 7239 | stop processing: n_tokens = 16957, truncated = 0
+[59970] 7.25.890.861 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247428244337
+[59970] 7.25.890.865 I srv  get_availabl: updating prompt cache
+[59970] 7.25.892.262 W srv   prompt_save:  - saving prompt with length 16957, total state size = 1589.914 MiB (draft: 0.000 MiB)
+[59970] 7.26.002.704 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 7.26.002.711 I srv          load:  - found better prompt with f_keep = 0.953, sim = 1.000
+[59970] 7.26.004.723 W srv        update:  - cache size limit reached, removing oldest entry (size = 1476.275 MiB)
+[59970] 7.26.004.726 I srv        update:  - cache state: 5 prompts, 7724.448 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.26.004.727 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.26.004.728 I srv        update:    - prompt 0x80e4337b0:   16105 tokens, checkpoints:  0,  1510.029 MiB
+[59970] 7.26.004.728 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.26.004.728 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.26.004.729 I srv        update:    - prompt 0x80ec92450:   16957 tokens, checkpoints:  0,  1589.914 MiB
+[59970] 7.26.004.730 I srv  get_availabl: prompt cache update took 113.86 ms
+[59970] 7.26.004.779 I slot launch_slot_: id  0 | task 7242 | processing task, is_child = 0
+[59970] 7.26.004.786 W slot update_slots: id  0 | task 7242 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 7.26.004.786 W slot update_slots: id  0 | task 7242 | n_past was set to 306
+8.56.742.160 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+8.56.754.108 E srv    operator(): http client error: Connection handling canceled
+[59970] 7.26.161.003 W srv          stop: cancel task, id_task = 7242
+[59970] 7.26.171.926 I slot      release: id  0 | task 7242 | stop processing: n_tokens = 321, truncated = 0
+[59970] 7.26.171.967 I srv  update_slots: all slots are idle
+[59970] 7.26.207.550 I srv  params_from_: Chat format: peg-native
+[59970] 7.26.210.008 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247428525414
+[59970] 7.26.210.009 I srv  get_availabl: updating prompt cache
+[59970] 7.26.210.054 W srv   prompt_save:  - saving prompt with length 321, total state size = 30.099 MiB (draft: 0.000 MiB)
+[59970] 7.26.210.762 I srv          load:  - looking for better prompt, base f_keep = 0.009, sim = 0.000
+[59970] 7.26.210.771 I srv          load:  - found better prompt with f_keep = 1.000, sim = 0.945
+[59970] 7.26.244.013 I srv        update:  - cache state: 5 prompts, 6244.518 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.26.244.016 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.26.244.016 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.26.244.017 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.26.244.017 I srv        update:    - prompt 0x80ec92450:   16957 tokens, checkpoints:  0,  1589.914 MiB
+[59970] 7.26.244.017 I srv        update:    - prompt 0x80e432310:     321 tokens, checkpoints:  0,    30.099 MiB
+[59970] 7.26.244.018 I srv  get_availabl: prompt cache update took 34.01 ms
+[59970] 7.26.244.395 I slot launch_slot_: id  0 | task 7379 | processing task, is_child = 0
+8.58.750.631 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 7.28.157.463 I srv  params_from_: Chat format: peg-native
+[59970] 7.29.852.578 I slot print_timing: id  0 | task 7379 | n_decoded =    100, tg =  59.34 t/s
+[59970] 7.32.867.949 I slot print_timing: id  0 | task 7379 | n_decoded =    275, tg =  58.50 t/s
+[59970] 7.35.875.975 I slot print_timing: id  0 | task 7379 | n_decoded =    437, tg =  56.69 t/s
+[59970] 7.38.888.779 I slot print_timing: id  0 | task 7379 | n_decoded =    600, tg =  55.96 t/s
+[59970] 7.40.340.075 I slot print_timing: id  0 | task 7379 | prompt eval time =    1923.07 ms /   936 tokens (    2.05 ms per token,   486.72 tokens per second)
+[59970] 7.40.340.080 I slot print_timing: id  0 | task 7379 |        eval time =   12172.59 ms /   678 tokens (   17.95 ms per token,    55.70 tokens per second)
+[59970] 7.40.340.081 I slot print_timing: id  0 | task 7379 |       total time =   14095.65 ms /  1614 tokens
+[59970] 7.40.340.082 I slot print_timing: id  0 | task 7379 |    graphs reused =       7801
+[59970] 7.40.340.943 I slot      release: id  0 | task 7379 | stop processing: n_tokens = 17718, truncated = 0
+[59970] 7.40.340.958 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247442694432
+[59970] 7.40.340.960 I srv  get_availabl: updating prompt cache
+[59970] 7.40.342.864 W srv   prompt_save:  - saving prompt with length 17718, total state size = 1661.266 MiB (draft: 0.000 MiB)
+9.10.974.544 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 7.40.440.348 I srv          load:  - looking for better prompt, base f_keep = 0.000, sim = 0.010
+[59970] 7.40.440.354 I srv          load:  - found better prompt with f_keep = 0.956, sim = 1.000
+[59970] 7.40.441.727 I srv  params_from_: Chat format: peg-native
+[59970] 7.40.442.190 I srv        update:  - cache state: 5 prompts, 7875.686 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.40.442.192 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.40.442.192 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.40.442.193 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.40.442.193 I srv        update:    - prompt 0x80ec92450:   16957 tokens, checkpoints:  0,  1589.914 MiB
+[59970] 7.40.442.193 I srv        update:    - prompt 0x80e5e54b0:   17718 tokens, checkpoints:  0,  1661.266 MiB
+[59970] 7.40.442.194 I srv  get_availabl: prompt cache update took 101.23 ms
+[59970] 7.40.442.233 I slot launch_slot_: id  0 | task 7381 | processing task, is_child = 0
+[59970] 7.40.442.240 W slot update_slots: id  0 | task 7381 | need to evaluate at least 1 token for each active slot (n_past = 307, task.n_tokens() = 307)
+[59970] 7.40.442.240 W slot update_slots: id  0 | task 7381 | n_past was set to 306
+[59970] 7.41.895.427 I slot print_timing: id  0 | task 7381 | n_decoded =    122, tg =  84.71 t/s
+[59970] 7.43.408.281 I slot print_timing: id  0 | task 7381 | prompt eval time =      13.01 ms /     1 tokens (   13.01 ms per token,    76.88 tokens per second)
+[59970] 7.43.408.284 I slot print_timing: id  0 | task 7381 |        eval time =    2953.03 ms /   243 tokens (   12.15 ms per token,    82.29 tokens per second)
+[59970] 7.43.408.285 I slot print_timing: id  0 | task 7381 |       total time =    2966.03 ms /   244 tokens
+[59970] 7.43.408.285 I slot print_timing: id  0 | task 7381 |    graphs reused =       8042
+[59970] 7.43.408.305 I slot      release: id  0 | task 7381 | stop processing: n_tokens = 549, truncated = 0
+[59970] 7.43.408.349 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247445761792
+[59970] 7.43.408.350 I srv  get_availabl: updating prompt cache
+[59970] 7.43.408.394 W srv   prompt_save:  - saving prompt with length 549, total state size = 51.476 MiB (draft: 0.000 MiB)
+[59970] 7.43.411.793 I srv          load:  - looking for better prompt, base f_keep = 0.005, sim = 0.000
+[59970] 7.43.411.800 I srv        update:  - cache state: 6 prompts, 7927.162 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 7.43.411.801 I srv        update:    - prompt 0x80e431230:   15948 tokens, checkpoints:  0,  1495.309 MiB
+[59970] 7.43.411.801 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 7.43.411.803 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 7.43.411.803 I srv        update:    - prompt 0x80ec92450:   16957 tokens, checkpoints:  0,  1589.914 MiB
+[59970] 7.43.411.805 I srv        update:    - prompt 0x80e5e54b0:   17718 tokens, checkpoints:  0,  1661.266 MiB
+[59970] 7.43.411.806 I srv        update:    - prompt 0x80e5e4c90:     549 tokens, checkpoints:  0,    51.476 MiB
+[59970] 7.43.411.807 I srv  get_availabl: prompt cache update took 3.46 ms
+[59970] 7.43.412.219 I slot launch_slot_: id  0 | task 8059 | processing task, is_child = 0
+[59970] 7.48.296.799 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =   6144, progress = 0.35, t =   4.88 s / 1257.84 tokens per second
+[59970] 7.50.717.693 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =   8192, progress = 0.46, t =   7.31 s / 1121.35 tokens per second
+[59970] 7.53.497.428 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =  10240, progress = 0.58, t =  10.09 s / 1015.35 tokens per second
+[59970] 7.56.634.948 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =  12288, progress = 0.69, t =  13.22 s / 929.31 tokens per second
+[59970] 8.00.106.865 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =  14336, progress = 0.81, t =  16.69 s / 858.72 tokens per second
+[59970] 8.03.931.530 I slot print_timing: id  0 | task 8059 | prompt processing, n_tokens =  16384, progress = 0.92, t =  20.52 s / 798.47 tokens per second
+[59970] 8.09.708.453 I slot print_timing: id  0 | task 8059 | n_decoded =    100, tg =  54.38 t/s
+[59970] 8.10.487.423 I slot print_timing: id  0 | task 8059 | prompt eval time =   24457.34 ms / 17758 tokens (    1.38 ms per token,   726.08 tokens per second)
+[59970] 8.10.487.426 I slot print_timing: id  0 | task 8059 |        eval time =    2617.85 ms /   145 tokens (   18.05 ms per token,    55.39 tokens per second)
+[59970] 8.10.487.426 I slot print_timing: id  0 | task 8059 |       total time =   27075.19 ms / 17903 tokens
+[59970] 8.10.487.427 I slot print_timing: id  0 | task 8059 |    graphs reused =       8185
+[59970] 8.10.487.765 I slot      release: id  0 | task 8059 | stop processing: n_tokens = 17905, truncated = 0
+[59970] 8.10.487.770 I srv  update_slots: all slots are idle
+9.41.137.819 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 8.10.619.586 I srv  params_from_: Chat format: peg-native
+[59970] 8.10.622.038 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 247472841252
+[59970] 8.10.622.038 I srv  get_availabl: updating prompt cache
+[59970] 8.10.622.442 W srv   prompt_save:  - saving prompt with length 17905, total state size = 1678.800 MiB (draft: 0.000 MiB)
+[59970] 8.10.735.239 I srv          load:  - looking for better prompt, base f_keep = 0.037, sim = 0.037
+[59970] 8.10.735.245 W srv        update:  - cache size limit reached, removing oldest entry (size = 1495.309 MiB)
+[59970] 8.10.735.248 I srv        update:  - cache state: 6 prompts, 8110.653 MiB (limits: 8192.000 MiB, 32768 tokens, 87370 est)
+[59970] 8.10.735.249 I srv        update:    - prompt 0x80ec92c70:   16595 tokens, checkpoints:  0,  1555.972 MiB
+[59970] 8.10.735.249 I srv        update:    - prompt 0x80ec929f0:   16779 tokens, checkpoints:  0,  1573.224 MiB
+[59970] 8.10.735.249 I srv        update:    - prompt 0x80ec92450:   16957 tokens, checkpoints:  0,  1589.914 MiB
+[59970] 8.10.735.250 I srv        update:    - prompt 0x80e5e54b0:   17718 tokens, checkpoints:  0,  1661.266 MiB
+[59970] 8.10.735.250 I srv        update:    - prompt 0x80e5e4c90:     549 tokens, checkpoints:  0,    51.476 MiB
+[59970] 8.10.735.251 I srv        update:    - prompt 0x80e5e48d0:   17905 tokens, checkpoints:  0,  1678.800 MiB
+[59970] 8.10.735.252 I srv  get_availabl: prompt cache update took 113.21 ms
+[59970] 8.10.735.677 I slot launch_slot_: id  0 | task 8456 | processing task, is_child = 0
+9.43.138.611 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 59970
+[59970] 8.12.556.312 I srv  params_from_: Chat format: peg-native
+[59970] 8.13.758.716 I slot print_timing: id  0 | task 8456 | prompt processing, n_tokens =   4096, progress = 0.26, t =   3.02 s / 1354.93 tokens per second
+[59970] 8.15.955.827 I slot print_timing: id  0 | task 8456 | prompt processing, n_tokens =   6144, progress = 0.38, t =   5.22 s / 1176.98 tokens per second
+[59970] 8.18.536.181 I slot print_timing: id  0 | task 8456 | prompt processing, n_tokens =   8192, progress = 0.49, t =   7.80 s / 1050.19 tokens per second
+[59970] 8.21.459.170 I slot print_timing: id  0 | task 8456 | prompt processing, n_tokens =  10240, progress = 0.60, t =  10.72 s / 954.91 tokens per second
+[59970] 8.24.736.129 I slot print_timing: id  0 | task 8456 | prompt processing, n_tokens =  12288, progress = 0.71, t =  14.00 s / 877.69 tokens per second
+9.57.254.019 I srv    operator(): operator(): cleaning up before exit...
+9.57.254.027 I srv    unload_all: stopping model instance name=qwen3-coder-local
+9.57.254.038 I srv    operator(): stopping model instance name=qwen3-coder-local
+[59970] 8.26.650.040 I srv    operator(): exit command received, exiting...
+[59970] 8.28.361.256 I srv    operator(): operator(): cleaning up before exit...
+10.07.290.721 W srv    operator(): force-killing model instance name=qwen3-coder-local after 10 seconds timeout
+10.07.471.766 E srv    operator(): http client error: Failed to read connection
+10.07.471.897 E srv    operator(): http client error: Failed to read connection
+10.07.472.012 I srv    operator(): instance name=qwen3-coder-local exited with status 1

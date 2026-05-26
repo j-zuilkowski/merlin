@@ -46,7 +46,9 @@ enum ProviderError: Error, Sendable {
         guard case .httpError(let code, let body, _) = self, code == 400 else { return false }
         let lower = body.lowercased()
         return lower.contains("context_length_exceeded")
+            || lower.contains("exceed_context_size_error")
             || lower.contains("maximum context length")
+            || lower.contains("exceeds the available context size")
             || lower.contains("input too long")
             || lower.contains("prompt is too long")
             || lower.contains("context window")
@@ -68,6 +70,12 @@ enum ProviderError: Error, Sendable {
         }
 
         let lower = body.lowercased()
+        if let structuredLimit = ProviderError.structuredContextLimit(in: body) {
+            return structuredLimit
+        }
+        if let phraseLimit = ProviderError.contextLimitFromPhrases(in: lower) {
+            return phraseLimit
+        }
         guard let regex = try? NSRegularExpression(pattern: #"[0-9][0-9,]*"#) else {
             return nil
         }
@@ -100,6 +108,84 @@ enum ProviderError: Error, Sendable {
         }
 
         return candidates.max()
+    }
+
+    private static func structuredContextLimit(in body: String) -> Int? {
+        guard let data = body.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data)
+        else {
+            return nil
+        }
+
+        let preferredKeys = [
+            "n_ctx",
+            "context_size",
+            "context_window",
+            "context_length",
+            "max_context",
+            "max_context_length",
+            "maximum_context_length",
+        ]
+        for key in preferredKeys {
+            if let value = firstNumericValue(forKey: key, in: json) {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private static func firstNumericValue(forKey target: String, in value: Any) -> Int? {
+        if let dictionary = value as? [String: Any] {
+            for (key, candidate) in dictionary where key.lowercased() == target {
+                if let intValue = candidate as? Int {
+                    return intValue
+                }
+                if let number = candidate as? NSNumber {
+                    return number.intValue
+                }
+                if let string = candidate as? String,
+                   let intValue = Int(string.replacingOccurrences(of: ",", with: "")) {
+                    return intValue
+                }
+            }
+            for candidate in dictionary.values {
+                if let match = firstNumericValue(forKey: target, in: candidate) {
+                    return match
+                }
+            }
+        } else if let array = value as? [Any] {
+            for candidate in array {
+                if let match = firstNumericValue(forKey: target, in: candidate) {
+                    return match
+                }
+            }
+        }
+        return nil
+    }
+
+    private static func contextLimitFromPhrases(in lower: String) -> Int? {
+        let patterns = [
+            #"available context size[^0-9]{0,40}([0-9][0-9,]*)"#,
+            #"context (?:window|size|length)[^0-9]{0,40}([0-9][0-9,]*)"#,
+            #"maximum context[^0-9]{0,40}([0-9][0-9,]*)"#,
+            #"max(?:imum)? is[^0-9]{0,40}([0-9][0-9,]*)"#,
+        ]
+
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(lower.startIndex..<lower.endIndex, in: lower)
+            guard let match = regex.firstMatch(in: lower, range: range),
+                  match.numberOfRanges > 1,
+                  let capture = Range(match.range(at: 1), in: lower)
+            else {
+                continue
+            }
+            let raw = lower[capture].replacingOccurrences(of: ",", with: "")
+            if let value = Int(raw), (512...10_000_000).contains(value) {
+                return value
+            }
+        }
+        return nil
     }
 
     // MARK: - Back-off

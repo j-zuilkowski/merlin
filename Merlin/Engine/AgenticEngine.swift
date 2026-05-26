@@ -2476,6 +2476,13 @@ final class AgenticEngine {
         }
         var parts: [String] = []
 
+        if let path = currentProjectPath {
+            parts.append("""
+            AUTHORITATIVE PROJECT ROOT: \(path)
+            All project file, shell, build, test, and search operations for this session must use this directory or a child path unless the user explicitly gives a different path. Do not inspect Merlin's own source repository when the active project root is different.
+            """)
+        }
+
         // constitution.md: use distilled version when compression is on and distillation has run.
         if !constitutionContent.isEmpty && (!settings.cagEnabled || settings.cagPinConstitution) {
             let mdToUse = compressionEnabled && !constitutionDistilledContent.isEmpty
@@ -2491,9 +2498,6 @@ final class AgenticEngine {
         }
         if permissionMode == .plan {
             parts.append(PermissionMode.planSystemPrompt)
-        }
-        if let path = currentProjectPath {
-            parts.append("Working directory: \(path)\nAlways use this path when accessing project files unless the user specifies otherwise.")
         }
 
         // Core system prompt: use distilled version when compression is on.

@@ -1,0 +1,205 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme MerlinTests-Live test -destination platform=macOS -derivedDataPath /tmp/merlin-e2e-derived CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006041-00140140268A801C, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006041-00140140268A801C, name:My Mac }
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (6 targets)
+    Target 'TestTargetApp' in project 'Merlin' (no dependencies)
+    Target 'MerlinUITests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinLiveTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinE2ETests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: af698e3320a8818d1fb0f22c0e6209b3
+Build description path: /tmp/merlin-e2e-derived/Build/Intermediates.noindex/XCBuildData/af698e3320a8818d1fb0f22c0e6209b3.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Extensions --scan-folder /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/AppIntents.framework --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/assetcatalog_generated_info.plist -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/ProductTypeInfoPlistAdditions.plist -o /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/PkgInfo -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist
+
+2026-05-26 10:13:47.462315-0400 Merlin[45714:7612414] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.462914-0400 Merlin[45714:7612414] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.463104-0400 Merlin[45714:7612408] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.463125-0400 Merlin[45714:7612408] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.463918-0400 Merlin[45714:7612411] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.463936-0400 Merlin[45714:7612411] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.464821-0400 Merlin[45714:7612411] [Connection] Will NOT re-try to establish the connection
+2026-05-26 10:13:47.464886-0400 Merlin[45714:7612414] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.464909-0400 Merlin[45714:7612414] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:13:47.515276-0400 Merlin[45714:7612390] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'All tests' started at 2026-05-26 10:13:48.060.
+Test Suite 'MerlinLiveTests.xctest' started at 2026-05-26 10:13:48.061.
+Test Suite 'DeepSeekProviderLiveTests' started at 2026-05-26 10:13:48.061.
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testSimpleCompletion]' started.
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testSimpleCompletion]' passed (1.392 seconds).
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testThinkingModeActivates]' started.
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testThinkingModeActivates]' passed (20.783 seconds).
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testToolCallRoundTrip]' started.
+Test Case '-[MerlinLiveTests.DeepSeekProviderLiveTests testToolCallRoundTrip]' passed (1.397 seconds).
+Test Suite 'DeepSeekProviderLiveTests' passed at 2026-05-26 10:14:11.636.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 23.571 (23.575) seconds
+Test Suite 'MerlinLiveTests.xctest' passed at 2026-05-26 10:14:11.636.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 23.571 (23.576) seconds
+Test Suite 'All tests' passed at 2026-05-26 10:14:11.637.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 23.571 (23.576) seconds
+2026-05-26 10:14:12.348900-0400 Merlin[46024:7613998] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.349559-0400 Merlin[46024:7613998] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.349718-0400 Merlin[46024:7614001] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.349734-0400 Merlin[46024:7614001] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.350477-0400 Merlin[46024:7613999] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.350491-0400 Merlin[46024:7613999] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.351048-0400 Merlin[46024:7613999] [Connection] Will NOT re-try to establish the connection
+2026-05-26 10:14:12.351078-0400 Merlin[46024:7613998] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.351088-0400 Merlin[46024:7613998] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-05-26 10:14:12.398757-0400 Merlin[46024:7613995] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'All tests' started at 2026-05-26 10:14:12.683.
+Test Suite 'MerlinE2ETests.xctest' started at 2026-05-26 10:14:12.684.
+Test Suite 'AgenticLoopE2ETests' started at 2026-05-26 10:14:12.684.
+Test Case '-[MerlinE2ETests.AgenticLoopE2ETests testFullLoopWithRealDeepSeek]' started.
+Test Case '-[MerlinE2ETests.AgenticLoopE2ETests testFullLoopWithRealDeepSeek]' passed (3.300 seconds).
+Test Suite 'AgenticLoopE2ETests' passed at 2026-05-26 10:14:15.986.
+	 Executed 1 test, with 0 failures (0 unexpected) in 3.300 (3.302) seconds
+Test Suite 'CalibrationLiveTests' started at 2026-05-26 10:14:15.987.
+Test Case '-[MerlinE2ETests.CalibrationLiveTests testCalibrateExecuteSlotModel]' started.
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CalibrationLiveTests.swift:21: -[MerlinE2ETests.CalibrationLiveTests testCalibrateExecuteSlotModel] : Test skipped - execute slot is not an LM Studio model — calibration needs a local model
+Test Case '-[MerlinE2ETests.CalibrationLiveTests testCalibrateExecuteSlotModel]' skipped (0.106 seconds).
+Test Suite 'CalibrationLiveTests' passed at 2026-05-26 10:14:16.093.
+	 Executed 1 test, with 1 test skipped and 0 failures (0 unexpected) in 0.106 (0.107) seconds
+Test Suite 'CapabilityScenarioTests' started at 2026-05-26 10:14:16.094.
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle]' started.
+2026-05-26 10:14:16.329016-0400 Merlin[46024:7614079] [connection] nw_socket_handle_socket_event [C2.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.329048-0400 Merlin[46024:7614079] [connection] nw_socket_handle_socket_event [C3.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.329060-0400 Merlin[46024:7614079] [connection] nw_socket_handle_socket_event [C4.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.329085-0400 Merlin[46024:7614079] [connection] nw_endpoint_flow_failed_with_error [C2.1.1 ::1.8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.329121-0400 Merlin[46024:7614079] [connection] nw_endpoint_flow_failed_with_error [C3.1.1 ::1.8081 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.329141-0400 Merlin[46024:7614079] [connection] nw_endpoint_flow_failed_with_error [C4.1.1 ::1.1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.329514-0400 Merlin[46024:7614079] [connection] nw_socket_handle_socket_event [C4.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.329677-0400 Merlin[46024:7614079] [connection] nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.329706-0400 Merlin[46024:7614079] [connection] nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:1234 cancelled socket-flow ((null))] already failing, returning
+2026-05-26 10:14:16.329731-0400 Merlin[46024:7614079] [Default] Connection 4: received failure notification
+2026-05-26 10:14:16.329742-0400 Merlin[46024:7614079] [Default] Connection 4: failed to connect 1:61, reason -1
+2026-05-26 10:14:16.329745-0400 Merlin[46024:7614079] [Default] Connection 4: encountered error(1:61)
+2026-05-26 10:14:16.329817-0400 Merlin[46024:7614079] [Default] Task <DA64202D-6901-4EB5-BF8B-24A93BD46723>.<4> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-05-26 10:14:16.329936-0400 Merlin[46024:7614075] [Default] Task <DA64202D-6901-4EB5-BF8B-24A93BD46723>.<4> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc87f25410 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <DA64202D-6901-4EB5-BF8B-24A93BD46723>.<4>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <DA64202D-6901-4EB5-BF8B-24A93BD46723>.<4>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:1234/health, NSErrorFailingURLKey=http://localhost:1234/health, _kCFStreamErrorDomainKey=1}
+2026-05-26 10:14:16.333593-0400 Merlin[46024:7614078] [connection] nw_socket_handle_socket_event [C6.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.333667-0400 Merlin[46024:7614078] [connection] nw_endpoint_flow_failed_with_error [C6.1.1 ::1.1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.333943-0400 Merlin[46024:7614078] [connection] nw_socket_handle_socket_event [C6.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:14:16.333971-0400 Merlin[46024:7614078] [connection] nw_endpoint_flow_failed_with_error [C6.1.2 127.0.0.1:1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:14:16.334006-0400 Merlin[46024:7614078] [connection] nw_endpoint_flow_failed_with_error [C6.1.2 127.0.0.1:1234 cancelled socket-flow ((null))] already failing, returning
+2026-05-26 10:14:16.334029-0400 Merlin[46024:7614078] [Default] Connection 6: received failure notification
+2026-05-26 10:14:16.334038-0400 Merlin[46024:7614078] [Default] Connection 6: failed to connect 1:61, reason -1
+2026-05-26 10:14:16.334041-0400 Merlin[46024:7614078] [Default] Connection 6: encountered error(1:61)
+2026-05-26 10:14:16.334101-0400 Merlin[46024:7614078] [Default] Task <5E5D5989-9D26-45F7-BD3E-843290453F8A>.<10> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-05-26 10:14:16.334174-0400 Merlin[46024:7614078] [Default] Task <5E5D5989-9D26-45F7-BD3E-843290453F8A>.<10> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc87c626a0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <5E5D5989-9D26-45F7-BD3E-843290453F8A>.<10>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <5E5D5989-9D26-45F7-BD3E-843290453F8A>.<10>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:1234/v1/models, NSErrorFailingURLKey=http://localhost:1234/v1/models, _kCFStreamErrorDomainKey=1}
+2026-05-26 10:15:05.021677-0400 Merlin[46024:7613999] [connection] nw_socket_handle_socket_event [C8.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:05.021775-0400 Merlin[46024:7613999] [connection] nw_endpoint_flow_failed_with_error [C8.1.1 ::1.8081 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:61: error: -[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle] : XCTAssertTrue failed - S1 engine errors: ["httpError(statusCode: 400, body: \"{\\\"error\\\":{\\\"code\\\":400,\\\"message\\\":\\\"request (5127 tokens) exceeds the available context size (4096 tokens), try increasing it\\\",\\\"type\\\":\\\"exceed_context_size_error\\\",\\\"n_prompt_tokens\\\":5127,\\\"n_ctx\\\":4096}}\", providerID: \"llamacpp:qwen3-coder-local\")"]
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:82: error: -[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle] : XCTAssertTrue failed - S1: TaskBoardTests must pass after Merlin's fixes
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle]' failed (84.930 seconds).
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS2RustDebugCycle]' started.
+2026-05-26 10:15:41.769188-0400 Merlin[46024:7632518] [connection] nw_socket_handle_socket_event [C9.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.769237-0400 Merlin[46024:7632518] [connection] nw_socket_handle_socket_event [C10.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.769262-0400 Merlin[46024:7632518] [connection] nw_endpoint_flow_failed_with_error [C9.1.1 ::1.1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.769389-0400 Merlin[46024:7632518] [connection] nw_endpoint_flow_failed_with_error [C10.1.1 ::1.8081 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.769609-0400 Merlin[46024:7632518] [connection] nw_socket_handle_socket_event [C11.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.769622-0400 Merlin[46024:7632518] [connection] nw_socket_handle_socket_event [C9.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.769648-0400 Merlin[46024:7632518] [connection] nw_endpoint_flow_failed_with_error [C11.1.1 ::1.8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.769712-0400 Merlin[46024:7632518] [connection] nw_endpoint_flow_failed_with_error [C9.1.2 127.0.0.1:1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.769770-0400 Merlin[46024:7632518] [connection] nw_endpoint_flow_failed_with_error [C9.1.2 127.0.0.1:1234 cancelled socket-flow ((null))] already failing, returning
+2026-05-26 10:15:41.770004-0400 Merlin[46024:7632518] [Default] Connection 9: received failure notification
+2026-05-26 10:15:41.770019-0400 Merlin[46024:7632518] [Default] Connection 9: failed to connect 1:61, reason -1
+2026-05-26 10:15:41.770022-0400 Merlin[46024:7632518] [Default] Connection 9: encountered error(1:61)
+2026-05-26 10:15:41.770177-0400 Merlin[46024:7632518] [Default] Task <BAB6E339-DB7A-4915-A3AC-31E9B4A34262>.<18> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-05-26 10:15:41.770265-0400 Merlin[46024:7632516] [Default] Task <BAB6E339-DB7A-4915-A3AC-31E9B4A34262>.<18> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc88359470 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <BAB6E339-DB7A-4915-A3AC-31E9B4A34262>.<18>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <BAB6E339-DB7A-4915-A3AC-31E9B4A34262>.<18>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:1234/health, NSErrorFailingURLKey=http://localhost:1234/health, _kCFStreamErrorDomainKey=1}
+2026-05-26 10:15:41.773898-0400 Merlin[46024:7632481] [connection] nw_socket_handle_socket_event [C12.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.773935-0400 Merlin[46024:7632481] [connection] nw_endpoint_flow_failed_with_error [C12.1.1 ::1.1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.774160-0400 Merlin[46024:7632481] [connection] nw_socket_handle_socket_event [C12.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-05-26 10:15:41.774181-0400 Merlin[46024:7632481] [connection] nw_endpoint_flow_failed_with_error [C12.1.2 127.0.0.1:1234 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-05-26 10:15:41.774227-0400 Merlin[46024:7632481] [connection] nw_endpoint_flow_failed_with_error [C12.1.2 127.0.0.1:1234 cancelled socket-flow ((null))] already failing, returning
+2026-05-26 10:15:41.774251-0400 Merlin[46024:7632481] [Default] Connection 12: received failure notification
+2026-05-26 10:15:41.774260-0400 Merlin[46024:7632481] [Default] Connection 12: failed to connect 1:61, reason -1
+2026-05-26 10:15:41.774263-0400 Merlin[46024:7632481] [Default] Connection 12: encountered error(1:61)
+2026-05-26 10:15:41.774318-0400 Merlin[46024:7632481] [Default] Task <2260038A-E6FB-421F-997B-8480F0DA4D0F>.<23> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-05-26 10:15:41.774371-0400 Merlin[46024:7632481] [Default] Task <2260038A-E6FB-421F-997B-8480F0DA4D0F>.<23> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc88358ff0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <2260038A-E6FB-421F-997B-8480F0DA4D0F>.<23>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <2260038A-E6FB-421F-997B-8480F0DA4D0F>.<23>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:1234/v1/models, NSErrorFailingURLKey=http://localhost:1234/v1/models, _kCFStreamErrorDomainKey=1}

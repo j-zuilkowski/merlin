@@ -159,8 +159,12 @@ final class AppState: ObservableObject {
             .path
 
         authMemory = AuthMemory(storePath: authStorePath)
+        let configuredXcalibreURL = AppSettings.shared.kagXcalibreURL
         let configuredXcalibreToken = AppSettings.shared.xcalibreToken
         xcalibreClient = XcalibreClient(
+            baseURL: configuredXcalibreURL.isEmpty
+                ? XcalibreClient.defaultBaseURL()
+                : configuredXcalibreURL,
             token: configuredXcalibreToken.isEmpty
                 ? XcalibreClient.defaultToken()
                 : configuredXcalibreToken)
@@ -211,6 +215,7 @@ final class AppState: ObservableObject {
         }
         registerAllTools(
             router: toolRouter,
+            defaultProjectPath: projectPath.isEmpty ? nil : projectPath,
             visionProvider: { [weak self] in self?.engine?.provider(for: .vision) })
         configureCalibrationCoordinatorObservation()
 
@@ -222,13 +227,18 @@ final class AppState: ObservableObject {
             }
 
             let decoded = try JSONDecoder().decode(RunShellArgs.self, from: Data(args.utf8))
+            let defaultProjectPath = self?.projectPath
+            let scopedCWD = BuiltInToolScope.resolveCWD(
+                decoded.cwd,
+                defaultProjectPath: defaultProjectPath?.isEmpty == false ? defaultProjectPath : nil
+            )
             var stdout = ""
             var stderr = ""
             var exitCode: Int32 = 0
 
             for try await line in ShellTool.stream(
                 command: decoded.command,
-                cwd: decoded.cwd,
+                cwd: scopedCWD.path,
                 timeoutSeconds: decoded.timeout_seconds ?? 120
             ) {
                 if let status = line.exitStatus {
@@ -251,7 +261,7 @@ final class AppState: ObservableObject {
                 }
             }
 
-            return "exit:\(exitCode)\nstdout:\(stdout)\nstderr:\(stderr)"
+            return scopedCWD.prefixed("exit:\(exitCode)\nstdout:\(stdout)\nstderr:\(stderr)")
         }
 
         toolRouter.register(name: "generate_api_docs") { [weak self] args in

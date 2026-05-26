@@ -29,6 +29,31 @@ final class ContextLengthRecoveryTests: XCTestCase {
         }
     }
 
+    func test_isContextLengthExceeded_true_for_llamacpp_available_context_body() {
+        let body = """
+        {"error":{"code":400,"message":"request (8226 tokens) exceeds the available context size (8192 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":8226,"n_ctx":8192}}
+        """
+        let error = ProviderError.httpError(statusCode: 400, body: body, providerID: "llamacpp:qwen3-coder-local")
+
+        XCTAssertTrue(
+            error.isContextLengthExceeded,
+            "expected llama.cpp context overflow to classify as context length exceeded"
+        )
+    }
+
+    func test_observedContextLimit_prefers_llamacpp_nCtx_over_promptTokens() {
+        let body = """
+        {"error":{"code":400,"message":"request (8226 tokens) exceeds the available context size (8192 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":8226,"n_ctx":8192}}
+        """
+        let error = ProviderError.httpError(statusCode: 400, body: body, providerID: "llamacpp:qwen3-coder-local")
+
+        XCTAssertEqual(
+            error.observedContextLimit,
+            8192,
+            "expected n_ctx 8192, not n_prompt_tokens 8226"
+        )
+    }
+
     func test_isContextLengthExceeded_false_for_other_400s() {
         let bodies = [
             "invalid_api_key",

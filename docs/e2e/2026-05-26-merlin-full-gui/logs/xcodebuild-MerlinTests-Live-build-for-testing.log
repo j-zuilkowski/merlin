@@ -1,0 +1,998 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme MerlinTests-Live build-for-testing -destination platform=macOS -derivedDataPath /tmp/merlin-e2e-derived CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006041-00140140268A801C, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006041-00140140268A801C, name:My Mac }
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (6 targets)
+    Target 'TestTargetApp' in project 'Merlin' (no dependencies)
+    Target 'MerlinUITests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinLiveTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinE2ETests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: d65b33f6180057d5710a7c97f5a37dbf
+Build description path: /tmp/merlin-e2e-derived/Build/Intermediates.noindex/XCBuildData/d65b33f6180057d5710a7c97f5a37dbf.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-own-target-headers.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-target-headers.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-non-framework-target-headers.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-project-headers.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-generated-files.hmap (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyMetadataFileList (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-target-headers.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyStaticMetadataFileList (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-project-headers.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-own-target-headers.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-generated-files.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_const_extract_protocols.json (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibPath-normal-arm64.txt (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibPath-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-non-framework-target-headers.hmap (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibInstallName-normal-arm64.txt (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibInstallName-normal-arm64.txt
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_const_extract_protocols.json (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftConstValuesFileList (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.LinkFileList (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.LinkFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-OutputFileMap.json (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/ProductTypeInfoPlistAdditions.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/ProductTypeInfoPlistAdditions.plist
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftConstValuesFileList (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_const_extract_protocols.json (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.LinkFileList (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.LinkFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-OutputFileMap.json (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyStaticMetadataFileList (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyMetadataFileList (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-project-headers.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-own-target-headers.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-generated-files.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-target-headers.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-non-framework-target-headers.hmap (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-non-framework-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftConstValuesFileList (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.LinkFileList (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.LinkFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-OutputFileMap.json (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyStaticMetadataFileList (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyMetadataFileList (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-OutputFileMap.json (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-OutputFileMap.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_const_extract_protocols.json (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_const_extract_protocols.json
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftConstValuesFileList (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.LinkFileList (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.LinkFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyStaticMetadataFileList (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyMetadataFileList (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyMetadataFileList
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-project-headers.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-project-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-own-target-headers.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-own-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-generated-files.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-generated-files.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-target-headers.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-target-headers.hmap
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-non-framework-target-headers.hmap (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-non-framework-target-headers.hmap
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/PkgInfo -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/__preview.dylib normal (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Products/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -install_name @rpath/TestTargetApp.debug.dylib -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_dependency_info.dat -o /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/__preview.dylib
+
+SwiftDriver TestTargetApp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TestTargetApp -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList -DDEBUG -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -F /tmp/merlin-e2e-derived/Build/Products/Debug -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver MerlinLiveTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinLiveTests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver MerlinUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinUITests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriver MerlinE2ETests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-SwiftDriver -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinE2ETests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Extensions --scan-folder /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/AppIntents.framework --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/assetcatalog_generated_info.plist -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/Info.plist
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist
+
+WriteAuxiliaryFile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    write-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ TestTargetApp (in target 'TestTargetApp' from project 'Merlin')
+
+EmitSwiftModule normal arm64 (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ ContentView.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/ContentView.swift (in target 'TestTargetApp' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/ContentView.swift (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ TestTargetAppMain.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/TestTargetAppMain.swift (in target 'TestTargetApp' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/TestTargetAppMain.swift (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ SettingsSection.swift /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/UI/Settings/SettingsSection.swift (in target 'MerlinUITests' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/UI/Settings/SettingsSection.swift (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ SurfaceUITests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinUITests/SurfaceUITests.swift (in target 'MerlinUITests' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinUITests/SurfaceUITests.swift (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ AccessibilityID.swift /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Support/AccessibilityID.swift (in target 'MerlinUITests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Support/AccessibilityID.swift (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ VisualLayoutTests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinUITests/VisualLayoutTests.swift (in target 'MerlinUITests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinUITests/VisualLayoutTests.swift (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ MerlinUITests (in target 'MerlinUITests' from project 'Merlin')
+
+EmitSwiftModule normal arm64 (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for TestTargetApp (in target 'TestTargetApp' from project 'Merlin')
+
+SwiftDriver\ Compilation\ Requirements TestTargetApp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TestTargetApp -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList -DDEBUG -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -F /tmp/merlin-e2e-derived/Build/Products/Debug -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftMergeGeneratedHeaders /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources/TestTargetApp-Swift.h /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-Swift.h (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftHeaderTool -arch arm64 /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-Swift.h -o /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources/TestTargetApp-Swift.h
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.abi.json /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.abi.json (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.abi.json /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.swiftmodule /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.swiftdoc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftdoc (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftdoc /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftsourceinfo (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling TestTargetAppMain.swift (in target 'TestTargetApp' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ DeepSeekProviderLiveTests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinLiveTests/DeepSeekProviderLiveTests.swift (in target 'MerlinLiveTests' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinLiveTests/DeepSeekProviderLiveTests.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ DroppingContextManager.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/DroppingContextManager.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/DroppingContextManager.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ CapturingMemoryBackend.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/CapturingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/CapturingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ BundleModule.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/BundleModule.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/BundleModule.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ EngineFactory.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/EngineFactory.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/EngineFactory.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ MockToolRouter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockToolRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockToolRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ MockEmbeddingProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockEmbeddingProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockEmbeddingProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ NullAuthPresenter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthPresenter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthPresenter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ NullAuthGate.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ MerlinLiveTests (in target 'MerlinLiveTests' from project 'Merlin')
+
+EmitSwiftModule normal arm64 (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftEmitModule normal arm64 Emitting\ module\ for\ MerlinE2ETests (in target 'MerlinE2ETests' from project 'Merlin')
+EmitSwiftModule normal arm64 (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling ContentView.swift (in target 'TestTargetApp' from project 'Merlin')
+
+SwiftDriver\ Compilation TestTargetApp normal arm64 com.apple.xcode.tools.swift.compiler (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name TestTargetApp -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList -DDEBUG -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -F /tmp/merlin-e2e-derived/Build/Products/Debug -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling SettingsSection.swift (in target 'MerlinUITests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ TelemetryTestSupport.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/TelemetryTestSupport.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/TelemetryTestSupport.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib normal (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -dynamiclib -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/merlin-e2e-derived/Build/Products/Debug -F/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -filelist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.LinkFileList -install_name @rpath/TestTargetApp.debug.dylib -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @executable_path/../Frameworks -Xlinker -object_path_lto -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.swiftmodule @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp-linker-args.resp -Xlinker -alias -Xlinker _main -Xlinker ___debug_main_executable_dylib_entry_point -o /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for MerlinUITests (in target 'MerlinUITests' from project 'Merlin')
+
+SwiftDriver\ Compilation\ Requirements MerlinUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinUITests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling AccessibilityID.swift (in target 'MerlinUITests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ TruncatingMockProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/TruncatingMockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/TruncatingMockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftMergeGeneratedHeaders /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources/MerlinUITests-Swift.h /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-Swift.h (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftHeaderTool -arch arm64 /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-Swift.h -o /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources/MerlinUITests-Swift.h
+
+SwiftDriverJobDiscovery normal arm64 Compiling VisualLayoutTests.swift (in target 'MerlinUITests' from project 'Merlin')
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.swiftmodule /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.swiftdoc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftdoc (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftdoc /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.swiftdoc
+
+SwiftDriverJobDiscovery normal arm64 Compiling SurfaceUITests.swift (in target 'MerlinUITests' from project 'Merlin')
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.abi.json /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.abi.json (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.abi.json /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/arm64-apple-macos.abi.json
+
+SwiftDriverJobDiscovery normal arm64 Compiling NullAuthGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftsourceinfo (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriver\ Compilation MerlinUITests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinUITests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList -DDEBUG -module-alias Testing\=_Testing_Unavailable -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftCompile normal arm64 Compiling\ StalenessInjectingMemoryBackend.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ MockProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ LiveEnvironmentGate.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/LiveEnvironmentGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/LiveEnvironmentGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ EmptyToolResultRouter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/EmptyToolResultRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/EmptyToolResultRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling NullAuthPresenter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ EmptyToolResultRouter.swift,\ EngineFactory.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/EmptyToolResultRouter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/EngineFactory.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/EmptyToolResultRouter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/EngineFactory.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling BundleModule.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ CapturingMemoryBackend.swift,\ DroppingContextManager.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/CapturingMemoryBackend.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/DroppingContextManager.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/CapturingMemoryBackend.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/DroppingContextManager.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling CapturingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ NullAuthPresenter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthPresenter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthPresenter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockToolRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ CalibrationLiveTests.swift,\ CapabilityScenarioTests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CalibrationLiveTests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CalibrationLiveTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockEmbeddingProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ MockProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ MockToolRouter.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockToolRouter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockToolRouter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling EngineFactory.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling DroppingContextManager.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ MockEmbeddingProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockEmbeddingProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/MockEmbeddingProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for MerlinLiveTests (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftDriver\ Compilation\ Requirements MerlinLiveTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinLiveTests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling DeepSeekProviderLiveTests.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ EvalSupport.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling TelemetryTestSupport.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftMergeGeneratedHeaders /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources/MerlinLiveTests-Swift.h /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-Swift.h (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftHeaderTool -arch arm64 /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-Swift.h -o /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources/MerlinLiveTests-Swift.h
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.swiftmodule /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.swiftdoc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftdoc (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftdoc /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.swiftdoc
+
+ConstructStubExecutorLinkFileList /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-ExecutorLinkFileList-normal-arm64.txt (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    construct-stub-executor-link-file-list /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor_no_swift_entry_point.a /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libPreviewsJITStubExecutor.a --output /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-ExecutorLinkFileList-normal-arm64.txt
+note: Using stub executor library with Swift entry point. (in target 'TestTargetApp' from project 'Merlin')
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.abi.json /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.abi.json (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.abi.json /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/arm64-apple-macos.abi.json
+
+SwiftDriverJobDiscovery normal arm64 Compiling TruncatingMockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftsourceinfo (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinLiveTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftCompile normal arm64 Compiling\ LiveEnvironmentGate.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/LiveEnvironmentGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/LiveEnvironmentGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ GUIAutomationE2ETests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/GUIAutomationE2ETests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/GUIAutomationE2ETests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp normal (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Products/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -Xlinker -rpath -Xlinker @executable_path -Xlinker -rpath -Xlinker @executable_path/../Frameworks -rdynamic -Xlinker -no_deduplicate -e ___debug_blank_executor_main -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_dylib -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibPath-normal-arm64.txt -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __debug_instlnm -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-DebugDylibInstallName-normal-arm64.txt -Xlinker -filelist -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp-ExecutorLinkFileList-normal-arm64.txt /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib -o /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp
+
+SwiftCompile normal arm64 Compiling\ NullAuthGate.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/NullAuthGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling StalenessInjectingMemoryBackend.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ StalenessInjectingMemoryBackend.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/StalenessInjectingMemoryBackend.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling EmptyToolResultRouter.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ EvalHarness.swift,\ EvalHarnessSmokeTests.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalHarness.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalHarnessSmokeTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalHarness.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/EvalHarnessSmokeTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Emitting module for MerlinE2ETests (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriver\ Compilation\ Requirements MerlinE2ETests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation-Requirements -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinE2ETests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+SwiftDriverJobDiscovery normal arm64 Compiling NullAuthPresenter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ TruncatingMockProvider.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/TruncatingMockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/SemanticFaults/TruncatingMockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftMergeGeneratedHeaders /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources/MerlinE2ETests-Swift.h /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-Swift.h (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftHeaderTool -arch arm64 /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-Swift.h -o /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources/MerlinE2ETests-Swift.h
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.swiftmodule /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.swiftdoc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftdoc (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftdoc /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.abi.json /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.abi.json (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.abi.json /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/arm64-apple-macos.abi.json
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftsourceinfo (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftsourceinfo /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinE2ETests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+SwiftDriverJobDiscovery normal arm64 Compiling LiveEnvironmentGate.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftCompile normal arm64 Compiling\ TelemetryTestSupport.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/TelemetryTestSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/TelemetryTestSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 Compiling\ AgenticLoopE2ETests.swift,\ BundleModule.swift /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/AgenticLoopE2ETests.swift /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/BundleModule.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/AgenticLoopE2ETests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftCompile normal arm64 /Users/jonzuilkowski/Documents/localProject/merlin/TestHelpers/BundleModule.swift (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+
+SwiftDriverJobDiscovery normal arm64 Compiling CapturingMemoryBackend.swift, DroppingContextManager.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling EmptyToolResultRouter.swift, EngineFactory.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --module-name TestTargetApp --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F42 --platform-family macOS --deployment-target 14.0 --bundle-identifier com.merlin.TestTargetApp --output /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp --dependency-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp_dependency_info.dat --stringsdata-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftFileList --metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyMetadataFileList --static-metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/TestTargetApp.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/Objects-normal/arm64/TestTargetApp.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-26 10:07:06.635 appintentsmetadataprocessor[43169:7600405] Starting appintentsmetadataprocessor export
+2026-05-26 10:07:06.636 appintentsmetadataprocessor[43169:7600405] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockToolRouter.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockEmbeddingProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockProvider.swift (in target 'MerlinLiveTests' from project 'Merlin')
+
+SwiftDriver\ Compilation MerlinLiveTests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinLiveTests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS/MerlinLiveTests normal (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/merlin-e2e-derived/Build/Products/Debug -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -bundle_loader /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin -Xlinker -object_path_lto -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.swiftmodule @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS/MerlinLiveTests
+
+RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app
+
+Validate /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-validationUtility /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+Touch /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /usr/bin/touch -c /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app
+
+RegisterWithLaunchServices /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/merlin-e2e-derived/Build/Products/Debug/TestTargetApp.app
+
+SwiftDriverJobDiscovery normal arm64 Compiling MockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling NullAuthGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling LiveEnvironmentGate.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling StalenessInjectingMemoryBackend.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling TruncatingMockProvider.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling TelemetryTestSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling GUIAutomationE2ETests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS/MerlinLiveTests --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --module-name MerlinLiveTests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F42 --platform-family macOS --deployment-target 14.0 --bundle-identifier com.merlin.MerlinLiveTests --output /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS/MerlinLiveTests --dependency-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests_dependency_info.dat --stringsdata-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftFileList --metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyMetadataFileList --static-metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/MerlinLiveTests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/Objects-normal/arm64/MerlinLiveTests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-26 10:07:06.869 appintentsmetadataprocessor[43174:7600476] Starting appintentsmetadataprocessor export
+2026-05-26 10:07:06.882 appintentsmetadataprocessor[43174:7600476] Extracted no relevant App Intents symbols, skipping writing output
+
+SwiftDriverJobDiscovery normal arm64 Compiling AgenticLoopE2ETests.swift, BundleModule.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest
+
+SwiftDriverJobDiscovery normal arm64 Compiling EvalHarness.swift, EvalHarnessSmokeTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+Touch /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /usr/bin/touch -c /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest
+
+SwiftDriverJobDiscovery normal arm64 Compiling EvalSupport.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriverJobDiscovery normal arm64 Compiling CalibrationLiveTests.swift, CapabilityScenarioTests.swift (in target 'MerlinE2ETests' from project 'Merlin')
+
+SwiftDriver\ Compilation MerlinE2ETests normal arm64 com.apple.xcode.tools.swift.compiler (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-Swift-Compilation -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name MerlinE2ETests -Onone @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList -DDEBUG -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing -enable-upcoming-feature StrictConcurrency -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -target arm64-apple-macos14.0 -g -module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path /tmp/merlin-e2e-derived/Index.noindex/DataStore -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 5 -I /tmp/merlin-e2e-derived/Build/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /tmp/merlin-e2e-derived/Build/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j16 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc /tmp/merlin-e2e-derived/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache -output-file-map /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -sdk-module-cache-path /tmp/merlin-e2e-derived/ModuleCache.noindex -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule -validate-clang-modules-once -clang-build-session-file /tmp/merlin-e2e-derived/ModuleCache.noindex/Session.modulevalidation -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_const_extract_protocols.json -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-generated-files.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-own-target-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-all-target-headers.hmap -Xcc -iquote -Xcc /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests-project-headers.hmap -Xcc -I/tmp/merlin-e2e-derived/Build/Products/Debug/include -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources-normal/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources/arm64 -Xcc -I/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/DerivedSources -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-Swift.h -working-directory /Users/jonzuilkowski/Documents/localProject/merlin -experimental-emit-module-separately -disable-cmo
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests normal (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/merlin-e2e-derived/Build/Products/Debug -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/../Frameworks -bundle_loader /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin -Xlinker -object_path_lto -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.swiftmodule @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib -o /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --module-name MerlinE2ETests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F42 --platform-family macOS --deployment-target 14.0 --bundle-identifier com.merlin.MerlinE2ETests --output /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests --dependency-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests_dependency_info.dat --stringsdata-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftFileList --metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyMetadataFileList --static-metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/MerlinE2ETests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/Objects-normal/arm64/MerlinE2ETests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-26 10:07:07.200 appintentsmetadataprocessor[43178:7600504] Starting appintentsmetadataprocessor export
+2026-05-26 10:07:07.214 appintentsmetadataprocessor[43178:7600504] Extracted no relevant App Intents symbols, skipping writing output
+
+RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest
+
+Touch /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /usr/bin/touch -c /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest
+
+Validate /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-validationUtility /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/merlin-e2e-derived/Build/Products/Debug/Merlin.app
+
+ProcessInfoPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/ProductTypeInfoPlistAdditions.plist -o /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist
+
+Ld /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests normal (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -bundle -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -O0 -L/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -L/tmp/merlin-e2e-derived/Build/Products/Debug -L/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F/tmp/merlin-e2e-derived/Build/Intermediates.noindex/EagerLinkingTBDs/Debug -F/tmp/merlin-e2e-derived/Build/Products/Debug -iframework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker @executable_path/Frameworks -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -object_path_lto -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_lto.o -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_dependency_info.dat -fobjc-link-runtime -L/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.swiftmodule @/tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests-linker-args.resp -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -o /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests
+
+CopySwiftLibs /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.44s5Q9/Metal.xctoolchain --module-name MerlinUITests --sdk-root /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk --xcode-version 17F42 --platform-family macOS --deployment-target 14.0 --bundle-identifier com.merlin.MerlinUITests --output /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Resources --target-triple arm64-apple-macos14.0 --binary-file /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests --dependency-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests_dependency_info.dat --stringsdata-file /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftFileList --metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyMetadataFileList --static-metadata-file-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/MerlinUITests.DependencyStaticMetadataFileList --swift-const-vals-list /tmp/merlin-e2e-derived/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/Objects-normal/arm64/MerlinUITests.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-05-26 10:07:07.410 appintentsmetadataprocessor[43183:7600540] Starting appintentsmetadataprocessor export
+2026-05-26 10:07:07.412 appintentsmetadataprocessor[43183:7600540] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PkgInfo /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Contents/PkgInfo (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Contents/PkgInfo /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents
+
+CopyPlistFile /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Info.plist /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Contents/Info.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copyPlist --validate --convert xml1 --macro-expansion WRAPPEDPRODUCTNAME MerlinUITests-Runner --macro-expansion WRAPPEDPRODUCTBUNDLEIDENTIFIER com.merlin.MerlinUITests.xctrunner --macro-expansion TESTPRODUCTNAME MerlinUITests --macro-expansion TESTPRODUCTBUNDLEIDENTIFIER com.merlin.MerlinUITests --copy-value UIDeviceFamily /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist --outdir /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents -- /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Contents/Info.plist
+
+MkDir /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /bin/mkdir -p /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app
+
+CopyAndPreserveArchs /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/MacOS/MerlinUITests-Runner (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Xcode/Agents/XCTRunner.app/Contents/MacOS/XCTRunner -output /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/MacOS/MerlinUITests-Runner -extract arm64
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/libXCTestSwiftSupport.dylib /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCUnit.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCUnit.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCUnit.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCTAutomationSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTAutomationSupport.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCTestCore.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestCore.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCTestSupport.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks/XCTestSupport.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCUIAutomation.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCUIAutomation.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCUIAutomation.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/XCTest.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/XCTest.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+Copy /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks/Testing.framework /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -exclude Headers -exclude PrivateHeaders -exclude Modules -exclude \*.tbd -resolve-src-symlinks /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks/Testing.framework /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/Frameworks
+
+RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-RegisterExecutionPolicyException /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest
+
+Touch /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /usr/bin/touch -c /tmp/merlin-e2e-derived/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest
+
+** TEST BUILD SUCCEEDED **
+
