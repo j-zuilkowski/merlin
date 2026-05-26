@@ -172,6 +172,12 @@ the local-or-hosted FreeRouting backend; (later) the Tier-2 store + plugins menu
 
 _Status: promoted to `spec.md` and implemented as the workspace-scoped Merlin control plane. The message bus foundation is implemented: `WorkspaceRuntime`, `WorkspaceMessageBus`, shared contracts, bus-backed tool routing, MCP bus transports, workspace settings/events/artifacts, Tier-1 loading, and the electronics bus migration are active. Full KiCad/FreeRouting product completion remains separate follow-on work; the former `merlin/plugins/merlin-kicad-mcp/` scaffold is archived under `archive/legacy-merlin-kicad-mcp/` for historical reference._
 
+_Electronics completion decision: the next product pass is workflow-first.
+Completion means requirements-to-PCB and schematic-to-PCB work end to end through
+local FreeRouting, deterministic gates, required artifacts, explicit blocked/error
+states, and an electronics job/status panel. Hosted FreeRouting is optional until
+its API contract is known. Archived MCP code is reference material only._
+
 ## Deferred
 
 ### Electronics / KiCad Domain

@@ -2731,6 +2731,70 @@ The electronics plugin is the first Tier-1 plugin target. It registers bus-backe
 
 `kicad_route_pass` supports the local FreeRouting app and the optional hosted API behind one bus address. Progress, routing iterations, blocked states, generated DSN/SES files, Gerbers, drill files, BOMs, reports, and approval requests are emitted as bus events so all sessions in the workspace can observe the same electronics job state.
 
+### Electronics Product Completion Pass
+
+The bus-backed electronics plugin is an architecture milestone, not the full
+KiCad/FreeRouting product milestone. The completion pass is done only when the
+active electronics plugin can run the product workflows end to end without
+placeholder success, silent skipped work, or legacy-MCP parallel routing.
+
+Completion scope is workflow-first:
+
+1. Requirements-to-PCB: requirements capture, design intent, schematic
+   generation, footprint assignment, board constraints, placement, routing,
+   verification, fabrication outputs, BOM, and final report.
+2. Schematic-to-PCB: native KiCad, vector PDF, or qualifying raster schematic
+   input through extraction, clarification, synthesis, placement, routing,
+   verification, fabrication outputs, BOM, and final report.
+3. Supporting low-level KiCad tools are complete only where they directly serve
+   those workflows or deterministic verification.
+
+Routing backend policy:
+
+1. Local FreeRouting through `/Applications/freerouting.app` is the required
+   completion backend.
+2. Hosted FreeRouting remains an optional configured backend until its API
+   contract and credential policy are known. A configured but unavailable hosted
+   backend returns an explicit blocked/error status; it does not silently fall
+   back unless the selected routing policy permits fallback.
+3. Both backends share the `kicad_route_pass` bus address, DSN/SES interchange,
+   progress events, cancellation behavior, and route-result schema.
+
+Failure behavior is explicit:
+
+1. Missing KiCad, missing FreeRouting, unsupported versions, missing project
+   files, invalid input quality, unresolved footprints, route failure, failed
+   ERC/DRC/parity/simulation/CAM checks, and missing fabrication artifacts all
+   produce blocked or failed bus events with actionable diagnostics.
+2. Partial work may continue only when the next step remains meaningful. Merlin
+   must never mark routing, verification, fabrication export, ordering, or
+   release complete when the corresponding work was skipped or blocked.
+3. Legacy archived code under `archive/legacy-merlin-kicad-mcp` may be read as
+   reference only. Active product behavior lives under `plugins/electronics` and
+   routes through the workspace message bus.
+
+Required completion artifacts:
+
+1. KiCad project: `.kicad_pro`, `.kicad_sch`, and `.kicad_pcb`
+2. Routing interchange and result artifacts: DSN, SES, route log, and route
+   summary
+3. Fabrication artifacts: Gerbers, Excellon drills, drill report/map, fabrication
+   notes, and assembly drawing
+4. Assembly artifacts: BOM, pick-and-place/centroid file, substitution report
+   when applicable, and STEP/3D output when models are available or required
+5. Verification artifacts: ERC, DRC, schematic/PCB parity, CAM, simulation when
+   applicable, visual QA when applicable, approval records, and a consolidated
+   verification report
+
+Verification is gatekeeping. A workflow cannot return `COMPLETE` unless all
+applicable gates pass or a policy-permitted user approval explicitly records the
+exception. High-stakes gates cannot be waived by permission mode.
+
+The UI completion surface is a focused electronics job/status panel, similar in
+weight to the file browser. It shows current electronics jobs, backend health,
+progress events, produced artifacts, blocked/failure diagnostics, approval
+requests, and final reports for the active workspace.
+
 ### Completed Message Bus Implementation Sequence
 
 The bus architecture was implemented in this order. The sequence is retained as completion history and as the current invariant list for future work:
