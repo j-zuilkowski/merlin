@@ -53,6 +53,140 @@ enum ElectronicsBlockedReason: String, Codable, Sendable, Equatable {
     case missingArtifact = "BLOCKED_ARTIFACT"
 }
 
+enum ElectronicsGateStatus: String, Codable, Sendable, Equatable {
+    case pass = "PASS"
+    case fail = "FAIL"
+    case notApplicable = "NOT_APPLICABLE"
+}
+
+struct ElectronicsCompletionArtifact: Codable, Sendable, Equatable {
+    var kind: ElectronicsArtifactKind
+    var path: String
+
+    static let requiredFixtureArtifacts: [ElectronicsCompletionArtifact] = [
+        ElectronicsCompletionArtifact(kind: .kicadProject, path: "project.kicad_pro"),
+        ElectronicsCompletionArtifact(kind: .schematic, path: "project.kicad_sch"),
+        ElectronicsCompletionArtifact(kind: .board, path: "project.kicad_pcb"),
+        ElectronicsCompletionArtifact(kind: .routingInterchange, path: "project.dsn"),
+        ElectronicsCompletionArtifact(kind: .routingResult, path: "project.ses"),
+        ElectronicsCompletionArtifact(kind: .fabricationPackage, path: "fab.zip"),
+        ElectronicsCompletionArtifact(kind: .bom, path: "bom.csv"),
+        ElectronicsCompletionArtifact(kind: .pickAndPlace, path: "centroid.csv"),
+        ElectronicsCompletionArtifact(kind: .verificationReport, path: "verification.json"),
+        ElectronicsCompletionArtifact(kind: .approvalRecord, path: "approvals.json"),
+    ]
+}
+
+struct ElectronicsGateResult: Codable, Sendable, Equatable {
+    var gate: ElectronicsVerificationGate
+    var status: ElectronicsGateStatus
+    var details: String
+
+    static let allPassingRequired: [ElectronicsVerificationGate: ElectronicsGateResult] = {
+        var results: [ElectronicsVerificationGate: ElectronicsGateResult] = [:]
+        for gate in ElectronicsCompletionContract.current.requiredGates {
+            results[gate] = ElectronicsGateResult(gate: gate, status: .pass, details: "pass")
+        }
+        return results
+    }()
+}
+
+struct ElectronicsApprovalRecord: Codable, Sendable, Equatable {
+    var kind: ElectronicsApprovalKind
+    var approvedBy: String
+    var summary: String
+}
+
+struct ElectronicsCompletionEvidence: Codable, Sendable, Equatable {
+    var artifacts: [ElectronicsCompletionArtifact]
+    var gates: [ElectronicsVerificationGate: ElectronicsGateResult]
+    var approvals: [ElectronicsApprovalRecord]
+    var highStakes: Bool
+}
+
+struct ElectronicsCompletionEvaluation: Codable, Sendable, Equatable {
+    var status: KiCadStatus
+    var artifacts: [ElectronicsCompletionArtifact]
+    var gates: [ElectronicsGateResult]
+    var approvals: [ElectronicsApprovalRecord]
+    var missingArtifactKinds: [ElectronicsArtifactKind]
+    var failedGates: [ElectronicsGateResult]
+    var blockedReasons: [ElectronicsBlockedReason]
+}
+
+struct ElectronicsCompletionEvaluator: Sendable {
+    var contract: ElectronicsCompletionContract = .current
+
+    func evaluate(_ evidence: ElectronicsCompletionEvidence) -> ElectronicsCompletionEvaluation {
+        var missingArtifacts: [ElectronicsArtifactKind] = []
+        let presentArtifacts = Set(evidence.artifacts.map(\.kind))
+        for kind in contract.requiredArtifactKinds where !presentArtifacts.contains(kind) {
+            missingArtifacts.append(kind)
+        }
+
+        var gateResults = contract.requiredGates.compactMap { evidence.gates[$0] }
+        var failedGates = gateResults.filter { $0.status == .fail }
+        let suppliedGateSet = Set(gateResults.map(\.gate))
+        for requiredGate in contract.requiredGates where !suppliedGateSet.contains(requiredGate) {
+            let missingGate = ElectronicsGateResult(
+                gate: requiredGate,
+                status: .fail,
+                details: "Required gate result is missing."
+            )
+            gateResults.append(missingGate)
+            failedGates.append(missingGate)
+        }
+
+        if evidence.highStakes && !evidence.approvals.contains(where: { $0.kind == .highStakesSignoff }) {
+            let signoff = ElectronicsGateResult(
+                gate: .highStakesSignoff,
+                status: .fail,
+                details: "High-stakes electronics release requires explicit user signoff."
+            )
+            failedGates.removeAll { $0.gate == .highStakesSignoff }
+            failedGates.append(signoff)
+            gateResults.removeAll { $0.gate == .highStakesSignoff }
+            gateResults.append(signoff)
+        }
+
+        var blockedReasons: [ElectronicsBlockedReason] = []
+        if !missingArtifacts.isEmpty {
+            blockedReasons.append(.missingArtifact)
+        }
+        if !failedGates.isEmpty {
+            blockedReasons.append(.failedGate)
+        }
+
+        return ElectronicsCompletionEvaluation(
+            status: blockedReasons.isEmpty ? .complete : .blocked,
+            artifacts: evidence.artifacts,
+            gates: gateResults.sorted { $0.gate.rawValue < $1.gate.rawValue },
+            approvals: evidence.approvals,
+            missingArtifactKinds: missingArtifacts,
+            failedGates: failedGates.sorted { $0.gate.rawValue < $1.gate.rawValue },
+            blockedReasons: blockedReasons
+        )
+    }
+}
+
+struct ElectronicsFinalReport: Codable, Sendable, Equatable {
+    var jobID: String
+    var status: KiCadStatus
+    var artifacts: [ElectronicsCompletionArtifact]
+    var gates: [ElectronicsGateResult]
+    var approvals: [ElectronicsApprovalRecord]
+    var blockedReasons: [ElectronicsBlockedReason]
+
+    init(jobID: String, evaluation: ElectronicsCompletionEvaluation) {
+        self.jobID = jobID
+        self.status = evaluation.status
+        self.artifacts = evaluation.artifacts
+        self.gates = evaluation.gates
+        self.approvals = evaluation.approvals
+        self.blockedReasons = evaluation.blockedReasons
+    }
+}
+
 struct ElectronicsToolingState: Codable, Sendable, Equatable {
     var kiCadAvailable: Bool
     var localFreeRoutingAvailable: Bool

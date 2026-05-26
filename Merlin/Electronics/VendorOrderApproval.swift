@@ -113,6 +113,7 @@ struct VendorOrderSubmissionPolicy: Sendable {
 enum ElectronicsApprovalKind: String, Codable, Sendable, CaseIterable {
     case clarification = "clarification"
     case highStakesSignoff = "high_stakes_signoff"
+    case release = "release"
     case profileChange = "profile_change"
     case substitution = "substitution"
     case orderSubmission = "order_submission"
