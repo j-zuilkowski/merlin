@@ -666,6 +666,7 @@
 		D7E8999B4F282E510C3EDCDA /* HookConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFD931803D30DAC90E7D928 /* HookConfig.swift */; };
 		D8D06D9C7832E49138775007 /* MCPBridgeTransportSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E4740D5CFB33D27EF7B3D97 /* MCPBridgeTransportSelectionTests.swift */; };
 		D975C340FB5D319FB6F4F9B1 /* ManualCoverageScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11A33A598AB553E31D3CDAC /* ManualCoverageScanner.swift */; };
+		DA4BC687623252F6BE0A0A0E /* ElectronicsJobPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 615026AAFE02AE657716623A /* ElectronicsJobPanelView.swift */; };
 		DAAFF5A7AE633E17D98A646D /* ComponentsFootprintsBOMTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EC4CB8B4FF6C3B01F423342 /* ComponentsFootprintsBOMTests.swift */; };
 		DB5AB62056579E943E05F700 /* NullAuthPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2816B5AE21AA859A4A48252 /* NullAuthPresenter.swift */; };
 		DC2E009380BE7C53889E6B5A /* AppFocusedValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = B435C5FBDDB70F77F3A58C17 /* AppFocusedValues.swift */; };
@@ -722,6 +723,7 @@
 		F2993FFAA81156F5AE7AAC9D /* SkillsPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D618333C226998B947B39EA5 /* SkillsPicker.swift */; };
 		F2C01A20FA854487E27C3037 /* VoiceDictationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4315F5CC65750F4E68F04C /* VoiceDictationTests.swift */; };
 		F39878543A36AC7C5F67C0EB /* MistralRSModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55F40E9AAFB218E238C971D2 /* MistralRSModelManager.swift */; };
+		F3B8B1494676E8803BC23AFD /* ElectronicsJobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF31A353F21A69B8158DF660 /* ElectronicsJobStore.swift */; };
 		F40E3263BB4B61112DCCA85C /* ToolbarActionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C92F5FBEEF02C47DFE81D56 /* ToolbarActionTests.swift */; };
 		F604024A701BF2AD70735E6C /* KiCadV2CoreContractsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 055C28F4CCE3273D88BDD2F2 /* KiCadV2CoreContractsTests.swift */; };
 		F6125C3FFD10E31C6436FC16 /* ProjectSizeObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFC2CED1BFD45B1E35C220B8 /* ProjectSizeObserver.swift */; };
@@ -1046,6 +1048,7 @@
 		5FB89F5086E3C51796B7C80B /* LLMSummarisationCompactionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMSummarisationCompactionTests.swift; sourceTree = "<group>"; };
 		60206E4E6138E0FA21D38F14 /* SessionStoreTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreTelemetryTests.swift; sourceTree = "<group>"; };
 		6129FDDFD6FA852C223DFA90 /* ScreenCaptureTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureTool.swift; sourceTree = "<group>"; };
+		615026AAFE02AE657716623A /* ElectronicsJobPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsJobPanelView.swift; sourceTree = "<group>"; };
 		61D603DCD19F997A62ADB6F2 /* StagingBufferSignalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StagingBufferSignalsTests.swift; sourceTree = "<group>"; };
 		62559B44F7C27EC1B90AEC69 /* PendingAttentionQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingAttentionQueueTests.swift; sourceTree = "<group>"; };
 		6321DE6C7E3238ECEB274017 /* CapturingMemoryBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturingMemoryBackend.swift; sourceTree = "<group>"; };
@@ -1255,6 +1258,7 @@
 		AD4315F5CC65750F4E68F04C /* VoiceDictationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDictationTests.swift; sourceTree = "<group>"; };
 		AE4BC7B7FEC65D3BA6A3FB16 /* LoRACoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRACoordinator.swift; sourceTree = "<group>"; };
 		AEB7E79C3694578E2C0E6E95 /* PlannerStepTelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannerStepTelemetryTests.swift; sourceTree = "<group>"; };
+		AF31A353F21A69B8158DF660 /* ElectronicsJobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElectronicsJobStore.swift; sourceTree = "<group>"; };
 		AF3CDA79F36E4AF8736659AC /* BtwSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtwSession.swift; sourceTree = "<group>"; };
 		AF63E7387E6B7D79A9B63AD0 /* BtwOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BtwOverlayView.swift; sourceTree = "<group>"; };
 		AFC83EA95DBB8F0404670C33 /* JanModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JanModelManager.swift; sourceTree = "<group>"; };
@@ -1802,6 +1806,7 @@
 				F21CCCC650CD027CD96A3CEF /* BoardRoutingPolicy.swift */,
 				0FC5ECCAC5994FF68CE5B0A3 /* ComponentsFootprintsBOM.swift */,
 				2843AAC9AEC9D94E3B8D588B /* ElectronicsCompletionContract.swift */,
+				AF31A353F21A69B8158DF660 /* ElectronicsJobStore.swift */,
 				2D9B7244ED6927FB1386B6AD /* KiCadArtifacts.swift */,
 				CC9000A883BB63C91A421DEA /* KiCadArtifactStore.swift */,
 				C230EB9D2DFA4F25CD9158FD /* KiCadMCPClient.swift */,
@@ -2584,6 +2589,7 @@
 				C49FBF865B679572259ABF7C /* ChatView.swift */,
 				10467AB025B17A607DA0179F /* ContentView.swift */,
 				D03565FECA8DBC4D3751CA2D /* DiffPane.swift */,
+				615026AAFE02AE657716623A /* ElectronicsJobPanelView.swift */,
 				B60898163F147C93BF66B39D /* FilePane.swift */,
 				714CE3DC97F4018EACDE55C6 /* FirstLaunchSetupView.swift */,
 				355507F0EF491C407CA325FD /* PendingAttentionChipView.swift */,
@@ -3434,6 +3440,8 @@
 				FFF2740CB5F166FC2EFC77F7 /* DomainRegistry.swift in Sources */,
 				22147AB6DEB2142417E63FAC /* DriftFinding.swift in Sources */,
 				76256EEF2B927890127556EB /* ElectronicsCompletionContract.swift in Sources */,
+				DA4BC687623252F6BE0A0A0E /* ElectronicsJobPanelView.swift in Sources */,
+				F3B8B1494676E8803BC23AFD /* ElectronicsJobStore.swift in Sources */,
 				7A405B350425EC0A13ADCBDB /* ElectronicsRuntimePlugin.swift in Sources */,
 				C7D8FAA1F01100664A2DE1AB /* EmbeddingProvider.swift in Sources */,
 				ABAE692B0CF903EF12AB1D28 /* EscalationHandler.swift in Sources */,

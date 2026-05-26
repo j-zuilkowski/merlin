@@ -7,6 +7,7 @@ struct WorkspaceLayout: Codable, Sendable {
     var showPreviewPane: Bool
     var showSideChat: Bool
     var showCAGPane: Bool
+    var showElectronicsPane: Bool
     var sidebarWidth: Double
     var chatWidth: Double
 
@@ -17,6 +18,7 @@ struct WorkspaceLayout: Codable, Sendable {
         case showPreviewPane = "show_preview_pane"
         case showSideChat = "show_side_chat"
         case showCAGPane = "show_cag_pane"
+        case showElectronicsPane = "show_electronics_pane"
         case sidebarWidth = "sidebar_width"
         case chatWidth = "chat_width"
     }
@@ -28,6 +30,7 @@ struct WorkspaceLayout: Codable, Sendable {
         showPreviewPane: Bool,
         showSideChat: Bool,
         showCAGPane: Bool,
+        showElectronicsPane: Bool,
         sidebarWidth: Double,
         chatWidth: Double
     ) {
@@ -37,6 +40,7 @@ struct WorkspaceLayout: Codable, Sendable {
         self.showPreviewPane = showPreviewPane
         self.showSideChat = showSideChat
         self.showCAGPane = showCAGPane
+        self.showElectronicsPane = showElectronicsPane
         self.sidebarWidth = sidebarWidth
         self.chatWidth = chatWidth
     }
@@ -49,6 +53,7 @@ struct WorkspaceLayout: Codable, Sendable {
         showPreviewPane = try c.decodeIfPresent(Bool.self, forKey: .showPreviewPane) ?? false
         showSideChat = try c.decodeIfPresent(Bool.self, forKey: .showSideChat) ?? false
         showCAGPane = try c.decodeIfPresent(Bool.self, forKey: .showCAGPane) ?? false
+        showElectronicsPane = try c.decodeIfPresent(Bool.self, forKey: .showElectronicsPane) ?? false
         sidebarWidth = try c.decodeIfPresent(Double.self, forKey: .sidebarWidth) ?? 200
         chatWidth = try c.decodeIfPresent(Double.self, forKey: .chatWidth) ?? 300
     }
@@ -65,6 +70,7 @@ struct WorkspaceLayoutManager: Sendable {
             showPreviewPane: false,
             showSideChat: false,
             showCAGPane: false,
+            showElectronicsPane: false,
             sidebarWidth: 200,
             chatWidth: 300
         )

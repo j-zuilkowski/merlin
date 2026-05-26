@@ -10,6 +10,7 @@ struct WorkspaceView: View {
     @State private var selectedFileURL: URL? = nil
     @State private var showMemoriesWindow = false
     @State private var didLoadLayout = false
+    @StateObject private var electronicsJobStore = ElectronicsJobStore()
 
     private var layoutManager: WorkspaceLayoutManager {
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -78,6 +79,7 @@ struct WorkspaceView: View {
             .onChange(of: layout.showPreviewPane)  { _, _ in saveLayoutIfLoaded() }
             .onChange(of: layout.showSideChat)     { _, _ in saveLayoutIfLoaded() }
             .onChange(of: layout.showCAGPane)      { _, _ in saveLayoutIfLoaded() }
+            .onChange(of: layout.showElectronicsPane) { _, _ in saveLayoutIfLoaded() }
             .onReceive(NotificationCenter.default.publisher(for: .merlinToggleTerminal)) { _ in
                 layout.showTerminalPane.toggle()
             }
@@ -181,6 +183,12 @@ struct WorkspaceView: View {
                     .frame(minWidth: 240, idealWidth: 300, maxWidth: 380)
                 }
 
+                if layout.showElectronicsPane {
+                    Divider()
+                    ElectronicsJobPanelView(store: electronicsJobStore)
+                        .frame(minWidth: 260, idealWidth: 320, maxWidth: 420)
+                }
+
                 if layout.showSideChat {
                     Divider()
                     SideChatPane(
@@ -201,6 +209,12 @@ struct WorkspaceView: View {
         }
         .focusedObject(session.appState)
         .focusedObject(session.appState.registry)
+        .task(id: session.id) {
+            if let runtime = coordinator.activeProjectManager?.workspaceRuntime {
+                electronicsJobStore.start(bus: runtime.bus)
+                await electronicsJobStore.loadRecent(from: runtime.bus)
+            }
+        }
     }
 
     private var placeholderContent: some View {
@@ -258,6 +272,14 @@ struct WorkspaceView: View {
             .tint(layout.showCAGPane ? .accentColor : .accessibleSecondary)
             .help("Toggle CAG metrics")
             .accessibilityIdentifier(AccessibilityID.workspaceToggleCAGMetricsButton)
+
+            Button { layout.showElectronicsPane.toggle() } label: {
+                Label("Electronics Jobs", systemImage: "cpu")
+            }
+            .buttonStyle(.bordered)
+            .tint(layout.showElectronicsPane ? .accentColor : .accessibleSecondary)
+            .help("Toggle electronics jobs")
+            .accessibilityIdentifier(AccessibilityID.workspaceToggleElectronicsJobsButton)
 
             Button { layout.showSideChat.toggle() } label: {
                 Label("Side Chat", systemImage: "bubble.right")
