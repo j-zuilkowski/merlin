@@ -2,8 +2,10 @@ import Foundation
 
 struct ElectronicsRuntimePlugin {
     let metadata: RuntimePluginMetadata
+    private let tooling: ElectronicsToolingState
 
-    init() {
+    init(tooling: ElectronicsToolingState = .available) {
+        self.tooling = tooling
         let toolCapabilities = KiCadToolDefinitions.requiredToolNames.map { toolName in
             WorkspaceCapability(
                 id: "plugin.electronics.\(toolName)",
@@ -63,7 +65,7 @@ struct ElectronicsRuntimePlugin {
         for capability in metadata.capabilities {
             await runtime.bus.registerCapability(capability)
             await runtime.bus.register(
-                ElectronicsCapabilityHandler(capability: capability),
+                ElectronicsCapabilityHandler(capability: capability, tooling: tooling),
                 for: capability.address
             )
         }
@@ -80,10 +82,28 @@ struct ElectronicsRuntimePlugin {
 
 private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     var capability: WorkspaceCapability
+    var tooling: ElectronicsToolingState
 
     func handle(_ request: WorkspaceMessageRequest, context: WorkspaceHandlerContext) async -> WorkspaceMessageResponse {
         guard request.origin.permissionScope.allows(capability.requiredPermissionScope) else {
             return .unauthorized(requestID: request.id, message: "electronics capability requires \(capability.requiredPermissionScope.rawValue)")
+        }
+
+        if let blocked = blockedToolingReason(for: request.address.capability) {
+            await publishDiagnostic(reason: blocked, request: request, context: context)
+            return .blocked(
+                requestID: request.id,
+                code: blocked.rawValue,
+                message: blockedMessage(for: blocked)
+            )
+        }
+
+        if request.address.capability == "workflow.requirements_to_pcb"
+            || request.address.capability == "workflow.schematic_to_pcb" {
+            return .ok(
+                requestID: request.id,
+                payload: try? .encodeJSON(ElectronicsCompletionContract.current)
+            )
         }
 
         if request.address.capability == "kicad_route_pass" {
@@ -118,5 +138,58 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         return .ok(requestID: request.id, payload: .jsonString(#"{"status":"COMPLETE"}"#))
+    }
+
+    private func blockedToolingReason(for capability: String) -> ElectronicsBlockedReason? {
+        guard capability.hasPrefix("kicad_") || capability.hasPrefix("workflow.") || capability == "verify.electronics" else {
+            return nil
+        }
+        if !tooling.kiCadAvailable {
+            return .missingKiCad
+        }
+        if capability == "kicad_route_pass", !tooling.localFreeRoutingAvailable {
+            return .missingFreeRouting
+        }
+        return nil
+    }
+
+    private func publishDiagnostic(
+        reason: ElectronicsBlockedReason,
+        request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) async {
+        await context.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: request.id,
+            address: request.address,
+            origin: request.origin,
+            kind: .diagnostic,
+            payload: .jsonString(#"{"code":"\#(reason.rawValue)"}"#)
+        ))
+    }
+
+    private func blockedMessage(for reason: ElectronicsBlockedReason) -> String {
+        switch reason {
+        case .missingKiCad:
+            return "KiCad is required for electronics workflows and is not available."
+        case .missingFreeRouting:
+            return "Local FreeRouting is required for route completion and is not available."
+        case .unsupportedVersion:
+            return "The installed KiCad or routing backend version is unsupported."
+        case .missingProjectFile:
+            return "The required KiCad project files are missing."
+        case .invalidInputQuality:
+            return "The schematic input quality is too low for authoritative PCB synthesis."
+        case .unresolvedFootprints:
+            return "One or more schematic symbols do not have resolved footprints."
+        case .routeFailed:
+            return "Routing failed."
+        case .unroutedNets:
+            return "Routing left one or more nets unrouted."
+        case .failedGate:
+            return "A required electronics verification gate failed."
+        case .missingArtifact:
+            return "A required electronics completion artifact is missing."
+        }
     }
 }
