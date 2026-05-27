@@ -33,7 +33,8 @@ enum EvalHarness {
     static func runScenario(
         fixturePath: String,
         prompt: String,
-        timeout: TimeInterval = 1800
+        timeout: TimeInterval = 1800,
+        activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs
     ) async throws -> EvalRun {
         // Standard pipeline: ensure LM Studio has the execute-slot model resident
         // before the scenario runs. Idempotent — a no-op when it is already loaded;
@@ -43,10 +44,14 @@ enum EvalHarness {
         let session = LiveSession(
             projectRef: ProjectRef(path: fixturePath,
                                    displayName: "eval",
-                                   lastOpenedAt: Date()))
+                                   lastOpenedAt: Date()),
+            activeDomainIDs: activeDomainIDs)
         guard let engine = session.appState.engine else {
             await session.close()
             throw HarnessError.engineUnavailable
+        }
+        if getenv("XCALIBRE_TOKEN") != nil || !AppSettings.shared.xcalibreToken.isEmpty {
+            await session.appState.xcalibreClient.probe()
         }
 
         // Wait for MCP servers to finish launching and registering their tools.

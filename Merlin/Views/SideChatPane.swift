@@ -24,7 +24,7 @@ struct SideChatPane: View {
             Divider()
 
             if isVisible {
-                ChatView()
+                ChatView(accessibilityScope: .side)
                     .environmentObject(appState)
                     .environmentObject(skillsRegistry)
                     .environmentObject(appState.registry)
@@ -56,6 +56,7 @@ struct SideChatPane: View {
             }
             .buttonStyle(.borderless)
             .help("Close side chat")
+            .accessibilityLabel("Close side chat")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)

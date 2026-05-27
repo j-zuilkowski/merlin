@@ -94,7 +94,9 @@ final class SessionStore: ObservableObject {
 
     func delete(_ id: UUID) throws {
         let url = storeDirectory.appendingPathComponent(id.uuidString + ".json")
-        try FileManager.default.removeItem(at: url)
+        if FileManager.default.fileExists(atPath: url.path) {
+            try FileManager.default.removeItem(at: url)
+        }
         sessions.removeAll { $0.id == id }
         if activeSessionID == id {
             activeSessionID = sessions.first?.id

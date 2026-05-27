@@ -146,7 +146,8 @@ actor TaskScanner {
             minimumTaskNumber: nil,
             checkUndeclaredPublicSymbols: true)
         let configURL = projectRoot.appendingPathComponent(".merlin/project.toml")
-        guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
+        guard FileManager.default.fileExists(atPath: configURL.path),
+              let text = try? String(contentsOf: configURL, encoding: .utf8) else {
             return defaults
         }
 

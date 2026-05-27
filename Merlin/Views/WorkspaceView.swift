@@ -18,6 +18,31 @@ struct WorkspaceView: View {
         return WorkspaceLayoutManager(url: url)
     }
 
+    private var isUITestFixtureLaunch: Bool {
+        ProcessInfo.processInfo.arguments.contains("--open-test-project")
+    }
+
+    private var isAccessibilityAuditFixtureLaunch: Bool {
+        ProcessInfo.processInfo.arguments.contains("--accessibility-audit-fixture")
+    }
+
+    private var uiTestLayout: WorkspaceLayout {
+        if isAccessibilityAuditFixtureLaunch {
+            return WorkspaceLayout(
+                showDiffPane: false,
+                showFilePane: false,
+                showTerminalPane: false,
+                showPreviewPane: false,
+                showSideChat: false,
+                showCAGPane: false,
+                showElectronicsPane: false,
+                sidebarWidth: 200,
+                chatWidth: 300
+            )
+        }
+        return WorkspaceLayoutManager.defaultLayout
+    }
+
     var body: some View {
         workspaceLifecycleView
     }
@@ -29,14 +54,15 @@ struct WorkspaceView: View {
                 let configURL = home.appendingPathComponent(".merlin/config.toml")
                 try? await AppSettings.shared.load(from: configURL)
                 AppSettings.shared.startWatching(url: configURL)
-                layout = (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
+                layout = isUITestFixtureLaunch
+                    ? uiTestLayout
+                    : (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
                 didLoadLayout = true
 
                 // UI-test hook: open a throwaway project so a session is active and the
                 // chat/tool-log surfaces actually render (without a session WorkspaceView
                 // only shows placeholderContent). Used by MerlinUITests.
-                if ProcessInfo.processInfo.arguments.contains("--open-test-project"),
-                   coordinator.activeSession == nil {
+                if isUITestFixtureLaunch, coordinator.activeSession == nil {
                     let dir = NSTemporaryDirectory()
                         + "merlin-uitest-project-\(UUID().uuidString)"
                     try? FileManager.default.createDirectory(
@@ -299,7 +325,7 @@ struct WorkspaceView: View {
     }
 
     private func saveLayoutIfLoaded() {
-        guard didLoadLayout else { return }
+        guard didLoadLayout, isUITestFixtureLaunch == false else { return }
         try? layoutManager.save(layout)
     }
 }

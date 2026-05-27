@@ -103,9 +103,9 @@ RAG service unavailable at `localhost:8083` — the **default** port, not the te
 `8094`. So the `XCALIBRE_BASE_URL` env var the test sets is not reaching Merlin's
 xcalibre client (read too early, or not read at all). Two distinct S4 problems.
 
-**S6.** Merlin didn't call any `kicad_*` / `mcp:` tool. The test writes `.mcp.json`
-pointing at `merlin/plugins/merlin-kicad-mcp/run`. Investigate whether the MCP server
-launches/registers and why the agent never invokes it.
+**S6.** Merlin didn't call any `kicad_*` tool through the active
+`plugins/electronics` runtime plugin. Investigate whether the plugin loads,
+registers its evidence-gated routes, and why the agent never invokes them.
 
 **AgenticLoop.** `AgenticLoopE2ETests.swift:12` skips with "No API key" though the
 DeepSeek key is in `~/.merlin/api-keys.json` + Keychain. Its key check looks somewhere

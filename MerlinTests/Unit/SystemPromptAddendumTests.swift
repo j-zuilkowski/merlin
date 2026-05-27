@@ -108,6 +108,24 @@ final class SystemPromptAddendumTests: XCTestCase {
         XCTAssertTrue(prompt.contains("kicad"))
         XCTAssertTrue(offered.contains("mcp:kicad:route_board"))
     }
+
+    func testActiveElectronicsWorkspaceToolsGateImprovisationTools() async {
+        let engine = makeEngineWithAddendum(nil, slot: .execute)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.toolRouter.registerWorkspaceCapabilityTools(
+            ElectronicsRuntimePlugin().metadata.capabilities)
+
+        let prompt = await engine.buildSystemPromptForTesting(slot: .execute)
+        let offered = Set(engine.offeredToolNamesForTesting())
+
+        XCTAssertTrue(prompt.contains("kicad_*"))
+        XCTAssertTrue(offered.contains("kicad_route_pass"))
+        XCTAssertFalse(offered.contains("bash"))
+        XCTAssertFalse(offered.contains("run_shell"))
+        XCTAssertFalse(offered.contains("write_file"))
+        XCTAssertFalse(offered.contains("create_file"))
+        XCTAssertFalse(offered.contains("spawn_agent"))
+    }
 }
 
 // MARK: - Helpers

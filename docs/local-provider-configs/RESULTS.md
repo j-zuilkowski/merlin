@@ -1,6 +1,6 @@
 # Local Provider Testing Matrix — Results
 
-Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026**.
+Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026** and the reliable provider set refreshed on **May 27, 2026**.
 
 Compare each local provider's calibration output against the LM Studio MLX-8bit
 baseline. All five serve the same `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` (or
@@ -16,17 +16,29 @@ Run order per provider:
 5. Locate the report at `merlin-eval/results/CALIBRATION-harness-<timestamp>.md`
 6. Record `overallLocalScore` and the per-category breakdown below
 
-## Support matrix — 2026-05-22
+## Current reliable set — 2026-05-27
+
+| Provider | Current status | Reason |
+|---|---|---|
+| **lmstudio** | Reliable | Text, streaming, tool calls, and vision passed. |
+| **jan** | Reliable | Text, streaming, tool calls, and vision passed through the Jan CLI / llama-server path. |
+| **llamacpp** | Reliable in router mode | One router-mode `llama-server` served explicit text and vision model IDs successfully. |
+| **localai** | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls`. |
+| **ollama** | Non-working for Merlin full surface | Text works, but the tested Qwen3-VL path crashes the runner on real image requests; skip unless upstream issue tracking shows a fix. |
+| **vllm** (vLLM-Metal) | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented on Metal. |
+| **mistralrs** | Non-working for tested model | The tested Qwen3 MoE GGUF path fails on first inference on Apple Metal. |
+
+## Historical support matrix — 2026-05-22
 
 | Provider | General model | Vision model | Timed calibration | Status | Notes |
 |---|---|---|---|---|---|
-| **lmstudio** | ✓ | ✓ | ✓ | Fully supported | Best-known complete local pair |
-| **jan** | ✓ | ✓ | ✓ | Fully supported | Pair passed after correcting first vision-path launch mistake |
-| **localai** | ✓ | ✓ | ✓ | Fully supported | Pair served successfully from one LocalAI instance |
-| **ollama** | ✓ | ✗ | general only | Not recommended | Vision requests crashed the runner with `EOF` / `exit status 2` |
-| **vllm** (vLLM-Metal) | ✓ | ✗ | general only | Not recommended | Vision failed upstream with `NotImplementedError` on Metal |
-| **mistralrs** | ✗ | not pursued | — | Currently unusable | Tested Qwen3 MoE GGUF loads, then fails on first inference on Metal |
-| **llamacpp** | ✓ | ✓ | smoke | Live smoke validated | One router-mode `llama-server` served the local Qwen3 Coder + Qwen3-VL GGUF pair with `mmproj`; `/health`, `/v1/models`, `/models/load`, text completion, streaming, tool-call request shape, and image request returned HTTP 200 |
+| **lmstudio** | ✓ | ✓ | ✓ | Reliable | Best-known complete local pair |
+| **jan** | ✓ | ✓ | ✓ | Reliable | Pair passed after correcting first vision-path launch mistake |
+| **localai** | ✓ | ✓ | ✓ | Superseded: non-working for Merlin full surface | Historical pair run passed, but the May 27 full-surface smoke found tool calls do not return OpenAI `tool_calls` |
+| **ollama** | ✓ | ✗ | general only | Non-working for Merlin full surface | Vision requests crashed the runner with `EOF` / `exit status 2` |
+| **vllm** (vLLM-Metal) | ✓ | ✗ | general only | Non-working / avoid | Vision failed upstream with `NotImplementedError` on Metal; forced tool choice is unreliable |
+| **mistralrs** | ✗ | not pursued | — | Non-working for tested model | Tested Qwen3 MoE GGUF loads, then fails on first inference on Metal |
+| **llamacpp** | ✓ | ✓ | smoke | Reliable in router mode | One router-mode `llama-server` served the local Qwen3 Coder + Qwen3-VL GGUF pair with `mmproj`; `/health`, `/v1/models`, `/models/load`, text completion, streaming, tool-call request shape, and image request returned HTTP 200 |
 
 ## Timed calibration matrix — 2026-05-22
 
@@ -46,38 +58,40 @@ For each provider that surfaces something interesting (failure, surprising
 score, performance anomaly, format quirk), drop a one-paragraph note here:
 
 ### lmstudio
-Fully supported. General + vision pair passed live testing and the uncapped
+Reliable. General + vision pair passed live testing and the uncapped
 timed calibration run.
 
 ### ollama
-Not recommended. General calibration succeeded, but the tested vision model
+Non-working for Merlin's full local-provider surface. General calibration succeeded, but the tested vision model
 failed on both `/v1/chat/completions` and `/api/chat` with the runner exiting
 `EOF` / `exit status 2`. This is a runtime failure under real image load, not a
 Merlin wiring problem.
 
 ### jan
-Fully supported. General + vision pair passed live testing and timed
+Reliable. General + vision pair passed live testing and timed
 calibration. A first vision launch used the wrong GGUF filename, then passed
 cleanly after correction.
 
 ### localai (native)
-Fully supported. General + vision pair passed live testing and timed
-calibration from one LocalAI instance.
+Non-working for Merlin's full local-provider surface. Historical general +
+vision calibration passed from one LocalAI instance, but the May 27 full-surface
+smoke found tool-call requests return plain content without OpenAI `tool_calls`.
 
 ### mistralrs
-Currently unusable for the tested Qwen3-Coder-A3B GGUF model on Apple Metal.
+Non-working for the tested Qwen3-Coder-A3B GGUF model on Apple Metal.
 Server binds and `/v1/models` returns, but the first real completion fails
 because the MoE path reaches CUDA-only `indexed_moe_forward`. Upstream bug
 filed: `EricLBuehler/mistral.rs#2160`.
 
 ### vllm (vLLM-Metal)
-Not recommended. The general MLX model calibrated successfully, but the tested
+Non-working / avoid. The general MLX model calibrated successfully, but the tested
 vision runtime failed on the first real image request with:
 `NotImplementedError: Multimodal encoder execution is not wired on Metal yet`.
-That is an upstream runtime limitation, not a Merlin configuration issue.
+Forced required tool choice is also unreliable. Avoid this provider for the
+foreseeable future.
 
 ### llamacpp
-Live smoke validated on May 25, 2026. Merlin ships a first-class `llamacpp`
+Reliable in router mode. Merlin ships a first-class `llamacpp`
 provider and `LlamaCppModelManager` targeting one router-mode `llama-server`
 process on `http://localhost:8081/v1`. Runtime load/unload is available through
 `POST /models/load` and `POST /models/unload` when `/models` router endpoints
@@ -108,21 +122,19 @@ and a data-URI image request all returned HTTP 200.
 
 ## Takeaways — 2026-05-22
 
-**Fully supported local providers:**
+**Reliable local providers:**
 - **LM Studio**
 - **Jan.ai**
-- **LocalAI**
-- **llama.cpp** for router-mode live smoke validation of the GGUF general+vision pair
+- **llama.cpp** for router-mode validation of the GGUF general+vision pair
 
-LM Studio, Jan.ai, and LocalAI passed both model roles and completed a timed
-calibration run. llama.cpp passed the May 25 router-mode smoke and image
-validation against the same local GGUF pair.
+LM Studio and Jan.ai passed both model roles and completed a timed calibration
+run. llama.cpp passed the router-mode smoke, tool-call, and image validation
+against the same local GGUF pair.
 
-**Not recommended local providers:**
+**Non-working local providers:**
+- **LocalAI** — text, streaming, and vision work, but tool calls do not return OpenAI `tool_calls`
 - **Ollama** — general works, vision runner crashes on real image requests
-- **vLLM-Metal** — general works, vision is upstream-blocked on Metal
-
-**Currently unusable for the tested model:**
+- **vLLM-Metal** — general works, but forced tool choice is unreliable and vision is upstream-blocked on Metal
 - **Mistral.rs** — the tested Qwen3 MoE GGUF path fails on first inference on
   Apple Metal
 

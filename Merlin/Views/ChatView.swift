@@ -3,6 +3,46 @@ import Combine
 import UniformTypeIdentifiers
 import SwiftUI
 
+enum ChatAccessibilityScope {
+    case main
+    case side
+
+    var attachmentButtonID: String {
+        switch self {
+        case .main: AccessibilityID.chatAttachmentButton
+        case .side: AccessibilityID.sideChatAttachmentButton
+        }
+    }
+
+    var inputID: String {
+        switch self {
+        case .main: AccessibilityID.chatInput
+        case .side: AccessibilityID.sideChatInput
+        }
+    }
+
+    var voiceButtonID: String {
+        switch self {
+        case .main: AccessibilityID.chatVoiceButton
+        case .side: AccessibilityID.sideChatVoiceButton
+        }
+    }
+
+    var sendButtonID: String {
+        switch self {
+        case .main: AccessibilityID.chatSendButton
+        case .side: AccessibilityID.sideChatSendButton
+        }
+    }
+
+    var cancelButtonID: String {
+        switch self {
+        case .main: AccessibilityID.chatCancelButton
+        case .side: AccessibilityID.sideChatCancelButton
+        }
+    }
+}
+
 struct ChatView: View {
     private struct PendingDomainActivation: Equatable {
         var message: String
@@ -26,6 +66,12 @@ struct ChatView: View {
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""
     @State private var pendingDomainActivation: PendingDomainActivation?
+
+    private let accessibilityScope: ChatAccessibilityScope
+
+    init(accessibilityScope: ChatAccessibilityScope = .main) {
+        self.accessibilityScope = accessibilityScope
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -204,7 +250,8 @@ struct ChatView: View {
             .buttonStyle(.bordered)
             .help("Attach files")
             .disabled(model.isSending)
-            .accessibilityIdentifier(AccessibilityID.chatAttachmentButton)
+            .accessibilityLabel("Attach files")
+            .accessibilityIdentifier(accessibilityScope.attachmentButtonID)
 
             TextField("Message", text: $model.draft, axis: .vertical)
                 .lineLimit(1...5)
@@ -219,7 +266,7 @@ struct ChatView: View {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
                 )
-                .accessibilityIdentifier(AccessibilityID.chatInput)
+                .accessibilityIdentifier(accessibilityScope.inputID)
                 .accessibilityLabel("Message")
                 .disabled(model.isSending)
                 .onSubmit(sendMessage)
@@ -254,7 +301,7 @@ struct ChatView: View {
 
             VoiceDictationButton(draft: $model.draft)
                 .disabled(model.isSending)
-                .accessibilityIdentifier(AccessibilityID.chatVoiceButton)
+                .accessibilityIdentifier(accessibilityScope.voiceButtonID)
 
             Button {
                 if model.isSending {
@@ -277,7 +324,8 @@ struct ChatView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(model.isSending ? .red : .accentColor)
-            .accessibilityIdentifier(model.isSending ? AccessibilityID.chatCancelButton : AccessibilityID.chatSendButton)
+            .accessibilityLabel(model.isSending ? "Stop generating" : "Send message")
+            .accessibilityIdentifier(model.isSending ? accessibilityScope.cancelButtonID : accessibilityScope.sendButtonID)
             .disabled(!model.isSending && model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
         .padding(16)
@@ -978,6 +1026,7 @@ private struct VoiceDictationButton: View {
         }
         .buttonStyle(.bordered)
         .help(engine.state == .recording ? "Stop recording" : "Dictate")
+        .accessibilityLabel(engine.state == .recording ? "Stop recording" : "Dictate")
     }
 }
 

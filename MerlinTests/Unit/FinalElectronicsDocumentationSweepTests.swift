@@ -15,6 +15,34 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("LocalFreeRoutingBackend"))
         XCTAssertFalse(docs.contains("target server is `merlin-kicad-mcp`"))
     }
+
+    func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
+        let activeDocPaths = [
+            "README.md",
+            "Requirements.md",
+            "Merlin/Docs/UserGuide.md",
+            "Merlin/Docs/DeveloperManual.md",
+            "merlin-eval/README.md",
+            "merlin-eval/scenarios/S6-electronics.md",
+            "merlin-eval/BLOCKED.md",
+            "merlin-eval/PROVING-RUN-STATE.md",
+        ]
+        let docs = try activeDocPaths.map { try repoText($0) }.joined(separator: "\n")
+
+        XCTAssertTrue(docs.contains("plugins/electronics"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("evidence-gated"))
+
+        for stalePhrase in [
+            "built on `merlin-kicad-mcp`",
+            "merlin/plugins/merlin-kicad-mcp",
+            "Register the merlin-kicad-mcp server",
+            "merlin-kicad-mcp server registered",
+            "KiCad 10.0.3, merlin-kicad-mcp",
+            "merlin-kicad-mcp + FreeRouting",
+        ] {
+            XCTAssertFalse(docs.contains(stalePhrase), stalePhrase)
+        }
+    }
 }
 
 @MainActor

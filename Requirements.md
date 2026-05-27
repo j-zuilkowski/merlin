@@ -96,7 +96,7 @@ Optional — required only for the v2.0 Electronics (PCB/schematic) workflows.
 | Dependency | Version | Required for electronics | Source |
 |---|---|---|---|
 | KiCad | **>= 10.0.0** (lower versions rejected) | Yes | https://www.kicad.org/ |
-| merlin-kicad-mcp | — | Yes (Apple Silicon only) | Internal — Merlin-owned MCP server; no public source |
+| Merlin electronics runtime plugin | bundled in `plugins/electronics` | Yes | Built from this repo; the archived `archive/legacy-merlin-kicad-mcp` scaffold is historical reference only |
 | FreeRouting | any recent | Yes (auto-routing) | https://github.com/freerouting/freerouting — site: https://www.freerouting.app/ |
 | ngspice / SPICE | any recent | Yes (simulation) | https://ngspice.sourceforge.io/ |
 
@@ -186,7 +186,7 @@ Keychain and FSEvents, neither of which needs a separate prompt.
 | **Vision / GUI automation** | A vision model + Accessibility & Screen Recording permissions |
 | **Voice dictation** | Speech Recognition permission |
 | **LoRA self-training** | Apple Silicon, Python 3.9+, mlx_lm, an MLX-format base model |
-| **Electronics / PCB design** | KiCad >= 10.0.0, merlin-kicad-mcp, FreeRouting, ngspice |
+| **Electronics / PCB design** | KiCad >= 10.0.0, Merlin `plugins/electronics`, FreeRouting, ngspice |
 | **Project Discipline docs** | Vale; DocC (Swift) or rustdoc (Rust) |
 | **Web search** | Brave Search API key |
 | **Knowledge-graph RAG over books** | xcalibre-server (else local SQLite fallback) |

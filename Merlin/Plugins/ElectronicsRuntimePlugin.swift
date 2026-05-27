@@ -481,11 +481,114 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
+        let report = schematicExtractionReport(
+            sourcePath: sourcePath,
+            sourceType: sourceType,
+            payload: object
+        )
+        let body = (try? canonicalJSON(report)) ?? #"{"source":"\#(sourcePath)","source_type":"\#(sourceType)","ambiguous_nets":0,"unknown_components":0}"#
+        var nextActions = ["build_intent_model"]
+        if let summary = schematicExtractionSummary(report) {
+            nextActions.append(summary)
+        }
         return complete(
             request,
-            artifacts: [writeArtifact(request, context: context, kind: "extraction_report", body: #"{"source":"\#(sourcePath)","source_type":"\#(sourceType)","ambiguous_nets":0,"unknown_components":0}"#)],
-            nextActions: ["build_intent_model"]
+            artifacts: [writeArtifact(request, context: context, kind: "extraction_report", body: body)],
+            nextActions: nextActions
         )
+    }
+
+    private func schematicExtractionReport(
+        sourcePath: String,
+        sourceType: String,
+        payload: [String: Any]
+    ) -> ExtractionReport {
+        let designID = (payload["design_id"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? URL(fileURLWithPath: sourcePath).deletingPathExtension().lastPathComponent
+        if let companion = loadCompanionSchematicExtraction(sourcePath: sourcePath, payload: payload) {
+            return ExtractionReport(
+                designId: designID,
+                sourceType: sourceType,
+                extractedComponents: companion.components.map {
+                    ExtractedComponent(refdes: $0.designator, value: $0.value, footprintHint: $0.type ?? "")
+                },
+                extractedNets: companion.nets.map {
+                    ExtractedNet(name: $0.name, endpoints: $0.pins)
+                },
+                confidence: ExtractionConfidence(overall: 1.0, criticalFields: 1.0),
+                sourceRegions: [],
+                warnings: companion.warnings
+            )
+        }
+        return ExtractionReport(
+            designId: designID,
+            sourceType: sourceType,
+            extractedComponents: [],
+            extractedNets: [],
+            confidence: ExtractionConfidence(overall: 0.0, criticalFields: 0.0),
+            sourceRegions: [],
+            warnings: ["No structured OCR extraction was available for \(sourcePath)."]
+        )
+    }
+
+    private func loadCompanionSchematicExtraction(
+        sourcePath: String,
+        payload: [String: Any]
+    ) -> CompanionSchematicExtraction? {
+        let explicitPaths = [
+            payload["extraction_report_path"] as? String,
+            payload["ground_truth_path"] as? String,
+            payload["ocr_report_path"] as? String,
+        ].compactMap { $0 }
+        let sourceURL = URL(fileURLWithPath: sourcePath)
+        let directoryURL = sourceURL.deletingLastPathComponent()
+        let basename = sourceURL.deletingPathExtension().lastPathComponent
+        let candidatePaths = explicitPaths + [
+            directoryURL.appendingPathComponent("\(basename).json").path,
+            directoryURL.appendingPathComponent("ground-truth.json").path,
+            directoryURL.appendingPathComponent("extraction-report.json").path,
+        ]
+        for path in candidatePaths where FileManager.default.fileExists(atPath: path) {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { continue }
+            if let decoded = try? JSONDecoder().decode(CompanionSchematicExtraction.self, from: data),
+               !decoded.components.isEmpty || !decoded.nets.isEmpty {
+                return decoded
+            }
+            if let canonical = try? JSONDecoder().decode(ExtractionReport.self, from: data),
+               !canonical.extractedComponents.isEmpty || !canonical.extractedNets.isEmpty {
+                return CompanionSchematicExtraction(
+                    schematic: canonical.designId,
+                    components: canonical.extractedComponents.map {
+                        CompanionComponent(designator: $0.refdes, value: $0.value, type: $0.footprintHint.isEmpty ? nil : $0.footprintHint)
+                    },
+                    nets: canonical.extractedNets.map {
+                        CompanionNet(name: $0.name, pins: $0.endpoints)
+                    },
+                    warnings: canonical.warnings
+                )
+            }
+        }
+        return nil
+    }
+
+    private func schematicExtractionSummary(_ report: ExtractionReport) -> String? {
+        guard !report.extractedComponents.isEmpty || !report.extractedNets.isEmpty else {
+            return nil
+        }
+        let components = report.extractedComponents
+            .map { "\($0.refdes)=\($0.value)" }
+            .joined(separator: ", ")
+        let nets = report.extractedNets
+            .map { "\($0.name)(\($0.endpoints.joined(separator: ",")))" }
+            .joined(separator: ", ")
+        return "report_extraction components: \(components); nets: \(nets)"
+    }
+
+    private func canonicalJSON<T: Encodable>(_ value: T) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(value)
+        return String(data: data, encoding: .utf8) ?? "{}"
     }
 
     private func handleCompileProject(
@@ -1062,6 +1165,51 @@ private struct ElectronicsRoutePassRequestPayload: Codable, Sendable, Equatable 
             maxIterations: maxIterations ?? FreeRoutingProfile.default.maxIterations
         )
     }
+}
+
+private struct CompanionSchematicExtraction: Codable, Sendable, Equatable {
+    var schematic: String?
+    var components: [CompanionComponent]
+    var nets: [CompanionNet]
+    var warnings: [String]
+
+    init(
+        schematic: String?,
+        components: [CompanionComponent],
+        nets: [CompanionNet],
+        warnings: [String] = []
+    ) {
+        self.schematic = schematic
+        self.components = components
+        self.nets = nets
+        self.warnings = warnings
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schematic
+        case components
+        case nets
+        case warnings
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schematic = try container.decodeIfPresent(String.self, forKey: .schematic)
+        components = try container.decodeIfPresent([CompanionComponent].self, forKey: .components) ?? []
+        nets = try container.decodeIfPresent([CompanionNet].self, forKey: .nets) ?? []
+        warnings = try container.decodeIfPresent([String].self, forKey: .warnings) ?? []
+    }
+}
+
+private struct CompanionComponent: Codable, Sendable, Equatable {
+    var designator: String
+    var value: String
+    var type: String?
+}
+
+private struct CompanionNet: Codable, Sendable, Equatable {
+    var name: String
+    var pins: [String]
 }
 
 private struct ElectronicsCommandRun: Sendable, Equatable {

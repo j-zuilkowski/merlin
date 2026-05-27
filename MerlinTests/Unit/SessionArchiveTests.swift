@@ -165,6 +165,37 @@ final class SessionArchiveTests: XCTestCase {
         XCTAssertEqual(active.last?.title, "Old")
     }
 
+    // MARK: - Delete
+
+    func test_delete_removes_session_from_disk_and_published_list() throws {
+        let store = makeStore()
+        defer { cleanup(store) }
+
+        let session = Session(title: "Delete me", messages: [])
+        try store.save(session)
+
+        try store.delete(session.id)
+
+        let path = store.storeDirectory.appendingPathComponent("\(session.id.uuidString).json")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path.path))
+        XCTAssertFalse(store.sessions.contains { $0.id == session.id })
+        XCTAssertFalse(store.activeSessions.contains { $0.id == session.id })
+    }
+
+    func test_delete_removes_stale_in_memory_session_when_file_is_missing() throws {
+        let store = makeStore()
+        defer { cleanup(store) }
+
+        let session = Session(title: "Stale row", messages: [])
+        try store.save(session)
+        let path = store.storeDirectory.appendingPathComponent("\(session.id.uuidString).json")
+        try FileManager.default.removeItem(at: path)
+
+        XCTAssertNoThrow(try store.delete(session.id))
+        XCTAssertFalse(store.sessions.contains { $0.id == session.id })
+        XCTAssertFalse(store.activeSessions.contains { $0.id == session.id })
+    }
+
     // MARK: - Migration
 
     func test_migration_moves_flat_sessions_to_legacy() throws {

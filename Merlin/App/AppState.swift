@@ -119,6 +119,7 @@ final class AppState: ObservableObject {
     private var cancellables: Set<AnyCancellable> = []
     private var disciplineEventPollTask: Task<Void, Never>?
     private var calibrationCoordinatorCancellable: AnyCancellable?
+    private var runtimePluginStartupTask: Task<Void, Never>?
 
     init(
         projectPath: String = "",
@@ -533,10 +534,18 @@ final class AppState: ObservableObject {
             showFirstLaunchSetup = false
         }
 
-        Task { [workspaceRuntime = self.workspaceRuntime] in
+        runtimePluginStartupTask = Task { [weak self, workspaceRuntime = self.workspaceRuntime] in
             try? await workspaceRuntime.loadPlugins()
+            let capabilities = await workspaceRuntime.bus.registeredCapabilities()
+            await MainActor.run {
+                self?.engine.toolRouter.registerWorkspaceCapabilityTools(capabilities)
+            }
         }
         MerlinAppIntentsSupport.install(appState: self)
+    }
+
+    func awaitRuntimePluginsReady() async {
+        await runtimePluginStartupTask?.value
     }
 
     private func configureCalibrationCoordinatorObservation() {

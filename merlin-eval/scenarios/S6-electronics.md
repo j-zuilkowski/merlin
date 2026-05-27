@@ -1,18 +1,19 @@
 # S6 — Electronics End-to-End
 
 Proves Merlin's electronics workflow: it designs a schematic, places and routes a PCB via
-merlin-kicad-mcp + FreeRouting, and runs an ngspice simulation to verify the circuit
-behaves — schematic → layout → route → simulate, end to end.
+the bus-backed `plugins/electronics` runtime plugin plus FreeRouting, and runs an
+ngspice simulation to verify the circuit behaves — schematic → layout → route →
+simulate, end to end.
 
 ---
 
 ## Setup
 
-Confirmed available: KiCad 10.0.3, `merlin/plugins/merlin-kicad-mcp`,
+Confirmed available: KiCad 10.0.3, Merlin `plugins/electronics`,
 `/Applications/freerouting.app` (bundled JRE), `ngspice`.
 
-1. Register the merlin-kicad-mcp server in Merlin's MCP config (`~/.merlin/mcp.json`) —
-   confirm the server command/path from `merlin/plugins/merlin-kicad-mcp`.
+1. Confirm Merlin's active electronics runtime plugin is built and loadable from
+   `plugins/electronics`.
 2. Confirm Merlin's electronics tools are present (`KiCadToolDefinitions`,
    `route_via_freerouting`) and the FreeRouting path resolves
    (`KiCadMCPTooling.freeRoutingPath`).
@@ -99,7 +100,7 @@ divider). Keep `ground-truth.json` (components + nets) as the scoring reference.
 ## Runsheet
 
 1. Batches B–D merged; Merlin built; KiCad / FreeRouting / ngspice confirmed; the
-   merlin-kicad-mcp server registered in `~/.merlin/mcp.json`.
+   `plugins/electronics` runtime plugin loads and registers its evidence-gated tools.
 2. Create an empty `merlin-eval/fixtures/electronics/` working dir.
 3. Open a project in Merlin; send the scenario prompt.
 4. Watch the tool calls — schematic creation, footprint assignment, layout, the

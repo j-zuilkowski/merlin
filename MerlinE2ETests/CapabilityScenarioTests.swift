@@ -39,7 +39,76 @@ final class CapabilityScenarioTests: XCTestCase {
         guard FileManager.default.fileExists(atPath: copied) else {
             throw XCTSkip("could not extract pristine fixture '\(name)': \(out)")
         }
+        try seedProjectConfigIfNeeded(fixtureName: name, fixturePath: copied)
+        try initializeFixtureGitRepository(fixturePath: copied)
         return copied
+    }
+
+    private static func initializeFixtureGitRepository(fixturePath: String) throws {
+        let steps: [(String, [String])] = [
+            ("/usr/bin/git", ["init"]),
+            ("/usr/bin/git", ["config", "user.email", "merlin-eval@example.invalid"]),
+            ("/usr/bin/git", ["config", "user.name", "Merlin Eval"]),
+            ("/usr/bin/git", ["add", "."]),
+            ("/usr/bin/git", ["commit", "-m", "fixture baseline"])
+        ]
+        for (launchPath, args) in steps {
+            let output = EvalShell.run(launchPath, args, cwd: fixturePath, timeout: 120)
+            if output.contains("EvalShell launch error") || output.contains("EvalShell timeout") {
+                throw NSError(
+                    domain: "CapabilityScenarioTests",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "could not initialize fixture git repository: \(output)"
+                    ]
+                )
+            }
+        }
+        let head = EvalShell.run(
+            "/usr/bin/git", ["rev-parse", "--verify", "HEAD"],
+            cwd: fixturePath, timeout: 120)
+        guard FileManager.default.fileExists(atPath: "\(fixturePath)/.git"),
+              !head.contains("fatal:") else {
+            throw NSError(
+                domain: "CapabilityScenarioTests",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "fixture git repository has no committed HEAD: \(head)"
+                ]
+            )
+        }
+    }
+
+    private static func seedProjectConfigIfNeeded(fixtureName: String,
+                                                  fixturePath: String) throws {
+        let adapter: String?
+        switch fixtureName {
+        case "swift-gui-buggy":
+            adapter = "swift-xcode"
+        case "rust-buggy":
+            adapter = "rust-cargo"
+        default:
+            adapter = nil
+        }
+
+        guard let adapter else { return }
+        let configURL = URL(fileURLWithPath: fixturePath)
+            .appendingPathComponent(".merlin")
+            .appendingPathComponent("project.toml")
+        guard !FileManager.default.fileExists(atPath: configURL.path) else { return }
+
+        try FileManager.default.createDirectory(
+            at: configURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try """
+        adapter = "\(adapter)"
+        adapter_version = "1.0"
+        discipline_layers = ["soft_prompt", "pre_commit"]
+        manual_coverage_baseline = 0
+        decay_per_release = 10
+
+        """.write(to: configURL, atomically: true, encoding: .utf8)
     }
 
     // MARK: - S1 - Swift GUI debug cycle
@@ -79,8 +148,11 @@ final class CapabilityScenarioTests: XCTestCase {
             + "--- critic/systemNotes ---\n\(run.systemNotes.joined(separator: "\n"))\n"
             + "--- critic events ---\n\(criticEvents.joined(separator: "\n"))\n"
             + "--- xcodebuild test ---\n\(testOut.suffix(600))\n\(run.assistantText)")
-        XCTAssertTrue(testOut.contains("TEST SUCCEEDED"),
-                      "S1: TaskBoardTests must pass after Merlin's fixes")
+        let status = CapabilityConvergenceClassifier().classify(
+            verificationOutput: testOut,
+            assistantText: run.assistantText)
+        XCTAssertEqual(status, .green,
+                       "S1: TaskBoardTests must pass after Merlin's fixes; status \(status)")
     }
 
     // MARK: - S2 - Rust debug cycle
@@ -106,8 +178,11 @@ final class CapabilityScenarioTests: XCTestCase {
         let testOut = EvalShell.run("/bin/zsh", ["-c", "cargo test"], cwd: fixture)
         EvalLog.write(scenario: "S2", summary: "tools \(run.toolCalls.count)\n"
             + "\(testOut.suffix(600))\n\(run.assistantText)")
-        XCTAssertTrue(testOut.contains("test result: ok"),
-                      "S2: cargo test must be green after Merlin's fixes")
+        let status = CapabilityConvergenceClassifier().classify(
+            verificationOutput: testOut,
+            assistantText: run.assistantText)
+        XCTAssertEqual(status, .green,
+                       "S2: cargo test must be green after Merlin's fixes; status \(status)")
     }
 
     // MARK: - S4 - xcalibre RAG (harness launches xcalibre-server)
@@ -142,6 +217,11 @@ final class CapabilityScenarioTests: XCTestCase {
             throw XCTSkip("no non-vision LM Studio provider configured - "
                           + "S4 reranking needs a text model")
         }
+        guard EvalLMStudio.ensureServerRunning() else {
+            XCTFail("LM Studio server did not become ready at http://localhost:1234/v1/models")
+            return
+        }
+        EvalLMStudio.ensureModelLoaded(lm.model)
         // Key names must match xcalibre-server's config structs (config.rs):
         // [app] base_url + storage_path are both validated-required; [database] is a
         // single `url` field that must be a sqlite:// URL — not a `path`.
@@ -165,39 +245,68 @@ final class CapabilityScenarioTests: XCTestCase {
         """.write(toFile: configPath, atomically: true, encoding: .utf8)
 
         let server = EvalService(label: "xcalibre-server")
+        let serverLog = "\(work)/xcalibre-server.log"
         try server.launch(executable: binary, cwd: serverDir,
                           env: ["CONFIG_PATH": configPath,
-                                "APP_BIND_ADDR": "127.0.0.1:\(port)"])
+                                "APP_BIND_ADDR": "127.0.0.1:\(port)"],
+                          logPath: serverLog)
         defer { server.terminate() }
         let ready = await server.waitUntilReady(
             url: "http://127.0.0.1:\(port)/api/docs/openapi.json", timeout: 120)
-        XCTAssertTrue(ready, "xcalibre-server did not become ready")
+        guard ready else {
+            XCTFail("xcalibre-server did not become ready\n\(Self.tail(serverLog))")
+            return
+        }
         // 3. Register the first user (auto-promoted to admin on a fresh install) and
         //    log in to obtain a JWT. The xcalibre-server search endpoints require
         //    auth, so Merlin's XcalibreClient needs a real bearer token — an empty
         //    token makes it short-circuit every search to an empty result.
         let base = "http://127.0.0.1:\(port)"
         let token = try await Self.bootstrapXcalibreAdminToken(baseURL: base)
+        let priorXcalibreURL = AppSettings.shared.kagXcalibreURL
+        let priorXcalibreToken = AppSettings.shared.xcalibreToken
+        AppSettings.shared.kagXcalibreURL = base
+        AppSettings.shared.xcalibreToken = token
         setenv("XCALIBRE_BASE_URL", base, 1)
         setenv("XCALIBRE_TOKEN", token, 1)
-        defer { unsetenv("XCALIBRE_BASE_URL"); unsetenv("XCALIBRE_TOKEN") }
+        defer {
+            AppSettings.shared.kagXcalibreURL = priorXcalibreURL
+            AppSettings.shared.xcalibreToken = priorXcalibreToken
+            unsetenv("XCALIBRE_BASE_URL")
+            unsetenv("XCALIBRE_TOKEN")
+        }
 
         // Wait for the watch-folder to ingest both corpus EPUBs (file stored, book
         // row inserted, search chunks generated) before the scenario runs — the
         // first RAG query must have data to retrieve.
         let ingestedCount = await Self.waitForWatchFolderIngest(
             baseURL: base, token: token, expected: 2, timeoutSeconds: 120)
-        XCTAssertEqual(ingestedCount, 2,
-                       "xcalibre-server watch-folder must ingest both corpus EPUBs")
+        guard ingestedCount == 2 else {
+            XCTFail("xcalibre-server watch-folder must ingest both corpus EPUBs "
+                    + "(got \(ingestedCount))\n\(Self.tail(serverLog))")
+            return
+        }
+        let ragFactsReady = await Self.waitForRAGFacts(
+            baseURL: base, token: token, timeoutSeconds: 120)
+        guard ragFactsReady else {
+            XCTFail("xcalibre-server chunk search must return the seeded S4 facts "
+                    + "before Merlin's agentic RAG scenario starts\n\(Self.tail(serverLog))")
+            return
+        }
 
         let run = try await EvalHarness.runScenario(
             fixturePath: EvalPaths.fixture("rag-corpus"),
             prompt: EvalPrompts.s4, timeout: 900)
 
         EvalLog.write(scenario: "S4", summary: "errors \(run.errors.count)\n\(run.assistantText)")
+        guard server.isRunning else {
+            XCTFail("xcalibre-server exited during S4 scenario\n\(Self.tail(serverLog))")
+            return
+        }
         let answer = run.assistantText.lowercased()
         XCTAssertTrue(answer.contains("47") && answer.contains("tangerine"),
-                      "S4: grounded facts (47 kPa, TANGERINE-7) must be retrieved")
+                      "S4: grounded facts (47 kPa, TANGERINE-7) must be retrieved\n"
+                      + "\(Self.tail(serverLog))")
         // Q4 (max rotational speed) is absent from the corpus — Merlin must not
         // fabricate it. The model SHOULD still name the topic when correctly
         // declining ("rotational speed: not found … no results for RPM"), so a
@@ -278,14 +387,11 @@ final class CapabilityScenarioTests: XCTestCase {
         XCTAssertFalse(adapterFiles.isEmpty, "S5: training must produce an adapter artifact")
     }
 
-    // MARK: - S6 - electronics (harness writes the MCP config; Merlin spawns the server)
+    // MARK: - S6 - electronics (Merlin loads the first-party electronics plugin)
 
     @MainActor
     func testS6Electronics() async throws {
         try skipUnlessLiveEnvironment()
-        // The merlin-kicad-mcp server is launched BY Merlin from the project's
-        // `.mcp.json` - the harness only writes that config; no service to manage here.
-        //
         // S6 builds a KiCad project from scratch. Run it in a freshly-wiped
         // workspace: a prior run leaves .kicad_sch/.kicad_pcb directories behind in
         // the fixture, and the model then `list_directory`s the root, finds an
@@ -297,22 +403,15 @@ final class CapabilityScenarioTests: XCTestCase {
         try FileManager.default.createDirectory(
             atPath: workspace, withIntermediateDirectories: true)
 
-        let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        try XCTSkipUnless(FileManager.default.fileExists(atPath: mcpServerPath),
-                          "merlin-kicad-mcp plugin not found")
-        let mcpJSON = """
-        { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
-        """
-        try mcpJSON.write(toFile: "\(workspace)/.mcp.json", atomically: true, encoding: .utf8)
-        // (Confirm the merlin-kicad-mcp launch command from its README.)
-
         let run = try await EvalHarness.runScenario(
-            fixturePath: workspace, prompt: EvalPrompts.s6, timeout: 1800)
+            fixturePath: workspace,
+            prompt: EvalPrompts.s6,
+            timeout: 1800,
+            activeDomainIDs: [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
         EvalLog.write(scenario: "S6", summary: "tools \(run.toolCalls.count) "
             + "errors \(run.errors.count)\n\(run.assistantText)")
-        XCTAssertTrue(run.toolCalls.contains { $0.name.hasPrefix("kicad_") }
-                      || run.toolCalls.contains { $0.name.hasPrefix("mcp:") },
-                      "S6: Merlin must call the KiCad MCP tools")
+        XCTAssertTrue(run.toolCalls.contains { $0.name.hasPrefix("kicad_") },
+                      "S6: Merlin must call the first-party KiCad/electronics tools")
     }
 
     // MARK: - S6 Part B - schematic OCR (needs the vision model)
@@ -341,20 +440,11 @@ final class CapabilityScenarioTests: XCTestCase {
         // scenario's time budget on a cold JIT load.
         EvalLMStudio.ensureModelLoaded(vision.model)
 
-        // The KiCad MCP server (Merlin spawns it) lets Merlin write the extracted
-        // schematic; same config as Part A.
-        let mcpServerPath = "\(EvalPaths.sibling("merlin"))/plugins/merlin-kicad-mcp"
-        if FileManager.default.fileExists(atPath: mcpServerPath) {
-            let mcpJSON = """
-            { "mcpServers": { "kicad": { "command": "\(mcpServerPath)/run", "transport": "stdio" } } }
-            """
-            try mcpJSON.write(toFile: "\(fixture)/.mcp.json", atomically: true, encoding: .utf8)
-        }
-
         let run = try await EvalHarness.runScenario(
             fixturePath: fixture,
             prompt: EvalPrompts.s6OCR(imagePath: image),
-            timeout: 900)
+            timeout: 900,
+            activeDomainIDs: [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
 
         // Ground truth (fixtures/S6 ground-truth.json): R1 10k, C1 100nF.
         let report = run.assistantText
@@ -371,6 +461,18 @@ final class CapabilityScenarioTests: XCTestCase {
     // MARK: - S4 helpers
 
     private enum S4Error: Error { case message(String) }
+
+    private static func tail(_ path: String, maxBytes: Int = 16_384) -> String {
+        guard let handle = try? FileHandle(forReadingFrom: URL(fileURLWithPath: path)) else {
+            return "(no xcalibre-server log at \(path))"
+        }
+        defer { try? handle.close() }
+        let size = (try? handle.seekToEnd()) ?? 0
+        let offset = size > UInt64(maxBytes) ? size - UInt64(maxBytes) : 0
+        try? handle.seek(toOffset: offset)
+        let data = handle.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8) ?? "(xcalibre-server log was not utf8)"
+    }
 
     /// Registers the first xcalibre-server user (auto-promoted to admin on a fresh
     /// install) and logs in, returning the JWT access token.
@@ -408,6 +510,54 @@ final class CapabilityScenarioTests: XCTestCase {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
         }
         return 0
+    }
+
+    /// Polls the same authenticated chunk-search endpoint that Merlin's
+    /// XcalibreClient uses. Watch-folder "ingested" means rows/chunks were written,
+    /// but the first retrieval can still race search readiness; S4 should not hand
+    /// that transient state to the agent and misreport it as a reasoning failure.
+    private static func waitForRAGFacts(
+        baseURL: String, token: String, timeoutSeconds: Int
+    ) async -> Bool {
+        let deadline = Date().addingTimeInterval(TimeInterval(timeoutSeconds))
+        let queries = [
+            "Glimworks Mark IV pressure",
+            "TANGERINE-7 calibration cycle",
+            "Glimworks founder city"
+        ]
+        while Date() < deadline {
+            var combined = ""
+            for query in queries {
+                guard let url = chunkSearchURL(baseURL: baseURL, query: query) else {
+                    continue
+                }
+                if let search = try? await getJSON(url: url, token: token),
+                   let chunks = search["chunks"] as? [[String: Any]] {
+                    combined += " " + chunks.compactMap { $0["text"] as? String }
+                        .joined(separator: " ")
+                }
+            }
+            let lower = combined.lowercased()
+            if lower.contains("47") && lower.contains("tangerine-7")
+                && lower.contains("glimworks") {
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+        return false
+    }
+
+    private static func chunkSearchURL(baseURL: String, query: String) -> String? {
+        guard var components = URLComponents(string: "\(baseURL)/api/v1/search/chunks") else {
+            return nil
+        }
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "source", value: "books"),
+            URLQueryItem(name: "limit", value: "20"),
+            URLQueryItem(name: "rerank", value: "false")
+        ]
+        return components.url?.absoluteString
     }
 
     private static func postJSON(url: String, body: [String: Any]) async throws -> [String: Any] {

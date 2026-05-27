@@ -10,6 +10,8 @@ class ToolRouter {
     private var registrationTasks: [String: Task<Void, Never>] = [:]
     private var mcpDefinitions: [ToolDefinition] = []
     private var mcpDomainScopes: [String: String?] = [:]
+    private var workspaceDefinitions: [ToolDefinition] = []
+    private var workspaceDomainScopes: [String: String?] = [:]
     private var originProvider: ToolRouterOriginProvider
     var stagingBuffer: StagingBuffer?
     var permissionMode: PermissionMode = .ask
@@ -146,6 +148,25 @@ class ToolRouter {
         }
     }
 
+    func registerWorkspaceCapabilityTools(_ capabilities: [WorkspaceCapability]) {
+        for capability in capabilities where capability.kind == .tool || capability.kind == .workflow {
+            let name = capability.address.capability
+            let definition = Self.definition(for: capability)
+            if let existing = workspaceDefinitions.firstIndex(where: { $0.function.name == name }) {
+                workspaceDefinitions[existing] = definition
+            } else {
+                workspaceDefinitions.append(definition)
+            }
+            workspaceDomainScopes[name] = Self.domainScope(for: capability.address.namespace)
+            routes[name] = ToolRoute(
+                toolName: name,
+                address: capability.address,
+                timeout: timeout(for: name),
+                requiredPermissionScope: capability.requiredPermissionScope
+            )
+        }
+    }
+
     func registerKiCadTools(executor: any KiCadToolExecutor) {
         for toolName in KiCadToolDefinitions.requiredToolNames {
             register(name: toolName, namespace: "domain.electronics", capability: toolName, requiredScope: .externalSideEffect) { argumentsJSON in
@@ -164,6 +185,14 @@ class ToolRouter {
         mcpDefinitions.filter { isAllowedMCPTool(named: $0.function.name, activeDomainIDs: activeDomainIDs) }
     }
 
+    func workspaceToolDefinitions(activeDomainIDs: [String]) -> [ToolDefinition] {
+        workspaceDefinitions.filter { definition in
+            guard let scope = workspaceDomainScopes[definition.function.name] else { return true }
+            guard let scope else { return true }
+            return activeDomainIDs.contains(scope)
+        }
+    }
+
     func connectedMCPServerNames(activeDomainIDs: [String]) -> Set<String> {
         Set(mcpToolDefinitions(activeDomainIDs: activeDomainIDs).compactMap { definition in
             Self.mcpServerName(fromToolName: definition.function.name)
@@ -179,6 +208,10 @@ class ToolRouter {
     func hasScopedMCPTools(activeDomainIDs: [String]) -> Bool {
         mcpDefinitions.contains { mcpDomainScopes[$0.function.name] != nil }
             && !mcpToolDefinitions(activeDomainIDs: activeDomainIDs).isEmpty
+    }
+
+    func hasWorkspaceTools(activeDomainIDs: [String]) -> Bool {
+        !workspaceToolDefinitions(activeDomainIDs: activeDomainIDs).isEmpty
     }
 
     private func dispatchSingle(
@@ -233,6 +266,24 @@ class ToolRouter {
             let diagnosticText = response.diagnostics.map { "\($0.code): \($0.message)" }.joined(separator: "\n")
             return ToolResult(toolCallId: toolCallID, content: diagnosticText.isEmpty ? response.status.rawValue : diagnosticText, isError: true)
         }
+    }
+
+    private static func definition(for capability: WorkspaceCapability) -> ToolDefinition {
+        if let kicad = KiCadToolDefinitions.all.first(where: { $0.function.name == capability.address.capability }) {
+            return kicad
+        }
+        return ToolDefinition(function: .init(
+            name: capability.address.capability,
+            description: capability.displayName,
+            parameters: JSONSchema(type: "object")
+        ))
+    }
+
+    private static func domainScope(for namespace: String) -> String? {
+        if namespace == "plugin.electronics" || namespace == "domain.electronics" {
+            return ElectronicsDomain.defaultID
+        }
+        return nil
     }
 
     private func primaryArgument(from json: String) -> String {

@@ -156,6 +156,50 @@ final class RAGSettingsTests: XCTestCase {
         let limitVal = components?.queryItems?.first { $0.name == "limit" }?.value
         XCTAssertEqual(limitVal, "5")
     }
+
+    func testFallbackPlannerBuildsFocusedQueriesForCompoundRAGPrompt() {
+        let queries = RAGQueryFallbackPlanner.queries(from: """
+        Using the connected knowledge base, answer and cite each: (1) At what pressure does \
+        the Glimworks Mark IV operate? (2) How long is its calibration cycle and what is \
+        the reset code? (3) Who founded Glimworks Industries and in what city?
+        """)
+
+        XCTAssertTrue(queries.contains("Glimworks Mark IV pressure"))
+        XCTAssertTrue(queries.contains("Glimworks Mark IV calibration reset code"))
+        XCTAssertTrue(queries.contains("Glimworks founder city"))
+    }
+
+    func testEngineFallsBackToFocusedRAGQueriesWhenFullPromptMisses() async throws {
+        let provider = MinimalProviderRS()
+        let registry = ProviderRegistry()
+        registry.add(provider)
+        let memory = AuthMemory(storePath: "/dev/null")
+        memory.addAllowPattern(tool: "*", pattern: "*")
+        let gate = AuthGate(memory: memory, presenter: NullAuthPresenter())
+        let xcalibre = FallbackXcalibreClient()
+        let engine = AgenticEngine(
+            slotAssignments: [.execute: provider.id, .reason: provider.id],
+            registry: registry,
+            toolRouter: ToolRouter(authGate: gate),
+            contextManager: ContextManager(),
+            xcalibreClient: xcalibre
+        )
+
+        var ragSources: [RAGChunk] = []
+        for await event in engine.send(userMessage: """
+        Using the connected knowledge base, answer and cite each: (1) At what pressure does \
+        the Glimworks Mark IV operate? (2) How long is its calibration cycle and what is \
+        the reset code?
+        """) {
+            if case .ragSources(let chunks) = event {
+                ragSources = chunks
+            }
+        }
+
+        XCTAssertGreaterThanOrEqual(xcalibre.queries.count, 2)
+        XCTAssertTrue(xcalibre.queries.contains("Glimworks Mark IV pressure"))
+        XCTAssertEqual(ragSources.first?.text, "The Mark IV operates at 47 kilopascals.")
+    }
 }
 
 // MARK: - Helpers
@@ -172,4 +216,33 @@ private final class MinimalProviderRS: LLMProvider, @unchecked Sendable {
             c.finish()
         }
     }
+}
+
+private final class FallbackXcalibreClient: @unchecked Sendable, XcalibreClientProtocol {
+    nonisolated(unsafe) var queries: [String] = []
+
+    func probe() async {}
+    func isAvailable() async -> Bool { true }
+    func searchChunks(query: String, source: String, bookIDs: [String]?,
+                      projectPath: String?, limit: Int, rerank: Bool) async -> [RAGChunk] {
+        queries.append(query)
+        if query == "Glimworks Mark IV pressure" {
+            return [RAGChunk(
+                chunkID: "mark-iv-pressure",
+                source: "books",
+                bookID: "manual",
+                bookTitle: "Glimworks Mark IV Operator Manual",
+                headingPath: "Operating limits",
+                chunkType: "paragraph",
+                text: "The Mark IV operates at 47 kilopascals.",
+                rrfScore: 1.0
+            )]
+        }
+        return []
+    }
+    func searchMemory(query: String, projectPath: String?, limit: Int) async -> [RAGChunk] { [] }
+    func writeMemoryChunk(text: String, chunkType: String, sessionID: String?,
+                          projectPath: String?, tags: [String]) async -> String? { nil }
+    func deleteMemoryChunk(id: String) async {}
+    func listBooks(limit: Int) async -> [RAGBook] { [] }
 }

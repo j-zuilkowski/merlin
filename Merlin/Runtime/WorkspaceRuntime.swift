@@ -135,8 +135,17 @@ extension RuntimePluginLoader {
         if let resourceURL = Bundle.main.resourceURL {
             roots.append(resourceURL.appendingPathComponent("plugins", isDirectory: true))
         }
+        roots.append(URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("plugins", isDirectory: true))
         roots.append(URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("plugins", isDirectory: true))
         roots.append(FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".merlin/plugins", isDirectory: true))
-        return roots
+        var seen: Set<String> = []
+        return roots.filter { root in
+            let key = root.standardizedFileURL.resolvingSymlinksInPath().path
+            return seen.insert(key).inserted
+        }
     }
 }

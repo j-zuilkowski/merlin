@@ -85,25 +85,28 @@ struct SlotStatusPanel: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Slot Status")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
 
             ForEach(rows) { row in
                 HStack(spacing: 8) {
                     Circle()
                         .fill(color(for: row.state))
                         .frame(width: 7, height: 7)
-                        .accessibilityLabel(label(for: row.state))
+                        .accessibilityHidden(true)
                     Text(row.title)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.accessibleSecondary)
                         .frame(width: 72, alignment: .leading)
                     Text(row.value)
                         .font(.caption2)
-                        .foregroundStyle(row.state == .notConfigured ? .tertiary : .primary)
+                        .foregroundStyle(row.state == .notConfigured ? .accessibleSecondary : .primary)
                         .lineLimit(1)
                     Spacer(minLength: 0)
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(row.title) slot")
+                .accessibilityValue("\(row.value), \(text(for: row.state))")
+                .accessibilityAddTraits(.isStaticText)
                 .accessibilityIdentifier(row.accessibilityID)
             }
         }
@@ -125,16 +128,16 @@ struct SlotStatusPanel: View {
         }
     }
 
-    private func label(for state: SlotStatusRowModel.State) -> Text {
+    private func text(for state: SlotStatusRowModel.State) -> String {
         switch state {
         case .ready:
-            return Text("Ready")
+            return "Ready"
         case .busy:
-            return Text("Busy")
+            return "Busy"
         case .error:
-            return Text("Error")
+            return "Error"
         case .notConfigured:
-            return Text("Not configured")
+            return "Not configured"
         }
     }
 }

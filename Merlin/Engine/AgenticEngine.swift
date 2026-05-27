@@ -178,10 +178,10 @@ final class AgenticEngine {
 
     /// Built-in tools a coding model can use to "fake" domain work — hand-writing a
     /// domain file, shelling out to a CLI, or delegating to context-free subagents —
-    /// instead of calling a connected domain MCP server's tools. When an
-    /// authoritative domain server is connected (see `improvisationGatedMCPServers`)
-    /// these are withheld from the turn's tool list so the model is forced down the
-    /// supported, verified MCP path. This is what makes S6 (KiCad) deterministic:
+    /// instead of calling a connected domain backend's tools. When an authoritative
+    /// domain backend is connected, these are withheld from the turn's tool list so
+    /// the model is forced down the supported, verified path. This is what makes S6
+    /// (KiCad) deterministic:
     /// the 4-bit execute model otherwise non-deterministically writes `.kicad_sch`
     /// by hand — and it reaches for *any* available file/shell tool, so all of them
     /// must go. `bash` and `run_shell` are both shell tools (gating only `run_shell`
@@ -681,6 +681,25 @@ final class AgenticEngine {
                 limit: min(max(ragChunkLimit, 1), 20),
                 rerank: ragRerank
             )
+            if bookChunks.isEmpty {
+                var seenChunkIDs = Set<String>()
+                for query in RAGQueryFallbackPlanner.queries(from: userMessage) {
+                    let fallback = await client.searchChunks(
+                        query: query,
+                        source: "all",
+                        bookIDs: nil,
+                        projectPath: currentProjectPath,
+                        limit: min(max(ragChunkLimit * 2, 1), 20),
+                        rerank: ragRerank
+                    )
+                    for chunk in fallback where seenChunkIDs.insert(chunk.chunkID).inserted {
+                        bookChunks.append(chunk)
+                    }
+                    if bookChunks.count >= min(max(ragChunkLimit, 1), 20) {
+                        break
+                    }
+                }
+            }
         }
 
         let ragChunks = memChunks + bookChunks
@@ -1375,11 +1394,12 @@ final class AgenticEngine {
                         let rejection = ToolResult(
                             toolCallId: call.id,
                             content: "`\(call.function.name)` is not available for "
-                                + "this task. A domain MCP server is connected — "
+                                + "this task. A domain backend is connected — "
                                 + "author every domain file and run every domain "
-                                + "operation through its `mcp:` tools (offered to you "
-                                + "this turn). Do not shell out, hand-write files, or "
-                                + "spawn subagents; call the `mcp:` tools directly.",
+                                + "operation through the offered domain tools "
+                                + "(`kicad_*` or `mcp:<server>:*`). Do not shell out, "
+                                + "hand-write files, or spawn subagents; call the "
+                                + "domain tools directly.",
                             isError: true)
                         continuation.yield(.toolCallResult(rejection))
                         context.append(Message(
@@ -2665,17 +2685,24 @@ final class AgenticEngine {
     }
 
     /// The improvisation tools currently *withheld* from the model — non-empty only
-    /// when an authoritative domain MCP server (`improvisationGatedMCPServers`) is
-    /// connected. Empty otherwise, so non-domain tasks keep the full tool set.
+    /// when an authoritative domain backend is connected. Empty otherwise, so
+    /// non-domain tasks keep the full tool set.
     private func gatedImprovisationToolNames() -> Set<String> {
-        connectedMCPServerNames().isDisjoint(with: Self.improvisationGatedMCPServers)
-            ? []
-            : Self.improvisationToolNames
+        hasAuthoritativeDomainTools() ? Self.improvisationToolNames : []
+    }
+
+    private func hasAuthoritativeDomainTools() -> Bool {
+        if !connectedMCPServerNames().isDisjoint(with: Self.improvisationGatedMCPServers) {
+            return true
+        }
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID) else { return false }
+        return toolRouter.workspaceToolDefinitions(activeDomainIDs: activeDomainIDs)
+            .contains { $0.function.name.hasPrefix("kicad_") }
     }
 
     /// The tool list offered to the model for one turn: every built-in tool plus
-    /// every connected MCP tool. When an authoritative domain MCP server is
-    /// connected (`improvisationGatedMCPServers`), the improvisation tools
+    /// every connected MCP/workspace tool. When an authoritative domain backend is
+    /// connected, the improvisation tools
     /// (`improvisationToolNames`) are filtered out so the model cannot hand-write
     /// domain files or shell out around the server's verified tools — the lever
     /// that makes S6 (KiCad) deterministic rather than a coin-flip on tool choice.
@@ -2704,7 +2731,11 @@ final class AgenticEngine {
             ? ToolRegistry.shared.all()
             : ToolRegistry.shared.all().filter { !withheld.contains($0.function.name) }
         var seen = Set<String>()
-        return (builtins + toolRouter.mcpToolDefinitions(activeDomainIDs: activeDomainIDs))
+        return (
+            builtins
+            + toolRouter.mcpToolDefinitions(activeDomainIDs: activeDomainIDs)
+            + toolRouter.workspaceToolDefinitions(activeDomainIDs: activeDomainIDs)
+        )
             .filter { seen.insert($0.function.name).inserted }
     }
 
@@ -2756,6 +2787,20 @@ final class AgenticEngine {
                 """
             }
             parts.append(steer)
+        }
+
+        if toolRouter.hasWorkspaceTools(activeDomainIDs: activeDomainIDs),
+           activeDomainIDs.contains(ElectronicsDomain.defaultID) {
+            parts.append("""
+            Connected workspace plugin tools are available for the active electronics \
+            domain. Use the `kicad_*` tools directly for KiCad schematics, PCB \
+            layout, routing, simulation, verification, and fabrication outputs. Do \
+            NOT hand-write domain files (.kicad_sch, .kicad_pcb, netlists) or invoke \
+            KiCad through shell commands when a `kicad_*` tool covers the step. The \
+            shell tools (`bash`, `run_shell`), file-authoring tools (`write_file`, \
+            `create_file`), and `spawn_agent` are intentionally unavailable for this \
+            domain workflow.
+            """)
         }
 
         return parts.joined(separator: "\n\n")

@@ -31,7 +31,11 @@ targets:
       # Bundle.main/Builtin and copy the skills to ~/.merlin/skills at launch.
       - path: Merlin/Skills/Builtin
         type: folder
+    resources:
+      - path: plugins/electronics
+        type: folder
     dependencies:
+      - target: MerlinElectronicsPlugin
       - target: merlin-discipline
         embed: true
         copy:
@@ -69,9 +73,12 @@ targets:
       - plugins/electronics/Sources
     postBuildScripts:
       - name: Copy first-party electronics plugin dylib
+        outputFiles:
+          - $(SRCROOT)/plugins/electronics/libMerlinElectronicsPlugin.dylib
         script: |
           mkdir -p "$SRCROOT/plugins/electronics"
           cp "$BUILT_PRODUCTS_DIR/MerlinElectronicsPlugin.dylib" "$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib"
+          codesign --force --sign - "$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.merlin.plugins.electronics
@@ -170,6 +177,7 @@ schemes:
   MerlinTests-Live:
     build:
       targets:
+        MerlinElectronicsPlugin: all
         Merlin: all
         MerlinLiveTests: [test]
         MerlinE2ETests: [test]
@@ -179,3 +187,12 @@ schemes:
       targets: [MerlinLiveTests, MerlinE2ETests, MerlinUITests]
       environmentVariables:
         RUN_LIVE_TESTS: "1"
+
+  MerlinUITests:
+    build:
+      targets:
+        MerlinElectronicsPlugin: all
+        Merlin: all
+        MerlinUITests: [test]
+    test:
+      targets: [MerlinUITests]
