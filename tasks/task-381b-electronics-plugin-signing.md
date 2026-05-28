@@ -23,7 +23,7 @@ plugin entrypoint.
   copy the product dylib and ad-hoc sign the copied
   `plugins/electronics/libMerlinElectronicsPlugin.dylib`.
 - Add the copied dylib path as a script output so Xcode no longer reports the
-  copy phase as always dirty.
+  copy script as always dirty.
 - Preserve the existing manifest path unless runtime resolution is intentionally
   changed and covered by tests.
 - Do not route active electronics through the archived

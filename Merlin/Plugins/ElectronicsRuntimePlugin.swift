@@ -261,6 +261,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let simulationGate = synthesizedSimulationGate(
                 request,
                 context: context,
+                object: object,
                 scenarioURL: spiceURL,
                 outputURL: spiceRunURL
             )
@@ -1285,11 +1286,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func synthesizedSimulationGate(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext,
+        object: [String: Any],
         scenarioURL: URL,
         outputURL: URL
     ) -> ElectronicsGateResult {
         guard let simulatorPath = executablePath(
-            from: [:],
+            from: object,
             key: "ngspice_path",
             defaultCandidates: ["/opt/homebrew/bin/ngspice", "/usr/local/bin/ngspice"]
         ) else {
