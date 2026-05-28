@@ -2,10 +2,10 @@
 
 Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026** and the reliable provider set refreshed on **May 27, 2026**.
 
-Compare each local provider's calibration output against the LM Studio MLX-8bit
-baseline. All five serve the same `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf` (or
-the equivalent MLX-8bit in LM Studio's case) so engine overhead is the only
-variable.
+Prefer llama.cpp router mode for Merlin's local general+vision workflow. Compare
+other local providers against the same Qwen model class so engine overhead and
+runtime behavior are the only variables; LM Studio uses the equivalent MLX-8bit
+model, while the GGUF providers use `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf`.
 
 Run order per provider:
 
@@ -20,9 +20,9 @@ Run order per provider:
 
 | Provider | Current status | Reason |
 |---|---|---|
-| **lmstudio** | Reliable | Text, streaming, tool calls, and vision passed. |
-| **jan** | Reliable | Text, streaming, tool calls, and vision passed through the Jan CLI / llama-server path. |
-| **llamacpp** | Reliable in router mode | One router-mode `llama-server` served explicit text and vision model IDs successfully. |
+| **llamacpp** | Preferred reliable in router mode | One router-mode `llama-server` served explicit text and vision model IDs successfully. |
+| **lmstudio** | Reliable alternative | Text, streaming, tool calls, and vision passed. |
+| **jan** | Reliable alternative | Text, streaming, tool calls, and vision passed through the Jan CLI / llama-server path. |
 | **localai** | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls`. |
 | **ollama** | Non-working for Merlin full surface | Text works, but the tested Qwen3-VL path crashes the runner on real image requests; skip unless upstream issue tracking shows a fix. |
 | **vllm** (vLLM-Metal) | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented on Metal. |
@@ -32,7 +32,7 @@ Run order per provider:
 
 | Provider | General model | Vision model | Timed calibration | Status | Notes |
 |---|---|---|---|---|---|
-| **lmstudio** | ✓ | ✓ | ✓ | Reliable | Best-known complete local pair |
+| **lmstudio** | ✓ | ✓ | ✓ | Reliable alternative | Historical complete local pair |
 | **jan** | ✓ | ✓ | ✓ | Reliable | Pair passed after correcting first vision-path launch mistake |
 | **localai** | ✓ | ✓ | ✓ | Superseded: non-working for Merlin full surface | Historical pair run passed, but the May 27 full-surface smoke found tool calls do not return OpenAI `tool_calls` |
 | **ollama** | ✓ | ✗ | general only | Non-working for Merlin full surface | Vision requests crashed the runner with `EOF` / `exit status 2` |
@@ -122,14 +122,16 @@ and a data-URI image request all returned HTTP 200.
 
 ## Takeaways — 2026-05-22
 
-**Reliable local providers:**
-- **LM Studio**
-- **Jan.ai**
+**Preferred local provider:**
 - **llama.cpp** for router-mode validation of the GGUF general+vision pair
 
-LM Studio and Jan.ai passed both model roles and completed a timed calibration
-run. llama.cpp passed the router-mode smoke, tool-call, and image validation
-against the same local GGUF pair.
+**Reliable local alternatives:**
+- **LM Studio**
+- **Jan.ai**
+
+llama.cpp passed the router-mode smoke, tool-call, and image validation against
+the same local GGUF pair. LM Studio and Jan.ai passed both model roles and
+completed a timed calibration run.
 
 **Non-working local providers:**
 - **LocalAI** — text, streaming, and vision work, but tool calls do not return OpenAI `tool_calls`

@@ -3,8 +3,9 @@
 Validated against live runs on **May 22, 2026**, with llama.cpp router validation refreshed on **May 25, 2026** and the reliable provider set refreshed on **May 27, 2026**.
 
 Per-provider artifacts and configuration notes for the local providers
-Merlin can route to (LM Studio is the always-on baseline; the others are
-exercised via this directory). Each provider serves the same model class —
+Merlin can route to. **llama.cpp router mode is the preferred local provider**
+for Merlin's current general+vision workflow; LM Studio and Jan.ai remain
+reliable alternatives. Each provider serves the same model class —
 `Qwen3-Coder-30B-A3B-Instruct` — but the runtime, format, and feature set vary.
 
 Shared on-disk assets:
@@ -24,9 +25,9 @@ name is hardcoded in `ProviderConfig`.**
 
 | Provider | Status | General model | Vision model | Recommendation |
 |---|---|---|---|---|
-| LM Studio | Reliable | Pass | Pass | Use freely |
-| Jan.ai | Reliable | Pass | Pass | Use freely |
-| llama.cpp (router mode) | Reliable | Pass | Pass | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local GGUF general+vision pair |
+| llama.cpp (router mode) | Preferred reliable | Pass | Pass | Use first; first-class provider at `http://localhost:8081/v1`; one router-mode server handled the local GGUF general+vision pair |
+| LM Studio | Reliable alternative | Pass | Pass | Use freely when its GUI lifecycle is preferred |
+| Jan.ai | Reliable alternative | Pass | Pass | Use freely when its CLI lifecycle is preferred |
 | LocalAI | Non-working for Merlin full surface | Pass | Pass | Do not use until tool calls return OpenAI `tool_calls` |
 | Ollama | Non-working for Merlin full surface | Pass | Fail | Skip unless upstream vision crash issues are fixed |
 | vLLM-Metal | Non-working / avoid | Pass | Fail | Avoid for the foreseeable future |
@@ -37,7 +38,7 @@ name is hardcoded in `ProviderConfig`.**
 Each entry lists: launch / install, supported model formats, LoRA serving path,
 configuration tips, known limitations.
 
-### LM Studio (baseline, reliable)
+### LM Studio (reliable alternative)
 
 - **Endpoint:** `http://localhost:1234/v1`
 - **Install:** `/Applications/LM Studio.app` from the lmstudio.ai DMG
@@ -136,9 +137,9 @@ configuration tips, known limitations.
 
 | Provider | Native format | Q8 MoE OK? | Live pair status | Recommendation |
 |---|---|---|---|---|
-| LM Studio | MLX | ✓ | General + vision passed | Reliable |
-| Jan.ai | GGUF | ✓ | General + vision passed | Reliable |
-| llama.cpp | GGUF | ✓ | Router smoke + image request passed | Reliable in router mode |
+| llama.cpp | GGUF | ✓ | Router smoke + image request passed | Preferred reliable in router mode |
+| LM Studio | MLX | ✓ | General + vision passed | Reliable alternative |
+| Jan.ai | GGUF | ✓ | General + vision passed | Reliable alternative |
 | LocalAI | GGUF | ✓ | Text + vision passed; tool calls failed | Non-working for Merlin full surface |
 | Ollama | GGUF | ✓ for general | Vision failed at runtime | Non-working for Merlin full surface |
 | vLLM-Metal | MLX | ✓ for general | Vision failed upstream on Metal; forced tool choice unreliable | Non-working / avoid |
@@ -177,8 +178,8 @@ per-provider:
 - **vLLM-Metal**: failed in live testing. The tested runtime threw `NotImplementedError: Multimodal encoder execution is not wired on Metal yet`.
 - **Mistral.rs**: not pursued because the tested general MoE model already fails on first inference on Metal.
 
-For Merlin's current local pair workflow, treat only LM Studio, Jan, and
-llama.cpp router mode as reliable vision-capable providers.
+For Merlin's current local pair workflow, prefer llama.cpp router mode. Treat
+LM Studio and Jan as reliable vision-capable alternatives.
 
 ## Upstream issue tracking
 

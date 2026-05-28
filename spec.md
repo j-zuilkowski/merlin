@@ -2,7 +2,7 @@
 
 ## Overview
 
-Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, llama.cpp) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
+Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (llama.cpp router mode preferred; LM Studio and Jan.ai reliable alternatives; Ollama, LocalAI, Mistral.rs, and vLLM-Metal configurable but not currently recommended for the full local surface) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
 ## Spec-Driven Development Methodology
 
@@ -53,7 +53,7 @@ code is written.
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
 **[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `task`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
-**[v2.3]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
+**[v2.3]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; preferred local provider for Merlin's general+vision workflow; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
 **[v2.4]** Full green E2E release gate: the complete Merlin proving run is a blocking acceptance surface, not a screenshot exercise. Core tests, GUI runner bootstrapping, focused visual tests, live DeepSeek execution, local-provider pair smokes, xcalibre RAG readiness, S1/S2 capability convergence, and electronics/KiCad checks must all pass or produce explicit environment skips for missing provider keys only. GitHub feature screenshots are deferred until this battery is green.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
@@ -239,7 +239,7 @@ Three LLM pool wiring:
 
   execute slot ──────→ mlx_lm.server (LoRA adapter, M4 Mac local)
   reason/critic slot → external API provider (base model, unmodified)
-  vision slot ───────→ Qwen2.5-VL-72B via LM Studio (M4 Mac local)
+  vision slot ───────→ Qwen3-VL via llama.cpp router mode (M4 Mac local)
   RAG embed/search ──→ nomic-embed-text + phi-3-mini (Windows RTX 2070)
 ```
 
@@ -367,6 +367,9 @@ Every supported local provider has a different mechanism for changing load-time 
 Router/load-unload capability flags default to `false` so existing provider managers do not gain accidental behavior. A manager must opt in explicitly before AppState or ProviderRegistry calls runtime load/unload APIs.
 
 ### Capability Matrix
+
+llama.cpp router mode is the preferred local provider for Merlin's full
+general+vision surface. LM Studio and Jan.ai remain reliable alternatives.
 
 | Provider | Runtime Reload | Router Mode | Context Length | GPU Layers | CPU Threads | Flash Attn | KV Cache Type | Rope Base | Batch Size | mmap/mlock |
 |---|---|---|---|---|---|---|---|---|---|---|

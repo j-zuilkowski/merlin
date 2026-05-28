@@ -43,11 +43,16 @@ Remote: **Anthropic**, **DeepSeek**, **OpenAI**, **Qwen**, **OpenRouter**
 
 Local provider status (validated live on May 27, 2026):
 
+Preferred local provider: **llama.cpp router mode**. Use it first for local
+general+vision work because one router-mode `llama-server` can own the GGUF text
+model, the GGUF vision model, and the vision `mmproj` behind one OpenAI-compatible
+endpoint. LM Studio and Jan.ai remain reliable alternatives.
+
 | Provider | Status | Notes |
 |---|---|---|
-| LM Studio | Reliable | General + vision pair passed live calibration |
-| Jan.ai | Reliable | General + vision pair passed live calibration |
-| llama.cpp (router mode) | Reliable | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local general+vision GGUF pair |
+| llama.cpp (router mode) | Preferred reliable | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local general+vision GGUF pair |
+| LM Studio | Reliable alternative | General + vision pair passed live calibration |
+| Jan.ai | Reliable alternative | General + vision pair passed live calibration |
 | LocalAI | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls` |
 | Ollama | Non-working for Merlin full surface | Text works, but the tested Qwen3-VL path crashes the runner on real image requests; skip until upstream fixes land |
 | vLLM-Metal | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented on Metal; avoid for the foreseeable future |

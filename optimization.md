@@ -10,13 +10,13 @@ Within a single worker turn, dispatch tools that don't depend on each other in p
 
 ---
 
-## Local inference (LM Studio)
+## Local inference (llama.cpp router mode preferred)
 
 ### Speculative decoding
 Pair qwen3.6-27b with a small draft model (e.g. qwen 0.6b). The draft generates candidate tokens; the main model verifies them in one forward pass. Can yield 2–4× throughput on tasks with predictable output.
 
 ### Chunked prefill
-For long prompts (post-compaction context), llama.cpp's chunked prefill processes the prompt in batches, keeping the GPU saturated. Verify it's enabled in LM Studio settings.
+For long prompts (post-compaction context), llama.cpp's chunked prefill processes the prompt in batches, keeping the GPU saturated. Prefer running through Merlin's llama.cpp router-mode provider at `localhost:8081` so the text and vision models share one managed local runtime.
 
 ### Flash Attention / GPU layer count
 Confirm all model layers are offloaded to GPU and Flash Attention is enabled. Easy wins if currently misconfigured.

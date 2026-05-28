@@ -10,9 +10,9 @@ Merlin version: v2.2.5
 
 | Feature | Notes |
 |---|---|
-| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, plus local runtimes. Fully supported local providers today are LM Studio, Jan.ai, and LocalAI; Ollama and vLLM-Metal remain available but are not recommended for the tested pair workflow; Mistral.rs is currently unusable for the tested Qwen3 MoE model on Metal. Codex is GPT-only |
-| **Local model support** | Merlin supports fully local inference with zero API cost. The currently validated local providers are LM Studio, Jan.ai, and LocalAI, with additional experimental or limited paths for Ollama and vLLM-Metal. Codex is cloud-first; no local model support |
-| **Local vision model** | LM Studio + Qwen2.5-VL for on-device screenshot analysis — no cloud dependency |
+| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, plus local runtimes. llama.cpp router mode is the preferred local provider; LM Studio and Jan.ai are reliable alternatives. LocalAI, Ollama, vLLM-Metal, and Mistral.rs remain configurable but are non-working for Merlin's full expected local surface until upstream fixes land. Codex is GPT-only |
+| **Local model support** | Merlin supports fully local inference with zero API cost. The preferred path is llama.cpp router mode, with LM Studio and Jan.ai as reliable alternatives. Codex is cloud-first; no local model support |
+| **Local vision model** | llama.cpp router mode + Qwen3-VL GGUF/mmproj for on-device screenshot analysis — no cloud dependency |
 | **Auth sandbox + pattern memory** | Per-tool glob ACL with an interactive Allow/Deny popup (Allow Once / Allow Always / Deny Once / Deny Always) and persistent allow/deny patterns per tool. Codex has configurable sandboxing and permission profiles but no per-tool glob pattern ACL with interactive per-turn memory |
 | **Accessibility tree inspection** | Reads live AX element hierarchy, attributes, and focus state — Codex Computer Use sees only screenshots |
 | **CGEvent mouse/keyboard automation** | Raw hardware-level input synthesis; works in terminal apps; no screen recording permission; no regional restrictions; fully on-device |

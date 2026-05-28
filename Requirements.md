@@ -46,6 +46,7 @@ Optional alternative to cloud providers. No API key; all expose an OpenAI-compat
 
 | Runner | Default endpoint | Source |
 |---|---|---|
+| llama.cpp router mode | `http://localhost:8081/v1` | https://github.com/ggml-org/llama.cpp |
 | LM Studio | `http://localhost:1234/v1` | https://lmstudio.ai/ |
 | Ollama | `http://localhost:11434/v1` | https://ollama.com/ |
 | Jan.ai | `http://localhost:1337/v1` | https://jan.ai/ |
@@ -53,7 +54,12 @@ Optional alternative to cloud providers. No API key; all expose an OpenAI-compat
 | Mistral.rs | `http://localhost:1234/v1` | https://github.com/EricLBuehler/mistral.rs |
 | vLLM-Metal | `http://localhost:8000/v1` | https://docs.vllm.ai/ — repo: https://github.com/vllm-project/vllm |
 
-LM Studio is first-class: REST model management plus a CLI fallback at `~/.lmstudio/bin/lms`.
+llama.cpp router mode is the preferred local provider for Merlin. It keeps the
+local general model, vision model, and `mmproj` in one router catalog at
+`localhost:8081`, supports runtime model load/unload through router endpoints,
+and avoids the LM Studio / Mistral.rs `:1234` port collision. LM Studio remains a
+reliable first-class alternative with REST model management plus a CLI fallback
+at `~/.lmstudio/bin/lms`.
 
 > **Port-collision note.** LM Studio and Mistral.rs share the same default port (`1234`). Only one of the two can run at a time on the defaults; to use both, rebind one of them (`mistralrs --port 1235` and update the matching `baseURL` in Settings → Providers).
 
@@ -62,13 +68,14 @@ LM Studio is first-class: REST model management plus a CLI fallback at `~/.lmstu
 ## 4. Models
 
 Merlin is model-agnostic; these are the known-good choices named in the design docs.
-Models are downloaded through the runner (e.g. LM Studio's in-app search), not bundled.
+Models are downloaded through the runner or placed in the configured local model
+directory (for llama.cpp router mode, usually `~/Models/gguf`), not bundled.
 
 | Use | Model | Source |
 |---|---|---|
 | Default cloud execute slot | `deepseek-v4-flash` (per `ProviderConfig.swift` default) | https://platform.deepseek.com/ |
 | General / execute slot (local) | `qwen/qwen3.6-27b` (or any capable instruct model) | https://huggingface.co/Qwen |
-| Vision slot | `Qwen2.5-VL-72B-Instruct` (Q4_K_M GGUF, ~47 GB) | https://huggingface.co/Qwen — GGUF quants via LM Studio search |
+| Vision slot | `Qwen3-VL` GGUF + matching `mmproj` for llama.cpp router mode | https://huggingface.co/Qwen — GGUF quants in the configured local models directory |
 | LoRA base model | Local MLX-format instruct model (GGUF cannot be trained by mlx-lm) | User-provided (e.g. https://huggingface.co/models — convert to MLX via `mlx_lm.convert` if downloading HF format) |
 
 ---
@@ -182,7 +189,7 @@ Keychain and FSEvents, neither of which needs a separate prompt.
 | **Run the agent (software dev)** | macOS 14+, one LLM provider (cloud key **or** a local runner), git |
 | **Build Merlin from source** | Xcode 15.4+, Swift 5.10, xcodegen, signing identity |
 | **Use cloud models** | An API key for DeepSeek / OpenAI / Anthropic / Qwen / OpenRouter |
-| **Use local models** | LM Studio (or Ollama / Jan.ai / LocalAI / Mistral.rs / vLLM-Metal) + a downloaded model |
+| **Use local models** | llama.cpp router mode preferred; LM Studio or Jan.ai are reliable alternatives; skip LocalAI / Ollama / Mistral.rs / vLLM-Metal unless upstream blocker tracking shows a fix |
 | **Vision / GUI automation** | A vision model + Accessibility & Screen Recording permissions |
 | **Voice dictation** | Speech Recognition permission |
 | **LoRA self-training** | Apple Silicon, Python 3.9+, mlx_lm, an MLX-format base model |

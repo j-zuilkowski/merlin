@@ -18,11 +18,17 @@ explicit slot assignments, not by selecting a provider from the chat header.
 
 **Local (no API key required)**
 
+Preferred local provider: **llama.cpp router mode**. It is the default
+recommendation for local general+vision operation because a single router-mode
+`llama-server` can expose explicit text and vision model IDs, load/unload them
+through router endpoints, and serve the GGUF + `mmproj` pair through Merlin's
+standard OpenAI-compatible provider path.
+
 | Provider | Status | Notes |
 |---|---|---|
-| LM Studio | Reliable | Recommended. General + vision pair passed live calibration. |
-| Jan.ai | Reliable | Recommended. General + vision pair passed live calibration. |
-| llama.cpp (router mode) | Reliable | Recommended. First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair. |
+| llama.cpp (router mode) | Preferred reliable | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair. |
+| LM Studio | Reliable alternative | General + vision pair passed live calibration. |
+| Jan.ai | Reliable alternative | General + vision pair passed live calibration. |
 | LocalAI | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls`. |
 | Ollama | Non-working for Merlin full surface | General model works, but the tested Qwen3-VL model crashes the runner on real image requests. |
 | vLLM-Metal | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented in the tested `vllm-metal` runtime on Metal. |
@@ -122,7 +128,8 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.
 - llama.cpp uses router endpoints (`/models`, `/models/load`, `/models/unload`) when available; single-model `/v1/models` servers fall back to restart guidance using the current `llama-server --models-dir` and `--models-preset` flags.
-- Recommended local providers for full general+vision use are LM Studio, Jan.ai, and llama.cpp router mode.
+- Preferred local provider for full general+vision use is llama.cpp router mode.
+- LM Studio and Jan.ai remain reliable alternatives when their model lifecycle is more convenient for a given run.
 - LocalAI remains configurable, but is non-working for Merlin's full expected local surface until OpenAI-compatible tool calls return `tool_calls` instead of plain text.
 - Ollama remains configurable, but is non-working for the full local pair because the tested Qwen3-VL path crashes the runner on real image requests; skip it unless upstream issue tracking shows a fix.
 - vLLM-Metal remains configurable, but should be avoided for the foreseeable future because forced tool choice is unreliable and vision is not implemented on Metal.
