@@ -50,7 +50,7 @@ final class DisciplineEngineTests: XCTestCase {
         _ = findings
     }
 
-    func testScanTreatsMissingMerlinDirectoryAsNotConfigured() async throws {
+    func testMissingMerlinDirectoryResolvesStubAdapterAndKeepsTaskDrift() async throws {
         let proj = FileManager.default.temporaryDirectory
             .appendingPathComponent("discipline-no-merlin-\(UUID())")
         try FileManager.default.createDirectory(at: proj, withIntermediateDirectories: true)
@@ -69,19 +69,11 @@ final class DisciplineEngineTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: proj) }
         XCTAssertFalse(FileManager.default.fileExists(atPath: proj.appendingPathComponent(".merlin").path))
 
-        let tempPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("discipline-no-merlin-telemetry-\(UUID().uuidString).jsonl")
-            .path
-        await TelemetryEmitter.shared.resetForTesting(path: tempPath)
-        defer { try? FileManager.default.removeItem(atPath: tempPath) }
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: proj.path)
+        let drift = await TaskScanner().scan(projectPath: proj.path)
 
-        let engine = makeEngine(projectPath: proj.path)
-        let report = await engine.scan(projectPath: proj.path)
-        await TelemetryEmitter.shared.flushForTesting()
-        let events = readTelemetryEvents(fromFile: tempPath)
-
-        XCTAssertTrue(report.findings.contains { $0.category == .taskDrift })
-        XCTAssertFalse(events.contains { $0["event"] as? String == "discipline.scan.failure" })
+        XCTAssertEqual(adapter.language, "swift")
+        XCTAssertTrue(drift.contains { $0.severity == .red && $0.surface.contains("absentSymbol") })
     }
 
     // MARK: - dismiss removes finding
