@@ -272,6 +272,26 @@ class ToolRouter {
         if let kicad = KiCadToolDefinitions.all.first(where: { $0.function.name == capability.address.capability }) {
             return kicad
         }
+        if capability.address.namespace == "plugin.electronics",
+           (capability.address.capability == "workflow.requirements_to_pcb"
+            || capability.address.capability == "workflow.schematic_to_pcb") {
+            let description: String
+            if capability.address.capability == "workflow.requirements_to_pcb" {
+                description = "Run the complete verified electronics flow from natural-language requirements to KiCad schematic, PCB, routing, simulation evidence, fabrication artifacts, and final gate report. Use this as the first tool for end-to-end board design requests."
+            } else {
+                description = "Run the complete verified electronics flow from an existing schematic to PCB layout, routing, simulation evidence, fabrication artifacts, and final gate report."
+            }
+            return ToolDefinition(function: .init(
+                name: capability.address.capability,
+                description: description,
+                parameters: JSONSchema(type: "object", properties: [
+                    "job_id": JSONSchema(type: "string", description: "Stable electronics job id"),
+                    "requirements": JSONSchema(type: "string", description: "Natural-language board requirements"),
+                    "output_directory": JSONSchema(type: "string", description: "Optional output directory for generated KiCad artifacts"),
+                    "high_stakes": JSONSchema(type: "boolean", description: "Whether the workflow needs explicit signoff before release"),
+                ], required: ["requirements"])
+            ))
+        }
         return ToolDefinition(function: .init(
             name: capability.address.capability,
             description: capability.displayName,

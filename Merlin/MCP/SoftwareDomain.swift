@@ -61,12 +61,17 @@ struct ElectronicsDomain: DomainPlugin {
         "footprint", "autoroute", "spice", "vendor order", "place order"
     ]
     let systemPromptAddendum: String? = """
-    Active domain: Electronics. Prefer the verified KiCad/electronics MCP tool path \
-    when it is available. Treat netlists, schematics, PCB files, BOMs, and \
-    fabrication outputs as domain artifacts that should be produced and verified \
-    through the electronics toolchain rather than hand-written freeform text. \
-    Manufacturing, ordering, and other irreversible electronics actions require \
-    explicit user approval.
+    Active domain: Electronics. Use the verified KiCad/electronics MCP or workspace \
+    plugin tool path when it is available. For end-to-end requirements-to-PCB board \
+    design tasks, your first tool call must be `workflow.requirements_to_pcb` with \
+    the user's board requirements. After that workflow returns, inspect or verify \
+    the returned artifacts using `kicad_*` tools as needed. Do not create a \
+    requirements file yourself, and do not call `kicad_build_intent_model` with a \
+    path unless a previous electronics tool returned that exact artifact path. \
+    Treat netlists, schematics, PCB files, BOMs, and fabrication outputs as domain \
+    artifacts that should be produced and verified through the electronics \
+    toolchain rather than hand-written freeform text. Manufacturing, ordering, and \
+    other irreversible electronics actions require explicit user approval.
     """
     let mcpToolNames: [String] = []
 

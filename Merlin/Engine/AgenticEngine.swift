@@ -177,11 +177,11 @@ final class AgenticEngine {
     private let maxSpawnsPerTask = 8
 
     /// Built-in tools a coding model can use to "fake" domain work — hand-writing a
-    /// domain file, shelling out to a CLI, or delegating to context-free subagents —
-    /// instead of calling a connected domain backend's tools. When an authoritative
-    /// domain backend is connected, these are withheld from the turn's tool list so
-    /// the model is forced down the supported, verified path. This is what makes S6
-    /// (KiCad) deterministic:
+    /// domain file, shelling out to a CLI, inspecting unrelated app UI, or delegating
+    /// to context-free subagents instead of calling a connected domain backend's
+    /// tools. When an authoritative domain backend is connected, these are withheld
+    /// from the turn's tool list so the model is forced down the supported, verified
+    /// path. This is what makes S6 (KiCad) deterministic:
     /// the 4-bit execute model otherwise non-deterministically writes `.kicad_sch`
     /// by hand — and it reaches for *any* available file/shell tool, so all of them
     /// must go. `bash` and `run_shell` are both shell tools (gating only `run_shell`
@@ -190,7 +190,11 @@ final class AgenticEngine {
     /// subagents that run one LLM completion and execute no tools, so it does no
     /// real KiCad work and only burns the loop budget.
     private static let improvisationToolNames: Set<String> = [
-        "run_shell", "bash", "write_file", "create_file", "spawn_agent"
+        "run_shell", "bash", "write_file", "create_file", "spawn_agent",
+        "read_file", "list_directory", "search_files",
+        "ui_inspect", "ui_find_element", "ui_get_element_value", "ui_click",
+        "ui_double_click", "ui_right_click", "ui_drag", "ui_type", "ui_key",
+        "ui_scroll", "ui_screenshot",
     ]
     /// MCP servers whose tool set fully covers their domain's authoring workflow, so
     /// the generic file/shell tools are redundant and only invite improvisation.
@@ -349,6 +353,17 @@ final class AgenticEngine {
 
     func offeredToolNamesForTesting() -> [String] {
         offeredTools().map { $0.function.name }
+    }
+
+    func authoritativeToolCallNamesForTesting(_ names: [String]) -> [String] {
+        let calls = names.enumerated().map { index, name in
+            ToolCall(
+                id: "call-\(index)",
+                type: "function",
+                function: FunctionCall(name: name, arguments: "{}")
+            )
+        }
+        return authoritativeElectronicsWorkflowCalls(from: calls).map(\.function.name)
     }
 
     var currentModelID: String {
@@ -1262,6 +1277,14 @@ final class AgenticEngine {
                             }
                             switch verdict {
                             case .pass:
+                                if !pendingContinuationSteps.isEmpty {
+                                    pendingContinuationSteps.removeAll()
+                                    continuationAborted = true
+                                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                                    continuation.yield(.systemNote(
+                                        "[verification passed - clearing remaining continuations]"
+                                    ))
+                                }
                                 break
                             case .fail(let reason):
                                 if criticRetryCount < maxRetries {
@@ -1351,7 +1374,7 @@ final class AgenticEngine {
                     break
                 }
 
-                let calls = assembled.keys.sorted().map { index in
+                let modelCalls = assembled.keys.sorted().map { index in
                     let item = assembled[index]!
                     return ToolCall(
                         id: item.id.isEmpty ? UUID().uuidString : item.id,
@@ -1359,6 +1382,7 @@ final class AgenticEngine {
                         function: FunctionCall(name: item.name, arguments: item.args)
                     )
                 }
+                let calls = authoritativeElectronicsWorkflowCalls(from: modelCalls)
                 totalToolCallCount += calls.count
 
                 for call in calls {
@@ -1458,7 +1482,7 @@ final class AgenticEngine {
                     continuation: continuation,
                     context: context
                 )
-                await dispatchRegularCalls(
+                let regularResults = await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
                     loopCount: loopCount,
@@ -1467,6 +1491,21 @@ final class AgenticEngine {
                     context: context,
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
+                if await shouldStopAfterPostToolVerification(
+                    calls: regularCalls,
+                    results: regularResults,
+                    context: context,
+                    domain: domain,
+                    writtenFiles: writtenFilePaths,
+                    continuation: continuation
+                ) {
+                    finalCriticResult = .pass
+                    consecutiveCriticFailures = 0
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    break turnLoop
+                }
                 // Prompt compression: mid-loop LLM summarisation.
                 // Threshold check, exchange extraction, one-shot provider call, and compact happen inside.
                 // A turn that made tool calls IS progress — the model acted, even
@@ -1838,6 +1877,84 @@ final class AgenticEngine {
         return keywords.contains { lower.hasPrefix($0) || lower.contains(": \($0)") }
     }
 
+    private func shouldStopAfterPostToolVerification(
+        calls: [ToolCall],
+        results: [ToolResult],
+        context: ContextManager,
+        domain: any DomainPlugin,
+        writtenFiles: [String],
+        continuation: AsyncStream<AgentEvent>.Continuation
+    ) async -> Bool {
+        guard AppSettings.shared.criticEnabled else { return false }
+        guard hasSuccessfulVerificationResult(calls: calls, results: results) else { return false }
+        let hasAvailableCritic = criticOverride != nil || {
+            if let p = self.provider(for: .reason), !(p is NullProvider) { return true }
+            return false
+        }()
+        guard hasAvailableCritic else { return false }
+
+        let critic = makeCritic(domain: domain)
+        let taskType = domain.taskTypes.first
+            ?? DomainTaskType(domainID: domain.id, name: "general", displayName: "General")
+        let verificationOutput = results
+            .filter { !$0.isError }
+            .map(\.content)
+            .joined(separator: "\n\n")
+        let verdict = await critic.evaluate(
+            taskType: taskType,
+            output: verificationOutput,
+            context: context.messages,
+            writtenFiles: writtenFiles
+        )
+        lastCriticVerdict = verdict
+        switch verdict {
+        case .pass:
+            continuation.yield(.systemNote(
+                "[verification passed after tool result - stopping]"
+            ))
+            return true
+        case .fail, .skipped:
+            return false
+        }
+    }
+
+    private func hasSuccessfulVerificationResult(calls: [ToolCall], results: [ToolResult]) -> Bool {
+        let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
+        for result in results where !result.isError {
+            guard let call = callsByID[result.toolCallId] else { continue }
+            let name = call.function.name.lowercased()
+            let args = call.function.arguments.lowercased()
+            let output = result.content.lowercased()
+            let isVerificationTool = name == "xcode_test"
+                || name == "swift_test"
+                || name == "cargo_test"
+                || ((name == "run_shell" || name == "bash")
+                    && ((args.contains("xcodebuild") && args.contains(" test"))
+                        || args.contains("cargo test")
+                        || args.contains("swift test")))
+            guard isVerificationTool else { continue }
+            if output.contains("test succeeded")
+                || output.contains("tests passed")
+                || (output.contains("test suite") && output.contains("passed"))
+                || (output.contains("executed") && output.contains("0 failures"))
+                || output.contains("test result: ok")
+                || (output.contains("0 failed") && output.contains("passed")) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func authoritativeElectronicsWorkflowCalls(from calls: [ToolCall]) -> [ToolCall] {
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID),
+              let workflow = calls.first(where: {
+                  $0.function.name == ElectronicsWorkflowRoute.requirementsToPCB.rawValue
+                      || $0.function.name == ElectronicsWorkflowRoute.schematicToPCB.rawValue
+              })
+        else { return calls }
+        return [workflow]
+    }
+
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
         if let override = criticOverride {
             return override
@@ -2093,6 +2210,7 @@ final class AgenticEngine {
     ///   1. Sequential pre-hooks  — preserves hook side-effect ordering
     ///   2. Batch parallel dispatch — passes all allowed calls to ToolRouter at once
     ///   3. Sequential context updates — preserves OpenAI wire-format message ordering
+    @discardableResult
     func dispatchRegularCalls(
         _ calls: [ToolCall],
         turn: Int,
@@ -2101,8 +2219,8 @@ final class AgenticEngine {
         continuation: AsyncStream<AgentEvent>.Continuation,
         context: ContextManager? = nil,
         emitCompactionNoteIfNeeded: (() -> Void)? = nil
-    ) async {
-        guard !calls.isEmpty else { return }
+    ) async -> [ToolResult] {
+        guard !calls.isEmpty else { return [] }
 
         struct PrehookOutcome {
             let call: ToolCall
@@ -2151,6 +2269,7 @@ final class AgenticEngine {
 
         // Task 3 — sequential context updates (original call order)
         let targetContext = context ?? contextManager
+        var orderedResults: [ToolResult] = []
         for outcome in prehookOutcomes {
             let result: ToolResult
             if let denied = outcome.denied {
@@ -2176,6 +2295,7 @@ final class AgenticEngine {
             } else {
                 continue
             }
+            orderedResults.append(result)
 
             if let path = outcome.writtenPath, !path.isEmpty {
                 writtenFilePaths.append(path)
@@ -2199,6 +2319,7 @@ final class AgenticEngine {
                 emitCompactionNoteIfNeeded?()
             }
         }
+        return orderedResults
     }
 
     /// Launches all spawn_agent calls concurrently and forwards their events to the shared

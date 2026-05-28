@@ -113,7 +113,7 @@ func registerAllTools(
 
     // MARK: Tool Discovery
     router.register(name: "tool_discover") { _ in
-        let tools = await ToolDiscovery.scan()
+        let tools = await ToolDiscovery.scan(summarize: false)
         return tools.map { "\($0.name): \($0.path)" }.joined(separator: "\n")
     }
 

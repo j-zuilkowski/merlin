@@ -14,6 +14,7 @@ enum ElectronicsArtifactKind: String, Codable, Sendable, Equatable, CaseIterable
     case fabricationPackage = "fabrication_package"
     case bom = "bom"
     case pickAndPlace = "pick_and_place"
+    case spiceMeasurements = "spice_measurements"
     case assemblyDrawing = "assembly_drawing"
     case stepModel = "step_model"
     case verificationReport = "verification_report"

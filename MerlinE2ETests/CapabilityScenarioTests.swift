@@ -410,8 +410,24 @@ final class CapabilityScenarioTests: XCTestCase {
             activeDomainIDs: [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
         EvalLog.write(scenario: "S6", summary: "tools \(run.toolCalls.count) "
             + "errors \(run.errors.count)\n\(run.assistantText)")
-        XCTAssertTrue(run.toolCalls.contains { $0.name.hasPrefix("kicad_") },
+        let failedTools = run.toolCalls.filter(\.isError)
+        let failedToolSummary = failedTools.map { call in
+            let result = call.result ?? "<no result>"
+            return "\(call.name) args=\(call.arguments.prefix(500)) result=\(result.prefix(500))"
+        }.joined(separator: "\n")
+        XCTAssertTrue(failedTools.isEmpty,
+                      "S6: electronics tools must not fail:\n\(failedToolSummary)")
+        XCTAssertTrue(run.toolCalls.contains { $0.name.hasPrefix("kicad_") || $0.name.hasPrefix("workflow.") },
                       "S6: Merlin must call the first-party KiCad/electronics tools")
+        let workflowReport = run.toolCalls
+            .filter { $0.name == "workflow.requirements_to_pcb" || $0.name == "workflow.schematic_to_pcb" }
+            .compactMap { call -> ElectronicsFinalReport? in
+                guard let result = call.result else { return nil }
+                return try? WorkspaceJSON.decoder.decode(ElectronicsFinalReport.self, from: Data(result.utf8))
+            }
+            .last
+        XCTAssertEqual(workflowReport?.status, .complete,
+                       "S6: workflow must finish with a complete electronics final report")
     }
 
     // MARK: - S6 Part B - schematic OCR (needs the vision model)

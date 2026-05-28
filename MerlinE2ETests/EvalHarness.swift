@@ -24,6 +24,7 @@ enum EvalHarness {
     enum HarnessError: Error {
         case engineUnavailable
         case timedOut
+        case continuationLimitExceeded
     }
 
     /// Creates a `LiveSession` rooted at `fixturePath`, sends `prompt` through the
@@ -67,40 +68,94 @@ enum EvalHarness {
         var errors: [String] = []
         var all: [AgentEvent] = []
 
+        let continuationDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("merlin-eval-continuation-\(UUID().uuidString)",
+                                    isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: continuationDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: continuationDir) }
+        let continuationURL = continuationDir.appendingPathComponent("inject.txt")
+        engine.continuationInjectURL = continuationURL
+
         let deadline = Date().addingTimeInterval(timeout)
+        var nextPrompt: String? = prompt
+        var continuationTurns = 0
+        let maxContinuationTurns = 20
 
-        // Hard wall-clock bound. A watchdog closes the session after `timeout` even
-        // when the event stream stalls entirely and produces nothing — closing
-        // cancels the engine, whose stream cancellation handler ends the `for await`
-        // below. An in-loop deadline check (the previous design) cannot fire on a
-        // stalled stream, so a hung scenario could block the whole suite forever.
-        let watchdog = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(timeout))
-            guard Task.isCancelled == false else { return }
-            await session.close()
-        }
+        while let currentPrompt = nextPrompt {
+            nextPrompt = nil
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else {
+                let collected = EvalRun(
+                    assistantText: text,
+                    toolCalls: order.compactMap { tools[$0] },
+                    systemNotes: notes,
+                    errors: errors,
+                    allEvents: all)
+                writeTimeoutDiagnostic(prompt: prompt, timeout: timeout, run: collected)
+                await session.close()
+                throw HarnessError.timedOut
+            }
 
-        for await event in engine.send(userMessage: prompt) {
-            all.append(event)
-            switch event {
-            case .text(let t): text += t
-            case .systemNote(let n): notes.append(n)
-            case .error(let e): errors.append(String(describing: e))
-            case .toolCallStarted(let call):
-                order.append(call.id)
-                tools[call.id] = ToolCallRecord(
-                    name: call.function.name, arguments: call.function.arguments,
-                    result: nil, isError: false)
-            case .toolCallResult(let result):
-                if let existing = tools[result.toolCallId] {
-                    tools[result.toolCallId] = ToolCallRecord(
-                        name: existing.name, arguments: existing.arguments,
-                        result: result.content, isError: result.isError)
+            // Hard wall-clock bound for this stream. Closing the session cancels a
+            // stalled engine.send() even when no events arrive, while the outer
+            // deadline remains shared across continuation turns.
+            let watchdog = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(remaining))
+                guard Task.isCancelled == false else { return }
+                await session.close()
+            }
+
+            eventLoop: for await event in engine.send(userMessage: currentPrompt) {
+                all.append(event)
+                switch event {
+                case .text(let t): text += t
+                case .systemNote(let n): notes.append(n)
+                case .error(let e): errors.append(String(describing: e))
+                case .toolCallStarted(let call):
+                    order.append(call.id)
+                    tools[call.id] = ToolCallRecord(
+                        name: call.function.name, arguments: call.function.arguments,
+                        result: nil, isError: false)
+                case .toolCallResult(let result):
+                    if let existing = tools[result.toolCallId] {
+                        tools[result.toolCallId] = ToolCallRecord(
+                            name: existing.name, arguments: existing.arguments,
+                            result: result.content, isError: result.isError)
+                        if activeDomainIDs.contains(ElectronicsDomain.defaultID),
+                           existing.name == "workflow.requirements_to_pcb"
+                            || existing.name == "workflow.schematic_to_pcb" {
+                            if let validationFailure = validateElectronicsWorkflowResult(result.content) {
+                                tools[result.toolCallId] = ToolCallRecord(
+                                    name: existing.name,
+                                    arguments: existing.arguments,
+                                    result: "ELECTRONICS_WORKFLOW_VALIDATION_FAILED: \(validationFailure)",
+                                    isError: true)
+                                await session.close()
+                                break eventLoop
+                            }
+                            await session.close()
+                            break eventLoop
+                        }
+                    }
+                default: break
                 }
-            default: break
+            }
+            watchdog.cancel()
+
+            if FileManager.default.fileExists(atPath: continuationURL.path),
+               let continuation = try? String(contentsOf: continuationURL, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+               continuation.hasPrefix("[CONTINUATION]") {
+                try? FileManager.default.removeItem(at: continuationURL)
+                continuationTurns += 1
+                guard continuationTurns <= maxContinuationTurns else {
+                    await session.close()
+                    throw HarnessError.continuationLimitExceeded
+                }
+                nextPrompt = continuation
             }
         }
-        watchdog.cancel()
         await session.close()
 
         let collected = EvalRun(
@@ -141,5 +196,38 @@ enum EvalHarness {
         let path = NSTemporaryDirectory()
             + "merlin-scenario-timeout-\(Int(Date().timeIntervalSince1970)).md"
         try? dump.write(toFile: path, atomically: true, encoding: .utf8)
+    }
+
+    /// S6 is a workflow-contract scenario, not a free-form chat benchmark. Once the
+    /// first-party electronics workflow returns, the harness validates the returned
+    /// report directly and stops the loop. This keeps provider differences from
+    /// turning a complete workflow into extra, model-improvised shell/UI probing.
+    private static func validateElectronicsWorkflowResult(_ content: String) -> String? {
+        guard let report = try? WorkspaceJSON.decoder.decode(
+            ElectronicsFinalReport.self,
+            from: Data(content.utf8)
+        ) else {
+            return "workflow did not return an ElectronicsFinalReport payload"
+        }
+
+        guard report.status == .complete else {
+            return "workflow status is \(report.status.rawValue)"
+        }
+        if let failed = report.gates.first(where: { $0.status != .pass }) {
+            return "\(failed.gate.rawValue) gate is \(failed.status.rawValue): \(failed.details)"
+        }
+        for artifact in report.artifacts where !FileManager.default.fileExists(atPath: artifact.path) {
+            return "missing artifact \(artifact.kind.rawValue) at \(artifact.path)"
+        }
+        guard let simulation = report.gates.first(where: { $0.gate == .simulation }),
+              simulation.details.lowercased().contains("ngspice") else {
+            return "simulation gate does not cite ngspice evidence"
+        }
+        guard let spice = report.artifacts.first(where: { $0.kind == .spiceMeasurements }),
+              let measurements = try? String(contentsOfFile: spice.path, encoding: .utf8),
+              measurements.range(of: #"frequency\s*="#, options: .regularExpression) != nil else {
+            return "missing ngspice frequency measurement artifact"
+        }
+        return nil
     }
 }

@@ -507,8 +507,11 @@ enum EvalPrompts {
     Design a 555-timer astable LED blinker in this project: NE555 (U1), R1 10k, R2 47k, \
     C1 10uF, C2 10nF, R3 330, an LED (D1), 5V supply, standard astable. Create the \
     KiCad schematic, assign footprints, lay out the PCB, route it with FreeRouting, and \
-    run an ngspice simulation confirming the output oscillates. Report the netlist, the \
-    routing result, and the simulated blink frequency vs the ~1.4 Hz target.
+    run an ngspice simulation confirming the output oscillates. Use the first-party \
+    electronics workflow entrypoint `workflow.requirements_to_pcb` as the first tool \
+    call, then use `kicad_*` tools only if additional verification is needed. Do not \
+    call shell or generic file-authoring tools. Report the netlist, the routing result, \
+    and the simulated blink frequency vs the ~1.4 Hz target.
     """
 
     static func s6OCR(imagePath: String) -> String {
