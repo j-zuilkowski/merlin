@@ -116,6 +116,15 @@ struct ElectronicsEndToEndInput: Sendable {
     }
 }
 
+struct ElectronicsEndToEndWorkflowRequest: Codable, Sendable, Equatable {
+    var jobId: String
+    var designIntentPath: String
+    var circuitIrPath: String
+    var outputDirectory: String
+    var evidence: ElectronicsEndToEndEvidence
+    var approvals: [ElectronicsApprovalKind]?
+}
+
 struct ElectronicsEndToEndResult: Codable, Sendable, Equatable {
     var status: ElectronicsEndToEndStatus
     var isComplete: Bool

@@ -13,6 +13,7 @@ final class ElectronicsJobPanelTests: XCTestCase {
             "Running Now",
             "Completed Jobs",
             "Progress History",
+            "Evidence Gates",
             "Artifacts",
             "Diagnostics",
             "Approvals",

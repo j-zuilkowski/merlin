@@ -6,6 +6,7 @@ struct ElectronicsJobPanelView: View {
         "Running Now",
         "Completed Jobs",
         "Progress History",
+        "Evidence Gates",
         "Artifacts",
         "Diagnostics",
         "Approvals",
@@ -81,6 +82,14 @@ struct ElectronicsJobPanelView: View {
                     empty: "No progress events"
                 )
             }
+            Section("Evidence Gates") {
+                rows(
+                    store.jobs.flatMap { job in
+                        job.missingEvidenceLabels.map { "\(job.workflowStatusLabel): missing \($0) (\(job.id))" }
+                    },
+                    empty: "No missing evidence"
+                )
+            }
             Section("Artifacts") {
                 rows(
                     store.jobs.flatMap { job in job.artifacts.map { "\($0.displayName ?? $0.kind) (\(job.id))" } },
@@ -120,7 +129,7 @@ struct ElectronicsJobPanelView: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 8)
-            Text(job.status.rawValue)
+            Text(job.workflowStatusLabel)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(color(for: job.status))
         }

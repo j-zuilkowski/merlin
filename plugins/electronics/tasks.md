@@ -26,6 +26,9 @@ red tests; each matching `b` task implements the behavior.
 | Amp mains power board | `tasks/task-398a-amp-mains-power-board-tests.md` | `tasks/task-398b-amp-mains-power-board.md` |
 | Training and evaluation corpus | `tasks/task-399a-electronics-training-corpus-tests.md` | `tasks/task-399b-electronics-training-corpus.md` |
 | End-to-end backend harness | `tasks/task-400a-electronics-end-to-end-harness-tests.md` | `tasks/task-400b-electronics-end-to-end-harness.md` |
+| Runtime harness integration | `tasks/task-401a-electronics-runtime-harness-integration-tests.md` | `tasks/task-401b-electronics-runtime-harness-integration.md` |
+| Real verifier adapters | `tasks/task-402a-electronics-real-verifier-adapter-tests.md` | `tasks/task-402b-electronics-real-verifier-adapters.md` |
+| GUI evidence status | `tasks/task-403a-electronics-gui-evidence-status-tests.md` | `tasks/task-403b-electronics-gui-evidence-status.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -315,3 +318,60 @@ Exit criteria:
 - `COMPLETE` requires release package and release approval.
 - The mains board blocks without high-stakes signoff and never certifies build
   or use safety.
+
+## Phase 14: Runtime Harness Integration
+
+Goal: make the actual runtime workflow call the same evidence-gated backend
+harness proven by Phase 13.
+
+1. Add a structured runtime request form with DesignIntent path, Circuit IR path,
+   output directory, verifier evidence, and approvals.
+2. Route structured `workflow.requirements_to_pcb` and `workflow.schematic_to_pcb`
+   calls through `ElectronicsEndToEndHarness`.
+3. Return the harness result as the workflow payload.
+4. Treat `BLOCKED` as a blocked workspace response and all verified non-final
+   statuses as successful but non-complete responses.
+5. Keep legacy/narrative completion out of structured workflow status.
+
+Exit criteria:
+
+- Runtime workflow calls with the amp low-voltage fixture return `FAB_READY`
+  without release approval.
+- Missing SPICE evidence blocks when SPICE is required.
+- Runtime returns `COMPLETE` only when the harness reports `COMPLETE`.
+
+## Phase 15: Real Verifier Artifact Adapters
+
+Goal: let the generic backend harness consume concrete verifier artifacts from
+KiCad, ngspice, BOM/vendor checks, and fabrication export tools.
+
+1. Read ERC and DRC JSON reports from artifact paths.
+2. Read SPICE scenario/model/output files and pass them through the SPICE gate.
+3. Read normalized BOM and vendor availability evidence.
+4. Read fabrication-output manifests and validate them against a fabricator
+   profile.
+5. Produce `ElectronicsEndToEndEvidence` without adding hard-coded example
+   generators.
+
+Exit criteria:
+
+- Clean verifier artifacts can take the low-voltage amp fixture to `FAB_READY`.
+- Blocking DRC prevents `PCB_VERIFIED`.
+- Invalid BOM/vendor evidence blocks fabrication.
+
+## Phase 16: GUI Evidence Status
+
+Goal: make the electronics job panel display the backend harness status and
+missing evidence directly.
+
+1. Publish structured harness progress payloads with `job_id`.
+2. Store `ElectronicsEndToEndResult` on live electronics jobs.
+3. Show real statuses such as `SCHEMATIC_VERIFIED`, `PCB_VERIFIED`, `FAB_READY`,
+   `BLOCKED`, and `COMPLETE`.
+4. Show missing evidence and diagnostics without treating non-final statuses as
+   complete.
+
+Exit criteria:
+
+- The live leaderboard shows the harness status for structured workflow calls.
+- Missing release package/approval evidence is visible for `FAB_READY` jobs.

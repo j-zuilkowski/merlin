@@ -307,6 +307,74 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
     var blockingDRCViolations: [KiCadDRCViolation]
     var repairLoopStatus: PCBDRCRepairLoopStatus
 
+    enum CodingKeys: String, CodingKey {
+        case schematicVerified
+        case footprintAssignmentPassed
+        case hasBoardProfile
+        case hasBoardOutline
+        case hasStackup
+        case hasNetClasses
+        case hasPlacement
+        case routingPassedOrExplicitlyDiagnosed
+        case drcReportPath
+        case hasPCBVerificationReport
+        case blockingDRCViolations
+        case repairLoopStatus
+    }
+
+    init(
+        schematicVerified: Bool,
+        footprintAssignmentPassed: Bool,
+        hasBoardProfile: Bool,
+        hasBoardOutline: Bool,
+        hasStackup: Bool,
+        hasNetClasses: Bool,
+        hasPlacement: Bool,
+        routingPassedOrExplicitlyDiagnosed: Bool,
+        drcReportPath: String?,
+        hasPCBVerificationReport: Bool,
+        blockingDRCViolations: [KiCadDRCViolation],
+        repairLoopStatus: PCBDRCRepairLoopStatus
+    ) {
+        self.schematicVerified = schematicVerified
+        self.footprintAssignmentPassed = footprintAssignmentPassed
+        self.hasBoardProfile = hasBoardProfile
+        self.hasBoardOutline = hasBoardOutline
+        self.hasStackup = hasStackup
+        self.hasNetClasses = hasNetClasses
+        self.hasPlacement = hasPlacement
+        self.routingPassedOrExplicitlyDiagnosed = routingPassedOrExplicitlyDiagnosed
+        self.drcReportPath = drcReportPath
+        self.hasPCBVerificationReport = hasPCBVerificationReport
+        self.blockingDRCViolations = blockingDRCViolations
+        self.repairLoopStatus = repairLoopStatus
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: PCBVerificationFlexibleCodingKey.self)
+        schematicVerified = try container.decodeBool(keys: ["schematicVerified", "schematic_verified"])
+        footprintAssignmentPassed = try container.decodeBool(keys: ["footprintAssignmentPassed", "footprint_assignment_passed"])
+        hasBoardProfile = try container.decodeBool(keys: ["hasBoardProfile", "has_board_profile"])
+        hasBoardOutline = try container.decodeBool(keys: ["hasBoardOutline", "has_board_outline"])
+        hasStackup = try container.decodeBool(keys: ["hasStackup", "has_stackup"])
+        hasNetClasses = try container.decodeBool(keys: ["hasNetClasses", "has_net_classes"])
+        hasPlacement = try container.decodeBool(keys: ["hasPlacement", "has_placement"])
+        routingPassedOrExplicitlyDiagnosed = try container.decodeBool(
+            keys: ["routingPassedOrExplicitlyDiagnosed", "routing_passed_or_explicitly_diagnosed"]
+        )
+        drcReportPath = try container.decodeStringIfPresent(keys: ["drcReportPath", "drc_report_path"])
+        hasPCBVerificationReport = try container.decodeBool(keys: [
+            "hasPCBVerificationReport",
+            "hasPcbVerificationReport",
+            "has_pcb_verification_report",
+        ])
+        blockingDRCViolations = try container.decodeArrayIfPresent(
+            [KiCadDRCViolation].self,
+            keys: ["blockingDRCViolations", "blockingDrcViolations", "blocking_drc_violations"]
+        ) ?? []
+        repairLoopStatus = try container.decodeStatus(keys: ["repairLoopStatus", "repair_loop_status"])
+    }
+
     static let missingEvidence = PCBVerificationEvidence(
         schematicVerified: false,
         footprintAssignmentPassed: false,
@@ -336,6 +404,64 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         blockingDRCViolations: [],
         repairLoopStatus: .verified
     )
+}
+
+private struct PCBVerificationFlexibleCodingKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+    }
+
+    init?(intValue: Int) {
+        self.stringValue = "\(intValue)"
+        self.intValue = intValue
+    }
+}
+
+private extension KeyedDecodingContainer where Key == PCBVerificationFlexibleCodingKey {
+    func decodeBool(keys: [String]) throws -> Bool {
+        for key in keys {
+            guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
+                  contains(codingKey) else { continue }
+            return try decode(Bool.self, forKey: codingKey)
+        }
+        throw DecodingError.keyNotFound(
+            PCBVerificationFlexibleCodingKey(stringValue: keys.first ?? "")!,
+            DecodingError.Context(codingPath: codingPath, debugDescription: "Missing PCB verification evidence key.")
+        )
+    }
+
+    func decodeStringIfPresent(keys: [String]) throws -> String? {
+        for key in keys {
+            guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
+                  contains(codingKey) else { continue }
+            return try decodeIfPresent(String.self, forKey: codingKey)
+        }
+        return nil
+    }
+
+    func decodeArrayIfPresent<T: Decodable>(_ type: [T].Type, keys: [String]) throws -> [T]? {
+        for key in keys {
+            guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
+                  contains(codingKey) else { continue }
+            return try decodeIfPresent(type, forKey: codingKey)
+        }
+        return nil
+    }
+
+    func decodeStatus(keys: [String]) throws -> PCBDRCRepairLoopStatus {
+        for key in keys {
+            guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
+                  contains(codingKey) else { continue }
+            return try decode(PCBDRCRepairLoopStatus.self, forKey: codingKey)
+        }
+        throw DecodingError.keyNotFound(
+            PCBVerificationFlexibleCodingKey(stringValue: keys.first ?? "")!,
+            DecodingError.Context(codingPath: codingPath, debugDescription: "Missing PCB DRC repair status key.")
+        )
+    }
 }
 
 struct PCBVerificationReport: Codable, Sendable, Equatable {

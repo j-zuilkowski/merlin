@@ -49,6 +49,42 @@ final class ElectronicsJobStoreTests: XCTestCase {
         XCTAssertEqual(store.completedJobs.first?.latestProgressMessage, "Workflow complete")
     }
 
+    func testJobStoreCapturesEndToEndHarnessProgress() async throws {
+        let runtime = try makeRuntime()
+        let result = ElectronicsEndToEndResult(
+            status: .fabReady,
+            isComplete: false,
+            schematicStatus: .schematicVerified,
+            pcbStatus: .pcbVerified,
+            spiceStatus: .passed,
+            fabricationStatus: .fabReady,
+            missingEvidence: ["release_package", "release_approval"],
+            diagnostics: [],
+            certifiesSafety: false
+        )
+        await runtime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "workflow.requirements_to_pcb"),
+            origin: nil,
+            kind: .progress,
+            payload: try .encodeJSON(ElectronicsEndToEndJobProgress(
+                jobID: "amp-low-voltage",
+                result: result,
+                message: "Harness reached FAB_READY"
+            ))
+        ))
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        XCTAssertEqual(store.jobs.first?.id, "amp-low-voltage")
+        XCTAssertEqual(store.jobs.first?.endToEndResult?.status, .fabReady)
+        XCTAssertEqual(store.jobs.first?.workflowStatusLabel, "FAB_READY")
+        XCTAssertEqual(store.jobs.first?.missingEvidenceLabels, ["release_package", "release_approval"])
+        XCTAssertFalse(store.jobs.first?.endToEndResult?.isComplete ?? true)
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp/electronics-job-store"),

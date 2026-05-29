@@ -165,6 +165,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         context: WorkspaceHandlerContext
     ) async -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
+        if isStructuredHarnessWorkflow(object) {
+            return await handleHarnessWorkflow(request, context: context)
+        }
         if object["evidence"] == nil {
             return await synthesizedRequirementsWorkflow(request, context: context, object: object)
         }
@@ -221,6 +224,77 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         return .ok(requestID: request.id, payload: try? .encodeJSON(report))
+    }
+
+    private func isStructuredHarnessWorkflow(_ object: [String: Any]) -> Bool {
+        object["design_intent_path"] != nil
+            || object["designIntentPath"] != nil
+            || object["circuit_ir_path"] != nil
+            || object["circuitIRPath"] != nil
+    }
+
+    private func handleHarnessWorkflow(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) async -> WorkspaceMessageResponse {
+        guard let workflow = try? request.payload.decodeJSON(ElectronicsEndToEndWorkflowRequest.self) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Structured electronics workflow requires job_id, design_intent_path, circuit_ir_path, output_directory, and evidence.",
+                context: context
+            )
+        }
+
+        do {
+            let intentURL = URL(fileURLWithPath: workflow.designIntentPath)
+            let circuitIRURL = URL(fileURLWithPath: workflow.circuitIrPath)
+            let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: intentURL))
+            let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+            let outputDirectory = URL(fileURLWithPath: workflow.outputDirectory, isDirectory: true)
+            try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: intent,
+            circuitIR: circuitIR,
+            outputDirectory: outputDirectory,
+            evidence: workflow.evidence,
+            approvals: workflow.approvals
+        ))
+        await context.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: request.id,
+            address: request.address,
+            origin: request.origin,
+            kind: .progress,
+            payload: try? .encodeJSON(ElectronicsEndToEndJobProgress(
+                jobID: workflow.jobId,
+                result: result,
+                message: "Electronics workflow \(result.status.rawValue)"
+            ))
+        ))
+
+            let diagnostics = result.diagnostics.map {
+                WorkspaceDiagnostic(code: $0.code, message: $0.message, severity: "error")
+            } + result.missingEvidence.map {
+                WorkspaceDiagnostic(code: "MISSING_EVIDENCE", message: "Missing electronics evidence: \($0).", severity: "error")
+            }
+
+            return WorkspaceMessageResponse(
+                requestID: request.id,
+                status: result.status == .blocked ? .blocked : .ok,
+                payload: try? .encodeJSON(result),
+                artifacts: [],
+                diagnostics: result.status == .blocked ? diagnostics : []
+            )
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Failed to load structured electronics workflow evidence: \(error.localizedDescription)",
+                context: context
+            )
+        }
     }
 
     private func validateCompletionEvidence(

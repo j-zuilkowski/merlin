@@ -15,6 +15,18 @@ struct ElectronicsJobProgressEntry: Codable, Sendable, Equatable {
     var message: String
 }
 
+struct ElectronicsEndToEndJobProgress: Codable, Sendable, Equatable {
+    var jobID: String
+    var result: ElectronicsEndToEndResult
+    var message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case jobID = "jobId"
+        case result
+        case message
+    }
+}
+
 struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
     var id: String
     var status: KiCadStatus
@@ -23,6 +35,7 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
     var diagnostics: [ElectronicsJobDiagnostic]
     var approvalRequests: [ElectronicsJobApprovalRequest]
     var reports: [ElectronicsFinalReport]
+    var endToEndResult: ElectronicsEndToEndResult?
 
     init(id: String, status: KiCadStatus = .inProgress) {
         self.id = id
@@ -32,14 +45,23 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
         self.diagnostics = []
         self.approvalRequests = []
         self.reports = []
+        self.endToEndResult = nil
     }
 
     var isRunning: Bool {
-        status == .inProgress
+        endToEndResult == nil && status == .inProgress
     }
 
     var latestProgressMessage: String {
         progress.last?.message ?? status.rawValue
+    }
+
+    var workflowStatusLabel: String {
+        endToEndResult?.status.rawValue ?? status.rawValue
+    }
+
+    var missingEvidenceLabels: [String] {
+        endToEndResult?.missingEvidence ?? []
     }
 }
 
@@ -103,6 +125,18 @@ final class ElectronicsJobStore: ObservableObject {
     }
 
     private func applyProgress(_ event: WorkspaceMessageEvent) {
+        if let eventPayload = event.payload,
+           let harnessProgress = try? eventPayload.decodeJSON(ElectronicsEndToEndJobProgress.self) {
+            var job = jobForUpdate(id: harnessProgress.jobID)
+            job.endToEndResult = harnessProgress.result
+            job.status = status(for: harnessProgress.result.status)
+            job.progress.append(ElectronicsJobProgressEntry(
+                message: harnessProgress.message ?? harnessProgress.result.status.rawValue
+            ))
+            upsert(job)
+            return
+        }
+
         guard let object = event.payload?.jsonObject(),
               let jobID = object["job_id"] as? String,
               let statusRaw = object["status"] as? String,
@@ -171,6 +205,17 @@ final class ElectronicsJobStore: ObservableObject {
     private func upsert(_ job: ElectronicsJob) {
         jobs.removeAll { $0.id == job.id }
         jobs.append(job)
+    }
+
+    private func status(for status: ElectronicsEndToEndStatus) -> KiCadStatus {
+        switch status {
+        case .blocked:
+            return .blocked
+        case .complete:
+            return .complete
+        case .schematicVerified, .pcbVerified, .fabReady:
+            return .inProgress
+        }
     }
 }
 
