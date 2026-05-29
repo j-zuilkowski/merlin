@@ -449,12 +449,16 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             guard boardUpgradeRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_BOARD_UPGRADE_FAILED", run: boardUpgradeRun)
             }
-            guard ampDemoKiCadArtifactsHaveVisibleCircuitContent(schematicURL: schematicURL, boardURL: boardURL) else {
+            guard ampDemoKiCadArtifactsHavePartLevelAmplifierContent(schematicURL: schematicURL, boardURL: boardURL) else {
                 return structuredBlock(
                     request,
                     reason: .invalidInputQuality,
-                    message: "AmpDemo KiCad generation produced empty or non-inspectable schematic/PCB content.",
-                    context: context
+                    message: "AmpDemo KiCad generation produced block-diagram placeholder content instead of a part-level amplifier schematic and PCB layout.",
+                    context: context,
+                    nextActions: [
+                        "Replace generated AmpDemo block symbols with discrete resistors, capacitors, diodes, transistors, potentiometers, connectors, and power-supply parts.",
+                        "Generate a PCB from the real netlist with component placement, grounding, thermal/current paths, and manufacturable routing before exporting Gerbers."
+                    ]
                 )
             }
             await publishWorkflowProgress(
@@ -654,32 +658,49 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         ))
     }
 
-    private func ampDemoKiCadArtifactsHaveVisibleCircuitContent(schematicURL: URL, boardURL: URL) -> Bool {
+    private func ampDemoKiCadArtifactsHavePartLevelAmplifierContent(schematicURL: URL, boardURL: URL) -> Bool {
         guard let schematic = try? String(contentsOf: schematicURL, encoding: .utf8),
               let board = try? String(contentsOf: boardURL, encoding: .utf8) else {
             return false
         }
 
+        let placeholderMarkers = [
+            "AmpDemo:Block2",
+            "AmpDemo:Connector2",
+            "generated inspectable two-pin functional block",
+            "Small-signal discrete preamp",
+            "3-band tone stack",
+            "Sweepable boost/cut filter"
+        ]
+        guard !placeholderMarkers.contains(where: { schematic.contains($0) }) else {
+            return false
+        }
+
         let schematicTextCount = schematic.components(separatedBy: "(text").count - 1
-        let schematicSymbolInstanceCount = schematic.components(separatedBy: "(lib_id \"AmpDemo:").count - 1
         let schematicWireCount = schematic.components(separatedBy: "(wire").count - 1
         let schematicLabelCount = schematic.components(separatedBy: "(label").count - 1
         let boardFootprintCount = board.components(separatedBy: "(footprint").count - 1
         let boardPadCount = board.components(separatedBy: "(pad").count - 1
         let boardSegmentCount = board.components(separatedBy: "(segment").count - 1
+        let partLevelRefdes = ["R", "C", "D", "Q", "RV", "J", "F", "T"]
+        let partLevelSchematicRefs = partLevelRefdes.reduce(0) { count, prefix in
+            count + schematic.components(separatedBy: #"property "Reference" "\#(prefix)"#).count - 1
+        }
 
         return schematicTextCount >= 8
-            && schematicSymbolInstanceCount >= 9
-            && schematicWireCount >= 10
+            && partLevelSchematicRefs >= 20
+            && schematicWireCount >= 30
             && schematicLabelCount >= 8
             && schematic.contains("QOUT1")
             && schematic.contains("3-band tone stack")
             && schematic.contains("sweepable boost/cut")
-            && boardFootprintCount >= 8
-            && boardPadCount >= 16
-            && boardSegmentCount >= 8
+            && boardFootprintCount >= 20
+            && boardPadCount >= 40
+            && boardSegmentCount >= 30
             && board.contains("JSEC")
             && board.contains("QOUT1")
+            && board.contains("R")
+            && board.contains("C")
     }
 
     private func ampDemoDesignIntent(requirements: String, jobID: String) -> String {

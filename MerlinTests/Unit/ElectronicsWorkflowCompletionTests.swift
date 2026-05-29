@@ -40,7 +40,7 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("merlin-board.kicad_pro").path))
     }
 
-    func testAmpDemoRequirementsWorkflowRunsKiCadSpiceAndWritesEvidence() async throws {
+    func testAmpDemoRequirementsWorkflowBlocksPlaceholderBlockDiagramArtifacts() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let output = temporaryDirectory("ampdemo-requirements-to-pcb")
@@ -59,51 +59,35 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
 
         let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
 
-        XCTAssertEqual(response.status, .ok)
-        let report = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsFinalReport.self))
-        XCTAssertEqual(report.status, .complete)
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.invalidInputQuality.rawValue)
+        XCTAssertTrue(
+            response.diagnostics.contains { $0.message.contains("block-diagram placeholder content") },
+            response.diagnostics.map(\.message).joined(separator: "\n")
+        )
         XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_pro").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_sch").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_pcb").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("gerbers/AmpDemo-job.gbrjob").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("drill/AmpDemo.drl").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("simulation/ngspice-output.log").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("gerbers/AmpDemo-job.gbrjob").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("drill/AmpDemo.drl").path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("simulation/ngspice-output.log").path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("bom/ampdemo-bom.csv").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("reports/final-demo-report.md").path))
         let schematic = try String(contentsOf: output.appendingPathComponent("kicad/AmpDemo.kicad_sch"), encoding: .utf8)
         let board = try String(contentsOf: output.appendingPathComponent("kicad/AmpDemo.kicad_pcb"), encoding: .utf8)
-        XCTAssertGreaterThanOrEqual(schematic.components(separatedBy: "(text").count - 1, 8)
-        XCTAssertGreaterThanOrEqual(schematic.components(separatedBy: "(lib_id \"AmpDemo:").count - 1, 9)
-        XCTAssertGreaterThanOrEqual(schematic.components(separatedBy: "(wire").count - 1, 10)
-        XCTAssertGreaterThanOrEqual(schematic.components(separatedBy: "(label").count - 1, 8)
-        XCTAssertTrue(schematic.contains("QOUT1"))
-        XCTAssertTrue(schematic.contains("3-band tone stack"))
-        XCTAssertTrue(schematic.contains("sweepable boost/cut"))
-        XCTAssertGreaterThanOrEqual(board.components(separatedBy: "(footprint").count - 1, 8)
-        XCTAssertGreaterThanOrEqual(board.components(separatedBy: "(pad").count - 1, 16)
-        XCTAssertGreaterThanOrEqual(board.components(separatedBy: "(segment").count - 1, 8)
-        XCTAssertTrue(board.contains("JSEC"))
-        XCTAssertTrue(board.contains("QOUT1"))
-        let bom = try String(contentsOf: output.appendingPathComponent("bom/ampdemo-bom.csv"), encoding: .utf8)
-        XCTAssertTrue(bom.contains("Digi-Key"))
-        XCTAssertTrue(bom.contains("Mouser"))
+        XCTAssertTrue(schematic.contains("AmpDemo:Block2"))
+        XCTAssertTrue(board.contains("AmpDemo:Tone_Stack"))
 
         let store = ElectronicsJobStore()
         await store.loadRecent(from: runtime.bus)
         let job = try XCTUnwrap(store.jobs.first { $0.id == "ampdemo-test" })
-        XCTAssertEqual(job.status, .complete)
-        XCTAssertFalse(job.progress.isEmpty)
+        XCTAssertNotEqual(job.status, .complete)
         let completedProgressMessages = job.progress.map(\.message)
-        XCTAssertTrue(completedProgressMessages.contains("KiCad ERC passed"))
-        XCTAssertTrue(completedProgressMessages.contains("KiCad DRC passed"))
-        XCTAssertTrue(completedProgressMessages.contains("Gerbers exported"))
-        XCTAssertTrue(completedProgressMessages.contains("Drill files exported"))
-        XCTAssertTrue(completedProgressMessages.contains("ngspice simulation passed"))
-        XCTAssertFalse(completedProgressMessages.contains { message in
-            message.hasPrefix("Running ") || message.hasPrefix("Exporting ") || message.hasPrefix("Packaging ")
-        })
-        XCTAssertFalse(job.artifacts.isEmpty)
-        XCTAssertEqual(job.reports.first?.status, .complete)
+        XCTAssertFalse(completedProgressMessages.contains("KiCad ERC passed"))
+        XCTAssertFalse(completedProgressMessages.contains("KiCad DRC passed"))
+        XCTAssertFalse(completedProgressMessages.contains("Gerbers exported"))
+        XCTAssertFalse(completedProgressMessages.contains("Drill files exported"))
+        XCTAssertFalse(completedProgressMessages.contains("ngspice simulation passed"))
+        XCTAssertTrue(job.diagnostics.contains { $0.message.contains("block-diagram placeholder content") })
     }
 
     func testRunSpiceRejectsSummaryLogsBeforeInvokingNgspice() async throws {
