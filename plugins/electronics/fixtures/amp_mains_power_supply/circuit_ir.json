@@ -1,0 +1,356 @@
+{
+  "design_id": "amp_mains_power_supply",
+  "board_id": "amp_mains_power_supply",
+  "components": [
+    {
+      "refdes": "JAC1",
+      "role": "mains inlet",
+      "selected_symbol": "Connector:Conn_01x03_Pin",
+      "selected_footprint": "Connector_Wire:SolderWirePad_3x_1mmDrill",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-MAINS-INLET"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "1",
+          "canonical_name": "LINE",
+          "electrical_type": "passive",
+          "symbol_pin": "Pin_1",
+          "footprint_pad": "1"
+        },
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "2",
+          "canonical_name": "NEUTRAL",
+          "electrical_type": "passive",
+          "symbol_pin": "Pin_2",
+          "footprint_pad": "2"
+        },
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "3",
+          "canonical_name": "PE",
+          "electrical_type": "passive",
+          "symbol_pin": "Pin_3",
+          "footprint_pad": "3"
+        }
+      ]
+    },
+    {
+      "refdes": "F1",
+      "role": "fuse",
+      "selected_symbol": "Device:Fuse",
+      "selected_footprint": "Fuse:Fuseholder_5x20mm",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-MAINS-INLET"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "F1",
+          "pin_number": "1",
+          "canonical_name": "IN",
+          "electrical_type": "passive",
+          "symbol_pin": "1",
+          "footprint_pad": "1"
+        },
+        {
+          "component_refdes": "F1",
+          "pin_number": "2",
+          "canonical_name": "OUT",
+          "electrical_type": "passive",
+          "symbol_pin": "2",
+          "footprint_pad": "2"
+        }
+      ]
+    },
+    {
+      "refdes": "SW1",
+      "role": "mains switch",
+      "selected_symbol": "Switch:SW_SPST",
+      "selected_footprint": "Button_Switch_THT:SW_Toggle_SPST",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-MAINS-INLET"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "SW1",
+          "pin_number": "1",
+          "canonical_name": "IN",
+          "electrical_type": "passive",
+          "symbol_pin": "1",
+          "footprint_pad": "1"
+        },
+        {
+          "component_refdes": "SW1",
+          "pin_number": "2",
+          "canonical_name": "OUT",
+          "electrical_type": "passive",
+          "symbol_pin": "2",
+          "footprint_pad": "2"
+        }
+      ]
+    },
+    {
+      "refdes": "PE1",
+      "role": "protective earth bond",
+      "selected_symbol": "Connector:TestPoint",
+      "selected_footprint": "TestPoint:TestPoint_THTPad_D3.0mm_Drill1.5mm",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-MAINS-INLET"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "PE1",
+          "pin_number": "1",
+          "canonical_name": "PE_BOND",
+          "electrical_type": "passive",
+          "symbol_pin": "1",
+          "footprint_pad": "1"
+        }
+      ]
+    },
+    {
+      "refdes": "T1",
+      "role": "transformer primary and isolated secondary",
+      "selected_symbol": "Transformer:Transformer_1P_1S",
+      "selected_footprint": "Transformer_THT:Transformer_Custom_SafetyReviewed",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-SECONDARY-INTERFACE"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "T1",
+          "pin_number": "1",
+          "canonical_name": "PRI_L",
+          "electrical_type": "passive",
+          "symbol_pin": "PRI1",
+          "footprint_pad": "1"
+        },
+        {
+          "component_refdes": "T1",
+          "pin_number": "2",
+          "canonical_name": "PRI_N",
+          "electrical_type": "passive",
+          "symbol_pin": "PRI2",
+          "footprint_pad": "2"
+        },
+        {
+          "component_refdes": "T1",
+          "pin_number": "3",
+          "canonical_name": "SEC_A",
+          "electrical_type": "passive",
+          "symbol_pin": "SEC1",
+          "footprint_pad": "3"
+        },
+        {
+          "component_refdes": "T1",
+          "pin_number": "4",
+          "canonical_name": "SEC_B",
+          "electrical_type": "passive",
+          "symbol_pin": "SEC2",
+          "footprint_pad": "4"
+        }
+      ]
+    },
+    {
+      "refdes": "JSEC1",
+      "role": "isolated secondary interface",
+      "selected_symbol": "Connector:Conn_01x02_Pin",
+      "selected_footprint": "Connector_Wire:SolderWirePad_2x_1mmDrill",
+      "manufacturer_part_number": null,
+      "source_evidence": [
+        {
+          "kind": "design_intent",
+          "reference": "REQ-SECONDARY-INTERFACE"
+        }
+      ],
+      "pins": [
+        {
+          "component_refdes": "JSEC1",
+          "pin_number": "1",
+          "canonical_name": "SEC_A_OUT",
+          "electrical_type": "passive",
+          "symbol_pin": "Pin_1",
+          "footprint_pad": "1"
+        },
+        {
+          "component_refdes": "JSEC1",
+          "pin_number": "2",
+          "canonical_name": "SEC_B_OUT",
+          "electrical_type": "passive",
+          "symbol_pin": "Pin_2",
+          "footprint_pad": "2"
+        }
+      ]
+    }
+  ],
+  "nets": [
+    {
+      "name": "MAINS_L_RAW",
+      "role": "hazardous_line",
+      "endpoints": [
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "1"
+        },
+        {
+          "component_refdes": "F1",
+          "pin_number": "1"
+        }
+      ],
+      "net_class": "mains_primary",
+      "safety_domain": "hazardous_mains_primary"
+    },
+    {
+      "name": "MAINS_L_FUSED",
+      "role": "hazardous_line_fused",
+      "endpoints": [
+        {
+          "component_refdes": "F1",
+          "pin_number": "2"
+        },
+        {
+          "component_refdes": "SW1",
+          "pin_number": "1"
+        }
+      ],
+      "net_class": "mains_primary",
+      "safety_domain": "hazardous_mains_primary"
+    },
+    {
+      "name": "MAINS_L_SWITCHED",
+      "role": "hazardous_line_switched",
+      "endpoints": [
+        {
+          "component_refdes": "SW1",
+          "pin_number": "2"
+        },
+        {
+          "component_refdes": "T1",
+          "pin_number": "1"
+        }
+      ],
+      "net_class": "mains_primary",
+      "safety_domain": "hazardous_mains_primary"
+    },
+    {
+      "name": "MAINS_N",
+      "role": "hazardous_neutral",
+      "endpoints": [
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "2"
+        },
+        {
+          "component_refdes": "T1",
+          "pin_number": "2"
+        }
+      ],
+      "net_class": "mains_primary",
+      "safety_domain": "hazardous_mains_primary"
+    },
+    {
+      "name": "PE",
+      "role": "protective_earth",
+      "endpoints": [
+        {
+          "component_refdes": "JAC1",
+          "pin_number": "3"
+        },
+        {
+          "component_refdes": "PE1",
+          "pin_number": "1"
+        }
+      ],
+      "net_class": "protective_earth",
+      "safety_domain": "protective_earth"
+    },
+    {
+      "name": "AC_SEC_A",
+      "role": "isolated_secondary",
+      "endpoints": [
+        {
+          "component_refdes": "T1",
+          "pin_number": "3"
+        },
+        {
+          "component_refdes": "JSEC1",
+          "pin_number": "1"
+        }
+      ],
+      "net_class": "isolated_secondary",
+      "safety_domain": "isolated_secondary"
+    },
+    {
+      "name": "AC_SEC_B",
+      "role": "isolated_secondary",
+      "endpoints": [
+        {
+          "component_refdes": "T1",
+          "pin_number": "4"
+        },
+        {
+          "component_refdes": "JSEC1",
+          "pin_number": "2"
+        }
+      ],
+      "net_class": "isolated_secondary",
+      "safety_domain": "isolated_secondary"
+    }
+  ],
+  "constraints": [
+    {
+      "kind": "creepage",
+      "target": "hazardous_mains_primary_to_isolated_secondary",
+      "value": ">=6.4mm qualified safety review required"
+    },
+    {
+      "kind": "clearance",
+      "target": "hazardous_mains_primary_to_isolated_secondary",
+      "value": ">=6.4mm qualified safety review required"
+    },
+    {
+      "kind": "keepout",
+      "target": "isolation_barrier",
+      "value": "slot_or_keepout_requires_qualified_safety_review"
+    },
+    {
+      "kind": "review",
+      "target": "entire_board",
+      "value": "qualified safety review required before build or use"
+    }
+  ],
+  "verification_scenarios": [
+    {
+      "id": "erc-mains",
+      "kind": "erc",
+      "expectation": "No ERC errors; this does not certify safety."
+    },
+    {
+      "id": "drc-creepage",
+      "kind": "drc",
+      "expectation": "DRC validates declared clearances; qualified safety review remains required."
+    }
+  ]
+}

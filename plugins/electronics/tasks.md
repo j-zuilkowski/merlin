@@ -1,0 +1,291 @@
+# Electronics Plugin Task List
+
+Date: 2026-05-29
+
+This task list scopes the path from the current electronics plugin state to the
+generic KiCad-backed workflow described in `plugins/electronics/spec.md`.
+
+## Numbered TDD Task Map
+
+Execution uses the repo's normal numbered task files. Each `a` task adds the
+red tests; each matching `b` task implements the behavior.
+
+| Phase | Test task | Implementation task |
+|---|---|---|
+| Safety and drift cleanup | `tasks/task-387a-electronics-no-hardcoded-generators-tests.md` | `tasks/task-387b-electronics-no-hardcoded-generators.md` |
+| Dynamic plugin roles | `tasks/task-388a-dynamic-plugin-roles-tests.md` | `tasks/task-388b-dynamic-plugin-roles.md` |
+| Plugin-owned schemas | `tasks/task-389a-electronics-plugin-schemas-tests.md` | `tasks/task-389b-electronics-plugin-schemas.md` |
+| DesignIntent approval flow | `tasks/task-390a-designintent-approval-flow-tests.md` | `tasks/task-390b-designintent-approval-flow.md` |
+| KiCad library and pin resolver | `tasks/task-391a-kicad-library-pin-resolver-tests.md` | `tasks/task-391b-kicad-library-pin-resolver.md` |
+| Circuit IR to KiCad schematic | `tasks/task-392a-circuit-ir-to-kicad-schematic-tests.md` | `tasks/task-392b-circuit-ir-to-kicad-schematic.md` |
+| ERC parser and repair loop | `tasks/task-393a-erc-parser-repair-loop-tests.md` | `tasks/task-393b-erc-parser-repair-loop.md` |
+| Amp low-voltage fixture | `tasks/task-394a-amp-low-voltage-fixture-tests.md` | `tasks/task-394b-amp-low-voltage-fixture.md` |
+| PCB DRC follow-on | `tasks/task-395a-pcb-drc-followon-tests.md` | `tasks/task-395b-pcb-drc-followon.md` |
+| Fabrication, BOM, and release | `tasks/task-396a-fab-bom-release-tests.md` | `tasks/task-396b-fab-bom-release.md` |
+| SPICE optimization | `tasks/task-397a-spice-optimization-tests.md` | `tasks/task-397b-spice-optimization.md` |
+| Amp mains power board | `tasks/task-398a-amp-mains-power-board-tests.md` | `tasks/task-398b-amp-mains-power-board.md` |
+| Training and evaluation corpus | `tasks/task-399a-electronics-training-corpus-tests.md` | `tasks/task-399b-electronics-training-corpus.md` |
+
+## Phase 0: Safety And Drift Cleanup
+
+Goal: remove false-success paths and lock the plugin boundary.
+
+1. Remove hard-coded requirements-to-PCB generators from the runtime plugin.
+2. Add tests proving arbitrary requirements do not create KiCad/BOM/fabrication
+   artifacts without approved design evidence.
+3. Keep plugin-owned docs under `plugins/electronics`.
+4. Add tests or doc checks preventing reintroduction of named demo generators.
+5. Ensure Merlin core only exposes plugin capabilities and does not own
+   electronics design policy.
+
+Exit criteria:
+
+- `workflow.requirements_to_pcb` blocks requirements-only input generically.
+- No AmpDemo/ESP32/555-specific generator path exists.
+- Plugin spec and research overview live under `plugins/electronics`.
+
+## Phase 1: Dynamic Plugin Roles
+
+Goal: allow electronics-only model roles without hard-coding them in Merlin core.
+
+1. Add a dynamic role registry in Merlin core.
+2. Preserve built-in roles: `execute`, `reason`, `orchestrate`, `vision`.
+3. Extend plugin metadata so plugins can declare roles.
+4. Register `electronics.analog_critic` as an optional role in the electronics
+   plugin.
+5. Hide plugin roles when the plugin is unloaded.
+6. Surface plugin roles in role settings, status display, calibration/configure,
+   routing, and token accounting only while loaded.
+7. Add fallback policy: optional plugin role falls back to `reason`; required
+   missing role blocks with `ROLE_UNASSIGNED`.
+
+Exit criteria:
+
+- Loading electronics adds `electronics.analog_critic`.
+- Unloading electronics removes it.
+- Existing fixed-role behavior is preserved for non-plugin workflows.
+
+## Phase 2: Plugin-Owned Schemas
+
+Goal: define the data contracts before artifact generation.
+
+1. Add plugin-owned schema files for:
+   - `DesignIntent`
+   - `DesignApproval`
+   - `CircuitIR`
+   - `CircuitComponent`
+   - `CircuitPin`
+   - `CircuitNet`
+   - `CircuitConstraint`
+   - `VerificationScenario`
+   - `SchematicVerificationReport`
+2. Add Swift models where runtime code needs them.
+3. Add JSON schema fixtures under `plugins/electronics`.
+4. Add validators for required fields, unresolved decisions, component evidence,
+   pin references, net endpoints, and safety domains.
+5. Add round-trip encode/decode tests.
+
+Exit criteria:
+
+- Invalid Circuit IR blocks before KiCad mutation.
+- Valid fixture schemas round-trip.
+- Natural-language-originated `DesignIntent` starts in `draft`.
+
+## Phase 3: DesignIntent Draft And Approval Flow
+
+Goal: let Merlin assist DesignIntent authoring without mutating KiCad.
+
+1. Add `kicad_build_intent_model` or plugin equivalent that drafts
+   `DesignIntent` from requirements or schematic extraction.
+2. Add unresolved-decision extraction.
+3. Add user approval action for `DesignIntent`.
+4. Add blocked response when KiCad mutation is requested with unapproved
+   natural-language-originated intent.
+5. Add draft-only preview mode, if needed, that cannot complete gates.
+
+Exit criteria:
+
+- Requirements can produce a draft intent.
+- Approved intent can proceed.
+- Unapproved intent cannot create verified KiCad artifacts.
+
+## Phase 4: KiCad Library And Pin Resolver
+
+Goal: make components evidence-backed before schematic materialization.
+
+1. Add KiCad symbol library lookup.
+2. Add symbol pin extraction.
+3. Add footprint lookup.
+4. Add footprint pad extraction.
+5. Add symbol-pin to footprint-pad compatibility checks.
+6. Add manufacturer/vendor part evidence fields.
+7. Add resolver diagnostics for unknown symbols, unknown footprints, pin
+   mismatch, missing MPN, and unresolved package.
+
+Exit criteria:
+
+- Every Circuit IR component has symbol evidence.
+- PCB-bound components have footprint evidence before DRC/PCB phase.
+- Resolver failures block with actionable diagnostics.
+
+## Phase 5: Circuit IR To KiCad Schematic Materialization
+
+Goal: compile validated Circuit IR into a KiCad schematic without raw
+product-specific string generation.
+
+1. Implement or complete KiCad S-expression parser/writer.
+2. Add parser/writer round-trip tests for `.kicad_sch`.
+3. Add schematic builder that inserts symbols, fields, labels, wires, no-connects,
+   and power symbols from Circuit IR.
+4. Ensure all mutations flow through structured writer APIs.
+5. Add source mapping from Circuit IR entries to KiCad refs/UUIDs.
+6. Add schematic parity check: Circuit IR components/nets match KiCad schematic.
+
+Exit criteria:
+
+- Valid Circuit IR creates `.kicad_pro` and `.kicad_sch`.
+- No product-specific string emitter is used.
+- Parity check passes for fixture designs.
+
+## Phase 6: ERC Parser And Repair Loop
+
+Goal: produce `SCHEMATIC_VERIFIED` from KiCad evidence.
+
+1. Run KiCad ERC through CLI.
+2. Parse ERC JSON into structured violations.
+3. Classify supported repair classes:
+   - explicit no-connect marker
+   - power flag add/correction
+   - net label mismatch
+   - missing known Circuit IR endpoint connection
+   - symbol field or pin mapping correction with resolver evidence
+4. Add repair patch schema.
+5. Apply repairs through Circuit IR and KiCad parser/writer.
+6. Rerun ERC after each repair.
+7. Enforce 3-attempt repair cap.
+8. Produce `SchematicVerificationReport`.
+9. Add `SCHEMATIC_VERIFIED` status.
+
+Exit criteria:
+
+- ERC failures are parsed, repaired when supported, or blocked when unsupported.
+- `SCHEMATIC_VERIFIED` requires approved intent, valid Circuit IR, KiCad project,
+  schematic, ERC report, no blocking ERC errors, and verification report.
+
+## Phase 7: First Acceptance Fixture
+
+Goal: prove the generic flow on the first real target without special-casing.
+
+1. Add `amp_low_voltage_audio` `DesignIntent` fixture.
+2. Add Circuit IR fixture for the low-voltage audio board.
+3. Include preamp, 3-band tone circuit, sweepable boost/cut filter, driver,
+   output stage, speaker output, low-voltage rail distribution, and thermal
+   constraints.
+4. Mark unresolved decisions honestly.
+5. Keep `amp_mains_power_supply` as a separate second-board fixture stub.
+6. Run fixture through resolver, schematic materializer, ERC, repair loop, and
+   schematic verification.
+7. Add tests proving the fixture uses generic schemas and not named generator
+   code.
+
+Exit criteria:
+
+- The low-voltage amp board reaches `SCHEMATIC_VERIFIED` or blocks with specific
+  unresolved design decisions.
+- No special-case code path exists for the amp.
+
+## Phase 8: DRC And PCB Follow-On
+
+Goal: extend from verified schematic to PCB verification.
+
+1. Add board profile schema.
+2. Add footprint assignment from resolver evidence.
+3. Add board outline and stackup creation.
+4. Add net-class generation.
+5. Add placement constraints and placement mutation.
+6. Add routing integration through DSN/SES and FreeRouting.
+7. Run KiCad DRC.
+8. Parse DRC diagnostics.
+9. Add bounded DRC repair loop.
+10. Define `PCB_VERIFIED` status.
+
+Exit criteria:
+
+- A verified schematic can produce a board.
+- DRC failures are parsed and either repaired or blocked.
+- `PCB_VERIFIED` is distinct from full fabrication completion.
+
+## Phase 9: Fabrication, BOM, And Release
+
+Goal: define full completion beyond schematic and PCB verification.
+
+1. Normalize BOM schema.
+2. Add vendor availability and MPN checks.
+3. Export Gerbers, drills, BOM, placement files, and fabrication reports.
+4. Add fabricator profile validation.
+5. Add release package generation.
+6. Add explicit approval gates for irreversible order/fab actions.
+7. Define `FAB_READY` and final `COMPLETE` semantics.
+
+Exit criteria:
+
+- Full completion requires schematic, PCB, ERC, DRC, BOM, fabrication outputs,
+  verification reports, and required approvals.
+
+## Phase 10: Simulation And Optimization
+
+Goal: add AnalogCoder/AutoCkt-style simulator-driven repair and optimization.
+
+1. Add SPICE scenario schema.
+2. Add model resolution policy.
+3. Add ngspice execution and measurement parsing.
+4. Add simulation pass/fail envelopes.
+5. Add repair actions for supported simulation failures.
+6. Add bounded optimization loops for fixed-topology analog subcircuits.
+7. Keep optimization separate from broad topology synthesis.
+
+Exit criteria:
+
+- Simulation-required designs cannot complete without simulation evidence.
+- Bounded optimization improves parameterized subcircuits without inventing
+  unsupported topology changes.
+
+## Phase 11: Second Board Fixture
+
+Goal: add the separate amplifier mains/power-supply board under high-stakes
+policy.
+
+1. Add `amp_mains_power_supply` `DesignIntent` fixture.
+2. Add Circuit IR fixture for the power-supply board.
+3. Represent mains inlet, fuse, switch, PE bond, transformer primary, secondary
+   interface, creepage/clearance constraints, and safety notes.
+4. Require explicit high-stakes review state.
+5. Ensure CAD verification does not imply safety certification.
+6. Add tests for blocked certification language and approval requirements.
+
+Exit criteria:
+
+- The power-supply board can produce CAD/verification artifacts only with
+  high-stakes policy active.
+- Merlin never certifies it safe to build or use.
+
+## Phase 12: Training And Evaluation Corpus
+
+Goal: collect data for better electronics-specific models.
+
+1. Log accepted and rejected `DesignIntent` drafts.
+2. Log Circuit IR validation failures and repairs.
+3. Log ERC/DRC/SPICE/BOM diagnostics.
+4. Log repair patches and verifier outcomes.
+5. Build training pairs:
+   - requirements to intent
+   - intent to Circuit IR
+   - diagnostics to patch
+   - patch to verifier result
+6. Add evaluation scenarios for sensor board, power supply, analog filter, amp
+   low-voltage board, and amp power-supply board.
+
+Exit criteria:
+
+- Merlin has a verifier-grounded dataset suitable for fine-tuning or model
+  selection.

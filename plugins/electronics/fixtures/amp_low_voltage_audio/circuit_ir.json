@@ -1,0 +1,350 @@
+{
+  "design_id": "amp_low_voltage_audio",
+  "board_id": "amp_low_voltage_audio",
+  "components": [
+    {
+      "refdes": "JSEC",
+      "role": "low-voltage isolated secondary input connector",
+      "selected_symbol": "Connector:Conn_01x02_Pin",
+      "selected_footprint": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+      "manufacturer_part_number": "Molex-22-23-2021",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Molex KK 254 vertical header datasheet" }],
+      "pins": [
+        { "component_refdes": "JSEC", "pin_number": "1", "canonical_name": "AC1", "electrical_type": "passive", "symbol_pin": "Pin_1", "footprint_pad": "1" },
+        { "component_refdes": "JSEC", "pin_number": "2", "canonical_name": "AC2", "electrical_type": "passive", "symbol_pin": "Pin_2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "BR1",
+      "role": "low-voltage bridge rectifier for isolated secondary rail distribution",
+      "selected_symbol": "Device:D_Bridge_+-AA",
+      "selected_footprint": "Diode_THT:Diode_Bridge_Round_D9.0mm",
+      "manufacturer_part_number": "KBU4G",
+      "source_evidence": [{ "kind": "datasheet", "reference": "KBU bridge rectifier datasheet" }],
+      "pins": [
+        { "component_refdes": "BR1", "pin_number": "1", "canonical_name": "AC1", "electrical_type": "passive", "symbol_pin": "AC1", "footprint_pad": "1" },
+        { "component_refdes": "BR1", "pin_number": "2", "canonical_name": "AC2", "electrical_type": "passive", "symbol_pin": "AC2", "footprint_pad": "2" },
+        { "component_refdes": "BR1", "pin_number": "3", "canonical_name": "PLUS", "electrical_type": "power", "symbol_pin": "+", "footprint_pad": "3" },
+        { "component_refdes": "BR1", "pin_number": "4", "canonical_name": "MINUS", "electrical_type": "power", "symbol_pin": "-", "footprint_pad": "4" }
+      ]
+    },
+    {
+      "refdes": "CRES1",
+      "role": "low-voltage rail reservoir capacitor",
+      "selected_symbol": "Device:CP",
+      "selected_footprint": "Capacitor_THT:CP_Radial_D18.0mm_P7.50mm",
+      "manufacturer_part_number": "Nichicon-UHE1V103MHD",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Nichicon UHE aluminum electrolytic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CRES1", "pin_number": "1", "canonical_name": "PLUS", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CRES1", "pin_number": "2", "canonical_name": "MINUS", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "JIN",
+      "role": "input jack for guitar signal",
+      "selected_symbol": "Connector:AudioJack2",
+      "selected_footprint": "Connector_Audio:Jack_6.35mm",
+      "manufacturer_part_number": "Switchcraft-12A",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Switchcraft open-frame jack catalog" }],
+      "pins": [
+        { "component_refdes": "JIN", "pin_number": "1", "canonical_name": "TIP", "electrical_type": "passive", "symbol_pin": "T", "footprint_pad": "1" },
+        { "component_refdes": "JIN", "pin_number": "2", "canonical_name": "SLEEVE", "electrical_type": "passive", "symbol_pin": "S", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RIN",
+      "role": "input jack pulldown resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-1M",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RIN", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RIN", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CIN",
+      "role": "preamp input coupling capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C104K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CIN", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CIN", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "QPRE1",
+      "role": "discrete preamp JFET gain stage",
+      "selected_symbol": "Device:Q_NJFET_DSG",
+      "selected_footprint": "Package_TO_SOT_THT:TO-92_Inline_DSG",
+      "manufacturer_part_number": "J113",
+      "source_evidence": [{ "kind": "datasheet", "reference": "onsemi J113 JFET datasheet" }],
+      "pins": [
+        { "component_refdes": "QPRE1", "pin_number": "1", "canonical_name": "D", "electrical_type": "power", "symbol_pin": "D", "footprint_pad": "1" },
+        { "component_refdes": "QPRE1", "pin_number": "2", "canonical_name": "S", "electrical_type": "passive", "symbol_pin": "S", "footprint_pad": "2" },
+        { "component_refdes": "QPRE1", "pin_number": "3", "canonical_name": "G", "electrical_type": "input", "symbol_pin": "G", "footprint_pad": "3" }
+      ]
+    },
+    {
+      "refdes": "RPRE_D",
+      "role": "preamp drain load resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-33K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RPRE_D", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RPRE_D", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RPRE_S",
+      "role": "preamp source bias resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-1K5",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RPRE_S", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RPRE_S", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CPRE_BYP",
+      "role": "preamp source bypass capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C105K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CPRE_BYP", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CPRE_BYP", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CTONE_IN",
+      "role": "3-band tone circuit input coupling capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C104K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CTONE_IN", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CTONE_IN", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RBASS",
+      "role": "3-band tone bass resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-100K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RBASS", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RBASS", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CBASS",
+      "role": "3-band tone bass capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C223K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CBASS", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CBASS", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RMID",
+      "role": "3-band tone mid resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-22K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RMID", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RMID", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CMID",
+      "role": "3-band tone mid capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C473K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CMID", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CMID", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RTREBLE",
+      "role": "3-band tone treble resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-250K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RTREBLE", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RTREBLE", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CTREBLE",
+      "role": "3-band tone treble capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C471K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CTREBLE", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CTREBLE", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RFILT1",
+      "role": "sweepable boost/cut filter series resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-10K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RFILT1", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RFILT1", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "CFILT1",
+      "role": "sweepable boost/cut filter capacitor",
+      "selected_symbol": "Device:C",
+      "selected_footprint": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "manufacturer_part_number": "Kemet-C322C103K5R5TA",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Kemet ceramic capacitor datasheet" }],
+      "pins": [
+        { "component_refdes": "CFILT1", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "CFILT1", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RVBOOST",
+      "role": "sweepable boost/cut filter control potentiometer",
+      "selected_symbol": "Device:R_POT",
+      "selected_footprint": "Potentiometer_THT:Potentiometer_Alpha_RD901F-40-00D_Single_Vertical",
+      "manufacturer_part_number": "Alpha-RD901F-100K",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Alpha potentiometer datasheet" }],
+      "pins": [
+        { "component_refdes": "RVBOOST", "pin_number": "1", "canonical_name": "CCW", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RVBOOST", "pin_number": "2", "canonical_name": "WIPER", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" },
+        { "component_refdes": "RVBOOST", "pin_number": "3", "canonical_name": "CW", "electrical_type": "passive", "symbol_pin": "3", "footprint_pad": "3" }
+      ]
+    },
+    {
+      "refdes": "QDRV1",
+      "role": "voltage driver transistor for output stage",
+      "selected_symbol": "Device:Q_NPN_BCE",
+      "selected_footprint": "Package_TO_SOT_THT:TO-92_Inline",
+      "manufacturer_part_number": "MJE340",
+      "source_evidence": [{ "kind": "datasheet", "reference": "onsemi MJE340 datasheet" }],
+      "pins": [
+        { "component_refdes": "QDRV1", "pin_number": "1", "canonical_name": "B", "electrical_type": "input", "symbol_pin": "B", "footprint_pad": "1" },
+        { "component_refdes": "QDRV1", "pin_number": "2", "canonical_name": "C", "electrical_type": "power", "symbol_pin": "C", "footprint_pad": "2" },
+        { "component_refdes": "QDRV1", "pin_number": "3", "canonical_name": "E", "electrical_type": "passive", "symbol_pin": "E", "footprint_pad": "3" }
+      ]
+    },
+    {
+      "refdes": "RDRV_C",
+      "role": "driver collector load resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-4K7",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RDRV_C", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RDRV_C", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "RDRV_E",
+      "role": "driver emitter bias resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "manufacturer_part_number": "Yageo-MFR-25FBF52-470R",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Yageo MFR resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "RDRV_E", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "RDRV_E", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "QOUT1",
+      "role": "single-ended output transistor for Class A output stage",
+      "selected_symbol": "Device:Q_NPN_BCE",
+      "selected_footprint": "Package_TO_SOT_THT:TO-3P-3_Vertical",
+      "manufacturer_part_number": "MJ15003G",
+      "source_evidence": [{ "kind": "datasheet", "reference": "onsemi MJ15003G power transistor datasheet" }],
+      "pins": [
+        { "component_refdes": "QOUT1", "pin_number": "1", "canonical_name": "B", "electrical_type": "input", "symbol_pin": "B", "footprint_pad": "1" },
+        { "component_refdes": "QOUT1", "pin_number": "2", "canonical_name": "C", "electrical_type": "power", "symbol_pin": "C", "footprint_pad": "2" },
+        { "component_refdes": "QOUT1", "pin_number": "3", "canonical_name": "E", "electrical_type": "passive", "symbol_pin": "E", "footprint_pad": "3" }
+      ]
+    },
+    {
+      "refdes": "REMIT",
+      "role": "output stage emitter ballast resistor",
+      "selected_symbol": "Device:R",
+      "selected_footprint": "Resistor_THT:R_Axial_Power_L20.0mm_W6.4mm_P25.40mm",
+      "manufacturer_part_number": "Vishay-AC05000004707JAC00",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Vishay AC power resistor datasheet" }],
+      "pins": [
+        { "component_refdes": "REMIT", "pin_number": "1", "canonical_name": "A", "electrical_type": "passive", "symbol_pin": "1", "footprint_pad": "1" },
+        { "component_refdes": "REMIT", "pin_number": "2", "canonical_name": "B", "electrical_type": "passive", "symbol_pin": "2", "footprint_pad": "2" }
+      ]
+    },
+    {
+      "refdes": "JSPK",
+      "role": "speaker output connector",
+      "selected_symbol": "Connector:Conn_01x02_Pin",
+      "selected_footprint": "TerminalBlock:TerminalBlock_bornier-2_P5.08mm",
+      "manufacturer_part_number": "Phoenix-1725656",
+      "source_evidence": [{ "kind": "datasheet", "reference": "Phoenix Contact terminal block datasheet" }],
+      "pins": [
+        { "component_refdes": "JSPK", "pin_number": "1", "canonical_name": "SPK_PLUS", "electrical_type": "passive", "symbol_pin": "Pin_1", "footprint_pad": "1" },
+        { "component_refdes": "JSPK", "pin_number": "2", "canonical_name": "SPK_RETURN", "electrical_type": "passive", "symbol_pin": "Pin_2", "footprint_pad": "2" }
+      ]
+    }
+  ],
+  "nets": [
+    { "name": "AC_SEC1", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "1" }, { "component_refdes": "BR1", "pin_number": "1" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
+    { "name": "AC_SEC2", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "2" }, { "component_refdes": "BR1", "pin_number": "2" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
+    { "name": "VRAW", "role": "low-voltage positive rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "3" }, { "component_refdes": "CRES1", "pin_number": "1" }, { "component_refdes": "RPRE_D", "pin_number": "1" }, { "component_refdes": "RDRV_C", "pin_number": "1" }, { "component_refdes": "QOUT1", "pin_number": "2" }], "net_class": "power", "safety_domain": "isolated_secondary" },
+    { "name": "GND", "role": "low-voltage reference rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "4" }, { "component_refdes": "CRES1", "pin_number": "2" }, { "component_refdes": "JIN", "pin_number": "2" }, { "component_refdes": "RIN", "pin_number": "2" }, { "component_refdes": "RPRE_S", "pin_number": "2" }, { "component_refdes": "CPRE_BYP", "pin_number": "2" }, { "component_refdes": "CBASS", "pin_number": "2" }, { "component_refdes": "CMID", "pin_number": "2" }, { "component_refdes": "CTREBLE", "pin_number": "2" }, { "component_refdes": "CFILT1", "pin_number": "2" }, { "component_refdes": "RDRV_E", "pin_number": "2" }, { "component_refdes": "REMIT", "pin_number": "2" }, { "component_refdes": "JSPK", "pin_number": "2" }], "net_class": "ground", "safety_domain": "isolated_secondary" },
+    { "name": "GUITAR_IN", "role": "input signal", "endpoints": [{ "component_refdes": "JIN", "pin_number": "1" }, { "component_refdes": "CIN", "pin_number": "1" }, { "component_refdes": "RIN", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "PRE_BIAS", "role": "preamp gate bias", "endpoints": [{ "component_refdes": "CIN", "pin_number": "2" }, { "component_refdes": "QPRE1", "pin_number": "3" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "PRE_DRAIN", "role": "preamp amplified node", "endpoints": [{ "component_refdes": "QPRE1", "pin_number": "1" }, { "component_refdes": "RPRE_D", "pin_number": "2" }, { "component_refdes": "CTONE_IN", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "PRE_SOURCE", "role": "preamp source bias", "endpoints": [{ "component_refdes": "QPRE1", "pin_number": "2" }, { "component_refdes": "RPRE_S", "pin_number": "1" }, { "component_refdes": "CPRE_BYP", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "PRE_OUT", "role": "preamp output to tone circuit", "endpoints": [{ "component_refdes": "CTONE_IN", "pin_number": "2" }, { "component_refdes": "RBASS", "pin_number": "1" }, { "component_refdes": "RMID", "pin_number": "1" }, { "component_refdes": "RTREBLE", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "TONE_OUT", "role": "3-band tone output", "endpoints": [{ "component_refdes": "RBASS", "pin_number": "2" }, { "component_refdes": "CBASS", "pin_number": "1" }, { "component_refdes": "RMID", "pin_number": "2" }, { "component_refdes": "CMID", "pin_number": "1" }, { "component_refdes": "RTREBLE", "pin_number": "2" }, { "component_refdes": "CTREBLE", "pin_number": "1" }, { "component_refdes": "RFILT1", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "FILTER_OUT", "role": "sweepable filter output", "endpoints": [{ "component_refdes": "RFILT1", "pin_number": "2" }, { "component_refdes": "CFILT1", "pin_number": "1" }, { "component_refdes": "RVBOOST", "pin_number": "2" }, { "component_refdes": "QDRV1", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "BOOST_REF", "role": "sweep control reference", "endpoints": [{ "component_refdes": "RVBOOST", "pin_number": "1" }, { "component_refdes": "RVBOOST", "pin_number": "3" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "DRV_OUT", "role": "driver output to output transistor base", "endpoints": [{ "component_refdes": "QDRV1", "pin_number": "2" }, { "component_refdes": "RDRV_C", "pin_number": "2" }, { "component_refdes": "QOUT1", "pin_number": "1" }], "net_class": "driver", "safety_domain": "isolated_secondary" },
+    { "name": "DRV_BIAS", "role": "driver emitter bias", "endpoints": [{ "component_refdes": "QDRV1", "pin_number": "3" }, { "component_refdes": "RDRV_E", "pin_number": "1" }], "net_class": "driver", "safety_domain": "isolated_secondary" },
+    { "name": "SPK_OUT", "role": "speaker output signal", "endpoints": [{ "component_refdes": "QOUT1", "pin_number": "3" }, { "component_refdes": "REMIT", "pin_number": "1" }, { "component_refdes": "JSPK", "pin_number": "1" }], "net_class": "speaker", "safety_domain": "isolated_secondary" }
+  ],
+  "constraints": [
+    { "kind": "thermal", "target": "QOUT1", "value": "external heatsink and SOA review required for Class A dissipation" },
+    { "kind": "placement", "target": "JSEC", "value": "keep isolated secondary input away from audio input connector" },
+    { "kind": "net_class", "target": "SPK_OUT", "value": "speaker current path requires wider copper in PCB phase" }
+  ],
+  "verification_scenarios": [
+    { "id": "erc-low-voltage", "kind": "erc", "expectation": "no blocking ERC errors after generic materialization" },
+    { "id": "spice-output-bias", "kind": "spice", "expectation": "output bias and small-signal response require simulation before build approval" }
+  ]
+}

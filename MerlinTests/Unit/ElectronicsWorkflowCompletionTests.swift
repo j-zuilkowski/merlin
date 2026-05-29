@@ -40,54 +40,36 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("merlin-board.kicad_pro").path))
     }
 
-    func testAmpDemoRequirementsWorkflowBlocksPlaceholderBlockDiagramArtifacts() async throws {
+    func testRequirementsWorkflowBlocksAnyPromptWithoutGeneratingArtifacts() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
-        let output = temporaryDirectory("ampdemo-requirements-to-pcb")
-        let kicadCLI = try writeFakeKiCadCLI()
-        let ngspice = try writeFakeNgspice()
-        let payload = """
-        {
-          "job_id": "ampdemo-test",
-          "requirements": "Design a 25 watt pure Class A solid-state guitar amplifier for guitar with transformer-isolated North American mains.",
-          "output_directory": "\(output.path)",
-          "kicad_cli_path": "\(kicadCLI.path)",
-          "ngspice_path": "\(ngspice.path)",
-          "high_stakes": false
+        let cases = [
+            ("amp-test", "Design a 25 watt pure Class A solid-state guitar amplifier for guitar with transformer-isolated North American mains."),
+            ("esp32-test", "Design an ESP32 IoT temperature sensor with USB-C power, Wi-Fi, MQTT, boot/reset buttons, and a sensor header."),
+            ("supply-test", "Design a 24V to 5V buck converter board with USB-C input and screw terminal output.")
+        ]
+
+        for (jobID, requirements) in cases {
+            let output = temporaryDirectory("\(jobID)-requirements-to-pcb")
+            let payload = """
+            {
+              "job_id": "\(jobID)",
+              "requirements": "\(requirements)",
+              "output_directory": "\(output.path)",
+              "high_stakes": false
+            }
+            """
+
+            let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
+
+            XCTAssertEqual(response.status, .blocked, jobID)
+            XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.missingArtifact.rawValue, jobID)
+            let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self), jobID)
+            XCTAssertEqual(result.warnings.first?.code, "DESIGN_INTENT_REQUIRED", jobID)
+            XCTAssertTrue(result.nextActions.contains("create_or_attach_design_intent"), jobID)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad").path), jobID)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("bom").path), jobID)
         }
-        """
-
-        let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
-
-        XCTAssertEqual(response.status, .blocked)
-        XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.invalidInputQuality.rawValue)
-        XCTAssertTrue(
-            response.diagnostics.contains { $0.message.contains("block-diagram placeholder content") },
-            response.diagnostics.map(\.message).joined(separator: "\n")
-        )
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_pro").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_sch").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad/AmpDemo.kicad_pcb").path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("gerbers/AmpDemo-job.gbrjob").path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("drill/AmpDemo.drl").path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("simulation/ngspice-output.log").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("bom/ampdemo-bom.csv").path))
-        let schematic = try String(contentsOf: output.appendingPathComponent("kicad/AmpDemo.kicad_sch"), encoding: .utf8)
-        let board = try String(contentsOf: output.appendingPathComponent("kicad/AmpDemo.kicad_pcb"), encoding: .utf8)
-        XCTAssertTrue(schematic.contains("AmpDemo:Block2"))
-        XCTAssertTrue(board.contains("AmpDemo:Tone_Stack"))
-
-        let store = ElectronicsJobStore()
-        await store.loadRecent(from: runtime.bus)
-        let job = try XCTUnwrap(store.jobs.first { $0.id == "ampdemo-test" })
-        XCTAssertNotEqual(job.status, .complete)
-        let completedProgressMessages = job.progress.map(\.message)
-        XCTAssertFalse(completedProgressMessages.contains("KiCad ERC passed"))
-        XCTAssertFalse(completedProgressMessages.contains("KiCad DRC passed"))
-        XCTAssertFalse(completedProgressMessages.contains("Gerbers exported"))
-        XCTAssertFalse(completedProgressMessages.contains("Drill files exported"))
-        XCTAssertFalse(completedProgressMessages.contains("ngspice simulation passed"))
-        XCTAssertTrue(job.diagnostics.contains { $0.message.contains("block-diagram placeholder content") })
     }
 
     func testRunSpiceRejectsSummaryLogsBeforeInvokingNgspice() async throws {
@@ -177,46 +159,6 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         fi
         mkdir -p "$(dirname "$output")"
         printf 'frequency = 1.40\\n' > "$output"
-        exit 0
-        """
-        try script.write(to: executable, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
-        return executable
-    }
-
-    private func writeFakeKiCadCLI() throws -> URL {
-        let directory = temporaryDirectory("fake-kicad")
-        let executable = directory.appendingPathComponent("kicad-cli")
-        let script = """
-        #!/bin/sh
-        original="$*"
-        case "$*" in
-          *"--version"*) echo "KiCad Version: 10.0.0"; exit 0 ;;
-        esac
-        output=""
-        while [ "$#" -gt 0 ]; do
-          if [ "$1" = "--output" ]; then
-            shift
-            output="$1"
-          fi
-          shift
-        done
-        case "$original" in
-          *"export gerbers"*)
-            mkdir -p "$output"
-            printf 'gerber job\\n' > "$output/AmpDemo-job.gbrjob"
-            exit 0
-            ;;
-          *"export drill"*)
-            mkdir -p "$output"
-            printf 'drill\\n' > "$output/AmpDemo.drl"
-            exit 0
-            ;;
-        esac
-        if [ -n "$output" ]; then
-          mkdir -p "$(dirname "$output")"
-          printf '{"status":"pass"}\\n' > "$output"
-        fi
         exit 0
         """
         try script.write(to: executable, atomically: true, encoding: .utf8)

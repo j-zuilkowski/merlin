@@ -1,0 +1,348 @@
+# Electronics Plugin Spec
+
+Date: 2026-05-29
+
+This specification belongs to `plugins/electronics`. Merlin core provides the
+workspace bus, provider routing, session UI, and plugin loading. Electronics
+design behavior, schemas, roles, verifier policy, and repair-loop rules belong
+to this plugin.
+
+## Objective
+
+The electronics plugin SHALL provide a generic, KiCad-backed electronics design
+workflow that converts approved structured design intent into verified KiCad
+artifacts. It SHALL never claim electronics completion from natural-language
+requirements, model narrative, screenshots, or unverified generated files.
+
+The first supported production path is:
+
+```text
+natural language or source schematic
+  -> user-reviewed DesignIntent
+  -> Circuit IR
+  -> KiCad project materialization
+  -> ERC repair loop
+  -> SCHEMATIC_VERIFIED evidence package
+```
+
+PCB layout, DRC, fabrication exports, BOM/vendor ordering, SPICE optimization,
+and high-stakes signoff extend the same pipeline after schematic verification.
+
+## Scope Boundary
+
+### In Scope
+
+1. Plugin-owned `DesignIntent` and Circuit IR schemas.
+2. Model-assisted drafting of `DesignIntent`.
+3. User approval before KiCad mutation when intent originated from natural
+   language.
+4. KiCad-backed schematic materialization.
+5. KiCad library, symbol, footprint, pin, and field resolution.
+6. ERC execution, diagnostics parsing, and bounded schematic repair loop.
+7. Evidence-gated `SCHEMATIC_VERIFIED` status.
+8. Plugin-declared dynamic roles such as `electronics.analog_critic`.
+9. First acceptance fixture: 25W Class A solid-state guitar amplifier,
+   represented as generic design data, not hard-coded generator logic.
+
+### Out Of Scope For First Milestone
+
+1. Full PCB completion and fabrication release.
+2. Full autonomous natural-language-to-fabrication workflow.
+3. SPICE-driven topology/value optimization.
+4. Vendor ordering submission.
+5. Certification of mains, thermal, enclosure, regulatory, medical, automotive,
+   or life-safety compliance.
+
+## Non-Negotiable Invariants
+
+1. No hard-coded project generators.
+2. No named-example special cases for AmpDemo, ESP32, 555, power supplies, or
+   future demo projects.
+3. No raw KiCad S-expression string emitters as product shortcuts.
+4. No model-certified completion.
+5. No completion without parsed evidence from required tools.
+6. No KiCad mutation from natural-language-originated requirements until the
+   `DesignIntent` is user-reviewed or explicitly approved.
+7. Plugin-specific roles disappear when the electronics plugin is unloaded.
+
+## Research-Derived Design Commitments
+
+The plugin incorporates prior research as architecture, not as copied examples.
+
+### CircuitLM
+
+CircuitLM informs the staged pipeline:
+
+```text
+requirements -> DesignIntent -> Circuit IR -> pin/library resolution -> KiCad
+```
+
+The plugin SHALL use machine-checkable intermediate data and SHALL validate
+component identity, pin mappings, nets, and constraints before KiCad
+materialization.
+
+### AnalogCoder
+
+AnalogCoder informs repair action style. Model output SHOULD be structured tool
+payloads and patches, not prose. Repair actions include examples such as
+`add_power_flag`, `connect_net`, `replace_symbol`, `assign_footprint`,
+`update_component_value`, and `add_no_connect`.
+
+### AnalogSeeker
+
+AnalogSeeker informs optional analog-specialist critique and future training.
+The plugin MAY declare `electronics.analog_critic`; critic output SHALL raise
+issues or propose repairs only. It SHALL NOT pass verification gates.
+
+### AutoCkt
+
+AutoCkt informs future simulator-driven optimization for bounded analog
+subcircuits after topology is fixed. It is not part of the first milestone.
+
+## Dynamic Plugin Roles
+
+Merlin core SHALL support plugin-declared roles. The electronics plugin MAY
+declare roles such as:
+
+```json
+{
+  "id": "electronics.analog_critic",
+  "display_name": "Analog Critic",
+  "plugin_id": "electronics",
+  "scope": "electronics",
+  "default_fallback": "reason",
+  "required_capabilities": ["structured_output", "long_context"],
+  "recommended_models": ["analog-specialist", "deepseek-r1-70b"]
+}
+```
+
+Role behavior:
+
+1. Built-in Merlin roles remain available: `execute`, `reason`, `orchestrate`,
+   and `vision`.
+2. Plugin roles are registered only while the plugin is loaded.
+3. Plugin roles appear in role settings, routing, calibration, status display,
+   and token accounting only while available.
+4. If an optional plugin role is unassigned, workflows MAY fall back to a built-in
+   role.
+5. If a workflow marks a plugin role required, missing assignment SHALL block
+   with `ROLE_UNASSIGNED`.
+
+For the first electronics milestone, `electronics.analog_critic` is optional.
+
+## DesignIntent
+
+`DesignIntent` is the human-reviewed design contract. It records requirements,
+assumptions, unresolved decisions, board boundaries, safety constraints, and
+verification expectations.
+
+Minimum fields:
+
+```json
+{
+  "design_id": "string",
+  "title": "string",
+  "origin": "natural_language | schematic_ingest | user_authored",
+  "approval": {
+    "status": "draft | approved | rejected",
+    "approved_by": "string",
+    "approved_at": "ISO-8601 timestamp"
+  },
+  "requirements": [],
+  "assumptions": [],
+  "unresolved_decisions": [],
+  "boards": [],
+  "safety_profile": {},
+  "verification_plan": {}
+}
+```
+
+Rules:
+
+1. Natural-language-originated intent starts as `draft`.
+2. KiCad mutation requires `approved` intent unless the user explicitly invokes a
+   draft-only preview mode that cannot complete gates.
+3. Unknown engineering values SHALL be represented as unresolved decisions, not
+   guessed certainty.
+4. The plugin SHALL help the user draft the intent, but user approval remains the
+   transition from requirements analysis to artifact mutation.
+
+## Circuit IR
+
+Circuit IR is the machine-checkable bridge from `DesignIntent` to KiCad.
+
+Minimum entities:
+
+1. `CircuitComponent`
+   - reference designator
+   - role
+   - selected symbol
+   - selected footprint when applicable
+   - manufacturer/vendor candidate when applicable
+   - source evidence
+   - pin map
+2. `CircuitPin`
+   - component refdes
+   - pin number
+   - canonical name
+   - electrical type
+   - KiCad symbol pin mapping
+   - footprint pad mapping when applicable
+3. `CircuitNet`
+   - name
+   - role
+   - endpoint pins
+   - net class
+   - safety or isolation domain
+4. `CircuitConstraint`
+   - current, voltage, impedance, clearance, creepage, thermal, RF, placement,
+     or routing constraint
+5. `VerificationScenario`
+   - ERC expectations
+   - future DRC expectations
+   - future SPICE scenario and measurement envelope
+
+Rules:
+
+1. Every component entering KiCad must have source evidence.
+2. Every net endpoint must refer to a valid component pin.
+3. Every footprint assignment must prove pin/pad compatibility before PCB work.
+4. Circuit IR validation failures block before KiCad file mutation.
+
+## KiCad Integration Strategy
+
+Preferred order:
+
+1. KiCad CLI for deterministic checks and exports.
+2. Plugin-owned KiCad S-expression parser/writer for structured file mutation.
+3. KiCad library and file introspection for symbols, footprints, fields, netlists,
+   and parity.
+4. GUI automation or vision only for visual QA fallback and operations that
+   cannot safely be performed through CLI or parser/writer paths.
+
+The plugin SHALL round-trip test parser/writer mutations. GUI state and
+screenshots SHALL NOT be electrical authority.
+
+## First Acceptance Target: 25W Class A Guitar Amplifier
+
+The first acceptance fixture is a 25W pure Class A solid-state guitar amplifier.
+It is not a hard-coded path. It is a demanding fixture for the generic pipeline.
+
+The design is split into separate boards:
+
+1. `amp_low_voltage_audio`
+   - low-voltage isolated secondary-side amplifier and audio circuitry.
+   - includes preamp, 3-band tone circuit, sweepable boost/cut filter, driver,
+     output stage, speaker output, low-voltage rail distribution, and thermal
+     constraints.
+2. `amp_mains_power_supply`
+   - mains inlet, fuse, switch, protective earth, transformer primary, secondary
+     interface, and related safety constraints.
+   - second schematic and second PCB.
+   - must remain under high-stakes safety policy and cannot be certified by the
+     model.
+
+First milestone targets `amp_low_voltage_audio` schematic verification only.
+The power-supply board is a second milestone.
+
+## Status Model
+
+The first milestone introduces `SCHEMATIC_VERIFIED`.
+
+`SCHEMATIC_VERIFIED` requires:
+
+1. Approved `DesignIntent`.
+2. Valid Circuit IR.
+3. `.kicad_pro`.
+4. `.kicad_sch`.
+5. Resolved symbols and required fields.
+6. KiCad ERC report.
+7. No blocking ERC errors.
+8. Schematic verification report.
+
+`SCHEMATIC_VERIFIED` is not full product completion and SHALL NOT imply PCB,
+fabrication, SPICE, BOM, safety, or build approval.
+
+## ERC Repair Loop
+
+Initial repair loop scope is ERC.
+
+Algorithm:
+
+```text
+materialize schematic
+run ERC
+parse violations
+classify each violation
+propose structured patch
+apply patch through Circuit IR and KiCad parser/writer
+rerun ERC
+repeat up to cap
+block with diagnostics if unresolved
+```
+
+Initial cap: 3 repair attempts per workflow.
+
+Allowed first-milestone repair classes:
+
+1. Add explicit no-connect marker.
+2. Add or correct power flag.
+3. Correct net label mismatch.
+4. Repair missing connection from known Circuit IR endpoint.
+5. Correct symbol field or pin mapping when resolver evidence proves the change.
+
+The plugin SHALL NOT invent components, pinouts, or safety assumptions as an ERC
+repair shortcut.
+
+## DRC And PCB Follow-On
+
+DRC is the second verification loop after schematic verification. The DRC loop
+requires:
+
+1. footprint assignment with pin compatibility proof;
+2. board outline and stackup;
+3. net classes and design rules;
+4. placement constraints;
+5. routing or explicit unrouted diagnostics;
+6. KiCad DRC report parsing.
+
+DRC repair actions may include placement, net-class, clearance, board-profile,
+and routing repairs. Fabrication-profile or layer-count changes require user
+approval.
+
+## Safety Policy
+
+High-stakes safety means designs involving hazardous voltage, mains, high
+current, high temperature, stored energy, regulatory compliance, or life-safety
+impact.
+
+For high-stakes areas, the plugin may:
+
+1. document assumptions;
+2. produce CAD artifacts;
+3. run ERC/DRC/SPICE/fabrication checks;
+4. identify required qualified review.
+
+The plugin SHALL NOT:
+
+1. certify safety;
+2. declare a mains design safe to build or use;
+3. waive thermal, enclosure, grounding, creepage, clearance, or regulatory
+   review;
+4. submit irreversible fabrication or ordering actions without explicit approval.
+
+The 25W amplifier power-supply board is high-stakes by default.
+
+## Minimum First Implementation Tasks
+
+1. Move plugin schemas and docs under `plugins/electronics`.
+2. Add `SCHEMATIC_VERIFIED` status and evidence contract.
+3. Add `DesignIntent` approval state.
+4. Define Circuit IR schema and validator.
+5. Add KiCad symbol/pin resolver.
+6. Change schematic materialization to compile Circuit IR through structured
+   KiCad mutation.
+7. Add ERC parser and 3-attempt repair loop.
+8. Add the 25W amp low-voltage audio board as a data fixture.
+9. Add tests proving no hard-coded generator exists and fixture flow uses generic
+   schemas and verifiers.

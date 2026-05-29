@@ -61,6 +61,18 @@ struct ElectronicsRuntimePlugin {
             enabled: true,
             domainIDs: [ElectronicsDomain.defaultID],
             capabilities: toolCapabilities + workflowCapabilities,
+            roles: [
+                PluginRoleDefinition(
+                    id: "electronics.analog_critic",
+                    displayName: "Analog Critic",
+                    pluginID: "electronics",
+                    scope: "electronics",
+                    fallbackSlot: .reason,
+                    requiredCapabilities: ["structured_output", "long_context"],
+                    recommendedModels: ["analog-specialist", "deepseek-r1-70b"],
+                    isRequired: false
+                ),
+            ],
             settingsSchema: ElectronicsDomain().settingsSchema
         )
     }
@@ -337,7 +349,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         context: WorkspaceHandlerContext,
         object: [String: Any]
     ) async -> WorkspaceMessageResponse {
-        guard let requirements = stringValue(object, keys: ["requirements", "prompt", "description"]) else {
+        guard stringValue(object, keys: ["requirements", "prompt", "description"]) != nil else {
             return block(
                 request,
                 reason: .missingArtifact,
@@ -345,933 +357,25 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
-        guard isAmpDemoAmplifierRequest(requirements) else {
-            return structuredBlock(
-                request,
-                reason: .missingArtifact,
-                message: "Requirements-to-PCB completion requires explicit evidence from real KiCad, SPICE, routing, fabrication, BOM, and verification artifacts. Merlin will not synthesize placeholder board artifacts or mark a requirements-only request complete.",
-                context: context,
-                nextActions: [
-                    "create_design_intent",
-                    "compile_kicad_project",
-                    "run_erc_drc_spice_and_fab_export",
-                    "resubmit_workflow_with_evidence"
-                ]
-            )
-        }
-        return await runAmpDemoRequirementsWorkflow(request, context: context, object: object, requirements: requirements)
-    }
-
-    private func isAmpDemoAmplifierRequest(_ requirements: String) -> Bool {
-        let text = requirements.lowercased()
-        return (text.contains("amplifier") || text.contains("ampdemo"))
-            && text.contains("guitar")
-            && (text.contains("class a") || text.contains("class-a"))
-            && (text.contains("25 watt") || text.contains("25w"))
-    }
-
-    private func runAmpDemoRequirementsWorkflow(
-        _ request: WorkspaceMessageRequest,
-        context: WorkspaceHandlerContext,
-        object: [String: Any],
-        requirements: String
-    ) async -> WorkspaceMessageResponse {
-        guard let cliPath = executablePath(from: object, key: "kicad_cli_path", defaultCandidates: defaultKiCadCLICandidates()) else {
-            return requiredExecutableBlock(
-                request,
-                context: context,
-                code: "KICAD_CLI_REQUIRED",
-                message: "Requirements-to-PCB workflow requires an executable KiCad CLI path."
-            )
-        }
-        guard let ngspicePath = executablePath(from: object, key: "ngspice_path", defaultCandidates: ["/opt/homebrew/bin/ngspice", "/usr/local/bin/ngspice"]) else {
-            return requiredExecutableBlock(
-                request,
-                context: context,
-                code: "SPICE_SIMULATOR_REQUIRED",
-                message: "Requirements-to-PCB workflow requires an executable ngspice_path."
-            )
-        }
-
-        let jobID = stringValue(object, keys: ["job_id", "jobId"]) ?? "ampdemo-\(request.id.uuidString.prefix(8))"
-        let rootURL = URL(fileURLWithPath: stringValue(object, keys: ["output_directory"]) ?? context.workspaceRoot.path, isDirectory: true)
-        let kicadURL = rootURL.appendingPathComponent("kicad", isDirectory: true)
-        let gerberURL = rootURL.appendingPathComponent("gerbers", isDirectory: true)
-        let drillURL = rootURL.appendingPathComponent("drill", isDirectory: true)
-        let simulationURL = rootURL.appendingPathComponent("simulation", isDirectory: true)
-        let bomURL = rootURL.appendingPathComponent("bom", isDirectory: true)
-        let reportsURL = rootURL.appendingPathComponent("reports", isDirectory: true)
-        let librariesURL = rootURL.appendingPathComponent("libraries", isDirectory: true)
-
-        await publishWorkflowProgress(
-            jobID: jobID,
-            status: .inProgress,
-            message: "Starting AmpDemo requirements-to-PCB workflow",
-            request: request,
-            context: context
-        )
-
-        do {
-            for directory in [kicadURL, gerberURL, drillURL, simulationURL, bomURL, reportsURL, librariesURL] {
-                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            }
-
-            let designIntentURL = reportsURL.appendingPathComponent("design-intent.json")
-            let projectURL = kicadURL.appendingPathComponent("AmpDemo.kicad_pro")
-            let schematicURL = kicadURL.appendingPathComponent("AmpDemo.kicad_sch")
-            let boardURL = kicadURL.appendingPathComponent("AmpDemo.kicad_pcb")
-            let spiceDeckURL = simulationURL.appendingPathComponent("ampdemo-class-a-subset.cir")
-            let spiceLogURL = simulationURL.appendingPathComponent("ngspice-output.log")
-            let ercURL = reportsURL.appendingPathComponent("erc-report.json")
-            let drcURL = reportsURL.appendingPathComponent("drc-report.json")
-            let bomCSVURL = bomURL.appendingPathComponent("ampdemo-bom.csv")
-            let orderURL = bomURL.appendingPathComponent("vendor-order-notes.json")
-            let approvalURL = reportsURL.appendingPathComponent("demo-approval-record.json")
-            let finalReportURL = reportsURL.appendingPathComponent("final-demo-report.md")
-            let fabPackageURL = reportsURL.appendingPathComponent("ampdemo-fabrication-package.zip")
-
-            try ampDemoDesignIntent(requirements: requirements, jobID: jobID).write(to: designIntentURL, atomically: true, encoding: .utf8)
-            try ampDemoProjectFile().write(to: projectURL, atomically: true, encoding: .utf8)
-            try ampDemoSchematicFile().write(to: schematicURL, atomically: true, encoding: .utf8)
-            try ampDemoBoardFile().write(to: boardURL, atomically: true, encoding: .utf8)
-            try ampDemoSpiceDeck().write(to: spiceDeckURL, atomically: true, encoding: .utf8)
-            try ampDemoBOM().write(to: bomCSVURL, atomically: true, encoding: .utf8)
-            try ampDemoVendorOrderNotes().write(to: orderURL, atomically: true, encoding: .utf8)
-            try ampDemoApprovalRecord().write(to: approvalURL, atomically: true, encoding: .utf8)
-            try ampDemoLibraryNotes().write(to: librariesURL.appendingPathComponent("source-notes.md"), atomically: true, encoding: .utf8)
-            try "# AmpDemo Final Demo Report\n\nPending final gate evaluation.\n".write(to: finalReportURL, atomically: true, encoding: .utf8)
-
-            let schematicUpgradeRun = runProcess(executablePath: cliPath, arguments: ["sch", "upgrade", "--force", schematicURL.path])
-            guard schematicUpgradeRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_SCHEMATIC_UPGRADE_FAILED", run: schematicUpgradeRun)
-            }
-            let boardUpgradeRun = runProcess(executablePath: cliPath, arguments: ["pcb", "upgrade", "--force", boardURL.path])
-            guard boardUpgradeRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_BOARD_UPGRADE_FAILED", run: boardUpgradeRun)
-            }
-            guard ampDemoKiCadArtifactsHavePartLevelAmplifierContent(schematicURL: schematicURL, boardURL: boardURL) else {
-                return structuredBlock(
-                    request,
-                    reason: .invalidInputQuality,
-                    message: "AmpDemo KiCad generation produced block-diagram placeholder content instead of a part-level amplifier schematic and PCB layout.",
-                    context: context,
-                    nextActions: [
-                        "Replace generated AmpDemo block symbols with discrete resistors, capacitors, diodes, transistors, potentiometers, connectors, and power-supply parts.",
-                        "Generate a PCB from the real netlist with component placement, grounding, thermal/current paths, and manufacturable routing before exporting Gerbers."
-                    ]
-                )
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "AmpDemo KiCad, SPICE, BOM, and report seed artifacts written",
-                request: request,
-                context: context
-            )
-            let ercRun = runProcess(executablePath: cliPath, arguments: ["sch", "erc", schematicURL.path, "--format", "json", "--output", ercURL.path, "--severity-error", "--exit-code-violations"])
-            guard ercRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_ERC_FAILED", run: ercRun)
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "KiCad ERC passed",
-                request: request,
-                context: context
-            )
-            let drcRun = runProcess(executablePath: cliPath, arguments: ["pcb", "drc", boardURL.path, "--format", "json", "--output", drcURL.path, "--severity-error", "--exit-code-violations"])
-            guard drcRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_DRC_FAILED", run: drcRun)
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "KiCad DRC passed",
-                request: request,
-                context: context
-            )
-            let gerberRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "gerbers", "--output", gerberURL.path, boardURL.path])
-            guard gerberRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_GERBER_EXPORT_FAILED", run: gerberRun)
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "Gerbers exported",
-                request: request,
-                context: context
-            )
-            let drillRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "drill", "--output", drillURL.path, boardURL.path])
-            guard drillRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "KICAD_DRILL_EXPORT_FAILED", run: drillRun)
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "Drill files exported",
-                request: request,
-                context: context
-            )
-            let spiceRun = runProcess(executablePath: ngspicePath, arguments: ["-b", "-o", spiceLogURL.path, spiceDeckURL.path])
-            guard spiceRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: spiceRun)
-            }
-
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "ngspice simulation passed",
-                request: request,
-                context: context
-            )
-            let zipRun = runProcess(executablePath: "/usr/bin/ditto", arguments: ["-c", "-k", "--keepParent", gerberURL.path, fabPackageURL.path])
-            guard zipRun.exitCode == 0 else {
-                return commandFailureBlock(request, context: context, code: "FAB_PACKAGE_FAILED", run: zipRun)
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .inProgress,
-                message: "Fabrication outputs packaged",
-                request: request,
-                context: context
-            )
-
-            let artifacts = [
-                ElectronicsCompletionArtifact(kind: .kicadProject, path: projectURL.path),
-                ElectronicsCompletionArtifact(kind: .schematic, path: schematicURL.path),
-                ElectronicsCompletionArtifact(kind: .board, path: boardURL.path),
-                ElectronicsCompletionArtifact(kind: .routingInterchange, path: gerberURL.appendingPathComponent("AmpDemo-job.gbrjob").path),
-                ElectronicsCompletionArtifact(kind: .routingResult, path: drillURL.appendingPathComponent("AmpDemo.drl").path),
-                ElectronicsCompletionArtifact(kind: .fabricationPackage, path: fabPackageURL.path),
-                ElectronicsCompletionArtifact(kind: .bom, path: bomCSVURL.path),
-                ElectronicsCompletionArtifact(kind: .pickAndPlace, path: orderURL.path),
-                ElectronicsCompletionArtifact(kind: .spiceMeasurements, path: spiceLogURL.path),
-                ElectronicsCompletionArtifact(kind: .verificationReport, path: finalReportURL.path),
-                ElectronicsCompletionArtifact(kind: .approvalRecord, path: approvalURL.path),
+        return structuredBlock(
+            request,
+            reason: .missingArtifact,
+            message: "Requirements-to-PCB requires explicit design evidence before Merlin can create or complete hardware artifacts. Merlin will not use hard-coded generators, synthesize placeholder KiCad files, or claim completion from requirements alone.",
+            context: context,
+            warnings: [KiCadWarning(
+                code: "DESIGN_INTENT_REQUIRED",
+                message: "Requirements-to-PCB requires a structured design intent, part-level schematic/netlist evidence, PCB layout evidence, ERC/DRC results, fabrication exports, BOM evidence, and verification records before completion.",
+                affectedRefs: affectedRefs(from: request),
+                suggestedAction: "Create or attach a structured design intent and then invoke the explicit KiCad, SPICE, fabrication, BOM, and verification tools."
+            )],
+            nextActions: [
+                "create_or_attach_design_intent",
+                "compile_kicad_project_from_design_intent",
+                "run_erc_drc_and_required_simulation",
+                "export_fabrication_and_bom_artifacts",
+                "resubmit_workflow_with_evidence"
             ]
-            let gates: [ElectronicsVerificationGate: ElectronicsGateResult] = [
-                .connectivity: ElectronicsGateResult(gate: .connectivity, status: .pass, details: "Minimal KiCad board has zero unrouted nets in DRC output."),
-                .erc: ElectronicsGateResult(gate: .erc, status: .pass, details: "KiCad CLI ERC completed successfully."),
-                .drc: ElectronicsGateResult(gate: .drc, status: .pass, details: "KiCad CLI DRC completed successfully."),
-                .parity: ElectronicsGateResult(gate: .parity, status: .pass, details: "Artifacts are explicitly labeled as the AmpDemo Class-A guitar amplifier prototype."),
-                .fabrication: ElectronicsGateResult(gate: .fabrication, status: .pass, details: "KiCad CLI generated Gerber and drill outputs; fabrication package zip was created."),
-                .simulation: ElectronicsGateResult(gate: .simulation, status: .pass, details: "ngspice completed the representative Class-A output-stage subset."),
-                .visualQA: ElectronicsGateResult(gate: .visualQA, status: .pass, details: "Artifact file set and generated board outline were inspected by deterministic workflow checks."),
-                .highStakesSignoff: ElectronicsGateResult(gate: .highStakesSignoff, status: .pass, details: "Demo report includes explicit non-certified, not-fabrication-approved safety caveats."),
-            ]
-            let evidence = ElectronicsCompletionEvidence(
-                artifacts: artifacts,
-                gates: gates,
-                approvals: [ElectronicsApprovalRecord(kind: .highStakesSignoff, approvedBy: "Merlin demo workflow", summary: "Demo documentation signoff only; not a build or mains-safety approval.")],
-                highStakes: object["high_stakes"] as? Bool ?? false
-            )
-            let validation = validateCompletionEvidence(evidence, requirements: requirements)
-            let report = ElectronicsGateRunner().finalReport(jobID: jobID, evidence: validation.evidence)
-            try ampDemoFinalReport(jobID: jobID, report: report, requirements: requirements, cliPath: cliPath, ngspicePath: ngspicePath).write(to: finalReportURL, atomically: true, encoding: .utf8)
-
-            let workspaceArtifacts = workspaceArtifacts(from: artifacts, jobID: jobID, request: request)
-            for artifact in workspaceArtifacts {
-                await context.bus.publish(WorkspaceMessageEvent(
-                    id: UUID(),
-                    requestID: request.id,
-                    address: request.address,
-                    origin: request.origin,
-                    kind: .artifactProduced,
-                    payload: try? .encodeJSON(artifact)
-                ))
-            }
-            await context.bus.publish(WorkspaceMessageEvent(
-                id: UUID(),
-                requestID: request.id,
-                address: request.address,
-                origin: request.origin,
-                kind: .artifactProduced,
-                payload: try? .encodeJSON(report)
-            ))
-
-            guard report.status == .complete, validation.diagnostics.isEmpty else {
-                return WorkspaceMessageResponse(
-                    requestID: request.id,
-                    status: .blocked,
-                    payload: try? .encodeJSON(report),
-                    artifacts: [],
-                    diagnostics: report.blockedReasons.map {
-                        WorkspaceDiagnostic(code: $0.rawValue, message: blockedMessage(for: $0), severity: "error")
-                    } + validation.diagnostics
-                )
-            }
-            await publishWorkflowProgress(
-                jobID: jobID,
-                status: .complete,
-                message: "AmpDemo requirements-to-PCB workflow complete",
-                request: request,
-                context: context
-            )
-            return .ok(
-                requestID: request.id,
-                payload: try? .encodeJSON(report),
-                artifacts: workspaceArtifacts
-            )
-        } catch {
-            return structuredBlock(
-                request,
-                reason: .missingArtifact,
-                message: "Requirements-to-PCB workflow failed while writing AmpDemo artifacts: \(error.localizedDescription)",
-                context: context
-            )
-        }
-    }
-
-    private func workspaceArtifacts(
-        from artifacts: [ElectronicsCompletionArtifact],
-        jobID: String,
-        request: WorkspaceMessageRequest
-    ) -> [WorkspaceArtifactRef] {
-        artifacts.map {
-            WorkspaceArtifactRef(
-                id: "\(request.id.uuidString)-\($0.kind.rawValue)",
-                kind: $0.kind.rawValue,
-                url: URL(fileURLWithPath: $0.path),
-                displayName: $0.kind.rawValue,
-                metadata: [
-                    "job_id": jobID,
-                    "request_id": request.id.uuidString
-                ]
-            )
-        }
-    }
-
-    private func publishWorkflowProgress(
-        jobID: String,
-        status: KiCadStatus,
-        message: String,
-        request: WorkspaceMessageRequest,
-        context: WorkspaceHandlerContext
-    ) async {
-        await context.bus.publish(WorkspaceMessageEvent(
-            id: UUID(),
-            requestID: request.id,
-            address: request.address,
-            origin: request.origin,
-            kind: .progress,
-            payload: .jsonString(#"{"job_id":"\#(jsonEscaped(jobID))","status":"\#(status.rawValue)","message":"\#(jsonEscaped(message))"}"#)
-        ))
-    }
-
-    private func ampDemoKiCadArtifactsHavePartLevelAmplifierContent(schematicURL: URL, boardURL: URL) -> Bool {
-        guard let schematic = try? String(contentsOf: schematicURL, encoding: .utf8),
-              let board = try? String(contentsOf: boardURL, encoding: .utf8) else {
-            return false
-        }
-
-        let placeholderMarkers = [
-            "AmpDemo:Block2",
-            "AmpDemo:Connector2",
-            "generated inspectable two-pin functional block",
-            "Small-signal discrete preamp",
-            "3-band tone stack",
-            "Sweepable boost/cut filter"
-        ]
-        guard !placeholderMarkers.contains(where: { schematic.contains($0) }) else {
-            return false
-        }
-
-        let schematicTextCount = schematic.components(separatedBy: "(text").count - 1
-        let schematicWireCount = schematic.components(separatedBy: "(wire").count - 1
-        let schematicLabelCount = schematic.components(separatedBy: "(label").count - 1
-        let boardFootprintCount = board.components(separatedBy: "(footprint").count - 1
-        let boardPadCount = board.components(separatedBy: "(pad").count - 1
-        let boardSegmentCount = board.components(separatedBy: "(segment").count - 1
-        let partLevelRefdes = ["R", "C", "D", "Q", "RV", "J", "F", "T"]
-        let partLevelSchematicRefs = partLevelRefdes.reduce(0) { count, prefix in
-            count + schematic.components(separatedBy: #"property "Reference" "\#(prefix)"#).count - 1
-        }
-
-        return schematicTextCount >= 8
-            && partLevelSchematicRefs >= 20
-            && schematicWireCount >= 30
-            && schematicLabelCount >= 8
-            && schematic.contains("QOUT1")
-            && schematic.contains("3-band tone stack")
-            && schematic.contains("sweepable boost/cut")
-            && boardFootprintCount >= 20
-            && boardPadCount >= 40
-            && boardSegmentCount >= 30
-            && board.contains("JSEC")
-            && board.contains("QOUT1")
-            && board.contains("R")
-            && board.contains("C")
-    }
-
-    private func ampDemoDesignIntent(requirements: String, jobID: String) -> String {
-        """
-        {
-          "job_id": "\(jsonEscaped(jobID))",
-          "design": "AmpDemo 25W pure Class-A solid-state guitar amplifier",
-          "topology": "single-ended Class-A output stage with transformer-isolated North American mains supply",
-          "requirements": "\(jsonEscaped(requirements))",
-          "safety": "Off-board mains inlet, fuse, switch, protective earth, and transformer primary. PCB starts at isolated secondary connections. Not certified or fabrication-approved.",
-          "thermal_note": "25W single-ended Class-A output implies high idle dissipation and substantial external heatsinking."
-        }
-        """
-    }
-
-    private func ampDemoProjectFile() -> String {
-        """
-        {
-          "meta": {
-            "version": 1
-          },
-          "generated_by": "Merlin AmpDemo workflow"
-        }
-        """
-    }
-
-    private func ampDemoSchematicFile() -> String {
-        """
-        (kicad_sch
-          (version 20250114)
-          (generator "Merlin")
-          (generator_version "1.0")
-          (uuid "B9733B13-DC9E-4F11-B3B1-F022855A8536")
-          (paper "A4")
-          (title_block
-            (title "AmpDemo 25W pure Class-A solid-state guitar amplifier")
-            (comment 1 "Transformer primary, fuse, switch, and PE bond are off-board")
-            (comment 2 "Inspectability demo: low-voltage isolated secondary side only")
-          )
-          (lib_symbols
-            (symbol "AmpDemo:Block2"
-              (pin_names (offset 0.762))
-              (exclude_from_sim no)
-              (in_bom yes)
-              (on_board yes)
-              (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
-              (property "Value" "Block2" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
-              (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (property "Description" "AmpDemo generated inspectable two-pin functional block" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (symbol "Block2_1_1"
-                (rectangle (start -7.62 5.08) (end 7.62 -5.08) (stroke (width 0.254) (type default)) (fill (type background)))
-                (pin passive line (at -11.43 0 0) (length 3.81) (name "IN" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
-                (pin passive line (at 11.43 0 180) (length 3.81) (name "OUT" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
-              )
-            )
-            (symbol "AmpDemo:Connector2"
-              (pin_names (offset 0.762))
-              (exclude_from_sim no)
-              (in_bom yes)
-              (on_board yes)
-              (property "Reference" "J" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
-              (property "Value" "Connector2" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
-              (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (property "Description" "AmpDemo generated two-pin connector" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
-              (symbol "Connector2_1_1"
-                (rectangle (start -2.54 3.81) (end 2.54 -3.81) (stroke (width 0.254) (type default)) (fill (type background)))
-                (pin passive line (at -6.35 1.27 0) (length 3.81) (name "1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
-                (pin passive line (at -6.35 -1.27 0) (length 3.81) (name "2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
-              )
-            )
-          )
-          (text "Off-board 120 VAC inlet, fuse, switch, PE bond, and transformer primary require qualified safety review"
-            (exclude_from_sim no)
-            (at 20 20 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000001")
-          )
-          (text "Low-voltage isolated secondary supply path"
-            (exclude_from_sim no)
-            (at 20 34 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000002")
-          )
-          (text "Audio signal path with 3-band tone stack and sweepable boost/cut filter"
-            (exclude_from_sim no)
-            (at 20 72 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000003")
-          )
-          (text "Class-A output stage is thermally severe; external heatsink and SOA review required"
-            (exclude_from_sim no)
-            (at 134 34 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000004")
-          )
-          (text "Representative SPICE subset validates output-stage behavior; full certified amplifier model is out of demo scope"
-            (exclude_from_sim no)
-            (at 20 118 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000005")
-          )
-          (text "Power path: JSEC -> BR1 -> CRES1/CRES2 -> +VRAW and GND rails"
-            (exclude_from_sim no)
-            (at 20 126 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000006")
-          )
-          (text "Signal path: JIN -> QPRE1 -> TONE1 -> FILTER1 -> QDRV1 -> QOUT1 -> JSPK"
-            (exclude_from_sim no)
-            (at 20 134 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000007")
-          )
-          (text "BOM includes Digi-Key and Mouser procurement references; critical safety parts require engineering selection"
-            (exclude_from_sim no)
-            (at 20 142 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000008")
-          )
-          (label "+VRAW"
-            (at 70 45 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000001")
-          )
-          (label "AC_SEC"
-            (at 38 45 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000002")
-          )
-          (label "GUITAR_IN"
-            (at 38 88 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000003")
-          )
-          (label "PRE_OUT"
-            (at 68 88 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000004")
-          )
-          (label "TONE_OUT"
-            (at 102 88 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000005")
-          )
-          (label "FILTER_OUT"
-            (at 150 88 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000006")
-          )
-          (label "DRV_OUT"
-            (at 182 88 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000007")
-          )
-          (label "SPK_OUT"
-            (at 212 45 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b2000000-0000-4000-8000-000000000008")
-          )
-          (wire (pts (xy 36.43 45) (xy 43.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000001"))
-          (wire (pts (xy 66.43 45) (xy 73.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000002"))
-          (wire (pts (xy 96.43 45) (xy 108 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000003"))
-          (wire (pts (xy 108 45) (xy 118 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000004"))
-          (wire (pts (xy 118 45) (xy 188.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000005"))
-          (wire (pts (xy 36.43 88) (xy 43.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000006"))
-          (wire (pts (xy 66.43 88) (xy 78.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000007"))
-          (wire (pts (xy 101.43 88) (xy 118.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000008"))
-          (wire (pts (xy 141.43 88) (xy 153.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000009"))
-          (wire (pts (xy 176.43 88) (xy 188.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000010"))
-          (wire (pts (xy 188.57 88) (xy 188.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000011"))
-          (wire (pts (xy 211.43 45) (xy 213.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000012"))
-          (junction (at 118 45) (diameter 1.016) (color 0 0 0 0) (uuid "b7000000-0000-4000-8000-000000000001"))
-          (no_connect (at 13.57 45) (uuid "b6000000-0000-4000-8000-000000000001"))
-          (no_connect (at 13.57 88) (uuid "b6000000-0000-4000-8000-000000000002"))
-          (no_connect (at 236.43 45) (uuid "b6000000-0000-4000-8000-000000000003"))
-          (symbol (lib_id "AmpDemo:Block2") (at 25 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000001")
-            (property "Reference" "JSEC" (at 25 37 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "isolated transformer secondary" (at 25 54 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Terminal_Secondary" (at 25 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 25 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000001"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000002"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 55 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000002")
-            (property "Reference" "BR1" (at 55 36 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "bridge rectifier" (at 55 54 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Bridge_Rectifier" (at 55 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 55 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000003"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000004"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 85 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000003")
-            (property "Reference" "CRES1" (at 85 36 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "10000uF rail reservoir" (at 85 54 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Reservoir_Cap" (at 85 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 85 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000005"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000006"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 25 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000004")
-            (property "Reference" "JIN" (at 25 80 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "guitar input" (at 25 97 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Input_Jack" (at 25 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 25 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000007"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000008"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 55 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000005")
-            (property "Reference" "QPRE1" (at 55 79 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "discrete preamp" (at 55 97 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Discrete_Preamp" (at 55 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 55 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000009"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000010"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 90 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000006")
-            (property "Reference" "TONE1" (at 90 79 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "3-band tone stack" (at 90 97 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Tone_Stack" (at 90 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 90 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000011"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000012"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 130 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000007")
-            (property "Reference" "FILTER1" (at 130 79 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "sweepable boost/cut filter" (at 130 97 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Sweep_Filter" (at 130 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 130 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000013"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000014"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 165 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000008")
-            (property "Reference" "QDRV1" (at 165 79 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "voltage driver" (at 165 97 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Driver" (at 165 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 165 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000015"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000016"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 200 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000009")
-            (property "Reference" "QOUT1" (at 200 36 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "MJ15003G Class-A output" (at 200 54 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Class_A_Output" (at 200 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 200 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000017"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000018"))
-          )
-          (symbol (lib_id "AmpDemo:Block2") (at 225 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000010")
-            (property "Reference" "JSPK" (at 222 37 0) (effects (font (size 1.27 1.27))))
-            (property "Value" "8 ohm speaker output" (at 222 54 0) (effects (font (size 1.27 1.27))))
-            (property "Footprint" "AmpDemo:Speaker_Output" (at 225 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (property "Datasheet" "~" (at 225 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
-            (pin "1" (uuid "b5000000-0000-4000-8000-000000000019"))
-            (pin "2" (uuid "b5000000-0000-4000-8000-000000000020"))
-          )
-          (sheet_instances
-            (path "/" (page "1"))
-          )
-          (embedded_fonts no)
         )
-        """
-    }
-
-    private func ampDemoBoardFile() -> String {
-        """
-        (kicad_pcb
-          (version 20250114)
-          (generator "Merlin")
-          (generator_version "1.0")
-          (general (thickness 1.6))
-          (paper "A4")
-          (title_block
-            (title "AmpDemo 25W pure Class-A amplifier")
-            (comment 1 "Transformer primary, fuse, switch, PE bond are off-board")
-            (comment 2 "Demo PCB starts at isolated transformer secondary")
-            (comment 3 "Not fabrication-approved; qualified safety and thermal review required")
-          )
-          (layers
-            (0 "F.Cu" signal)
-            (2 "B.Cu" signal)
-            (5 "F.SilkS" user "F.Silkscreen")
-            (7 "B.SilkS" user "B.Silkscreen")
-            (1 "F.Mask" user)
-            (3 "B.Mask" user)
-            (25 "Edge.Cuts" user)
-            (35 "F.Fab" user)
-          )
-          (setup
-            (pad_to_mask_clearance 0)
-            (allow_soldermask_bridges_in_footprints no)
-          )
-          (net 0 "")
-          (net 1 "+VRAW")
-          (net 2 "GND")
-          (net 3 "GUITAR_IN")
-          (net 4 "PRE_OUT")
-          (net 5 "TONE_OUT")
-          (net 6 "FILTER_OUT")
-          (net 7 "DRV_OUT")
-          (net 8 "SPK_OUT")
-          (gr_rect
-            (start 0 0)
-            (end 160 95)
-            (stroke (width 0.15) (type solid))
-            (fill no)
-            (layer "Edge.Cuts")
-            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000001")
-          )
-          (gr_text "LOW VOLTAGE ISOLATED SECONDARY ONLY - MAINS OFF BOARD"
-            (at 80 8 0)
-            (layer "F.SilkS")
-            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000002")
-            (effects
-              (font (size 2 2) (thickness 0.25))
-            )
-          )
-          (gr_text "Pure Class-A output stage: QOUT1 external heatsink required"
-            (at 80 88 0)
-            (layer "F.SilkS")
-            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000003")
-            (effects
-              (font (size 1.6 1.6) (thickness 0.2))
-            )
-          )
-          (footprint "AmpDemo:Terminal_Secondary" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000001")
-            (at 18 25)
-            (property "Reference" "JSEC" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000001") (effects (font (size 1.27 1.27))))
-            (property "Value" "Isolated transformer secondary" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000001") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "AC1") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000001"))
-            (pad "2" thru_hole circle (at 2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "AC2") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000002"))
-          )
-          (footprint "AmpDemo:Bridge_Rectifier" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000002")
-            (at 38 25)
-            (property "Reference" "BR1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000002") (effects (font (size 1.27 1.27))))
-            (property "Value" "Bridge rectifier" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000002") (effects (font (size 1 1))))
-            (pad "1" thru_hole rect (at -3.81 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000003"))
-            (pad "2" thru_hole circle (at -1.27 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000004"))
-            (pad "3" thru_hole circle (at 1.27 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "~") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000005"))
-            (pad "4" thru_hole circle (at 3.81 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "~") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000006"))
-          )
-          (footprint "AmpDemo:Reservoir_Cap" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000003")
-            (at 58 25)
-            (property "Reference" "CRES1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000003") (effects (font (size 1.27 1.27))))
-            (property "Value" "10000uF rail reservoir" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000003") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 2 2) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000007"))
-            (pad "2" thru_hole circle (at 2.54 0) (size 2 2) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000008"))
-          )
-          (footprint "AmpDemo:Input_Jack" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000004")
-            (at 18 58)
-            (property "Reference" "JIN" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000004") (effects (font (size 1.27 1.27))))
-            (property "Value" "Guitar input" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000004") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 2 2) (drill 1) (layers "*.Cu" "*.Mask") (net 3 "GUITAR_IN") (pinfunction "TIP") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000009"))
-            (pad "2" thru_hole circle (at 2.54 0) (size 2 2) (drill 1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "SLEEVE") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000010"))
-          )
-          (footprint "AmpDemo:Discrete_Preamp" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000005")
-            (at 42 58)
-            (property "Reference" "QPRE1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000005") (effects (font (size 1.27 1.27))))
-            (property "Value" "Small-signal discrete preamp" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000005") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 3 "GUITAR_IN") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000011"))
-            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 4 "PRE_OUT") (pinfunction "C") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000012"))
-            (pad "3" thru_hole circle (at 2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "E") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000013"))
-          )
-          (footprint "AmpDemo:Tone_Stack" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000006")
-            (at 70 58)
-            (property "Reference" "TONE1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000006") (effects (font (size 1.27 1.27))))
-            (property "Value" "3-band tone stack" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000006") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 4 "PRE_OUT") (pinfunction "IN") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000014"))
-            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 5 "TONE_OUT") (pinfunction "OUT") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000015"))
-            (pad "3" thru_hole circle (at 5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "REF") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000016"))
-          )
-          (footprint "AmpDemo:Sweep_Filter" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000007")
-            (at 100 58)
-            (property "Reference" "FILTER1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000007") (effects (font (size 1.27 1.27))))
-            (property "Value" "Sweepable boost/cut filter" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000007") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 5 "TONE_OUT") (pinfunction "IN") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000017"))
-            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 6 "FILTER_OUT") (pinfunction "OUT") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000018"))
-            (pad "3" thru_hole circle (at 5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "REF") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000019"))
-          )
-          (footprint "AmpDemo:Driver" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000008")
-            (at 126 58)
-            (property "Reference" "QDRV1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000008") (effects (font (size 1.27 1.27))))
-            (property "Value" "Voltage driver" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000008") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 6 "FILTER_OUT") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000020"))
-            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 7 "DRV_OUT") (pinfunction "C") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000021"))
-            (pad "3" thru_hole circle (at 2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "E") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000022"))
-          )
-          (footprint "AmpDemo:Class_A_Output" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000009")
-            (at 122 28)
-            (property "Reference" "QOUT1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000009") (effects (font (size 1.27 1.27))))
-            (property "Value" "MJ15003G single-ended Class-A output" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000009") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -3.81 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 7 "DRV_OUT") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000023"))
-            (pad "2" thru_hole circle (at 0 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 8 "SPK_OUT") (pinfunction "E") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000024"))
-            (pad "3" thru_hole circle (at 3.81 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "C") (pintype "power_in") (uuid "c1300000-0000-4000-8000-000000000025"))
-          )
-          (footprint "AmpDemo:Speaker_Output" (layer "F.Cu")
-            (uuid "c1000000-0000-4000-8000-000000000010")
-            (at 145 28)
-            (property "Reference" "JSPK" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000010") (effects (font (size 1.27 1.27))))
-            (property "Value" "8 ohm speaker output" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000010") (effects (font (size 1 1))))
-            (pad "1" thru_hole circle (at -2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 8 "SPK_OUT") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000026"))
-            (pad "2" thru_hole circle (at 2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000027"))
-          )
-          (segment (start 15.46 25) (end 15.46 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000001"))
-          (segment (start 34.19 25) (end 34.19 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000002"))
-          (segment (start 39.27 25) (end 39.27 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000003"))
-          (segment (start 55.46 25) (end 55.46 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000004"))
-          (segment (start 125.81 28) (end 125.81 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000005"))
-          (segment (start 15.46 18) (end 125.81 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000006"))
-          (segment (start 20.54 25) (end 20.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000007"))
-          (segment (start 36.73 25) (end 36.73 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000008"))
-          (segment (start 41.81 25) (end 41.81 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000009"))
-          (segment (start 60.54 25) (end 60.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000010"))
-          (segment (start 10 34) (end 60.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000011"))
-          (segment (start 10 34) (end 10 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000012"))
-          (segment (start 20.54 58) (end 20.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000013"))
-          (segment (start 44.54 58) (end 44.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000014"))
-          (segment (start 75.08 58) (end 75.08 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000015"))
-          (segment (start 105.08 58) (end 105.08 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000016"))
-          (segment (start 128.54 58) (end 128.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000017"))
-          (segment (start 147.54 28) (end 147.54 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000018"))
-          (segment (start 10 82) (end 147.54 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000019"))
-          (segment (start 15.46 58) (end 15.46 50) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000020"))
-          (segment (start 15.46 50) (end 39.46 50) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000021"))
-          (segment (start 39.46 50) (end 39.46 58) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000022"))
-          (segment (start 42 58) (end 42 50) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000023"))
-          (segment (start 42 50) (end 64.92 50) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000024"))
-          (segment (start 64.92 50) (end 64.92 58) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000025"))
-          (segment (start 70 58) (end 70 50) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000026"))
-          (segment (start 70 50) (end 94.92 50) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000027"))
-          (segment (start 94.92 50) (end 94.92 58) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000028"))
-          (segment (start 100 58) (end 100 50) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000029"))
-          (segment (start 100 50) (end 123.46 50) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000030"))
-          (segment (start 123.46 50) (end 123.46 58) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000031"))
-          (segment (start 126 58) (end 126 66) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000032"))
-          (segment (start 126 66) (end 118.19 66) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000033"))
-          (segment (start 118.19 66) (end 118.19 28) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000034"))
-          (segment (start 122 28) (end 122 36) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000035"))
-          (segment (start 122 36) (end 142.46 36) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000036"))
-          (segment (start 142.46 36) (end 142.46 28) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000037"))
-        )
-        """
-    }
-
-    private func ampDemoSpiceDeck() -> String {
-        """
-        * AmpDemo representative pure Class-A guitar amplifier output/tone subset
-        * This is a documented simulation subset, not a certified full amplifier model.
-        VCC vcc 0 DC 24
-        VIN in 0 SIN(0 0.2 1000)
-        RB vcc out 12
-        RL out 0 8
-        CIN in out 10u
-        .op
-        .tran 0.1m 5m
-        .print tran v(out)
-        .end
-        """
-    }
-
-    private func ampDemoBOM() -> String {
-        """
-        Reference Designator,Quantity,Description,Value,Package / Footprint,Manufacturer,Manufacturer Part Number,Digi-Key Part Number,Mouser Part Number,Lifecycle / Availability Note,Substitution Note
-        QOUT1,1,Power transistor for representative Class-A output stage,MJ15003G,TO-3,onsemi,MJ15003G,Digi-Key search: MJ15003G,Mouser search: MJ15003G,Verify stock before build,Engineering review required for SOA and heatsink
-        RLOAD1,1,Simulation speaker load resistor,8 ohm,off-board speaker load,Vishay,Dale power resistor family,Digi-Key search: 8 ohm power resistor,Mouser search: 8 ohm power resistor,Representative load only,Use real 8 ohm guitar speaker for acoustic test
-        T1,1,Transformer-isolated secondary supply transformer,120 VAC primary isolated secondary,off-board transformer,Triad/Hammond,engineering selection required,Digi-Key search: isolated power transformer,Mouser search: isolated power transformer,Critical safety component,Qualified mains safety review required
-        F1,1,Primary fuse,engineering selection required,panel/off-board,Littelfuse,engineering selection required,Digi-Key search: Littelfuse fuse,Mouser search: Littelfuse fuse,Critical safety component,Select after transformer/inrush analysis
-        RVBASS/RVMID/RVTREBLE,3,3-band tone controls,100k audio taper,panel potentiometer,Alpha,engineering selection required,Digi-Key search: 100k audio potentiometer,Mouser search: 100k audio potentiometer,Panel wiring component,Exact taper and shaft require enclosure decision
-        """
-    }
-
-    private func ampDemoVendorOrderNotes() -> String {
-        """
-        {
-          "status": "prepared_for_review",
-          "vendors": ["Digi-Key", "Mouser"],
-          "note": "Ordering references are search/procurement references for demo review. Critical mains, transformer, fuse, thermal, and output devices require qualified engineering selection before purchase."
-        }
-        """
-    }
-
-    private func ampDemoApprovalRecord() -> String {
-        """
-        {
-          "approved": true,
-          "approved_by": "Merlin demo workflow",
-          "scope": "documentation and demo artifact packaging only",
-          "not_fabrication_approval": true,
-          "safety_note": "This is not certified for mains connection, fabrication, assembly, or use."
-        }
-        """
-    }
-
-    private func ampDemoLibraryNotes() -> String {
-        """
-        # AmpDemo Library Notes
-
-        This deterministic demo path uses KiCad built-in file formats and does not download third-party symbol, footprint, model, or datasheet libraries.
-
-        Production completion still requires qualified selection and review of mains, transformer, fuse, output transistor, heatsink, enclosure, and speaker-load components.
-        """
-    }
-
-    private func ampDemoFinalReport(
-        jobID: String,
-        report: ElectronicsFinalReport,
-        requirements: String,
-        cliPath: String,
-        ngspicePath: String
-    ) -> String {
-        let artifactLines = report.artifacts
-            .map { "- \($0.kind.rawValue): \($0.path)" }
-            .joined(separator: "\n")
-        let gateLines = report.gates
-            .map { "- \($0.gate.rawValue): \($0.status.rawValue) - \($0.details)" }
-            .joined(separator: "\n")
-        return """
-        # AmpDemo Final Demo Report
-
-        Job: \(jobID)
-
-        Status: \(report.status.rawValue)
-
-        ## Provider And Tooling Evidence
-
-        - KiCad CLI: \(cliPath)
-        - ngspice: \(ngspicePath)
-        - Workflow route: workflow.requirements_to_pcb
-
-        ## Requirements
-
-        \(requirements)
-
-        ## Design Summary
-
-        Merlin generated a demo-grade 25 watt pure Class-A solid-state guitar amplifier artifact set. The documented architecture keeps North American mains input, fuse, switch, protective earth, and transformer primary wiring off-board. The PCB demo starts at isolated secondary-side circuitry. The Class-A single-ended output stage is documented as thermally severe and requires substantial heatsinking and qualified review.
-
-        ## Simulation Summary
-
-        ngspice ran a representative Class-A output-stage subset. The generated SPICE log is saved under `simulation/ngspice-output.log`. This is not a full certified amplifier simulation.
-
-        ## KiCad And Fabrication Summary
-
-        KiCad CLI ran ERC, DRC, Gerber export, and drill export. The generated KiCad project is minimal and demo-oriented; it is not fabrication-approved.
-
-        ## BOM Summary
-
-        The BOM includes manufacturer/search references for Digi-Key and Mouser review. Critical mains, transformer, fuse, thermal, and output-stage choices require qualified engineering selection before purchase.
-
-        ## Safety Caveats
-
-        This project is not certified, not fabrication-approved, and not safe to build, connect to mains, assemble, sell, or use without independent qualified electrical, thermal, enclosure, and mains-safety review.
-
-        ## Gate Results
-
-        \(gateLines)
-
-        ## Artifact Index
-
-        \(artifactLines)
-        """
     }
 
     private func handleRoutePass(
@@ -1383,6 +487,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 nextActions: ["continue_intent_model"]
             )
         case "kicad_build_intent_model":
+            if request.payload.jsonObject()?["requirements"] as? String != nil {
+                return complete(
+                    request,
+                    artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(request))],
+                    nextActions: ["review_and_approve_design_intent"]
+                )
+            }
             return fileBackedTransform(
                 request,
                 context: context,
@@ -1719,6 +830,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         guard let outputDirectory = object["output_directory"] as? String, !outputDirectory.isEmpty else {
             return structuredBlock(request, reason: .missingProjectFile, message: "Compile project requires output_directory.", context: context)
         }
+        if let approvalBlock = designIntentApprovalBlock(
+            request,
+            context: context,
+            designIntentPath: designIntentPath
+        ) {
+            return approvalBlock
+        }
         do {
             let directoryURL = URL(fileURLWithPath: outputDirectory, isDirectory: true)
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
@@ -1742,6 +860,65 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         } catch {
             return structuredBlock(request, reason: .missingProjectFile, message: "Failed to materialize KiCad project files: \(error.localizedDescription)", context: context)
         }
+    }
+
+    private func designIntentApprovalBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        designIntentPath: String
+    ) -> WorkspaceMessageResponse? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: data) else {
+            return nil
+        }
+        let rawObject = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let explicitlyApprovalManaged = rawObject?["approval"] != nil || rawObject?["origin"] != nil
+        guard explicitlyApprovalManaged else {
+            return nil
+        }
+
+        switch intent.approval.status {
+        case .approved:
+            return nil
+        case .rejected:
+            return designIntentApprovalResponse(
+                request,
+                code: "DESIGN_INTENT_REJECTED",
+                message: "DesignIntent was rejected and cannot be compiled into KiCad artifacts.",
+                affectedRefs: [designIntentPath]
+            )
+        case .draft:
+            return designIntentApprovalResponse(
+                request,
+                code: "DESIGN_INTENT_NOT_APPROVED",
+                message: "DesignIntent must be approved before KiCad mutation.",
+                affectedRefs: [designIntentPath]
+            )
+        }
+    }
+
+    private func designIntentApprovalResponse(
+        _ request: WorkspaceMessageRequest,
+        code: String,
+        message: String,
+        affectedRefs: [String]
+    ) -> WorkspaceMessageResponse {
+        WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blockedEngineeringDecision,
+                warnings: [KiCadWarning(
+                    code: code,
+                    message: message,
+                    affectedRefs: affectedRefs,
+                    suggestedAction: "Review and approve the DesignIntent before compiling KiCad artifacts."
+                )],
+                nextActions: ["approve_design_intent"]
+            )),
+            artifacts: [],
+            diagnostics: [WorkspaceDiagnostic(code: code, message: message, severity: "error")]
+        )
     }
 
     private func handleFabExport(
@@ -2172,7 +1349,34 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     }
 
     private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
-        #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","board_profile_id":"\#(request.payload.jsonObject()?["board_profile_id"] as? String ?? "jlcpcb_2layer_default")","constraints":{}}"#
+        let object = request.payload.jsonObject() ?? [:]
+        let designID = object["design_id"] as? String ?? request.id.uuidString
+        let title = object["title"] as? String ?? "Draft Electronics DesignIntent"
+        let requirements = object["requirements"] as? String ?? ""
+        let intent = DesignIntent(
+            designId: designID,
+            title: title,
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .draft),
+            requirements: requirements.isEmpty ? [] : [
+                Requirement(id: "req-1", text: requirements, priority: "must"),
+            ],
+            assumptions: [],
+            unresolvedDecisions: unresolvedDecisions(from: object),
+            boards: [],
+            safetyProfile: SafetyProfile(isolationRequired: false, creepageMm: 0.0, notes: []),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: false, spiceRequired: false)
+        )
+        return (try? canonicalJSON(intent)) ?? #"{"design_id":"\#(designID)","origin":"natural_language","approval":{"status":"draft"}}"#
+    }
+
+    private func unresolvedDecisions(from object: [String: Any]) -> [UnresolvedDecision] {
+        if let values = object["unresolved_decisions"] as? [String] {
+            return values.enumerated().map { index, question in
+                UnresolvedDecision(id: "decision-\(index + 1)", question: question, blocking: true)
+            }
+        }
+        return []
     }
 
     private func componentSelectionBody(_ request: WorkspaceMessageRequest) -> String {

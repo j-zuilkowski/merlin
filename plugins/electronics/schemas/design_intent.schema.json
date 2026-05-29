@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "merlin://plugins/electronics/schemas/design_intent.schema.json",
+  "title": "DesignIntent",
+  "type": "object",
+  "required": ["design_id", "title", "origin", "approval", "requirements", "safety_profile", "verification_plan"],
+  "properties": {
+    "design_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "origin": { "enum": ["natural_language", "schematic_ingest", "user_authored"] },
+    "approval": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["draft", "approved", "rejected"] },
+        "approved_by": { "type": "string" },
+        "approved_at": { "type": "string" }
+      }
+    },
+    "requirements": { "type": "array" },
+    "assumptions": { "type": "array" },
+    "unresolved_decisions": { "type": "array" },
+    "boards": { "type": "array" },
+    "safety_profile": { "type": "object" },
+    "verification_plan": { "type": "object" }
+  }
+}

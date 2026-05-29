@@ -8,6 +8,18 @@
   "bootstrap_symbol": "merlin_electronics_plugin_bootstrap_json",
   "handler_symbol": "merlin_electronics_plugin_handle_json",
   "domain_ids": ["electronics"],
+  "roles": [
+    {
+      "id": "electronics.analog_critic",
+      "display_name": "Analog Critic",
+      "plugin_id": "electronics",
+      "scope": "electronics",
+      "default_fallback": "reason",
+      "required_capabilities": ["structured_output", "long_context"],
+      "recommended_models": ["analog-specialist", "deepseek-r1-70b"],
+      "is_required": false
+    }
+  ],
   "capabilities": [
     {
       "id": "plugin.electronics.kicad_check_version",
