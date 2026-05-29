@@ -25,6 +25,7 @@ red tests; each matching `b` task implements the behavior.
 | SPICE optimization | `tasks/task-397a-spice-optimization-tests.md` | `tasks/task-397b-spice-optimization.md` |
 | Amp mains power board | `tasks/task-398a-amp-mains-power-board-tests.md` | `tasks/task-398b-amp-mains-power-board.md` |
 | Training and evaluation corpus | `tasks/task-399a-electronics-training-corpus-tests.md` | `tasks/task-399b-electronics-training-corpus.md` |
+| End-to-end backend harness | `tasks/task-400a-electronics-end-to-end-harness-tests.md` | `tasks/task-400b-electronics-end-to-end-harness.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -289,3 +290,28 @@ Exit criteria:
 
 - Merlin has a verifier-grounded dataset suitable for fine-tuning or model
   selection.
+
+## Phase 13: End-To-End Backend Harness
+
+Goal: prove the generic plugin workflow with one focused backend harness before
+any GUI demo rerun.
+
+1. Accept optional `DesignIntent`, optional `CircuitIR`, output directory,
+   verifier evidence, and approvals.
+2. Run schema validation, resolver checks, schematic materialization, schematic
+   parity, ERC repair, schematic verification, PCB verification, SPICE evidence,
+   fabrication release evaluation, and high-stakes safety policy.
+3. Require concrete evidence for each status transition.
+4. Keep `SCHEMATIC_VERIFIED`, `PCB_VERIFIED`, `FAB_READY`, and `COMPLETE`
+   separate.
+5. Block mains/high-stakes safety certification claims even when CAD artifacts
+   may be prepared.
+
+Exit criteria:
+
+- Intent-only/spec-read input remains blocked.
+- The low-voltage amp fixture can reach `FAB_READY` only with SPICE and
+  fabrication evidence.
+- `COMPLETE` requires release package and release approval.
+- The mains board blocks without high-stakes signoff and never certifies build
+  or use safety.
