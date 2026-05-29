@@ -30,6 +30,7 @@ red tests; each matching `b` task implements the behavior.
 | Real verifier adapters | `tasks/task-402a-electronics-real-verifier-adapter-tests.md` | `tasks/task-402b-electronics-real-verifier-adapters.md` |
 | GUI evidence status | `tasks/task-403a-electronics-gui-evidence-status-tests.md` | `tasks/task-403b-electronics-gui-evidence-status.md` |
 | Runtime artifact evidence | `tasks/task-404a-electronics-runtime-artifact-evidence-tests.md` | `tasks/task-404b-electronics-runtime-artifact-evidence.md` |
+| Tool failure evidence | `tasks/task-405a-electronics-tool-failure-evidence-tests.md` | `tasks/task-405b-electronics-tool-failure-evidence.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -390,3 +391,20 @@ tools rather than requiring callers to assemble internal evidence structs.
 Exit criteria:
 
 - Runtime workflow calls can return `FAB_READY` from verifier artifact paths.
+
+## Phase 18: Tool Failure Evidence
+
+Goal: preserve real KiCad/ngspice failure artifacts for evidence gates and repair
+loops.
+
+1. Return ERC/DRC report artifacts even when KiCad exits non-zero after writing a
+   report.
+2. Return SPICE measurement/log artifacts even when ngspice exits non-zero after
+   writing a log.
+3. Keep missing executable/input failures blocked without fabricated artifacts.
+4. Do not add hard-coded schematic, PCB, BOM, or SPICE generators.
+
+Exit criteria:
+
+- Failed DRC report artifacts can still block `PCB_VERIFIED` through the harness.
+- Failed SPICE logs remain attached to the blocked tool result.

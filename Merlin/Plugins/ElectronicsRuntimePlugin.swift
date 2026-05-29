@@ -1124,7 +1124,18 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         try? FileManager.default.createDirectory(at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         let inputPath = kiCadInputPath(for: arguments, projectPath: projectPath)
         let run = runProcess(executablePath: cliPath, arguments: arguments + [inputPath, "--format", "json", "--output", outputURL.path])
+        let artifacts = [ArtifactRef(path: outputURL.path, kind: outputKind)]
         guard run.exitCode == 0 else {
+            if FileManager.default.fileExists(atPath: outputURL.path) {
+                return commandFailureWithArtifactsBlock(
+                    request,
+                    context: context,
+                    code: "KICAD_CLI_REPORTED_ISSUES",
+                    run: run,
+                    artifacts: artifacts,
+                    nextActions: ["inspect_\(outputKind)", "repair_and_retry"]
+                )
+            }
             return commandFailureBlock(request, context: context, code: "KICAD_CLI_FAILED", run: run)
         }
         guard FileManager.default.fileExists(atPath: outputURL.path) else {
@@ -1143,7 +1154,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         return complete(
             request,
-            artifacts: [ArtifactRef(path: outputURL.path, kind: outputKind)]
+            artifacts: artifacts
         )
     }
 
@@ -1234,13 +1245,25 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         let outputURL = artifactDirectory(context: context).appendingPathComponent("\(request.id.uuidString)-spice.log")
         let run = runProcess(executablePath: simulatorPath, arguments: ["-b", "-o", outputURL.path, object["scenario_path"] as? String ?? ""])
-        guard run.exitCode == 0 else {
-            return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: run)
-        }
         if !FileManager.default.fileExists(atPath: outputURL.path) {
             try? run.output.write(to: outputURL, atomically: true, encoding: .utf8)
         }
-        return complete(request, artifacts: [ArtifactRef(path: outputURL.path, kind: "spice_measurements")])
+        let artifacts = [ArtifactRef(path: outputURL.path, kind: "spice_measurements")]
+        guard run.exitCode == 0 else {
+            if FileManager.default.fileExists(atPath: outputURL.path) {
+                return commandFailureWithArtifactsBlock(
+                    request,
+                    context: context,
+                    code: "SPICE_EXECUTION_FAILED",
+                    run: run,
+                    status: .blockedSimulation,
+                    artifacts: artifacts,
+                    nextActions: ["inspect_spice_measurements", "repair_and_retry"]
+                )
+            }
+            return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: run)
+        }
+        return complete(request, artifacts: artifacts)
     }
 
     private func looksLikeSpiceDeck(_ text: String) -> Bool {
@@ -1536,6 +1559,44 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 affectedRefs: run.arguments,
                 suggestedAction: "Inspect the local tool output and retry after fixing the reported issue."
             )]
+        )
+    }
+
+    private func commandFailureWithArtifactsBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        run: ElectronicsCommandRun,
+        status: KiCadStatus = .blocked,
+        artifacts: [ArtifactRef],
+        nextActions: [String]
+    ) -> WorkspaceMessageResponse {
+        let message = "\(request.address.capability) command failed with exit code \(run.exitCode), but produced diagnostic artifacts."
+        let warning = KiCadWarning(
+            code: code,
+            message: run.output.isEmpty ? message : run.output,
+            affectedRefs: run.arguments + artifacts.map(\.path),
+            suggestedAction: "Inspect the attached artifact and retry after fixing the reported issue."
+        )
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: status,
+                artifacts: artifacts,
+                warnings: [warning],
+                nextActions: nextActions
+            )),
+            artifacts: artifacts.map {
+                WorkspaceArtifactRef(
+                    id: "\(request.id.uuidString)-\($0.kind)",
+                    kind: $0.kind,
+                    url: URL(fileURLWithPath: $0.path),
+                    displayName: $0.kind,
+                    metadata: ["request_id": request.id.uuidString]
+                )
+            },
+            diagnostics: [WorkspaceDiagnostic(code: code, message: message, severity: "error")]
         )
     }
 
