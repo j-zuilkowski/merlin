@@ -13,6 +13,21 @@ struct ElectronicsEvidenceArtifactPaths: Codable, Sendable, Equatable {
     var releasePackagePath: String?
     var approvals: [ElectronicsApprovalRecord]
     var evidenceApprovals: [ElectronicsApprovalKind]
+
+    enum CodingKeys: String, CodingKey {
+        case ercReportPaths
+        case drcReportPath
+        case spiceScenarioPath
+        case spiceModelRecordsPath
+        case ngspiceOutputPath
+        case normalizedBOMPath = "normalizedBomPath"
+        case vendorAvailabilityPath
+        case fabricationEvidencePath
+        case verificationReportPath
+        case releasePackagePath
+        case approvals
+        case evidenceApprovals
+    }
 }
 
 struct ElectronicsEvidenceArtifactAdapter: Sendable {

@@ -121,7 +121,8 @@ struct ElectronicsEndToEndWorkflowRequest: Codable, Sendable, Equatable {
     var designIntentPath: String
     var circuitIrPath: String
     var outputDirectory: String
-    var evidence: ElectronicsEndToEndEvidence
+    var evidence: ElectronicsEndToEndEvidence?
+    var evidenceArtifacts: ElectronicsEvidenceArtifactPaths?
     var approvals: [ElectronicsApprovalKind]?
 }
 

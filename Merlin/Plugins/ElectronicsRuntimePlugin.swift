@@ -241,7 +241,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return structuredBlock(
                 request,
                 reason: .invalidInputQuality,
-                message: "Structured electronics workflow requires job_id, design_intent_path, circuit_ir_path, output_directory, and evidence.",
+                message: "Structured electronics workflow requires job_id, design_intent_path, circuit_ir_path, output_directory, and evidence or evidence_artifacts.",
                 context: context
             )
         }
@@ -253,26 +253,39 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
             let outputDirectory = URL(fileURLWithPath: workflow.outputDirectory, isDirectory: true)
             try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+            let evidence: ElectronicsEndToEndEvidence
+            if let explicitEvidence = workflow.evidence {
+                evidence = explicitEvidence
+            } else if let evidenceArtifacts = workflow.evidenceArtifacts {
+                evidence = try ElectronicsEvidenceArtifactAdapter().buildEvidence(evidenceArtifacts)
+            } else {
+                return structuredBlock(
+                    request,
+                    reason: .missingArtifact,
+                    message: "Structured electronics workflow requires evidence or evidence_artifacts.",
+                    context: context
+                )
+            }
 
-        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: intent,
-            circuitIR: circuitIR,
-            outputDirectory: outputDirectory,
-            evidence: workflow.evidence,
-            approvals: workflow.approvals
-        ))
-        await context.bus.publish(WorkspaceMessageEvent(
-            id: UUID(),
-            requestID: request.id,
-            address: request.address,
-            origin: request.origin,
-            kind: .progress,
-            payload: try? .encodeJSON(ElectronicsEndToEndJobProgress(
-                jobID: workflow.jobId,
-                result: result,
-                message: "Electronics workflow \(result.status.rawValue)"
+            let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+                designIntent: intent,
+                circuitIR: circuitIR,
+                outputDirectory: outputDirectory,
+                evidence: evidence,
+                approvals: workflow.approvals
             ))
-        ))
+            await context.bus.publish(WorkspaceMessageEvent(
+                id: UUID(),
+                requestID: request.id,
+                address: request.address,
+                origin: request.origin,
+                kind: .progress,
+                payload: try? .encodeJSON(ElectronicsEndToEndJobProgress(
+                    jobID: workflow.jobId,
+                    result: result,
+                    message: "Electronics workflow \(result.status.rawValue)"
+                ))
+            ))
 
             let diagnostics = result.diagnostics.map {
                 WorkspaceDiagnostic(code: $0.code, message: $0.message, severity: "error")

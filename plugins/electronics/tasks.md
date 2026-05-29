@@ -29,6 +29,7 @@ red tests; each matching `b` task implements the behavior.
 | Runtime harness integration | `tasks/task-401a-electronics-runtime-harness-integration-tests.md` | `tasks/task-401b-electronics-runtime-harness-integration.md` |
 | Real verifier adapters | `tasks/task-402a-electronics-real-verifier-adapter-tests.md` | `tasks/task-402b-electronics-real-verifier-adapters.md` |
 | GUI evidence status | `tasks/task-403a-electronics-gui-evidence-status-tests.md` | `tasks/task-403b-electronics-gui-evidence-status.md` |
+| Runtime artifact evidence | `tasks/task-404a-electronics-runtime-artifact-evidence-tests.md` | `tasks/task-404b-electronics-runtime-artifact-evidence.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -375,3 +376,17 @@ Exit criteria:
 
 - The live leaderboard shows the harness status for structured workflow calls.
 - Missing release package/approval evidence is visible for `FAB_READY` jobs.
+
+## Phase 17: Runtime Artifact Evidence
+
+Goal: make runtime structured workflow calls accept artifact paths from real
+tools rather than requiring callers to assemble internal evidence structs.
+
+1. Accept `evidence_artifacts` on structured workflow requests.
+2. Build harness evidence with `ElectronicsEvidenceArtifactAdapter`.
+3. Preserve the existing explicit `evidence` path for tests and low-level calls.
+4. Block if neither evidence form is provided.
+
+Exit criteria:
+
+- Runtime workflow calls can return `FAB_READY` from verifier artifact paths.
