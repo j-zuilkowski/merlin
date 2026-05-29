@@ -440,6 +440,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             try ampDemoApprovalRecord().write(to: approvalURL, atomically: true, encoding: .utf8)
             try ampDemoLibraryNotes().write(to: librariesURL.appendingPathComponent("source-notes.md"), atomically: true, encoding: .utf8)
             try "# AmpDemo Final Demo Report\n\nPending final gate evaluation.\n".write(to: finalReportURL, atomically: true, encoding: .utf8)
+
+            let schematicUpgradeRun = runProcess(executablePath: cliPath, arguments: ["sch", "upgrade", "--force", schematicURL.path])
+            guard schematicUpgradeRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_SCHEMATIC_UPGRADE_FAILED", run: schematicUpgradeRun)
+            }
+            let boardUpgradeRun = runProcess(executablePath: cliPath, arguments: ["pcb", "upgrade", "--force", boardURL.path])
+            guard boardUpgradeRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_BOARD_UPGRADE_FAILED", run: boardUpgradeRun)
+            }
             guard ampDemoKiCadArtifactsHaveVisibleCircuitContent(schematicURL: schematicURL, boardURL: boardURL) else {
                 return structuredBlock(
                     request,
@@ -652,11 +661,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         let schematicTextCount = schematic.components(separatedBy: "(text").count - 1
+        let schematicSymbolInstanceCount = schematic.components(separatedBy: "(lib_id \"AmpDemo:").count - 1
+        let schematicWireCount = schematic.components(separatedBy: "(wire").count - 1
+        let schematicLabelCount = schematic.components(separatedBy: "(label").count - 1
         let boardFootprintCount = board.components(separatedBy: "(footprint").count - 1
         let boardPadCount = board.components(separatedBy: "(pad").count - 1
         let boardSegmentCount = board.components(separatedBy: "(segment").count - 1
 
-        return schematicTextCount >= 16
+        return schematicTextCount >= 8
+            && schematicSymbolInstanceCount >= 9
+            && schematicWireCount >= 10
+            && schematicLabelCount >= 8
             && schematic.contains("QOUT1")
             && schematic.contains("3-band tone stack")
             && schematic.contains("sweepable boost/cut")
@@ -699,102 +714,228 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
           (generator_version "1.0")
           (uuid "B9733B13-DC9E-4F11-B3B1-F022855A8536")
           (paper "A4")
-          (lib_symbols)
-          (text "AmpDemo 25W pure Class-A solid-state guitar amplifier - inspectable demo schematic"
+          (title_block
+            (title "AmpDemo 25W pure Class-A solid-state guitar amplifier")
+            (comment 1 "Transformer primary, fuse, switch, and PE bond are off-board")
+            (comment 2 "Inspectability demo: low-voltage isolated secondary side only")
+          )
+          (lib_symbols
+            (symbol "AmpDemo:Block2"
+              (pin_names (offset 0.762))
+              (exclude_from_sim no)
+              (in_bom yes)
+              (on_board yes)
+              (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+              (property "Value" "Block2" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
+              (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (property "Description" "AmpDemo generated inspectable two-pin functional block" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (symbol "Block2_1_1"
+                (rectangle (start -7.62 5.08) (end 7.62 -5.08) (stroke (width 0.254) (type default)) (fill (type background)))
+                (pin passive line (at -11.43 0 0) (length 3.81) (name "IN" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+                (pin passive line (at 11.43 0 180) (length 3.81) (name "OUT" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+              )
+            )
+            (symbol "AmpDemo:Connector2"
+              (pin_names (offset 0.762))
+              (exclude_from_sim no)
+              (in_bom yes)
+              (on_board yes)
+              (property "Reference" "J" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+              (property "Value" "Connector2" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
+              (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (property "Datasheet" "~" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (property "Description" "AmpDemo generated two-pin connector" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+              (symbol "Connector2_1_1"
+                (rectangle (start -2.54 3.81) (end 2.54 -3.81) (stroke (width 0.254) (type default)) (fill (type background)))
+                (pin passive line (at -6.35 1.27 0) (length 3.81) (name "1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+                (pin passive line (at -6.35 -1.27 0) (length 3.81) (name "2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+              )
+            )
+          )
+          (text "Off-board 120 VAC inlet, fuse, switch, PE bond, and transformer primary require qualified safety review"
             (exclude_from_sim no)
             (at 20 20 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
             (uuid "b1000000-0000-4000-8000-000000000001")
           )
-          (text "Off-board 120VAC inlet, fuse, switch, PE bond, transformer primary - qualified safety review required"
+          (text "Low-voltage isolated secondary supply path"
             (exclude_from_sim no)
-            (at 20 28 0)
+            (at 20 34 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
             (uuid "b1000000-0000-4000-8000-000000000002")
           )
-          (text "JSEC isolated transformer secondary input"
-            (exclude_from_sim no)
-            (at 20 42 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000003")
-          )
-          (text "BR1 bridge rectifier"
-            (exclude_from_sim no)
-            (at 55 42 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000004")
-          )
-          (text "CRES1/CRES2 reservoir capacitors"
-            (exclude_from_sim no)
-            (at 85 42 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000005")
-          )
-          (text "JIN high impedance guitar input"
+          (text "Audio signal path with 3-band tone stack and sweepable boost/cut filter"
             (exclude_from_sim no)
             (at 20 72 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000006")
+            (uuid "b1000000-0000-4000-8000-000000000003")
           )
-          (text "QPRE1 discrete preamp"
+          (text "Class-A output stage is thermally severe; external heatsink and SOA review required"
             (exclude_from_sim no)
-            (at 55 72 0)
+            (at 134 34 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000007")
+            (uuid "b1000000-0000-4000-8000-000000000004")
           )
-          (text "3-band tone stack: BASS MID TREBLE"
-            (exclude_from_sim no)
-            (at 85 72 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000008")
-          )
-          (text "sweepable boost/cut filter: FREQ and LEVEL controls"
-            (exclude_from_sim no)
-            (at 122 72 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000009")
-          )
-          (text "QDRV1 voltage driver"
-            (exclude_from_sim no)
-            (at 20 102 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000010")
-          )
-          (text "QOUT1 MJ15003G single-ended Class-A output transistor"
-            (exclude_from_sim no)
-            (at 55 102 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000011")
-          )
-          (text "JSPK 8 ohm speaker output, external heatsink required"
-            (exclude_from_sim no)
-            (at 105 102 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000012")
-          )
-          (text "Signal path: JIN -> QPRE1 -> 3-band tone stack -> sweepable boost/cut -> QDRV1 -> QOUT1 -> JSPK"
+          (text "Representative SPICE subset validates output-stage behavior; full certified amplifier model is out of demo scope"
             (exclude_from_sim no)
             (at 20 118 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000013")
+            (uuid "b1000000-0000-4000-8000-000000000005")
           )
-          (text "Power path: JSEC isolated secondary -> BR1 -> CRES1/CRES2 -> +VRAW/GND low-voltage amplifier rail"
+          (text "Power path: JSEC -> BR1 -> CRES1/CRES2 -> +VRAW and GND rails"
             (exclude_from_sim no)
             (at 20 126 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000014")
+            (uuid "b1000000-0000-4000-8000-000000000006")
           )
-          (text "Bias target: single-ended Class-A idle current documented in report; practical heat sink review required"
+          (text "Signal path: JIN -> QPRE1 -> TONE1 -> FILTER1 -> QDRV1 -> QOUT1 -> JSPK"
             (exclude_from_sim no)
             (at 20 134 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000015")
+            (uuid "b1000000-0000-4000-8000-000000000007")
           )
-          (text "KiCad ERC intentionally uses documentation-only schematic annotations; PCB carries routed demo footprints"
+          (text "BOM includes Digi-Key and Mouser procurement references; critical safety parts require engineering selection"
             (exclude_from_sim no)
             (at 20 142 0)
             (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "b1000000-0000-4000-8000-000000000016")
+            (uuid "b1000000-0000-4000-8000-000000000008")
+          )
+          (label "+VRAW"
+            (at 70 45 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000001")
+          )
+          (label "AC_SEC"
+            (at 38 45 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000002")
+          )
+          (label "GUITAR_IN"
+            (at 38 88 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000003")
+          )
+          (label "PRE_OUT"
+            (at 68 88 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000004")
+          )
+          (label "TONE_OUT"
+            (at 102 88 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000005")
+          )
+          (label "FILTER_OUT"
+            (at 150 88 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000006")
+          )
+          (label "DRV_OUT"
+            (at 182 88 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000007")
+          )
+          (label "SPK_OUT"
+            (at 212 45 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b2000000-0000-4000-8000-000000000008")
+          )
+          (wire (pts (xy 36.43 45) (xy 43.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000001"))
+          (wire (pts (xy 66.43 45) (xy 73.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000002"))
+          (wire (pts (xy 96.43 45) (xy 108 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000003"))
+          (wire (pts (xy 108 45) (xy 118 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000004"))
+          (wire (pts (xy 118 45) (xy 188.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000005"))
+          (wire (pts (xy 36.43 88) (xy 43.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000006"))
+          (wire (pts (xy 66.43 88) (xy 78.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000007"))
+          (wire (pts (xy 101.43 88) (xy 118.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000008"))
+          (wire (pts (xy 141.43 88) (xy 153.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000009"))
+          (wire (pts (xy 176.43 88) (xy 188.57 88)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000010"))
+          (wire (pts (xy 188.57 88) (xy 188.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000011"))
+          (wire (pts (xy 211.43 45) (xy 213.57 45)) (stroke (width 0) (type solid)) (uuid "b3000000-0000-4000-8000-000000000012"))
+          (junction (at 118 45) (diameter 1.016) (color 0 0 0 0) (uuid "b7000000-0000-4000-8000-000000000001"))
+          (no_connect (at 13.57 45) (uuid "b6000000-0000-4000-8000-000000000001"))
+          (no_connect (at 13.57 88) (uuid "b6000000-0000-4000-8000-000000000002"))
+          (no_connect (at 236.43 45) (uuid "b6000000-0000-4000-8000-000000000003"))
+          (symbol (lib_id "AmpDemo:Block2") (at 25 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000001")
+            (property "Reference" "JSEC" (at 25 37 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "isolated transformer secondary" (at 25 54 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Terminal_Secondary" (at 25 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 25 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000001"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000002"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 55 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000002")
+            (property "Reference" "BR1" (at 55 36 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "bridge rectifier" (at 55 54 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Bridge_Rectifier" (at 55 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 55 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000003"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000004"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 85 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000003")
+            (property "Reference" "CRES1" (at 85 36 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "10000uF rail reservoir" (at 85 54 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Reservoir_Cap" (at 85 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 85 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000005"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000006"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 25 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000004")
+            (property "Reference" "JIN" (at 25 80 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "guitar input" (at 25 97 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Input_Jack" (at 25 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 25 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000007"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000008"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 55 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000005")
+            (property "Reference" "QPRE1" (at 55 79 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "discrete preamp" (at 55 97 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Discrete_Preamp" (at 55 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 55 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000009"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000010"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 90 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000006")
+            (property "Reference" "TONE1" (at 90 79 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "3-band tone stack" (at 90 97 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Tone_Stack" (at 90 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 90 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000011"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000012"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 130 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000007")
+            (property "Reference" "FILTER1" (at 130 79 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "sweepable boost/cut filter" (at 130 97 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Sweep_Filter" (at 130 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 130 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000013"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000014"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 165 88 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000008")
+            (property "Reference" "QDRV1" (at 165 79 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "voltage driver" (at 165 97 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Driver" (at 165 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 165 88 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000015"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000016"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 200 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000009")
+            (property "Reference" "QOUT1" (at 200 36 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "MJ15003G Class-A output" (at 200 54 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Class_A_Output" (at 200 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 200 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000017"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000018"))
+          )
+          (symbol (lib_id "AmpDemo:Block2") (at 225 45 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b4000000-0000-4000-8000-000000000010")
+            (property "Reference" "JSPK" (at 222 37 0) (effects (font (size 1.27 1.27))))
+            (property "Value" "8 ohm speaker output" (at 222 54 0) (effects (font (size 1.27 1.27))))
+            (property "Footprint" "AmpDemo:Speaker_Output" (at 225 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (property "Datasheet" "~" (at 225 45 0) (effects (font (size 1.27 1.27)) (hide yes)))
+            (pin "1" (uuid "b5000000-0000-4000-8000-000000000019"))
+            (pin "2" (uuid "b5000000-0000-4000-8000-000000000020"))
           )
           (sheet_instances
             (path "/" (page "1"))
