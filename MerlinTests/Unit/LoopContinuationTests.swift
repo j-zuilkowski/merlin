@@ -401,6 +401,62 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testElectronicsEvidencePlansDoNotUseSpawnAgentBatches() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [.text("waiting for tool evidence")])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.continuationInjectURL = injectURL
+        engine.toolRouter.registerWorkspaceCapabilityTools(
+            ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read the AmpDemo specification file",
+                    successCriteria: "spec read",
+                    complexity: .standard,
+                    parallelSafe: true
+                ),
+                PlanStep(
+                    description: "Start the electronics workflow with the first real KiCad domain tool",
+                    successCriteria: "electronics workflow tool invoked",
+                    complexity: .standard,
+                    parallelSafe: true
+                ),
+            ]
+        )
+
+        var notes: [String] = []
+        for await event in engine.send(userMessage: "Run only the focused AmpDemo electronics slice") {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+        }
+
+        let submittedUserMessages = engine.contextManager.messages
+            .filter { $0.role == .user }
+            .map(\.content.plainText)
+            .joined(separator: "\n\n")
+
+        XCTAssertFalse(
+            notes.contains { $0.contains("parallel steps") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertFalse(
+            submittedUserMessages.contains("spawn_agent"),
+            submittedUserMessages
+        )
+        XCTAssertTrue(
+            submittedUserMessages.contains("Task: Read the AmpDemo specification file"),
+            submittedUserMessages
+        )
+    }
+
     func testElectronicsWorkflowErrorClearsContinuationInsteadOfAdvancing() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

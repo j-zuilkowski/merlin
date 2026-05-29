@@ -891,7 +891,11 @@ final class AgenticEngine {
             }
 
             if !planSteps.isEmpty {
-                let batches = groupParallelSteps(planSteps)
+                let evidenceGateContinuations = shouldEvidenceGateContinuations(for: planSteps)
+                let batches = groupParallelSteps(
+                    planSteps,
+                    maxParallelSteps: evidenceGateContinuations ? 1 : 4
+                )
                 let thisBatch = batches[0]
                 let remainingBatches = Array(batches.dropFirst())
                 pendingContinuationAllSteps = planSteps
@@ -901,7 +905,7 @@ final class AgenticEngine {
                 pendingContinuationVerifiedCompletedCount = 0
                 pendingContinuationEvidence.removeAll()
                 pendingContinuationBlockedReason = nil
-                pendingContinuationUsesEvidenceGate = shouldEvidenceGateContinuations(for: planSteps)
+                pendingContinuationUsesEvidenceGate = evidenceGateContinuations
 
                 let totalBatches = batches.count
                 let stepList = thisBatch.enumerated()
@@ -2007,7 +2011,7 @@ final class AgenticEngine {
 
         let pendingSteps = Array(planSteps.dropFirst(verifiedCount))
         pendingContinuationSteps = pendingSteps
-        let batches = groupParallelSteps(pendingSteps)
+        let batches = groupParallelSteps(pendingSteps, maxParallelSteps: 1)
         guard let thisBatch = batches.first else { return }
         let stillRemaining = Array(pendingSteps.dropFirst(thisBatch.count))
         let originalTask = pendingContinuationOriginalTask

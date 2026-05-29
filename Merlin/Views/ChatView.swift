@@ -679,6 +679,8 @@ final class ChatViewModel: ObservableObject {
         var turnFailed = false
         appendUser(resolved)
 
+        await appState.awaitRuntimePluginsReady()
+
         for await event in appState.engine.send(userMessage: resolved) {
             switch event {
             case .text(let text):

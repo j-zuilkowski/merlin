@@ -706,6 +706,8 @@ final class AppState: ObservableObject {
             return
         }
 
+        await awaitRuntimePluginsReady()
+
         for await event in engine.send(userMessage: trimmed) {
             if case .slotRuntimeState(let slot, let state) = event {
                 await publishSlotRuntimeState(state, for: slot)

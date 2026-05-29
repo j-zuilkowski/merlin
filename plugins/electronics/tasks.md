@@ -31,6 +31,7 @@ red tests; each matching `b` task implements the behavior.
 | GUI evidence status | `tasks/task-403a-electronics-gui-evidence-status-tests.md` | `tasks/task-403b-electronics-gui-evidence-status.md` |
 | Runtime artifact evidence | `tasks/task-404a-electronics-runtime-artifact-evidence-tests.md` | `tasks/task-404b-electronics-runtime-artifact-evidence.md` |
 | Tool failure evidence | `tasks/task-405a-electronics-tool-failure-evidence-tests.md` | `tasks/task-405b-electronics-tool-failure-evidence.md` |
+| Focused slice drift lock | `tasks/task-406a-electronics-focused-slice-drift-tests.md` | `tasks/task-406b-electronics-focused-slice-drift-fix.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -408,3 +409,19 @@ Exit criteria:
 
 - Failed DRC report artifacts can still block `PCB_VERIFIED` through the harness.
 - Failed SPICE logs remain attached to the blocked tool result.
+
+## Phase 19: Focused Slice Drift Lock
+
+Goal: keep focused electronics workflow slices on the plugin/KiCad runtime path.
+
+1. Do not parallelize evidence-gated electronics plans into `spawn_agent`
+   batches.
+2. Reject non-inspection, non-electronics tools such as `xcode_open_file` while
+   the electronics workflow lock is active.
+3. Wait for runtime plugin tool registration before GUI chat submission sends
+   the first provider request.
+
+Exit criteria:
+
+- A focused read-spec-then-first-KiCad slice cannot satisfy the KiCad step with
+  `spawn_agent` or `xcode_open_file`.

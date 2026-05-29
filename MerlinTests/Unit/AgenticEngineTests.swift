@@ -136,6 +136,43 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("should not continue"))
     }
 
+    func testActiveElectronicsWorkflowLockRejectsXcodeOpenFile() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "drift",
+                name: "xcode_open_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/kicad/AmpDemo.kicad_pro","line":1}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Read the spec, then invoke the first KiCad electronics tool") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("xcode_open_file"), rejection)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
     func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
