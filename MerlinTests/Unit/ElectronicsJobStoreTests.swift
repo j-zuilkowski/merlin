@@ -34,6 +34,21 @@ final class ElectronicsJobStoreTests: XCTestCase {
         XCTAssertEqual(first.jobs, second.jobs)
     }
 
+    func testLeaderboardSeparatesRunningFromCompletedJobs() async throws {
+        let runtime = try makeRuntime()
+        await publishProgress(runtime, jobID: "complete-job", status: .complete, message: "Workflow complete")
+        await publishProgress(runtime, jobID: "running-job", status: .inProgress, message: "Routing PCB")
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        XCTAssertEqual(store.leaderboardJobs.map(\.id), ["running-job", "complete-job"])
+        XCTAssertEqual(store.runningJobs.map(\.id), ["running-job"])
+        XCTAssertEqual(store.completedJobs.map(\.id), ["complete-job"])
+        XCTAssertEqual(store.runningJobs.first?.latestProgressMessage, "Routing PCB")
+        XCTAssertEqual(store.completedJobs.first?.latestProgressMessage, "Workflow complete")
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp/electronics-job-store"),
@@ -41,14 +56,19 @@ final class ElectronicsJobStoreTests: XCTestCase {
         )
     }
 
-    private func publishProgress(_ runtime: WorkspaceRuntime, jobID: String, status: KiCadStatus) async {
+    private func publishProgress(
+        _ runtime: WorkspaceRuntime,
+        jobID: String,
+        status: KiCadStatus,
+        message: String = "Routing"
+    ) async {
         await runtime.bus.publish(WorkspaceMessageEvent(
             id: UUID(),
             requestID: nil,
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "job.progress"),
             origin: nil,
             kind: .progress,
-            payload: .jsonString(#"{"job_id":"\#(jobID)","status":"\#(status.rawValue)","message":"Routing"}"#)
+            payload: .jsonString(#"{"job_id":"\#(jobID)","status":"\#(status.rawValue)","message":"\#(message)"}"#)
         ))
     }
 

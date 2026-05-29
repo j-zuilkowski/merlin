@@ -2,9 +2,10 @@ import SwiftUI
 
 struct ElectronicsJobPanelView: View {
     static let sectionLabels = [
-        "Backend Health",
-        "Jobs",
-        "Progress",
+        "Live Leaderboard",
+        "Running Now",
+        "Completed Jobs",
+        "Progress History",
         "Artifacts",
         "Diagnostics",
         "Approvals",
@@ -55,33 +56,74 @@ struct ElectronicsJobPanelView: View {
     }
 
     private var jobList: some View {
-        List(store.jobs) { job in
-            Section("Jobs") {
-                HStack {
-                    Text(job.id)
-                    Spacer()
-                    Text(job.status.rawValue)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(color(for: job.status))
+        List {
+            Section("Live Leaderboard") {
+                ForEach(store.leaderboardJobs) { job in
+                    leaderboardRow(job)
                 }
             }
-            Section("Progress") {
-                rows(job.progress.map(\.message), empty: "No progress events")
+            Section("Running Now") {
+                if store.runningJobs.isEmpty {
+                    Text("No running electronics jobs")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(store.runningJobs) { job in
+                        leaderboardRow(job)
+                    }
+                }
+            }
+            Section("Completed Jobs") {
+                rows(store.completedJobs.map { "\($0.id): \($0.status.rawValue)" }, empty: "No completed jobs")
+            }
+            Section("Progress History") {
+                rows(
+                    store.jobs.flatMap { job in job.progress.map { "\($0.message) (\(job.id))" } },
+                    empty: "No progress events"
+                )
             }
             Section("Artifacts") {
-                rows(job.artifacts.map { $0.displayName ?? $0.kind }, empty: "No artifacts")
+                rows(
+                    store.jobs.flatMap { job in job.artifacts.map { "\($0.displayName ?? $0.kind) (\(job.id))" } },
+                    empty: "No artifacts"
+                )
             }
             Section("Diagnostics") {
-                rows(job.diagnostics.map { "\($0.code): \($0.message)" }, empty: "No diagnostics")
+                rows(
+                    store.jobs.flatMap { job in job.diagnostics.map { "\($0.code): \($0.message) (\(job.id))" } },
+                    empty: "No diagnostics"
+                )
             }
             Section("Approvals") {
-                rows(job.approvalRequests.map { "\($0.kind.rawValue): \($0.summary)" }, empty: "No approvals")
+                rows(
+                    store.jobs.flatMap { job in job.approvalRequests.map { "\($0.kind.rawValue): \($0.summary) (\(job.id))" } },
+                    empty: "No approvals"
+                )
             }
             Section("Reports") {
-                rows(job.reports.map { "\($0.jobID): \($0.status.rawValue)" }, empty: "No reports")
+                rows(
+                    store.jobs.flatMap { job in job.reports.map { "\($0.jobID): \($0.status.rawValue)" } },
+                    empty: "No reports"
+                )
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private func leaderboardRow(_ job: ElectronicsJob) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(job.id)
+                    .font(.callout.weight(.medium))
+                Text(job.latestProgressMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            Text(job.status.rawValue)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(color(for: job.status))
+        }
     }
 
     private func rows(_ values: [String], empty: String) -> some View {

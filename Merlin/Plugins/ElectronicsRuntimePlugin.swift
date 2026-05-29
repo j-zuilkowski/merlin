@@ -403,6 +403,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let reportsURL = rootURL.appendingPathComponent("reports", isDirectory: true)
         let librariesURL = rootURL.appendingPathComponent("libraries", isDirectory: true)
 
+        await publishWorkflowProgress(
+            jobID: jobID,
+            status: .inProgress,
+            message: "Starting AmpDemo requirements-to-PCB workflow",
+            request: request,
+            context: context
+        )
+
         do {
             for directory in [kicadURL, gerberURL, drillURL, simulationURL, bomURL, reportsURL, librariesURL] {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -432,32 +440,80 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             try ampDemoApprovalRecord().write(to: approvalURL, atomically: true, encoding: .utf8)
             try ampDemoLibraryNotes().write(to: librariesURL.appendingPathComponent("source-notes.md"), atomically: true, encoding: .utf8)
             try "# AmpDemo Final Demo Report\n\nPending final gate evaluation.\n".write(to: finalReportURL, atomically: true, encoding: .utf8)
-
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "AmpDemo KiCad, SPICE, BOM, and report seed artifacts written",
+                request: request,
+                context: context
+            )
             let ercRun = runProcess(executablePath: cliPath, arguments: ["sch", "erc", schematicURL.path, "--format", "json", "--output", ercURL.path])
             guard ercRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_ERC_FAILED", run: ercRun)
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "KiCad ERC passed",
+                request: request,
+                context: context
+            )
             let drcRun = runProcess(executablePath: cliPath, arguments: ["pcb", "drc", boardURL.path, "--format", "json", "--output", drcURL.path])
             guard drcRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_DRC_FAILED", run: drcRun)
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "KiCad DRC passed",
+                request: request,
+                context: context
+            )
             let gerberRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "gerbers", "--output", gerberURL.path, boardURL.path])
             guard gerberRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_GERBER_EXPORT_FAILED", run: gerberRun)
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "Gerbers exported",
+                request: request,
+                context: context
+            )
             let drillRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "drill", "--output", drillURL.path, boardURL.path])
             guard drillRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_DRILL_EXPORT_FAILED", run: drillRun)
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "Drill files exported",
+                request: request,
+                context: context
+            )
             let spiceRun = runProcess(executablePath: ngspicePath, arguments: ["-b", "-o", spiceLogURL.path, spiceDeckURL.path])
             guard spiceRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: spiceRun)
             }
 
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "ngspice simulation passed",
+                request: request,
+                context: context
+            )
             let zipRun = runProcess(executablePath: "/usr/bin/ditto", arguments: ["-c", "-k", "--keepParent", gerberURL.path, fabPackageURL.path])
             guard zipRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "FAB_PACKAGE_FAILED", run: zipRun)
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .inProgress,
+                message: "Fabrication outputs packaged",
+                request: request,
+                context: context
+            )
 
             let artifacts = [
                 ElectronicsCompletionArtifact(kind: .kicadProject, path: projectURL.path),
@@ -492,7 +548,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let report = ElectronicsGateRunner().finalReport(jobID: jobID, evidence: validation.evidence)
             try ampDemoFinalReport(jobID: jobID, report: report, requirements: requirements, cliPath: cliPath, ngspicePath: ngspicePath).write(to: finalReportURL, atomically: true, encoding: .utf8)
 
-            for artifact in workspaceArtifacts(from: artifacts, request: request) {
+            let workspaceArtifacts = workspaceArtifacts(from: artifacts, jobID: jobID, request: request)
+            for artifact in workspaceArtifacts {
                 await context.bus.publish(WorkspaceMessageEvent(
                     id: UUID(),
                     requestID: request.id,
@@ -502,6 +559,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     payload: try? .encodeJSON(artifact)
                 ))
             }
+            await context.bus.publish(WorkspaceMessageEvent(
+                id: UUID(),
+                requestID: request.id,
+                address: request.address,
+                origin: request.origin,
+                kind: .artifactProduced,
+                payload: try? .encodeJSON(report)
+            ))
 
             guard report.status == .complete, validation.diagnostics.isEmpty else {
                 return WorkspaceMessageResponse(
@@ -514,10 +579,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     } + validation.diagnostics
                 )
             }
+            await publishWorkflowProgress(
+                jobID: jobID,
+                status: .complete,
+                message: "AmpDemo requirements-to-PCB workflow complete",
+                request: request,
+                context: context
+            )
             return .ok(
                 requestID: request.id,
                 payload: try? .encodeJSON(report),
-                artifacts: workspaceArtifacts(from: artifacts, request: request)
+                artifacts: workspaceArtifacts
             )
         } catch {
             return structuredBlock(
@@ -531,6 +603,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
     private func workspaceArtifacts(
         from artifacts: [ElectronicsCompletionArtifact],
+        jobID: String,
         request: WorkspaceMessageRequest
     ) -> [WorkspaceArtifactRef] {
         artifacts.map {
@@ -539,9 +612,29 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 kind: $0.kind.rawValue,
                 url: URL(fileURLWithPath: $0.path),
                 displayName: $0.kind.rawValue,
-                metadata: ["request_id": request.id.uuidString]
+                metadata: [
+                    "job_id": jobID,
+                    "request_id": request.id.uuidString
+                ]
             )
         }
+    }
+
+    private func publishWorkflowProgress(
+        jobID: String,
+        status: KiCadStatus,
+        message: String,
+        request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) async {
+        await context.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: request.id,
+            address: request.address,
+            origin: request.origin,
+            kind: .progress,
+            payload: .jsonString(#"{"job_id":"\#(jsonEscaped(jobID))","status":"\#(status.rawValue)","message":"\#(jsonEscaped(message))"}"#)
+        ))
     }
 
     private func ampDemoDesignIntent(requirements: String, jobID: String) -> String {

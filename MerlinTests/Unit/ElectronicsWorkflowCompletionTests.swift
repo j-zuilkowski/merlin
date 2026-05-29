@@ -73,6 +73,23 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         let bom = try String(contentsOf: output.appendingPathComponent("bom/ampdemo-bom.csv"), encoding: .utf8)
         XCTAssertTrue(bom.contains("Digi-Key"))
         XCTAssertTrue(bom.contains("Mouser"))
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+        let job = try XCTUnwrap(store.jobs.first { $0.id == "ampdemo-test" })
+        XCTAssertEqual(job.status, .complete)
+        XCTAssertFalse(job.progress.isEmpty)
+        let completedProgressMessages = job.progress.map(\.message)
+        XCTAssertTrue(completedProgressMessages.contains("KiCad ERC passed"))
+        XCTAssertTrue(completedProgressMessages.contains("KiCad DRC passed"))
+        XCTAssertTrue(completedProgressMessages.contains("Gerbers exported"))
+        XCTAssertTrue(completedProgressMessages.contains("Drill files exported"))
+        XCTAssertTrue(completedProgressMessages.contains("ngspice simulation passed"))
+        XCTAssertFalse(completedProgressMessages.contains { message in
+            message.hasPrefix("Running ") || message.hasPrefix("Exporting ") || message.hasPrefix("Packaging ")
+        })
+        XCTAssertFalse(job.artifacts.isEmpty)
+        XCTAssertEqual(job.reports.first?.status, .complete)
     }
 
     func testRunSpiceRejectsSummaryLogsBeforeInvokingNgspice() async throws {

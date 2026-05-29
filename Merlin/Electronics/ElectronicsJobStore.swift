@@ -33,12 +33,37 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
         self.approvalRequests = []
         self.reports = []
     }
+
+    var isRunning: Bool {
+        status == .inProgress
+    }
+
+    var latestProgressMessage: String {
+        progress.last?.message ?? status.rawValue
+    }
 }
 
 @MainActor
 final class ElectronicsJobStore: ObservableObject {
     @Published private(set) var jobs: [ElectronicsJob] = []
     private var subscriptionTask: Task<Void, Never>?
+
+    var leaderboardJobs: [ElectronicsJob] {
+        jobs.sorted { lhs, rhs in
+            if lhs.isRunning != rhs.isRunning {
+                return lhs.isRunning && !rhs.isRunning
+            }
+            return lhs.id < rhs.id
+        }
+    }
+
+    var runningJobs: [ElectronicsJob] {
+        leaderboardJobs.filter(\.isRunning)
+    }
+
+    var completedJobs: [ElectronicsJob] {
+        leaderboardJobs.filter { !$0.isRunning }
+    }
 
     deinit {
         subscriptionTask?.cancel()
