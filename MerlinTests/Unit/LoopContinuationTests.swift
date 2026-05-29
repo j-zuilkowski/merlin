@@ -401,6 +401,48 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testElectronicsWorkflowErrorClearsContinuationInsteadOfAdvancing() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .toolCall(id: "workflow", name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue, args: #"{"requirements":"25W Class A guitar amplifier"}"#),
+            .text("The workflow failed at the gate."),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(description: "Read AmpDemo spec", successCriteria: "spec read", complexity: .standard),
+                PlanStep(description: "Create KiCad schematic and PCB", successCriteria: "schematic and PCB artifacts exist", complexity: .standard),
+                PlanStep(description: "Run SPICE simulation", successCriteria: "SPICE output exists", complexity: .standard),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool(ElectronicsWorkflowRoute.requirementsToPCB.rawValue) { _ in
+            throw NSError(
+                domain: "workflow.requirements_to_pcb",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "BLOCKED_VERIFICATION_GATE: KiCad ERC failed"]
+            )
+        }
+
+        for await _ in engine.send(userMessage: "Run the full AmpDemo electronics workflow") {}
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: injectURL.path),
+            "A blocked electronics workflow tool must not schedule a continuation that advances later workflow steps"
+        )
+    }
+
     /// A [CONTINUATION] message bypasses the planner — decompose() is never called.
     func testContinuationMessageSkipsDecompose() async throws {
         let provider = MockProvider(responses: [MockLLMResponse.text("done")])

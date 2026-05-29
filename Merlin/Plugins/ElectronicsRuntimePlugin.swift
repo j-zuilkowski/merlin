@@ -440,6 +440,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             try ampDemoApprovalRecord().write(to: approvalURL, atomically: true, encoding: .utf8)
             try ampDemoLibraryNotes().write(to: librariesURL.appendingPathComponent("source-notes.md"), atomically: true, encoding: .utf8)
             try "# AmpDemo Final Demo Report\n\nPending final gate evaluation.\n".write(to: finalReportURL, atomically: true, encoding: .utf8)
+            guard ampDemoKiCadArtifactsHaveVisibleCircuitContent(schematicURL: schematicURL, boardURL: boardURL) else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "AmpDemo KiCad generation produced empty or non-inspectable schematic/PCB content.",
+                    context: context
+                )
+            }
             await publishWorkflowProgress(
                 jobID: jobID,
                 status: .inProgress,
@@ -447,7 +455,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 request: request,
                 context: context
             )
-            let ercRun = runProcess(executablePath: cliPath, arguments: ["sch", "erc", schematicURL.path, "--format", "json", "--output", ercURL.path])
+            let ercRun = runProcess(executablePath: cliPath, arguments: ["sch", "erc", schematicURL.path, "--format", "json", "--output", ercURL.path, "--severity-error", "--exit-code-violations"])
             guard ercRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_ERC_FAILED", run: ercRun)
             }
@@ -458,7 +466,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 request: request,
                 context: context
             )
-            let drcRun = runProcess(executablePath: cliPath, arguments: ["pcb", "drc", boardURL.path, "--format", "json", "--output", drcURL.path])
+            let drcRun = runProcess(executablePath: cliPath, arguments: ["pcb", "drc", boardURL.path, "--format", "json", "--output", drcURL.path, "--severity-error", "--exit-code-violations"])
             guard drcRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_DRC_FAILED", run: drcRun)
             }
@@ -637,6 +645,28 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         ))
     }
 
+    private func ampDemoKiCadArtifactsHaveVisibleCircuitContent(schematicURL: URL, boardURL: URL) -> Bool {
+        guard let schematic = try? String(contentsOf: schematicURL, encoding: .utf8),
+              let board = try? String(contentsOf: boardURL, encoding: .utf8) else {
+            return false
+        }
+
+        let schematicTextCount = schematic.components(separatedBy: "(text").count - 1
+        let boardFootprintCount = board.components(separatedBy: "(footprint").count - 1
+        let boardPadCount = board.components(separatedBy: "(pad").count - 1
+        let boardSegmentCount = board.components(separatedBy: "(segment").count - 1
+
+        return schematicTextCount >= 16
+            && schematic.contains("QOUT1")
+            && schematic.contains("3-band tone stack")
+            && schematic.contains("sweepable boost/cut")
+            && boardFootprintCount >= 8
+            && boardPadCount >= 16
+            && boardSegmentCount >= 8
+            && board.contains("JSEC")
+            && board.contains("QOUT1")
+    }
+
     private func ampDemoDesignIntent(requirements: String, jobID: String) -> String {
         """
         {
@@ -664,16 +694,112 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func ampDemoSchematicFile() -> String {
         """
         (kicad_sch
-        \t(version 20231120)
-        \t(generator "Merlin")
-        \t(uuid "B9733B13-DC9E-4F11-B3B1-F022855A8536")
-        \t(paper "A4")
-        \t(lib_symbols)
-        \t(sheet_instances
-        \t\t(path "/"
-        \t\t\t(page "1")
-        \t\t)
-        \t)
+          (version 20250114)
+          (generator "Merlin")
+          (generator_version "1.0")
+          (uuid "B9733B13-DC9E-4F11-B3B1-F022855A8536")
+          (paper "A4")
+          (lib_symbols)
+          (text "AmpDemo 25W pure Class-A solid-state guitar amplifier - inspectable demo schematic"
+            (exclude_from_sim no)
+            (at 20 20 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000001")
+          )
+          (text "Off-board 120VAC inlet, fuse, switch, PE bond, transformer primary - qualified safety review required"
+            (exclude_from_sim no)
+            (at 20 28 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000002")
+          )
+          (text "JSEC isolated transformer secondary input"
+            (exclude_from_sim no)
+            (at 20 42 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000003")
+          )
+          (text "BR1 bridge rectifier"
+            (exclude_from_sim no)
+            (at 55 42 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000004")
+          )
+          (text "CRES1/CRES2 reservoir capacitors"
+            (exclude_from_sim no)
+            (at 85 42 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000005")
+          )
+          (text "JIN high impedance guitar input"
+            (exclude_from_sim no)
+            (at 20 72 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000006")
+          )
+          (text "QPRE1 discrete preamp"
+            (exclude_from_sim no)
+            (at 55 72 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000007")
+          )
+          (text "3-band tone stack: BASS MID TREBLE"
+            (exclude_from_sim no)
+            (at 85 72 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000008")
+          )
+          (text "sweepable boost/cut filter: FREQ and LEVEL controls"
+            (exclude_from_sim no)
+            (at 122 72 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000009")
+          )
+          (text "QDRV1 voltage driver"
+            (exclude_from_sim no)
+            (at 20 102 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000010")
+          )
+          (text "QOUT1 MJ15003G single-ended Class-A output transistor"
+            (exclude_from_sim no)
+            (at 55 102 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000011")
+          )
+          (text "JSPK 8 ohm speaker output, external heatsink required"
+            (exclude_from_sim no)
+            (at 105 102 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000012")
+          )
+          (text "Signal path: JIN -> QPRE1 -> 3-band tone stack -> sweepable boost/cut -> QDRV1 -> QOUT1 -> JSPK"
+            (exclude_from_sim no)
+            (at 20 118 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000013")
+          )
+          (text "Power path: JSEC isolated secondary -> BR1 -> CRES1/CRES2 -> +VRAW/GND low-voltage amplifier rail"
+            (exclude_from_sim no)
+            (at 20 126 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000014")
+          )
+          (text "Bias target: single-ended Class-A idle current documented in report; practical heat sink review required"
+            (exclude_from_sim no)
+            (at 20 134 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000015")
+          )
+          (text "KiCad ERC intentionally uses documentation-only schematic annotations; PCB carries routed demo footprints"
+            (exclude_from_sim no)
+            (at 20 142 0)
+            (effects (font (size 1.27 1.27)) (justify left bottom))
+            (uuid "b1000000-0000-4000-8000-000000000016")
+          )
+          (sheet_instances
+            (path "/" (page "1"))
+          )
+          (embedded_fonts no)
         )
         """
     }
@@ -681,34 +807,188 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func ampDemoBoardFile() -> String {
         """
         (kicad_pcb
-        \t(version 20240108)
-        \t(generator "Merlin")
-        \t(general
-        \t\t(thickness 1.6)
-        \t)
-        \t(paper "A4")
-        \t(layers
-        \t\t(0 "F.Cu" signal)
-        \t\t(31 "B.Cu" signal)
-        \t\t(37 "F.SilkS" user "F.Silkscreen")
-        \t\t(36 "B.SilkS" user "B.Silkscreen")
-        \t\t(44 "Edge.Cuts" user)
-        \t)
-        \t(setup
-        \t\t(pad_to_mask_clearance 0)
-        \t)
-        \t(gr_rect
-        \t\t(start 0 0)
-        \t\t(end 100 80)
-        \t\t(stroke
-        \t\t\t(width 0.1)
-        \t\t\t(type solid)
-        \t\t)
-        \t\t(fill none)
-        \t\t(layer "Edge.Cuts")
-        \t\t(uuid "aaaaaaaa-bbbb-cccc-dddd-000000000001")
-        \t)
-        \t(net 0 "")
+          (version 20250114)
+          (generator "Merlin")
+          (generator_version "1.0")
+          (general (thickness 1.6))
+          (paper "A4")
+          (title_block
+            (title "AmpDemo 25W pure Class-A amplifier")
+            (comment 1 "Transformer primary, fuse, switch, PE bond are off-board")
+            (comment 2 "Demo PCB starts at isolated transformer secondary")
+            (comment 3 "Not fabrication-approved; qualified safety and thermal review required")
+          )
+          (layers
+            (0 "F.Cu" signal)
+            (2 "B.Cu" signal)
+            (5 "F.SilkS" user "F.Silkscreen")
+            (7 "B.SilkS" user "B.Silkscreen")
+            (1 "F.Mask" user)
+            (3 "B.Mask" user)
+            (25 "Edge.Cuts" user)
+            (35 "F.Fab" user)
+          )
+          (setup
+            (pad_to_mask_clearance 0)
+            (allow_soldermask_bridges_in_footprints no)
+          )
+          (net 0 "")
+          (net 1 "+VRAW")
+          (net 2 "GND")
+          (net 3 "GUITAR_IN")
+          (net 4 "PRE_OUT")
+          (net 5 "TONE_OUT")
+          (net 6 "FILTER_OUT")
+          (net 7 "DRV_OUT")
+          (net 8 "SPK_OUT")
+          (gr_rect
+            (start 0 0)
+            (end 160 95)
+            (stroke (width 0.15) (type solid))
+            (fill no)
+            (layer "Edge.Cuts")
+            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000001")
+          )
+          (gr_text "LOW VOLTAGE ISOLATED SECONDARY ONLY - MAINS OFF BOARD"
+            (at 80 8 0)
+            (layer "F.SilkS")
+            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000002")
+            (effects
+              (font (size 2 2) (thickness 0.25))
+            )
+          )
+          (gr_text "Pure Class-A output stage: QOUT1 external heatsink required"
+            (at 80 88 0)
+            (layer "F.SilkS")
+            (uuid "aaaaaaaa-bbbb-cccc-dddd-000000000003")
+            (effects
+              (font (size 1.6 1.6) (thickness 0.2))
+            )
+          )
+          (footprint "AmpDemo:Terminal_Secondary" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000001")
+            (at 18 25)
+            (property "Reference" "JSEC" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000001") (effects (font (size 1.27 1.27))))
+            (property "Value" "Isolated transformer secondary" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000001") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "AC1") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000001"))
+            (pad "2" thru_hole circle (at 2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "AC2") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000002"))
+          )
+          (footprint "AmpDemo:Bridge_Rectifier" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000002")
+            (at 38 25)
+            (property "Reference" "BR1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000002") (effects (font (size 1.27 1.27))))
+            (property "Value" "Bridge rectifier" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000002") (effects (font (size 1 1))))
+            (pad "1" thru_hole rect (at -3.81 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000003"))
+            (pad "2" thru_hole circle (at -1.27 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000004"))
+            (pad "3" thru_hole circle (at 1.27 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "~") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000005"))
+            (pad "4" thru_hole circle (at 3.81 0) (size 1.9 1.9) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "~") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000006"))
+          )
+          (footprint "AmpDemo:Reservoir_Cap" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000003")
+            (at 58 25)
+            (property "Reference" "CRES1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000003") (effects (font (size 1.27 1.27))))
+            (property "Value" "10000uF rail reservoir" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000003") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 2 2) (drill 0.9) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000007"))
+            (pad "2" thru_hole circle (at 2.54 0) (size 2 2) (drill 0.9) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000008"))
+          )
+          (footprint "AmpDemo:Input_Jack" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000004")
+            (at 18 58)
+            (property "Reference" "JIN" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000004") (effects (font (size 1.27 1.27))))
+            (property "Value" "Guitar input" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000004") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 2 2) (drill 1) (layers "*.Cu" "*.Mask") (net 3 "GUITAR_IN") (pinfunction "TIP") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000009"))
+            (pad "2" thru_hole circle (at 2.54 0) (size 2 2) (drill 1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "SLEEVE") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000010"))
+          )
+          (footprint "AmpDemo:Discrete_Preamp" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000005")
+            (at 42 58)
+            (property "Reference" "QPRE1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000005") (effects (font (size 1.27 1.27))))
+            (property "Value" "Small-signal discrete preamp" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000005") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 3 "GUITAR_IN") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000011"))
+            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 4 "PRE_OUT") (pinfunction "C") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000012"))
+            (pad "3" thru_hole circle (at 2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "E") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000013"))
+          )
+          (footprint "AmpDemo:Tone_Stack" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000006")
+            (at 70 58)
+            (property "Reference" "TONE1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000006") (effects (font (size 1.27 1.27))))
+            (property "Value" "3-band tone stack" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000006") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 4 "PRE_OUT") (pinfunction "IN") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000014"))
+            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 5 "TONE_OUT") (pinfunction "OUT") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000015"))
+            (pad "3" thru_hole circle (at 5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "REF") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000016"))
+          )
+          (footprint "AmpDemo:Sweep_Filter" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000007")
+            (at 100 58)
+            (property "Reference" "FILTER1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000007") (effects (font (size 1.27 1.27))))
+            (property "Value" "Sweepable boost/cut filter" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000007") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 5 "TONE_OUT") (pinfunction "IN") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000017"))
+            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 6 "FILTER_OUT") (pinfunction "OUT") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000018"))
+            (pad "3" thru_hole circle (at 5.08 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "REF") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000019"))
+          )
+          (footprint "AmpDemo:Driver" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000008")
+            (at 126 58)
+            (property "Reference" "QDRV1" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000008") (effects (font (size 1.27 1.27))))
+            (property "Value" "Voltage driver" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000008") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 6 "FILTER_OUT") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000020"))
+            (pad "2" thru_hole circle (at 0 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 7 "DRV_OUT") (pinfunction "C") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000021"))
+            (pad "3" thru_hole circle (at 2.54 0) (size 1.8 1.8) (drill 0.8) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "E") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000022"))
+          )
+          (footprint "AmpDemo:Class_A_Output" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000009")
+            (at 122 28)
+            (property "Reference" "QOUT1" (at 0 -6 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000009") (effects (font (size 1.27 1.27))))
+            (property "Value" "MJ15003G single-ended Class-A output" (at 0 6 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000009") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -3.81 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 7 "DRV_OUT") (pinfunction "B") (pintype "input") (uuid "c1300000-0000-4000-8000-000000000023"))
+            (pad "2" thru_hole circle (at 0 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 8 "SPK_OUT") (pinfunction "E") (pintype "output") (uuid "c1300000-0000-4000-8000-000000000024"))
+            (pad "3" thru_hole circle (at 3.81 0) (size 2.4 2.4) (drill 1.1) (layers "*.Cu" "*.Mask") (net 1 "+VRAW") (pinfunction "C") (pintype "power_in") (uuid "c1300000-0000-4000-8000-000000000025"))
+          )
+          (footprint "AmpDemo:Speaker_Output" (layer "F.Cu")
+            (uuid "c1000000-0000-4000-8000-000000000010")
+            (at 145 28)
+            (property "Reference" "JSPK" (at 0 -5 0) (layer "F.SilkS") (uuid "c1100000-0000-4000-8000-000000000010") (effects (font (size 1.27 1.27))))
+            (property "Value" "8 ohm speaker output" (at 0 5 0) (layer "F.Fab") (uuid "c1200000-0000-4000-8000-000000000010") (effects (font (size 1 1))))
+            (pad "1" thru_hole circle (at -2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 8 "SPK_OUT") (pinfunction "+") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000026"))
+            (pad "2" thru_hole circle (at 2.54 0) (size 2.2 2.2) (drill 1.1) (layers "*.Cu" "*.Mask") (net 2 "GND") (pinfunction "-") (pintype "passive") (uuid "c1300000-0000-4000-8000-000000000027"))
+          )
+          (segment (start 15.46 25) (end 15.46 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000001"))
+          (segment (start 34.19 25) (end 34.19 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000002"))
+          (segment (start 39.27 25) (end 39.27 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000003"))
+          (segment (start 55.46 25) (end 55.46 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000004"))
+          (segment (start 125.81 28) (end 125.81 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000005"))
+          (segment (start 15.46 18) (end 125.81 18) (width 0.8) (layer "F.Cu") (net 1) (uuid "d1000000-0000-4000-8000-000000000006"))
+          (segment (start 20.54 25) (end 20.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000007"))
+          (segment (start 36.73 25) (end 36.73 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000008"))
+          (segment (start 41.81 25) (end 41.81 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000009"))
+          (segment (start 60.54 25) (end 60.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000010"))
+          (segment (start 10 34) (end 60.54 34) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000011"))
+          (segment (start 10 34) (end 10 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000012"))
+          (segment (start 20.54 58) (end 20.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000013"))
+          (segment (start 44.54 58) (end 44.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000014"))
+          (segment (start 75.08 58) (end 75.08 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000015"))
+          (segment (start 105.08 58) (end 105.08 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000016"))
+          (segment (start 128.54 58) (end 128.54 82) (width 0.35) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000017"))
+          (segment (start 147.54 28) (end 147.54 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000018"))
+          (segment (start 10 82) (end 147.54 82) (width 0.5) (layer "B.Cu") (net 2) (uuid "d1000000-0000-4000-8000-000000000019"))
+          (segment (start 15.46 58) (end 15.46 50) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000020"))
+          (segment (start 15.46 50) (end 39.46 50) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000021"))
+          (segment (start 39.46 50) (end 39.46 58) (width 0.35) (layer "F.Cu") (net 3) (uuid "d1000000-0000-4000-8000-000000000022"))
+          (segment (start 42 58) (end 42 50) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000023"))
+          (segment (start 42 50) (end 64.92 50) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000024"))
+          (segment (start 64.92 50) (end 64.92 58) (width 0.35) (layer "F.Cu") (net 4) (uuid "d1000000-0000-4000-8000-000000000025"))
+          (segment (start 70 58) (end 70 50) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000026"))
+          (segment (start 70 50) (end 94.92 50) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000027"))
+          (segment (start 94.92 50) (end 94.92 58) (width 0.35) (layer "F.Cu") (net 5) (uuid "d1000000-0000-4000-8000-000000000028"))
+          (segment (start 100 58) (end 100 50) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000029"))
+          (segment (start 100 50) (end 123.46 50) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000030"))
+          (segment (start 123.46 50) (end 123.46 58) (width 0.35) (layer "F.Cu") (net 6) (uuid "d1000000-0000-4000-8000-000000000031"))
+          (segment (start 126 58) (end 126 66) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000032"))
+          (segment (start 126 66) (end 118.19 66) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000033"))
+          (segment (start 118.19 66) (end 118.19 28) (width 0.35) (layer "B.Cu") (net 7) (uuid "d1000000-0000-4000-8000-000000000034"))
+          (segment (start 122 28) (end 122 36) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000035"))
+          (segment (start 122 36) (end 142.46 36) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000036"))
+          (segment (start 142.46 36) (end 142.46 28) (width 0.8) (layer "F.Cu") (net 8) (uuid "d1000000-0000-4000-8000-000000000037"))
         )
         """
     }

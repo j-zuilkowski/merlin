@@ -66,6 +66,7 @@ struct ChatView: View {
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""
     @State private var pendingDomainActivation: PendingDomainActivation?
+    @State private var pendingInjectMessage: String?
 
     private let accessibilityScope: ChatAccessibilityScope
 
@@ -120,8 +121,19 @@ struct ChatView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .merlinInjectMessage)) { note in
             guard let msg = note.userInfo?["message"] as? String, !msg.isEmpty else { return }
+            guard model.isSending == false else {
+                pendingInjectMessage = msg
+                return
+            }
             model.draft = msg
             // Route through sendMessage so slash commands like /calibrate are handled.
+            sendMessage()
+        }
+        .onChange(of: model.isSending) { _, isSending in
+            guard isSending == false, let pending = pendingInjectMessage else { return }
+            pendingInjectMessage = nil
+            guard pending == currentInjectFileContents() else { return }
+            model.draft = pending
             sendMessage()
         }
         .overlay {
@@ -398,6 +410,12 @@ struct ChatView: View {
         Task { @MainActor in
             await model.submit(appState: appState)
         }
+    }
+
+    private func currentInjectFileContents() -> String? {
+        let url = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".merlin/inject.txt")
+        return try? String(contentsOf: url, encoding: .utf8)
     }
 
     private func handleSlashCommandIfNeeded(_ message: String) -> Bool {

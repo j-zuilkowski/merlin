@@ -164,6 +164,7 @@ final class AgenticEngine {
     private var pendingContinuationVerifiedCompletedCount: Int = 0
     private var pendingContinuationUsesEvidenceGate: Bool = false
     private var pendingContinuationEvidence: [ContinuationToolEvidence] = []
+    private var pendingContinuationBlockedReason: String?
     private var continuationAborted: Bool = false
 
     // MARK: - Ceiling continuation
@@ -899,6 +900,7 @@ final class AgenticEngine {
                 pendingContinuationCompletedCount = thisBatch.count
                 pendingContinuationVerifiedCompletedCount = 0
                 pendingContinuationEvidence.removeAll()
+                pendingContinuationBlockedReason = nil
                 pendingContinuationUsesEvidenceGate = shouldEvidenceGateContinuations(for: planSteps)
 
                 let totalBatches = batches.count
@@ -1981,6 +1983,15 @@ final class AgenticEngine {
             : pendingContinuationAllSteps
         guard !planSteps.isEmpty else { return }
 
+        if let blockedReason = pendingContinuationBlockedReason {
+            pendingContinuationSteps.removeAll()
+            try? FileManager.default.removeItem(at: continuationInjectURL)
+            TelemetryEmitter.shared.emit("engine.continuation.evidence_blocked", data: [
+                "reason": blockedReason
+            ])
+            return
+        }
+
         let verifiedCount = verifiedElectronicsCompletedPrefix(in: planSteps)
         pendingContinuationVerifiedCompletedCount = verifiedCount
         pendingContinuationCompletedCount = verifiedCount
@@ -2059,10 +2070,25 @@ final class AgenticEngine {
     private func recordContinuationEvidence(calls: [ToolCall], results: [ToolResult]) {
         guard pendingContinuationUsesEvidenceGate else { return }
         let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
-        for result in results where !result.isError {
+        for result in results {
             guard let call = callsByID[result.toolCallId] else { continue }
+            let toolName = call.function.name
+            let rawText = "\(toolName) \(call.function.arguments) \(result.content)"
+            if electronicsToolResultBlocksContinuation(toolName: toolName, result: result, rawText: rawText) {
+                pendingContinuationBlockedReason = result.content
+                pendingContinuationSteps.removeAll()
+                try? FileManager.default.removeItem(at: continuationInjectURL)
+                continue
+            }
+            guard !result.isError else { continue }
+            if isWorkflowTool(toolName), !isCompleteElectronicsWorkflowReport(result.content) {
+                pendingContinuationBlockedReason = result.content
+                pendingContinuationSteps.removeAll()
+                try? FileManager.default.removeItem(at: continuationInjectURL)
+                continue
+            }
             pendingContinuationEvidence.append(ContinuationToolEvidence(
-                toolName: call.function.name,
+                toolName: toolName,
                 arguments: call.function.arguments,
                 output: result.content
             ))
@@ -2169,6 +2195,22 @@ final class AgenticEngine {
             || name.hasPrefix("mcp:kicad:")
             || name == ElectronicsWorkflowRoute.requirementsToPCB.rawValue
             || name == ElectronicsWorkflowRoute.schematicToPCB.rawValue
+    }
+
+    private func isWorkflowTool(_ name: String) -> Bool {
+        name == ElectronicsWorkflowRoute.requirementsToPCB.rawValue
+            || name == ElectronicsWorkflowRoute.schematicToPCB.rawValue
+    }
+
+    private func electronicsToolResultBlocksContinuation(toolName: String, result: ToolResult, rawText: String) -> Bool {
+        guard isKiCadTool(toolName) else { return false }
+        if result.isError { return true }
+        let text = rawText.lowercased()
+        return text.contains("blocked_verification_gate")
+            || text.contains("\"status\":\"blocked\"")
+            || text.contains("\"status\": \"blocked\"")
+            || text.contains("\"blockedreasons\"")
+            || text.contains("\"blocked_reasons\"")
     }
 
     private func evidenceText(_ evidence: ContinuationToolEvidence) -> String {
