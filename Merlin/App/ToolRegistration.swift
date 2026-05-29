@@ -112,8 +112,12 @@ func registerAllTools(
     }
 
     // MARK: Tool Discovery
-    router.register(name: "tool_discover") { _ in
-        let tools = await ToolDiscovery.scan(summarize: false)
+    router.register(name: "tool_discover") { args in
+        let request = try? decode(args, as: ToolDiscovery.Request.self)
+        let tools = await ToolDiscovery.cachedScan(
+            requestedTool: request?.requestedName,
+            summarize: false
+        )
         return tools.map { "\($0.name): \($0.path)" }.joined(separator: "\n")
     }
 

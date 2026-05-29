@@ -79,8 +79,9 @@ func workflowPayload(
     highStakes: Bool,
     approvals: [ElectronicsApprovalRecord] = []
 ) throws -> String {
+    let artifacts = try completionFixtureArtifacts(jobID: jobID)
     let evidence = ElectronicsCompletionEvidence(
-        artifacts: ElectronicsCompletionArtifact.requiredFixtureArtifacts,
+        artifacts: artifacts,
         gates: ElectronicsGateResult.allPassingRequired,
         approvals: approvals,
         highStakes: highStakes
@@ -88,6 +89,35 @@ func workflowPayload(
     let request = ElectronicsWorkflowRequest(jobID: jobID, evidence: evidence)
     let data = try WorkspaceJSON.encoder.encode(request)
     return String(data: data, encoding: .utf8) ?? "{}"
+}
+
+func completionFixtureArtifacts(jobID: String) throws -> [ElectronicsCompletionArtifact] {
+    let directory = temporaryDirectory("electronics-completion-\(jobID)")
+    let paths: [(ElectronicsArtifactKind, String, String)] = [
+        (.kicadProject, "project.kicad_pro", #"{"meta":{"version":1}}"#),
+        (.schematic, "project.kicad_sch", "(kicad_sch (version 20250114) (generator Merlin))\n"),
+        (.board, "project.kicad_pcb", "(kicad_pcb (version 20250114) (generator Merlin))\n"),
+        (.routingInterchange, "project.dsn", "dsn route interchange\n"),
+        (.routingResult, "project.ses", "ses route result unrouted_nets=0\n"),
+        (.bom, "bom.csv", "RefDes,Value,MPN,DigiKey,Mouser,Quantity\nR1,10k,RC0603FR-0710KL,311-10.0KHRCT-ND,603-RC0603FR-0710KL,1\n"),
+        (.pickAndPlace, "centroid.csv", "Designator,Mid X,Mid Y,Layer,Rotation\nR1,1,1,F.Cu,0\n"),
+        (.spiceMeasurements, "spice-run.log", "frequency = 1000\n"),
+        (.verificationReport, "verification.json", #"{"status":"COMPLETE"}"#),
+        (.approvalRecord, "approvals.json", #"{"approved":true}"#),
+    ]
+
+    var artifacts: [ElectronicsCompletionArtifact] = []
+    for (kind, name, body) in paths {
+        let url = directory.appendingPathComponent(name)
+        try body.write(to: url, atomically: true, encoding: .utf8)
+        artifacts.append(ElectronicsCompletionArtifact(kind: kind, path: url.path))
+    }
+
+    let fabURL = directory.appendingPathComponent("fab.zip")
+    try Data([0x50, 0x4B, 0x03, 0x04, 0x14, 0x00]).write(to: fabURL)
+    artifacts.append(ElectronicsCompletionArtifact(kind: .fabricationPackage, path: fabURL.path))
+
+    return artifacts
 }
 
 func temporaryDirectory(_ name: String) -> URL {

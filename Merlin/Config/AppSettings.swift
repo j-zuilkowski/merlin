@@ -415,6 +415,7 @@ final class AppSettings: ObservableObject {
             case ragChunkLimit = "rag_chunk_limit"
             case kag
             case cag
+            case llamacpp
             case ragFreshnessThresholdDays = "rag_freshness_threshold_days"
             case ragMinGroundingScore = "rag_min_grounding_score"
             case agentCircuitBreakerThreshold = "agent_circuit_breaker_threshold"

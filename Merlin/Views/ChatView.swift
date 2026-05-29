@@ -639,6 +639,9 @@ final class ChatViewModel: ObservableObject {
     private var assistantIndex: Int?
     private(set) var lastRAGSources: [RAGChunk] = []
     private(set) var lastGroundingReport: GroundingReport?
+    private var pendingStreamingRevision: Bool = false
+    private var streamingRevisionTask: Task<Void, Never>?
+    private static let streamingRevisionThrottleNanoseconds: UInt64 = 75_000_000
 
     func submit(appState: AppState) async {
         let message = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -655,9 +658,7 @@ final class ChatViewModel: ObservableObject {
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
         let resolved = ContextInjector.resolveAtMentions(in: message, projectPath: appState.projectPath)
-        let workingSlot = appState.engine.selectSlot(for: resolved)
         var turnFailed = false
-        appState.slotRuntimeStates[workingSlot] = .busy
         appendUser(resolved)
 
         for await event in appState.engine.send(userMessage: resolved) {
@@ -668,6 +669,8 @@ final class ChatViewModel: ObservableObject {
             case .thinking(let text):
                 appendThinking(text)
                 appState.toolActivityState = .streaming
+            case .slotRuntimeState(let slot, let state):
+                await appState.publishSlotRuntimeState(state, for: slot)
             case .toolCallStarted:
                 appState.toolActivityState = .toolExecuting
                 applyEngineEvent(event)
@@ -697,7 +700,11 @@ final class ChatViewModel: ObservableObject {
         isSending = false
         appState.thinkingModeActive = false
         appState.toolActivityState = .idle
-        appState.slotRuntimeStates[workingSlot] = turnFailed ? .error : .ready
+        flushPendingStreamingRevision()
+        let finalSlotState: SlotRuntimeState = turnFailed ? .error : .ready
+        for (slot, state) in appState.slotRuntimeStates where state == .busy {
+            await appState.publishSlotRuntimeState(finalSlotState, for: slot)
+        }
     }
 
     func clear() {
@@ -797,6 +804,8 @@ final class ChatViewModel: ObservableObject {
 
     func applyEngineEvent(_ event: AgentEvent) {
         switch event {
+        case .slotRuntimeState:
+            break
         case .toolCallStarted(let call):
             appendToolCall(call)
         case .toolCallResult(let result):
@@ -877,7 +886,7 @@ final class ChatViewModel: ObservableObject {
             items.append(entry)
             assistantIndex = items.count - 1
         }
-        bumpRevision()
+        scheduleStreamingRevision()
     }
 
     private func appendThinking(_ text: String) {
@@ -896,7 +905,7 @@ final class ChatViewModel: ObservableObject {
             items.append(entry)
             assistantIndex = items.count - 1
         }
-        bumpRevision()
+        scheduleStreamingRevision()
     }
 
     private func appendToolCall(_ call: ToolCall) {
@@ -997,6 +1006,32 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func bumpRevision() {
+        pendingStreamingRevision = false
+        streamingRevisionTask?.cancel()
+        streamingRevisionTask = nil
+        revision &+= 1
+    }
+
+    private func scheduleStreamingRevision() {
+        pendingStreamingRevision = true
+        guard streamingRevisionTask == nil else { return }
+        streamingRevisionTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.streamingRevisionThrottleNanoseconds)
+            await MainActor.run {
+                self?.flushPendingStreamingRevision()
+            }
+        }
+    }
+
+    private func flushPendingStreamingRevision() {
+        guard pendingStreamingRevision else {
+            streamingRevisionTask?.cancel()
+            streamingRevisionTask = nil
+            return
+        }
+        pendingStreamingRevision = false
+        streamingRevisionTask?.cancel()
+        streamingRevisionTask = nil
         revision &+= 1
     }
 }

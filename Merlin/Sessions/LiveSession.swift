@@ -229,6 +229,8 @@ extension LiveSession: SchedulerSession {
             switch event {
             case .text(let text):
                 summary += text
+            case .slotRuntimeState(let slot, let state):
+                await appState.publishSlotRuntimeState(state, for: slot)
             case .error(let error):
                 throw error
             default:

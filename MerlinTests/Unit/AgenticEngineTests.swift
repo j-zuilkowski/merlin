@@ -36,6 +36,61 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertTrue(finalText.contains("pong received"))
     }
 
+    func testTextEncodedFunctionToolCallExecutes() async throws {
+        let provider = MockProvider(responses: [
+            MockLLMResponse.text("""
+            I'll read the file now.
+            <function=echo_tool>
+            <parameter=value>
+            ping
+            </parameter>
+            </function>
+            </tool_call>
+            """),
+            MockLLMResponse.text("pong received"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.registerTool("echo_tool") { args in
+            let data = args.data(using: .utf8)!
+            let json = try JSONSerialization.jsonObject(with: data) as! [String: String]
+            return json["value"] ?? ""
+        }
+
+        var toolStarted = false
+        var finalText = ""
+        for await event in engine.send(userMessage: "call echo") {
+            switch event {
+            case .toolCallStarted(let call):
+                toolStarted = call.function.name == "echo_tool"
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertTrue(toolStarted)
+        XCTAssertTrue(finalText.contains("pong received"))
+    }
+
+    func testTextEncodedFunctionToolCallIgnoresUnofferedTools() async throws {
+        let provider = MockProvider(response: """
+        <function=unknown_tool>
+        <parameter=value>ping</parameter>
+        </function>
+        """)
+        let engine = makeEngine(provider: provider)
+
+        var sawTool = false
+        for await event in engine.send(userMessage: "call unknown") {
+            if case .toolCallStarted = event {
+                sawTool = true
+            }
+        }
+
+        XCTAssertFalse(sawTool)
+    }
+
     func testElectronicsWorkflowToolCallIsExclusiveWithinTurn() {
         let engine = makeEngine()
         engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
@@ -47,6 +102,79 @@ final class AgenticEngineTests: XCTestCase {
         ])
 
         XCTAssertEqual(selected, [ElectronicsWorkflowRoute.requirementsToPCB.rawValue])
+    }
+
+    func testActiveElectronicsWorkflowLockHardStopsUnapprovedToolCalls() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(id: "drift", name: "app_focus", args: #"{"bundle_id":"com.apple.finder"}"#),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
+    func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "workflow",
+                name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+                args: #"{"requirements":"25W Class A guitar amplifier"}"#
+            ),
+            .text("should not summarize after terminal workflow result"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.registerTool(ElectronicsWorkflowRoute.requirementsToPCB.rawValue) { _ in
+            """
+            {"jobId":"ampdemo","status":"COMPLETE","artifacts":[{"kind":"kicad_schematic","path":"/tmp/amp.kicad_sch"},{"kind":"spice_measurements","path":"/tmp/amp-spice.log"},{"kind":"fabrication_package","path":"/tmp/fab.zip"},{"kind":"bom","path":"/tmp/bom.csv"}],"gates":[{"gate":"erc","status":"PASS","details":"pass"},{"gate":"simulation","status":"PASS","details":"pass"},{"gate":"fabrication","status":"PASS","details":"pass"}],"approvals":[],"blockedReasons":[]}
+            """
+        }
+
+        var terminalNote = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .systemNote(let note) where note.contains("electronics workflow complete"):
+                terminalNote = note
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(terminalNote.contains("verified workflow result"), terminalNote)
+        XCTAssertFalse(finalText.contains("should not summarize"))
     }
 
     func testProviderSelectionFlash() async throws {

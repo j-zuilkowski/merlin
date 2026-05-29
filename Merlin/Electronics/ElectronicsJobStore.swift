@@ -118,6 +118,12 @@ final class ElectronicsJobStore: ObservableObject {
               let code = object["code"] as? String else { return }
         let message = object["message"] as? String ?? code
         var job = jobForUpdate(id: jobID)
+        if let statusRaw = object["status"] as? String,
+           let status = KiCadStatus(rawValue: statusRaw) {
+            job.status = status
+        } else {
+            job.status = .blocked
+        }
         job.diagnostics.append(ElectronicsJobDiagnostic(code: code, message: message))
         upsert(job)
     }

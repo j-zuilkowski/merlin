@@ -148,6 +148,29 @@ final class DynamicModelFetchTests: XCTestCase {
         XCTAssertEqual(registry.modelsByProviderID["lmstudio"], ["Qwen2.5-VL-72B", "phi-4"])
     }
 
+    func testFetchAllModelsUsesFreshCacheWithoutNetwork() async throws {
+        let registry = makeRegistry(response: .openAIModels([]))
+        MockModelsURLProtocol.perIDResponse = [
+            "deepseek": .openAIModels(["deepseek-chat"]),
+            "lmstudio": .openAIModels(["phi-4"]),
+        ]
+
+        await registry.fetchAllModels()
+        XCTAssertEqual(MockModelsURLProtocol.capturedRequests.count, 2)
+
+        MockModelsURLProtocol.capturedRequests = []
+        MockModelsURLProtocol.perIDResponse = [
+            "deepseek": .networkError,
+            "lmstudio": .networkError,
+        ]
+
+        await registry.fetchAllModels()
+
+        XCTAssertTrue(MockModelsURLProtocol.capturedRequests.isEmpty)
+        XCTAssertEqual(registry.modelsByProviderID["deepseek"], ["deepseek-chat"])
+        XCTAssertEqual(registry.modelsByProviderID["lmstudio"], ["phi-4"])
+    }
+
     func testFetchAllModelsSkipsDisabledProviders() async throws {
         let disabledProvider = ProviderConfig(
             id: "disabled-prov",
@@ -198,6 +221,32 @@ final class DynamicModelFetchTests: XCTestCase {
                         "availability should be set by probeAndFetchModels")
         XCTAssertFalse(registry.modelsByProviderID["lmstudio"]?.isEmpty ?? true,
                        "model list should be set by probeAndFetchModels")
+    }
+
+    func testProbeAndFetchModelsCanScopeToProviderIDs() async throws {
+        let lmstudio = testProviders()[1]
+        let localai = ProviderConfig(
+            id: "localai",
+            displayName: "LocalAI",
+            baseURL: "http://localhost:8080/v1",
+            model: "",
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: false,
+            supportsVision: false,
+            kind: .openAICompatible
+        )
+        let registry = makeRegistry(
+            response: .openAIModels(["phi-4"]),
+            providers: [lmstudio, localai]
+        )
+
+        await registry.probeAndFetchModels(providerIDs: ["lmstudio"])
+
+        XCTAssertNotNil(registry.availabilityByID["lmstudio"])
+        XCTAssertNil(registry.availabilityByID["localai"])
+        XCTAssertNotNil(registry.modelsByProviderID["lmstudio"])
+        XCTAssertNil(registry.modelsByProviderID["localai"])
     }
 
     // MARK: - knownModels removed

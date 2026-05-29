@@ -75,6 +75,25 @@ final class AgenticEngineSlotTests: XCTestCase {
         XCTAssertEqual(slot, .vision)
     }
 
+    func testSelectSlotLongWorkflowMentioningScreenshotsStaysExecute() {
+        let engine = makeEngine()
+        let prompt = """
+        Design a complete electronics workflow. Generate KiCad files, SPICE simulation, Gerbers,
+        a BOM, and a final report with a screenshot/artifact index. Capture screenshots throughout
+        the workflow as evidence, but run the design and generation work normally.
+        """ + String(repeating: " generate artifact", count: 40)
+
+        let slot = engine.selectSlot(for: prompt)
+
+        XCTAssertEqual(slot, .execute)
+    }
+
+    func testSelectSlotVisionOverrideAnnotation() {
+        let engine = makeEngine()
+        let slot = engine.selectSlot(for: "@vision inspect the screenshot and summarize it")
+        XCTAssertEqual(slot, .vision)
+    }
+
     func testSelectSlotDefaultsToExecute() {
         let engine = makeEngine()
         let slot = engine.selectSlot(for: "refactor this function to use async/await")

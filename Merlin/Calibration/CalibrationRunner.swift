@@ -63,15 +63,19 @@ actor CalibrationRunner {
         var results: [CalibrationResponse] = []
 
         for (index, prompt) in suite.prompts.enumerated() {
+            try Task.checkCancellation()
             // Local and reference can run concurrently — they target different backends.
             async let localResp = localProvider(prompt.prompt)
             async let refResp = referenceProvider(prompt.prompt)
             let (local, ref) = try await (localResp, refResp)
+            try Task.checkCancellation()
 
             // Scorer uses the reason-slot provider (also local); run sequentially
             // to avoid queuing two requests on the same LM Studio instance.
             let localScore = try await scorer(prompt.prompt, local)
+            try Task.checkCancellation()
             let refScore   = try await scorer(prompt.prompt, ref)
+            try Task.checkCancellation()
 
             results.append(CalibrationResponse(
                 prompt: prompt,

@@ -110,6 +110,7 @@ final class SystemPromptAddendumTests: XCTestCase {
     }
 
     func testActiveElectronicsWorkspaceToolsGateImprovisationTools() async {
+        ToolRegistry.shared.registerBuiltins()
         let engine = makeEngineWithAddendum(nil, slot: .execute)
         engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
         engine.toolRouter.registerWorkspaceCapabilityTools(
@@ -125,6 +126,12 @@ final class SystemPromptAddendumTests: XCTestCase {
         XCTAssertFalse(offered.contains("write_file"))
         XCTAssertFalse(offered.contains("create_file"))
         XCTAssertFalse(offered.contains("spawn_agent"))
+        XCTAssertFalse(offered.contains("app_launch"))
+        XCTAssertFalse(offered.contains("app_focus"))
+        XCTAssertFalse(offered.contains("app_list_running"))
+        XCTAssertTrue(offered.contains("read_file"))
+        XCTAssertTrue(offered.contains("list_directory"))
+        XCTAssertTrue(offered.contains("search_files"))
     }
 }
 

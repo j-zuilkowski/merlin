@@ -36,7 +36,7 @@ code is written.
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded — LM Studio and vLLM-Metal are alternative MLX-native serving targets), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 shipped provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
-**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
+**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty; also owns the llama.cpp runtime profile advisory for flash attention, batch/micro-batch, and KV cache settings), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (task 140); grounding confidence signal (task 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
 **[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. ( tasks 181–184)
@@ -269,6 +269,7 @@ ModelParameterAdvisor [v7]:
   ModelParameterAdvisor.checkRecord(_:) → immediate per-turn checks:
     finishReason == "length"   → ParameterAdvisory(.maxTokensTooLow)
     context overflow string    → ParameterAdvisory(.contextLengthTooSmall)
+    llama.cpp calibration      → ParameterAdvisory(.llamaCppRuntimeUntuned)
 
   ModelParameterAdvisor.analyze(records:modelID:) → batch checks:
     score std-dev > 0.25 (≥5 records)           → .temperatureUnstable
@@ -337,6 +338,8 @@ Local Model Management [v7]:
     activeLocalProviderID: String?
     applyAdvisory(_ advisory: ParameterAdvisory) async throws
       → load-time kinds (.contextLengthTooSmall) → manager.reload()
+      → llama.cpp runtime kind (.llamaCppRuntimeUntuned) → calibrated restart profile:
+           flashAttention=true, batchSize=1024, ubatchSize=512, cacheTypeK/V=q8_0
       → inference kinds (.maxTokensTooLow, .temperatureUnstable, .repetitiveOutput)
            → AppSettings inference defaults update
 
@@ -689,6 +692,11 @@ CalibrationRunner.run(suite: .default)           ← prompts run sequentially; l
         ▼
 CalibrationAdvisor.analyze(responses:localModelID:localProviderID:)
   checks:
+    localProviderID == "llamacpp" and runtime profile missing
+                                 → .llamaCppRuntimeUntuned
+                                   (suggestedValue: flashAttention=true;
+                                    batchSize=1024; ubatchSize=512;
+                                    cacheTypeK=q8_0; cacheTypeV=q8_0)
     overallDelta < 0.15         → return []
     overallDelta ≥ 0.40          → .contextLengthTooSmall  (suggestedValue: "32768")
     local score σ ≥ 0.22         → .temperatureUnstable    (suggestedValue: "0.3")

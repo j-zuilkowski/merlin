@@ -6,6 +6,7 @@ struct ProviderSettingsView: View {
     @State private var editingKeyFor: EditingKeyTarget? = nil
     @State private var keyDraft: String = ""
     @State private var isFetchingModels = false
+    @State private var didLoadModels = false
 
     var body: some View {
         Form {
@@ -48,8 +49,7 @@ struct ProviderSettingsView: View {
                     Button {
                         isFetchingModels = true
                         Task { @MainActor in
-                            await registry.probeAndFetchModels()
-                            await registry.fetchAllModels()
+                            await refreshModels(forceRefresh: true)
                             isFetchingModels = false
                         }
                     } label: {
@@ -83,6 +83,18 @@ struct ProviderSettingsView: View {
                 }
             )
         }
+        .task {
+            guard !didLoadModels else { return }
+            didLoadModels = true
+            isFetchingModels = true
+            await refreshModels(forceRefresh: false)
+            isFetchingModels = false
+        }
+    }
+
+    private func refreshModels(forceRefresh: Bool) async {
+        await registry.probeAndFetchModels(forceRefresh: forceRefresh)
+        await registry.fetchAllModels(forceRefresh: forceRefresh)
     }
 }
 

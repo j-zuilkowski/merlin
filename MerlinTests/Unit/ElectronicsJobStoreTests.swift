@@ -16,7 +16,7 @@ final class ElectronicsJobStoreTests: XCTestCase {
         await store.loadRecent(from: runtime.bus)
 
         XCTAssertEqual(store.jobs.map(\.id), [jobID])
-        XCTAssertEqual(store.jobs[0].status, .inProgress)
+        XCTAssertEqual(store.jobs[0].status, .blocked)
         XCTAssertEqual(store.jobs[0].artifacts.map(\.kind), [ElectronicsArtifactKind.routingResult.rawValue])
         XCTAssertEqual(store.jobs[0].diagnostics.first?.code, ElectronicsBlockedReason.unroutedNets.rawValue)
         XCTAssertEqual(store.jobs[0].approvalRequests.first?.kind, .highStakesSignoff)

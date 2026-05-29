@@ -47,6 +47,7 @@ final class CalibrationSkillTests: XCTestCase {
         let appState = AppState()
         appState.registry.apiKeysOverride = ["deepseek": "test-key"]
         let expectation = expectation(description: "AppState relays calibration coordinator changes")
+        expectation.assertForOverFulfill = false
         let cancellable = appState.objectWillChange.sink {
             expectation.fulfill()
         }
@@ -94,6 +95,115 @@ final class CalibrationSkillTests: XCTestCase {
             XCTFail("Expected .pickProvider sheet after failed start()")
         }
         XCTAssertNotNil(appState.calibrationCoordinator.errorMessage)
+    }
+
+    func testCalibrationCompleteTextTimesOutUnfinishedStream() async throws {
+        let provider = NeverFinishingCalibrationProvider()
+        let request = CompletionRequest(
+            model: "test",
+            messages: [Message(role: .user, content: .text("Prompt"), timestamp: Date())],
+            stream: true
+        )
+
+        do {
+            _ = try await calibrationCompleteText(
+                provider: provider,
+                request: request,
+                timeoutSeconds: 0.05
+            )
+            XCTFail("Expected unfinished calibration stream to time out")
+        } catch let error as CalibrationError {
+            if case .runnerFailed(let message) = error {
+                XCTAssertTrue(message.contains("timed out"))
+            } else {
+                XCTFail("Expected runnerFailed timeout, got \(error)")
+            }
+        }
+    }
+
+    func testCalibrationCoordinatorDismissClearsRunningSheetAndRunState() {
+        let appState = AppState()
+        let info = CalibrationProgressInfo(
+            completed: 1,
+            total: 18,
+            localProviderID: "llamacpp",
+            referenceProviderID: "deepseek"
+        )
+        appState.calibrationCoordinator.sheet = .running(info)
+        appState.calibrationCoordinator.errorMessage = "Previous error"
+
+        appState.calibrationCoordinator.dismiss()
+
+        XCTAssertNil(appState.calibrationCoordinator.sheet)
+        XCTAssertNil(appState.calibrationCoordinator.errorMessage)
+        XCTAssertFalse(appState.calibrationCoordinator.hasActiveRunForTesting)
+    }
+
+    func testCalibrationCoordinatorBeginReplacesStaleRunningSheet() {
+        let appState = AppState()
+        appState.registry.apiKeysOverride = ["deepseek": "test-key"]
+        let info = CalibrationProgressInfo(
+            completed: 4,
+            total: 18,
+            localProviderID: "llamacpp",
+            referenceProviderID: "deepseek"
+        )
+        appState.calibrationCoordinator.sheet = .running(info)
+
+        appState.calibrationCoordinator.begin(localProviderID: "llamacpp", localModelID: "qwen3-coder-local")
+
+        if case .pickProvider(let providers) = appState.calibrationCoordinator.sheet {
+            XCTAssertEqual(providers, ["deepseek"])
+        } else {
+            XCTFail("Expected begin() to replace stale running sheet with picker")
+        }
+        XCTAssertFalse(appState.calibrationCoordinator.hasActiveRunForTesting)
+    }
+
+    func testCalibrationCoordinatorReadsLlamaCppPresetRuntimeConfig() {
+        let preset = """
+        version = 1
+
+        [*]
+        ubatch-size = 512
+
+        [qwen3-coder-local]
+        model = /Models/qwen.gguf
+        ctx-size = 32768
+        n-gpu-layers = 999
+        flash-attn = on
+        cache-type-k = q8_0
+        cache-type-v = q8_0
+        batch-size = 1024
+        mmap = true
+        """
+
+        let config = CalibrationCoordinator.runtimeConfigFromLlamaCppPreset(
+            preset,
+            modelID: "qwen3-coder-local"
+        )
+
+        XCTAssertEqual(config?.contextLength, 32768)
+        XCTAssertEqual(config?.gpuLayers, 999)
+        XCTAssertEqual(config?.flashAttention, true)
+        XCTAssertEqual(config?.cacheTypeK, "q8_0")
+        XCTAssertEqual(config?.cacheTypeV, "q8_0")
+        XCTAssertEqual(config?.batchSize, 1024)
+        XCTAssertEqual(config?.ubatchSize, 512)
+        XCTAssertEqual(config?.useMmap, true)
+    }
+
+    func testCalibrationCoordinatorLlamaCppPresetIgnoresOtherModelSection() {
+        let preset = """
+        [other-model]
+        flash-attn = on
+        batch-size = 1024
+        """
+
+        XCTAssertNil(CalibrationCoordinator.runtimeConfigFromLlamaCppPreset(
+            preset,
+            modelID: "qwen3-coder-local"
+        ))
     }
 
     func testCalibrationSheetEnumCases() {
@@ -271,5 +381,16 @@ final class CalibrationSkillTests: XCTestCase {
         XCTAssertTrue(
             appState.calibrationCoordinator.errorMessage?.contains("Failed to apply 1 calibration change") == true
         )
+    }
+}
+
+private final class NeverFinishingCalibrationProvider: LLMProvider, @unchecked Sendable {
+    let id = "never-finishing"
+    let baseURL = URL(string: "http://localhost")!
+
+    func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
+        AsyncThrowingStream { continuation in
+            continuation.yield(CompletionChunk(delta: .init(content: "partial"), finishReason: nil))
+        }
     }
 }

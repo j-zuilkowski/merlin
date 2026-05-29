@@ -11,6 +11,8 @@ enum ParameterAdvisoryKind: String, Codable, Sendable, Equatable {
     case repetitiveOutput
     /// Response text contains a known context-overflow marker from the provider.
     case contextLengthTooSmall
+    /// llama.cpp is running without the calibrated local-runtime profile.
+    case llamaCppRuntimeUntuned
 }
 
 // MARK: - ParameterAdvisory

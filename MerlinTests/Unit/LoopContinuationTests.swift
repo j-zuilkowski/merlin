@@ -66,6 +66,18 @@ final class LoopContinuationTests: XCTestCase {
         try await super.tearDown()
     }
 
+    private func readInject() throws -> String {
+        try String(contentsOf: injectURL, encoding: .utf8)
+    }
+
+    @discardableResult
+    private func writeArtifact(name: String, contents: String, in directory: URL) throws -> URL {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent(name)
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
     // MARK: - Fix 1: Plan batching & continuation inject
 
     /// When the planner returns more steps than the per-turn budget (maxIterations / 4),
@@ -200,6 +212,193 @@ final class LoopContinuationTests: XCTestCase {
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path),
                        "No continuation inject expected when plan fits in one turn")
+    }
+
+    func testElectronicsContinuationOnlyAdvancesOnToolArtifactEvidence() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-continuation-evidence")
+        let schematicPath = try writeArtifact(
+            name: "amp.kicad_sch",
+            contents: "(kicad_sch (version 20250114) (symbol \"amplifier\"))\n",
+            in: artifactRoot
+        )
+        let spicePath = try writeArtifact(
+            name: "amp-spice.log",
+            contents: "SPICE class A amplifier transient output: PASS\n",
+            in: artifactRoot
+        )
+        let gerberDirectory = artifactRoot.appendingPathComponent("gerbers", isDirectory: true)
+        try FileManager.default.createDirectory(at: gerberDirectory, withIntermediateDirectories: true)
+        _ = try writeArtifact(name: "amp-F_Cu.gbr", contents: "G04 gerber\n", in: gerberDirectory)
+        _ = try writeArtifact(name: "amp.drl", contents: "M48 drill\n", in: gerberDirectory)
+        let bomPath = try writeArtifact(
+            name: "amp-bom.csv",
+            contents: "RefDes,Value,MPN,DigiKey,Mouser,Quantity\nQ1,MJL3281,MJL3281AG,863-MJL3281AGOS-ND,863-MJL3281AG,2\n",
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .text("Spec read."),
+            .text("The schematic is complete."),
+            .toolCall(id: "schematic", name: "kicad_compile_project", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
+            .text("Schematic artifacts exist."),
+            .text("Simulation is complete."),
+            .toolCall(id: "spice", name: "kicad_run_spice", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
+            .text("SPICE artifacts exist."),
+            .text("Gerbers are complete."),
+            .toolCall(id: "fab", name: "kicad_export_fab", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
+            .text("Fabrication artifacts exist."),
+            .text("BOM is complete."),
+            .toolCall(id: "bom", name: "kicad_prepare_vendor_order", args: #"{"normalized_bom_path":"\#(bomPath.path)","vendor_id":"Digi-Key","quantity":1}"#),
+            .text("BOM evidence exists.")
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(description: "Read AmpDemo spec", successCriteria: "spec read", complexity: .standard),
+                PlanStep(description: "Create KiCad schematic", successCriteria: "schematic artifact exists", complexity: .standard),
+                PlanStep(description: "Run SPICE simulation", successCriteria: "SPICE output exists", complexity: .standard),
+                PlanStep(description: "Export Gerbers and drill files", successCriteria: "Gerber and drill files exist", complexity: .standard),
+                PlanStep(description: "Produce BOM with Digi-Key and Mouser part numbers", successCriteria: "vendor BOM artifact exists", complexity: .standard),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool("kicad_compile_project") { _ in
+            #"{"artifacts":[{"kind":"kicad_schematic","path":"\#(schematicPath.path)"}]}"#
+        }
+        engine.registerTool("kicad_run_spice") { _ in
+            #"{"artifacts":[{"kind":"spice_measurements","path":"\#(spicePath.path)"}]}"#
+        }
+        engine.registerTool("kicad_export_fab") { _ in
+            #"{"artifacts":[{"kind":"gerbers","path":"\#(gerberDirectory.path)"},{"kind":"drills","path":"\#(gerberDirectory.appendingPathComponent("amp.drl").path)"}]}"#
+        }
+        engine.registerTool("kicad_prepare_vendor_order") { _ in
+            #"{"artifacts":[{"kind":"bom","path":"\#(bomPath.path)"}],"vendors":["Digi-Key","Mouser"]}"#
+        }
+
+        for await _ in engine.send(userMessage: "Build the AmpDemo electronics workflow artifacts") {}
+        var continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-1 have verified tool/artifact evidence."),
+            continuationText
+        )
+        XCTAssertTrue(continuationText.contains("  2. Create KiCad schematic"), continuationText)
+        XCTAssertFalse(continuationText.contains("  3. Run SPICE simulation"))
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  2. Create KiCad schematic"))
+        XCTAssertFalse(continuationText.contains("  3. Run SPICE simulation"),
+                       "Narrative alone must not complete the schematic step")
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-2 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  3. Run SPICE simulation"))
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-2 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  3. Run SPICE simulation"),
+                      "Narrative alone must not complete the SPICE step")
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-3 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  4. Export Gerbers and drill files"))
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-3 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  4. Export Gerbers and drill files"),
+                      "Narrative alone must not complete fabrication output")
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-4 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  5. Produce BOM with Digi-Key and Mouser part numbers"))
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-4 have verified tool/artifact evidence."))
+        XCTAssertTrue(continuationText.contains("  5. Produce BOM with Digi-Key and Mouser part numbers"),
+                      "Narrative alone must not complete the vendor BOM step")
+
+        for await _ in engine.send(userMessage: continuationText) {}
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path),
+                       "All electronics steps with artifact evidence should clear the continuation inject")
+    }
+
+    func testElectronicsRequirementsReadStepCountsWhenCriteriaMentionsDesign() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .text("Spec read.")
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read and parse the AmpDemo specification file to understand the project requirements and constraints",
+                    successCriteria: "requirements understood for schematic design, simulation, fabrication, and BOM planning",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Start the electronics workflow with the first real KiCad domain tool",
+                    successCriteria: "electronics workflow tool invoked",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Create KiCad schematic",
+                    successCriteria: "schematic artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Run SPICE simulation",
+                    successCriteria: "SPICE output exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+
+        for await _ in engine.send(userMessage: "Run the clean AmpDemo smoke slice") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-1 have verified tool/artifact evidence."),
+            continuationText
+        )
+        XCTAssertTrue(
+            continuationText.contains("  2. Start the electronics workflow with the first real KiCad domain tool"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("  1. Read and parse the AmpDemo specification file"),
+            "A successful read_file call must satisfy the requirements-read step even when its criteria mention design terms"
+        )
     }
 
     /// A [CONTINUATION] message bypasses the planner — decompose() is never called.

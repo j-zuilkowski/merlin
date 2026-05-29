@@ -64,6 +64,17 @@ final class AppStateSessionTests: XCTestCase {
         XCTAssertFalse(appState.thinkingModeActive)
     }
 
+    func testSlotRuntimeStateFlowsThroughWorkspaceBus() async throws {
+        let appState = AppState()
+
+        await appState.publishSlotRuntimeState(.busy, for: .reason)
+
+        for _ in 0..<20 where appState.slotRuntimeStates[.reason] != .busy {
+            try await Task.sleep(for: .milliseconds(25))
+        }
+        XCTAssertEqual(appState.slotRuntimeStates[.reason], .busy)
+    }
+
     func testCancelledAuthRequestClearsPendingPopup() async throws {
         let appState = AppState()
         let task = Task { @MainActor in

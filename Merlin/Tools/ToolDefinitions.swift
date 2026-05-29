@@ -184,8 +184,14 @@ enum ToolDefinitions {
     // Discovery
     static let toolDiscover = ToolDefinition(function: .init(
         name: "tool_discover",
-        description: "Discover CLI tools available on PATH",
-        parameters: JSONSchema(type: "object", properties: [:], required: [])
+        description: "Discover CLI tools available on PATH. Results are cached; pass name when checking one tool so discovery only reruns if that tool is missing or its cached path is gone.",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "name": JSONSchema(type: "string", description: "Optional executable name to locate, for example git or kicad-cli")
+            ],
+            required: []
+        )
     ))
 
     // Discipline

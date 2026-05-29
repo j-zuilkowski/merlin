@@ -47,7 +47,7 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
             return routerEntries.map { entry in
                 LoadedModelInfo(
                     modelID: entry.id,
-                    knownConfig: LocalModelConfig(),
+                    knownConfig: entry.knownConfig,
                     exposure: entry.isRuntimeLoaded ? .runtimeLoaded : .catalogFallback
                 )
             }
@@ -127,6 +127,7 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
 
         struct Status: Decodable {
             var value: String?
+            var args: [String]?
         }
 
         enum CodingKeys: String, CodingKey {
@@ -146,6 +147,44 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .lowercased()
             return value == "loaded" || value == "active" || value == "sleeping"
+        }
+
+        var knownConfig: LocalModelConfig {
+            var config = LocalModelConfig()
+            guard let args = status?.args else { return config }
+            for index in args.indices {
+                let arg = args[index]
+                let next = index + 1 < args.count ? args[index + 1] : nil
+                switch arg {
+                case "--ctx-size", "-c":
+                    config.contextLength = next.flatMap(Int.init)
+                case "--n-gpu-layers", "-ngl":
+                    config.gpuLayers = next.flatMap(Int.init)
+                case "--threads", "-t":
+                    config.cpuThreads = next.flatMap(Int.init)
+                case "--flash-attn", "-fa":
+                    config.flashAttention = true
+                case "--cache-type-k":
+                    config.cacheTypeK = next
+                case "--cache-type-v":
+                    config.cacheTypeV = next
+                case "--rope-freq-base":
+                    config.ropeFrequencyBase = next.flatMap(Double.init)
+                case "--batch-size", "-b":
+                    config.batchSize = next.flatMap(Int.init)
+                case "--ubatch-size", "-ub":
+                    config.ubatchSize = next.flatMap(Int.init)
+                case "--mmap":
+                    config.useMmap = true
+                case "--no-mmap":
+                    config.useMmap = false
+                case "--mlock":
+                    config.useMlock = true
+                default:
+                    continue
+                }
+            }
+            return config
         }
     }
 
@@ -339,6 +378,7 @@ private extension LocalModelConfig {
         cacheTypeV != nil ||
         ropeFrequencyBase != nil ||
         batchSize != nil ||
+        ubatchSize != nil ||
         useMmap != nil ||
         useMlock != nil
     }

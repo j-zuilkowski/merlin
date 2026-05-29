@@ -136,6 +136,90 @@ final class CalibrationAdvisorTests: XCTestCase {
         XCTAssertFalse(kinds.contains(.maxTokensTooLow))
     }
 
+    // MARK: - llama.cpp runtime profile
+
+    func testLlamaCppCalibrationAdvisesUntunedRuntimeEvenWhenQualityGapIsSmall() {
+        let advisor = CalibrationAdvisor()
+        let responses = (0..<4).map { i in
+            makeResponse(id: "p\(i)", localScore: 0.90, referenceScore: 0.91)
+        }
+        let advisories = advisor.analyze(
+            responses: responses,
+            localModelID: "qwen3-coder-local",
+            localProviderID: "llamacpp",
+            localRuntimeConfig: LocalModelConfig(),
+            llamaCppRuntimeSettings: LlamaCppRuntimeSettings()
+        )
+
+        let runtime = advisories.first { $0.kind == .llamaCppRuntimeUntuned }
+        XCTAssertEqual(runtime?.parameterName, "llama.cpp runtime profile")
+        XCTAssertTrue(runtime?.suggestedValue.contains("flashAttention=true") == true)
+        XCTAssertTrue(runtime?.suggestedValue.contains("ubatchSize=512") == true)
+    }
+
+    func testLlamaCppCalibrationAdvisesUntunedRuntimeForVirtualProviderID() {
+        let advisor = CalibrationAdvisor()
+        let responses = (0..<4).map { i in
+            makeResponse(id: "p\(i)", localScore: 0.90, referenceScore: 0.91)
+        }
+        let advisories = advisor.analyze(
+            responses: responses,
+            localModelID: "qwen3-coder-local",
+            localProviderID: "llamacpp:qwen3-coder-local",
+            localRuntimeConfig: LocalModelConfig(),
+            llamaCppRuntimeSettings: LlamaCppRuntimeSettings()
+        )
+
+        XCTAssertTrue(advisories.contains { $0.kind == .llamaCppRuntimeUntuned })
+    }
+
+    func testLlamaCppCalibrationDoesNotAdviseAlreadyTunedRuntime() {
+        let advisor = CalibrationAdvisor()
+        let responses = (0..<4).map { i in
+            makeResponse(id: "p\(i)", localScore: 0.90, referenceScore: 0.91)
+        }
+        var config = LocalModelConfig()
+        config.flashAttention = true
+        config.batchSize = 1024
+        config.cacheTypeK = "q8_0"
+        config.cacheTypeV = "q8_0"
+        var runtime = LlamaCppRuntimeSettings()
+        runtime.ubatchSize = 512
+
+        let advisories = advisor.analyze(
+            responses: responses,
+            localModelID: "qwen3-coder-local",
+            localProviderID: "llamacpp",
+            localRuntimeConfig: config,
+            llamaCppRuntimeSettings: runtime
+        )
+
+        XCTAssertFalse(advisories.contains { $0.kind == .llamaCppRuntimeUntuned })
+    }
+
+    func testLlamaCppCalibrationUsesLiveUbatchConfigBeforeSettings() {
+        let advisor = CalibrationAdvisor()
+        let responses = (0..<4).map { i in
+            makeResponse(id: "p\(i)", localScore: 0.90, referenceScore: 0.91)
+        }
+        var config = LocalModelConfig()
+        config.flashAttention = true
+        config.batchSize = 1024
+        config.ubatchSize = 512
+        config.cacheTypeK = "q8_0"
+        config.cacheTypeV = "q8_0"
+
+        let advisories = advisor.analyze(
+            responses: responses,
+            localModelID: "qwen3-coder-local",
+            localProviderID: "llamacpp:qwen3-coder-local",
+            localRuntimeConfig: config,
+            llamaCppRuntimeSettings: nil
+        )
+
+        XCTAssertFalse(advisories.contains { $0.kind == .llamaCppRuntimeUntuned })
+    }
+
     // MARK: - Repeat penalty advisory
 
     func testRepetitiveLocalResponsesProduceRepeatPenaltyAdvisory() {

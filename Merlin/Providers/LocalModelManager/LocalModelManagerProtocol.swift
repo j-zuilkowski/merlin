@@ -45,6 +45,7 @@ struct LocalModelConfig: Sendable {
     var cacheTypeV: String?
     var ropeFrequencyBase: Double?
     var batchSize: Int?
+    var ubatchSize: Int?
     var useMmap: Bool?
     var useMlock: Bool?
 }

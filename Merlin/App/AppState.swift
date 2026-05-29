@@ -38,10 +38,15 @@ enum ToolActivityState: String, Sendable {
     case toolExecuting
 }
 
-enum SlotRuntimeState: String, Sendable {
+enum SlotRuntimeState: String, Codable, Sendable {
     case ready
     case busy
     case error
+}
+
+private struct SlotRuntimeStateEnvelope: Codable, Sendable {
+    var slot: AgentSlot
+    var state: SlotRuntimeState
 }
 
 private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
@@ -91,6 +96,28 @@ final class AppState: ObservableObject {
     @Published var toolActivityState: ToolActivityState = .idle
     @Published var slotRuntimeStates: [AgentSlot: SlotRuntimeState] = [:]
 
+    private func setSlotRuntimeState(_ state: SlotRuntimeState, for slot: AgentSlot) {
+        var updated = slotRuntimeStates
+        updated[slot] = state
+        slotRuntimeStates = updated
+    }
+
+    func publishSlotRuntimeState(_ state: SlotRuntimeState, for slot: AgentSlot) async {
+        let payload = try? WorkspaceMessagePayload.encodeJSON(SlotRuntimeStateEnvelope(slot: slot, state: state))
+        await workspaceRuntime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "agent.slot", capability: "runtime_state"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: workspaceRuntime.workspaceID,
+                sessionID: engine?.sessionID,
+                activeDomainIDs: activeDomainIDs
+            ),
+            kind: .progress,
+            payload: payload
+        ))
+    }
+
     let xcalibreClient: XcalibreClient
     /// Registry of all MemoryBackendPlugin implementations.
     /// AppState registers the built-in local backend at init, selects the persisted
@@ -120,6 +147,7 @@ final class AppState: ObservableObject {
     private var disciplineEventPollTask: Task<Void, Never>?
     private var calibrationCoordinatorCancellable: AnyCancellable?
     private var runtimePluginStartupTask: Task<Void, Never>?
+    private var slotRuntimeEventTask: Task<Void, Never>?
 
     init(
         projectPath: String = "",
@@ -386,8 +414,7 @@ final class AppState: ObservableObject {
         }
         Task { await xcalibreClient.probe() }
         Task {
-            await registry.probeAndFetchModels()
-            await registry.fetchAllModels()
+            await registry.probeAndFetchModels(providerIDs: startupProviderIDs())
         }
         let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
         if !key.isEmpty {
@@ -541,6 +568,7 @@ final class AppState: ObservableObject {
                 self?.engine.toolRouter.registerWorkspaceCapabilityTools(capabilities)
             }
         }
+        startSlotRuntimeEventSubscription()
         MerlinAppIntentsSupport.install(appState: self)
     }
 
@@ -591,6 +619,24 @@ final class AppState: ObservableObject {
         }
     }
 
+    private func startSlotRuntimeEventSubscription() {
+        slotRuntimeEventTask?.cancel()
+        slotRuntimeEventTask = Task { [weak self, bus = workspaceRuntime.bus] in
+            let stream = await bus.subscribe(WorkspaceMessageEventFilter(namespacePrefix: "agent.slot"))
+            for await event in stream {
+                guard !Task.isCancelled,
+                      event.address.capability == "runtime_state",
+                      let data = event.payload?.data,
+                      let envelope = try? WorkspaceJSON.decoder.decode(SlotRuntimeStateEnvelope.self, from: data) else {
+                    continue
+                }
+                await MainActor.run {
+                    self?.setSlotRuntimeState(envelope.state, for: envelope.slot)
+                }
+            }
+        }
+    }
+
     private func disciplineToolProjectPath(from args: String) -> String {
         let decoded = try? JSONDecoder().decode(DisciplineToolArgs.self, from: Data(args.utf8))
         if let requested = decoded?.projectPath, !requested.isEmpty {
@@ -617,6 +663,7 @@ final class AppState: ObservableObject {
 
     deinit {
         disciplineEventPollTask?.cancel()
+        slotRuntimeEventTask?.cancel()
         if let githubTokenObserver {
             NotificationCenter.default.removeObserver(githubTokenObserver)
         }
@@ -659,13 +706,20 @@ final class AppState: ObservableObject {
             return
         }
 
-        for await _ in engine.send(userMessage: trimmed) {}
+        for await event in engine.send(userMessage: trimmed) {
+            if case .slotRuntimeState(let slot, let state) = event {
+                await publishSlotRuntimeState(state, for: slot)
+            }
+        }
     }
 
     func stopEngine() {
         engine.cancel()
         toolActivityState = .idle
         thinkingModeActive = false
+        for (slot, state) in slotRuntimeStates where state == .busy {
+            setSlotRuntimeState(.ready, for: slot)
+        }
     }
 
     func updateContextUsage(_ tokens: Int) {
@@ -772,6 +826,20 @@ final class AppState: ObservableObject {
         try? sessionStore.save(updated)
     }
 
+    private func startupProviderIDs() -> Set<String> {
+        var ids = Set<String>()
+        ids.insert(baseProviderID(registry.activeProviderID))
+        for slotID in AppSettings.shared.slotAssignments.values {
+            ids.insert(baseProviderID(slotID))
+        }
+        ids.remove("")
+        return ids
+    }
+
+    private func baseProviderID(_ id: String) -> String {
+        id.contains(":") ? String(id.split(separator: ":", maxSplits: 1)[0]) : id
+    }
+
     private func syncEngineProviders(activeDomainIDs: [String]? = nil) {
         rebuildLocalModelManagers()
         engine.registry = registry
@@ -840,6 +908,7 @@ final class AppState: ObservableObject {
 
     /// Applies an advisory to either the active local model or AppSettings inference defaults.
     /// `.contextLengthTooSmall` reloads the local manager and may surface restart instructions.
+    /// `.llamaCppRuntimeUntuned` applies the calibrated llama.cpp restart profile.
     /// `.maxTokensTooLow` raises `AppSettings.inferenceMaxTokens`.
     /// `.temperatureUnstable` lowers `AppSettings.inferenceTemperature`.
     /// `.repetitiveOutput` raises `AppSettings.inferenceRepeatPenalty`.
@@ -861,6 +930,36 @@ final class AppState: ObservableObject {
                 let reloadedModelID = manager.reloadedModelID(afterApplying: config, to: advisory.modelID)
                 registry.updateModel(reloadedModelID, for: providerID)
                 await refreshParameterAdvisories(for: reloadedModelID)
+            } catch ModelManagerError.requiresRestart(let instructions) {
+                pendingRestartInstructions = instructions
+                throw ModelManagerError.requiresRestart(instructions)
+            }
+
+        case .llamaCppRuntimeUntuned:
+            var runtime = AppSettings.shared.llamaCppRuntime
+            if (runtime.ubatchSize ?? 0) < 512 {
+                runtime.ubatchSize = 512
+            }
+            AppSettings.shared.llamaCppRuntime = runtime
+            try? AppSettings.shared.save()
+            reloadProviders()
+
+            var config = LocalModelConfig()
+            config.flashAttention = true
+            config.batchSize = 1024
+            config.cacheTypeK = "q8_0"
+            config.cacheTypeV = "q8_0"
+
+            guard let providerID = activeLocalProviderID ?? registry.activeConfig?.id,
+                  providerID == "llamacpp",
+                  let manager = localModelManagers[providerID] else {
+                throw ModelManagerError.providerUnavailable
+            }
+
+            pendingRestartInstructions = nil
+            do {
+                try await manager.reload(modelID: advisory.modelID, config: config)
+                await refreshParameterAdvisories(for: advisory.modelID)
             } catch ModelManagerError.requiresRestart(let instructions) {
                 pendingRestartInstructions = instructions
                 throw ModelManagerError.requiresRestart(instructions)
@@ -970,7 +1069,7 @@ final class AppState: ObservableObject {
     }
 
     private func handleAdvisory(_ advisory: ParameterAdvisory) async {
-        engine.isReloadingModel = advisory.kind == .contextLengthTooSmall
+        engine.isReloadingModel = advisory.kind == .contextLengthTooSmall || advisory.kind == .llamaCppRuntimeUntuned
         defer { engine.isReloadingModel = false }
 
         do {

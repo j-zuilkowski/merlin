@@ -18,12 +18,14 @@ struct CategoryScores: Sendable {
 /// Analyses calibration results and maps observed gaps to `ParameterAdvisory`
 /// items that feed directly into the existing `applyAdvisory()` pipeline.
 ///
-/// The advisor uses four detection algorithms: `contextLengthTooSmall` when
+/// The advisor uses four behavioral detection algorithms plus one local-runtime
+/// profile check. Behavioral checks cover `contextLengthTooSmall` when
 /// `overallDelta >= 0.40`, `temperatureUnstable` when local score standard
 /// deviation is at least `0.22`, `maxTokensTooLow` when at least 50% of
 /// responses are shorter than 30% of their reference counterpart, and
 /// `repetitiveOutput` when at least 50% of responses have a trigram repetition
-/// ratio above `0.45`.
+/// ratio above `0.45`. The llama.cpp runtime check verifies flash-attention,
+/// batch/micro-batch, and KV cache tuning independently of quality score.
 struct CalibrationAdvisor: Sendable {
 
     // MARK: - Thresholds
@@ -59,17 +61,32 @@ struct CalibrationAdvisor: Sendable {
     /// Main entry point. Returns zero or more `ParameterAdvisory` items ordered
     /// from highest to lowest expected impact.
     ///
-    /// The method returns early when `overallDelta < minActionableDelta` so the
-    /// UI does not surface low-signal noise as a suggested fix.
+    /// Behavioral advisories return early when `overallDelta < minActionableDelta`
+    /// so the UI does not surface low-signal quality noise as a suggested fix.
+    /// llama.cpp runtime advisories are config-based and may appear even when
+    /// quality scores are close, because flash-attention, batching, and KV cache
+    /// settings primarily affect throughput and capacity rather than answer score.
     func analyze(
         responses: [CalibrationResponse],
         localModelID: String,
-        localProviderID: String
+        localProviderID: String,
+        localRuntimeConfig: LocalModelConfig? = nil,
+        llamaCppRuntimeSettings: LlamaCppRuntimeSettings? = nil
     ) -> [ParameterAdvisory] {
         guard !responses.isEmpty else { return [] }
 
         let now = Date()
         var advisories: [ParameterAdvisory] = []
+
+        if let runtimeAdvisory = llamaCppRuntimeAdvisory(
+            localModelID: localModelID,
+            localProviderID: localProviderID,
+            config: localRuntimeConfig,
+            settings: llamaCppRuntimeSettings,
+            detectedAt: now
+        ) {
+            advisories.append(runtimeAdvisory)
+        }
 
         let localScores = responses.map(\.localScore)
         let refScores = responses.map(\.referenceScore)
@@ -77,7 +94,7 @@ struct CalibrationAdvisor: Sendable {
         let overallRef = average(refScores)
         let overallDelta = overallRef - overallLocal
 
-        guard overallDelta >= minActionableDelta else { return [] }
+        guard overallDelta >= minActionableDelta else { return advisories }
 
         // contextLengthTooSmall: large consistent gap implicates the context window first.
         if overallDelta >= contextDeltaThreshold {
@@ -205,5 +222,42 @@ struct CalibrationAdvisor: Sendable {
         }
         let uniqueCount = Set(trigrams).count
         return 1.0 - Double(uniqueCount) / Double(trigrams.count)
+    }
+
+    private func llamaCppRuntimeAdvisory(
+        localModelID: String,
+        localProviderID: String,
+        config: LocalModelConfig?,
+        settings: LlamaCppRuntimeSettings?,
+        detectedAt: Date
+    ) -> ParameterAdvisory? {
+        let providerFamily = localProviderID.split(separator: ":", maxSplits: 1).first.map(String.init) ?? localProviderID
+        guard providerFamily == "llamacpp" else { return nil }
+
+        let flashAttentionMissing = config?.flashAttention != true
+        let batchUntuned = (config?.batchSize ?? 0) < 1024
+        let cacheKUntuned = config?.cacheTypeK != "q8_0"
+        let cacheVUntuned = config?.cacheTypeV != "q8_0"
+        let ubatchUntuned = (config?.ubatchSize ?? settings?.ubatchSize ?? 0) < 512
+
+        guard flashAttentionMissing || batchUntuned || cacheKUntuned || cacheVUntuned || ubatchUntuned else {
+            return nil
+        }
+
+        var missing: [String] = []
+        if flashAttentionMissing { missing.append("flash-attn") }
+        if batchUntuned { missing.append("batch-size") }
+        if ubatchUntuned { missing.append("ubatch-size") }
+        if cacheKUntuned || cacheVUntuned { missing.append("KV cache type") }
+
+        return ParameterAdvisory(
+            kind: .llamaCppRuntimeUntuned,
+            parameterName: "llama.cpp runtime profile",
+            currentValue: missing.joined(separator: ", "),
+            suggestedValue: "flashAttention=true; batchSize=1024; ubatchSize=512; cacheTypeK=q8_0; cacheTypeV=q8_0",
+            explanation: "Calibration found llama.cpp is not using Merlin's throughput-oriented local runtime profile. Enable flash-attention, set explicit batch and micro-batch sizes, and pin K/V cache types so future local runs are measured and served under a known configuration.",
+            modelID: localModelID,
+            detectedAt: detectedAt
+        )
     }
 }

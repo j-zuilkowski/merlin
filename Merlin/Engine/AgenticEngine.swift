@@ -14,6 +14,7 @@ enum PreflightOutcome: Equatable {
 enum AgentEvent {
     case text(String)
     case thinking(String)
+    case slotRuntimeState(AgentSlot, SlotRuntimeState)
     case toolCallStarted(ToolCall)
     case toolCallResult(ToolResult)
     case subagentStarted(id: UUID, agentName: String)
@@ -157,8 +158,12 @@ final class AgenticEngine {
     /// Steps deferred from a batch-split plan. Written as a [CONTINUATION] inject
     /// after the current turn finishes. Cleared in schedulePendingContinuation().
     private var pendingContinuationSteps: [PlanStep] = []
+    private var pendingContinuationAllSteps: [PlanStep] = []
     private var pendingContinuationOriginalTask: String = ""
     private var pendingContinuationCompletedCount: Int = 0
+    private var pendingContinuationVerifiedCompletedCount: Int = 0
+    private var pendingContinuationUsesEvidenceGate: Bool = false
+    private var pendingContinuationEvidence: [ContinuationToolEvidence] = []
     private var continuationAborted: Bool = false
 
     // MARK: - Ceiling continuation
@@ -181,7 +186,9 @@ final class AgenticEngine {
     /// to context-free subagents instead of calling a connected domain backend's
     /// tools. When an authoritative domain backend is connected, these are withheld
     /// from the turn's tool list so the model is forced down the supported, verified
-    /// path. This is what makes S6 (KiCad) deterministic:
+    /// path. Read-only file inspection stays available so a domain task can still
+    /// load user-authored requirements and project context before calling the domain
+    /// tools. This is what makes S6 (KiCad) deterministic:
     /// the 4-bit execute model otherwise non-deterministically writes `.kicad_sch`
     /// by hand — and it reaches for *any* available file/shell tool, so all of them
     /// must go. `bash` and `run_shell` are both shell tools (gating only `run_shell`
@@ -191,7 +198,7 @@ final class AgenticEngine {
     /// real KiCad work and only burns the loop budget.
     private static let improvisationToolNames: Set<String> = [
         "run_shell", "bash", "write_file", "create_file", "spawn_agent",
-        "read_file", "list_directory", "search_files",
+        "app_launch", "app_quit", "app_focus", "app_list_running",
         "ui_inspect", "ui_find_element", "ui_get_element_value", "ui_click",
         "ui_double_click", "ui_right_click", "ui_drag", "ui_type", "ui_key",
         "ui_scroll", "ui_screenshot",
@@ -207,6 +214,26 @@ final class AgenticEngine {
     /// Maximum number of auto-continuations triggered by ceiling hits before the
     /// engine gives up and stops. Each continuation gets its own full loop budget.
     private let maxCeilingContinuations = 10
+
+    private struct ContinuationToolEvidence: Sendable {
+        let toolName: String
+        let arguments: String
+        let output: String
+    }
+
+    private enum ElectronicsContinuationRequirement {
+        case requirementsInspection
+        case schematic
+        case simulation
+        case fabrication
+        case bom
+        case electronicsTool
+        case generic
+    }
+
+    private static let electronicsReadOnlyInspectionToolNames: Set<String> = [
+        "read_file", "list_directory", "search_files",
+    ]
 
     // MARK: - Near-ceiling warning
 
@@ -411,6 +438,7 @@ final class AgenticEngine {
         if lower.hasPrefix("@reason ") || lower.contains(" @reason ") { return .reason }
         if lower.hasPrefix("@execute ") || lower.contains(" @execute ") { return .execute }
         if lower.hasPrefix("@orchestrate ") || lower.contains(" @orchestrate ") { return .orchestrate }
+        if lower.hasPrefix("@vision ") || lower.contains(" @vision ") { return .vision }
 
         // Vision slot: whole-word match only.
         // "ui" is intentionally excluded — it appears as a substring in paths/names (e.g. "jonzu*ui*lkowski").
@@ -429,9 +457,21 @@ final class AgenticEngine {
     /// must run on the execute model; per-image work goes through the vision_query
     /// tool instead, which routes only that call to the vision slot.
     static func looksLikeVisionRequest(_ lower: String) -> Bool {
+        if lower.count > 500 {
+            let agenticWorkflowHints = [
+                "workflow", "generate", "design", "implement", "write a final report",
+                "kicad", "spice", "gerber", "bom", "artifact"
+            ]
+            if agenticWorkflowHints.contains(where: { lower.contains($0) }) {
+                return false
+            }
+        }
+
         // Exact-phrase keywords that are unambiguous without boundary checks.
-        let phraseKeywords = ["screenshot", "take a picture", "capture the screen",
-                              "describe the image", "what is in this image"]
+        let phraseKeywords = ["take a screenshot", "take a picture", "capture the screen",
+                              "describe the image", "what is in this image",
+                              "look at the screen", "inspect the screen",
+                              "read the screenshot", "analyze the screenshot"]
         if phraseKeywords.contains(where: { lower.contains($0) }) { return true }
         // Word-boundary keywords: must appear as complete words.
         let wordKeywords = ["vision"]
@@ -659,6 +699,7 @@ final class AgenticEngine {
             classification = await classify(message: userMessage, domain: domain)
         }
         let workingSlot: AgentSlot = classification.complexity == .highStakes ? .reason : .execute
+        continuation.yield(.slotRuntimeState(workingSlot, .busy))
 
         let cbThreshold = AppSettings.shared.agentCircuitBreakerThreshold
         let cbMode = AppSettings.shared.agentCircuitBreakerMode
@@ -839,8 +880,12 @@ final class AgenticEngine {
             // and keeps the override as a full PlannerEngineProtocol).
             let planSteps: [PlanStep]
             if let override = classifierOverride {
+                continuation.yield(.slotRuntimeState(.orchestrate, .busy))
+                defer { continuation.yield(.slotRuntimeState(.orchestrate, .ready)) }
                 planSteps = await override.decompose(task: userMessage, context: context.messages)
             } else {
+                continuation.yield(.slotRuntimeState(.orchestrate, .busy))
+                defer { continuation.yield(.slotRuntimeState(.orchestrate, .ready)) }
                 planSteps = await planner.decompose(task: userMessage, context: context.messages)
             }
 
@@ -848,9 +893,13 @@ final class AgenticEngine {
                 let batches = groupParallelSteps(planSteps)
                 let thisBatch = batches[0]
                 let remainingBatches = Array(batches.dropFirst())
+                pendingContinuationAllSteps = planSteps
                 pendingContinuationSteps = remainingBatches.flatMap { $0 }
                 pendingContinuationOriginalTask = userMessage
                 pendingContinuationCompletedCount = thisBatch.count
+                pendingContinuationVerifiedCompletedCount = 0
+                pendingContinuationEvidence.removeAll()
+                pendingContinuationUsesEvidenceGate = shouldEvidenceGateContinuations(for: planSteps)
 
                 let totalBatches = batches.count
                 let stepList = thisBatch.enumerated()
@@ -1163,6 +1212,24 @@ final class AgenticEngine {
                     }
                 }
 
+                if !sawToolCall,
+                   assembled.isEmpty,
+                   let textToolCalls = TextEncodedToolCallParser.parse(
+                    fullText,
+                    offeredToolNames: Set(offeredTools().map(\.function.name))
+                        .union(toolRouter.registeredRoutes().map(\.toolName))
+                   ),
+                   !textToolCalls.isEmpty {
+                    sawToolCall = true
+                    for (index, call) in textToolCalls.enumerated() {
+                        assembled[index] = (
+                            id: call.id,
+                            name: call.function.name,
+                            args: call.function.arguments
+                        )
+                    }
+                }
+
                 guard sawToolCall, !assembled.isEmpty else {
                     lastResponseText = fullText
                     if !fullText.isEmpty {
@@ -1382,6 +1449,39 @@ final class AgenticEngine {
                         function: FunctionCall(name: item.name, arguments: item.args)
                     )
                 }
+                if let blockedCalls = electronicsWorkflowLockBlockedCalls(in: modelCalls),
+                   !blockedCalls.isEmpty {
+                    totalToolCallCount += modelCalls.count
+                    for call in modelCalls {
+                        continuation.yield(.toolCallStarted(call))
+                    }
+                    context.append(Message(
+                        role: .assistant,
+                        content: .text(""),
+                        toolCalls: modelCalls,
+                        thinkingContent: fullThinking.isEmpty ? nil : fullThinking,
+                        timestamp: Date()
+                    ))
+                    for call in blockedCalls {
+                        let rejection = electronicsWorkflowLockRejection(for: call)
+                        continuation.yield(.toolCallResult(rejection))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(rejection.content),
+                            toolCallId: call.id,
+                            timestamp: Date()))
+                    }
+                    continuationAborted = true
+                    pendingContinuationSteps.removeAll()
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    let names = blockedCalls.map(\.function.name).joined(separator: ", ")
+                    continuation.yield(.cleanStop(
+                        reason: "electronics workflow drift",
+                        summary: "Stopped because the active electronics workflow attempted unapproved tool(s): \(names)."
+                    ))
+                    break turnLoop
+                }
+
                 let calls = authoritativeElectronicsWorkflowCalls(from: modelCalls)
                 totalToolCallCount += calls.count
 
@@ -1465,8 +1565,10 @@ final class AgenticEngine {
                             content: "spawn_agent budget exhausted — \(maxSpawnsPerTask) "
                                 + "subagents already spawned for this task. Do NOT spawn "
                                 + "more agents. Complete the remaining work yourself now "
-                                + "with your own tools (run_shell, read_file, write_file, "
-                                + "edit_file) and verify it.",
+                + "with the still-available read-only file tools for context, "
+                + "then the domain tools for domain work. Do not use shell or "
+                + "file-authoring tools (run_shell, write_file, "
+                + "edit_file) and verify it.",
                             isError: true)
                         continuation.yield(.toolCallResult(rejection))
                         context.append(Message(
@@ -1491,6 +1593,18 @@ final class AgenticEngine {
                     context: context,
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
+                recordContinuationEvidence(calls: regularCalls, results: regularResults)
+                if hasTerminalElectronicsWorkflowCompletion(calls: regularCalls, results: regularResults) {
+                    finalCriticResult = .pass
+                    consecutiveCriticFailures = 0
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    continuation.yield(.systemNote(
+                        "[electronics workflow complete after verified workflow result - stopping]"
+                    ))
+                    break turnLoop
+                }
                 if await shouldStopAfterPostToolVerification(
                     calls: regularCalls,
                     results: regularResults,
@@ -1707,7 +1821,7 @@ final class AgenticEngine {
             let advisories = await advisor.checkRecord(trackerRecord)
             for advisory in advisories {
                 // Mark the loop as paused until AppState finishes the local reload or restart flow.
-                isReloadingModel = advisory.kind == .contextLengthTooSmall
+                isReloadingModel = advisory.kind == .contextLengthTooSmall || advisory.kind == .llamaCppRuntimeUntuned
                 await onAdvisory?(advisory)
             }
             if trackerRecords.count % 10 == 0 {
@@ -1808,6 +1922,11 @@ final class AgenticEngine {
     private func schedulePendingContinuation() {
         guard !pendingContinuationSteps.isEmpty else { return }
 
+        if pendingContinuationUsesEvidenceGate {
+            scheduleEvidenceGatedContinuation()
+            return
+        }
+
         let batches = groupParallelSteps(pendingContinuationSteps)
         guard let thisBatch = batches.first else { return }
         let stillRemaining = Array(batches.dropFirst()).flatMap { $0 }
@@ -1854,6 +1973,256 @@ final class AgenticEngine {
             "batch_steps": thisBatch.count,
             "remaining_steps": stillRemaining.count
         ])
+    }
+
+    private func scheduleEvidenceGatedContinuation() {
+        let planSteps = pendingContinuationAllSteps.isEmpty
+            ? pendingContinuationSteps
+            : pendingContinuationAllSteps
+        guard !planSteps.isEmpty else { return }
+
+        let verifiedCount = verifiedElectronicsCompletedPrefix(in: planSteps)
+        pendingContinuationVerifiedCompletedCount = verifiedCount
+        pendingContinuationCompletedCount = verifiedCount
+
+        guard verifiedCount < planSteps.count else {
+            pendingContinuationSteps.removeAll()
+            try? FileManager.default.removeItem(at: continuationInjectURL)
+            TelemetryEmitter.shared.emit("engine.continuation.evidence_complete", data: [
+                "verified_steps": verifiedCount
+            ])
+            return
+        }
+
+        let pendingSteps = Array(planSteps.dropFirst(verifiedCount))
+        pendingContinuationSteps = pendingSteps
+        let batches = groupParallelSteps(pendingSteps)
+        guard let thisBatch = batches.first else { return }
+        let stillRemaining = Array(pendingSteps.dropFirst(thisBatch.count))
+        let originalTask = pendingContinuationOriginalTask
+
+        let stepList = thisBatch.enumerated()
+            .map { "  \(verifiedCount + $0.offset + 1). \($0.element.description)" }
+            .joined(separator: "\n")
+        let verifiedSummary = verifiedCount == 0
+            ? "No planned electronics workflow steps have verified completion evidence yet."
+            : "Steps 1-\(verifiedCount) have verified tool/artifact evidence."
+
+        let executionInstruction: String
+        if thisBatch.count > 1 {
+            let taskList = thisBatch.enumerated()
+                .map { "Task \($0.offset + 1): \($0.element.description)" }
+                .joined(separator: "\n")
+            executionInstruction = """
+            Execute the following independent tasks in parallel using spawn_agent for each:
+            \(taskList)
+            """
+        } else {
+            executionInstruction = "Task: \(thisBatch[0].description)"
+        }
+
+        let message = """
+        [CONTINUATION] \(verifiedSummary) Continue from the first unverified electronics step:
+        \(stepList)
+
+        Original task: \(originalTask)
+        \(executionInstruction)
+        For requirements-to-PCB work, call the exact tool `workflow.requirements_to_pcb`.
+        Do not use app/UI tools for electronics workflow execution; use the electronics workflow or `kicad_*` tools.
+        Do not claim a schematic, simulation, fabrication export, or BOM step is complete unless the relevant KiCad/SPICE artifact evidence exists in tool results.
+        If this step is already complete, respond with [STEP_ALREADY_DONE] and take no further action.
+        """
+
+        try? message.write(to: continuationInjectURL, atomically: true, encoding: .utf8)
+
+        TelemetryEmitter.shared.emit("engine.continuation.evidence_scheduled", data: [
+            "verified_steps": verifiedCount,
+            "batch_steps": thisBatch.count,
+            "remaining_steps": stillRemaining.count
+        ])
+    }
+
+    private func shouldEvidenceGateContinuations(for steps: [PlanStep]) -> Bool {
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID) else { return false }
+        let text = steps
+            .map { "\($0.description) \($0.proseSummary)" }
+            .joined(separator: " ")
+            .lowercased()
+        let keywords = [
+            "kicad", "pcb", "schematic", "spice", "simulation", "gerber",
+            "drill", "fabrication", "bom", "bill of materials", "digikey",
+            "digi-key", "mouser"
+        ]
+        return keywords.contains { text.contains($0) }
+    }
+
+    private func recordContinuationEvidence(calls: [ToolCall], results: [ToolResult]) {
+        guard pendingContinuationUsesEvidenceGate else { return }
+        let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
+        for result in results where !result.isError {
+            guard let call = callsByID[result.toolCallId] else { continue }
+            pendingContinuationEvidence.append(ContinuationToolEvidence(
+                toolName: call.function.name,
+                arguments: call.function.arguments,
+                output: result.content
+            ))
+        }
+    }
+
+    private func verifiedElectronicsCompletedPrefix(in steps: [PlanStep]) -> Int {
+        var completed = 0
+        for step in steps {
+            guard electronicsStepVerified(step) else { break }
+            completed += 1
+        }
+        return completed
+    }
+
+    private func electronicsStepVerified(_ step: PlanStep) -> Bool {
+        let requirement = electronicsRequirement(for: step)
+        switch requirement {
+        case .requirementsInspection:
+            return pendingContinuationEvidence.contains { evidence in
+                ["read_file", "list_directory", "search_files"].contains(evidence.toolName)
+            }
+        case .schematic:
+            return pendingContinuationEvidence.contains { evidence in
+                guard isKiCadTool(evidence.toolName) else { return false }
+                let text = evidenceText(evidence)
+                return text.contains(".kicad_sch")
+                    || text.contains("kicad_schematic")
+                    || text.contains("\"schematic\"")
+                    || evidence.toolName == "kicad_compile_project"
+            }
+        case .simulation:
+            return pendingContinuationEvidence.contains { evidence in
+                guard evidence.toolName == "kicad_run_spice"
+                    || evidence.toolName == "kicad_evaluate_simulation"
+                else { return false }
+                let text = evidenceText(evidence)
+                let rawText = rawEvidenceText(evidence)
+                return text.contains("spice_measurements")
+                    || text.contains("spice")
+                    || hasExistingPathEvidence(in: rawText, extensions: ["log", "raw", "csv"])
+            }
+        case .fabrication:
+            return pendingContinuationEvidence.contains { evidence in
+                guard evidence.toolName == "kicad_export_fab"
+                    || evidence.toolName == "kicad_package_release"
+                else { return false }
+                let text = evidenceText(evidence)
+                let rawText = rawEvidenceText(evidence)
+                return text.contains("gerber")
+                    || text.contains("drill")
+                    || text.contains("fabrication_package")
+                    || hasExistingPathEvidence(in: rawText, extensions: ["gbr", "gbl", "gtl", "drl", "zip"])
+            }
+        case .bom:
+            return pendingContinuationEvidence.contains { evidence in
+                let text = evidenceText(evidence)
+                let rawText = rawEvidenceText(evidence)
+                guard evidence.toolName == "kicad_prepare_vendor_order"
+                    || evidence.toolName == "kicad_export_fab"
+                    || text.contains("bom")
+                else { return false }
+                return textContainsVendorBOMEvidence(text)
+                    || extractedPaths(from: rawText).contains { pathContainsVendorBOMEvidence($0) }
+            }
+        case .electronicsTool:
+            return pendingContinuationEvidence.contains { isKiCadTool($0.toolName) }
+        case .generic:
+            return false
+        }
+    }
+
+    private func electronicsRequirement(for step: PlanStep) -> ElectronicsContinuationRequirement {
+        let text = "\(step.description) \(step.proseSummary)".lowercased()
+        if (text.contains("read") || text.contains("parse") || text.contains("inspect") || text.contains("load"))
+            && (text.contains("spec") || text.contains("requirements")) {
+            return .requirementsInspection
+        }
+        if text.contains("bom") || text.contains("bill of materials")
+            || text.contains("digikey") || text.contains("digi-key") || text.contains("mouser") {
+            return .bom
+        }
+        if text.contains("spice") || text.contains("simulation") || text.contains("simulate") {
+            return .simulation
+        }
+        if text.contains("gerber") || text.contains("drill") || text.contains("fabricat")
+            || text.contains("fab ") || text.contains("cam") {
+            return .fabrication
+        }
+        if text.contains("schematic") || text.contains("kicad") || text.contains("pcb")
+            || text.contains("board") || text.contains("footprint") || text.contains("component")
+            || text.contains("circuit") || text.contains("design") {
+            return .schematic
+        }
+        if ["electronics", "amplifier", "class a", "class-a", "mains", "transformer"]
+            .contains(where: { text.contains($0) }) {
+            return .electronicsTool
+        }
+        return .generic
+    }
+
+    private func isKiCadTool(_ name: String) -> Bool {
+        name.hasPrefix("kicad_")
+            || name.hasPrefix("mcp:kicad:")
+            || name == ElectronicsWorkflowRoute.requirementsToPCB.rawValue
+            || name == ElectronicsWorkflowRoute.schematicToPCB.rawValue
+    }
+
+    private func evidenceText(_ evidence: ContinuationToolEvidence) -> String {
+        rawEvidenceText(evidence).lowercased()
+    }
+
+    private func rawEvidenceText(_ evidence: ContinuationToolEvidence) -> String {
+        "\(evidence.toolName) \(evidence.arguments) \(evidence.output)"
+    }
+
+    private func textContainsVendorBOMEvidence(_ text: String) -> Bool {
+        text.contains("digikey")
+            || text.contains("digi-key")
+            || text.contains("mouser")
+            || text.contains("mpn")
+            || text.contains("manufacturer_part")
+            || text.contains("vendor_part")
+    }
+
+    private func pathContainsVendorBOMEvidence(_ path: String) -> Bool {
+        guard path.lowercased().contains("bom"),
+              let text = try? String(contentsOfFile: path, encoding: .utf8)
+        else { return false }
+        return textContainsVendorBOMEvidence(text.lowercased())
+    }
+
+    private func hasExistingPathEvidence(in text: String, extensions: Set<String>) -> Bool {
+        extractedPaths(from: text).contains { path in
+            let url = URL(fileURLWithPath: path)
+            if extensions.contains(url.pathExtension.lowercased()),
+               FileManager.default.fileExists(atPath: path) {
+                return true
+            }
+            var isDirectory = ObjCBool(false)
+            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+                  isDirectory.boolValue,
+                  let entries = try? FileManager.default.contentsOfDirectory(atPath: path)
+            else { return false }
+            return entries.contains { entry in
+                extensions.contains(URL(fileURLWithPath: entry).pathExtension.lowercased())
+            }
+        }
+    }
+
+    private func extractedPaths(from text: String) -> [String] {
+        let pattern = #"/[A-Za-z0-9_\-./ ]+"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.matches(in: text, options: [], range: range).compactMap { match in
+            guard let swiftRange = Range(match.range, in: text) else { return nil }
+            let raw = String(text[swiftRange])
+            let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: " .,;:)}]\"'"))
+            return trimmed.isEmpty ? nil : trimmed
+        }
     }
 
     /// Returns true when `message` starts with a phrase that signals the user
@@ -1945,6 +2314,38 @@ final class AgenticEngine {
         return false
     }
 
+    private func hasTerminalElectronicsWorkflowCompletion(calls: [ToolCall], results: [ToolResult]) -> Bool {
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID) else { return false }
+        let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
+        for result in results where !result.isError {
+            guard let call = callsByID[result.toolCallId],
+                  call.function.name == ElectronicsWorkflowRoute.requirementsToPCB.rawValue
+                    || call.function.name == ElectronicsWorkflowRoute.schematicToPCB.rawValue
+            else { continue }
+            if isCompleteElectronicsWorkflowReport(result.content) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func isCompleteElectronicsWorkflowReport(_ content: String) -> Bool {
+        guard let data = content.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let status = object["status"] as? String,
+              status == KiCadStatus.complete.rawValue
+        else { return false }
+
+        let blockedReasons = (object["blockedReasons"] as? [Any])
+            ?? (object["blocked_reasons"] as? [Any])
+            ?? []
+        guard blockedReasons.isEmpty else { return false }
+
+        let artifacts = object["artifacts"] as? [Any] ?? []
+        let gates = object["gates"] as? [Any] ?? []
+        return !artifacts.isEmpty && !gates.isEmpty
+    }
+
     private func authoritativeElectronicsWorkflowCalls(from calls: [ToolCall]) -> [ToolCall] {
         guard activeDomainIDs.contains(ElectronicsDomain.defaultID),
               let workflow = calls.first(where: {
@@ -1953,6 +2354,32 @@ final class AgenticEngine {
               })
         else { return calls }
         return [workflow]
+    }
+
+    private func electronicsWorkflowLockBlockedCalls(in calls: [ToolCall]) -> [ToolCall]? {
+        guard electronicsWorkflowLockIsActive() else { return nil }
+        return calls.filter { !isAllowedDuringElectronicsWorkflowLock($0.function.name) }
+    }
+
+    private func electronicsWorkflowLockIsActive() -> Bool {
+        activeDomainIDs.contains(ElectronicsDomain.defaultID) && hasAuthoritativeDomainTools()
+    }
+
+    private func isAllowedDuringElectronicsWorkflowLock(_ toolName: String) -> Bool {
+        Self.electronicsReadOnlyInspectionToolNames.contains(toolName)
+            || isKiCadTool(toolName)
+            || toolName == "verify.electronics"
+    }
+
+    private func electronicsWorkflowLockRejection(for call: ToolCall) -> ToolResult {
+        ToolResult(
+            toolCallId: call.id,
+            content: "`\(call.function.name)` is not approved while the electronics workflow lock is active. "
+                + "Use only read_file/list_directory/search_files for inspection and the electronics "
+                + "workflow or KiCad tools for schematic, SPICE, fabrication, BOM, and verification work. "
+                + "Automatic continuation stopped so the workflow cannot advance from narrative drift.",
+            isError: true
+        )
     }
 
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {
@@ -2852,12 +3279,14 @@ final class AgenticEngine {
             ? ToolRegistry.shared.all()
             : ToolRegistry.shared.all().filter { !withheld.contains($0.function.name) }
         var seen = Set<String>()
-        return (
+        let available = (
             builtins
             + toolRouter.mcpToolDefinitions(activeDomainIDs: activeDomainIDs)
             + toolRouter.workspaceToolDefinitions(activeDomainIDs: activeDomainIDs)
         )
             .filter { seen.insert($0.function.name).inserted }
+        guard electronicsWorkflowLockIsActive() else { return available }
+        return available.filter { isAllowedDuringElectronicsWorkflowLock($0.function.name) }
     }
 
     private func combinedAddendum(for slot: AgentSlot) async -> String {
@@ -2901,10 +3330,12 @@ final class AgenticEngine {
                 steer += """
                 \n\nNote: for the \(gated.joined(separator: ", ")) domain the \
                 shell tools (`bash`, `run_shell`), the file-authoring tools \
-                (`write_file`, `create_file`), and `spawn_agent` are intentionally \
-                unavailable this turn — the `mcp:` tools are the only supported way \
-                to do this domain's work. Call them directly yourself; do not look \
-                for a shell or a subagent to do it.
+                (`write_file`, `create_file`), app/UI automation tools, and \
+                `spawn_agent` are intentionally unavailable this turn. Read-only \
+                file tools remain available for requirements and project context; \
+                the `mcp:` tools are the only supported way to do this domain's \
+                authoring and verification work. Call them directly yourself; do \
+                not look for a shell or a subagent to do it.
                 """
             }
             parts.append(steer)
@@ -2919,8 +3350,9 @@ final class AgenticEngine {
             NOT hand-write domain files (.kicad_sch, .kicad_pcb, netlists) or invoke \
             KiCad through shell commands when a `kicad_*` tool covers the step. The \
             shell tools (`bash`, `run_shell`), file-authoring tools (`write_file`, \
-            `create_file`), and `spawn_agent` are intentionally unavailable for this \
-            domain workflow.
+            `create_file`), app/UI automation tools, and `spawn_agent` are intentionally \
+            unavailable for this domain workflow. Read-only file tools remain \
+            available for requirements and project context.
             """)
         }
 
@@ -3052,5 +3484,73 @@ final class AgenticEngine {
             }
         }
         throw lastError
+    }
+}
+
+enum TextEncodedToolCallParser {
+    static func parse(_ text: String, offeredToolNames: Set<String>) -> [ToolCall]? {
+        guard text.contains("<function="), text.contains("</function>") else {
+            return nil
+        }
+        let functionPattern = #"<function=([A-Za-z0-9_:\.\-]+)>\s*(.*?)\s*</function>"#
+        guard let functionRegex = try? NSRegularExpression(
+            pattern: functionPattern,
+            options: [.dotMatchesLineSeparators]
+        ) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        let matches = functionRegex.matches(in: text, options: [], range: range)
+        let calls = matches.compactMap { match -> ToolCall? in
+            guard match.numberOfRanges == 3,
+                  let nameRange = Range(match.range(at: 1), in: text),
+                  let bodyRange = Range(match.range(at: 2), in: text)
+            else {
+                return nil
+            }
+            let name = String(text[nameRange])
+            guard offeredToolNames.contains(name) else {
+                return nil
+            }
+            let body = String(text[bodyRange])
+            let parameters = parseParameters(body)
+            guard !parameters.isEmpty,
+                  let data = try? JSONSerialization.data(withJSONObject: parameters, options: [.sortedKeys]),
+                  let arguments = String(data: data, encoding: .utf8)
+            else {
+                return nil
+            }
+            return ToolCall(
+                id: UUID().uuidString,
+                type: "function",
+                function: FunctionCall(name: name, arguments: arguments)
+            )
+        }
+        return calls.isEmpty ? nil : calls
+    }
+
+    private static func parseParameters(_ body: String) -> [String: String] {
+        let parameterPattern = #"<parameter=([A-Za-z0-9_\-]+)>\s*(.*?)\s*</parameter>"#
+        guard let parameterRegex = try? NSRegularExpression(
+            pattern: parameterPattern,
+            options: [.dotMatchesLineSeparators]
+        ) else {
+            return [:]
+        }
+        let range = NSRange(body.startIndex..<body.endIndex, in: body)
+        var parameters: [String: String] = [:]
+        for match in parameterRegex.matches(in: body, options: [], range: range) {
+            guard match.numberOfRanges == 3,
+                  let keyRange = Range(match.range(at: 1), in: body),
+                  let valueRange = Range(match.range(at: 2), in: body)
+            else {
+                continue
+            }
+            let key = String(body[keyRange])
+            let value = String(body[valueRange])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            parameters[key] = value
+        }
+        return parameters
     }
 }

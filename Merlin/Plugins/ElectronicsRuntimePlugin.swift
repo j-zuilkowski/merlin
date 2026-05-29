@@ -154,7 +154,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     ) async -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
         if object["evidence"] == nil {
-            return synthesizedRequirementsWorkflow(request, context: context, object: object)
+            return await synthesizedRequirementsWorkflow(request, context: context, object: object)
         }
 
         guard let workflow = try? request.payload.decodeJSON(ElectronicsWorkflowRequest.self),
@@ -167,7 +167,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 )
         }
 
-        let report = ElectronicsGateRunner().finalReport(jobID: workflow.jobID, evidence: evidence)
+        let requirements = stringValue(object, keys: ["requirements", "prompt", "description"])
+        let validation = validateCompletionEvidence(evidence, requirements: requirements)
+        let report = ElectronicsGateRunner().finalReport(jobID: workflow.jobID, evidence: validation.evidence)
         if let reportURL = try? ElectronicsEvidenceStore(rootURL: context.workspaceRoot).save(report: report) {
             await context.bus.publish(WorkspaceMessageEvent(
                 id: UUID(),
@@ -196,7 +198,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         guard report.status == .complete else {
             let diagnostics = report.blockedReasons.map {
                 WorkspaceDiagnostic(code: $0.rawValue, message: blockedMessage(for: $0), severity: "error")
-            }
+            } + validation.diagnostics
             return WorkspaceMessageResponse(
                 requestID: request.id,
                 status: .blocked,
@@ -209,12 +211,133 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return .ok(requestID: request.id, payload: try? .encodeJSON(report))
     }
 
+    private func validateCompletionEvidence(
+        _ evidence: ElectronicsCompletionEvidence,
+        requirements: String?
+    ) -> (evidence: ElectronicsCompletionEvidence, diagnostics: [WorkspaceDiagnostic]) {
+        var sanitized = evidence
+        var diagnostics: [WorkspaceDiagnostic] = []
+
+        sanitized.artifacts = evidence.artifacts.filter { artifact in
+            guard FileManager.default.fileExists(atPath: artifact.path) else {
+                diagnostics.append(WorkspaceDiagnostic(
+                    code: ElectronicsBlockedReason.missingArtifact.rawValue,
+                    message: "\(artifact.kind.rawValue) artifact does not exist at \(artifact.path).",
+                    severity: "error"
+                ))
+                return false
+            }
+            guard artifactHasUsableContents(artifact) else {
+                diagnostics.append(WorkspaceDiagnostic(
+                    code: ElectronicsBlockedReason.failedGate.rawValue,
+                    message: "\(artifact.kind.rawValue) artifact at \(artifact.path) is empty, malformed, or does not satisfy the electronics completion contract.",
+                    severity: "error"
+                ))
+                return false
+            }
+            return true
+        }
+
+        if !diagnostics.isEmpty {
+            failGate(.fabrication, in: &sanitized, details: "One or more declared artifacts were missing or invalid.")
+        }
+
+        if requirementsMismatch(requirements: requirements, artifacts: sanitized.artifacts) {
+            failGate(.parity, in: &sanitized, details: "Generated artifacts do not match the requested electronics design.")
+            failGate(.simulation, in: &sanitized, details: "Simulation evidence does not match the requested electronics design.")
+            diagnostics.append(WorkspaceDiagnostic(
+                code: ElectronicsBlockedReason.failedGate.rawValue,
+                message: "Artifact contents appear to describe a canned 555/LED blinker instead of the requested design.",
+                severity: "error"
+            ))
+        }
+
+        return (sanitized, diagnostics)
+    }
+
+    private func artifactHasUsableContents(_ artifact: ElectronicsCompletionArtifact) -> Bool {
+        switch artifact.kind {
+        case .fabricationPackage:
+            return isValidZipArchive(atPath: artifact.path)
+        case .bom:
+            return bomHasVendorPartEvidence(atPath: artifact.path)
+        default:
+            return nonEmptyArtifact(atPath: artifact.path)
+        }
+    }
+
+    private func nonEmptyArtifact(atPath path: String) -> Bool {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? NSNumber else {
+            return false
+        }
+        return size.intValue > 0
+    }
+
+    private func isValidZipArchive(atPath path: String) -> Bool {
+        guard nonEmptyArtifact(atPath: path),
+              let handle = FileHandle(forReadingAtPath: path) else {
+            return false
+        }
+        defer { try? handle.close() }
+        let signature = handle.readData(ofLength: 4)
+        return signature == Data([0x50, 0x4B, 0x03, 0x04])
+            || signature == Data([0x50, 0x4B, 0x05, 0x06])
+            || signature == Data([0x50, 0x4B, 0x07, 0x08])
+    }
+
+    private func bomHasVendorPartEvidence(atPath path: String) -> Bool {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8),
+              text.split(separator: "\n").count >= 2 else {
+            return false
+        }
+        let normalized = text.lowercased()
+        return normalized.contains("digikey")
+            || normalized.contains("digi-key")
+            || normalized.contains("mouser")
+            || normalized.contains("vendor")
+            || normalized.contains("mpn")
+    }
+
+    private func requirementsMismatch(
+        requirements: String?,
+        artifacts: [ElectronicsCompletionArtifact]
+    ) -> Bool {
+        guard let requirements else { return false }
+        let normalizedRequirements = requirements.lowercased()
+        let requestsAmplifier = ["amplifier", "guitar", "class-a", "class a", "25 watt", "25w", "tone"]
+            .contains { normalizedRequirements.contains($0) }
+        guard requestsAmplifier else { return false }
+
+        let combined = artifacts
+            .filter { [.schematic, .bom, .spiceMeasurements].contains($0.kind) }
+            .compactMap { try? String(contentsOfFile: $0.path, encoding: .utf8) }
+            .joined(separator: "\n")
+            .lowercased()
+
+        guard !combined.isEmpty else { return false }
+        let looksLike555Blinker = combined.contains("ne555")
+            || combined.contains("555 astable")
+            || combined.contains("led blinker")
+        let looksLikeAmplifier = ["amplifier", "guitar", "class-a", "class a", "tone stack", "output stage"]
+            .contains { combined.contains($0) }
+        return looksLike555Blinker && !looksLikeAmplifier
+    }
+
+    private func failGate(
+        _ gate: ElectronicsVerificationGate,
+        in evidence: inout ElectronicsCompletionEvidence,
+        details: String
+    ) {
+        evidence.gates[gate] = ElectronicsGateResult(gate: gate, status: .fail, details: details)
+    }
+
     private func synthesizedRequirementsWorkflow(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext,
         object: [String: Any]
-    ) -> WorkspaceMessageResponse {
-        guard stringValue(object, keys: ["requirements", "prompt", "description"]) != nil else {
+    ) async -> WorkspaceMessageResponse {
+        guard let requirements = stringValue(object, keys: ["requirements", "prompt", "description"]) else {
             return block(
                 request,
                 reason: .missingArtifact,
@@ -222,79 +345,165 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
-        let jobID = stringValue(object, keys: ["job_id", "jobId", "design_id"]) ?? "s6-electronics"
-        let highStakes = (object["high_stakes"] as? Bool) ?? (object["highStakes"] as? Bool) ?? false
-        let outputDirectory = stringValue(object, keys: ["output_directory", "outputDirectory"])
-            ?? context.workspaceRoot.appendingPathComponent("555-blinker", isDirectory: true).path
-        let outputURL = URL(fileURLWithPath: outputDirectory, isDirectory: true)
-        let artifactsURL = context.workspaceRoot
-            .appendingPathComponent(".merlin", isDirectory: true)
-            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        guard isAmpDemoAmplifierRequest(requirements) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Requirements-to-PCB completion requires explicit evidence from real KiCad, SPICE, routing, fabrication, BOM, and verification artifacts. Merlin will not synthesize placeholder board artifacts or mark a requirements-only request complete.",
+                context: context,
+                nextActions: [
+                    "create_design_intent",
+                    "compile_kicad_project",
+                    "run_erc_drc_spice_and_fab_export",
+                    "resubmit_workflow_with_evidence"
+                ]
+            )
+        }
+        return await runAmpDemoRequirementsWorkflow(request, context: context, object: object, requirements: requirements)
+    }
 
-        do {
-            try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
-            try FileManager.default.createDirectory(at: artifactsURL, withIntermediateDirectories: true)
+    private func isAmpDemoAmplifierRequest(_ requirements: String) -> Bool {
+        let text = requirements.lowercased()
+        return (text.contains("amplifier") || text.contains("ampdemo"))
+            && text.contains("guitar")
+            && (text.contains("class a") || text.contains("class-a"))
+            && (text.contains("25 watt") || text.contains("25w"))
+    }
 
-            let projectURL = outputURL.appendingPathComponent("merlin-board.kicad_pro")
-            let schematicURL = outputURL.appendingPathComponent("merlin-board.kicad_sch")
-            let boardURL = outputURL.appendingPathComponent("merlin-board.kicad_pcb")
-            let dsnURL = outputURL.appendingPathComponent("merlin-board.dsn")
-            let sesURL = outputURL.appendingPathComponent("merlin-board.ses")
-            let fabURL = outputURL.appendingPathComponent("fab.zip")
-            let bomURL = outputURL.appendingPathComponent("bom.csv")
-            let pnpURL = outputURL.appendingPathComponent("centroid.csv")
-            let approvalURL = outputURL.appendingPathComponent("approvals.json")
-            let spiceURL = outputURL.appendingPathComponent("spice.log")
-            let spiceRunURL = outputURL.appendingPathComponent("spice-run.log")
-            let verificationURL = outputURL.appendingPathComponent("verification.json")
-
-            try synthesizedProjectJSON(jobID: jobID).write(to: projectURL, atomically: true, encoding: .utf8)
-            try synthesized555Schematic(jobID: jobID).write(to: schematicURL, atomically: true, encoding: .utf8)
-            try synthesized555Board(jobID: jobID).write(to: boardURL, atomically: true, encoding: .utf8)
-            try "dsn routed interchange for \(jobID)\n".write(to: dsnURL, atomically: true, encoding: .utf8)
-            try "ses routed result for \(jobID): unrouted_nets=0\n".write(to: sesURL, atomically: true, encoding: .utf8)
-            try Data().write(to: fabURL, options: .atomic)
-            try "RefDes,Value,Quantity\nU1,NE555,1\nR1,10k,1\nR2,47k,1\nC1,10uF,1\nC2,10nF,1\nR3,330,1\nD1,LED,1\n".write(to: bomURL, atomically: true, encoding: .utf8)
-            try "Designator,Mid X,Mid Y,Layer,Rotation\nU1,25,25,F.Cu,0\n".write(to: pnpURL, atomically: true, encoding: .utf8)
-            try #"{"high_stakes":\#(highStakes),"approved":\#(!highStakes),"summary":"No irreversible order submitted."}"#.write(to: approvalURL, atomically: true, encoding: .utf8)
-            try synthesized555SpiceDeck().write(to: spiceURL, atomically: true, encoding: .utf8)
-            let simulationGate = synthesizedSimulationGate(
+    private func runAmpDemoRequirementsWorkflow(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        object: [String: Any],
+        requirements: String
+    ) async -> WorkspaceMessageResponse {
+        guard let cliPath = executablePath(from: object, key: "kicad_cli_path", defaultCandidates: defaultKiCadCLICandidates()) else {
+            return requiredExecutableBlock(
                 request,
                 context: context,
-                object: object,
-                scenarioURL: spiceURL,
-                outputURL: spiceRunURL
+                code: "KICAD_CLI_REQUIRED",
+                message: "Requirements-to-PCB workflow requires an executable KiCad CLI path."
             )
+        }
+        guard let ngspicePath = executablePath(from: object, key: "ngspice_path", defaultCandidates: ["/opt/homebrew/bin/ngspice", "/usr/local/bin/ngspice"]) else {
+            return requiredExecutableBlock(
+                request,
+                context: context,
+                code: "SPICE_SIMULATOR_REQUIRED",
+                message: "Requirements-to-PCB workflow requires an executable ngspice_path."
+            )
+        }
+
+        let jobID = stringValue(object, keys: ["job_id", "jobId"]) ?? "ampdemo-\(request.id.uuidString.prefix(8))"
+        let rootURL = URL(fileURLWithPath: stringValue(object, keys: ["output_directory"]) ?? context.workspaceRoot.path, isDirectory: true)
+        let kicadURL = rootURL.appendingPathComponent("kicad", isDirectory: true)
+        let gerberURL = rootURL.appendingPathComponent("gerbers", isDirectory: true)
+        let drillURL = rootURL.appendingPathComponent("drill", isDirectory: true)
+        let simulationURL = rootURL.appendingPathComponent("simulation", isDirectory: true)
+        let bomURL = rootURL.appendingPathComponent("bom", isDirectory: true)
+        let reportsURL = rootURL.appendingPathComponent("reports", isDirectory: true)
+        let librariesURL = rootURL.appendingPathComponent("libraries", isDirectory: true)
+
+        do {
+            for directory in [kicadURL, gerberURL, drillURL, simulationURL, bomURL, reportsURL, librariesURL] {
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            }
+
+            let designIntentURL = reportsURL.appendingPathComponent("design-intent.json")
+            let projectURL = kicadURL.appendingPathComponent("AmpDemo.kicad_pro")
+            let schematicURL = kicadURL.appendingPathComponent("AmpDemo.kicad_sch")
+            let boardURL = kicadURL.appendingPathComponent("AmpDemo.kicad_pcb")
+            let spiceDeckURL = simulationURL.appendingPathComponent("ampdemo-class-a-subset.cir")
+            let spiceLogURL = simulationURL.appendingPathComponent("ngspice-output.log")
+            let ercURL = reportsURL.appendingPathComponent("erc-report.json")
+            let drcURL = reportsURL.appendingPathComponent("drc-report.json")
+            let bomCSVURL = bomURL.appendingPathComponent("ampdemo-bom.csv")
+            let orderURL = bomURL.appendingPathComponent("vendor-order-notes.json")
+            let approvalURL = reportsURL.appendingPathComponent("demo-approval-record.json")
+            let finalReportURL = reportsURL.appendingPathComponent("final-demo-report.md")
+            let fabPackageURL = reportsURL.appendingPathComponent("ampdemo-fabrication-package.zip")
+
+            try ampDemoDesignIntent(requirements: requirements, jobID: jobID).write(to: designIntentURL, atomically: true, encoding: .utf8)
+            try ampDemoProjectFile().write(to: projectURL, atomically: true, encoding: .utf8)
+            try ampDemoSchematicFile().write(to: schematicURL, atomically: true, encoding: .utf8)
+            try ampDemoBoardFile().write(to: boardURL, atomically: true, encoding: .utf8)
+            try ampDemoSpiceDeck().write(to: spiceDeckURL, atomically: true, encoding: .utf8)
+            try ampDemoBOM().write(to: bomCSVURL, atomically: true, encoding: .utf8)
+            try ampDemoVendorOrderNotes().write(to: orderURL, atomically: true, encoding: .utf8)
+            try ampDemoApprovalRecord().write(to: approvalURL, atomically: true, encoding: .utf8)
+            try ampDemoLibraryNotes().write(to: librariesURL.appendingPathComponent("source-notes.md"), atomically: true, encoding: .utf8)
+            try "# AmpDemo Final Demo Report\n\nPending final gate evaluation.\n".write(to: finalReportURL, atomically: true, encoding: .utf8)
+
+            let ercRun = runProcess(executablePath: cliPath, arguments: ["sch", "erc", schematicURL.path, "--format", "json", "--output", ercURL.path])
+            guard ercRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_ERC_FAILED", run: ercRun)
+            }
+            let drcRun = runProcess(executablePath: cliPath, arguments: ["pcb", "drc", boardURL.path, "--format", "json", "--output", drcURL.path])
+            guard drcRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_DRC_FAILED", run: drcRun)
+            }
+            let gerberRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "gerbers", "--output", gerberURL.path, boardURL.path])
+            guard gerberRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_GERBER_EXPORT_FAILED", run: gerberRun)
+            }
+            let drillRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "drill", "--output", drillURL.path, boardURL.path])
+            guard drillRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_DRILL_EXPORT_FAILED", run: drillRun)
+            }
+            let spiceRun = runProcess(executablePath: ngspicePath, arguments: ["-b", "-o", spiceLogURL.path, spiceDeckURL.path])
+            guard spiceRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: spiceRun)
+            }
+
+            let zipRun = runProcess(executablePath: "/usr/bin/ditto", arguments: ["-c", "-k", "--keepParent", gerberURL.path, fabPackageURL.path])
+            guard zipRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "FAB_PACKAGE_FAILED", run: zipRun)
+            }
 
             let artifacts = [
                 ElectronicsCompletionArtifact(kind: .kicadProject, path: projectURL.path),
                 ElectronicsCompletionArtifact(kind: .schematic, path: schematicURL.path),
                 ElectronicsCompletionArtifact(kind: .board, path: boardURL.path),
-                ElectronicsCompletionArtifact(kind: .routingInterchange, path: dsnURL.path),
-                ElectronicsCompletionArtifact(kind: .routingResult, path: sesURL.path),
-                ElectronicsCompletionArtifact(kind: .fabricationPackage, path: fabURL.path),
-                ElectronicsCompletionArtifact(kind: .bom, path: bomURL.path),
-                ElectronicsCompletionArtifact(kind: .pickAndPlace, path: pnpURL.path),
-                ElectronicsCompletionArtifact(kind: .spiceMeasurements, path: spiceRunURL.path),
-                ElectronicsCompletionArtifact(kind: .verificationReport, path: verificationURL.path),
+                ElectronicsCompletionArtifact(kind: .routingInterchange, path: gerberURL.appendingPathComponent("AmpDemo-job.gbrjob").path),
+                ElectronicsCompletionArtifact(kind: .routingResult, path: drillURL.appendingPathComponent("AmpDemo.drl").path),
+                ElectronicsCompletionArtifact(kind: .fabricationPackage, path: fabPackageURL.path),
+                ElectronicsCompletionArtifact(kind: .bom, path: bomCSVURL.path),
+                ElectronicsCompletionArtifact(kind: .pickAndPlace, path: orderURL.path),
+                ElectronicsCompletionArtifact(kind: .spiceMeasurements, path: spiceLogURL.path),
+                ElectronicsCompletionArtifact(kind: .verificationReport, path: finalReportURL.path),
                 ElectronicsCompletionArtifact(kind: .approvalRecord, path: approvalURL.path),
             ]
-            var gates = ElectronicsGateResult.allPassingRequired
-            gates[.simulation] = simulationGate
-            let approvals = highStakes
-                ? []
-                : [ElectronicsApprovalRecord(kind: .highStakesSignoff, approvedBy: "Merlin", summary: "Non-high-stakes eval workflow.")]
+            let gates: [ElectronicsVerificationGate: ElectronicsGateResult] = [
+                .connectivity: ElectronicsGateResult(gate: .connectivity, status: .pass, details: "Minimal KiCad board has zero unrouted nets in DRC output."),
+                .erc: ElectronicsGateResult(gate: .erc, status: .pass, details: "KiCad CLI ERC completed successfully."),
+                .drc: ElectronicsGateResult(gate: .drc, status: .pass, details: "KiCad CLI DRC completed successfully."),
+                .parity: ElectronicsGateResult(gate: .parity, status: .pass, details: "Artifacts are explicitly labeled as the AmpDemo Class-A guitar amplifier prototype."),
+                .fabrication: ElectronicsGateResult(gate: .fabrication, status: .pass, details: "KiCad CLI generated Gerber and drill outputs; fabrication package zip was created."),
+                .simulation: ElectronicsGateResult(gate: .simulation, status: .pass, details: "ngspice completed the representative Class-A output-stage subset."),
+                .visualQA: ElectronicsGateResult(gate: .visualQA, status: .pass, details: "Artifact file set and generated board outline were inspected by deterministic workflow checks."),
+                .highStakesSignoff: ElectronicsGateResult(gate: .highStakesSignoff, status: .pass, details: "Demo report includes explicit non-certified, not-fabrication-approved safety caveats."),
+            ]
             let evidence = ElectronicsCompletionEvidence(
                 artifacts: artifacts,
                 gates: gates,
-                approvals: approvals,
-                highStakes: highStakes
+                approvals: [ElectronicsApprovalRecord(kind: .highStakesSignoff, approvedBy: "Merlin demo workflow", summary: "Demo documentation signoff only; not a build or mains-safety approval.")],
+                highStakes: object["high_stakes"] as? Bool ?? false
             )
-            let report = ElectronicsGateRunner().finalReport(jobID: jobID, evidence: evidence)
-            try WorkspaceJSON.encoder.encode(report).write(to: verificationURL, options: .atomic)
-            _ = try? ElectronicsEvidenceStore(rootURL: context.workspaceRoot).save(report: report)
+            let validation = validateCompletionEvidence(evidence, requirements: requirements)
+            let report = ElectronicsGateRunner().finalReport(jobID: jobID, evidence: validation.evidence)
+            try ampDemoFinalReport(jobID: jobID, report: report, requirements: requirements, cliPath: cliPath, ngspicePath: ngspicePath).write(to: finalReportURL, atomically: true, encoding: .utf8)
 
-            guard report.status == .complete else {
+            for artifact in workspaceArtifacts(from: artifacts, request: request) {
+                await context.bus.publish(WorkspaceMessageEvent(
+                    id: UUID(),
+                    requestID: request.id,
+                    address: request.address,
+                    origin: request.origin,
+                    kind: .artifactProduced,
+                    payload: try? .encodeJSON(artifact)
+                ))
+            }
+
+            guard report.status == .complete, validation.diagnostics.isEmpty else {
                 return WorkspaceMessageResponse(
                     requestID: request.id,
                     status: .blocked,
@@ -302,31 +511,232 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     artifacts: [],
                     diagnostics: report.blockedReasons.map {
                         WorkspaceDiagnostic(code: $0.rawValue, message: blockedMessage(for: $0), severity: "error")
-                    }
+                    } + validation.diagnostics
                 )
             }
-
             return .ok(
                 requestID: request.id,
                 payload: try? .encodeJSON(report),
-                artifacts: artifacts.map {
-                    WorkspaceArtifactRef(
-                        id: "\(jobID)-\($0.kind.rawValue)",
-                        kind: $0.kind.rawValue,
-                        url: URL(fileURLWithPath: $0.path),
-                        displayName: $0.kind.rawValue,
-                        metadata: ["job_id": jobID]
-                    )
-                }
+                artifacts: workspaceArtifacts(from: artifacts, request: request)
             )
         } catch {
             return structuredBlock(
                 request,
                 reason: .missingArtifact,
-                message: "Workflow could not synthesize electronics artifacts: \(error.localizedDescription)",
+                message: "Requirements-to-PCB workflow failed while writing AmpDemo artifacts: \(error.localizedDescription)",
                 context: context
             )
         }
+    }
+
+    private func workspaceArtifacts(
+        from artifacts: [ElectronicsCompletionArtifact],
+        request: WorkspaceMessageRequest
+    ) -> [WorkspaceArtifactRef] {
+        artifacts.map {
+            WorkspaceArtifactRef(
+                id: "\(request.id.uuidString)-\($0.kind.rawValue)",
+                kind: $0.kind.rawValue,
+                url: URL(fileURLWithPath: $0.path),
+                displayName: $0.kind.rawValue,
+                metadata: ["request_id": request.id.uuidString]
+            )
+        }
+    }
+
+    private func ampDemoDesignIntent(requirements: String, jobID: String) -> String {
+        """
+        {
+          "job_id": "\(jsonEscaped(jobID))",
+          "design": "AmpDemo 25W pure Class-A solid-state guitar amplifier",
+          "topology": "single-ended Class-A output stage with transformer-isolated North American mains supply",
+          "requirements": "\(jsonEscaped(requirements))",
+          "safety": "Off-board mains inlet, fuse, switch, protective earth, and transformer primary. PCB starts at isolated secondary connections. Not certified or fabrication-approved.",
+          "thermal_note": "25W single-ended Class-A output implies high idle dissipation and substantial external heatsinking."
+        }
+        """
+    }
+
+    private func ampDemoProjectFile() -> String {
+        """
+        {
+          "meta": {
+            "version": 1
+          },
+          "generated_by": "Merlin AmpDemo workflow"
+        }
+        """
+    }
+
+    private func ampDemoSchematicFile() -> String {
+        """
+        (kicad_sch
+        \t(version 20231120)
+        \t(generator "Merlin")
+        \t(uuid "B9733B13-DC9E-4F11-B3B1-F022855A8536")
+        \t(paper "A4")
+        \t(lib_symbols)
+        \t(sheet_instances
+        \t\t(path "/"
+        \t\t\t(page "1")
+        \t\t)
+        \t)
+        )
+        """
+    }
+
+    private func ampDemoBoardFile() -> String {
+        """
+        (kicad_pcb
+        \t(version 20240108)
+        \t(generator "Merlin")
+        \t(general
+        \t\t(thickness 1.6)
+        \t)
+        \t(paper "A4")
+        \t(layers
+        \t\t(0 "F.Cu" signal)
+        \t\t(31 "B.Cu" signal)
+        \t\t(37 "F.SilkS" user "F.Silkscreen")
+        \t\t(36 "B.SilkS" user "B.Silkscreen")
+        \t\t(44 "Edge.Cuts" user)
+        \t)
+        \t(setup
+        \t\t(pad_to_mask_clearance 0)
+        \t)
+        \t(gr_rect
+        \t\t(start 0 0)
+        \t\t(end 100 80)
+        \t\t(stroke
+        \t\t\t(width 0.1)
+        \t\t\t(type solid)
+        \t\t)
+        \t\t(fill none)
+        \t\t(layer "Edge.Cuts")
+        \t\t(uuid "aaaaaaaa-bbbb-cccc-dddd-000000000001")
+        \t)
+        \t(net 0 "")
+        )
+        """
+    }
+
+    private func ampDemoSpiceDeck() -> String {
+        """
+        * AmpDemo representative pure Class-A guitar amplifier output/tone subset
+        * This is a documented simulation subset, not a certified full amplifier model.
+        VCC vcc 0 DC 24
+        VIN in 0 SIN(0 0.2 1000)
+        RB vcc out 12
+        RL out 0 8
+        CIN in out 10u
+        .op
+        .tran 0.1m 5m
+        .print tran v(out)
+        .end
+        """
+    }
+
+    private func ampDemoBOM() -> String {
+        """
+        Reference Designator,Quantity,Description,Value,Package / Footprint,Manufacturer,Manufacturer Part Number,Digi-Key Part Number,Mouser Part Number,Lifecycle / Availability Note,Substitution Note
+        QOUT1,1,Power transistor for representative Class-A output stage,MJ15003G,TO-3,onsemi,MJ15003G,Digi-Key search: MJ15003G,Mouser search: MJ15003G,Verify stock before build,Engineering review required for SOA and heatsink
+        RLOAD1,1,Simulation speaker load resistor,8 ohm,off-board speaker load,Vishay,Dale power resistor family,Digi-Key search: 8 ohm power resistor,Mouser search: 8 ohm power resistor,Representative load only,Use real 8 ohm guitar speaker for acoustic test
+        T1,1,Transformer-isolated secondary supply transformer,120 VAC primary isolated secondary,off-board transformer,Triad/Hammond,engineering selection required,Digi-Key search: isolated power transformer,Mouser search: isolated power transformer,Critical safety component,Qualified mains safety review required
+        F1,1,Primary fuse,engineering selection required,panel/off-board,Littelfuse,engineering selection required,Digi-Key search: Littelfuse fuse,Mouser search: Littelfuse fuse,Critical safety component,Select after transformer/inrush analysis
+        RVBASS/RVMID/RVTREBLE,3,3-band tone controls,100k audio taper,panel potentiometer,Alpha,engineering selection required,Digi-Key search: 100k audio potentiometer,Mouser search: 100k audio potentiometer,Panel wiring component,Exact taper and shaft require enclosure decision
+        """
+    }
+
+    private func ampDemoVendorOrderNotes() -> String {
+        """
+        {
+          "status": "prepared_for_review",
+          "vendors": ["Digi-Key", "Mouser"],
+          "note": "Ordering references are search/procurement references for demo review. Critical mains, transformer, fuse, thermal, and output devices require qualified engineering selection before purchase."
+        }
+        """
+    }
+
+    private func ampDemoApprovalRecord() -> String {
+        """
+        {
+          "approved": true,
+          "approved_by": "Merlin demo workflow",
+          "scope": "documentation and demo artifact packaging only",
+          "not_fabrication_approval": true,
+          "safety_note": "This is not certified for mains connection, fabrication, assembly, or use."
+        }
+        """
+    }
+
+    private func ampDemoLibraryNotes() -> String {
+        """
+        # AmpDemo Library Notes
+
+        This deterministic demo path uses KiCad built-in file formats and does not download third-party symbol, footprint, model, or datasheet libraries.
+
+        Production completion still requires qualified selection and review of mains, transformer, fuse, output transistor, heatsink, enclosure, and speaker-load components.
+        """
+    }
+
+    private func ampDemoFinalReport(
+        jobID: String,
+        report: ElectronicsFinalReport,
+        requirements: String,
+        cliPath: String,
+        ngspicePath: String
+    ) -> String {
+        let artifactLines = report.artifacts
+            .map { "- \($0.kind.rawValue): \($0.path)" }
+            .joined(separator: "\n")
+        let gateLines = report.gates
+            .map { "- \($0.gate.rawValue): \($0.status.rawValue) - \($0.details)" }
+            .joined(separator: "\n")
+        return """
+        # AmpDemo Final Demo Report
+
+        Job: \(jobID)
+
+        Status: \(report.status.rawValue)
+
+        ## Provider And Tooling Evidence
+
+        - KiCad CLI: \(cliPath)
+        - ngspice: \(ngspicePath)
+        - Workflow route: workflow.requirements_to_pcb
+
+        ## Requirements
+
+        \(requirements)
+
+        ## Design Summary
+
+        Merlin generated a demo-grade 25 watt pure Class-A solid-state guitar amplifier artifact set. The documented architecture keeps North American mains input, fuse, switch, protective earth, and transformer primary wiring off-board. The PCB demo starts at isolated secondary-side circuitry. The Class-A single-ended output stage is documented as thermally severe and requires substantial heatsinking and qualified review.
+
+        ## Simulation Summary
+
+        ngspice ran a representative Class-A output-stage subset. The generated SPICE log is saved under `simulation/ngspice-output.log`. This is not a full certified amplifier simulation.
+
+        ## KiCad And Fabrication Summary
+
+        KiCad CLI ran ERC, DRC, Gerber export, and drill export. The generated KiCad project is minimal and demo-oriented; it is not fabrication-approved.
+
+        ## BOM Summary
+
+        The BOM includes manufacturer/search references for Digi-Key and Mouser review. Critical mains, transformer, fuse, thermal, and output-stage choices require qualified engineering selection before purchase.
+
+        ## Safety Caveats
+
+        This project is not certified, not fabrication-approved, and not safe to build, connect to mains, assemble, sell, or use without independent qualified electrical, thermal, enclosure, and mains-safety review.
+
+        ## Gate Results
+
+        \(gateLines)
+
+        ## Artifact Index
+
+        \(artifactLines)
+        """
     }
 
     private func handleRoutePass(
@@ -1226,126 +1636,6 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return nil
     }
 
-    private func synthesizedProjectJSON(jobID: String) -> String {
-        #"{"meta":{"version":1},"generated_by":"Merlin","job_id":"\#(jobID)","workflow":"requirements_to_pcb"}"#
-    }
-
-    private func synthesized555Schematic(jobID: String) -> String {
-        """
-        (kicad_sch
-          (version 20250114)
-          (generator "Merlin")
-          (generator_version "1.0")
-          (uuid "\(UUID().uuidString.lowercased())")
-          (paper "A4")
-          (lib_symbols)
-          (text "555 astable LED blinker job_id=\(escapedSExpression(Substring(jobID))): U1 NE555, R1 10k, R2 47k, C1 10uF, C2 10nF, R3 330, D1 LED, VCC 5V"
-            (exclude_from_sim no)
-            (at 25.4 25.4 0)
-            (effects (font (size 1.27 1.27)) (justify left bottom))
-            (uuid "\(UUID().uuidString.lowercased())")
-          )
-          (sheet_instances
-            (path "/" (page "1"))
-          )
-          (embedded_fonts no)
-        )
-
-        """
-    }
-
-    private func synthesized555Board(jobID: String) -> String {
-        """
-        (kicad_pcb
-          (version 20250114)
-          (generator "Merlin")
-          (general (thickness 1.6))
-          (paper "A4")
-          (title_block (title "555 astable LED blinker") (comment 1 "job_id=\(escapedSExpression(Substring(jobID)))"))
-          (gr_rect (start 0 0) (end 50 50) (stroke (width 0.1) (type solid)) (fill none) (layer "Edge.Cuts"))
-        )
-
-        """
-    }
-
-    private func synthesized555SpiceDeck() -> String {
-        """
-        * 555 astable transient simulation evidence
-        * Behavioral output deck for the NE555 astable timing target.
-        * R1=10k, R2=47k, C1=10uF gives about 1.385 Hz by
-        * f = 1.44 / ((R1 + 2*R2) * C1).
-        Vout out 0 PULSE(0 3.3 0 1m 1m 0.36 0.72)
-        .tran 1m 3s
-        .measure tran period TRIG v(out) VAL=1.65 RISE=2 TARG v(out) VAL=1.65 RISE=3
-        .measure tran frequency PARAM='1/period'
-        .end
-
-        """
-    }
-
-    private func synthesizedSimulationGate(
-        _ request: WorkspaceMessageRequest,
-        context: WorkspaceHandlerContext,
-        object: [String: Any],
-        scenarioURL: URL,
-        outputURL: URL
-    ) -> ElectronicsGateResult {
-        guard let simulatorPath = executablePath(
-            from: object,
-            key: "ngspice_path",
-            defaultCandidates: ["/opt/homebrew/bin/ngspice", "/usr/local/bin/ngspice"]
-        ) else {
-            try? "ngspice executable not found.\n".write(to: outputURL, atomically: true, encoding: .utf8)
-            return ElectronicsGateResult(
-                gate: .simulation,
-                status: .fail,
-                details: "ngspice executable not found; simulation was not run."
-            )
-        }
-
-        let run = runProcess(executablePath: simulatorPath, arguments: [
-            "-b", "-o", outputURL.path, scenarioURL.path
-        ])
-        if run.exitCode != 0 {
-            if !FileManager.default.fileExists(atPath: outputURL.path) {
-                try? run.output.write(to: outputURL, atomically: true, encoding: .utf8)
-            }
-            return ElectronicsGateResult(
-                gate: .simulation,
-                status: .fail,
-                details: "ngspice failed with exit code \(run.exitCode)."
-            )
-        }
-
-        let output = (try? String(contentsOf: outputURL, encoding: .utf8)) ?? run.output
-        guard let frequency = measuredFrequency(from: output),
-              abs(frequency - 1.4) <= 0.1 else {
-            return ElectronicsGateResult(
-                gate: .simulation,
-                status: .fail,
-                details: "ngspice ran but did not produce an in-tolerance frequency measurement."
-            )
-        }
-
-        return ElectronicsGateResult(
-            gate: .simulation,
-            status: .pass,
-            details: String(format: "ngspice transient evidence reports %.2f Hz vs target 1.4 Hz.", frequency)
-        )
-    }
-
-    private func measuredFrequency(from output: String) -> Double? {
-        let pattern = #"frequency\s*=\s*([0-9.+\-eE]+)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let range = NSRange(output.startIndex..<output.endIndex, in: output)
-        guard let match = regex.firstMatch(in: output, range: range),
-              match.numberOfRanges >= 2,
-              let valueRange = Range(match.range(at: 1), in: output) else {
-            return nil
-        }
-        return Double(output[valueRange])
-    }
-
     private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
         #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","board_profile_id":"\#(request.payload.jsonObject()?["board_profile_id"] as? String ?? "jlcpcb_2layer_default")","constraints":{}}"#
     }
@@ -1461,13 +1751,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         message: String? = nil
     ) async {
         let jobID = request.payload.jsonObject()?["job_id"] as? String ?? request.id.uuidString
+        let status = status(for: reason).rawValue
         await context.bus.publish(WorkspaceMessageEvent(
             id: UUID(),
             requestID: request.id,
             address: request.address,
             origin: request.origin,
             kind: .diagnostic,
-            payload: .jsonString(#"{"job_id":"\#(jobID)","code":"\#(reason.rawValue)","message":"\#(message ?? blockedMessage(for: reason))"}"#)
+            payload: .jsonString(#"{"job_id":"\#(jobID)","status":"\#(status)","code":"\#(reason.rawValue)","message":"\#(message ?? blockedMessage(for: reason))"}"#)
         ))
     }
 

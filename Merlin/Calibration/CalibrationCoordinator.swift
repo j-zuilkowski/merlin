@@ -59,6 +59,12 @@ final class CalibrationCoordinator: ObservableObject {
     private var localProviderID: String = ""
     private var localModelID: String = ""
     private let reportSaver: CalibrationReportSaver
+    private var activeRunID: UUID?
+    private var calibrationTask: Task<Void, Never>?
+
+    var hasActiveRunForTesting: Bool {
+        calibrationTask != nil
+    }
 
     init(appState: AppState, reportSaver: CalibrationReportSaver = CalibrationReportSaver()) {
         self.appState = appState
@@ -70,6 +76,8 @@ final class CalibrationCoordinator: ObservableObject {
     /// Entry point from the chat input bar when the user types `/calibrate`.
     /// Captures the active local provider and opens the reference-provider picker.
     func begin(localProviderID: String, localModelID: String) {
+        cancelActiveRun()
+        appState?.stopEngine()
         self.localProviderID = localProviderID
         self.localModelID = localModelID
         appState?.showFirstLaunchSetup = false
@@ -85,8 +93,9 @@ final class CalibrationCoordinator: ObservableObject {
 
     /// Starts the calibration run after the user chooses a reference provider.
     ///
-    /// This builds the provider and scorer closures, runs the suite, publishes
-    /// the report state, and dismisses the sheet on error.
+    /// Only one calibration run is allowed to own the sheet at a time. The
+    /// method returns after scheduling the run so SwiftUI is not tied to the
+    /// lifetime of the full 18-prompt battery.
     func start(referenceProviderID: String) async {
         errorMessage = nil
         let providers = availableReferenceProviders()
@@ -96,11 +105,19 @@ final class CalibrationCoordinator: ObservableObject {
             return
         }
 
+        cancelActiveRun()
+        appState?.stopEngine()
+
+        let runID = UUID()
+        let runLocalProviderID = localProviderID
+        let runLocalModelID = localModelID
+        activeRunID = runID
+
         let total = CalibrationSuite.default.prompts.count
         sheet = .running(CalibrationProgressInfo(
             completed: 0,
             total: total,
-            localProviderID: localProviderID,
+            localProviderID: runLocalProviderID,
             referenceProviderID: referenceProviderID
         ))
 
@@ -109,6 +126,24 @@ final class CalibrationCoordinator: ObservableObject {
         // would otherwise have to instrument by hand.
         let startedAt = Date()
 
+        calibrationTask = Task { [weak self] in
+            await self?.runCalibration(
+                runID: runID,
+                localProviderID: runLocalProviderID,
+                localModelID: runLocalModelID,
+                referenceProviderID: referenceProviderID,
+                startedAt: startedAt
+            )
+        }
+    }
+
+    private func runCalibration(
+        runID: UUID,
+        localProviderID: String,
+        localModelID: String,
+        referenceProviderID: String,
+        startedAt: Date
+    ) async {
         do {
             let localClosure = makeProviderClosure(providerID: localProviderID)
             let referenceClosure = makeProviderClosure(providerID: referenceProviderID)
@@ -122,6 +157,7 @@ final class CalibrationCoordinator: ObservableObject {
 
             let responses = try await runner.run(suite: .default) { @MainActor [weak self] completed in
                 guard let self,
+                      self.activeRunID == runID,
                       case .running(let info) = self.sheet else { return }
                 self.sheet = .running(CalibrationProgressInfo(
                     completed: completed,
@@ -130,12 +166,25 @@ final class CalibrationCoordinator: ObservableObject {
                     referenceProviderID: info.referenceProviderID
                 ))
             }
+            try Task.checkCancellation()
+            guard activeRunID == runID else { return }
+
+            let localManagerProviderID = localManagerProviderID(for: localProviderID)
+            let localRuntimeConfig = await currentLocalRuntimeConfig(
+                localProviderID: localManagerProviderID,
+                localModelID: localModelID
+            )
+            let llamaRuntimeSettings = localManagerProviderID == "llamacpp" ? AppSettings.shared.llamaCppRuntime : nil
             let advisor = CalibrationAdvisor()
             let advisories = advisor.analyze(
                 responses: responses,
                 localModelID: localModelID,
-                localProviderID: localProviderID
+                localProviderID: localProviderID,
+                localRuntimeConfig: localRuntimeConfig,
+                llamaCppRuntimeSettings: llamaRuntimeSettings
             )
+            try Task.checkCancellation()
+            guard activeRunID == runID else { return }
 
             let elapsed = Date().timeIntervalSince(startedAt)
             let report = CalibrationReport(
@@ -147,12 +196,22 @@ final class CalibrationCoordinator: ObservableObject {
                 wallClockSeconds: elapsed
             )
             sheet = .report(report)
+            calibrationTask = nil
+            activeRunID = nil
             // Best-effort save — a disk-write failure must not hide the
             // report from the user. `_ =` discards the Optional<URL> result
             // that `try?` produces (@discardableResult applies to the URL,
             // not its Optional wrapper).
             _ = try? await reportSaver.save(report)
+        } catch is CancellationError {
+            if activeRunID == runID {
+                calibrationTask = nil
+                activeRunID = nil
+            }
         } catch {
+            guard activeRunID == runID else { return }
+            calibrationTask = nil
+            activeRunID = nil
             errorMessage = humanReadableError(error, referenceProviderID: referenceProviderID)
             sheet = .pickProvider(availableReferenceProviders())
         }
@@ -192,6 +251,7 @@ final class CalibrationCoordinator: ObservableObject {
     }
 
     func dismiss() {
+        cancelActiveRun()
         errorMessage = nil
         sheet = nil
     }
@@ -228,6 +288,131 @@ final class CalibrationCoordinator: ObservableObject {
         appState?.registry.isReadyForUse(providerID) == true
     }
 
+    private func currentLocalRuntimeConfig(localProviderID: String, localModelID: String) async -> LocalModelConfig? {
+        guard let manager = appState?.manager(for: localProviderID) else {
+            return Self.llamaCppPresetRuntimeConfigIfAvailable(
+                localProviderID: localProviderID,
+                localModelID: localModelID
+            )
+        }
+        do {
+            let loaded = try await manager.loadedModels()
+            if let config = loaded.first(where: { $0.modelID == localModelID })?.knownConfig,
+               Self.hasExplicitRuntimeValues(config) {
+                return config
+            }
+            return Self.llamaCppPresetRuntimeConfigIfAvailable(
+                localProviderID: localProviderID,
+                localModelID: localModelID
+            )
+        } catch {
+            return Self.llamaCppPresetRuntimeConfigIfAvailable(
+                localProviderID: localProviderID,
+                localModelID: localModelID
+            )
+        }
+    }
+
+    private func localManagerProviderID(for providerID: String) -> String {
+        providerID.split(separator: ":", maxSplits: 1).first.map(String.init) ?? providerID
+    }
+
+    private static func llamaCppPresetRuntimeConfigIfAvailable(
+        localProviderID: String,
+        localModelID: String
+    ) -> LocalModelConfig? {
+        guard localProviderID == "llamacpp" else { return nil }
+        let path = AppSettings.shared.llamaCppRuntime.modelsPresetPath
+        guard !path.isEmpty,
+              let contents = try? String(contentsOfFile: NSString(string: path).expandingTildeInPath)
+        else {
+            return nil
+        }
+        return runtimeConfigFromLlamaCppPreset(contents, modelID: localModelID)
+    }
+
+    static func runtimeConfigFromLlamaCppPreset(_ contents: String, modelID: String) -> LocalModelConfig? {
+        var activeSection: String?
+        var defaults: [String: String] = [:]
+        var modelValues: [String: String] = [:]
+
+        for rawLine in contents.split(separator: "\n", omittingEmptySubsequences: false) {
+            let trimmed = rawLine
+                .split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)
+                .first?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !trimmed.isEmpty else { continue }
+
+            if trimmed.hasPrefix("["), trimmed.hasSuffix("]") {
+                activeSection = String(trimmed.dropFirst().dropLast())
+                continue
+            }
+
+            guard let separator = trimmed.firstIndex(of: "="),
+                  let section = activeSection else { continue }
+            let key = trimmed[..<separator].trimmingCharacters(in: .whitespacesAndNewlines)
+            let value = trimmed[trimmed.index(after: separator)...].trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if section == "*" {
+                defaults[key] = value
+            } else if section == modelID {
+                modelValues[key] = value
+            }
+        }
+
+        guard !modelValues.isEmpty else { return nil }
+        let values = defaults.merging(modelValues) { _, model in model }
+        var config = LocalModelConfig()
+        config.contextLength = intValue(values["ctx-size"] ?? values["c"])
+        config.gpuLayers = intValue(values["n-gpu-layers"] ?? values["ngl"])
+        config.cpuThreads = intValue(values["threads"])
+        if let flash = values["flash-attn"] {
+            config.flashAttention = boolValue(flash)
+        }
+        config.cacheTypeK = values["cache-type-k"]
+        config.cacheTypeV = values["cache-type-v"]
+        config.ropeFrequencyBase = (values["rope-freq-base"]).flatMap(Double.init)
+        config.batchSize = intValue(values["batch-size"] ?? values["b"])
+        config.ubatchSize = intValue(values["ubatch-size"] ?? values["ub"])
+        if let mmap = values["mmap"] {
+            config.useMmap = boolValue(mmap)
+        }
+        if let mlock = values["mlock"] {
+            config.useMlock = boolValue(mlock)
+        }
+        return config
+    }
+
+    private static func hasExplicitRuntimeValues(_ config: LocalModelConfig) -> Bool {
+        config.contextLength != nil ||
+        config.gpuLayers != nil ||
+        config.cpuThreads != nil ||
+        config.flashAttention != nil ||
+        config.cacheTypeK != nil ||
+        config.cacheTypeV != nil ||
+        config.ropeFrequencyBase != nil ||
+        config.batchSize != nil ||
+        config.ubatchSize != nil ||
+        config.useMmap != nil ||
+        config.useMlock != nil
+    }
+
+    private static func intValue(_ value: String?) -> Int? {
+        value.flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+    }
+
+    private static func boolValue(_ value: String) -> Bool {
+        ["1", "true", "yes", "on"].contains(
+            value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        )
+    }
+
+    private func cancelActiveRun() {
+        calibrationTask?.cancel()
+        calibrationTask = nil
+        activeRunID = nil
+    }
+
     /// Builds a single streamed completion request for one provider.
     ///
     /// The request uses the prompt text as a normal user turn, sets max tokens
@@ -255,6 +440,7 @@ final class CalibrationCoordinator: ObservableObject {
                 messages: [Message(role: .user, content: .text(prompt), timestamp: Date())],
                 stream: true
             )
+            request.maxTokens = 768
             let inferenceDefaults = await MainActor.run { AppSettings.shared.inferenceDefaults }
             inferenceDefaults.apply(to: &request)
 
@@ -311,7 +497,11 @@ final class CalibrationCoordinator: ObservableObject {
             inferenceDefaults.apply(to: &request)
 
             do {
-                let judged = try await calibrationCompleteText(provider: provider, request: request)
+                let judged = try await calibrationCompleteText(
+                    provider: provider,
+                    request: request,
+                    timeoutSeconds: 60
+                )
                 let trimmed = judged.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
                 if trimmed.hasPrefix("PASS") {
                     return .scored(1.0)
@@ -355,13 +545,31 @@ enum CalibrationError: Error, Sendable {
     case runnerFailed(String)
 }
 
-private func calibrationCompleteText(provider: any LLMProvider, request: CompletionRequest) async throws -> String {
-    var text = ""
-    let stream = try await PreflightGuard.complete(request, provider: provider)
-    for try await chunk in stream {
-        text += chunk.delta?.content ?? ""
+func calibrationCompleteText(
+    provider: any LLMProvider,
+    request: CompletionRequest,
+    timeoutSeconds: TimeInterval = 180
+) async throws -> String {
+    try await withThrowingTaskGroup(of: String.self) { group in
+        group.addTask {
+            var text = ""
+            let stream = try await PreflightGuard.complete(request, provider: provider)
+            for try await chunk in stream {
+                text += chunk.delta?.content ?? ""
+            }
+            return text
+        }
+        group.addTask {
+            let nanoseconds = UInt64(max(timeoutSeconds, 0.001) * 1_000_000_000)
+            try await Task.sleep(nanoseconds: nanoseconds)
+            throw CalibrationError.runnerFailed("Provider request timed out after \(Int(timeoutSeconds)) seconds.")
+        }
+        guard let result = try await group.next() else {
+            throw CalibrationError.runnerFailed("Provider request ended without a result.")
+        }
+        group.cancelAll()
+        return result
     }
-    return text
 }
 
 private func calibrationResolvedModelID(for config: ProviderConfig) -> String {

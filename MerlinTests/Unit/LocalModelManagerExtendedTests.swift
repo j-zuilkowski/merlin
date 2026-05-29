@@ -227,6 +227,33 @@ final class LocalModelManagerExtendedTests: XCTestCase {
         let models = try await manager.loadedModels()
         XCTAssertEqual(models.first?.exposure, .serverExposed)
     }
+
+    // MARK: - LlamaCppModelManager
+
+    func testLlamaCppLoadedModelsReadKnownConfigFromRouterArgs() async throws {
+        let session = Self.makeMockSession { request in
+            Self.okResponse(
+                for: request,
+                data: Data("""
+                {"data":[{"id":"qwen3-coder-local","status":{"value":"loaded","args":["llama-server","--ctx-size","32768","--n-gpu-layers","999","--flash-attn","--cache-type-k","q8_0","--cache-type-v","q8_0","--batch-size","1024","--ubatch-size","512","--mmap"]}}]}
+                """.utf8)
+            )
+        }
+        let manager = LlamaCppModelManager(baseURL: URL(string: "http://localhost:8081")!, session: session)
+
+        let models = try await manager.loadedModels()
+        let model = try XCTUnwrap(models.first)
+
+        XCTAssertEqual(model.exposure, .runtimeLoaded)
+        XCTAssertEqual(model.knownConfig.contextLength, 32768)
+        XCTAssertEqual(model.knownConfig.gpuLayers, 999)
+        XCTAssertEqual(model.knownConfig.flashAttention, true)
+        XCTAssertEqual(model.knownConfig.cacheTypeK, "q8_0")
+        XCTAssertEqual(model.knownConfig.cacheTypeV, "q8_0")
+        XCTAssertEqual(model.knownConfig.batchSize, 1024)
+        XCTAssertEqual(model.knownConfig.ubatchSize, 512)
+        XCTAssertEqual(model.knownConfig.useMmap, true)
+    }
 }
 
 extension LocalModelManagerExtendedTests {
