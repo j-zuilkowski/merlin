@@ -877,3 +877,79 @@ Exit criteria:
 
 - The focused Amp backend slice creates KiCad project, schematic, and board
   artifacts through the generic runtime path.
+
+## Phase 46: KiCad CLI Validation Gates
+
+Goal: use `kicad-cli` report contents as the ERC/DRC authority.
+
+1. Invoke ERC and DRC through the configured local `kicad-cli`.
+2. Parse JSON report artifacts.
+3. Block on error-severity diagnostics.
+4. Preserve report artifacts for inspection.
+
+Exit criteria:
+
+- ERC and DRC reports with blocking diagnostics return blocked tool results.
+
+## Phase 47: Validation Handoff Evidence
+
+Goal: prevent downstream workflow steps from advancing without validation
+report evidence.
+
+1. Carry ERC, DRC, and SPICE report/log paths in workflow handoff.
+2. Require DRC report evidence before simulation.
+3. Require SPICE measurement/log evidence before visual QA.
+
+Exit criteria:
+
+- Workflow orchestration stops when validation report handoff is missing.
+
+## Phase 48: Diagnostic Repair Routing
+
+Goal: route parsed ERC/DRC diagnostics into structured repair input.
+
+1. Convert parsed report errors into `KiCadViolation` values.
+2. Preserve diagnostic codes as warnings.
+3. Return repair-specific next actions.
+
+Exit criteria:
+
+- ERC and DRC failures expose structured violations and repair next actions.
+
+## Phase 49: Diagnostic Artifact Preservation
+
+Goal: retain validation artifacts even when validation fails.
+
+1. Attach ERC and DRC reports on blocked validation.
+2. Attach SPICE logs on blocked simulation.
+3. Return workspace artifact references for blocked results.
+
+Exit criteria:
+
+- Failed validation and simulation runs expose existing artifact paths.
+
+## Phase 50: SPICE Execution Gate
+
+Goal: make ngspice execution failures block with actionable diagnostics.
+
+1. Run configured ngspice in batch mode.
+2. Preserve the ngspice output log.
+3. Return `blockedSimulation` on execution failure.
+4. Route next action to SPICE repair.
+
+Exit criteria:
+
+- SPICE execution errors cannot be marked complete and preserve repair logs.
+
+## Phase 51: Validation Repair Slice
+
+Goal: prove ERC, DRC, and SPICE failures are diagnostic-driven and cannot falsely
+advance.
+
+1. Combine ERC, DRC, and SPICE blocked-path tests.
+2. Combine orchestration validation-handoff tests.
+3. Keep full artifact generation separate from full-demo execution.
+
+Exit criteria:
+
+- The focused validation repair slice passes without running the full GUI demo.

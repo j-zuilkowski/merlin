@@ -1655,6 +1655,16 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let artifacts = [ArtifactRef(path: outputURL.path, kind: outputKind)]
         guard run.exitCode == 0 else {
             if FileManager.default.fileExists(atPath: outputURL.path) {
+                if let diagnosticBlock = kiCadDiagnosticBlock(
+                    request,
+                    context: context,
+                    outputKind: outputKind,
+                    reportURL: outputURL,
+                    artifacts: artifacts,
+                    commandOutput: run.output
+                ) {
+                    return diagnosticBlock
+                }
                 return commandFailureWithArtifactsBlock(
                     request,
                     context: context,
@@ -1680,9 +1690,108 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 )]
             )
         }
+        if let diagnosticBlock = kiCadDiagnosticBlock(
+            request,
+            context: context,
+            outputKind: outputKind,
+            reportURL: outputURL,
+            artifacts: artifacts,
+            commandOutput: run.output
+        ) {
+            return diagnosticBlock
+        }
         return complete(
             request,
             artifacts: artifacts
+        )
+    }
+
+    private func kiCadDiagnosticBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        outputKind: String,
+        reportURL: URL,
+        artifacts: [ArtifactRef],
+        commandOutput: String
+    ) -> WorkspaceMessageResponse? {
+        guard let data = try? Data(contentsOf: reportURL) else { return nil }
+        switch outputKind {
+        case "erc_report":
+            guard let report = try? KiCadERCParser().parse(jsonData: data) else { return nil }
+            let blocking = report.blockingViolations
+            guard !blocking.isEmpty else { return nil }
+            return validationDiagnosticBlock(
+                request,
+                context: context,
+                gate: "erc",
+                artifacts: artifacts,
+                violations: blocking.map {
+                    KiCadViolation(gate: "erc", severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
+                },
+                warnings: blocking.map {
+                    KiCadWarning(
+                        code: $0.code,
+                        message: diagnosticMessage($0.message, commandOutput: commandOutput),
+                        affectedRefs: $0.refs,
+                        suggestedAction: "Repair the ERC diagnostic and rerun kicad_run_erc."
+                    )
+                },
+                nextActions: ["repair_erc_from_diagnostics", "rerun_erc"]
+            )
+        case "drc_report":
+            guard let report = try? KiCadDRCParser().parse(jsonData: data) else { return nil }
+            let blocking = report.blockingViolations
+            guard !blocking.isEmpty else { return nil }
+            return validationDiagnosticBlock(
+                request,
+                context: context,
+                gate: "drc",
+                artifacts: artifacts,
+                violations: blocking.map {
+                    KiCadViolation(gate: "drc", severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
+                },
+                warnings: blocking.map {
+                    KiCadWarning(
+                        code: $0.code,
+                        message: diagnosticMessage($0.message, commandOutput: commandOutput),
+                        affectedRefs: $0.refs,
+                        suggestedAction: "Repair the DRC diagnostic and rerun kicad_run_drc."
+                    )
+                },
+                nextActions: ["repair_drc_from_diagnostics", "rerun_drc"]
+            )
+        default:
+            return nil
+        }
+    }
+
+    private func validationDiagnosticBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        gate: String,
+        artifacts: [ArtifactRef],
+        violations: [KiCadViolation],
+        warnings: [KiCadWarning],
+        nextActions: [String]
+    ) -> WorkspaceMessageResponse {
+        let message = "\(gate.uppercased()) reported blocking diagnostics."
+        Task {
+            await publishDiagnostic(reason: .failedGate, request: request, context: context, message: message)
+        }
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blocked,
+                artifacts: artifacts,
+                violations: violations,
+                warnings: warnings,
+                nextActions: nextActions
+            )),
+            artifacts: workspaceArtifacts(from: artifacts, request: request),
+            diagnostics: warnings.map {
+                WorkspaceDiagnostic(code: $0.code, message: $0.message, severity: "error")
+            }
         )
     }
 
@@ -1779,14 +1888,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let artifacts = [ArtifactRef(path: outputURL.path, kind: "spice_measurements")]
         guard run.exitCode == 0 else {
             if FileManager.default.fileExists(atPath: outputURL.path) {
-                return commandFailureWithArtifactsBlock(
+                return spiceDiagnosticBlock(
                     request,
                     context: context,
-                    code: "SPICE_EXECUTION_FAILED",
+                    outputURL: outputURL,
                     run: run,
-                    status: .blockedSimulation,
-                    artifacts: artifacts,
-                    nextActions: ["inspect_spice_measurements", "repair_and_retry"]
+                    artifacts: artifacts
                 )
             }
             return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: run)
@@ -1959,7 +2066,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             circuitIRPath: stringValue(object, keys: ["circuit_ir_path", "circuitIRPath"]),
             componentMatrixPath: stringValue(object, keys: ["component_matrix_path", "componentMatrixPath"]),
             footprintAssignmentPath: stringValue(object, keys: ["footprint_assignment_path", "footprintAssignmentPath"]),
-            projectPath: stringValue(object, keys: ["project_path", "projectPath"])
+            projectPath: stringValue(object, keys: ["project_path", "projectPath"]),
+            ercReportPath: stringValue(object, keys: ["erc_report_path", "ercReportPath"]),
+            drcReportPath: stringValue(object, keys: ["drc_report_path", "drcReportPath"]),
+            spiceMeasurementsPath: stringValue(object, keys: ["spice_measurements_path", "spiceMeasurementsPath"])
         )
 
         for artifact in artifacts {
@@ -1974,6 +2084,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 handoff.footprintAssignmentPath = artifact.path
             case ElectronicsArtifactKind.kicadProject.rawValue:
                 handoff.projectPath = artifact.path
+            case "erc_report":
+                handoff.ercReportPath = artifact.path
+            case "drc_report":
+                handoff.drcReportPath = artifact.path
+            case "spice_measurements":
+                handoff.spiceMeasurementsPath = artifact.path
             default:
                 continue
             }
@@ -1983,7 +2099,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
            handoff.circuitIRPath == nil,
            handoff.componentMatrixPath == nil,
            handoff.footprintAssignmentPath == nil,
-           handoff.projectPath == nil {
+           handoff.projectPath == nil,
+           handoff.ercReportPath == nil,
+           handoff.drcReportPath == nil,
+           handoff.spiceMeasurementsPath == nil {
             return nil
         }
         return handoff
@@ -3475,17 +3594,62 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 warnings: [warning],
                 nextActions: nextActions
             )),
-            artifacts: artifacts.map {
-                WorkspaceArtifactRef(
-                    id: "\(request.id.uuidString)-\($0.kind)",
-                    kind: $0.kind,
-                    url: URL(fileURLWithPath: $0.path),
-                    displayName: $0.kind,
-                    metadata: ["request_id": request.id.uuidString]
-                )
-            },
+            artifacts: workspaceArtifacts(from: artifacts, request: request),
             diagnostics: [WorkspaceDiagnostic(code: code, message: message, severity: "error")]
         )
+    }
+
+    private func spiceDiagnosticBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        outputURL: URL,
+        run: ElectronicsCommandRun,
+        artifacts: [ArtifactRef]
+    ) -> WorkspaceMessageResponse {
+        let logText = ((try? String(contentsOf: outputURL, encoding: .utf8)) ?? run.output)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = logText.isEmpty
+            ? "SPICE execution failed with exit code \(run.exitCode)."
+            : logText
+        let warning = KiCadWarning(
+            code: "SPICE_EXECUTION_FAILED",
+            message: message,
+            affectedRefs: run.arguments + artifacts.map(\.path),
+            suggestedAction: "Repair the SPICE deck or model issue and rerun kicad_run_spice."
+        )
+        Task {
+            await publishDiagnostic(reason: .failedGate, request: request, context: context, message: message)
+        }
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blockedSimulation,
+                artifacts: artifacts,
+                warnings: [warning],
+                nextActions: ["repair_spice_from_diagnostics", "rerun_spice"]
+            )),
+            artifacts: workspaceArtifacts(from: artifacts, request: request),
+            diagnostics: [WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error")]
+        )
+    }
+
+    private func workspaceArtifacts(from artifacts: [ArtifactRef], request: WorkspaceMessageRequest) -> [WorkspaceArtifactRef] {
+        artifacts.map {
+            WorkspaceArtifactRef(
+                id: "\(request.id.uuidString)-\($0.kind)",
+                kind: $0.kind,
+                url: URL(fileURLWithPath: $0.path),
+                displayName: $0.kind,
+                metadata: ["request_id": request.id.uuidString]
+            )
+        }
+    }
+
+    private func diagnosticMessage(_ message: String, commandOutput: String) -> String {
+        let output = commandOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !output.isEmpty else { return message }
+        return "\(message)\n\(output)"
     }
 
     private func runProcess(executablePath: String, arguments: [String]) -> ElectronicsCommandRun {

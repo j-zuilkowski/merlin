@@ -43,17 +43,26 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
     var componentMatrixPath: String?
     var footprintAssignmentPath: String?
     var projectPath: String?
+    var ercReportPath: String?
+    var drcReportPath: String?
+    var spiceMeasurementsPath: String?
 
     init(designIntentPath: String? = nil,
          circuitIRPath: String? = nil,
          componentMatrixPath: String? = nil,
          footprintAssignmentPath: String? = nil,
-         projectPath: String? = nil) {
+         projectPath: String? = nil,
+         ercReportPath: String? = nil,
+         drcReportPath: String? = nil,
+         spiceMeasurementsPath: String? = nil) {
         self.designIntentPath = designIntentPath
         self.circuitIRPath = circuitIRPath
         self.componentMatrixPath = componentMatrixPath
         self.footprintAssignmentPath = footprintAssignmentPath
         self.projectPath = projectPath
+        self.ercReportPath = ercReportPath
+        self.drcReportPath = drcReportPath
+        self.spiceMeasurementsPath = spiceMeasurementsPath
     }
 
     init(from decoder: Decoder) throws {
@@ -63,6 +72,9 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
         componentMatrixPath = Self.string(in: container, for: ["componentMatrixPath", "component_matrix_path"])
         footprintAssignmentPath = Self.string(in: container, for: ["footprintAssignmentPath", "footprint_assignment_path"])
         projectPath = Self.string(in: container, for: ["projectPath", "project_path"])
+        ercReportPath = Self.string(in: container, for: ["ercReportPath", "erc_report_path"])
+        drcReportPath = Self.string(in: container, for: ["drcReportPath", "drc_report_path"])
+        spiceMeasurementsPath = Self.string(in: container, for: ["spiceMeasurementsPath", "spice_measurements_path"])
     }
 
     func encode(to encoder: Encoder) throws {
@@ -72,6 +84,9 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
         try container.encodeIfPresent(componentMatrixPath, forKey: FlexibleCodingKey("componentMatrixPath"))
         try container.encodeIfPresent(footprintAssignmentPath, forKey: FlexibleCodingKey("footprintAssignmentPath"))
         try container.encodeIfPresent(projectPath, forKey: FlexibleCodingKey("projectPath"))
+        try container.encodeIfPresent(ercReportPath, forKey: FlexibleCodingKey("ercReportPath"))
+        try container.encodeIfPresent(drcReportPath, forKey: FlexibleCodingKey("drcReportPath"))
+        try container.encodeIfPresent(spiceMeasurementsPath, forKey: FlexibleCodingKey("spiceMeasurementsPath"))
     }
 
     private struct FlexibleCodingKey: CodingKey {

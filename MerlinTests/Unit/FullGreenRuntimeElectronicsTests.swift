@@ -96,6 +96,75 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "drills" && FileManager.default.fileExists(atPath: $0.path) })
     }
 
+    func testKiCadERCGateBlocksOnParsedBlockingDiagnostics() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeKiCadProjectFixture(name: "erc-block")
+        let tool = try writeFakeKiCadCLI(reportJSON: #"{"violations":[{"id":"erc-1","code":"power_pin_not_driven","severity":"error","message":"Power input not driven","refs":["U1.1"]}]}"#)
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_run_erc",
+            payload: #"{"project_path":"\#(project.path)","kicad_cli_path":"\#(tool.executable.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.violations.map(\.gate), ["erc"])
+        XCTAssertTrue(result.warnings.contains { $0.code == "power_pin_not_driven" })
+        XCTAssertTrue(result.nextActions.contains("repair_erc_from_diagnostics"))
+        XCTAssertTrue(result.artifacts.contains { $0.kind == "erc_report" && FileManager.default.fileExists(atPath: $0.path) })
+    }
+
+    func testKiCadDRCGateBlocksOnParsedBlockingDiagnostics() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeKiCadProjectFixture(name: "drc-block")
+        let tool = try writeFakeKiCadCLI(reportJSON: #"{"violations":[{"id":"drc-1","code":"clearance","severity":"error","message":"Track clearance violation","refs":["R1","C1"]}]}"#)
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_run_drc",
+            payload: #"{"project_path":"\#(project.path)","kicad_cli_path":"\#(tool.executable.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.violations.map(\.gate), ["drc"])
+        XCTAssertTrue(result.warnings.contains { $0.code == "clearance" })
+        XCTAssertTrue(result.nextActions.contains("repair_drc_from_diagnostics"))
+        XCTAssertTrue(result.artifacts.contains { $0.kind == "drc_report" && FileManager.default.fileExists(atPath: $0.path) })
+    }
+
+    func testSPICEGateBlocksOnNgspiceErrorsAndPreservesRepairDiagnostics() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeKiCadProjectFixture(name: "spice-block")
+        let scenario = try writeFixtureFile(name: "amp.cir", text: """
+        * failing fixture
+        V1 in 0 DC 1
+        R1 in 0 1k
+        .op
+        .end
+        """)
+        let tool = try writeFakeNgspice(exitCode: 1, logText: "Error: singular matrix\\n")
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_run_spice",
+            payload: #"{"project_path":"\#(project.path)","scenario_path":"\#(scenario.path)","ngspice_path":"\#(tool.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blockedSimulation)
+        XCTAssertTrue(result.warnings.contains { $0.code == "SPICE_EXECUTION_FAILED" && $0.message.contains("singular matrix") })
+        XCTAssertTrue(result.nextActions.contains("repair_spice_from_diagnostics"))
+        XCTAssertTrue(result.artifacts.contains { $0.kind == "spice_measurements" && FileManager.default.fileExists(atPath: $0.path) })
+    }
+
     private func buildElectronicsDynamicLibrary(in directory: URL) throws -> URL {
         let sourceURL = repoURL("plugins/electronics/Sources/ElectronicsPluginEntrypoint.c")
         let libraryURL = directory.appendingPathComponent("libMerlinElectronicsPlugin.dylib")
@@ -115,7 +184,23 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         return url
     }
 
+    private func writeKiCadProjectFixture(name: String) throws -> URL {
+        let directory = temporaryDirectory(name)
+        let project = directory.appendingPathComponent("\(name).kicad_pro")
+        let schematic = directory.appendingPathComponent("\(name).kicad_sch")
+        let board = directory.appendingPathComponent("\(name).kicad_pcb")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try "{}".write(to: project, atomically: true, encoding: .utf8)
+        try "(kicad_sch)".write(to: schematic, atomically: true, encoding: .utf8)
+        try "(kicad_pcb)".write(to: board, atomically: true, encoding: .utf8)
+        return project
+    }
+
     private func writeFakeKiCadCLI() throws -> (executable: URL, log: URL) {
+        try writeFakeKiCadCLI(reportJSON: #"{"status":"pass","violations":[]}"#)
+    }
+
+    private func writeFakeKiCadCLI(reportJSON: String) throws -> (executable: URL, log: URL) {
         let directory = temporaryDirectory("fake-kicad")
         let executable = directory.appendingPathComponent("kicad-cli")
         let log = directory.appendingPathComponent("calls.log")
@@ -129,7 +214,9 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
           if [ "$1" = "--output" ]; then
             shift
             mkdir -p "$(dirname "$1")"
-            echo "{\\"status\\":\\"pass\\",\\"tool\\":\\"$0\\"}" > "$1"
+            cat > "$1" <<'JSON'
+        \(reportJSON)
+        JSON
           fi
           shift
         done
@@ -138,5 +225,27 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         try script.write(to: executable, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
         return (executable, log)
+    }
+
+    private func writeFakeNgspice(exitCode: Int, logText: String) throws -> URL {
+        let directory = temporaryDirectory("fake-ngspice")
+        let executable = directory.appendingPathComponent("ngspice")
+        let script = """
+        #!/bin/sh
+        out=""
+        while [ "$#" -gt 0 ]; do
+          if [ "$1" = "-o" ]; then
+            shift
+            out="$1"
+          fi
+          shift
+        done
+        mkdir -p "$(dirname "$out")"
+        printf '%s' "\(logText)" > "$out"
+        exit \(exitCode)
+        """
+        try script.write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+        return executable
     }
 }

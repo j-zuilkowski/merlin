@@ -257,6 +257,15 @@ struct KiCadWorkflowOrchestrator {
         if let path = handoff.projectPath {
             arguments["project_path"] = path
         }
+        if let path = handoff.ercReportPath {
+            arguments["erc_report_path"] = path
+        }
+        if let path = handoff.drcReportPath {
+            arguments["drc_report_path"] = path
+        }
+        if let path = handoff.spiceMeasurementsPath {
+            arguments["spice_measurements_path"] = path
+        }
         arguments["workflow_step"] = step.rawValue
         return arguments
     }
@@ -275,6 +284,16 @@ struct KiCadWorkflowOrchestrator {
                 && hasPath("component_matrix_path", in: arguments)
                 && hasPath("footprint_assignment_path", in: arguments)
                 && hasPath("output_directory", in: arguments)
+        case .checks:
+            return hasPath("project_path", in: arguments)
+        case .simulation:
+            return hasPath("project_path", in: arguments)
+                && hasPath("drc_report_path", in: arguments)
+                && hasPath("scenario_path", in: arguments)
+        case .visualQA:
+            return hasPath("project_path", in: arguments)
+                && hasPath("drc_report_path", in: arguments)
+                && hasPath("spice_measurements_path", in: arguments)
         default:
             return true
         }
@@ -293,7 +312,10 @@ private extension KiCadWorkflowHandoff {
             circuitIRPath: arguments["circuit_ir_path"] as? String,
             componentMatrixPath: arguments["component_matrix_path"] as? String,
             footprintAssignmentPath: arguments["footprint_assignment_path"] as? String,
-            projectPath: arguments["project_path"] as? String
+            projectPath: arguments["project_path"] as? String,
+            ercReportPath: arguments["erc_report_path"] as? String,
+            drcReportPath: arguments["drc_report_path"] as? String,
+            spiceMeasurementsPath: arguments["spice_measurements_path"] as? String
         )
     }
 
@@ -304,5 +326,8 @@ private extension KiCadWorkflowHandoff {
         componentMatrixPath = other.componentMatrixPath ?? componentMatrixPath
         footprintAssignmentPath = other.footprintAssignmentPath ?? footprintAssignmentPath
         projectPath = other.projectPath ?? projectPath
+        ercReportPath = other.ercReportPath ?? ercReportPath
+        drcReportPath = other.drcReportPath ?? drcReportPath
+        spiceMeasurementsPath = other.spiceMeasurementsPath ?? spiceMeasurementsPath
     }
 }
