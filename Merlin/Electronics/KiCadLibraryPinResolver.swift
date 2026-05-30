@@ -35,6 +35,77 @@ struct KiCadLocalLibraryCatalog: Codable, Sendable, Equatable {
     var footprints: [KiCadFootprintDefinition]
 }
 
+struct KiCadLibraryRoots: Codable, Sendable, Equatable {
+    var generatedAt: Date
+    var symbolRoot: URL
+    var footprintRoot: URL
+}
+
+struct KiCadLibraryRootCache: Sendable {
+    let fileName = "kicad-library-roots.json"
+
+    func load(from directory: URL, maxAgeSeconds: Int, now: Date = Date()) throws -> KiCadLibraryRoots? {
+        let url = directory.appendingPathComponent(fileName)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let roots = try JSONDecoder().decode(KiCadLibraryRoots.self, from: Data(contentsOf: url))
+        guard maxAgeSeconds <= 0 || now.timeIntervalSince(roots.generatedAt) <= Double(maxAgeSeconds) else {
+            return nil
+        }
+        guard FileManager.default.fileExists(atPath: roots.symbolRoot.path),
+              FileManager.default.fileExists(atPath: roots.footprintRoot.path) else {
+            return nil
+        }
+        return roots
+    }
+
+    func write(_ roots: KiCadLibraryRoots, to directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(roots).write(to: directory.appendingPathComponent(fileName))
+    }
+}
+
+struct KiCadLibraryRootDiscovery: Sendable {
+    func discover(searchRoots: [URL] = defaultSearchRoots()) -> KiCadLibraryRoots? {
+        for root in searchRoots {
+            for candidate in candidates(under: root) {
+                let symbolRoot = candidate.appendingPathComponent("symbols", isDirectory: true)
+                let footprintRoot = candidate.appendingPathComponent("footprints", isDirectory: true)
+                if directoryExists(symbolRoot), directoryExists(footprintRoot) {
+                    return KiCadLibraryRoots(generatedAt: Date(), symbolRoot: symbolRoot, footprintRoot: footprintRoot)
+                }
+            }
+        }
+        return nil
+    }
+
+    static func defaultSearchRoots() -> [URL] {
+        [
+            URL(fileURLWithPath: "/Applications/KiCad"),
+            URL(fileURLWithPath: "/Applications/KiCad/KiCad.app"),
+            URL(fileURLWithPath: "/Library/Application Support/kicad"),
+            FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/kicad", isDirectory: true),
+            URL(fileURLWithPath: "/opt/homebrew/share/kicad"),
+            URL(fileURLWithPath: "/usr/local/share/kicad"),
+        ]
+    }
+
+    private func candidates(under root: URL) -> [URL] {
+        [
+            root,
+            root.appendingPathComponent("share/kicad", isDirectory: true),
+            root.appendingPathComponent("Contents/SharedSupport/kicad", isDirectory: true),
+            root.appendingPathComponent("KiCad.app/Contents/SharedSupport/kicad", isDirectory: true),
+        ]
+    }
+
+    private func directoryExists(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+}
+
 struct KiCadLibraryCatalogCache: Sendable {
     let fileName = "kicad-library-catalog.json"
 

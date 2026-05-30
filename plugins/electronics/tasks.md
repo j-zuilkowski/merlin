@@ -795,3 +795,85 @@ Exit criteria:
 
 - Focused catalog extraction, provider cache, local KiCad cache, and handoff
   tests pass together.
+
+## Phase 40: Handoff Driven Orchestration
+
+Goal: make KiCad workflow orchestration advance from structured handoff evidence.
+
+1. Accumulate handoff paths from each completed KiCad tool.
+2. Pass verified paths into following tool arguments.
+3. Preserve explicit output directories.
+
+Exit criteria:
+
+- Circuit IR, component selection, footprint assignment, and compile receive the
+  expected prior artifact paths.
+
+## Phase 41: Missing Evidence Stops
+
+Goal: prevent workflow steps from running when required handoff evidence is
+absent.
+
+1. Define required evidence paths per workflow step.
+2. Stop before the tool call when evidence is missing.
+3. Return blocked input quality instead of inferred progress.
+
+Exit criteria:
+
+- A missing DesignIntent path prevents Circuit IR execution.
+- Later KiCad steps cannot run without their required upstream artifacts.
+
+## Phase 42: KiCad Library Root Discovery
+
+Goal: find local KiCad symbol and footprint roots without hand-authored JSON
+catalogs.
+
+1. Search configured KiCad installation roots.
+2. Recognize app/support `symbols` and `footprints` layouts.
+3. Ignore incomplete layouts.
+
+Exit criteria:
+
+- Configured KiCad install layouts resolve to concrete symbol and footprint
+  roots.
+
+## Phase 43: KiCad Root Config Cache
+
+Goal: use provider config and TTL caching for KiCad library root discovery.
+
+1. Read root search paths and cache settings from electronics provider config.
+2. Let request payload values override config values.
+3. Reuse fresh root-cache entries only.
+
+Exit criteria:
+
+- Runtime selection can discover KiCad roots from config and cache the result.
+
+## Phase 44: Focused Amp Backend Handoff
+
+Goal: prove the plugin-owned Amp fixture can move through selection and
+footprints by handoff evidence.
+
+1. Use Circuit IR-backed component intents.
+2. Enrich explicit catalog candidates with local KiCad footprint evidence.
+3. Preserve Circuit IR pin-to-pad mappings for footprint validation.
+
+Exit criteria:
+
+- The Amp backend slice reaches footprint assignment without bypassing evidence
+  gates.
+
+## Phase 45: Focused Amp Artifact Creation
+
+Goal: prove the focused Amp backend slice creates KiCad artifacts from verified
+handoff inputs.
+
+1. Compile from DesignIntent, Circuit IR, component matrix, and footprint
+   assignment paths.
+2. Return project, schematic, and board artifacts.
+3. Keep full-demo ERC/DRC/SPICE gates for later phases.
+
+Exit criteria:
+
+- The focused Amp backend slice creates KiCad project, schematic, and board
+  artifacts through the generic runtime path.

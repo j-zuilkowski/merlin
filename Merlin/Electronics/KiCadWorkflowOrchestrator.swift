@@ -94,6 +94,7 @@ struct KiCadWorkflowState: Codable, Sendable, Equatable {
     var status: KiCadStatus
     var isPaused: Bool
     var pauseReason: KiCadWorkflowPauseReason?
+    var handoff: KiCadWorkflowHandoff?
 }
 
 struct KiCadWorkflowPlanner: Sendable {
@@ -145,9 +146,11 @@ struct KiCadWorkflowOrchestrator {
     }
 
     func run(mode: KiCadWorkflowMode,
-             approvals: [ElectronicsApprovalKind]) async -> KiCadWorkflowState {
+             approvals: [ElectronicsApprovalKind],
+             initialArguments: [String: Any] = [:]) async -> KiCadWorkflowState {
         var executed: [KiCadWorkflowStep] = []
         let steps = planner.steps(for: mode)
+        var handoff = KiCadWorkflowHandoff(arguments: initialArguments)
 
         for step in steps {
             if step == .package && !approvals.contains(.highStakesSignoff) {
@@ -155,7 +158,8 @@ struct KiCadWorkflowOrchestrator {
                     executedSteps: executed,
                     status: .inProgress,
                     isPaused: true,
-                    pauseReason: .highStakesSignoffRequired
+                    pauseReason: .highStakesSignoffRequired,
+                    handoff: handoff
                 )
             }
 
@@ -164,11 +168,23 @@ struct KiCadWorkflowOrchestrator {
                     executedSteps: executed,
                     status: .inProgress,
                     isPaused: true,
-                    pauseReason: .orderSubmissionApprovalRequired
+                    pauseReason: .orderSubmissionApprovalRequired,
+                    handoff: handoff
                 )
             }
 
-            let result = (try? await executor.execute(toolName: step.toolName, argumentsJSON: "{}"))
+            let arguments = arguments(for: step, initialArguments: initialArguments, handoff: handoff)
+            guard hasRequiredHandoff(for: step, arguments: arguments) else {
+                return KiCadWorkflowState(
+                    executedSteps: executed,
+                    status: .blockedInputQuality,
+                    isPaused: false,
+                    pauseReason: nil,
+                    handoff: handoff
+                )
+            }
+
+            let result = (try? await executor.execute(toolName: step.toolName, arguments: arguments))
                 ?? KiCadToolResult(status: .blockedTooling)
 
             if !result.questions.isEmpty {
@@ -176,7 +192,8 @@ struct KiCadWorkflowOrchestrator {
                     executedSteps: executed,
                     status: .inProgress,
                     isPaused: true,
-                    pauseReason: .clarificationRequired
+                    pauseReason: .clarificationRequired,
+                    handoff: handoff
                 )
             }
 
@@ -185,20 +202,24 @@ struct KiCadWorkflowOrchestrator {
                     executedSteps: executed,
                     status: result.status,
                     isPaused: false,
-                    pauseReason: nil
+                    pauseReason: nil,
+                    handoff: handoff
                 )
             }
 
+            handoff.merge(result.handoff)
             executed.append(step)
         }
 
         if approvals.contains(.orderSubmission) {
-            let result = (try? await executor.execute(toolName: KiCadWorkflowStep.orderSubmit.toolName, argumentsJSON: "{}"))
+            let arguments = arguments(for: .orderSubmit, initialArguments: initialArguments, handoff: handoff)
+            let result = (try? await executor.execute(toolName: KiCadWorkflowStep.orderSubmit.toolName, arguments: arguments))
                 ?? KiCadToolResult(status: .blockedTooling)
             if !isTerminalBlocked(result.status) {
+                handoff.merge(result.handoff)
                 executed.append(.orderSubmit)
             } else {
-                return KiCadWorkflowState(executedSteps: executed, status: result.status, isPaused: false, pauseReason: nil)
+                return KiCadWorkflowState(executedSteps: executed, status: result.status, isPaused: false, pauseReason: nil, handoff: handoff)
             }
         }
 
@@ -206,11 +227,82 @@ struct KiCadWorkflowOrchestrator {
             executedSteps: executed,
             status: .complete,
             isPaused: false,
-            pauseReason: nil
+            pauseReason: nil,
+            handoff: handoff
         )
     }
 
     private func isTerminalBlocked(_ status: KiCadStatus) -> Bool {
         status.rawValue.hasPrefix("BLOCKED")
+    }
+
+    private func arguments(
+        for step: KiCadWorkflowStep,
+        initialArguments: [String: Any],
+        handoff: KiCadWorkflowHandoff
+    ) -> [String: Any] {
+        var arguments = initialArguments
+        if let path = handoff.designIntentPath {
+            arguments["design_intent_path"] = path
+        }
+        if let path = handoff.circuitIRPath {
+            arguments["circuit_ir_path"] = path
+        }
+        if let path = handoff.componentMatrixPath {
+            arguments["component_matrix_path"] = path
+        }
+        if let path = handoff.footprintAssignmentPath {
+            arguments["footprint_assignment_path"] = path
+        }
+        if let path = handoff.projectPath {
+            arguments["project_path"] = path
+        }
+        arguments["workflow_step"] = step.rawValue
+        return arguments
+    }
+
+    private func hasRequiredHandoff(for step: KiCadWorkflowStep, arguments: [String: Any]) -> Bool {
+        switch step {
+        case .circuitIR:
+            return hasPath("design_intent_path", in: arguments)
+        case .componentSelection:
+            return hasPath("design_intent_path", in: arguments) && hasPath("circuit_ir_path", in: arguments)
+        case .footprints:
+            return hasPath("design_intent_path", in: arguments) && hasPath("component_matrix_path", in: arguments)
+        case .compile:
+            return hasPath("design_intent_path", in: arguments)
+                && hasPath("circuit_ir_path", in: arguments)
+                && hasPath("component_matrix_path", in: arguments)
+                && hasPath("footprint_assignment_path", in: arguments)
+                && hasPath("output_directory", in: arguments)
+        default:
+            return true
+        }
+    }
+
+    private func hasPath(_ key: String, in arguments: [String: Any]) -> Bool {
+        guard let value = arguments[key] as? String else { return false }
+        return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+private extension KiCadWorkflowHandoff {
+    init(arguments: [String: Any]) {
+        self.init(
+            designIntentPath: arguments["design_intent_path"] as? String,
+            circuitIRPath: arguments["circuit_ir_path"] as? String,
+            componentMatrixPath: arguments["component_matrix_path"] as? String,
+            footprintAssignmentPath: arguments["footprint_assignment_path"] as? String,
+            projectPath: arguments["project_path"] as? String
+        )
+    }
+
+    mutating func merge(_ other: KiCadWorkflowHandoff?) {
+        guard let other else { return }
+        designIntentPath = other.designIntentPath ?? designIntentPath
+        circuitIRPath = other.circuitIRPath ?? circuitIRPath
+        componentMatrixPath = other.componentMatrixPath ?? componentMatrixPath
+        footprintAssignmentPath = other.footprintAssignmentPath ?? footprintAssignmentPath
+        projectPath = other.projectPath ?? projectPath
     }
 }

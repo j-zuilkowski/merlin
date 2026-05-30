@@ -177,6 +177,42 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertNil(stale)
     }
 
+    func testKiCadLibraryRootDiscoveryFindsConfiguredInstallLayout() throws {
+        let root = try temporaryDirectory()
+        let installRoot = root.appendingPathComponent("KiCad.app/Contents/SharedSupport/kicad", isDirectory: true)
+        let symbolRoot = installRoot.appendingPathComponent("symbols", isDirectory: true)
+        let footprintRoot = installRoot.appendingPathComponent("footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: footprintRoot, withIntermediateDirectories: true)
+
+        let roots = try XCTUnwrap(KiCadLibraryRootDiscovery().discover(searchRoots: [root]))
+
+        XCTAssertEqual(roots.symbolRoot.path, symbolRoot.path)
+        XCTAssertEqual(roots.footprintRoot.path, footprintRoot.path)
+    }
+
+    func testKiCadLibraryRootCacheHonorsTTL() throws {
+        let root = try temporaryDirectory()
+        let cacheURL = root.appendingPathComponent("root-cache", isDirectory: true)
+        let symbolRoot = root.appendingPathComponent("kicad/symbols", isDirectory: true)
+        let footprintRoot = root.appendingPathComponent("kicad/footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: footprintRoot, withIntermediateDirectories: true)
+        let roots = KiCadLibraryRoots(
+            generatedAt: Date(timeIntervalSince1970: 2_000),
+            symbolRoot: symbolRoot,
+            footprintRoot: footprintRoot
+        )
+
+        try KiCadLibraryRootCache().write(roots, to: cacheURL)
+
+        let fresh = try KiCadLibraryRootCache().load(from: cacheURL, maxAgeSeconds: 60, now: Date(timeIntervalSince1970: 2_010))
+        XCTAssertEqual(fresh?.symbolRoot.path, symbolRoot.path)
+
+        let stale = try KiCadLibraryRootCache().load(from: cacheURL, maxAgeSeconds: 60, now: Date(timeIntervalSince1970: 2_061))
+        XCTAssertNil(stale)
+    }
+
     func testPluginOwnedSchemasDocumentCatalogContracts() throws {
         for relativePath in [
             "plugins/electronics/schemas/component_catalog.schema.json",

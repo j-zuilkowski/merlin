@@ -34,7 +34,11 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         let executor = FakeKiCadWorkflowExecutor()
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
 
-        _ = await orchestrator.run(mode: .requirementsToSchematicToPCB, approvals: [.highStakesSignoff])
+        _ = await orchestrator.run(
+            mode: .requirementsToSchematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
 
         let executed = executor.executedSteps
         XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .intent)), try XCTUnwrap(executed.firstIndex(of: .circuitIR)))
@@ -43,12 +47,78 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .footprints)), try XCTUnwrap(executed.firstIndex(of: .compile)))
     }
 
+    func test_orchestratorPassesHandoffPathsIntoFollowingToolArguments() async throws {
+        let executor = FakeKiCadWorkflowExecutor()
+        executor.resultsByStep[.circuitIR] = KiCadToolResult(
+            status: .complete,
+            handoff: KiCadWorkflowHandoff(
+                designIntentPath: "/tmp/intent.json",
+                circuitIRPath: "/tmp/circuit-ir.json"
+            )
+        )
+        executor.resultsByStep[.componentSelection] = KiCadToolResult(
+            status: .complete,
+            handoff: KiCadWorkflowHandoff(
+                designIntentPath: "/tmp/intent.json",
+                circuitIRPath: "/tmp/circuit-ir.json",
+                componentMatrixPath: "/tmp/component-matrix.json"
+            )
+        )
+        executor.resultsByStep[.footprints] = KiCadToolResult(
+            status: .complete,
+            handoff: KiCadWorkflowHandoff(
+                designIntentPath: "/tmp/intent.json",
+                circuitIRPath: "/tmp/circuit-ir.json",
+                componentMatrixPath: "/tmp/component-matrix.json",
+                footprintAssignmentPath: "/tmp/footprints.json"
+            )
+        )
+        let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
+
+        let state = await orchestrator.run(
+            mode: .requirementsToSchematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: [
+                "design_intent_path": "/tmp/intent.json",
+                "output_directory": "/tmp/out",
+            ]
+        )
+
+        XCTAssertTrue(state.executedSteps.contains(.compile))
+        XCTAssertEqual(executor.argumentsByStep[.circuitIR]?["design_intent_path"] as? String, "/tmp/intent.json")
+        XCTAssertEqual(executor.argumentsByStep[.componentSelection]?["circuit_ir_path"] as? String, "/tmp/circuit-ir.json")
+        XCTAssertEqual(executor.argumentsByStep[.footprints]?["component_matrix_path"] as? String, "/tmp/component-matrix.json")
+        XCTAssertEqual(executor.argumentsByStep[.compile]?["footprint_assignment_path"] as? String, "/tmp/footprints.json")
+        XCTAssertEqual(executor.argumentsByStep[.compile]?["output_directory"] as? String, "/tmp/out")
+        XCTAssertEqual(state.handoff?.componentMatrixPath, "/tmp/component-matrix.json")
+    }
+
+    func test_orchestratorStopsBeforeToolWhenRequiredHandoffEvidenceIsMissing() async {
+        let executor = FakeKiCadWorkflowExecutor()
+        executor.resultsByStep[.intent] = KiCadToolResult(status: .complete)
+        let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
+
+        let state = await orchestrator.run(
+            mode: .requirementsToSchematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: [:]
+        )
+
+        XCTAssertEqual(state.status, .blockedInputQuality)
+        XCTAssertFalse(executor.executedSteps.contains(.circuitIR))
+        XCTAssertNil(executor.argumentsByStep[.circuitIR])
+    }
+
     func test_blockedResult_stopsBeforeDestructiveExportOrderSteps() async {
         let executor = FakeKiCadWorkflowExecutor()
         executor.resultsByStep[.checks] = KiCadToolResult(status: .blocked)
 
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
-        let state = await orchestrator.run(mode: .schematicToPCB, approvals: [])
+        let state = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
 
         XCTAssertEqual(state.status, .blocked)
         XCTAssertFalse(state.executedSteps.contains(.fab))
@@ -63,7 +133,11 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
             questions: [ClarificationQuestion(id: "q1", prompt: "Need net clarification", affectedRefs: ["page:1"])])
 
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
-        let state = await orchestrator.run(mode: .schematicToPCB, approvals: [])
+        let state = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
 
         XCTAssertTrue(state.isPaused)
         XCTAssertEqual(state.pauseReason, .clarificationRequired)
@@ -73,11 +147,19 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         let executor = FakeKiCadWorkflowExecutor()
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
 
-        let noApproval = await orchestrator.run(mode: .schematicToPCB, approvals: [])
+        let noApproval = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
         XCTAssertTrue(noApproval.isPaused)
         XCTAssertEqual(noApproval.pauseReason, .highStakesSignoffRequired)
 
-        let approved = await orchestrator.run(mode: .schematicToPCB, approvals: [.highStakesSignoff])
+        let approved = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
         XCTAssertFalse(approved.isPaused)
     }
 
@@ -85,10 +167,18 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         let executor = FakeKiCadWorkflowExecutor()
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
 
-        let noApproval = await orchestrator.run(mode: .schematicToPCB, approvals: [.highStakesSignoff])
+        let noApproval = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
         XCTAssertFalse(noApproval.executedSteps.contains(.orderSubmit))
 
-        let approved = await orchestrator.run(mode: .schematicToPCB, approvals: [.highStakesSignoff, .orderSubmission])
+        let approved = await orchestrator.run(
+            mode: .schematicToPCB,
+            approvals: [.highStakesSignoff, .orderSubmission],
+            initialArguments: ["output_directory": "/tmp/out"]
+        )
         XCTAssertTrue(approved.executedSteps.contains(.orderSubmit))
     }
 }
@@ -97,15 +187,38 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
 private final class FakeKiCadWorkflowExecutor: KiCadToolExecutor {
     var resultsByStep: [KiCadWorkflowStep: KiCadToolResult] = [:]
     var executedSteps: [KiCadWorkflowStep] = []
+    var argumentsByStep: [KiCadWorkflowStep: [String: Any]] = [:]
 
     func execute(toolName: String, arguments: [String : Any]) async throws -> KiCadToolResult {
         let step = KiCadWorkflowStep(toolName: toolName)
         if let step {
             executedSteps.append(step)
+            argumentsByStep[step] = arguments
         }
         if let step, let result = resultsByStep[step] {
             return result
         }
-        return KiCadToolResult(status: .complete)
+        var handoff = KiCadWorkflowHandoff(
+            designIntentPath: arguments["design_intent_path"] as? String,
+            circuitIRPath: arguments["circuit_ir_path"] as? String,
+            componentMatrixPath: arguments["component_matrix_path"] as? String,
+            footprintAssignmentPath: arguments["footprint_assignment_path"] as? String,
+            projectPath: arguments["project_path"] as? String
+        )
+        switch step {
+        case .intent:
+            handoff.designIntentPath = handoff.designIntentPath ?? "/tmp/intent.json"
+        case .circuitIR:
+            handoff.circuitIRPath = handoff.circuitIRPath ?? "/tmp/circuit-ir.json"
+        case .componentSelection:
+            handoff.componentMatrixPath = handoff.componentMatrixPath ?? "/tmp/component-matrix.json"
+        case .footprints:
+            handoff.footprintAssignmentPath = handoff.footprintAssignmentPath ?? "/tmp/footprints.json"
+        case .compile:
+            handoff.projectPath = handoff.projectPath ?? "/tmp/project.kicad_pro"
+        default:
+            break
+        }
+        return KiCadToolResult(status: .complete, handoff: handoff)
     }
 }

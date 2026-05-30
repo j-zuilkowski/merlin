@@ -2479,6 +2479,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var catalogCacheTTLSeconds: Int? = nil
         var kicadSymbolLibraryRoot: String? = nil
         var kicadFootprintLibraryRoot: String? = nil
+        var kicadLibraryRootSearchPaths: [String]? = nil
+        var kicadLibraryRootCacheDirectory: String? = nil
+        var kicadLibraryRootCacheTTLSeconds: Int? = nil
         var kicadCatalogCacheDirectory: String? = nil
         var kicadCatalogCacheTTLSeconds: Int? = nil
 
@@ -2488,6 +2491,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case catalogCacheTTLSeconds = "catalog_cache_ttl_seconds"
             case kicadSymbolLibraryRoot = "kicad_symbol_library_root"
             case kicadFootprintLibraryRoot = "kicad_footprint_library_root"
+            case kicadLibraryRootSearchPaths = "kicad_library_root_search_paths"
+            case kicadLibraryRootCacheDirectory = "kicad_library_root_cache_directory"
+            case kicadLibraryRootCacheTTLSeconds = "kicad_library_root_cache_ttl_seconds"
             case kicadCatalogCacheDirectory = "kicad_catalog_cache_directory"
             case kicadCatalogCacheTTLSeconds = "kicad_catalog_cache_ttl_seconds"
         }
@@ -2537,6 +2543,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             if let selectedFootprint = component.selectedFootprint, !selectedFootprint.isEmpty {
                 constraints["selected_footprint"] = selectedFootprint
             }
+            let pinPadMap = pinPadMapConstraint(for: component)
+            if !pinPadMap.isEmpty {
+                constraints["pin_pad_map"] = pinPadMap
+            }
             if let mpn = component.manufacturerPartNumber, !mpn.isEmpty {
                 constraints["manufacturer_part_number"] = mpn
             }
@@ -2557,18 +2567,27 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var candidates: [ComponentCandidate] = []
         var providers: [String] = []
         var sourceKinds: [String] = []
+        let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
 
         if let path = object["catalog_candidates_path"] as? String,
            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
            let explicitCandidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) {
-            candidates.append(contentsOf: explicitCandidates)
+            if let localFootprintResolver {
+                for component in selectionComponents {
+                    let matching = matchingCandidates(for: component, candidates: explicitCandidates)
+                    for candidate in matching {
+                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                    }
+                }
+            } else {
+                candidates.append(contentsOf: explicitCandidates)
+            }
             providers.append("fixture")
             sourceKinds.append("catalog_candidates_path")
         }
 
         let providerFixtures = catalogProviderFixturePaths(from: object, config: config)
         if !providerFixtures.isEmpty {
-            let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
             var runtimeProviderFound = false
             for providerID in providerFixtures.keys.sorted() {
                 guard let mapped = providerCatalogCandidates(
@@ -2630,6 +2649,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         if let value = object["kicad_footprint_library_root"] as? String {
             config.kicadFootprintLibraryRoot = value
+        }
+        if let value = stringArrayValue(object, key: "kicad_library_root_search_paths") {
+            config.kicadLibraryRootSearchPaths = value
+        }
+        if let value = object["kicad_library_root_cache_directory"] as? String {
+            config.kicadLibraryRootCacheDirectory = value
+        }
+        if let value = optionalIntValue(object, key: "kicad_library_root_cache_ttl_seconds") {
+            config.kicadLibraryRootCacheTTLSeconds = value
         }
         if let value = object["kicad_catalog_cache_directory"] as? String {
             config.kicadCatalogCacheDirectory = value
@@ -2706,7 +2734,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             ?? config.kicadSymbolLibraryRoot.map(URL.init(fileURLWithPath:))
         let footprintRoot = stringValue(object, keys: ["kicad_footprint_library_root"]).map(URL.init(fileURLWithPath:))
             ?? config.kicadFootprintLibraryRoot.map(URL.init(fileURLWithPath:))
-        guard symbolRoot != nil || footprintRoot != nil else { return nil }
+        let discoveredRoots = symbolRoot == nil && footprintRoot == nil
+            ? discoveredKiCadLibraryRoots(from: object, config: config, context: context)
+            : nil
+        let resolvedSymbolRoot = symbolRoot ?? discoveredRoots?.symbolRoot
+        let resolvedFootprintRoot = footprintRoot ?? discoveredRoots?.footprintRoot
+        guard resolvedSymbolRoot != nil || resolvedFootprintRoot != nil else { return nil }
 
         let cacheDirectory = stringValue(object, keys: ["kicad_catalog_cache_directory"])
             .map(URL.init(fileURLWithPath:))
@@ -2717,7 +2750,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             ?? 86_400
         let cache = KiCadLibraryCatalogCache()
         let catalog = (try? cache.load(from: cacheDirectory, maxAgeSeconds: ttlSeconds))
-            ?? (try? KiCadLibraryCatalogExtractor().extract(symbolRoot: symbolRoot, footprintRoot: footprintRoot)).map { catalog in
+            ?? (try? KiCadLibraryCatalogExtractor().extract(symbolRoot: resolvedSymbolRoot, footprintRoot: resolvedFootprintRoot)).map { catalog in
                 try? cache.write(catalog, to: cacheDirectory)
                 return catalog
             }
@@ -2726,6 +2759,32 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return nil
         }
         return KiCadLibraryCatalogProvider(symbols: catalog.symbols, footprints: catalog.footprints)
+    }
+
+    private func discoveredKiCadLibraryRoots(
+        from object: [String: Any],
+        config: RuntimeCatalogConfig,
+        context: WorkspaceHandlerContext
+    ) -> KiCadLibraryRoots? {
+        let cacheDirectory = stringValue(object, keys: ["kicad_library_root_cache_directory"])
+            .map(URL.init(fileURLWithPath:))
+            ?? config.kicadLibraryRootCacheDirectory.map(URL.init(fileURLWithPath:))
+            ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-kicad-root-cache", isDirectory: true)
+        let ttlSeconds = optionalIntValue(object, key: "kicad_library_root_cache_ttl_seconds")
+            ?? config.kicadLibraryRootCacheTTLSeconds
+            ?? 86_400
+        let cache = KiCadLibraryRootCache()
+        if let cached = try? cache.load(from: cacheDirectory, maxAgeSeconds: ttlSeconds) {
+            return cached
+        }
+        let searchPaths = stringArrayValue(object, key: "kicad_library_root_search_paths")
+            ?? config.kicadLibraryRootSearchPaths
+        let searchRoots = searchPaths?.map(URL.init(fileURLWithPath:)) ?? KiCadLibraryRootDiscovery.defaultSearchRoots()
+        guard let discovered = KiCadLibraryRootDiscovery().discover(searchRoots: searchRoots) else {
+            return nil
+        }
+        try? cache.write(discovered, to: cacheDirectory)
+        return discovered
     }
 
     private func decodeJSONFile<T: Decodable>(_ path: String) -> T? {
@@ -2790,10 +2849,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             lifecyclePolicy: "draft"
         )
         let localCandidates = (try? await localFootprintResolver.search(request)) ?? []
-        let localFootprints = localCandidates.flatMap(\.footprintCandidates)
+        let localFootprints = localCandidates
+            .flatMap(\.footprintCandidates)
+            .map { applyingPinPadConstraint($0, component: component) }
         guard !localFootprints.isEmpty else { return candidate }
         candidate.footprintCandidates = mergedFootprints(candidate.footprintCandidates, localFootprints)
         return candidate
+    }
+
+    private func applyingPinPadConstraint(_ footprint: FootprintCandidate, component: ComponentIntent) -> FootprintCandidate {
+        let pinPadMap = pinPadMapConstraint(from: component.constraints["pin_pad_map"])
+        guard !pinPadMap.isEmpty else { return footprint }
+        var footprint = footprint
+        for entry in pinPadMap where !entry.key.isEmpty && !entry.value.isEmpty {
+            footprint.pinPadMap[entry.key] = entry.value
+        }
+        return footprint
     }
 
     private func mergedFootprints(_ current: [FootprintCandidate], _ additional: [FootprintCandidate]) -> [FootprintCandidate] {
@@ -2819,6 +2890,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let int = object[key] as? Int { return int }
         if let number = object[key] as? NSNumber { return number.intValue }
         if let string = object[key] as? String, let int = Int(string) { return int }
+        return nil
+    }
+
+    private func stringArrayValue(_ object: [String: Any], key: String) -> [String]? {
+        if let values = object[key] as? [String] {
+            return values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
+        if let values = object[key] as? [Any] {
+            let strings = values.compactMap { $0 as? String }
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            return strings.isEmpty ? nil : strings
+        }
+        if let value = object[key] as? String, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        }
         return nil
     }
 
@@ -2963,6 +3049,32 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let number = pin.pinNumber.trimmingCharacters(in: .whitespacesAndNewlines)
             return number.isEmpty ? nil : number
         }
+    }
+
+    private func pinPadMapConstraint(for component: CircuitComponent) -> String {
+        component.pins.compactMap { pin in
+            let canonical = pin.canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let symbol = pin.symbolPin.trimmingCharacters(in: .whitespacesAndNewlines)
+            let number = pin.pinNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            let pinName = [canonical, symbol, number].first { !$0.isEmpty } ?? ""
+            let padName = pin.footprintPad?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !pinName.isEmpty, !padName.isEmpty else { return nil }
+            return "\(pinName)=\(padName)"
+        }
+        .joined(separator: ",")
+    }
+
+    private func pinPadMapConstraint(from value: String?) -> [String: String] {
+        guard let value else { return [:] }
+        return value
+            .split(separator: ",")
+            .reduce(into: [String: String]()) { result, pair in
+                let parts = pair.split(separator: "=", maxSplits: 1).map {
+                    $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                guard parts.count == 2, !parts[0].isEmpty, !parts[1].isEmpty else { return }
+                result[parts[0]] = parts[1]
+            }
     }
 
     private func uniqueRefdes(_ refdes: [String]) -> [String] {

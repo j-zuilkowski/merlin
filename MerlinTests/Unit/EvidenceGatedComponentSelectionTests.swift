@@ -255,6 +255,48 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: cacheURL.appendingPathComponent("kicad-library-catalog.json").path))
     }
 
+    func testRuntimeCatalogSelectionDiscoversKiCadLibraryRootsFromConfig() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RFILT1",
+                role: "sweepable boost/cut resistor",
+                selectedSymbol: "Device:R",
+                selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                pins: ["1", "2"]
+            ),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+        let installRoot = root.appendingPathComponent("KiCad.app/Contents/SharedSupport/kicad", isDirectory: true)
+        _ = try writeKiCadSymbolTree(root: installRoot, directoryName: "symbols")
+        _ = try writeKiCadFootprintTree(root: installRoot, directoryName: "footprints")
+        let configURL = root.appendingPathComponent("electronics-provider-config.json")
+        try """
+        {
+          "catalog_provider_fixture_paths": {
+            "mouser": "\(mouserURL.path)"
+          },
+          "kicad_library_root_search_paths": ["\(root.path)"],
+          "kicad_library_root_cache_directory": "\(root.appendingPathComponent("root-cache").path)",
+          "kicad_catalog_cache_directory": "\(root.appendingPathComponent("catalog-cache").path)",
+          "kicad_catalog_cache_ttl_seconds": 3600
+        }
+        """.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+        )
+
+        XCTAssertEqual(selection.status, .ok)
+        let matrix = try decodeMatrix(from: selection)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.footprintCandidates.first?.sourceProviderID, "kicad_local")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: root.appendingPathComponent("root-cache/kicad-library-roots.json").path))
+    }
+
     func testRuntimeProviderConfigSuppliesFixtureAndCachesProviderCandidates() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -334,6 +376,50 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertNotNil(handoffAfterFootprints.footprintAssignmentPath)
     }
 
+    func testFocusedAmpBackendSliceUsesCatalogConfigHandoffAndCreatesKiCadArtifacts() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let fixtureRoot = repoRoot().appendingPathComponent("plugins/electronics/fixtures/amp_low_voltage_audio")
+        let intentURL = fixtureRoot.appendingPathComponent("design_intent.json")
+        let circuitIRURL = fixtureRoot.appendingPathComponent("circuit_ir.json")
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let candidatesURL = try writeAmpCandidates(from: circuitIR, root: root)
+        let symbolsURL = try writeSymbols(from: circuitIR, root: root)
+        let footprintsURL = try writeFootprints(from: circuitIR, root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp_low_voltage_audio","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(candidatesURL.path)","kicad_symbol_catalog_path":"\#(symbolsURL.path)","kicad_footprint_catalog_path":"\#(footprintsURL.path)"}"#
+        )
+        XCTAssertEqual(selection.status, .ok)
+        let selectionHandoff = try XCTUnwrap(selection.payload?.decodeJSON(KiCadToolResult.self).handoff)
+        let matrixPath = try XCTUnwrap(selectionHandoff.componentMatrixPath)
+
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp_low_voltage_audio","design_intent_path":"\#(selectionHandoff.designIntentPath ?? "")","circuit_ir_path":"\#(selectionHandoff.circuitIRPath ?? "")","component_matrix_path":"\#(matrixPath)"}"#
+        )
+        XCTAssertEqual(footprintResponse.status, .ok)
+        let footprintHandoff = try XCTUnwrap(footprintResponse.payload?.decodeJSON(KiCadToolResult.self).handoff)
+        let assignmentPath = try XCTUnwrap(footprintHandoff.footprintAssignmentPath)
+
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let compileResponse = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixPath)","footprint_assignment_path":"\#(assignmentPath)","output_directory":"\#(outputURL.path)"}"#
+        )
+
+        XCTAssertEqual(compileResponse.status, .ok)
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue })
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
+        let schematic = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
+        let schematicText = try String(contentsOf: schematic.url, encoding: .utf8)
+        XCTAssertTrue(schematicText.contains("QOUT1"))
+        XCTAssertTrue(schematicText.contains("RBASS"))
+    }
+
     func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -401,6 +487,51 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(candidates).write(to: url)
         return url
+    }
+
+    private func writeAmpCandidates(from circuitIR: CircuitIR, root: URL) throws -> URL {
+        try writeCandidates(circuitIR.components.map(ampCandidate), root: root)
+    }
+
+    private func ampCandidate(for component: CircuitComponent) -> ComponentCandidate {
+        let mpn = component.manufacturerPartNumber ?? "\(component.refdes)-MPN"
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: "fixture",
+            normalizedCategory: component.role.replacingOccurrences(of: " ", with: "_").lowercased(),
+            value: nil,
+            package: component.selectedFootprint ?? "library_package",
+            ratings: ["fixture_rating": "present"],
+            lifecycleState: "active",
+            availabilitySummary: "fixture_available",
+            datasheets: [
+                DatasheetEvidence(
+                    manufacturer: "fixture",
+                    mpn: mpn,
+                    url: "https://example.invalid/\(mpn).pdf",
+                    localPath: nil,
+                    sha256: nil,
+                    providerID: "fixture",
+                    retrievedAt: "2026-05-30T18:00:00Z",
+                    license: "fixture",
+                    citations: []
+                ),
+            ],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "fixture",
+                    sourceURL: "https://example.invalid/\(mpn)",
+                    localPath: nil,
+                    retrievedAt: "2026-05-30T18:00:00Z",
+                    cachePolicy: "fixture_no_cache",
+                    sha256: nil,
+                    extractedParameters: ["target_refdes": component.refdes, "mpn": mpn],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
     }
 
     private func writeCircuitIR(_ components: [CircuitComponent], root: URL) throws -> URL {
@@ -521,6 +652,22 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return url
     }
 
+    private func writeSymbols(from circuitIR: CircuitIR, root: URL) throws -> URL {
+        let url = root.appendingPathComponent("amp-symbols.json")
+        let symbols = circuitIR.components.map { component in
+            KiCadSymbolDefinition(
+                name: component.selectedSymbol,
+                pins: component.pins.map {
+                    KiCadSymbolPin(number: $0.pinNumber, name: $0.symbolPin, electricalType: $0.electricalType)
+                }
+            )
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(symbols).write(to: url)
+        return url
+    }
+
     private func writeFootprints(root: URL) throws -> URL {
         let url = root.appendingPathComponent("footprints.json")
         let footprints = [
@@ -538,8 +685,26 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return url
     }
 
-    private func writeKiCadSymbolTree(root: URL) throws -> URL {
-        let symbolRoot = root.appendingPathComponent("kicad-symbols", isDirectory: true)
+    private func writeFootprints(from circuitIR: CircuitIR, root: URL) throws -> URL {
+        let url = root.appendingPathComponent("amp-footprints.json")
+        let footprints = circuitIR.components.compactMap { component -> KiCadFootprintDefinition? in
+            guard let footprint = component.selectedFootprint else { return nil }
+            return KiCadFootprintDefinition(
+                name: footprint,
+                pads: component.pins.compactMap {
+                    guard let pad = $0.footprintPad else { return nil }
+                    return KiCadFootprintPad(number: pad, name: $0.symbolPin)
+                }
+            )
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(footprints).write(to: url)
+        return url
+    }
+
+    private func writeKiCadSymbolTree(root: URL, directoryName: String = "kicad-symbols") throws -> URL {
+        let symbolRoot = root.appendingPathComponent(directoryName, isDirectory: true)
         try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
         try """
         (kicad_symbol_lib
@@ -551,8 +716,8 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return symbolRoot
     }
 
-    private func writeKiCadFootprintTree(root: URL) throws -> URL {
-        let footprintRoot = root.appendingPathComponent("kicad-footprints", isDirectory: true)
+    private func writeKiCadFootprintTree(root: URL, directoryName: String = "kicad-footprints") throws -> URL {
+        let footprintRoot = root.appendingPathComponent(directoryName, isDirectory: true)
         let libraryRoot = footprintRoot.appendingPathComponent("Resistor_SMD.pretty", isDirectory: true)
         try FileManager.default.createDirectory(at: libraryRoot, withIntermediateDirectories: true)
         try """
@@ -613,5 +778,12 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             .appendingPathComponent("merlin-evidence-selection-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    private func repoRoot() -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 }
