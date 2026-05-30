@@ -95,6 +95,57 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.map(\.status), [.blocked])
     }
 
+    func testCircuitIRComponentsDriveSelectionInsteadOfBlockIntent() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+            circuitComponent(refdes: "CFILT1", role: "sweepable boost/cut capacitor", selectedSymbol: "Device:C", pins: ["1", "2"]),
+        ], root: root)
+        let catalogURL = try writeCandidates([
+            validCandidate(mpn: "RC0603FR-0710KL", category: "resistor"),
+            validCandidate(mpn: "C0603C473K5RACTU", category: "capacitor"),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        let decisions = Dictionary(uniqueKeysWithValues: matrix.decisions.map { ($0.refdes, $0) })
+        XCTAssertEqual(Set(decisions.keys), ["RFILT1", "CFILT1"])
+        XCTAssertEqual(decisions["RFILT1"]?.status, .selected)
+        XCTAssertEqual(decisions["RFILT1"]?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(decisions["CFILT1"]?.status, .selected)
+        XCTAssertEqual(decisions["CFILT1"]?.selectedCandidate?.mpn, "C0603C473K5RACTU")
+        XCTAssertNil(decisions["FILTER1"])
+    }
+
+    func testCircuitIRComponentsRequireVendorResolutionWhenNoCatalogEvidenceExists() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+            circuitComponent(refdes: "CFILT1", role: "sweepable boost/cut capacitor", selectedSymbol: "Device:C", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.map(\.refdes), ["RFILT1", "CFILT1"])
+        XCTAssertEqual(matrix.decisions.map(\.status), [.requiresVendorResolution, .requiresVendorResolution])
+    }
+
     private func decodeMatrix(from response: WorkspaceMessageResponse) throws -> ComponentMatrix {
         let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
         return try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
@@ -136,6 +187,43 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(candidates).write(to: url)
         return url
+    }
+
+    private func writeCircuitIR(_ components: [CircuitComponent], root: URL) throws -> URL {
+        let circuitIR = CircuitIR(
+            designId: "amp-low-voltage",
+            boardId: "amp_low_voltage_audio",
+            components: components,
+            nets: [],
+            constraints: [],
+            verificationScenarios: []
+        )
+        let url = root.appendingPathComponent("circuit-ir.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(circuitIR).write(to: url)
+        return url
+    }
+
+    private func circuitComponent(refdes: String, role: String, selectedSymbol: String, pins: [String]) -> CircuitComponent {
+        CircuitComponent(
+            refdes: refdes,
+            role: role,
+            selectedSymbol: selectedSymbol,
+            selectedFootprint: nil,
+            manufacturerPartNumber: nil,
+            sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: "FILTER1")],
+            pins: pins.map {
+                CircuitPin(
+                    componentRefdes: refdes,
+                    pinNumber: $0,
+                    canonicalName: $0,
+                    electricalType: "passive",
+                    symbolPin: $0,
+                    footprintPad: nil
+                )
+            }
+        )
     }
 
     private func validCandidate(mpn: String, category: String = "power_transistor") -> ComponentCandidate {

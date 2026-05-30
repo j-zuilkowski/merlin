@@ -620,3 +620,36 @@ Exit criteria:
 - The amp topology fixture emits discrete R/C/transistor/connector components.
 - No `TONE1` or `FILTER1` block component appears in Circuit IR.
 - Generated nets validate against component pins.
+
+## Phase 30: Circuit IR Component Selection
+
+Goal: make component selection consume expanded Circuit IR parts instead of
+block-level DesignIntent placeholders.
+
+1. Accept optional `circuit_ir_path` in `kicad_select_components`.
+2. Prefer Circuit IR components when Circuit IR is present.
+3. Preserve DesignIntent-only selection when no Circuit IR is supplied.
+4. Match catalog candidates by concrete component class before selecting.
+
+Exit criteria:
+
+- Expanded Circuit IR refdes receive component matrix decisions.
+- Block placeholders such as `TONE1` and `FILTER1` are not selected as parts
+  when Circuit IR exists.
+- Missing catalog evidence leaves expanded parts unresolved.
+
+## Phase 31: Circuit IR Footprint Coverage
+
+Goal: make footprint assignment cover every PCB-bound Circuit IR component
+before compile can proceed.
+
+1. Accept optional `circuit_ir_path` in `kicad_assign_footprints`.
+2. Prefer Circuit IR components as the assignment target set when available.
+3. Use Circuit IR pin evidence for pin/pad compatibility checks.
+4. Block if the component matrix omits any Circuit IR component.
+
+Exit criteria:
+
+- Footprint assignment artifacts cover expanded Circuit IR refdes.
+- Missing expanded component decisions block with affected refdes.
+- Compile footprint coverage can be satisfied by Circuit IR-derived reports.

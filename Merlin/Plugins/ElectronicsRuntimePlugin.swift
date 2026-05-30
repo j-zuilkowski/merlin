@@ -1015,17 +1015,29 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
-        guard !intent.components.isEmpty else {
+        let circuitIR: CircuitIR?
+        do {
+            circuitIR = try optionalCircuitIR(from: object)
+        } catch {
             return structuredBlock(
                 request,
                 reason: .invalidInputQuality,
-                message: "Component selection cannot complete because the DesignIntent contains no component intents.",
+                message: "Component selection requires a readable Circuit IR artifact when circuit_ir_path is supplied.",
+                context: context
+            )
+        }
+        let selectionComponents = circuitIR.map(componentIntents(from:)) ?? intent.components
+        guard !selectionComponents.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection cannot complete because no component evidence was supplied.",
                 context: context,
                 warnings: [KiCadWarning(
                     code: "COMPONENT_INTENT_REQUIRED",
-                    message: "Component selection cannot complete because the DesignIntent contains no component intents.",
+                    message: "Component selection cannot complete because no component evidence was supplied.",
                     affectedRefs: [designIntentPath],
-                    suggestedAction: "Add concrete component intents with roles, values, packages, and procurement constraints before selecting parts."
+                    suggestedAction: "Add concrete component intents or generate Circuit IR before selecting parts."
                 )],
                 nextActions: ["revise_design_intent"]
             )
@@ -1034,7 +1046,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             request,
             context: context,
             kind: "component_matrix",
-            body: componentSelectionBody(request, intent: intent)
+            body: componentSelectionBody(request, intent: intent, selectionComponents: selectionComponents, circuitIR: circuitIR)
         )
         if let blocked = componentSelectionBlockedResponse(request, artifact: artifact, context: context) {
             return blocked
@@ -1188,17 +1200,33 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
+        let circuitIR: CircuitIR?
+        do {
+            circuitIR = try optionalCircuitIR(from: object)
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Footprint assignment requires a readable Circuit IR artifact when circuit_ir_path is supplied.",
+                context: context
+            )
+        }
 
         let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let circuitComponentsByRefdes = Dictionary((circuitIR?.components ?? []).map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let decisionsByRefdes = Dictionary(matrix.decisions.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let targetRefdes = circuitIR.map { uniqueRefdes($0.components.map(\.refdes)) } ?? matrix.decisions.map(\.refdes)
         var assignments: [FootprintAssignment] = []
         var warnings: [KiCadWarning] = []
 
-        for decision in matrix.decisions {
-            guard decision.status == .selected, let candidate = decision.selectedCandidate else {
+        for refdes in targetRefdes {
+            guard let decision = decisionsByRefdes[refdes],
+                  decision.status == .selected,
+                  let candidate = decision.selectedCandidate else {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_SELECTION_REQUIRED",
-                    message: "Footprint assignment requires a selected catalog candidate for \(decision.refdes).",
-                    affectedRefs: [decision.refdes],
+                    message: "Footprint assignment requires a selected catalog candidate for \(refdes).",
+                    affectedRefs: [refdes],
                     suggestedAction: "Resolve the component selection before assigning footprints."
                 ))
                 continue
@@ -1206,8 +1234,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             guard let footprint = candidate.footprintCandidates.first else {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_CANDIDATE_REQUIRED",
-                    message: "Selected component \(decision.refdes) has no evidence-backed footprint candidate.",
-                    affectedRefs: [decision.refdes],
+                    message: "Selected component \(refdes) has no evidence-backed footprint candidate.",
+                    affectedRefs: [refdes],
                     suggestedAction: "Provide a KiCad/CAD footprint candidate with package compatibility evidence."
                 ))
                 continue
@@ -1218,19 +1246,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 || footprint.packageCompatibilityEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_PROVENANCE_REQUIRED",
-                    message: "Footprint \(footprintName) for \(decision.refdes) is missing source provenance or package compatibility evidence.",
-                    affectedRefs: [decision.refdes, footprintName],
+                    message: "Footprint \(footprintName) for \(refdes) is missing source provenance or package compatibility evidence.",
+                    affectedRefs: [refdes, footprintName],
                     suggestedAction: "Attach provider provenance and package compatibility evidence before PCB synthesis."
                 ))
                 continue
             }
 
-            let requiredPins = requiredPins(for: componentsByRefdes[decision.refdes])
+            let requiredPins = circuitComponentsByRefdes[refdes].map(requiredPins(for:)) ?? requiredPins(for: componentsByRefdes[refdes])
             guard !requiredPins.isEmpty else {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_PIN_EVIDENCE_REQUIRED",
-                    message: "Footprint assignment for \(decision.refdes) requires symbol-pin evidence in the design intent.",
-                    affectedRefs: [decision.refdes, footprintName],
+                    message: "Footprint assignment for \(refdes) requires symbol-pin evidence.",
+                    affectedRefs: [refdes, footprintName],
                     suggestedAction: "Record the symbol pins that must be mapped before assigning a PCB footprint."
                 ))
                 continue
@@ -1242,15 +1270,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             guard missingPins.isEmpty else {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_PIN_PAD_MISMATCH",
-                    message: "Footprint \(footprintName) for \(decision.refdes) does not map required symbol pins: \(missingPins.joined(separator: ", ")).",
-                    affectedRefs: [decision.refdes, footprintName],
+                    message: "Footprint \(footprintName) for \(refdes) does not map required symbol pins: \(missingPins.joined(separator: ", ")).",
+                    affectedRefs: [refdes, footprintName],
                     suggestedAction: "Choose a compatible footprint or provide a corrected pin-to-pad map."
                 ))
                 continue
             }
 
             assignments.append(FootprintAssignment(
-                refdes: decision.refdes,
+                refdes: refdes,
                 footprint: footprintName,
                 source: .exactMPN,
                 pinPadMap: footprint.pinPadMap,
@@ -2352,21 +2380,26 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return result
     }
 
-    private func componentSelectionBody(_ request: WorkspaceMessageRequest, intent: DesignIntent) -> String {
+    private func componentSelectionBody(
+        _ request: WorkspaceMessageRequest,
+        intent: DesignIntent,
+        selectionComponents: [ComponentIntent],
+        circuitIR: CircuitIR?
+    ) -> String {
         let candidates = catalogCandidates(from: request)
         let providers = candidates.isEmpty ? [] : ["fixture"]
         let matrix = ComponentMatrix(
-            designId: intent.designId,
-            decisions: intent.components.map { componentSelectionDecision(for: $0, candidates: candidates) },
+            designId: circuitIR?.designId ?? intent.designId,
+            decisions: selectionComponents.map { componentSelectionDecision(for: $0, candidates: candidates) },
             warnings: [],
             providers: providers,
-            cacheMetadata: candidates.isEmpty ? [:] : ["source": "catalog_candidates_path"]
+            cacheMetadata: componentSelectionCacheMetadata(candidates: candidates, circuitIR: circuitIR)
         )
         let legacyComponents = matrix.decisions.map { decision in
             [
                 "refdes": decision.refdes,
-                "role": intent.components.first(where: { $0.refdes == decision.refdes })?.role ?? "",
-                "constraints": intent.components.first(where: { $0.refdes == decision.refdes })?.constraints ?? [:],
+                "role": selectionComponents.first(where: { $0.refdes == decision.refdes })?.role ?? "",
+                "constraints": selectionComponents.first(where: { $0.refdes == decision.refdes })?.constraints ?? [:],
                 "selection_status": decision.status.rawValue,
                 "mpn": decision.selectedCandidate?.mpn ?? "",
                 "manufacturer": decision.selectedCandidate?.manufacturer ?? "",
@@ -2385,6 +2418,50 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","components":[],"policy":"provenance_first"}"#
     }
 
+    private func componentSelectionCacheMetadata(candidates: [ComponentCandidate], circuitIR: CircuitIR?) -> [String: String] {
+        var metadata: [String: String] = [:]
+        if !candidates.isEmpty {
+            metadata["source"] = "catalog_candidates_path"
+        }
+        if circuitIR != nil {
+            metadata["component_source"] = "circuit_ir"
+        }
+        return metadata
+    }
+
+    private func optionalCircuitIR(from object: [String: Any]) throws -> CircuitIR? {
+        let path = (object["circuit_ir_path"] as? String) ?? (object["circuitIRPath"] as? String)
+        guard let path, !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        let url = URL(fileURLWithPath: path)
+        let data = try Data(contentsOf: url)
+        return try JSONDecoder().decode(CircuitIR.self, from: data)
+    }
+
+    private func componentIntents(from circuitIR: CircuitIR) -> [ComponentIntent] {
+        circuitIR.components.map { component in
+            var constraints: [String: String] = [
+                "selected_symbol": component.selectedSymbol,
+                "source": "circuit_ir",
+            ]
+            let pins = requiredPins(for: component)
+            if !pins.isEmpty {
+                constraints["required_pins"] = pins.joined(separator: ",")
+            }
+            if let selectedFootprint = component.selectedFootprint, !selectedFootprint.isEmpty {
+                constraints["selected_footprint"] = selectedFootprint
+            }
+            if let mpn = component.manufacturerPartNumber, !mpn.isEmpty {
+                constraints["manufacturer_part_number"] = mpn
+            }
+            if let sourceRefdes = component.sourceEvidence.first?.reference, !sourceRefdes.isEmpty {
+                constraints["source_refdes"] = sourceRefdes
+            }
+            return ComponentIntent(refdes: component.refdes, role: component.role, constraints: constraints)
+        }
+    }
+
     private func catalogCandidates(from request: WorkspaceMessageRequest) -> [ComponentCandidate] {
         guard let object = request.payload.jsonObject(),
               let path = object["catalog_candidates_path"] as? String,
@@ -2399,6 +2476,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         for component: ComponentIntent,
         candidates: [ComponentCandidate]
     ) -> PartSelectionDecision {
+        let candidates = matchingCandidates(for: component, candidates: candidates)
         guard !candidates.isEmpty else {
             return PartSelectionDecision(
                 refdes: component.refdes,
@@ -2447,6 +2525,57 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         )
     }
 
+    private func matchingCandidates(
+        for component: ComponentIntent,
+        candidates: [ComponentCandidate]
+    ) -> [ComponentCandidate] {
+        guard !candidates.isEmpty else { return [] }
+        let hints = componentCategoryHints(for: component)
+        guard !hints.isEmpty else { return candidates }
+        return candidates.filter { candidate in
+            let candidateText = [
+                candidate.normalizedCategory,
+                candidate.value ?? "",
+                candidate.package,
+                candidate.mpn,
+                candidate.manufacturer,
+            ]
+                .joined(separator: " ")
+                .lowercased()
+            return hints.contains { candidateText.contains($0) }
+        }
+    }
+
+    private func componentCategoryHints(for component: ComponentIntent) -> [String] {
+        let refdes = component.refdes.uppercased()
+        let role = component.role.lowercased()
+        let symbol = component.constraints["selected_symbol"]?.lowercased() ?? ""
+        let combined = "\(role) \(symbol)"
+
+        if refdes.hasPrefix("BR") || combined.contains("bridge") || combined.contains("rectifier") {
+            return ["bridge", "rectifier"]
+        }
+        if refdes.hasPrefix("R") || combined.contains("resistor") || symbol.hasSuffix(":r") {
+            return ["resistor", "potentiometer", "trimmer"]
+        }
+        if refdes.hasPrefix("C") || combined.contains("capacitor") || symbol.hasSuffix(":c") {
+            return ["capacitor"]
+        }
+        if refdes.hasPrefix("Q") || combined.contains("transistor") || combined.contains("mosfet") || combined.contains("bjt") {
+            return ["transistor", "bjt", "mosfet", "jfet", "fet"]
+        }
+        if refdes.hasPrefix("D") || combined.contains("diode") {
+            return ["diode"]
+        }
+        if refdes.hasPrefix("J") || refdes.hasPrefix("P") || combined.contains("connector") || combined.contains("jack") {
+            return ["connector", "terminal", "header", "jack"]
+        }
+        if refdes.hasPrefix("U") || combined.contains("regulator") || combined.contains("op amp") || combined.contains("opamp") {
+            return ["ic", "regulator", "opamp", "op_amp", "driver"]
+        }
+        return []
+    }
+
     private func canonicalFootprintName(_ footprint: FootprintCandidate) -> String {
         if footprint.library.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return footprint.name
@@ -2465,6 +2594,27 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+
+    private func requiredPins(for component: CircuitComponent) -> [String] {
+        component.pins.compactMap { pin in
+            let canonical = pin.canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !canonical.isEmpty { return canonical }
+            let symbol = pin.symbolPin.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !symbol.isEmpty { return symbol }
+            let number = pin.pinNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+            return number.isEmpty ? nil : number
+        }
+    }
+
+    private func uniqueRefdes(_ refdes: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in refdes where !seen.contains(value) {
+            seen.insert(value)
+            result.append(value)
+        }
+        return result
     }
 
     private func synthesizeCircuitIR(from intent: DesignIntent) -> CircuitIR {
