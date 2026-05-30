@@ -146,6 +146,111 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.map(\.status), [.requiresVendorResolution, .requiresVendorResolution])
     }
 
+    func testRuntimeCatalogProviderFixtureDrivesCircuitIRSelectionWithoutCandidateFile() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"}}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.providers, ["mouser"])
+        XCTAssertEqual(matrix.cacheMetadata["source"], "runtime_catalog_providers")
+        XCTAssertEqual(matrix.cacheMetadata["ttl_seconds"], "86400")
+        XCTAssertEqual(matrix.decisions.map(\.refdes), ["RFILT1"])
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "mouser")
+    }
+
+    func testRuntimeCatalogSelectionAttachesLocalKiCadFootprintEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RFILT1",
+                role: "sweepable boost/cut resistor",
+                selectedSymbol: "Device:R",
+                selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                pins: ["1", "2"]
+            ),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+        let symbolsURL = try writeSymbols(root: root)
+        let footprintsURL = try writeFootprints(root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"},"kicad_symbol_catalog_path":"\#(symbolsURL.path)","kicad_footprint_catalog_path":"\#(footprintsURL.path)"}"#
+        )
+
+        XCTAssertEqual(selection.status, .ok)
+        let matrix = try decodeMatrix(from: selection)
+        let candidate = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        XCTAssertEqual(candidate.footprintCandidates.first?.sourceProviderID, "kicad_local")
+        XCTAssertEqual(candidate.footprintCandidates.first?.pinPadMap["1"], "1")
+
+        let matrixURL = try XCTUnwrap(selection.artifacts.first { $0.kind == "component_matrix" }).url
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(matrixURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
+        )
+
+        XCTAssertEqual(footprintResponse.status, .ok)
+        let artifact = try XCTUnwrap(footprintResponse.artifacts.first { $0.kind == "footprint_assignment" })
+        let report = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: artifact.url))
+        XCTAssertEqual(report.assignments.map(\.refdes), ["RFILT1"])
+        XCTAssertEqual(report.assignments.first?.footprint, "Resistor_SMD:R_0603_1608Metric")
+
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let compileResponse = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(artifact.url.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+
+        XCTAssertEqual(compileResponse.status, .ok)
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue })
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
+        XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
+    }
+
+    func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"}}"#
+        )
+        let matrixURL = try XCTUnwrap(selection.artifacts.first { $0.kind == "component_matrix" }).url
+
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(matrixURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
+        )
+
+        XCTAssertEqual(footprintResponse.status, .blocked)
+        let result = try XCTUnwrap(footprintResponse.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(result.warnings.contains { $0.code == "FOOTPRINT_CANDIDATE_REQUIRED" })
+    }
+
     private func decodeMatrix(from response: WorkspaceMessageResponse) throws -> ComponentMatrix {
         let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
         return try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
@@ -205,12 +310,18 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return url
     }
 
-    private func circuitComponent(refdes: String, role: String, selectedSymbol: String, pins: [String]) -> CircuitComponent {
+    private func circuitComponent(
+        refdes: String,
+        role: String,
+        selectedSymbol: String,
+        selectedFootprint: String? = nil,
+        pins: [String]
+    ) -> CircuitComponent {
         CircuitComponent(
             refdes: refdes,
             role: role,
             selectedSymbol: selectedSymbol,
-            selectedFootprint: nil,
+            selectedFootprint: selectedFootprint,
             manufacturerPartNumber: nil,
             sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: "FILTER1")],
             pins: pins.map {
@@ -276,10 +387,82 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         )
     }
 
+    private func writeMouserFixture(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("mouser-fixture.json")
+        try """
+        {"SearchResults":{"Parts":[{"Manufacturer":"Yageo","ManufacturerPartNumber":"RC0603FR-0710KL","Description":"RES 10K OHM 1% 1/10W 0603","Category":"Resistors","DataSheetUrl":"https://example.invalid/rc0603.pdf","ProductDetailUrl":"https://mouser.example/RC0603","LifecycleStatus":"Active","Availability":"9,000 In Stock","ProductAttributes":[{"AttributeName":"Package / Case","AttributeValue":"0603"},{"AttributeName":"Resistance","AttributeValue":"10 kOhms"},{"AttributeName":"Power Rating","AttributeValue":"0.1 W"}]}]}}
+        """.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    private func writeSymbols(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("symbols.json")
+        let symbols = [
+            KiCadSymbolDefinition(
+                name: "Device:R",
+                pins: [
+                    KiCadSymbolPin(number: "1", name: "1", electricalType: "passive"),
+                    KiCadSymbolPin(number: "2", name: "2", electricalType: "passive"),
+                ]
+            ),
+        ]
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(symbols).write(to: url)
+        return url
+    }
+
+    private func writeFootprints(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("footprints.json")
+        let footprints = [
+            KiCadFootprintDefinition(
+                name: "Resistor_SMD:R_0603_1608Metric",
+                pads: [
+                    KiCadFootprintPad(number: "1", name: "1"),
+                    KiCadFootprintPad(number: "2", name: "2"),
+                ]
+            ),
+        ]
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(footprints).write(to: url)
+        return url
+    }
+
     private func send(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_select_components"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendFootprints(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_assign_footprints"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendCompile(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_compile_project"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,

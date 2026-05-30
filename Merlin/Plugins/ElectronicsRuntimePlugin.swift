@@ -592,7 +592,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         case "kicad_generate_circuit_ir":
             return handleCircuitIRGeneration(request, context: context)
         case "kicad_select_components":
-            return handleComponentSelection(request, context: context)
+            return await handleComponentSelection(request, context: context)
         case "kicad_prepare_libraries":
             return fileBackedTransform(
                 request,
@@ -995,7 +995,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func handleComponentSelection(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext
-    ) -> WorkspaceMessageResponse {
+    ) async -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
         guard let designIntentPath = object["design_intent_path"] as? String,
               FileManager.default.fileExists(atPath: designIntentPath) else {
@@ -1042,11 +1042,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 nextActions: ["revise_design_intent"]
             )
         }
+        let catalogEvidence = await runtimeCatalogEvidence(
+            from: request,
+            selectionComponents: selectionComponents
+        )
         let artifact = writeArtifact(
             request,
             context: context,
             kind: "component_matrix",
-            body: componentSelectionBody(request, intent: intent, selectionComponents: selectionComponents, circuitIR: circuitIR)
+            body: componentSelectionBody(
+                request,
+                intent: intent,
+                selectionComponents: selectionComponents,
+                circuitIR: circuitIR,
+                catalogEvidence: catalogEvidence
+            )
         )
         if let blocked = componentSelectionBlockedResponse(request, artifact: artifact, context: context) {
             return blocked
@@ -2384,16 +2394,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         _ request: WorkspaceMessageRequest,
         intent: DesignIntent,
         selectionComponents: [ComponentIntent],
-        circuitIR: CircuitIR?
+        circuitIR: CircuitIR?,
+        catalogEvidence: RuntimeCatalogEvidence
     ) -> String {
-        let candidates = catalogCandidates(from: request)
-        let providers = candidates.isEmpty ? [] : ["fixture"]
         let matrix = ComponentMatrix(
             designId: circuitIR?.designId ?? intent.designId,
-            decisions: selectionComponents.map { componentSelectionDecision(for: $0, candidates: candidates) },
+            decisions: selectionComponents.map { componentSelectionDecision(for: $0, candidates: catalogEvidence.candidates) },
             warnings: [],
-            providers: providers,
-            cacheMetadata: componentSelectionCacheMetadata(candidates: candidates, circuitIR: circuitIR)
+            providers: catalogEvidence.providers,
+            cacheMetadata: componentSelectionCacheMetadata(catalogEvidence: catalogEvidence, circuitIR: circuitIR)
         )
         let legacyComponents = matrix.decisions.map { decision in
             [
@@ -2418,10 +2427,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","components":[],"policy":"provenance_first"}"#
     }
 
-    private func componentSelectionCacheMetadata(candidates: [ComponentCandidate], circuitIR: CircuitIR?) -> [String: String] {
-        var metadata: [String: String] = [:]
-        if !candidates.isEmpty {
-            metadata["source"] = "catalog_candidates_path"
+    private struct RuntimeCatalogEvidence {
+        var candidates: [ComponentCandidate]
+        var providers: [String]
+        var sourceKinds: [String]
+        var ttlSeconds: Int?
+    }
+
+    private func componentSelectionCacheMetadata(catalogEvidence: RuntimeCatalogEvidence, circuitIR: CircuitIR?) -> [String: String] {
+        var metadata = catalogEvidence.sourceKinds.isEmpty ? [:] : [
+            "source": catalogEvidence.sourceKinds.joined(separator: ","),
+        ]
+        if let ttlSeconds = catalogEvidence.ttlSeconds {
+            metadata["ttl_seconds"] = "\(ttlSeconds)"
+        }
+        if !catalogEvidence.providers.isEmpty {
+            metadata["providers"] = catalogEvidence.providers.joined(separator: ",")
         }
         if circuitIR != nil {
             metadata["component_source"] = "circuit_ir"
@@ -2462,14 +2483,153 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
     }
 
-    private func catalogCandidates(from request: WorkspaceMessageRequest) -> [ComponentCandidate] {
-        guard let object = request.payload.jsonObject(),
-              let path = object["catalog_candidates_path"] as? String,
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let candidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) else {
-            return []
+    private func runtimeCatalogEvidence(
+        from request: WorkspaceMessageRequest,
+        selectionComponents: [ComponentIntent]
+    ) async -> RuntimeCatalogEvidence {
+        let object = request.payload.jsonObject() ?? [:]
+        var candidates: [ComponentCandidate] = []
+        var providers: [String] = []
+        var sourceKinds: [String] = []
+
+        if let path = object["catalog_candidates_path"] as? String,
+           let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+           let explicitCandidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) {
+            candidates.append(contentsOf: explicitCandidates)
+            providers.append("fixture")
+            sourceKinds.append("catalog_candidates_path")
         }
-        return candidates
+
+        let providerFixtures = catalogProviderFixturePaths(from: object)
+        if !providerFixtures.isEmpty {
+            let localFootprintResolver = localKiCadCatalogProvider(from: object)
+            var runtimeProviderFound = false
+            for providerID in providerFixtures.keys.sorted() {
+                guard let path = providerFixtures[providerID],
+                      let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+                    continue
+                }
+                let mapped = (try? mapRecordedProviderFixture(providerID: providerID, data: data)) ?? []
+                for component in selectionComponents {
+                    let matching = matchingCandidates(for: component, candidates: mapped)
+                    for candidate in matching {
+                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                    }
+                }
+                if !mapped.isEmpty {
+                    providers.append(providerID)
+                    runtimeProviderFound = true
+                }
+            }
+            if runtimeProviderFound {
+                sourceKinds.append("runtime_catalog_providers")
+            }
+        }
+
+        let uniqueProviders = uniqueRefdes(providers)
+        let ttlSeconds = sourceKinds.contains("runtime_catalog_providers")
+            ? intValue(object, key: "catalog_cache_ttl_seconds", defaultValue: 86_400)
+            : nil
+        return RuntimeCatalogEvidence(
+            candidates: candidates,
+            providers: uniqueProviders,
+            sourceKinds: uniqueRefdes(sourceKinds),
+            ttlSeconds: ttlSeconds
+        )
+    }
+
+    private func catalogProviderFixturePaths(from object: [String: Any]) -> [String: String] {
+        let raw = object["catalog_provider_fixture_paths"] ?? object["catalog_provider_fixtures"]
+        guard let dictionary = raw as? [String: Any] else { return [:] }
+        return dictionary.reduce(into: [String: String]()) { result, entry in
+            guard let path = entry.value as? String,
+                  !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return
+            }
+            result[entry.key.lowercased()] = path
+        }
+    }
+
+    private func mapRecordedProviderFixture(providerID: String, data: Data) throws -> [ComponentCandidate] {
+        switch providerID.lowercased() {
+        case "digikey", "digi-key":
+            return try DigiKeyCatalogProviderAdapter().mapRecordedResponse(data)
+        case "mouser":
+            return try MouserCatalogProviderAdapter().mapRecordedResponse(data)
+        case "octopart", "nexar", "aggregator":
+            return try AggregatorCatalogProviderAdapter(providerID: providerID.lowercased()).mapRecordedResponse(data)
+        default:
+            return try AggregatorCatalogProviderAdapter(providerID: providerID.lowercased()).mapRecordedResponse(data)
+        }
+    }
+
+    private func localKiCadCatalogProvider(from object: [String: Any]) -> KiCadLibraryCatalogProvider? {
+        let symbolPath = object["kicad_symbol_catalog_path"] as? String
+        let footprintPath = object["kicad_footprint_catalog_path"] as? String
+        let symbols: [KiCadSymbolDefinition] = symbolPath.flatMap { decodeJSONFile($0) } ?? []
+        let footprints: [KiCadFootprintDefinition] = footprintPath.flatMap { decodeJSONFile($0) } ?? []
+        guard !symbols.isEmpty || !footprints.isEmpty else { return nil }
+        return KiCadLibraryCatalogProvider(symbols: symbols, footprints: footprints)
+    }
+
+    private func decodeJSONFile<T: Decodable>(_ path: String) -> T? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func providerCandidate(
+        _ candidate: ComponentCandidate,
+        for component: ComponentIntent,
+        localFootprintResolver: KiCadLibraryCatalogProvider?
+    ) async -> ComponentCandidate {
+        var candidate = candidate
+        candidate.evidence = candidate.evidence.map { evidence in
+            var evidence = evidence
+            evidence.extractedParameters["target_refdes"] = component.refdes
+            return evidence
+        }
+
+        guard let localFootprintResolver else { return candidate }
+        let constraints = [
+            "symbol": component.constraints["selected_symbol"] ?? "",
+            "footprint": component.constraints["selected_footprint"] ?? "",
+        ].filter { !$0.value.isEmpty }
+        guard !constraints.isEmpty else { return candidate }
+        let request = ComponentSearchRequest(
+            refdes: component.refdes,
+            role: component.role,
+            constraints: constraints,
+            requiredEvidenceTypes: ["symbol", "footprint"],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "draft"
+        )
+        let localCandidates = (try? await localFootprintResolver.search(request)) ?? []
+        let localFootprints = localCandidates.flatMap(\.footprintCandidates)
+        guard !localFootprints.isEmpty else { return candidate }
+        candidate.footprintCandidates = mergedFootprints(candidate.footprintCandidates, localFootprints)
+        return candidate
+    }
+
+    private func mergedFootprints(_ current: [FootprintCandidate], _ additional: [FootprintCandidate]) -> [FootprintCandidate] {
+        var seen = Set(current.map { canonicalFootprintName($0) })
+        var result = current
+        for footprint in additional {
+            let name = canonicalFootprintName(footprint)
+            guard !seen.contains(name) else { continue }
+            seen.insert(name)
+            result.append(footprint)
+        }
+        return result
+    }
+
+    private func intValue(_ object: [String: Any], key: String, defaultValue: Int) -> Int {
+        if let int = object[key] as? Int { return int }
+        if let number = object[key] as? NSNumber { return number.intValue }
+        if let string = object[key] as? String, let int = Int(string) { return int }
+        return defaultValue
     }
 
     private func componentSelectionDecision(
@@ -2530,6 +2690,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         candidates: [ComponentCandidate]
     ) -> [ComponentCandidate] {
         guard !candidates.isEmpty else { return [] }
+        let targeted = candidates.filter { candidate in
+            candidate.evidence.contains {
+                $0.extractedParameters["target_refdes"] == component.refdes
+            }
+        }
+        if !targeted.isEmpty {
+            return targeted
+        }
         let hints = componentCategoryHints(for: component)
         guard !hints.isEmpty else { return candidates }
         return candidates.filter { candidate in

@@ -653,3 +653,38 @@ Exit criteria:
 - Footprint assignment artifacts cover expanded Circuit IR refdes.
 - Missing expanded component decisions block with affected refdes.
 - Compile footprint coverage can be satisfied by Circuit IR-derived reports.
+
+## Phase 32: Runtime Catalog Provider Selection
+
+Goal: let `kicad_select_components` use configured provider evidence directly
+instead of requiring a prebuilt `catalog_candidates_path`.
+
+1. Accept recorded provider fixture paths keyed by provider ID.
+2. Map Digi-Key, Mouser, and aggregator fixtures through provider adapters.
+3. Merge provider candidates with explicit candidate-file evidence.
+4. Match provider candidates to concrete Circuit IR component requests.
+5. Preserve provider/cache metadata in the emitted ComponentMatrix.
+
+Exit criteria:
+
+- Runtime selection can select Circuit IR components from provider fixtures.
+- Missing providers still leave components unresolved.
+- Provider provenance and cache metadata are visible in the matrix.
+
+## Phase 33: Runtime Footprint Provider Evidence
+
+Goal: carry local KiCad footprint evidence from runtime selection into
+footprint assignment.
+
+1. Accept local KiCad symbol and footprint catalog paths.
+2. Use Circuit IR selected symbol/footprint constraints to request local
+   footprint evidence.
+3. Attach local footprint candidates to selected vendor candidates.
+4. Keep footprint assignment blocked if selected candidates lack footprint
+   evidence.
+
+Exit criteria:
+
+- Provider-selected candidates can include local footprint candidates.
+- Footprint assignment can consume provider-generated matrices.
+- Missing footprint evidence remains a blocker.
