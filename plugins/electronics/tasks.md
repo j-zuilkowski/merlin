@@ -39,6 +39,7 @@ red tests; each matching `b` task implements the behavior.
 | Footprint evidence gate | `tasks/task-411a-footprint-evidence-gate-tests.md` | `tasks/task-411b-footprint-evidence-gate.md` |
 | Compile gate evidence tightening | `tasks/task-412a-compile-gate-evidence-tests.md` | `tasks/task-412b-compile-gate-evidence.md` |
 | Real catalog provider adapters | `tasks/task-413a-real-catalog-provider-adapters-tests.md` | `tasks/task-413b-real-catalog-provider-adapters.md` |
+| Runtime evidence pipeline | `tasks/task-414a-electronics-runtime-evidence-pipeline-tests.md` | `tasks/task-414b-electronics-runtime-evidence-pipeline.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -564,3 +565,21 @@ Exit criteria:
 - Providers are optional and disabled without credentials.
 - Recorded fixture tests pass offline.
 - Live API failures degrade to blocked provider diagnostics, not fake parts.
+
+## Phase 27: Runtime Evidence Pipeline
+
+Goal: make runtime continuation actions follow the first missing verified
+electronics artifact.
+
+1. Use explicit next actions for compile evidence blockers.
+2. Keep compile evidence order strict: Circuit IR, ComponentMatrix, footprint
+   assignment, then compile.
+3. Route invalid footprint coverage back to footprint assignment.
+4. Preserve user-authored fixture compile behavior.
+
+Exit criteria:
+
+- Missing Circuit IR returns `generate_circuit_ir`.
+- Missing ComponentMatrix returns `select_components`.
+- Missing or invalid footprint evidence returns `assign_footprints`.
+- Compile does not advance from a generic continuation action.

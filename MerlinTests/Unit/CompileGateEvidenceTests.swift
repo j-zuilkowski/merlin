@@ -18,6 +18,7 @@ final class CompileGateEvidenceTests: XCTestCase {
         XCTAssertEqual(response.status, .blocked)
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(result.warnings.contains { $0.code == "CIRCUIT_IR_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["generate_circuit_ir"])
         XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("amp-low-voltage.kicad_sch").path))
     }
 
@@ -55,6 +56,7 @@ final class CompileGateEvidenceTests: XCTestCase {
         XCTAssertEqual(response.status, .blocked)
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(result.warnings.contains { $0.code == "CIRCUIT_IR_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["generate_circuit_ir"])
     }
 
     func testCompileRequiresComponentMatrix() async throws {
@@ -74,6 +76,7 @@ final class CompileGateEvidenceTests: XCTestCase {
         XCTAssertEqual(response.status, .blocked)
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(result.warnings.contains { $0.code == "COMPONENT_MATRIX_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["select_components"])
     }
 
     func testCompileRequiresFootprintAssignmentForPCBBoundComponents() async throws {
@@ -93,6 +96,29 @@ final class CompileGateEvidenceTests: XCTestCase {
         XCTAssertEqual(response.status, .blocked)
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(result.warnings.contains { $0.code == "FOOTPRINT_ASSIGNMENT_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["assign_footprints"])
+    }
+
+    func testCompileRoutesIncompleteFootprintCoverageBackToFootprintAssignment() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(approval: .approved, root: root)
+        let circuitIRURL = try writeCircuitIR(root: root)
+        let matrixURL = try writeMatrix(root: root)
+        let footprintsURL = try writeIncompleteFootprintAssignments(root: root)
+        let output = root.appendingPathComponent("out", isDirectory: true)
+
+        let response = await compile(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(footprintsURL.path)","output_directory":"\#(output.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(result.warnings.contains { $0.code == "FOOTPRINT_ASSIGNMENT_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["assign_footprints"])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("amp_low_voltage_audio.kicad_sch").path))
     }
 
     func testDraftPreviewArtifactCannotSatisfyVerifiedCompileStatus() async throws {
@@ -113,6 +139,7 @@ final class CompileGateEvidenceTests: XCTestCase {
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertNotEqual(result.status, .complete)
         XCTAssertTrue(result.warnings.contains { $0.code == "CIRCUIT_IR_REQUIRED" })
+        XCTAssertEqual(result.nextActions, ["generate_circuit_ir"])
     }
 
     private func compile(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
@@ -244,6 +271,13 @@ final class CompileGateEvidenceTests: XCTestCase {
             unknownFootprints: 0
         )
         let url = root.appendingPathComponent("footprints.json")
+        try electronicsEncoder().encode(report).write(to: url)
+        return url
+    }
+
+    private func writeIncompleteFootprintAssignments(root: URL) throws -> URL {
+        let report = FootprintAssignmentReport(assignments: [], unknownFootprints: 0)
+        let url = root.appendingPathComponent("incomplete-footprints.json")
         try electronicsEncoder().encode(report).write(to: url)
         return url
     }

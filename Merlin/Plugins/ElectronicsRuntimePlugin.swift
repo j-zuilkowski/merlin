@@ -1285,6 +1285,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return compileEvidenceMissingBlock(
                 request,
                 context: context,
+                stage: .circuitIR,
                 code: "CIRCUIT_IR_REQUIRED",
                 message: "Compile project requires Circuit IR evidence before generating KiCad artifacts.",
                 affectedRefs: [designIntentPath],
@@ -1300,6 +1301,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return compileEvidenceMissingBlock(
                 request,
                 context: context,
+                stage: .componentMatrix,
                 code: "COMPONENT_MATRIX_REQUIRED",
                 message: "Compile project requires a selected ComponentMatrix before generating KiCad artifacts.",
                 affectedRefs: [designIntentPath],
@@ -1315,6 +1317,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return compileEvidenceMissingBlock(
                 request,
                 context: context,
+                stage: .footprintAssignment,
                 code: "FOOTPRINT_ASSIGNMENT_REQUIRED",
                 message: "Compile project requires footprint assignments for PCB-bound components before generating KiCad artifacts.",
                 affectedRefs: circuitIR.components.map(\.refdes),
@@ -1354,6 +1357,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func compileEvidenceMissingBlock(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext,
+        stage: CompileEvidenceStage,
         code: String,
         message: String,
         affectedRefs: [String],
@@ -1370,8 +1374,25 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 affectedRefs: affectedRefs,
                 suggestedAction: suggestedAction
             )],
-            nextActions: ["provide_compile_evidence"]
+            nextActions: [stage.nextAction]
         )
+    }
+
+    private enum CompileEvidenceStage {
+        case circuitIR
+        case componentMatrix
+        case footprintAssignment
+
+        var nextAction: String {
+            switch self {
+            case .circuitIR:
+                return "generate_circuit_ir"
+            case .componentMatrix:
+                return "select_components"
+            case .footprintAssignment:
+                return "assign_footprints"
+            }
+        }
     }
 
     private func designIntentApprovalResponse(
