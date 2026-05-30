@@ -96,6 +96,62 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "drills" && FileManager.default.fileExists(atPath: $0.path) })
     }
 
+    func testCleanBackendAmpValidationSliceCompilesAndRunsPassingERCSPICEDRC() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+
+        let designIntent = repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/design_intent.json")
+        let compileOutput = temporaryDirectory("amp-backend-validation-slice")
+        let compile = await sendElectronics(
+            runtime,
+            capability: "kicad_compile_project",
+            payload: #"{"design_intent_path":"\#(designIntent.path)","output_directory":"\#(compileOutput.path)"}"#
+        )
+        XCTAssertEqual(compile.status, .ok)
+        let compileResult = try XCTUnwrap(compile.payload?.decodeJSON(KiCadToolResult.self))
+        let projectPath = try XCTUnwrap(compileResult.artifacts.first { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue }?.path)
+
+        let kicad = try writeFakeKiCadCLI(reportJSON: #"{"violations":[]}"#)
+        let erc = await sendElectronics(
+            runtime,
+            capability: "kicad_run_erc",
+            payload: #"{"project_path":"\#(projectPath)","kicad_cli_path":"\#(kicad.executable.path)"}"#
+        )
+        XCTAssertEqual(erc.status, .ok)
+        let ercResult = try XCTUnwrap(erc.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(ercResult.artifacts.contains { $0.kind == "erc_report" && FileManager.default.fileExists(atPath: $0.path) })
+
+        let drc = await sendElectronics(
+            runtime,
+            capability: "kicad_run_drc",
+            payload: #"{"project_path":"\#(projectPath)","kicad_cli_path":"\#(kicad.executable.path)"}"#
+        )
+        XCTAssertEqual(drc.status, .ok)
+        let drcResult = try XCTUnwrap(drc.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(drcResult.artifacts.contains { $0.kind == "drc_report" && FileManager.default.fileExists(atPath: $0.path) })
+
+        let deck = try writeFixtureFile(name: "amp-pass.cir", text: """
+        * passing amp slice
+        V1 in 0 DC 1
+        R1 in 0 1k
+        .op
+        .end
+        """)
+        let ngspice = try writeFakeNgspice(exitCode: 0, logText: "output_power_w = 25.0\\nthd_percent = 0.7\\n")
+        let spice = await sendElectronics(
+            runtime,
+            capability: "kicad_run_spice",
+            payload: #"{"project_path":"\#(projectPath)","scenario_path":"\#(deck.path)","ngspice_path":"\#(ngspice.path)"}"#
+        )
+        XCTAssertEqual(spice.status, .ok)
+        let spiceResult = try XCTUnwrap(spice.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(spiceResult.artifacts.contains { $0.kind == "spice_measurements" && FileManager.default.fileExists(atPath: $0.path) })
+
+        let log = try String(contentsOf: kicad.log, encoding: .utf8)
+        XCTAssertTrue(log.contains("sch erc"))
+        XCTAssertTrue(log.contains("pcb drc"))
+    }
+
     func testKiCadERCGateBlocksOnParsedBlockingDiagnostics() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)

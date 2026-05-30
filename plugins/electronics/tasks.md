@@ -52,6 +52,9 @@ red tests; each matching `b` task implements the behavior.
 | Runtime KiCad config | `tasks/task-424a-runtime-kicad-config-tests.md` | `tasks/task-424b-runtime-kicad-config.md` |
 | Workflow artifact handoff | `tasks/task-425a-workflow-artifact-handoff-tests.md` | `tasks/task-425b-workflow-artifact-handoff.md` |
 | Focused cache handoff | `tasks/task-426a-electronics-focused-cache-handoff-tests.md` | `tasks/task-426b-electronics-focused-cache-handoff.md` |
+| Runtime ERC repair action | `tasks/task-439a-runtime-erc-repair-action-tests.md` | `tasks/task-440b-runtime-erc-repair-action.md` |
+| Runtime DRC repair action | `tasks/task-441a-runtime-drc-repair-action-tests.md` | `tasks/task-442b-runtime-drc-repair-action.md` |
+| Runtime SPICE repair action | `tasks/task-443a-runtime-spice-repair-action-tests.md` | `tasks/task-444b-runtime-spice-repair-action.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 

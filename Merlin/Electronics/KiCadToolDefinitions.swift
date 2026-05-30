@@ -15,9 +15,12 @@ enum KiCadToolDefinitions {
         "kicad_route_pass",
         "kicad_check_connectivity",
         "kicad_run_erc",
+        "kicad_repair_erc_from_diagnostics",
         "kicad_run_drc",
+        "kicad_repair_drc_from_diagnostics",
         "kicad_check_parity",
         "kicad_run_spice",
+        "kicad_repair_spice_from_diagnostics",
         "kicad_evaluate_simulation",
         "kicad_visual_inspect",
         "kicad_export_fab",
@@ -29,12 +32,12 @@ enum KiCadToolDefinitions {
     static let all: [ToolDefinition] = [
         tool(
             name: "kicad_check_version",
-            description: "Validate KiCad CLI path/version and return capability map",
+            description: "Validate KiCad CLI version and return capability map. If kicad_cli_path is omitted, Merlin searches common KiCad install locations.",
             properties: [
-                "kicad_cli_path": .string("Absolute path to KiCad CLI executable"),
+                "kicad_cli_path": .string("Optional absolute path to KiCad CLI executable"),
                 "required_major": .integer("Required KiCad major version"),
             ],
-            required: ["kicad_cli_path", "required_major"]
+            required: []
         ),
         tool(
             name: "kicad_ingest_schematic",
@@ -162,10 +165,27 @@ enum KiCadToolDefinitions {
             required: ["project_path"]
         ),
         tool(
+            name: "kicad_repair_erc_from_diagnostics",
+            description: "Plan ERC repairs from a KiCad ERC report and Circuit IR without claiming verification",
+            properties: [
+                "erc_report_path": .string("KiCad ERC JSON report path"),
+                "circuit_ir_path": .string("CircuitIR JSON path"),
+            ],
+            required: ["erc_report_path", "circuit_ir_path"]
+        ),
+        tool(
             name: "kicad_run_drc",
             description: "Run KiCad DRC and return structured violations",
             properties: ["project_path": .string("KiCad project path")],
             required: ["project_path"]
+        ),
+        tool(
+            name: "kicad_repair_drc_from_diagnostics",
+            description: "Plan PCB DRC repairs from a KiCad DRC report without claiming verification",
+            properties: [
+                "drc_report_path": .string("KiCad DRC JSON report path"),
+            ],
+            required: ["drc_report_path"]
         ),
         tool(
             name: "kicad_check_parity",
@@ -181,6 +201,16 @@ enum KiCadToolDefinitions {
                 "scenario_path": .string("SimulationScenario JSON path"),
             ],
             required: ["project_path", "scenario_path"]
+        ),
+        tool(
+            name: "kicad_repair_spice_from_diagnostics",
+            description: "Plan fixed-topology SPICE repairs from measurements and a SimulationScenario envelope",
+            properties: [
+                "spice_measurements_path": .string("ngspice measurement log path"),
+                "scenario_path": .string("SimulationScenario JSON path"),
+                "topology": .string("Optional topology id, defaults to single_ended_class_a"),
+            ],
+            required: ["spice_measurements_path", "scenario_path"]
         ),
         tool(
             name: "kicad_evaluate_simulation",

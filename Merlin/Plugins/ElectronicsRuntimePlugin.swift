@@ -645,6 +645,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputKind: "erc_report",
                 outputFileName: "erc-report.json"
             )
+        case "kicad_repair_erc_from_diagnostics":
+            return handleERCRepairFromDiagnostics(request, context: context)
         case "kicad_run_drc":
             return kiCadBackedReport(
                 request,
@@ -653,6 +655,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputKind: "drc_report",
                 outputFileName: "drc-report.json"
             )
+        case "kicad_repair_drc_from_diagnostics":
+            return handleDRCRepairFromDiagnostics(request, context: context)
         case "kicad_check_parity":
             return projectBackedArtifact(
                 request,
@@ -662,6 +666,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         case "kicad_run_spice":
             return simulatorBackedReport(request, context: context)
+        case "kicad_repair_spice_from_diagnostics":
+            return handleSPICERepairFromDiagnostics(request, context: context)
         case "kicad_evaluate_simulation":
             return fileBackedTransform(
                 request,
@@ -1763,6 +1769,206 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         default:
             return nil
         }
+    }
+
+    private func handleERCRepairFromDiagnostics(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let ercReportPath = stringValue(object, keys: ["erc_report_path", "ercReportPath"]),
+              FileManager.default.fileExists(atPath: ercReportPath),
+              let circuitIRPath = stringValue(object, keys: ["circuit_ir_path", "circuitIRPath"]),
+              FileManager.default.fileExists(atPath: circuitIRPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "ERC repair requires existing erc_report_path and circuit_ir_path artifacts.",
+                context: context,
+                nextActions: ["attach_erc_report", "attach_circuit_ir"]
+            )
+        }
+
+        do {
+            let report = try KiCadERCParser().parse(jsonData: Data(contentsOf: URL(fileURLWithPath: ercReportPath)))
+            let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: URL(fileURLWithPath: circuitIRPath)))
+            let plan = ERCRepairPlanner().planRepairs(report: report, circuitIR: circuitIR, resolverEvidence: [])
+            guard plan.isRepairable else {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: "UNSUPPORTED_ERC_VIOLATION",
+                    message: plan.unsupportedViolations.map(\.code).joined(separator: ", "),
+                    affectedRefs: [ercReportPath, circuitIRPath],
+                    nextActions: ["request_engineering_review", "rerun_erc"]
+                )
+            }
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "erc_repair_plan",
+                body: try canonicalJSON(plan)
+            )
+            return complete(request, artifacts: [artifact], nextActions: ["apply_erc_repair_patch", "rerun_erc"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "ERC repair could not parse diagnostics or Circuit IR: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_erc_report", "regenerate_circuit_ir"]
+            )
+        }
+    }
+
+    private func handleDRCRepairFromDiagnostics(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let drcReportPath = stringValue(object, keys: ["drc_report_path", "drcReportPath"]),
+              FileManager.default.fileExists(atPath: drcReportPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "DRC repair requires an existing drc_report_path artifact.",
+                context: context,
+                nextActions: ["attach_drc_report"]
+            )
+        }
+
+        do {
+            let report = try KiCadDRCParser().parse(jsonData: Data(contentsOf: URL(fileURLWithPath: drcReportPath)))
+            let diagnosticProbe = PCBDRCRepairLoop().run(drcReports: [report])
+            if let diagnostic = diagnosticProbe.diagnostics.first,
+               diagnostic.code == "DRC_REPAIR_REQUIRES_APPROVAL" || diagnostic.code == "UNSUPPORTED_DRC_VIOLATION" {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: diagnostic.code,
+                    message: diagnostic.message,
+                    affectedRefs: [drcReportPath],
+                    nextActions: ["request_engineering_review", "rerun_drc"]
+                )
+            }
+
+            let planned = report.blockingViolations.isEmpty
+                ? PCBDRCRepairLoopResult(status: .verified, attempts: 0, appliedPatches: [], diagnostics: [])
+                : PCBDRCRepairLoop().run(drcReports: [report, KiCadDRCReport(violations: [])])
+            let artifactBody = DRCRepairPlanArtifact(
+                status: "repair_planned",
+                patches: planned.appliedPatches,
+                diagnostics: planned.diagnostics
+            )
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "drc_repair_plan",
+                body: try canonicalJSON(artifactBody)
+            )
+            return complete(request, artifacts: [artifact], nextActions: ["apply_drc_repair_patch", "rerun_drc"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "DRC repair could not parse diagnostics: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_drc_report"]
+            )
+        }
+    }
+
+    private func handleSPICERepairFromDiagnostics(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let measurementsPath = stringValue(object, keys: ["spice_measurements_path", "spiceMeasurementsPath", "measurements_path"]),
+              FileManager.default.fileExists(atPath: measurementsPath),
+              let scenarioPath = stringValue(object, keys: ["scenario_path", "scenarioPath"]),
+              FileManager.default.fileExists(atPath: scenarioPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE repair requires existing spice_measurements_path and scenario_path artifacts.",
+                context: context,
+                nextActions: ["attach_spice_measurements", "attach_simulation_scenario"]
+            )
+        }
+
+        do {
+            let measurementsText = try String(contentsOfFile: measurementsPath, encoding: .utf8)
+            let report = try NgspiceMeasurementParser().parse(measurementsText)
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let scenario = try decoder.decode(SPICESimulationScenario.self, from: Data(contentsOf: URL(fileURLWithPath: scenarioPath)))
+            let validation = SPICEScenarioValidator().validate(scenario)
+            guard validation.isValid else {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: validation.issues.first?.code ?? "SPICE_SCENARIO_INVALID",
+                    message: validation.issues.map(\.message).joined(separator: "; "),
+                    affectedRefs: [scenarioPath],
+                    nextActions: ["regenerate_simulation_scenario"]
+                )
+            }
+            let envelope = SPICEMeasurementEnvelopeEvaluator().evaluate(
+                report: report,
+                envelopes: scenario.measurementEnvelopes
+            )
+            let topologyID = stringValue(object, keys: ["topology"]) ?? SPICETopology.singleEndedClassA.rawValue
+            let topology = SPICETopology(rawValue: topologyID) ?? .singleEndedClassA
+            let plan = SPICESimulationRepairPlanner().plan(failures: envelope.failures, topology: topology)
+            guard plan.issues.isEmpty else {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: plan.issues.first?.code ?? "SPICE_REPAIR_UNSUPPORTED",
+                    message: plan.issues.map(\.message).joined(separator: "; "),
+                    affectedRefs: [measurementsPath, scenarioPath],
+                    nextActions: ["request_engineering_review", "rerun_spice"]
+                )
+            }
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "spice_repair_plan",
+                body: try canonicalJSON(plan)
+            )
+            return complete(request, artifacts: [artifact], nextActions: ["apply_spice_repair_patch", "rerun_spice"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "SPICE repair could not parse measurements or scenario: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_spice_measurements", "regenerate_simulation_scenario"]
+            )
+        }
+    }
+
+    private func repairPlanBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        message: String,
+        affectedRefs: [String],
+        nextActions: [String]
+    ) -> WorkspaceMessageResponse {
+        structuredBlock(
+            request,
+            reason: .failedGate,
+            message: message.isEmpty ? code : message,
+            context: context,
+            warnings: [KiCadWarning(
+                code: code,
+                message: message.isEmpty ? code : message,
+                affectedRefs: affectedRefs,
+                suggestedAction: "Escalate the diagnostic or provide additional engineering evidence before retrying."
+            )],
+            nextActions: nextActions
+        )
     }
 
     private func validationDiagnosticBlock(
@@ -3779,6 +3985,12 @@ private struct ElectronicsRoutePassRequestPayload: Codable, Sendable, Equatable 
             maxIterations: maxIterations ?? FreeRoutingProfile.default.maxIterations
         )
     }
+}
+
+private struct DRCRepairPlanArtifact: Codable, Sendable, Equatable {
+    var status: String
+    var patches: [PCBDRCRepairPatch]
+    var diagnostics: [ElectronicsSchemaIssue]
 }
 
 private struct FlexibleCodingKey: CodingKey {
