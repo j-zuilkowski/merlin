@@ -209,6 +209,180 @@ Rules:
 3. Every footprint assignment must prove pin/pad compatibility before PCB work.
 4. Circuit IR validation failures block before KiCad file mutation.
 
+## Component Catalog And Evidence Layer
+
+The electronics plugin SHALL not rely on model memory for component identity,
+pinout, package, lifecycle, availability, datasheet, footprint, or vendor
+ordering claims. Component selection is an evidence-backed plugin workflow.
+
+### Provider Classes
+
+The plugin supports catalog providers behind a common interface. Providers are
+plugin-owned and optional; Merlin core only supplies configuration, credential
+storage, routing, and UI surfaces.
+
+Provider classes:
+
+1. `KiCadLibraryCatalogProvider`
+   - local KiCad symbols, footprints, 3D models, pin definitions, footprint pad
+     maps, and library metadata.
+   - does not prove vendor availability or manufacturer part status.
+2. `StaticFixtureCatalogProvider`
+   - deterministic test fixtures for TDD and offline evaluation.
+   - cannot be used as release evidence unless the fixture declares release
+     provenance.
+3. `DistributorCatalogProvider`
+   - Digi-Key, Mouser, or other distributor APIs.
+   - supplies MPN, manufacturer, parametric data, inventory, price, packaging,
+     lifecycle flags when available, and datasheet URLs.
+4. `AggregatorCatalogProvider`
+   - Nexar/Octopart, TrustedParts, Findchips, SiliconExpert, Datasheets.com, or
+     equivalent sources.
+   - supplies cross-vendor availability, lifecycle, alternate-source evidence,
+     and datasheet or compliance metadata.
+5. `CadModelCatalogProvider`
+   - SnapMagic/SnapEDA, Ultra Librarian, SamacSys, KiCad libraries, or local
+     project libraries.
+   - supplies symbol, footprint, 3D model, pin/pad mapping, and source
+     provenance.
+6. `DatasheetCorpusProvider`
+   - local PDFs, downloaded datasheets, application notes, reference designs,
+     manufacturer design guides, and later RAG indices.
+   - supplies cited evidence only; it does not directly select parts without a
+     structured selection decision.
+
+### Core Data Contracts
+
+Minimum plugin-owned schemas:
+
+1. `ComponentSearchRequest`
+   - component role
+   - required electrical constraints
+   - package and mounting constraints
+   - safety/thermal/current/voltage constraints
+   - preferred or excluded manufacturers/vendors
+   - lifecycle and availability constraints
+   - required evidence types
+2. `ComponentCandidate`
+   - MPN
+   - manufacturer
+   - normalized category
+   - value/specification fields
+   - package
+   - ratings
+   - lifecycle state
+   - availability summary
+   - datasheet references
+   - provider provenance
+3. `ComponentEvidence`
+   - provider ID
+   - source URL or local path
+   - retrieval timestamp
+   - license/cache policy
+   - hash when local content is stored
+   - extracted parameter values
+   - confidence and blocking warnings
+4. `DatasheetEvidence`
+   - manufacturer
+   - MPN
+   - datasheet URL
+   - local artifact path when downloaded
+   - content hash
+   - cited pages/sections when RAG is used
+   - extraction timestamp
+5. `FootprintCandidate`
+   - footprint library
+   - footprint name
+   - package compatibility evidence
+   - pin-to-pad mapping
+   - source provider
+   - 3D model reference when available
+6. `PartSelectionDecision`
+   - refdes
+   - selected candidate or candidate set
+   - status: `selected`, `ambiguous`, `blocked`, or
+     `requires_vendor_resolution`
+   - rationale
+   - evidence references
+   - unresolved decisions
+7. `ComponentMatrix`
+   - design ID
+   - one `PartSelectionDecision` per component intent
+   - matrix-level warnings
+   - provider list and cache metadata
+
+### Selection Rules
+
+1. A model may propose search constraints, but SHALL NOT directly certify a part
+   selection.
+2. `selected` requires structured evidence for manufacturer, MPN, package,
+   required ratings, datasheet URL or local datasheet artifact, and provider
+   provenance.
+3. `ambiguous` is allowed when several candidates satisfy the constraints and
+   user choice or additional constraints are needed.
+4. `blocked` is required when no candidate satisfies mandatory electrical,
+   package, thermal, lifecycle, safety, or evidence constraints.
+5. `requires_vendor_resolution` is allowed only before vendor/API providers are
+   configured or when the workflow is explicitly in non-release draft mode.
+6. Component selection SHALL preserve all source URLs, provider names, retrieval
+   timestamps, and hashes for locally cached artifacts.
+7. High-stakes parts require explicit evidence for ratings and shall carry
+   review notes; catalog evidence does not certify safe use.
+
+### Datasheet And PDF Strategy
+
+Datasheets, app notes, reference designs, and manufacturer design guides are
+evidence artifacts. The first implementation may store metadata only:
+
+```json
+{
+  "manufacturer": "string",
+  "mpn": "string",
+  "url": "https://example.com/datasheet.pdf",
+  "provider_id": "digikey",
+  "retrieved_at": "ISO-8601 timestamp",
+  "local_path": "optional",
+  "sha256": "optional",
+  "license": "source_terms_unknown"
+}
+```
+
+Later RAG indexing may add chunk IDs, page citations, extracted tables, and
+semantic search. RAG output SHALL be treated as cited evidence requiring
+structured extraction and verifier checks. It SHALL NOT override datasheet,
+catalog, KiCad, ERC, DRC, SPICE, or safety gates.
+
+### Cache And Credentials
+
+1. Catalog providers may cache normalized responses with provider-specific TTLs.
+2. Datasheet PDFs may be cached only when terms allow local storage.
+3. API keys and credentials belong in user configuration or keychain-backed
+   storage, not in plugin fixtures or committed files.
+4. Cached data must retain source provider, retrieval timestamp, and original
+   query metadata.
+
+### Workflow Gates
+
+The following downstream gates require catalog evidence:
+
+1. `kicad_select_components`
+   - requires component intents.
+   - returns `ComponentMatrix`.
+   - cannot claim selected parts without catalog evidence.
+2. `kicad_assign_footprints`
+   - requires `ComponentMatrix`.
+   - requires footprint candidate and pin/pad compatibility evidence.
+3. `kicad_compile_project`
+   - natural-language/electronics-generated designs SHALL NOT compile to KiCad
+     from DesignIntent alone.
+   - compile requires approved DesignIntent, Circuit IR, selected or explicitly
+     unresolved component decisions, and footprint assignment for PCB-bound
+     components.
+4. BOM and fabrication release
+   - requires MPNs, vendor availability evidence, lifecycle/availability checks,
+     normalized BOM, and explicit approval for irreversible ordering or
+     fabrication actions.
+
 ## KiCad Integration Strategy
 
 Preferred order:

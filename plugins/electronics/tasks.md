@@ -32,6 +32,13 @@ red tests; each matching `b` task implements the behavior.
 | Runtime artifact evidence | `tasks/task-404a-electronics-runtime-artifact-evidence-tests.md` | `tasks/task-404b-electronics-runtime-artifact-evidence.md` |
 | Tool failure evidence | `tasks/task-405a-electronics-tool-failure-evidence-tests.md` | `tasks/task-405b-electronics-tool-failure-evidence.md` |
 | Focused slice drift lock | `tasks/task-406a-electronics-focused-slice-drift-tests.md` | `tasks/task-406b-electronics-focused-slice-drift-fix.md` |
+| Topology synthesis evidence | `tasks/task-407a-electronics-topology-synthesis-tests.md` | `tasks/task-407b-electronics-topology-synthesis.md` |
+| Component catalog contracts | `tasks/task-408a-component-catalog-contracts-tests.md` | `tasks/task-408b-component-catalog-contracts.md` |
+| Evidence-gated component selection | `tasks/task-409a-evidence-gated-component-selection-tests.md` | `tasks/task-409b-evidence-gated-component-selection.md` |
+| Datasheet evidence capture | `tasks/task-410a-datasheet-evidence-capture-tests.md` | `tasks/task-410b-datasheet-evidence-capture.md` |
+| Footprint evidence gate | `tasks/task-411a-footprint-evidence-gate-tests.md` | `tasks/task-411b-footprint-evidence-gate.md` |
+| Compile gate evidence tightening | `tasks/task-412a-compile-gate-evidence-tests.md` | `tasks/task-412b-compile-gate-evidence.md` |
+| Real catalog provider adapters | `tasks/task-413a-real-catalog-provider-adapters-tests.md` | `tasks/task-413b-real-catalog-provider-adapters.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -425,3 +432,135 @@ Exit criteria:
 
 - A focused read-spec-then-first-KiCad slice cannot satisfy the KiCad step with
   `spawn_agent` or `xcode_open_file`.
+
+## Phase 20: Topology Synthesis Evidence
+
+Goal: turn structured topology constraints into reusable component and net
+intent evidence without hard-coded project generators.
+
+1. Recognize generic topology patterns from `constraints_json`.
+2. Synthesize component intents and net intents only as draft design evidence.
+3. Preserve user-provided components, nets, boards, assumptions, and verification
+   plans.
+4. Keep generated intent unapproved unless the payload explicitly supplies
+   approval.
+
+Exit criteria:
+
+- Structured single-ended Class-A audio constraints produce component/net
+  evidence.
+- Component selection can consume synthesized component intents.
+- No KiCad files are created by intent synthesis.
+
+## Phase 21: Component Catalog Contracts
+
+Goal: define the plugin-owned provider interfaces and schemas for evidence-backed
+component selection.
+
+1. Add schemas/models for `ComponentSearchRequest`, `ComponentCandidate`,
+   `ComponentEvidence`, `DatasheetEvidence`, `FootprintCandidate`,
+   `PartSelectionDecision`, and `ComponentMatrix`.
+2. Add `ComponentCatalogProvider` abstraction.
+3. Add deterministic `StaticFixtureCatalogProvider`.
+4. Add local `KiCadLibraryCatalogProvider` contract for symbol/footprint
+   discovery.
+5. Add validation tests for required provenance, ratings, package, datasheet,
+   lifecycle, and evidence metadata.
+
+Exit criteria:
+
+- Component catalog data round-trips through schemas.
+- Invalid candidates without required provenance or ratings are rejected.
+- Tests run without network or API keys.
+
+## Phase 22: Evidence-Gated Component Selection
+
+Goal: make `kicad_select_components` return real evidence-backed decisions
+instead of role-only placeholders.
+
+1. Read `DesignIntent.components`.
+2. Convert component intents to `ComponentSearchRequest` values.
+3. Query configured catalog providers.
+4. Emit `ComponentMatrix`.
+5. Mark each component `selected`, `ambiguous`, `blocked`, or
+   `requires_vendor_resolution`.
+6. Block unsafe or incomplete choices with actionable diagnostics.
+
+Exit criteria:
+
+- Role text alone cannot produce `selected`.
+- Fixture provider evidence can produce `selected`.
+- Missing providers produce `requires_vendor_resolution`, not fake selection.
+
+## Phase 23: Datasheet Evidence Capture
+
+Goal: preserve datasheet and source metadata before RAG exists.
+
+1. Add datasheet metadata artifacts with URL, provider, manufacturer, MPN,
+   retrieval timestamp, and optional local hash.
+2. Add cache policy metadata.
+3. Add tests proving downloaded or referenced datasheets are linked from
+   `ComponentEvidence`.
+4. Do not require PDF indexing in this phase.
+
+Exit criteria:
+
+- Component selections carry datasheet evidence references.
+- Local PDF hashes are recorded when PDFs are stored.
+- RAG fields are optional and absent by default.
+
+## Phase 24: Footprint Evidence Gate
+
+Goal: require symbol/footprint compatibility evidence before PCB-bound work.
+
+1. Resolve footprint candidates from KiCad/local/CAD model providers.
+2. Extract footprint pad maps.
+3. Match symbol pins to footprint pads.
+4. Emit footprint assignment artifacts with source provenance.
+5. Block unresolved or incompatible footprints.
+
+Exit criteria:
+
+- `kicad_assign_footprints` cannot complete without footprint evidence.
+- Pin/pad mismatch blocks with affected refdes and candidate footprint.
+- Valid fixture assignments pass.
+
+## Phase 25: Compile Gate Evidence Tightening
+
+Goal: prevent skeleton KiCad artifacts from being created from intent-only or
+role-only evidence.
+
+1. Require approved `DesignIntent` for natural-language-originated work.
+2. Require Circuit IR.
+3. Require `ComponentMatrix`.
+4. Require footprint assignment for PCB-bound components.
+5. Require unresolved component and footprint decisions to be explicit blockers
+   or accepted draft limitations.
+6. Keep draft preview mode separate from verified artifact progress.
+
+Exit criteria:
+
+- `kicad_compile_project` blocks without component matrix and footprint evidence.
+- Existing user-authored fixture paths continue to work where explicitly allowed.
+- Natural-language/electronics-generated designs cannot produce fake schematic
+  or PCB files.
+
+## Phase 26: Real Catalog Provider Adapters
+
+Goal: add optional real online provider adapters after the offline contracts are
+green.
+
+1. Add Digi-Key provider adapter.
+2. Add Mouser provider adapter.
+3. Add optional Nexar/Octopart or equivalent aggregator provider adapter.
+4. Add optional CAD model provider adapter hooks for SnapMagic/SnapEDA, Ultra
+   Librarian, SamacSys, or equivalent sources.
+5. Add provider configuration and credential validation.
+6. Add TTL cache and provenance metadata.
+7. Add tests with recorded fixtures; keep live API tests opt-in.
+
+Exit criteria:
+
+- Providers are optional and disabled without credentials.
+- Recorded fixture tests pass offline.
+- Live API failures degrade to blocked provider diagnostics, not fake parts.

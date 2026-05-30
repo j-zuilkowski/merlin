@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "merlin://plugins/electronics/schemas/component_matrix.schema.json",
+  "title": "ComponentMatrix",
+  "type": "object",
+  "required": ["design_id", "decisions", "providers", "cache_metadata"],
+  "properties": {
+    "design_id": { "type": "string", "minLength": 1 },
+    "decisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/part_selection_decision" }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "providers": { "type": "array", "items": { "type": "string" } },
+    "cache_metadata": { "type": "object", "additionalProperties": { "type": "string" } }
+  },
+  "$defs": {
+    "part_selection_decision": {
+      "type": "object",
+      "required": ["refdes", "status", "candidate_set", "rationale", "evidence_references"],
+      "properties": {
+        "refdes": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": ["selected", "ambiguous", "blocked", "requires_vendor_resolution"]
+        },
+        "selected_candidate": { "type": ["object", "null"] },
+        "candidate_set": { "type": "array" },
+        "rationale": { "type": "string" },
+        "evidence_references": { "type": "array" },
+        "unresolved_decisions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

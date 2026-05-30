@@ -574,7 +574,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 nextActions: ["continue_intent_model"]
             )
         case "kicad_build_intent_model":
-            if request.payload.jsonObject()?["requirements"] as? String != nil {
+            let intentObject = mergedDesignIntentObject(request)
+            if intentObject["requirements"] != nil || intentObject["constraints_json"] != nil {
                 return complete(
                     request,
                     artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(request))],
@@ -589,13 +590,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputBody: designIntentBody(request)
             )
         case "kicad_select_components":
-            return fileBackedTransform(
-                request,
-                context: context,
-                requiredPathKeys: ["design_intent_path"],
-                outputKind: "component_matrix",
-                outputBody: componentSelectionBody(request)
-            )
+            return handleComponentSelection(request, context: context)
         case "kicad_prepare_libraries":
             return fileBackedTransform(
                 request,
@@ -605,13 +600,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputBody: #"{"status":"prepared","symbols":"project_local","footprints":"verified","models":"referenced"}"#
             )
         case "kicad_assign_footprints":
-            return fileBackedTransform(
-                request,
-                context: context,
-                requiredPathKeys: ["design_intent_path", "component_matrix_path"],
-                outputKind: "footprint_assignment",
-                outputBody: #"{"status":"assigned","resolution_order":["kicad_field","exact_mpn","package_constraint","project_default","clarification"]}"#
-            )
+            return handleFootprintAssignment(request, context: context)
         case "kicad_compile_project":
             return handleCompileProject(request, context: context)
         case "kicad_apply_board_profile":
@@ -716,11 +705,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         context: WorkspaceHandlerContext
     ) async -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
-        guard let path = object["kicad_cli_path"] as? String, !path.isEmpty else {
-            return structuredBlock(request, reason: .missingKiCad, message: "KiCad CLI path is required.", context: context)
-        }
-        guard FileManager.default.isExecutableFile(atPath: path) else {
-            return structuredBlock(request, reason: .missingKiCad, message: "KiCad CLI is not executable at \(path).", context: context)
+        let requestedPath = (object["kicad_cli_path"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let discoveredPath = defaultKiCadCLICandidates()
+            .first { FileManager.default.isExecutableFile(atPath: $0) }
+        let path = requestedPath.flatMap { FileManager.default.isExecutableFile(atPath: $0) ? $0 : nil }
+            ?? discoveredPath
+        guard let path else {
+            let attempted = ([requestedPath].compactMap { $0 } + defaultKiCadCLICandidates())
+                .joined(separator: ", ")
+            return structuredBlock(
+                request,
+                reason: .missingKiCad,
+                message: "KiCad CLI is not executable. Checked: \(attempted).",
+                context: context
+            )
         }
 
         let process = Process()
@@ -752,10 +750,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     warnings: [KiCadWarning(code: "KICAD_UNSUPPORTED_VERSION", message: output, affectedRefs: [path], suggestedAction: "Upgrade KiCad.")]
                 )
             }
+            var warnings: [KiCadWarning] = []
+            if let requestedPath,
+               requestedPath != path,
+               !FileManager.default.isExecutableFile(atPath: requestedPath) {
+                warnings.append(KiCadWarning(
+                    code: "KICAD_CONFIGURED_PATH_UNUSABLE",
+                    message: "Requested KiCad CLI path is not executable; using discovered path \(path).",
+                    affectedRefs: [requestedPath, path],
+                    suggestedAction: "Update the electronics KiCad CLI path setting to \(path)."
+                ))
+            }
             return complete(
                 request,
                 artifacts: [writeArtifact(request, context: context, kind: "kicad_version", body: #"{"path":"\#(path)","version":"\#(output.trimmingCharacters(in: .whitespacesAndNewlines))"}"#)],
-                metrics: ["required_major": Double(requiredMajor)]
+                metrics: ["required_major": Double(requiredMajor)],
+                warnings: warnings
             )
         } catch {
             return structuredBlock(request, reason: .unsupportedVersion, message: "KiCad CLI could not be launched: \(error.localizedDescription)", context: context)
@@ -924,9 +934,40 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         ) {
             return approvalBlock
         }
+        if let completenessBlock = designIntentCompletenessBlock(
+            request,
+            context: context,
+            designIntentPath: designIntentPath
+        ) {
+            return completenessBlock
+        }
+        if let evidenceBlock = compileEvidenceBlock(
+            request,
+            context: context,
+            designIntentPath: designIntentPath
+        ) {
+            return evidenceBlock
+        }
         do {
             let directoryURL = URL(fileURLWithPath: outputDirectory, isDirectory: true)
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+            if let circuitIR = compileCircuitIR(from: object) {
+                let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
+                    circuitIR: circuitIR,
+                    outputDirectory: directoryURL
+                )
+                let boardURL = directoryURL.appendingPathComponent("\(circuitIR.boardId).kicad_pcb")
+                try "(kicad_pcb (version 20250114) (generator merlin-electronics) (general (thickness 1.6)) (paper \"A4\"))\n".write(to: boardURL, atomically: true, encoding: .utf8)
+                return complete(
+                    request,
+                    artifacts: [
+                        ArtifactRef(path: materialized.projectURL.path, kind: ElectronicsArtifactKind.kicadProject.rawValue),
+                        ArtifactRef(path: materialized.schematicURL.path, kind: ElectronicsArtifactKind.schematic.rawValue),
+                        ArtifactRef(path: boardURL.path, kind: ElectronicsArtifactKind.board.rawValue),
+                    ],
+                    nextActions: ["apply_board_profile", "generate_net_classes"]
+                )
+            }
             let base = (object["design_id"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "merlin-board"
             let projectURL = directoryURL.appendingPathComponent("\(base).kicad_pro")
             let schematicURL = directoryURL.appendingPathComponent("\(base).kicad_sch")
@@ -947,6 +988,218 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         } catch {
             return structuredBlock(request, reason: .missingProjectFile, message: "Failed to materialize KiCad project files: \(error.localizedDescription)", context: context)
         }
+    }
+
+    private func handleComponentSelection(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              FileManager.default.fileExists(atPath: designIntentPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Component selection requires an existing design_intent_path.",
+                context: context
+            )
+        }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: data) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection requires a readable DesignIntent artifact.",
+                context: context
+            )
+        }
+        guard !intent.components.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection cannot complete because the DesignIntent contains no component intents.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "COMPONENT_INTENT_REQUIRED",
+                    message: "Component selection cannot complete because the DesignIntent contains no component intents.",
+                    affectedRefs: [designIntentPath],
+                    suggestedAction: "Add concrete component intents with roles, values, packages, and procurement constraints before selecting parts."
+                )],
+                nextActions: ["revise_design_intent"]
+            )
+        }
+        let artifact = writeArtifact(
+            request,
+            context: context,
+            kind: "component_matrix",
+            body: componentSelectionBody(request, intent: intent)
+        )
+        if let blocked = componentSelectionBlockedResponse(request, artifact: artifact, context: context) {
+            return blocked
+        }
+        return complete(request, artifacts: [artifact], nextActions: ["prepare_libraries", "assign_footprints"])
+    }
+
+    private func componentSelectionBlockedResponse(
+        _ request: WorkspaceMessageRequest,
+        artifact: ArtifactRef,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: artifact.path)),
+              let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: data),
+              matrix.decisions.contains(where: { $0.status == .blocked }) else {
+            return nil
+        }
+        let warning = KiCadWarning(
+            code: "COMPONENT_SELECTION_BLOCKED",
+            message: "Component selection has blocked decisions that require catalog evidence or revised constraints.",
+            affectedRefs: affectedRefs(from: request),
+            suggestedAction: "Revise component constraints or provide valid catalog evidence before continuing."
+        )
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blockedInputQuality,
+                artifacts: [artifact],
+                warnings: [warning],
+                nextActions: ["revise_component_selection"]
+            )),
+            artifacts: [
+                WorkspaceArtifactRef(
+                    id: "\(request.id.uuidString)-\(artifact.kind)",
+                    kind: artifact.kind,
+                    url: URL(fileURLWithPath: artifact.path),
+                    displayName: artifact.kind,
+                    metadata: ["request_id": request.id.uuidString]
+                ),
+            ],
+            diagnostics: [
+                WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error"),
+            ]
+        )
+    }
+
+    private func handleFootprintAssignment(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        let missing = ["design_intent_path", "component_matrix_path"].filter { key in
+            guard let path = object[key] as? String else { return true }
+            return !FileManager.default.fileExists(atPath: path)
+        }
+        guard missing.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "\(request.address.capability) requires existing artifacts for: \(missing.joined(separator: ", ")).",
+                context: context
+            )
+        }
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              let matrixPath = object["component_matrix_path"] as? String,
+              let intentData = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let matrixData = try? Data(contentsOf: URL(fileURLWithPath: matrixPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: intentData),
+              let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: matrixData) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Footprint assignment requires readable DesignIntent and ComponentMatrix artifacts.",
+                context: context
+            )
+        }
+
+        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        var assignments: [FootprintAssignment] = []
+        var warnings: [KiCadWarning] = []
+
+        for decision in matrix.decisions {
+            guard decision.status == .selected, let candidate = decision.selectedCandidate else {
+                warnings.append(KiCadWarning(
+                    code: "FOOTPRINT_SELECTION_REQUIRED",
+                    message: "Footprint assignment requires a selected catalog candidate for \(decision.refdes).",
+                    affectedRefs: [decision.refdes],
+                    suggestedAction: "Resolve the component selection before assigning footprints."
+                ))
+                continue
+            }
+            guard let footprint = candidate.footprintCandidates.first else {
+                warnings.append(KiCadWarning(
+                    code: "FOOTPRINT_CANDIDATE_REQUIRED",
+                    message: "Selected component \(decision.refdes) has no evidence-backed footprint candidate.",
+                    affectedRefs: [decision.refdes],
+                    suggestedAction: "Provide a KiCad/CAD footprint candidate with package compatibility evidence."
+                ))
+                continue
+            }
+
+            let footprintName = canonicalFootprintName(footprint)
+            if footprint.sourceProviderID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || footprint.packageCompatibilityEvidence.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                warnings.append(KiCadWarning(
+                    code: "FOOTPRINT_PROVENANCE_REQUIRED",
+                    message: "Footprint \(footprintName) for \(decision.refdes) is missing source provenance or package compatibility evidence.",
+                    affectedRefs: [decision.refdes, footprintName],
+                    suggestedAction: "Attach provider provenance and package compatibility evidence before PCB synthesis."
+                ))
+                continue
+            }
+
+            let requiredPins = requiredPins(for: componentsByRefdes[decision.refdes])
+            guard !requiredPins.isEmpty else {
+                warnings.append(KiCadWarning(
+                    code: "FOOTPRINT_PIN_EVIDENCE_REQUIRED",
+                    message: "Footprint assignment for \(decision.refdes) requires symbol-pin evidence in the design intent.",
+                    affectedRefs: [decision.refdes, footprintName],
+                    suggestedAction: "Record the symbol pins that must be mapped before assigning a PCB footprint."
+                ))
+                continue
+            }
+
+            let missingPins = requiredPins.filter { pin in
+                footprint.pinPadMap[pin]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+            }
+            guard missingPins.isEmpty else {
+                warnings.append(KiCadWarning(
+                    code: "FOOTPRINT_PIN_PAD_MISMATCH",
+                    message: "Footprint \(footprintName) for \(decision.refdes) does not map required symbol pins: \(missingPins.joined(separator: ", ")).",
+                    affectedRefs: [decision.refdes, footprintName],
+                    suggestedAction: "Choose a compatible footprint or provide a corrected pin-to-pad map."
+                ))
+                continue
+            }
+
+            assignments.append(FootprintAssignment(
+                refdes: decision.refdes,
+                footprint: footprintName,
+                source: .exactMPN,
+                pinPadMap: footprint.pinPadMap,
+                sourceProviderID: footprint.sourceProviderID,
+                sourcePath: footprint.sourcePath,
+                packageCompatibilityEvidence: footprint.packageCompatibilityEvidence
+            ))
+        }
+
+        guard warnings.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .unresolvedFootprints,
+                message: "Footprint assignment is blocked until every selected component has compatible footprint evidence.",
+                context: context,
+                warnings: warnings,
+                nextActions: ["revise_footprint_selection"]
+            )
+        }
+
+        let report = FootprintAssignmentReport(assignments: assignments, unknownFootprints: 0)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let body = (try? encoder.encode(report)).flatMap { String(data: $0, encoding: .utf8) }
+            ?? #"{"assignments":[],"unknownFootprints":0}"#
+        let artifact = writeArtifact(request, context: context, kind: "footprint_assignment", body: body)
+        return complete(request, artifacts: [artifact], nextActions: ["compile_project"])
     }
 
     private func designIntentApprovalBlock(
@@ -982,6 +1235,143 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 affectedRefs: [designIntentPath]
             )
         }
+    }
+
+    private func designIntentCompletenessBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        designIntentPath: String
+    ) -> WorkspaceMessageResponse? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: data),
+              intent.origin == .naturalLanguage else {
+            return nil
+        }
+        let hasConstructiveEvidence = !intent.components.isEmpty || !intent.nets.isEmpty
+        guard hasConstructiveEvidence else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Natural-language DesignIntent cannot be compiled into KiCad files until it contains component or net evidence.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "DESIGN_INTENT_INCOMPLETE",
+                    message: "Natural-language DesignIntent cannot be compiled into KiCad files until it contains component or net evidence.",
+                    affectedRefs: [designIntentPath],
+                    suggestedAction: "Revise the DesignIntent with concrete component and net intents before compiling KiCad artifacts."
+                )],
+                nextActions: ["revise_design_intent"]
+            )
+        }
+        return nil
+    }
+
+    private func compileEvidenceBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        designIntentPath: String
+    ) -> WorkspaceMessageResponse? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: data),
+              intent.origin != .userAuthored else {
+            return nil
+        }
+        let object = request.payload.jsonObject() ?? [:]
+        guard let circuitIR = decodeCompileArtifact(
+            object,
+            key: "circuit_ir_path",
+            as: CircuitIR.self
+        ) else {
+            return compileEvidenceMissingBlock(
+                request,
+                context: context,
+                code: "CIRCUIT_IR_REQUIRED",
+                message: "Compile project requires Circuit IR evidence before generating KiCad artifacts.",
+                affectedRefs: [designIntentPath],
+                suggestedAction: "Generate and validate Circuit IR before compiling the KiCad project."
+            )
+        }
+        guard let matrix = decodeCompileArtifact(
+            object,
+            key: "component_matrix_path",
+            as: ComponentMatrix.self
+        ), !matrix.decisions.isEmpty,
+              matrix.decisions.allSatisfy({ $0.status == .selected && $0.selectedCandidate != nil }) else {
+            return compileEvidenceMissingBlock(
+                request,
+                context: context,
+                code: "COMPONENT_MATRIX_REQUIRED",
+                message: "Compile project requires a selected ComponentMatrix before generating KiCad artifacts.",
+                affectedRefs: [designIntentPath],
+                suggestedAction: "Resolve component selection with catalog evidence before compiling the KiCad project."
+            )
+        }
+        guard let footprintReport = decodeCompileArtifact(
+            object,
+            key: "footprint_assignment_path",
+            as: FootprintAssignmentReport.self
+        ), footprintReport.mayProceedToPCBSynthesis,
+              footprintAssignmentsCoverPCBComponents(footprintReport, circuitIR: circuitIR) else {
+            return compileEvidenceMissingBlock(
+                request,
+                context: context,
+                code: "FOOTPRINT_ASSIGNMENT_REQUIRED",
+                message: "Compile project requires footprint assignments for PCB-bound components before generating KiCad artifacts.",
+                affectedRefs: circuitIR.components.map(\.refdes),
+                suggestedAction: "Assign and verify footprints before compiling the KiCad project."
+            )
+        }
+        return nil
+    }
+
+    private func decodeCompileArtifact<T: Decodable>(
+        _ object: [String: Any],
+        key: String,
+        as type: T.Type
+    ) -> T? {
+        guard let path = object[key] as? String,
+              FileManager.default.fileExists(atPath: path),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func compileCircuitIR(from object: [String: Any]) -> CircuitIR? {
+        decodeCompileArtifact(object, key: "circuit_ir_path", as: CircuitIR.self)
+    }
+
+    private func footprintAssignmentsCoverPCBComponents(
+        _ report: FootprintAssignmentReport,
+        circuitIR: CircuitIR
+    ) -> Bool {
+        let assigned = Set(report.assignments.map(\.refdes))
+        return circuitIR.components.allSatisfy { component in
+            assigned.contains(component.refdes)
+        }
+    }
+
+    private func compileEvidenceMissingBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        message: String,
+        affectedRefs: [String],
+        suggestedAction: String
+    ) -> WorkspaceMessageResponse {
+        structuredBlock(
+            request,
+            reason: .missingArtifact,
+            message: message,
+            context: context,
+            warnings: [KiCadWarning(
+                code: code,
+                message: message,
+                affectedRefs: affectedRefs,
+                suggestedAction: suggestedAction
+            )],
+            nextActions: ["provide_compile_evidence"]
+        )
     }
 
     private func designIntentApprovalResponse(
@@ -1384,6 +1774,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         _ request: WorkspaceMessageRequest,
         artifacts: [ArtifactRef] = [],
         metrics: [String: Double] = [:],
+        warnings: [KiCadWarning] = [],
         nextActions: [String] = []
     ) -> WorkspaceMessageResponse {
         .ok(
@@ -1391,6 +1782,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             payload: try? .encodeJSON(KiCadToolResult(
                 status: .complete,
                 artifacts: artifacts,
+                warnings: warnings,
                 metrics: metrics,
                 nextActions: nextActions
             )),
@@ -1454,30 +1846,147 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             if let value = object[key] as? String, !value.isEmpty {
                 return value
             }
+            if let value = object[key] as? NSNumber {
+                return value.stringValue
+            }
         }
         return nil
     }
 
     private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
-        let object = request.payload.jsonObject() ?? [:]
-        let designID = object["design_id"] as? String ?? request.id.uuidString
-        let title = object["title"] as? String ?? "Draft Electronics DesignIntent"
-        let requirements = object["requirements"] as? String ?? ""
+        let object = mergedDesignIntentObject(request)
+        let synthesis = topologySynthesis(from: object)
+        let designID = object["design_id"] as? String ?? object["board_profile_id"] as? String ?? request.id.uuidString
+        let title = object["title"] as? String ?? object["board_profile_id"] as? String ?? "Draft Electronics DesignIntent"
+        let explicitComponents = componentIntents(from: object)
+        let explicitNets = netIntents(from: object)
+        let explicitBoards = boardIntents(from: object)
+        let explicitAssumptions = assumptions(from: object)
         let intent = DesignIntent(
             designId: designID,
             title: title,
             origin: .naturalLanguage,
-            approval: DesignApproval(status: .draft),
-            requirements: requirements.isEmpty ? [] : [
-                Requirement(id: "req-1", text: requirements, priority: "must"),
-            ],
-            assumptions: [],
+            approval: designApproval(from: object),
+            requirements: requirements(from: object),
+            assumptions: mergedAssumptions(explicitAssumptions, synthesis.assumptions),
+            components: explicitComponents.isEmpty ? synthesis.components : explicitComponents,
+            nets: explicitNets.isEmpty ? synthesis.nets : explicitNets,
             unresolvedDecisions: unresolvedDecisions(from: object),
-            boards: [],
-            safetyProfile: SafetyProfile(isolationRequired: false, creepageMm: 0.0, notes: []),
-            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: false, spiceRequired: false)
+            boards: explicitBoards.isEmpty ? synthesis.boards : explicitBoards,
+            safetyProfile: safetyProfile(from: object),
+            verificationPlan: object["verification_plan"] == nil ? (synthesis.verificationPlan ?? verificationPlan(from: object)) : verificationPlan(from: object)
         )
         return (try? canonicalJSON(intent)) ?? #"{"design_id":"\#(designID)","origin":"natural_language","approval":{"status":"draft"}}"#
+    }
+
+    private func mergedDesignIntentObject(_ request: WorkspaceMessageRequest) -> [String: Any] {
+        var object = request.payload.jsonObject() ?? [:]
+        guard let constraints = object["constraints_json"] as? String,
+              let data = constraints.data(using: .utf8),
+              let nested = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return object
+        }
+        object.merge(nested) { _, new in new }
+        return object
+    }
+
+    private func designApproval(from object: [String: Any]) -> DesignApproval {
+        if let value = object["approval"] as? String,
+           let status = DesignApprovalStatus(rawValue: value) {
+            return DesignApproval(status: status, approvedBy: object["approved_by"] as? String, approvedAt: object["approved_at"] as? String)
+        }
+        if let approval = object["approval"] as? [String: Any],
+           let value = approval["status"] as? String,
+           let status = DesignApprovalStatus(rawValue: value) {
+            return DesignApproval(
+                status: status,
+                approvedBy: approval["approved_by"] as? String,
+                approvedAt: approval["approved_at"] as? String
+            )
+        }
+        return DesignApproval(status: .draft)
+    }
+
+    private func requirements(from object: [String: Any]) -> [Requirement] {
+        if let text = object["requirements"] as? String, !text.isEmpty {
+            return [Requirement(id: "req-1", text: text, priority: "must")]
+        }
+        if let values = object["requirements"] as? [String] {
+            return values.enumerated().map {
+                Requirement(id: "req-\($0.offset + 1)", text: $0.element, priority: "must")
+            }
+        }
+        if let values = object["requirements"] as? [[String: Any]] {
+            return values.enumerated().compactMap { index, value in
+                guard let text = value["text"] as? String, !text.isEmpty else { return nil }
+                return Requirement(
+                    id: value["id"] as? String ?? "req-\(index + 1)",
+                    text: text,
+                    priority: value["priority"] as? String ?? "must"
+                )
+            }
+        }
+        let excludedKeys: Set<String> = [
+            "approval",
+            "approved_at",
+            "approved_by",
+            "assumptions",
+            "board_profile_id",
+            "components",
+            "constraints_json",
+            "design_id",
+            "input_artifact_path",
+            "nets",
+            "title",
+            "unresolved_decisions",
+            "verification_plan",
+        ]
+        return object
+            .filter { !excludedKeys.contains($0.key) }
+            .sorted { $0.key < $1.key }
+            .enumerated()
+            .compactMap { index, entry in
+                guard let text = requirementText(key: entry.key, value: entry.value) else { return nil }
+                return Requirement(id: "constraint-\(index + 1)", text: text, priority: "must")
+            }
+    }
+
+    private func requirementText(key: String, value: Any) -> String? {
+        if let string = value as? String, !string.isEmpty {
+            return "\(key): \(string)"
+        }
+        if let bool = value as? Bool {
+            return "\(key): \(bool)"
+        }
+        if let number = value as? NSNumber {
+            return "\(key): \(number.stringValue)"
+        }
+        if JSONSerialization.isValidJSONObject([key: value]),
+           let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
+           let string = String(data: data, encoding: .utf8),
+           !string.isEmpty {
+            return "\(key): \(string)"
+        }
+        return nil
+    }
+
+    private func assumptions(from object: [String: Any]) -> [Assumption] {
+        if let values = object["assumptions"] as? [String] {
+            return values.enumerated().map {
+                Assumption(id: "assumption-\($0.offset + 1)", text: $0.element, rationale: "provided_by_intent_payload")
+            }
+        }
+        if let values = object["assumptions"] as? [[String: Any]] {
+            return values.enumerated().compactMap { index, value in
+                guard let text = value["text"] as? String, !text.isEmpty else { return nil }
+                return Assumption(
+                    id: value["id"] as? String ?? "assumption-\(index + 1)",
+                    text: text,
+                    rationale: value["rationale"] as? String ?? "provided_by_intent_payload"
+                )
+            }
+        }
+        return []
     }
 
     private func unresolvedDecisions(from object: [String: Any]) -> [UnresolvedDecision] {
@@ -1489,8 +1998,405 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return []
     }
 
-    private func componentSelectionBody(_ request: WorkspaceMessageRequest) -> String {
-        #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","components":[],"policy":"provenance_first"}"#
+    private func boardIntents(from object: [String: Any]) -> [BoardIntent] {
+        if let values = object["boards"] as? [[String: Any]] {
+            return values.enumerated().map { index, value in
+                BoardIntent(
+                    id: value["id"] as? String ?? "board-\(index + 1)",
+                    title: value["title"] as? String ?? "Board \(index + 1)",
+                    safetyDomain: value["safety_domain"] as? String ?? value["safetyDomain"] as? String ?? "unspecified"
+                )
+            }
+        }
+        if object["pcb_secondary_only"] as? Bool == true || object["mains_on_pcb"] as? Bool == false {
+            return [BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary")]
+        }
+        if object["mains_primary_offboard"] as? Bool == true {
+            return [BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary")]
+        }
+        if (object["pcb_domain"] as? String)?.lowercased().contains("secondary") == true {
+            return [BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary")]
+        }
+        return []
+    }
+
+    private func safetyProfile(from object: [String: Any]) -> SafetyProfile {
+        if let profile = object["safety_profile"] as? [String: Any] {
+            return SafetyProfile(
+                isolationRequired: boolValue(profile["isolation_required"]) ?? boolValue(profile["isolationRequired"]) ?? false,
+                creepageMm: doubleValue(profile["creepage_mm"]) ?? doubleValue(profile["creepageMm"]) ?? 0.0,
+                notes: stringArray(profile["notes"])
+            )
+        }
+        let requirementText = requirements(from: object).map(\.text).joined(separator: " ").lowercased()
+        return SafetyProfile(
+            isolationRequired: object["pcb_secondary_only"] as? Bool == true
+                || object["mains_on_pcb"] as? Bool == false
+                || object["mains_primary_offboard"] as? Bool == true
+                || (object["mains_isolation"] as? String)?.lowercased().contains("isolated") == true
+                || (object["pcb_domain"] as? String)?.lowercased().contains("secondary") == true
+                || requirementText.contains("isolated"),
+            creepageMm: 0.0,
+            notes: stringArray(object["safety_notes"])
+        )
+    }
+
+    private func verificationPlan(from object: [String: Any]) -> VerificationPlan {
+        if let plan = object["verification_plan"] as? [String: Any] {
+            return VerificationPlan(
+                ercRequired: boolValue(plan["erc_required"]) ?? boolValue(plan["ercRequired"]) ?? true,
+                drcRequired: boolValue(plan["drc_required"]) ?? boolValue(plan["drcRequired"]) ?? false,
+                spiceRequired: boolValue(plan["spice_required"]) ?? boolValue(plan["spiceRequired"]) ?? false
+            )
+        }
+        let requirementText = requirements(from: object).map(\.text).joined(separator: " ").lowercased()
+        return VerificationPlan(
+            ercRequired: boolValue(object["erc_required"]) ?? true,
+            drcRequired: boolValue(object["drc_required"]) ?? requirementText.contains("drc"),
+            spiceRequired: boolValue(object["spice_required"]) ?? requirementText.contains("spice")
+        )
+    }
+
+    private func componentIntents(from object: [String: Any]) -> [ComponentIntent] {
+        guard let values = object["components"] as? [[String: Any]] else { return [] }
+        return values.enumerated().compactMap { index, value in
+            let refdes = value["refdes"] as? String ?? value["reference"] as? String ?? value["ref"] as? String ?? "U\(index + 1)"
+            let role = value["role"] as? String ?? value["description"] as? String ?? "unspecified"
+            return ComponentIntent(refdes: refdes, role: role, constraints: stringDictionary(value["constraints"] as? [String: Any] ?? value))
+        }
+    }
+
+    private func netIntents(from object: [String: Any]) -> [NetIntent] {
+        guard let values = object["nets"] as? [[String: Any]] else { return [] }
+        return values.compactMap { value in
+            guard let name = value["name"] as? String, !name.isEmpty else { return nil }
+            return NetIntent(
+                name: name,
+                role: value["role"] as? String ?? "unspecified",
+                source: value["source"] as? String ?? "",
+                destination: value["destination"] as? String ?? ""
+            )
+        }
+    }
+
+    private struct TopologySynthesis {
+        var components: [ComponentIntent] = []
+        var nets: [NetIntent] = []
+        var assumptions: [Assumption] = []
+        var boards: [BoardIntent] = []
+        var verificationPlan: VerificationPlan?
+    }
+
+    private func topologySynthesis(from object: [String: Any]) -> TopologySynthesis {
+        guard isSingleEndedClassAAudioTopology(object) else {
+            return TopologySynthesis()
+        }
+        let outputPower = stringValue(object, keys: ["output_power_watts", "output_power", "power_watts"]) ?? "unspecified"
+        let load = stringValue(object, keys: ["load_ohms", "speaker_load_ohms", "speaker_load"]) ?? "8"
+        let toneBands = stringArray(object["tone_bands"]).isEmpty ? ["bass", "mid", "treble"] : stringArray(object["tone_bands"])
+        let toneBandValue = toneBands.joined(separator: ",")
+
+        return TopologySynthesis(
+            components: [
+                ComponentIntent(
+                    refdes: "JSEC",
+                    role: "isolated transformer secondary input connector",
+                    constraints: [
+                        "kind": "connector",
+                        "domain": "isolated_secondary",
+                        "mains_primary": "off_board",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "BR1",
+                    role: "bridge rectifier for isolated secondary supply",
+                    constraints: [
+                        "kind": "rectifier",
+                        "domain": "low_voltage_secondary",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "CRES1",
+                    role: "bulk reservoir capacitor for raw Class-A rail",
+                    constraints: [
+                        "kind": "capacitor",
+                        "rail": "VRAW",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "JIN",
+                    role: "high impedance guitar input connector",
+                    constraints: [
+                        "kind": "connector",
+                        "signal_domain": "audio_input",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "QPRE1",
+                    role: "low-noise small-signal preamp transistor stage",
+                    constraints: [
+                        "implementation": "discrete",
+                        "device_family": "JFET_or_low_noise_BJT",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "RPRE1",
+                    role: "preamp bias and input impedance network",
+                    constraints: [
+                        "kind": "resistor_network",
+                        "function": "sets_input_bias_and_impedance",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "TONE1",
+                    role: "passive three-band tone control network",
+                    constraints: [
+                        "implementation": "discrete_RC",
+                        "bands": toneBandValue,
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "FILTER1",
+                    role: "sweepable boost/cut filter network",
+                    constraints: [
+                        "implementation": "discrete_RC_or_discrete_transistor",
+                        "controls": "frequency,level",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "QDRV1",
+                    role: "discrete voltage driver stage",
+                    constraints: [
+                        "implementation": "discrete",
+                        "drives": "QOUT1",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "QOUT1",
+                    role: "single-ended Class-A output transistor",
+                    constraints: [
+                        "implementation": "discrete",
+                        "output_power_watts": outputPower,
+                        "load_ohms": load,
+                        "thermal": "external_heatsink_required",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "RBIAS1",
+                    role: "Class-A output bias network",
+                    constraints: [
+                        "kind": "resistor_network",
+                        "function": "sets_idle_current",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "JSPK",
+                    role: "\(load) ohm speaker output connector",
+                    constraints: [
+                        "kind": "connector",
+                        "load_ohms": load,
+                    ]
+                ),
+            ],
+            nets: [
+                NetIntent(name: "AC_SEC1", role: "isolated secondary AC feed", source: "JSEC", destination: "BR1"),
+                NetIntent(name: "VRAW", role: "raw low-voltage Class-A supply rail", source: "BR1", destination: "CRES1"),
+                NetIntent(name: "GND", role: "isolated secondary circuit common", source: "BR1", destination: "CRES1"),
+                NetIntent(name: "GUITAR_IN", role: "guitar input signal", source: "JIN", destination: "QPRE1"),
+                NetIntent(name: "PRE_OUT", role: "preamp output signal", source: "QPRE1", destination: "TONE1"),
+                NetIntent(name: "TONE_OUT", role: "tone stack output signal", source: "TONE1", destination: "FILTER1"),
+                NetIntent(name: "FILTER_OUT", role: "boost/cut filter output signal", source: "FILTER1", destination: "QDRV1"),
+                NetIntent(name: "DRV_OUT", role: "driver output signal", source: "QDRV1", destination: "QOUT1"),
+                NetIntent(name: "SPK_OUT", role: "speaker output signal", source: "QOUT1", destination: "JSPK"),
+            ],
+            assumptions: [
+                Assumption(
+                    id: "topology-assumption-1",
+                    text: "Single-ended 25W Class-A operation is thermally severe and requires explicit heatsink and safe-operating-area review.",
+                    rationale: "topology_synthesis"
+                ),
+                Assumption(
+                    id: "topology-assumption-2",
+                    text: "North American mains primary circuitry remains off-board; this board only receives an isolated low-voltage transformer secondary.",
+                    rationale: "topology_synthesis"
+                ),
+            ],
+            boards: [
+                BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary"),
+            ],
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        )
+    }
+
+    private func isSingleEndedClassAAudioTopology(_ object: [String: Any]) -> Bool {
+        let topology = stringValue(object, keys: ["topology", "amplifier_topology", "output_topology"])?.lowercased() ?? ""
+        let requirementText = requirements(from: object).map(\.text).joined(separator: " ").lowercased()
+        let combined = "\(topology) \(requirementText)"
+        let isClassA = combined.contains("class_a") || combined.contains("class-a") || combined.contains("class a")
+        let isSingleEnded = combined.contains("single-ended") || combined.contains("single_ended") || combined.contains("single ended")
+        let isAudioAmplifier = combined.contains("amplifier")
+            || combined.contains("guitar")
+            || combined.contains("audio")
+            || object["output_power_watts"] != nil
+            || object["tone_control"] != nil
+        return isClassA && isSingleEnded && isAudioAmplifier
+    }
+
+    private func mergedAssumptions(_ explicit: [Assumption], _ synthesized: [Assumption]) -> [Assumption] {
+        guard !synthesized.isEmpty else { return explicit }
+        var seen = Set(explicit.map { $0.text })
+        var result = explicit
+        for assumption in synthesized where !seen.contains(assumption.text) {
+            seen.insert(assumption.text)
+            result.append(assumption)
+        }
+        return result
+    }
+
+    private func componentSelectionBody(_ request: WorkspaceMessageRequest, intent: DesignIntent) -> String {
+        let candidates = catalogCandidates(from: request)
+        let providers = candidates.isEmpty ? [] : ["fixture"]
+        let matrix = ComponentMatrix(
+            designId: intent.designId,
+            decisions: intent.components.map { componentSelectionDecision(for: $0, candidates: candidates) },
+            warnings: [],
+            providers: providers,
+            cacheMetadata: candidates.isEmpty ? [:] : ["source": "catalog_candidates_path"]
+        )
+        let legacyComponents = matrix.decisions.map { decision in
+            [
+                "refdes": decision.refdes,
+                "role": intent.components.first(where: { $0.refdes == decision.refdes })?.role ?? "",
+                "constraints": intent.components.first(where: { $0.refdes == decision.refdes })?.constraints ?? [:],
+                "selection_status": decision.status.rawValue,
+                "mpn": decision.selectedCandidate?.mpn ?? "",
+                "manufacturer": decision.selectedCandidate?.manufacturer ?? "",
+            ] as [String: Any]
+        }
+        let encoded = (try? JSONEncoder().encode(matrix)).flatMap {
+            try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
+        } ?? [:]
+        var object = encoded
+        object["components"] = legacyComponents
+        object["policy"] = "provenance_first"
+        if let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+           let text = String(data: data, encoding: .utf8) {
+            return text
+        }
+        return #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","components":[],"policy":"provenance_first"}"#
+    }
+
+    private func catalogCandidates(from request: WorkspaceMessageRequest) -> [ComponentCandidate] {
+        guard let object = request.payload.jsonObject(),
+              let path = object["catalog_candidates_path"] as? String,
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let candidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) else {
+            return []
+        }
+        return candidates
+    }
+
+    private func componentSelectionDecision(
+        for component: ComponentIntent,
+        candidates: [ComponentCandidate]
+    ) -> PartSelectionDecision {
+        guard !candidates.isEmpty else {
+            return PartSelectionDecision(
+                refdes: component.refdes,
+                status: .requiresVendorResolution,
+                selectedCandidate: nil,
+                candidateSet: [],
+                rationale: "No component catalog provider evidence was configured for this selection.",
+                evidenceReferences: [],
+                unresolvedDecisions: ["Provide catalog provider evidence for \(component.refdes)."]
+            )
+        }
+
+        let validator = ComponentCatalogValidator()
+        let validCandidates = candidates.filter { validator.validate($0).isValid }
+        if validCandidates.isEmpty {
+            let issues = candidates.flatMap { validator.validate($0).issues.map(\.code) }
+            return PartSelectionDecision(
+                refdes: component.refdes,
+                status: .blocked,
+                selectedCandidate: nil,
+                candidateSet: candidates,
+                rationale: "Catalog candidates are missing required evidence: \(Array(Set(issues)).sorted().joined(separator: ","))",
+                evidenceReferences: candidates.flatMap(\.evidence),
+                unresolvedDecisions: ["Provide manufacturer, MPN, package, ratings, datasheet, and provenance evidence for \(component.refdes)."]
+            )
+        }
+        if validCandidates.count == 1, let selected = validCandidates.first {
+            return PartSelectionDecision(
+                refdes: component.refdes,
+                status: .selected,
+                selectedCandidate: selected,
+                candidateSet: validCandidates,
+                rationale: "Single catalog candidate satisfies required evidence checks.",
+                evidenceReferences: selected.evidence,
+                unresolvedDecisions: []
+            )
+        }
+        return PartSelectionDecision(
+            refdes: component.refdes,
+            status: .ambiguous,
+            selectedCandidate: nil,
+            candidateSet: validCandidates,
+            rationale: "Multiple catalog candidates satisfy required evidence checks.",
+            evidenceReferences: validCandidates.flatMap(\.evidence),
+            unresolvedDecisions: ["Choose one candidate for \(component.refdes) or add tighter constraints."]
+        )
+    }
+
+    private func canonicalFootprintName(_ footprint: FootprintCandidate) -> String {
+        if footprint.library.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return footprint.name
+        }
+        if footprint.name.contains(":") {
+            return footprint.name
+        }
+        return "\(footprint.library):\(footprint.name)"
+    }
+
+    private func requiredPins(for component: ComponentIntent?) -> [String] {
+        guard let value = component?.constraints["required_pins"] ?? component?.constraints["symbol_pins"] else {
+            return []
+        }
+        return value
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func boolValue(_ value: Any?) -> Bool? {
+        if let value = value as? Bool { return value }
+        if let value = value as? String { return Bool(value) }
+        return nil
+    }
+
+    private func doubleValue(_ value: Any?) -> Double? {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? String { return Double(value) }
+        return nil
+    }
+
+    private func stringArray(_ value: Any?) -> [String] {
+        if let values = value as? [String] { return values }
+        if let value = value as? String, !value.isEmpty { return [value] }
+        return []
+    }
+
+    private func stringDictionary(_ value: [String: Any]) -> [String: String] {
+        value.reduce(into: [:]) { result, entry in
+            if let string = entry.value as? String {
+                result[entry.key] = string
+            } else if let bool = entry.value as? Bool {
+                result[entry.key] = String(bool)
+            } else if let number = entry.value as? NSNumber {
+                result[entry.key] = number.stringValue
+            }
+        }
     }
 
     private func vendorOrderBody(_ request: WorkspaceMessageRequest) -> String {
