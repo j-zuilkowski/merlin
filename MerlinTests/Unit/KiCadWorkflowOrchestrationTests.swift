@@ -9,7 +9,7 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertEqual(
             steps.map(\.rawValue),
             [
-                "ingest", "clarify", "intent", "footprints", "compile", "apply_profile",
+                "ingest", "clarify", "intent", "circuit_ir", "component_selection", "footprints", "compile", "apply_profile",
                 "net_classes", "placement", "route", "checks", "simulation", "visual_qa", "fab", "package",
             ]
         )
@@ -18,9 +18,29 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
     func test_requirementsToSchematicToPCB_prependsRequirementsStages() {
         let steps = KiCadWorkflowPlanner().steps(for: .requirementsToSchematicToPCB)
         XCTAssertEqual(
-            Array(steps.prefix(4)).map(\.rawValue),
-            ["requirements_decomposition", "source_corpus_lookup", "topology_selection", "component_selection"]
+            Array(steps.prefix(7)).map(\.rawValue),
+            ["requirements_decomposition", "source_corpus_lookup", "topology_selection", "intent", "circuit_ir", "component_selection", "footprints"]
         )
+    }
+
+    func test_evidenceNextActions_resolveToCallableKiCadTools() {
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "generate_circuit_ir"), "kicad_generate_circuit_ir")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "select_components"), "kicad_select_components")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "assign_footprints"), "kicad_assign_footprints")
+        XCTAssertNil(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "provide_compile_evidence"))
+    }
+
+    func test_orchestratorRunsCircuitIRBeforeComponentSelectionAndCompile() async {
+        let executor = FakeKiCadWorkflowExecutor()
+        let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
+
+        _ = await orchestrator.run(mode: .requirementsToSchematicToPCB, approvals: [.highStakesSignoff])
+
+        let executed = executor.executedSteps
+        XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .intent)), try XCTUnwrap(executed.firstIndex(of: .circuitIR)))
+        XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .circuitIR)), try XCTUnwrap(executed.firstIndex(of: .componentSelection)))
+        XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .componentSelection)), try XCTUnwrap(executed.firstIndex(of: .footprints)))
+        XCTAssertLessThan(try XCTUnwrap(executed.firstIndex(of: .footprints)), try XCTUnwrap(executed.firstIndex(of: .compile)))
     }
 
     func test_blockedResult_stopsBeforeDestructiveExportOrderSteps() async {
@@ -76,9 +96,13 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
 @MainActor
 private final class FakeKiCadWorkflowExecutor: KiCadToolExecutor {
     var resultsByStep: [KiCadWorkflowStep: KiCadToolResult] = [:]
+    var executedSteps: [KiCadWorkflowStep] = []
 
     func execute(toolName: String, arguments: [String : Any]) async throws -> KiCadToolResult {
         let step = KiCadWorkflowStep(toolName: toolName)
+        if let step {
+            executedSteps.append(step)
+        }
         if let step, let result = resultsByStep[step] {
             return result
         }

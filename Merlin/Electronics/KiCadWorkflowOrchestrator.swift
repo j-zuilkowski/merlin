@@ -14,6 +14,7 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
     case ingest = "ingest"
     case clarify = "clarify"
     case intent = "intent"
+    case circuitIR = "circuit_ir"
     case footprints = "footprints"
     case compile = "compile"
     case applyProfile = "apply_profile"
@@ -37,6 +38,8 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
         case "kicad_ingest_schematic": self = .ingest
         case "kicad_answer_clarification": self = .clarify
         case "kicad_build_intent_model": self = .intent
+        case "kicad_generate_circuit_ir": self = .circuitIR
+        case "kicad_select_components": self = .componentSelection
         case "kicad_assign_footprints": self = .footprints
         case "kicad_compile_project": self = .compile
         case "kicad_apply_board_profile": self = .applyProfile
@@ -59,10 +62,11 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
         case .requirementsDecomposition: return "requirements_decomposition"
         case .sourceCorpusLookup: return "source_corpus_lookup"
         case .topologySelection: return "topology_selection"
-        case .componentSelection: return "component_selection"
+        case .componentSelection: return "kicad_select_components"
         case .ingest: return "kicad_ingest_schematic"
         case .clarify: return "kicad_answer_clarification"
         case .intent: return "kicad_build_intent_model"
+        case .circuitIR: return "kicad_generate_circuit_ir"
         case .footprints: return "kicad_assign_footprints"
         case .compile: return "kicad_compile_project"
         case .applyProfile: return "kicad_apply_board_profile"
@@ -94,17 +98,37 @@ struct KiCadWorkflowState: Codable, Sendable, Equatable {
 
 struct KiCadWorkflowPlanner: Sendable {
     func steps(for mode: KiCadWorkflowMode) -> [KiCadWorkflowStep] {
-        let core: [KiCadWorkflowStep] = [
-            .ingest, .clarify, .intent, .footprints, .compile, .applyProfile,
+        let schematicCore: [KiCadWorkflowStep] = [
+            .ingest, .clarify, .intent, .circuitIR, .componentSelection, .footprints, .compile, .applyProfile,
+            .netClasses, .placement, .route, .checks, .simulation, .visualQA,
+            .fab, .package,
+        ]
+        let requirementsCore: [KiCadWorkflowStep] = [
+            .intent, .circuitIR, .componentSelection, .footprints, .compile, .applyProfile,
             .netClasses, .placement, .route, .checks, .simulation, .visualQA,
             .fab, .package,
         ]
 
         switch mode {
         case .schematicToPCB:
-            return core
+            return schematicCore
         case .requirementsToSchematicToPCB:
-            return [.requirementsDecomposition, .sourceCorpusLookup, .topologySelection, .componentSelection] + core
+            return [.requirementsDecomposition, .sourceCorpusLookup, .topologySelection] + requirementsCore
+        }
+    }
+}
+
+enum KiCadRuntimeEvidencePipeline {
+    static func toolName(forNextAction action: String) -> String? {
+        switch action {
+        case "generate_circuit_ir":
+            return KiCadWorkflowStep.circuitIR.toolName
+        case "select_components":
+            return KiCadWorkflowStep.componentSelection.toolName
+        case "assign_footprints":
+            return KiCadWorkflowStep.footprints.toolName
+        default:
+            return nil
         }
     }
 }

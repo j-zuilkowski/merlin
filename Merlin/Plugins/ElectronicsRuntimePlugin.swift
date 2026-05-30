@@ -589,6 +589,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputKind: "design_intent",
                 outputBody: designIntentBody(request)
             )
+        case "kicad_generate_circuit_ir":
+            return handleCircuitIRGeneration(request, context: context)
         case "kicad_select_components":
             return handleComponentSelection(request, context: context)
         case "kicad_prepare_libraries":
@@ -1038,6 +1040,82 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return blocked
         }
         return complete(request, artifacts: [artifact], nextActions: ["prepare_libraries", "assign_footprints"])
+    }
+
+    private func handleCircuitIRGeneration(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              FileManager.default.fileExists(atPath: designIntentPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Circuit IR generation requires an existing design_intent_path.",
+                context: context
+            )
+        }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: data) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Circuit IR generation requires a readable DesignIntent artifact.",
+                context: context
+            )
+        }
+        guard intent.approval.status == .approved else {
+            return designIntentApprovalResponse(
+                request,
+                code: "DESIGN_INTENT_NOT_APPROVED",
+                message: "DesignIntent must be approved before Circuit IR generation.",
+                affectedRefs: [designIntentPath]
+            )
+        }
+        guard !intent.components.isEmpty, !intent.nets.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Circuit IR generation requires component and net intent evidence.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "CIRCUIT_IR_INTENT_EVIDENCE_REQUIRED",
+                    message: "Circuit IR generation requires component and net intent evidence.",
+                    affectedRefs: [designIntentPath],
+                    suggestedAction: "Revise the DesignIntent with concrete component and net intents."
+                )],
+                nextActions: ["revise_design_intent"]
+            )
+        }
+
+        let circuitIR = synthesizeCircuitIR(from: intent)
+        let validation = ElectronicsSchemaValidator.validateReadyForKiCadMutation(designIntent: intent, circuitIR: circuitIR)
+        guard validation.isValid else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Generated Circuit IR is not ready for KiCad mutation.",
+                context: context,
+                warnings: validation.issues.map {
+                    KiCadWarning(
+                        code: $0.code,
+                        message: $0.message,
+                        affectedRefs: [designIntentPath],
+                        suggestedAction: "Repair DesignIntent component, pin, or net evidence before continuing."
+                    )
+                },
+                nextActions: ["revise_design_intent"]
+            )
+        }
+
+        let artifact = writeArtifact(
+            request,
+            context: context,
+            kind: "circuit_ir",
+            body: (try? canonicalJSON(circuitIR)) ?? #"{"components":[],"nets":[]}"#
+        )
+        return complete(request, artifacts: [artifact], nextActions: ["select_components"])
     }
 
     private func componentSelectionBlockedResponse(
@@ -2387,6 +2465,269 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+    }
+
+    private func synthesizeCircuitIR(from intent: DesignIntent) -> CircuitIR {
+        var expansions: [String: [String]] = [:]
+        var components: [CircuitComponent] = []
+        var seen = Set<String>()
+
+        for component in intent.components {
+            let expanded = expandedCircuitComponents(from: component)
+            expansions[component.refdes] = expanded.map(\.refdes)
+            for circuitComponent in expanded where !seen.contains(circuitComponent.refdes) {
+                seen.insert(circuitComponent.refdes)
+                components.append(circuitComponent)
+            }
+        }
+
+        let componentsByRefdes = Dictionary(components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let safetyDomain = intent.boards.first?.safetyDomain.isEmpty == false ? intent.boards[0].safetyDomain : "unspecified"
+        let nets = synthesizedNets(
+            from: intent.nets,
+            expansions: expansions,
+            componentsByRefdes: componentsByRefdes,
+            safetyDomain: safetyDomain
+        )
+        let constraints = intent.safetyProfile.isolationRequired
+            ? [CircuitConstraint(kind: "safety_domain", target: safetyDomain, value: "isolated_low_voltage")]
+            : []
+
+        return CircuitIR(
+            designId: intent.designId,
+            boardId: intent.boards.first?.id ?? "\(intent.designId)_board",
+            components: components,
+            nets: nets,
+            constraints: constraints,
+            verificationScenarios: verificationScenarios(from: intent.verificationPlan)
+        )
+    }
+
+    private func expandedCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+        let role = intent.role.lowercased()
+        let implementation = intent.constraints["implementation"]?.lowercased() ?? ""
+        if role.contains("boost/cut") || role.contains("filter network") || role.contains("sweepable") {
+            return filterCircuitComponents(from: intent)
+        }
+        if implementation.contains("discrete_rc") || role.contains("tone control") || role.contains("tone stack") {
+            return toneCircuitComponents(from: intent)
+        }
+        if intent.constraints["kind"] == "resistor_network" {
+            return resistorNetworkComponents(from: intent)
+        }
+        return [circuitComponent(refdes: intent.refdes, role: intent.role, sourceRefdes: intent.refdes)]
+    }
+
+    private func toneCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+        let bands = (intent.constraints["bands"] ?? "bass,mid,treble")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+        return bands.flatMap { band in
+            [
+                circuitComponent(refdes: "R\(band)1", role: "\(band.lowercased()) tone resistor", sourceRefdes: intent.refdes),
+                circuitComponent(refdes: "C\(band)1", role: "\(band.lowercased()) tone capacitor", sourceRefdes: intent.refdes),
+            ]
+        }
+    }
+
+    private func filterCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+        [
+            circuitComponent(refdes: "RFILT1", role: "sweepable filter resistor", sourceRefdes: intent.refdes),
+            circuitComponent(refdes: "CFILT1", role: "sweepable filter capacitor", sourceRefdes: intent.refdes),
+            circuitComponent(refdes: "RVFILT1", role: "sweepable filter frequency control potentiometer", sourceRefdes: intent.refdes),
+        ]
+    }
+
+    private func resistorNetworkComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+        let base = intent.refdes
+        return [
+            circuitComponent(refdes: "\(base)A", role: "\(intent.role) upper resistor", sourceRefdes: intent.refdes),
+            circuitComponent(refdes: "\(base)B", role: "\(intent.role) lower resistor", sourceRefdes: intent.refdes),
+        ]
+    }
+
+    private func circuitComponent(refdes: String, role: String, sourceRefdes: String) -> CircuitComponent {
+        let symbol = circuitSymbol(for: refdes, role: role)
+        return CircuitComponent(
+            refdes: refdes,
+            role: role,
+            selectedSymbol: symbol,
+            selectedFootprint: nil,
+            manufacturerPartNumber: nil,
+            sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: sourceRefdes)],
+            pins: circuitPins(refdes: refdes, symbol: symbol)
+        )
+    }
+
+    private func circuitSymbol(for refdes: String, role: String) -> String {
+        let upper = refdes.uppercased()
+        let lowerRole = role.lowercased()
+        if upper.hasPrefix("RV") { return "Device:R_Potentiometer" }
+        if upper.hasPrefix("BR") { return "Device:Bridge_Rectifier" }
+        if upper.hasPrefix("Q") {
+            if lowerRole.contains("jfet") { return "Device:Q_NJFET_DGS" }
+            return "Device:Q_NPN_BCE"
+        }
+        if upper.hasPrefix("R") { return "Device:R" }
+        if upper.hasPrefix("C") { return "Device:C" }
+        if upper.hasPrefix("J") { return "Connector_Generic:Conn_01x02" }
+        return "Device:R"
+    }
+
+    private func circuitPins(refdes: String, symbol: String) -> [CircuitPin] {
+        switch symbol {
+        case "Device:Q_NPN_BCE":
+            return [
+                circuitPin(refdes, "1", "B", "input"),
+                circuitPin(refdes, "2", "C", "power"),
+                circuitPin(refdes, "3", "E", "passive"),
+            ]
+        case "Device:Q_NJFET_DGS":
+            return [
+                circuitPin(refdes, "1", "D", "passive"),
+                circuitPin(refdes, "2", "G", "input"),
+                circuitPin(refdes, "3", "S", "passive"),
+            ]
+        case "Device:Bridge_Rectifier":
+            return [
+                circuitPin(refdes, "1", "AC1", "power"),
+                circuitPin(refdes, "2", "AC2", "power"),
+                circuitPin(refdes, "3", "PLUS", "power"),
+                circuitPin(refdes, "4", "MINUS", "power"),
+            ]
+        case "Device:R_Potentiometer":
+            return [
+                circuitPin(refdes, "1", "A", "passive"),
+                circuitPin(refdes, "2", "W", "passive"),
+                circuitPin(refdes, "3", "B", "passive"),
+            ]
+        default:
+            return [
+                circuitPin(refdes, "1", "1", "passive"),
+                circuitPin(refdes, "2", "2", "passive"),
+            ]
+        }
+    }
+
+    private func circuitPin(_ refdes: String, _ number: String, _ name: String, _ type: String) -> CircuitPin {
+        CircuitPin(
+            componentRefdes: refdes,
+            pinNumber: number,
+            canonicalName: name,
+            electricalType: type,
+            symbolPin: name,
+            footprintPad: nil
+        )
+    }
+
+    private func synthesizedNets(
+        from netIntents: [NetIntent],
+        expansions: [String: [String]],
+        componentsByRefdes: [String: CircuitComponent],
+        safetyDomain: String
+    ) -> [CircuitNet] {
+        var nets: [CircuitNet] = []
+        var seen = Set<String>()
+
+        for netIntent in netIntents {
+            let source = endpointRefdes(for: netIntent.source, expansions: expansions, usage: .source)
+            let destination = endpointRefdes(for: netIntent.destination, expansions: expansions, usage: .destination)
+            guard let sourceEndpoint = circuitEndpoint(for: source, usage: .source, componentsByRefdes: componentsByRefdes),
+                  let destinationEndpoint = circuitEndpoint(for: destination, usage: .destination, componentsByRefdes: componentsByRefdes) else {
+                continue
+            }
+            let net = CircuitNet(
+                name: netIntent.name,
+                role: netIntent.role,
+                endpoints: sourceEndpoint == destinationEndpoint ? [sourceEndpoint] : [sourceEndpoint, destinationEndpoint],
+                netClass: netClass(for: netIntent),
+                safetyDomain: safetyDomain
+            )
+            if seen.insert(net.name).inserted {
+                nets.append(net)
+            }
+        }
+
+        for (sourceRefdes, expandedRefdes) in expansions where expandedRefdes.count > 1 {
+            for pair in zip(expandedRefdes, expandedRefdes.dropFirst()) {
+                guard let sourceEndpoint = circuitEndpoint(for: pair.0, usage: .source, componentsByRefdes: componentsByRefdes),
+                      let destinationEndpoint = circuitEndpoint(for: pair.1, usage: .destination, componentsByRefdes: componentsByRefdes) else {
+                    continue
+                }
+                let name = "\(sourceRefdes)_INTERNAL_\(pair.0)_\(pair.1)"
+                if seen.insert(name).inserted {
+                    nets.append(CircuitNet(
+                        name: name,
+                        role: "internal expanded network connection",
+                        endpoints: [sourceEndpoint, destinationEndpoint],
+                        netClass: "signal",
+                        safetyDomain: safetyDomain
+                    ))
+                }
+            }
+        }
+
+        return nets
+    }
+
+    private enum CircuitEndpointUsage {
+        case source
+        case destination
+    }
+
+    private func endpointRefdes(
+        for refdes: String,
+        expansions: [String: [String]],
+        usage: CircuitEndpointUsage
+    ) -> String {
+        guard let expanded = expansions[refdes], !expanded.isEmpty else {
+            return refdes
+        }
+        switch usage {
+        case .source:
+            return expanded.last ?? refdes
+        case .destination:
+            return expanded.first ?? refdes
+        }
+    }
+
+    private func circuitEndpoint(
+        for refdes: String,
+        usage: CircuitEndpointUsage,
+        componentsByRefdes: [String: CircuitComponent]
+    ) -> CircuitNetEndpoint? {
+        guard let component = componentsByRefdes[refdes] else { return nil }
+        let pinNumber: String
+        switch usage {
+        case .source:
+            pinNumber = component.pins.last?.pinNumber ?? "1"
+        case .destination:
+            pinNumber = component.pins.first?.pinNumber ?? "1"
+        }
+        return CircuitNetEndpoint(componentRefdes: refdes, pinNumber: pinNumber)
+    }
+
+    private func netClass(for intent: NetIntent) -> String {
+        let text = "\(intent.name) \(intent.role)".lowercased()
+        if text.contains("gnd") || text.contains("ground") || text.contains("common") {
+            return "ground"
+        }
+        if text.contains("supply") || text.contains("power") || text.contains("rail") || text.contains("vraw") {
+            return "power"
+        }
+        return "signal"
+    }
+
+    private func verificationScenarios(from plan: VerificationPlan) -> [VerificationScenario] {
+        var scenarios = [VerificationScenario(id: "erc", kind: "erc", expectation: "no blocking ERC errors")]
+        if plan.drcRequired {
+            scenarios.append(VerificationScenario(id: "drc", kind: "drc", expectation: "no blocking DRC errors"))
+        }
+        if plan.spiceRequired {
+            scenarios.append(VerificationScenario(id: "spice", kind: "spice", expectation: "simulation measurements within approved envelopes"))
+        }
+        return scenarios
     }
 
     private func boolValue(_ value: Any?) -> Bool? {

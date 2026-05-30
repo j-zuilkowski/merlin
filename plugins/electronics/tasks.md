@@ -40,6 +40,8 @@ red tests; each matching `b` task implements the behavior.
 | Compile gate evidence tightening | `tasks/task-412a-compile-gate-evidence-tests.md` | `tasks/task-412b-compile-gate-evidence.md` |
 | Real catalog provider adapters | `tasks/task-413a-real-catalog-provider-adapters-tests.md` | `tasks/task-413b-real-catalog-provider-adapters.md` |
 | Runtime evidence pipeline | `tasks/task-414a-electronics-runtime-evidence-pipeline-tests.md` | `tasks/task-414b-electronics-runtime-evidence-pipeline.md` |
+| Evidence action orchestration | `tasks/task-415a-electronics-evidence-action-orchestration-tests.md` | `tasks/task-415b-electronics-evidence-action-orchestration.md` |
+| Discrete Circuit IR synthesis | `tasks/task-416a-discrete-circuit-ir-synthesis-tests.md` | `tasks/task-416b-discrete-circuit-ir-synthesis.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -583,3 +585,38 @@ Exit criteria:
 - Missing ComponentMatrix returns `select_components`.
 - Missing or invalid footprint evidence returns `assign_footprints`.
 - Compile does not advance from a generic continuation action.
+
+## Phase 28: Evidence Action Orchestration
+
+Goal: ensure runtime evidence continuation actions map to real electronics tools
+and run in verified artifact order.
+
+1. Map `generate_circuit_ir` to `kicad_generate_circuit_ir`.
+2. Map `select_components` to `kicad_select_components`.
+3. Map `assign_footprints` to `kicad_assign_footprints`.
+4. Order requirements workflows as DesignIntent, Circuit IR, component
+   selection, footprint assignment, compile.
+
+Exit criteria:
+
+- Every compile-gate next action resolves to a registered electronics tool.
+- Requirements workflows cannot run component selection before DesignIntent.
+- Compile remains after footprint assignment.
+
+## Phase 29: Discrete Circuit IR Synthesis
+
+Goal: generate evidence-backed Circuit IR from approved DesignIntent without
+block-level placeholder components.
+
+1. Add `kicad_generate_circuit_ir`.
+2. Convert basic discrete component intents into Circuit IR components.
+3. Expand discrete RC/tone/filter intent patterns into concrete R/C/control
+   components.
+4. Preserve source evidence from the originating DesignIntent component.
+5. Validate generated net endpoints before returning the artifact.
+
+Exit criteria:
+
+- The amp topology fixture emits discrete R/C/transistor/connector components.
+- No `TONE1` or `FILTER1` block component appears in Circuit IR.
+- Generated nets validate against component pins.

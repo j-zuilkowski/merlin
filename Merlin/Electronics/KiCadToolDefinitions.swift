@@ -4,6 +4,7 @@ enum KiCadToolDefinitions {
         "kicad_ingest_schematic",
         "kicad_answer_clarification",
         "kicad_build_intent_model",
+        "kicad_generate_circuit_ir",
         "kicad_select_components",
         "kicad_prepare_libraries",
         "kicad_assign_footprints",
@@ -63,6 +64,14 @@ enum KiCadToolDefinitions {
                 "constraints_json": .string("JSON encoded constraints"),
             ],
             required: ["input_artifact_path", "board_profile_id"]
+        ),
+        tool(
+            name: "kicad_generate_circuit_ir",
+            description: "Generate evidence-backed Circuit IR from an approved DesignIntent without creating KiCad files",
+            properties: [
+                "design_intent_path": .string("DesignIntent JSON path"),
+            ],
+            required: ["design_intent_path"]
         ),
         tool(
             name: "kicad_select_components",

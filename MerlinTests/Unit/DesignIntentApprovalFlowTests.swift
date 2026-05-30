@@ -149,6 +149,38 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(components.allSatisfy { $0["selection_status"] as? String == "requires_vendor_resolution" })
     }
 
+    func testApprovedClassATopologyGeneratesDiscreteCircuitIR() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"approval":"approved","topology":"single-ended_class_a","output_power_watts":25,"load_ohms":8,"mains_isolation":"transformer_isolated","mains_primary_offboard":true,"signal_path_components":"discrete_only","output_stage_components":"discrete_only","tone_bands":["bass","mid","treble"],"tone_control":"3_band_with_sweepable_boost_cut","pcb_domain":"secondary_side_only"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+        let intentResponse = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","constraints_json":\#(constraintsLiteral)}"#
+        )
+        let intentArtifact = try XCTUnwrap(intentResponse.artifacts.first { $0.kind == "design_intent" })
+
+        let response = await send(
+            runtime,
+            capability: "kicad_generate_circuit_ir",
+            payload: #"{"design_intent_path":"\#(intentArtifact.url.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "circuit_ir" })
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: artifact.url))
+        let refdes = Set(circuitIR.components.map(\.refdes))
+        XCTAssertFalse(refdes.contains("TONE1"))
+        XCTAssertFalse(refdes.contains("FILTER1"))
+        XCTAssertTrue(refdes.isSuperset(of: ["JIN", "QPRE1", "RBASS1", "CBASS1", "RMID1", "CMID1", "RTREBLE1", "CTREBLE1", "RFILT1", "CFILT1", "QDRV1", "QOUT1", "JSPK"]))
+        XCTAssertTrue(circuitIR.components.allSatisfy { !$0.sourceEvidence.isEmpty })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: intentArtifact.url))
+        let validation = ElectronicsSchemaValidator.validateReadyForKiCadMutation(designIntent: intent, circuitIR: circuitIR)
+        XCTAssertTrue(validation.isValid, validation.issues.map(\.code).joined(separator: ","))
+    }
+
     func testComponentSelectionBlocksWhenDesignIntentHasNoComponentEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
