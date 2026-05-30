@@ -971,7 +971,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     outputDirectory: directoryURL
                 )
                 let boardURL = directoryURL.appendingPathComponent("\(circuitIR.boardId).kicad_pcb")
-                try "(kicad_pcb (version 20250114) (generator merlin-electronics) (general (thickness 1.6)) (paper \"A4\"))\n".write(to: boardURL, atomically: true, encoding: .utf8)
+                try minimalKiCadBoardText(generator: "merlin-electronics")
+                    .write(to: boardURL, atomically: true, encoding: .utf8)
                 return complete(
                     request,
                     artifacts: [
@@ -989,7 +990,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let designIntent = (try? String(contentsOfFile: designIntentPath, encoding: .utf8)) ?? "{}"
             try #"{"meta":{"version":1},"generated_by":"Merlin","design_intent_path":"\#(designIntentPath)"}"#.write(to: projectURL, atomically: true, encoding: .utf8)
             try "(kicad_sch (version 20250114) (generator Merlin) (uuid \(UUID().uuidString)) (paper \"A4\") (comment 1 \"\(escapedSExpression(designIntent.prefix(80)))\"))\n".write(to: schematicURL, atomically: true, encoding: .utf8)
-            try "(kicad_pcb (version 20250114) (generator Merlin) (general (thickness 1.6)) (paper \"A4\"))\n".write(to: boardURL, atomically: true, encoding: .utf8)
+            try minimalKiCadBoardText(generator: "Merlin")
+                .write(to: boardURL, atomically: true, encoding: .utf8)
             return complete(
                 request,
                 artifacts: [
@@ -4078,6 +4080,47 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
             .replacingOccurrences(of: "\n", with: "\\n")
+    }
+
+    private func minimalKiCadBoardText(generator: String) -> String {
+        """
+        (kicad_pcb
+          (version 20250114)
+          (generator "\(generator)")
+          (general (thickness 1.6))
+          (paper "A4")
+          (layers
+            (0 "F.Cu" signal)
+            (31 "B.Cu" signal)
+            (32 "B.Adhes" user "B.Adhesive")
+            (33 "F.Adhes" user "F.Adhesive")
+            (34 "B.Paste" user)
+            (35 "F.Paste" user)
+            (36 "B.SilkS" user "B.Silkscreen")
+            (37 "F.SilkS" user "F.Silkscreen")
+            (38 "B.Mask" user)
+            (39 "F.Mask" user)
+            (40 "Dwgs.User" user "User.Drawings")
+            (41 "Cmts.User" user "User.Comments")
+            (42 "Eco1.User" user "User.Eco1")
+            (43 "Eco2.User" user "User.Eco2")
+            (44 "Edge.Cuts" user)
+            (45 "Margin" user)
+            (46 "B.CrtYd" user "B.Courtyard")
+            (47 "F.CrtYd" user "F.Courtyard")
+            (48 "B.Fab" user)
+            (49 "F.Fab" user)
+          )
+          (gr_rect
+            (start 0 0)
+            (end 120 80)
+            (stroke (width 0.1) (type default))
+            (fill no)
+            (layer "Edge.Cuts")
+            (uuid "\(UUID().uuidString)")
+          )
+        )
+        """
     }
 
     private func publishDiagnostic(

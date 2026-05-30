@@ -15,6 +15,7 @@ struct KiCadSchematicDocument: Equatable, Sendable {
     struct Symbol: Equatable, Sendable {
         var uuid: String?
         var properties: [String: String]
+        var emitsKiCadSymbol: Bool = true
 
         func property(named name: String) -> String? {
             properties[name]
@@ -39,6 +40,7 @@ struct KiCadSchematicDocument: Equatable, Sendable {
 
         var kind: Kind
         var text: String
+        var emitsKiCadConnectivity: Bool = true
     }
 
     struct SheetPin: Equatable, Sendable {
@@ -123,6 +125,18 @@ struct KiCadSchematicParser {
             case "symbol":
                 symbols.append(try parseSymbol(node))
 
+            case "text":
+                if let metadata = try parseMerlinMetadataText(node) {
+                    switch metadata {
+                    case .component(let symbol):
+                        symbols.append(symbol)
+                    case .net(let label):
+                        labels.append(label)
+                    }
+                } else {
+                    opaqueNodes.append(node)
+                }
+
             case "wire":
                 wires.append(try parseWire(node))
 
@@ -179,7 +193,7 @@ struct KiCadSchematicParser {
             }
         }
 
-        return KiCadSchematicDocument.Symbol(uuid: uuid, properties: properties)
+        return KiCadSchematicDocument.Symbol(uuid: uuid, properties: properties, emitsKiCadSymbol: true)
     }
 
     private func parseWire(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Wire {
@@ -240,7 +254,7 @@ struct KiCadSchematicParser {
             throw KiCadSchematicParserError.unsupported("Unsupported label type: \(head)")
         }
 
-        return KiCadSchematicDocument.Label(kind: kind, text: text)
+        return KiCadSchematicDocument.Label(kind: kind, text: text, emitsKiCadConnectivity: true)
     }
 
     private func parseSheet(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Sheet {
@@ -278,6 +292,39 @@ struct KiCadSchematicParser {
         }
 
         return KiCadSchematicDocument.Sheet(uuid: uuid, name: name, file: file, pins: pins)
+    }
+
+    private enum MerlinMetadataText {
+        case component(KiCadSchematicDocument.Symbol)
+        case net(KiCadSchematicDocument.Label)
+    }
+
+    private func parseMerlinMetadataText(_ expression: KiCadSExpression) throws -> MerlinMetadataText? {
+        guard case .list(let list) = expression,
+              let text = list.dropFirst().first?.stringOrAtomValue else {
+            return nil
+        }
+
+        if text.hasPrefix("MERLIN_NET:") {
+            let name = String(text.dropFirst("MERLIN_NET:".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else {
+                throw KiCadSchematicParserError.malformed("MERLIN_NET metadata missing net name")
+            }
+            return .net(KiCadSchematicDocument.Label(kind: .local, text: name, emitsKiCadConnectivity: false))
+        }
+
+        if text.hasPrefix("MERLIN_COMPONENT:") {
+            let jsonText = String(text.dropFirst("MERLIN_COMPONENT:".count))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let data = jsonText.data(using: .utf8),
+                  let properties = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
+                throw KiCadSchematicParserError.malformed("MERLIN_COMPONENT metadata must contain a string dictionary")
+            }
+            return .component(KiCadSchematicDocument.Symbol(uuid: nil, properties: properties, emitsKiCadSymbol: false))
+        }
+
+        return nil
     }
 
     private func parseXY(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Point {
@@ -407,8 +454,14 @@ struct KiCadSchematicWriter {
             .list([.atom("generator"), .string(document.generator)]),
             .list([.atom("uuid"), .string(document.uuid)]),
         ]
+        var metadataTextIndex = 0
 
         for symbol in document.symbols {
+            if !symbol.emitsKiCadSymbol {
+                nodes.append(metadataTextNode(text: merlinComponentMetadata(for: symbol), index: metadataTextIndex))
+                metadataTextIndex += 1
+                continue
+            }
             var symbolNodes: [KiCadSExpression] = [.atom("symbol")]
             if let uuid = symbol.uuid {
                 symbolNodes.append(.list([.atom("uuid"), .string(uuid)]))
@@ -440,6 +493,11 @@ struct KiCadSchematicWriter {
         }
 
         for label in document.labels {
+            if !label.emitsKiCadConnectivity {
+                nodes.append(metadataTextNode(text: "MERLIN_NET: \(label.text)", index: metadataTextIndex))
+                metadataTextIndex += 1
+                continue
+            }
             let head: String
             switch label.kind {
             case .local:
@@ -467,6 +525,44 @@ struct KiCadSchematicWriter {
 
         nodes.append(contentsOf: document.opaqueNodes)
         return render(.list(nodes))
+    }
+
+    private func merlinComponentMetadata(for symbol: KiCadSchematicDocument.Symbol) -> String {
+        let data = (try? JSONSerialization.data(
+            withJSONObject: symbol.properties,
+            options: [.sortedKeys]
+        )) ?? Data("{}".utf8)
+        let json = String(data: data, encoding: .utf8) ?? "{}"
+        return "MERLIN_COMPONENT: \(json)"
+    }
+
+    private func metadataTextNode(text: String, index: Int) -> KiCadSExpression {
+        let y = 250.0 + (Double(index) * 2.54)
+        let yText = numberString(y)
+        let uuid = stableTextUUID(text, String(index))
+        return .list([
+            .atom("text"),
+            .string(text),
+            .list([.atom("exclude_from_sim"), .atom("no")]),
+            .list([.atom("at"), .atom("320"), .atom(yText), .atom("0")]),
+            .list([
+                .atom("effects"),
+                .list([
+                    .atom("font"),
+                    .list([.atom("size"), .atom("1.27"), .atom("1.27")]),
+                ]),
+                .list([.atom("justify"), .atom("left"), .atom("bottom")]),
+            ]),
+            .list([.atom("uuid"), .string(uuid)]),
+        ])
+    }
+
+    private func stableTextUUID(_ parts: String...) -> String {
+        let input = parts.joined(separator: "|")
+        let hash = input.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) { partial, scalar in
+            (partial ^ UInt64(scalar.value)) &* 1_099_511_628_211
+        }
+        return String(format: "%016llx", hash)
     }
 
     private func numberString(_ value: Double) -> String {

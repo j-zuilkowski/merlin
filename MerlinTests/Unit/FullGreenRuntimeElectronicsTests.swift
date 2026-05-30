@@ -110,6 +110,9 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertEqual(compile.status, .ok)
         let compileResult = try XCTUnwrap(compile.payload?.decodeJSON(KiCadToolResult.self))
         let projectPath = try XCTUnwrap(compileResult.artifacts.first { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue }?.path)
+        let boardPath = try XCTUnwrap(compileResult.artifacts.first { $0.kind == ElectronicsArtifactKind.board.rawValue }?.path)
+        let boardText = try String(contentsOfFile: boardPath, encoding: .utf8)
+        XCTAssertTrue(boardText.contains(#"layer "Edge.Cuts""#), boardText)
 
         let kicad = try writeFakeKiCadCLI(reportJSON: #"{"violations":[]}"#)
         let erc = await sendElectronics(
@@ -150,6 +153,37 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         let log = try String(contentsOf: kicad.log, encoding: .utf8)
         XCTAssertTrue(log.contains("sch erc"))
         XCTAssertTrue(log.contains("pcb drc"))
+    }
+
+    func testCompiledBoardOutlinePassesRealKiCadDRCWhenAvailable() async throws {
+        let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+        guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
+            throw XCTSkip("KiCad CLI is not installed at \(kicadCLI)")
+        }
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let designIntent = try writeFixtureFile(name: "intent.json", text: #"{"design_id":"fixture","title":"Fixture"}"#)
+        let compileOutput = temporaryDirectory("real-drc-board-outline")
+
+        let compile = await sendElectronics(
+            runtime,
+            capability: "kicad_compile_project",
+            payload: #"{"design_intent_path":"\#(designIntent.path)","output_directory":"\#(compileOutput.path)"}"#
+        )
+
+        XCTAssertEqual(compile.status, .ok)
+        let compileResult = try XCTUnwrap(compile.payload?.decodeJSON(KiCadToolResult.self))
+        let boardPath = try XCTUnwrap(compileResult.artifacts.first { $0.kind == ElectronicsArtifactKind.board.rawValue }?.path)
+        let report = compileOutput.appendingPathComponent("drc.json")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: kicadCLI)
+        process.arguments = ["pcb", "drc", "--format", "json", "--output", report.path, boardPath]
+        try process.run()
+        process.waitUntilExit()
+
+        XCTAssertEqual(process.terminationStatus, 0)
+        let reportText = try String(contentsOf: report, encoding: .utf8)
+        XCTAssertTrue(reportText.contains(#""violations": []"#), reportText)
     }
 
     func testKiCadERCGateBlocksOnParsedBlockingDiagnostics() async throws {

@@ -16,6 +16,41 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" })
     }
 
+    func testMaterializedCircuitIRUsesMerlinNetMetadataInsteadOfDanglingKiCadLabels() throws {
+        let document = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: validCircuitIR())
+        let serialized = try KiCadSchematicWriter().write(document)
+        let parsed = try KiCadSchematicParser().parse(serialized)
+
+        XCTAssertTrue(serialized.contains(#"(text "MERLIN_NET: DRV_OUT""#), serialized)
+        XCTAssertFalse(serialized.contains("(label \"DRV_OUT\""), serialized)
+        XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && !$0.emitsKiCadConnectivity })
+        XCTAssertTrue(parsed.symbols.contains { $0.property(named: "Reference") == "Q1" && !$0.emitsKiCadSymbol })
+        XCTAssertTrue(parsed.wires.isEmpty)
+    }
+
+    func testMaterializedCircuitIRPassesRealKiCadERCWhenAvailable() throws {
+        let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+        guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
+            throw XCTSkip("KiCad CLI is not installed at \(kicadCLI)")
+        }
+        let outputDirectory = temporaryDirectory("circuit-ir-real-erc")
+        let result = try CircuitIRKiCadSchematicMaterializer().materialize(
+            circuitIR: validCircuitIR(),
+            outputDirectory: outputDirectory
+        )
+        let report = outputDirectory.appendingPathComponent("erc.json")
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: kicadCLI)
+        process.arguments = ["sch", "erc", "--format", "json", "--output", report.path, result.schematicURL.path]
+        try process.run()
+        process.waitUntilExit()
+
+        XCTAssertEqual(process.terminationStatus, 0)
+        let reportText = try String(contentsOf: report, encoding: .utf8)
+        XCTAssertTrue(reportText.contains(#""violations": []"#), reportText)
+    }
+
     func testValidCircuitIRCreatesKiCadProjectAndSchematic() throws {
         let outputDirectory = temporaryDirectory("circuit-ir-kicad")
         let result = try CircuitIRKiCadSchematicMaterializer().materialize(

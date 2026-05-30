@@ -43,13 +43,21 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
             symbols: circuitIR.components.enumerated().map { index, component in
                 symbol(for: component, index: index)
             },
-            wires: wires(for: circuitIR),
-            junctions: junctions(for: circuitIR),
+            wires: [],
+            junctions: [],
             labels: circuitIR.nets.map { net in
-                KiCadSchematicDocument.Label(kind: .local, text: net.name)
+                KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: false)
             },
             sheets: [],
-            opaqueNodes: []
+            opaqueNodes: [
+                .list([.atom("paper"), .string("A4")]),
+                .list([.atom("lib_symbols")]),
+                .list([
+                    .atom("sheet_instances"),
+                    .list([.atom("path"), .string("/"), .list([.atom("page"), .string("1")])]),
+                ]),
+                .list([.atom("embedded_fonts"), .atom("no")]),
+            ]
         )
     }
 
@@ -81,7 +89,8 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
 
         return KiCadSchematicDocument.Symbol(
             uuid: stableUUID("symbol", component.refdes, "\(index)"),
-            properties: properties
+            properties: properties,
+            emitsKiCadSymbol: false
         )
     }
 
