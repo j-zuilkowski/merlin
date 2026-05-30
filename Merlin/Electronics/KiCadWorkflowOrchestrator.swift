@@ -125,6 +125,8 @@ enum KiCadRuntimeEvidencePipeline {
             return action
         }
         switch action {
+        case "review_and_approve_design_intent", "approve_design_intent":
+            return "kicad_approve_design_intent"
         case "generate_circuit_ir":
             return KiCadWorkflowStep.circuitIR.toolName
         case "select_components":

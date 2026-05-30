@@ -58,6 +58,7 @@ red tests; each matching `b` task implements the behavior.
 | Runtime repair patch application | `tasks/task-445a-runtime-repair-patch-application-tests.md` | `tasks/task-445b-runtime-repair-patch-application.md` |
 | KiCad-valid schematic geometry | `tasks/task-446a-kicad-valid-schematic-geometry-tests.md` | `tasks/task-446b-kicad-valid-schematic-geometry.md` |
 | KiCad-valid board outline | `tasks/task-447a-kicad-valid-board-outline-tests.md` | `tasks/task-447b-kicad-valid-board-outline.md` |
+| DesignIntent approval continuation | `tasks/task-448a-designintent-approval-continuation-tests.md` | `tasks/task-448b-designintent-approval-continuation.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 

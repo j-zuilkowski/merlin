@@ -24,6 +24,8 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
     }
 
     func test_evidenceNextActions_resolveToCallableKiCadTools() {
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "review_and_approve_design_intent"), "kicad_approve_design_intent")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "approve_design_intent"), "kicad_approve_design_intent")
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "generate_circuit_ir"), "kicad_generate_circuit_ir")
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "select_components"), "kicad_select_components")
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "assign_footprints"), "kicad_assign_footprints")

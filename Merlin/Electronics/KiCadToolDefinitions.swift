@@ -4,6 +4,7 @@ enum KiCadToolDefinitions {
         "kicad_ingest_schematic",
         "kicad_answer_clarification",
         "kicad_build_intent_model",
+        "kicad_approve_design_intent",
         "kicad_generate_circuit_ir",
         "kicad_select_components",
         "kicad_prepare_libraries",
@@ -70,6 +71,17 @@ enum KiCadToolDefinitions {
                 "constraints_json": .string("JSON encoded constraints"),
             ],
             required: ["input_artifact_path", "board_profile_id"]
+        ),
+        tool(
+            name: "kicad_approve_design_intent",
+            description: "Record explicit user approval for a reviewed DesignIntent and return an approved DesignIntent artifact",
+            properties: [
+                "design_intent_path": .string("Draft DesignIntent JSON path"),
+                "approved": .boolean("Must be true to approve the DesignIntent"),
+                "approved_by": .string("Approver name or identifier"),
+                "approved_at": .string("ISO-8601 approval timestamp"),
+            ],
+            required: ["design_intent_path", "approved"]
         ),
         tool(
             name: "kicad_generate_circuit_ir",
@@ -321,5 +333,9 @@ private extension JSONSchema {
 
     static func integer(_ description: String) -> JSONSchema {
         JSONSchema(type: "integer", description: description)
+    }
+
+    static func boolean(_ description: String) -> JSONSchema {
+        JSONSchema(type: "boolean", description: description)
     }
 }

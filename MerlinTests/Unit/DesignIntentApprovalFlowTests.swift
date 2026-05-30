@@ -181,6 +181,68 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(validation.isValid, validation.issues.map(\.code).joined(separator: ","))
     }
 
+    func testApprovalContinuationRequiresExplicitApproval() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(validIntent(approval: DesignApproval(status: .draft), origin: .naturalLanguage), root: root)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_approve_design_intent",
+            payload: #"{"design_intent_path":"\#(intentURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertTrue(response.diagnostics.contains { $0.code == "DESIGN_INTENT_EXPLICIT_APPROVAL_REQUIRED" })
+        XCTAssertFalse(response.artifacts.contains { $0.kind == "design_intent" })
+    }
+
+    func testApprovalContinuationProducesApprovedIntentAndEnablesCircuitIR() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"topology":"single-ended_class_a","output_power_watts":25,"load_ohms":8,"mains_isolation":"transformer_isolated","mains_primary_offboard":true,"signal_path_components":"discrete_only","output_stage_components":"discrete_only","tone_bands":["bass","mid","treble"],"tone_control":"3_band_with_sweepable_boost_cut","pcb_domain":"secondary_side_only"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+        let intentResponse = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","constraints_json":\#(constraintsLiteral)}"#
+        )
+        let draftArtifact = try XCTUnwrap(intentResponse.artifacts.first { $0.kind == "design_intent" })
+        let draft = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: draftArtifact.url))
+        XCTAssertEqual(draft.approval.status, .draft)
+
+        let blockedCircuitIR = await send(
+            runtime,
+            capability: "kicad_generate_circuit_ir",
+            payload: #"{"design_intent_path":"\#(draftArtifact.url.path)"}"#
+        )
+        XCTAssertEqual(blockedCircuitIR.status, .blocked)
+        XCTAssertTrue(blockedCircuitIR.diagnostics.contains { $0.code == "DESIGN_INTENT_NOT_APPROVED" })
+
+        let approvalResponse = await send(
+            runtime,
+            capability: "kicad_approve_design_intent",
+            payload: #"{"design_intent_path":"\#(draftArtifact.url.path)","approved":true,"approved_by":"jon","approved_at":"2026-05-30T17:00:00Z"}"#
+        )
+
+        XCTAssertEqual(approvalResponse.status, .ok)
+        let approvedArtifact = try XCTUnwrap(approvalResponse.artifacts.first { $0.kind == "design_intent" })
+        let approved = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: approvedArtifact.url))
+        XCTAssertEqual(approved.approval.status, .approved)
+        XCTAssertEqual(approved.approval.approvedBy, "jon")
+        XCTAssertEqual(approved.approval.approvedAt, "2026-05-30T17:00:00Z")
+
+        let circuitIRResponse = await send(
+            runtime,
+            capability: "kicad_generate_circuit_ir",
+            payload: #"{"design_intent_path":"\#(approvedArtifact.url.path)"}"#
+        )
+        XCTAssertEqual(circuitIRResponse.status, .ok)
+        XCTAssertTrue(circuitIRResponse.artifacts.contains { $0.kind == "circuit_ir" })
+    }
+
     func testComponentSelectionBlocksWhenDesignIntentHasNoComponentEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)

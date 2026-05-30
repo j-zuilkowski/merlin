@@ -589,6 +589,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputKind: "design_intent",
                 outputBody: designIntentBody(request)
             )
+        case "kicad_approve_design_intent":
+            return handleDesignIntentApproval(request, context: context)
         case "kicad_generate_circuit_ir":
             return handleCircuitIRGeneration(request, context: context)
         case "kicad_select_components":
@@ -1153,6 +1155,59 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             body: (try? canonicalJSON(circuitIR)) ?? #"{"components":[],"nets":[]}"#
         )
         return complete(request, artifacts: [artifact], nextActions: ["select_components"])
+    }
+
+    private func handleDesignIntentApproval(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              FileManager.default.fileExists(atPath: designIntentPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "DesignIntent approval requires an existing design_intent_path.",
+                context: context
+            )
+        }
+        guard object["approved"] as? Bool == true else {
+            return designIntentApprovalResponse(
+                request,
+                code: "DESIGN_INTENT_EXPLICIT_APPROVAL_REQUIRED",
+                message: "DesignIntent approval requires explicit approved=true.",
+                affectedRefs: [designIntentPath]
+            )
+        }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              var intent = try? JSONDecoder().decode(DesignIntent.self, from: data) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "DesignIntent approval requires a readable DesignIntent artifact.",
+                context: context
+            )
+        }
+        guard intent.approval.status != .rejected else {
+            return designIntentApprovalResponse(
+                request,
+                code: "DESIGN_INTENT_REJECTED",
+                message: "DesignIntent was rejected and cannot be approved without a revised draft.",
+                affectedRefs: [designIntentPath]
+            )
+        }
+
+        let approvedBy = stringValue(object, keys: ["approved_by", "approvedBy"]) ?? "user"
+        let approvedAt = stringValue(object, keys: ["approved_at", "approvedAt"]) ?? ISO8601DateFormatter().string(from: Date())
+        intent.approval = DesignApproval(status: .approved, approvedBy: approvedBy, approvedAt: approvedAt)
+
+        let artifact = writeArtifact(
+            request,
+            context: context,
+            kind: "design_intent",
+            body: (try? canonicalJSON(intent)) ?? request.payload.stringValue()
+        )
+        return complete(request, artifacts: [artifact], nextActions: ["generate_circuit_ir"])
     }
 
     private func componentSelectionBlockedResponse(
