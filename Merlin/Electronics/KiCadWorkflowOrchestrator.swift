@@ -121,6 +121,9 @@ struct KiCadWorkflowPlanner: Sendable {
 
 enum KiCadRuntimeEvidencePipeline {
     static func toolName(forNextAction action: String) -> String? {
+        if KiCadToolDefinitions.requiredToolNames.contains(action) {
+            return action
+        }
         switch action {
         case "generate_circuit_ir":
             return KiCadWorkflowStep.circuitIR.toolName
@@ -128,6 +131,18 @@ enum KiCadRuntimeEvidencePipeline {
             return KiCadWorkflowStep.componentSelection.toolName
         case "assign_footprints":
             return KiCadWorkflowStep.footprints.toolName
+        case "apply_erc_repair_patch":
+            return "kicad_apply_erc_repair_patch"
+        case "apply_drc_repair_patch":
+            return "kicad_apply_drc_repair_patch"
+        case "apply_spice_repair_patch":
+            return "kicad_apply_spice_repair_patch"
+        case "rerun_erc":
+            return "kicad_run_erc"
+        case "rerun_drc":
+            return "kicad_run_drc"
+        case "rerun_spice":
+            return "kicad_run_spice"
         default:
             return nil
         }

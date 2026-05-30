@@ -27,6 +27,12 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "generate_circuit_ir"), "kicad_generate_circuit_ir")
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "select_components"), "kicad_select_components")
         XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "assign_footprints"), "kicad_assign_footprints")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_apply_erc_repair_patch"), "kicad_apply_erc_repair_patch")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_apply_drc_repair_patch"), "kicad_apply_drc_repair_patch")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_apply_spice_repair_patch"), "kicad_apply_spice_repair_patch")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_run_erc"), "kicad_run_erc")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_run_drc"), "kicad_run_drc")
+        XCTAssertEqual(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "kicad_run_spice"), "kicad_run_spice")
         XCTAssertNil(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "provide_compile_evidence"))
     }
 

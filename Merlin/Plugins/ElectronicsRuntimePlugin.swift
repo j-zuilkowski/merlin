@@ -647,6 +647,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         case "kicad_repair_erc_from_diagnostics":
             return handleERCRepairFromDiagnostics(request, context: context)
+        case "kicad_apply_erc_repair_patch":
+            return handleERCRepairPatchApplication(request, context: context)
         case "kicad_run_drc":
             return kiCadBackedReport(
                 request,
@@ -657,6 +659,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         case "kicad_repair_drc_from_diagnostics":
             return handleDRCRepairFromDiagnostics(request, context: context)
+        case "kicad_apply_drc_repair_patch":
+            return handleDRCRepairPatchApplication(request, context: context)
         case "kicad_check_parity":
             return projectBackedArtifact(
                 request,
@@ -668,6 +672,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return simulatorBackedReport(request, context: context)
         case "kicad_repair_spice_from_diagnostics":
             return handleSPICERepairFromDiagnostics(request, context: context)
+        case "kicad_apply_spice_repair_patch":
+            return handleSPICERepairPatchApplication(request, context: context)
         case "kicad_evaluate_simulation":
             return fileBackedTransform(
                 request,
@@ -1809,7 +1815,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 kind: "erc_repair_plan",
                 body: try canonicalJSON(plan)
             )
-            return complete(request, artifacts: [artifact], nextActions: ["apply_erc_repair_patch", "rerun_erc"])
+            return complete(request, artifacts: [artifact], nextActions: ["kicad_apply_erc_repair_patch", "kicad_run_erc"])
         } catch {
             return structuredBlock(
                 request,
@@ -1866,7 +1872,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 kind: "drc_repair_plan",
                 body: try canonicalJSON(artifactBody)
             )
-            return complete(request, artifacts: [artifact], nextActions: ["apply_drc_repair_patch", "rerun_drc"])
+            return complete(request, artifacts: [artifact], nextActions: ["kicad_apply_drc_repair_patch", "kicad_run_drc"])
         } catch {
             return structuredBlock(
                 request,
@@ -1874,6 +1880,121 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 message: "DRC repair could not parse diagnostics: \(error.localizedDescription)",
                 context: context,
                 nextActions: ["regenerate_drc_report"]
+            )
+        }
+    }
+
+    private func handleERCRepairPatchApplication(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let planPath = stringValue(object, keys: ["erc_repair_plan_path", "repair_plan_path"]),
+              FileManager.default.fileExists(atPath: planPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "ERC patch application requires an existing erc_repair_plan_path artifact.",
+                context: context,
+                nextActions: ["kicad_repair_erc_from_diagnostics"]
+            )
+        }
+        guard let schematicPath = schematicPath(from: object),
+              FileManager.default.fileExists(atPath: schematicPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingProjectFile,
+                message: "ERC patch application requires an existing schematic_path or project_path.",
+                context: context,
+                nextActions: ["attach_schematic_path"]
+            )
+        }
+
+        do {
+            let plan = try JSONDecoder().decode(ERCRepairPlan.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
+            let text = try String(contentsOfFile: schematicPath, encoding: .utf8)
+            let schematic = try KiCadSchematicParser().parse(text)
+            let updated = ERCRepairPatchApplier().apply(plan.patches, to: schematic)
+            let rendered = try KiCadSchematicWriter().write(updated)
+            try rendered.write(toFile: schematicPath, atomically: true, encoding: .utf8)
+            let report = RepairApplicationArtifact(
+                status: "patch_applied",
+                sourcePlanPath: planPath,
+                targetPath: schematicPath,
+                patchCount: plan.patches.count,
+                mutatedTarget: true,
+                requiresRerunTool: "kicad_run_erc"
+            )
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "erc_repair_application",
+                body: try canonicalJSON(report)
+            )
+            return complete(request, artifacts: [artifact], nextActions: ["kicad_run_erc"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "ERC patch application failed: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_erc_repair_plan"]
+            )
+        }
+    }
+
+    private func handleDRCRepairPatchApplication(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let planPath = stringValue(object, keys: ["drc_repair_plan_path", "repair_plan_path"]),
+              FileManager.default.fileExists(atPath: planPath),
+              let projectPath = stringValue(object, keys: ["project_path", "projectPath"]),
+              FileManager.default.fileExists(atPath: projectPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "DRC patch application requires existing drc_repair_plan_path and project_path artifacts.",
+                context: context,
+                nextActions: ["kicad_repair_drc_from_diagnostics"]
+            )
+        }
+
+        do {
+            let plan = try JSONDecoder().decode(DRCRepairPlanArtifact.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
+            let report = RepairApplicationArtifact(
+                status: "patch_application_recorded",
+                sourcePlanPath: planPath,
+                targetPath: projectPath,
+                patchCount: plan.patches.count,
+                mutatedTarget: false,
+                requiresRerunTool: "kicad_run_drc"
+            )
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "drc_repair_application",
+                body: try canonicalJSON(report)
+            )
+            return complete(
+                request,
+                artifacts: [artifact],
+                warnings: [KiCadWarning(
+                    code: "DRC_PATCH_REQUIRES_BOARD_MUTATOR",
+                    message: "DRC repair plan was recorded, but no generic PCB mutator is available yet; rerun DRC only after the board change is applied.",
+                    affectedRefs: [planPath, projectPath],
+                    suggestedAction: "Apply the PCB placement/routing/rule change through a concrete PCB mutator before rerunning DRC."
+                )],
+                nextActions: ["kicad_run_drc"]
+            )
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "DRC patch application failed: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_drc_repair_plan"]
             )
         }
     }
@@ -1936,7 +2057,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 kind: "spice_repair_plan",
                 body: try canonicalJSON(plan)
             )
-            return complete(request, artifacts: [artifact], nextActions: ["apply_spice_repair_patch", "rerun_spice"])
+            return complete(request, artifacts: [artifact], nextActions: ["kicad_apply_spice_repair_patch", "kicad_run_spice"])
         } catch {
             return structuredBlock(
                 request,
@@ -1944,6 +2065,65 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 message: "SPICE repair could not parse measurements or scenario: \(error.localizedDescription)",
                 context: context,
                 nextActions: ["regenerate_spice_measurements", "regenerate_simulation_scenario"]
+            )
+        }
+    }
+
+    private func handleSPICERepairPatchApplication(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let planPath = stringValue(object, keys: ["spice_repair_plan_path", "repair_plan_path"]),
+              FileManager.default.fileExists(atPath: planPath),
+              let scenarioPath = stringValue(object, keys: ["scenario_path", "scenarioPath"]),
+              FileManager.default.fileExists(atPath: scenarioPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE patch application requires existing spice_repair_plan_path and scenario_path artifacts.",
+                context: context,
+                nextActions: ["kicad_repair_spice_from_diagnostics"]
+            )
+        }
+
+        do {
+            let plan = try JSONDecoder().decode(SPICESimulationRepairPlan.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let scenario = try decoder.decode(SPICESimulationScenario.self, from: Data(contentsOf: URL(fileURLWithPath: scenarioPath)))
+            let report = RepairApplicationArtifact(
+                status: "patch_application_recorded",
+                sourcePlanPath: planPath,
+                targetPath: scenario.circuitPath,
+                patchCount: plan.patches.count,
+                mutatedTarget: false,
+                requiresRerunTool: "kicad_run_spice"
+            )
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "spice_repair_application",
+                body: try canonicalJSON(report)
+            )
+            return complete(
+                request,
+                artifacts: [artifact],
+                warnings: [KiCadWarning(
+                    code: "SPICE_PATCH_REQUIRES_DECK_MUTATOR",
+                    message: "SPICE repair plan was recorded, but no generic SPICE deck parameter mutator is available yet; rerun SPICE only after the deck change is applied.",
+                    affectedRefs: [planPath, scenarioPath, scenario.circuitPath],
+                    suggestedAction: "Apply the parameter adjustment to the SPICE deck before rerunning simulation."
+                )],
+                nextActions: ["kicad_run_spice"]
+            )
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "SPICE patch application failed: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["regenerate_spice_repair_plan"]
             )
         }
     }
@@ -2043,6 +2223,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             }
         }
         return projectPath
+    }
+
+    private func schematicPath(from object: [String: Any]) -> String? {
+        if let path = stringValue(object, keys: ["schematic_path", "schematicPath"]),
+           !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return path
+        }
+        guard let projectPath = stringValue(object, keys: ["project_path", "projectPath"]) else {
+            return nil
+        }
+        return kiCadInputPath(for: ["sch"], projectPath: projectPath)
     }
 
     private func simulatorBackedReport(
@@ -3991,6 +4182,15 @@ private struct DRCRepairPlanArtifact: Codable, Sendable, Equatable {
     var status: String
     var patches: [PCBDRCRepairPatch]
     var diagnostics: [ElectronicsSchemaIssue]
+}
+
+private struct RepairApplicationArtifact: Codable, Sendable, Equatable {
+    var status: String
+    var sourcePlanPath: String
+    var targetPath: String
+    var patchCount: Int
+    var mutatedTarget: Bool
+    var requiresRerunTool: String
 }
 
 private struct FlexibleCodingKey: CodingKey {

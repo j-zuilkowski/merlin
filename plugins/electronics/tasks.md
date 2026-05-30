@@ -55,6 +55,7 @@ red tests; each matching `b` task implements the behavior.
 | Runtime ERC repair action | `tasks/task-439a-runtime-erc-repair-action-tests.md` | `tasks/task-440b-runtime-erc-repair-action.md` |
 | Runtime DRC repair action | `tasks/task-441a-runtime-drc-repair-action-tests.md` | `tasks/task-442b-runtime-drc-repair-action.md` |
 | Runtime SPICE repair action | `tasks/task-443a-runtime-spice-repair-action-tests.md` | `tasks/task-444b-runtime-spice-repair-action.md` |
+| Runtime repair patch application | `tasks/task-445a-runtime-repair-patch-application-tests.md` | `tasks/task-445b-runtime-repair-patch-application.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 

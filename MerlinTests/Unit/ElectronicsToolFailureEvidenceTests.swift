@@ -89,7 +89,8 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let planPath = try XCTUnwrap(result.artifacts.first { $0.kind == "erc_repair_plan" }?.path)
         let plan = try JSONDecoder().decode(ERCRepairPlan.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
         XCTAssertEqual(plan.patches.map(\.action), ["add_or_correct_power_flag"])
-        XCTAssertTrue(result.nextActions.contains("rerun_erc"))
+        XCTAssertTrue(result.nextActions.contains("kicad_apply_erc_repair_patch"))
+        XCTAssertTrue(result.nextActions.contains("kicad_run_erc"))
     }
 
     func testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics() async throws {
@@ -113,7 +114,8 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let planPath = try XCTUnwrap(plannedResult.artifacts.first { $0.kind == "drc_repair_plan" }?.path)
         let planBody = try String(contentsOfFile: planPath, encoding: .utf8)
         XCTAssertTrue(planBody.contains("adjust_clearance_rule"), planBody)
-        XCTAssertTrue(plannedResult.nextActions.contains("rerun_drc"))
+        XCTAssertTrue(plannedResult.nextActions.contains("kicad_apply_drc_repair_patch"))
+        XCTAssertTrue(plannedResult.nextActions.contains("kicad_run_drc"))
 
         let approvalReport = try writeFixtureFile(
             name: "approval-report.json",
@@ -164,7 +166,8 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let planPath = try XCTUnwrap(result.artifacts.first { $0.kind == "spice_repair_plan" }?.path)
         let plan = try JSONDecoder().decode(SPICESimulationRepairPlan.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
         XCTAssertEqual(plan.patches.map(\.action), ["adjust_bias_current_within_declared_bounds"])
-        XCTAssertTrue(result.nextActions.contains("rerun_spice"))
+        XCTAssertTrue(result.nextActions.contains("kicad_apply_spice_repair_patch"))
+        XCTAssertTrue(result.nextActions.contains("kicad_run_spice"))
 
         let unsupportedMeasurements = try writeFixtureFile(name: "unsupported.log", text: "slew_rate_v_us = 0.1\n", in: root)
         let unsupportedScenario = try writeFixtureFile(
@@ -192,6 +195,97 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertEqual(blocked.status, .blocked)
         let blockedResult = try XCTUnwrap(blocked.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(blockedResult.warnings.contains { $0.code == "SPICE_REPAIR_UNSUPPORTED" })
+    }
+
+    func testRepairPatchApplicationRequiresGateRerunBeforeAdvancement() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("repair-apply-runtime")
+        let project = try writeKiCadProjectFixture()
+        let schematic = project.deletingPathExtension().appendingPathExtension("kicad_sch")
+
+        let ercPlan = ERCRepairPlan(
+            patches: [ERCRepairPatch(
+                violationId: "erc-1",
+                repairClass: .powerFlag,
+                targetRef: "+VRAW",
+                action: "add_or_correct_power_flag",
+                details: "Power input not driven"
+            )],
+            unsupportedViolations: []
+        )
+        let ercPlanPath = root.appendingPathComponent("erc-plan.json")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try JSONEncoder().encode(ercPlan).write(to: ercPlanPath)
+
+        let ercApply = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_erc_repair_patch",
+            payload: #"{"erc_repair_plan_path":"\#(ercPlanPath.path)","schematic_path":"\#(schematic.path)"}"#
+        )
+
+        XCTAssertEqual(ercApply.status, .ok)
+        let ercApplyResult = try XCTUnwrap(ercApply.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(ercApplyResult.artifacts.contains { $0.kind == "erc_repair_application" })
+        XCTAssertFalse(ercApplyResult.artifacts.contains { $0.kind == "erc_report" })
+        XCTAssertEqual(ercApplyResult.nextActions, ["kicad_run_erc"])
+        XCTAssertNil(ercApplyResult.handoff?.ercReportPath)
+        let updatedSchematic = try String(contentsOf: schematic, encoding: .utf8)
+        XCTAssertTrue(updatedSchematic.contains("merlin_erc_repair"), updatedSchematic)
+
+        let drcPlan = try writeFixtureFile(
+            name: "drc-plan.json",
+            text: #"{"status":"repair_planned","patches":[{"violationId":"drc-1","repairClass":"clearance","targetRefs":["R1","C1"],"action":"adjust_clearance_rule"}],"diagnostics":[]}"#,
+            in: root
+        )
+        let drcApply = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_drc_repair_patch",
+            payload: #"{"drc_repair_plan_path":"\#(drcPlan.path)","project_path":"\#(project.path)"}"#
+        )
+
+        XCTAssertEqual(drcApply.status, .ok)
+        let drcApplyResult = try XCTUnwrap(drcApply.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(drcApplyResult.artifacts.contains { $0.kind == "drc_repair_application" })
+        XCTAssertFalse(drcApplyResult.artifacts.contains { $0.kind == "drc_report" })
+        XCTAssertEqual(drcApplyResult.nextActions, ["kicad_run_drc"])
+        XCTAssertNil(drcApplyResult.handoff?.drcReportPath)
+        XCTAssertTrue(drcApplyResult.warnings.contains { $0.code == "DRC_PATCH_REQUIRES_BOARD_MUTATOR" })
+
+        let scenario = try writeFixtureFile(
+            name: "scenario.json",
+            text: """
+            {
+              "scenario_id": "amp-output-stage",
+              "design_id": "amp",
+              "circuit_path": "\(root.appendingPathComponent("amp.cir").path)",
+              "analyses": ["tran"],
+              "required_model_refs": ["MJ15003G"],
+              "measurement_envelopes": [
+                { "name": "output_power_w", "min": 24.0, "max": 28.0 }
+              ]
+            }
+            """,
+            in: root
+        )
+        let spicePlan = try writeFixtureFile(
+            name: "spice-plan.json",
+            text: #"{"patches":[{"repairClass":"parameter_adjustment","parameterName":"bias_current","action":"adjust_bias_current_within_declared_bounds"}],"requiresTopologyChange":false,"issues":[]}"#,
+            in: root
+        )
+        let spiceApply = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_spice_repair_patch",
+            payload: #"{"spice_repair_plan_path":"\#(spicePlan.path)","scenario_path":"\#(scenario.path)"}"#
+        )
+
+        XCTAssertEqual(spiceApply.status, .ok)
+        let spiceApplyResult = try XCTUnwrap(spiceApply.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(spiceApplyResult.artifacts.contains { $0.kind == "spice_repair_application" })
+        XCTAssertFalse(spiceApplyResult.artifacts.contains { $0.kind == "spice_measurements" })
+        XCTAssertEqual(spiceApplyResult.nextActions, ["kicad_run_spice"])
+        XCTAssertNil(spiceApplyResult.handoff?.spiceMeasurementsPath)
+        XCTAssertTrue(spiceApplyResult.warnings.contains { $0.code == "SPICE_PATCH_REQUIRES_DECK_MUTATOR" })
     }
 
     private func writeKiCadProjectFixture() throws -> URL {

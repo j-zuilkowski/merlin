@@ -127,6 +127,13 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_apply_erc_repair_patch",
+      "display_name": "kicad_apply_erc_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_erc_repair_patch" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_run_drc",
       "display_name": "kicad_run_drc",
       "kind": "tool",
@@ -138,6 +145,13 @@
       "display_name": "kicad_repair_drc_from_diagnostics",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_repair_drc_from_diagnostics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_drc_repair_patch",
+      "display_name": "kicad_apply_drc_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_drc_repair_patch" },
       "required_permission_scope": "externalSideEffect"
     },
     {
@@ -159,6 +173,13 @@
       "display_name": "kicad_repair_spice_from_diagnostics",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_repair_spice_from_diagnostics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_spice_repair_patch",
+      "display_name": "kicad_apply_spice_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_spice_repair_patch" },
       "required_permission_scope": "externalSideEffect"
     },
     {

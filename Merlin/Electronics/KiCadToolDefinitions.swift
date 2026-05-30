@@ -16,11 +16,14 @@ enum KiCadToolDefinitions {
         "kicad_check_connectivity",
         "kicad_run_erc",
         "kicad_repair_erc_from_diagnostics",
+        "kicad_apply_erc_repair_patch",
         "kicad_run_drc",
         "kicad_repair_drc_from_diagnostics",
+        "kicad_apply_drc_repair_patch",
         "kicad_check_parity",
         "kicad_run_spice",
         "kicad_repair_spice_from_diagnostics",
+        "kicad_apply_spice_repair_patch",
         "kicad_evaluate_simulation",
         "kicad_visual_inspect",
         "kicad_export_fab",
@@ -174,6 +177,16 @@ enum KiCadToolDefinitions {
             required: ["erc_report_path", "circuit_ir_path"]
         ),
         tool(
+            name: "kicad_apply_erc_repair_patch",
+            description: "Apply an ERC repair plan to a KiCad schematic and require ERC rerun",
+            properties: [
+                "erc_repair_plan_path": .string("ERC repair plan artifact path"),
+                "schematic_path": .string("KiCad schematic path"),
+                "project_path": .string("Optional KiCad project path used to derive schematic_path"),
+            ],
+            required: ["erc_repair_plan_path"]
+        ),
+        tool(
             name: "kicad_run_drc",
             description: "Run KiCad DRC and return structured violations",
             properties: ["project_path": .string("KiCad project path")],
@@ -186,6 +199,15 @@ enum KiCadToolDefinitions {
                 "drc_report_path": .string("KiCad DRC JSON report path"),
             ],
             required: ["drc_report_path"]
+        ),
+        tool(
+            name: "kicad_apply_drc_repair_patch",
+            description: "Record a DRC repair plan application and require DRC rerun",
+            properties: [
+                "drc_repair_plan_path": .string("DRC repair plan artifact path"),
+                "project_path": .string("KiCad project path"),
+            ],
+            required: ["drc_repair_plan_path", "project_path"]
         ),
         tool(
             name: "kicad_check_parity",
@@ -211,6 +233,15 @@ enum KiCadToolDefinitions {
                 "topology": .string("Optional topology id, defaults to single_ended_class_a"),
             ],
             required: ["spice_measurements_path", "scenario_path"]
+        ),
+        tool(
+            name: "kicad_apply_spice_repair_patch",
+            description: "Record a SPICE repair plan application and require SPICE rerun",
+            properties: [
+                "spice_repair_plan_path": .string("SPICE repair plan artifact path"),
+                "scenario_path": .string("SimulationScenario JSON path"),
+            ],
+            required: ["spice_repair_plan_path", "scenario_path"]
         ),
         tool(
             name: "kicad_evaluate_simulation",
