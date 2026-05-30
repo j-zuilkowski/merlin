@@ -123,6 +123,60 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertTrue(candidate.evidence.contains { $0.extractedParameters["symbol"] == "Device:Q_NPN_BCE" })
     }
 
+    func testKiCadLibraryCatalogExtractorReadsLocalSymbolAndFootprintTrees() throws {
+        let root = try temporaryDirectory()
+        let symbolRoot = root.appendingPathComponent("symbols", isDirectory: true)
+        let footprintRoot = root.appendingPathComponent("footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: footprintRoot.appendingPathComponent("Resistor_SMD.pretty", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try """
+        (kicad_symbol_lib
+          (version 20250114)
+          (symbol "R"
+            (pin passive line (at 0 0 0) (length 2.54) (name "1") (number "1"))
+            (pin passive line (at 5.08 0 180) (length 2.54) (name "2") (number "2"))))
+        """.write(to: symbolRoot.appendingPathComponent("Device.kicad_sym"), atomically: true, encoding: .utf8)
+        try """
+        (footprint "R_0603_1608Metric"
+          (pad "1" smd roundrect (at -0.8 0) (size 0.8 0.95) (layers "F.Cu"))
+          (pad "2" smd roundrect (at 0.8 0) (size 0.8 0.95) (layers "F.Cu")))
+        """.write(
+            to: footprintRoot
+                .appendingPathComponent("Resistor_SMD.pretty", isDirectory: true)
+                .appendingPathComponent("R_0603_1608Metric.kicad_mod"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let catalog = try KiCadLibraryCatalogExtractor().extract(symbolRoot: symbolRoot, footprintRoot: footprintRoot)
+
+        XCTAssertEqual(catalog.symbols.map(\.name), ["Device:R"])
+        XCTAssertEqual(catalog.symbols.first?.pins.map(\.number), ["1", "2"])
+        XCTAssertEqual(catalog.footprints.map(\.name), ["Resistor_SMD:R_0603_1608Metric"])
+        XCTAssertEqual(catalog.footprints.first?.pads.map(\.number), ["1", "2"])
+    }
+
+    func testKiCadLibraryCatalogCacheHonorsTTL() throws {
+        let root = try temporaryDirectory()
+        let cacheURL = root.appendingPathComponent("catalog-cache", isDirectory: true)
+        let catalog = KiCadLocalLibraryCatalog(
+            generatedAt: Date(timeIntervalSince1970: 1_000),
+            symbols: [KiCadSymbolDefinition(name: "Device:R", pins: [])],
+            footprints: [KiCadFootprintDefinition(name: "Resistor_SMD:R_0603_1608Metric", pads: [])]
+        )
+
+        try KiCadLibraryCatalogCache().write(catalog, to: cacheURL)
+
+        let fresh = try KiCadLibraryCatalogCache().load(from: cacheURL, maxAgeSeconds: 60, now: Date(timeIntervalSince1970: 1_030))
+        XCTAssertEqual(fresh?.symbols.map(\.name), ["Device:R"])
+
+        let stale = try KiCadLibraryCatalogCache().load(from: cacheURL, maxAgeSeconds: 60, now: Date(timeIntervalSince1970: 1_061))
+        XCTAssertNil(stale)
+    }
+
     func testPluginOwnedSchemasDocumentCatalogContracts() throws {
         for relativePath in [
             "plugins/electronics/schemas/component_catalog.schema.json",
@@ -209,5 +263,12 @@ final class ComponentCatalogContractsTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+    }
+
+    private func temporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merlin-component-catalog-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
     }
 }

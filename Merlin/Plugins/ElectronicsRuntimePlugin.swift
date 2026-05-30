@@ -1044,7 +1044,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         let catalogEvidence = await runtimeCatalogEvidence(
             from: request,
-            selectionComponents: selectionComponents
+            selectionComponents: selectionComponents,
+            context: context
         )
         let artifact = writeArtifact(
             request,
@@ -1921,7 +1922,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 artifacts: artifacts,
                 warnings: warnings,
                 metrics: metrics,
-                nextActions: nextActions
+                nextActions: nextActions,
+                handoff: workflowHandoff(for: request, artifacts: artifacts)
             )),
             artifacts: artifacts.map {
                 WorkspaceArtifactRef(
@@ -1948,6 +1950,43 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let url = directoryURL.appendingPathComponent("\(request.id.uuidString)-\(kind).json")
         try? body.write(to: url, atomically: true, encoding: .utf8)
         return ArtifactRef(path: url.path, kind: kind)
+    }
+
+    private func workflowHandoff(for request: WorkspaceMessageRequest, artifacts: [ArtifactRef]) -> KiCadWorkflowHandoff? {
+        let object = request.payload.jsonObject() ?? [:]
+        var handoff = KiCadWorkflowHandoff(
+            designIntentPath: stringValue(object, keys: ["design_intent_path", "designIntentPath"]),
+            circuitIRPath: stringValue(object, keys: ["circuit_ir_path", "circuitIRPath"]),
+            componentMatrixPath: stringValue(object, keys: ["component_matrix_path", "componentMatrixPath"]),
+            footprintAssignmentPath: stringValue(object, keys: ["footprint_assignment_path", "footprintAssignmentPath"]),
+            projectPath: stringValue(object, keys: ["project_path", "projectPath"])
+        )
+
+        for artifact in artifacts {
+            switch artifact.kind {
+            case "design_intent":
+                handoff.designIntentPath = artifact.path
+            case "circuit_ir":
+                handoff.circuitIRPath = artifact.path
+            case "component_matrix":
+                handoff.componentMatrixPath = artifact.path
+            case "footprint_assignment":
+                handoff.footprintAssignmentPath = artifact.path
+            case ElectronicsArtifactKind.kicadProject.rawValue:
+                handoff.projectPath = artifact.path
+            default:
+                continue
+            }
+        }
+
+        if handoff.designIntentPath == nil,
+           handoff.circuitIRPath == nil,
+           handoff.componentMatrixPath == nil,
+           handoff.footprintAssignmentPath == nil,
+           handoff.projectPath == nil {
+            return nil
+        }
+        return handoff
     }
 
     private func affectedRefs(from request: WorkspaceMessageRequest) -> [String] {
@@ -2434,6 +2473,31 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var ttlSeconds: Int?
     }
 
+    private struct RuntimeCatalogConfig: Codable {
+        var catalogProviderFixturePaths: [String: String]? = nil
+        var catalogCacheDirectory: String? = nil
+        var catalogCacheTTLSeconds: Int? = nil
+        var kicadSymbolLibraryRoot: String? = nil
+        var kicadFootprintLibraryRoot: String? = nil
+        var kicadCatalogCacheDirectory: String? = nil
+        var kicadCatalogCacheTTLSeconds: Int? = nil
+
+        enum CodingKeys: String, CodingKey {
+            case catalogProviderFixturePaths = "catalog_provider_fixture_paths"
+            case catalogCacheDirectory = "catalog_cache_directory"
+            case catalogCacheTTLSeconds = "catalog_cache_ttl_seconds"
+            case kicadSymbolLibraryRoot = "kicad_symbol_library_root"
+            case kicadFootprintLibraryRoot = "kicad_footprint_library_root"
+            case kicadCatalogCacheDirectory = "kicad_catalog_cache_directory"
+            case kicadCatalogCacheTTLSeconds = "kicad_catalog_cache_ttl_seconds"
+        }
+    }
+
+    private struct ProviderCandidateCacheEnvelope: Codable {
+        var generatedAt: Date
+        var candidates: [ComponentCandidate]
+    }
+
     private func componentSelectionCacheMetadata(catalogEvidence: RuntimeCatalogEvidence, circuitIR: CircuitIR?) -> [String: String] {
         var metadata = catalogEvidence.sourceKinds.isEmpty ? [:] : [
             "source": catalogEvidence.sourceKinds.joined(separator: ","),
@@ -2485,9 +2549,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
     private func runtimeCatalogEvidence(
         from request: WorkspaceMessageRequest,
-        selectionComponents: [ComponentIntent]
+        selectionComponents: [ComponentIntent],
+        context: WorkspaceHandlerContext
     ) async -> RuntimeCatalogEvidence {
         let object = request.payload.jsonObject() ?? [:]
+        let config = runtimeCatalogConfig(from: object, context: context)
         var candidates: [ComponentCandidate] = []
         var providers: [String] = []
         var sourceKinds: [String] = []
@@ -2500,16 +2566,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             sourceKinds.append("catalog_candidates_path")
         }
 
-        let providerFixtures = catalogProviderFixturePaths(from: object)
+        let providerFixtures = catalogProviderFixturePaths(from: object, config: config)
         if !providerFixtures.isEmpty {
-            let localFootprintResolver = localKiCadCatalogProvider(from: object)
+            let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
             var runtimeProviderFound = false
             for providerID in providerFixtures.keys.sorted() {
-                guard let path = providerFixtures[providerID],
-                      let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+                guard let mapped = providerCatalogCandidates(
+                    providerID: providerID,
+                    fixturePath: providerFixtures[providerID],
+                    object: object,
+                    config: config,
+                    context: context
+                ) else {
                     continue
                 }
-                let mapped = (try? mapRecordedProviderFixture(providerID: providerID, data: data)) ?? []
                 for component in selectionComponents {
                     let matching = matchingCandidates(for: component, candidates: mapped)
                     for candidate in matching {
@@ -2528,7 +2598,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         let uniqueProviders = uniqueRefdes(providers)
         let ttlSeconds = sourceKinds.contains("runtime_catalog_providers")
-            ? intValue(object, key: "catalog_cache_ttl_seconds", defaultValue: 86_400)
+            ? catalogCacheTTLSeconds(from: object, config: config)
             : nil
         return RuntimeCatalogEvidence(
             candidates: candidates,
@@ -2538,16 +2608,72 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         )
     }
 
-    private func catalogProviderFixturePaths(from object: [String: Any]) -> [String: String] {
+    private func runtimeCatalogConfig(from object: [String: Any], context: WorkspaceHandlerContext) -> RuntimeCatalogConfig {
+        let defaultURL = context.workspaceRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-provider-config.json")
+        let explicitURL = stringValue(object, keys: ["electronics_provider_config_path", "provider_config_path"])
+            .map { URL(fileURLWithPath: $0) }
+        let configURL = explicitURL ?? defaultURL
+        var config = (try? Data(contentsOf: configURL)).flatMap {
+            try? JSONDecoder().decode(RuntimeCatalogConfig.self, from: $0)
+        } ?? RuntimeCatalogConfig()
+
+        if let value = object["catalog_cache_directory"] as? String {
+            config.catalogCacheDirectory = value
+        }
+        if let value = optionalIntValue(object, key: "catalog_cache_ttl_seconds") {
+            config.catalogCacheTTLSeconds = value
+        }
+        if let value = object["kicad_symbol_library_root"] as? String {
+            config.kicadSymbolLibraryRoot = value
+        }
+        if let value = object["kicad_footprint_library_root"] as? String {
+            config.kicadFootprintLibraryRoot = value
+        }
+        if let value = object["kicad_catalog_cache_directory"] as? String {
+            config.kicadCatalogCacheDirectory = value
+        }
+        if let value = optionalIntValue(object, key: "kicad_catalog_cache_ttl_seconds") {
+            config.kicadCatalogCacheTTLSeconds = value
+        }
+        return config
+    }
+
+    private func catalogProviderFixturePaths(from object: [String: Any], config: RuntimeCatalogConfig) -> [String: String] {
+        var paths = config.catalogProviderFixturePaths?.reduce(into: [String: String]()) { result, entry in
+            result[entry.key.lowercased()] = entry.value
+        } ?? [:]
         let raw = object["catalog_provider_fixture_paths"] ?? object["catalog_provider_fixtures"]
-        guard let dictionary = raw as? [String: Any] else { return [:] }
-        return dictionary.reduce(into: [String: String]()) { result, entry in
+        guard let dictionary = raw as? [String: Any] else { return paths }
+        dictionary.forEach { entry in
             guard let path = entry.value as? String,
                   !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return
             }
-            result[entry.key.lowercased()] = path
+            paths[entry.key.lowercased()] = path
         }
+        return paths
+    }
+
+    private func providerCatalogCandidates(
+        providerID: String,
+        fixturePath: String?,
+        object: [String: Any],
+        config: RuntimeCatalogConfig,
+        context: WorkspaceHandlerContext
+    ) -> [ComponentCandidate]? {
+        let ttlSeconds = catalogCacheTTLSeconds(from: object, config: config)
+        let cacheDirectory = catalogCacheDirectory(from: config, context: context)
+        if let fixturePath,
+           let data = try? Data(contentsOf: URL(fileURLWithPath: fixturePath)),
+           let mapped = try? mapRecordedProviderFixture(providerID: providerID, data: data) {
+            if !mapped.isEmpty {
+                try? writeProviderCandidateCache(mapped, providerID: providerID, directory: cacheDirectory)
+            }
+            return mapped
+        }
+        return try? loadProviderCandidateCache(providerID: providerID, directory: cacheDirectory, ttlSeconds: ttlSeconds)
     }
 
     private func mapRecordedProviderFixture(providerID: String, data: Data) throws -> [ComponentCandidate] {
@@ -2563,13 +2689,43 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
     }
 
-    private func localKiCadCatalogProvider(from object: [String: Any]) -> KiCadLibraryCatalogProvider? {
+    private func localKiCadCatalogProvider(
+        from object: [String: Any],
+        config: RuntimeCatalogConfig,
+        context: WorkspaceHandlerContext
+    ) -> KiCadLibraryCatalogProvider? {
         let symbolPath = object["kicad_symbol_catalog_path"] as? String
         let footprintPath = object["kicad_footprint_catalog_path"] as? String
         let symbols: [KiCadSymbolDefinition] = symbolPath.flatMap { decodeJSONFile($0) } ?? []
         let footprints: [KiCadFootprintDefinition] = footprintPath.flatMap { decodeJSONFile($0) } ?? []
-        guard !symbols.isEmpty || !footprints.isEmpty else { return nil }
-        return KiCadLibraryCatalogProvider(symbols: symbols, footprints: footprints)
+        if !symbols.isEmpty || !footprints.isEmpty {
+            return KiCadLibraryCatalogProvider(symbols: symbols, footprints: footprints)
+        }
+
+        let symbolRoot = stringValue(object, keys: ["kicad_symbol_library_root"]).map(URL.init(fileURLWithPath:))
+            ?? config.kicadSymbolLibraryRoot.map(URL.init(fileURLWithPath:))
+        let footprintRoot = stringValue(object, keys: ["kicad_footprint_library_root"]).map(URL.init(fileURLWithPath:))
+            ?? config.kicadFootprintLibraryRoot.map(URL.init(fileURLWithPath:))
+        guard symbolRoot != nil || footprintRoot != nil else { return nil }
+
+        let cacheDirectory = stringValue(object, keys: ["kicad_catalog_cache_directory"])
+            .map(URL.init(fileURLWithPath:))
+            ?? config.kicadCatalogCacheDirectory.map(URL.init(fileURLWithPath:))
+            ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-kicad-catalog-cache", isDirectory: true)
+        let ttlSeconds = optionalIntValue(object, key: "kicad_catalog_cache_ttl_seconds")
+            ?? config.kicadCatalogCacheTTLSeconds
+            ?? 86_400
+        let cache = KiCadLibraryCatalogCache()
+        let catalog = (try? cache.load(from: cacheDirectory, maxAgeSeconds: ttlSeconds))
+            ?? (try? KiCadLibraryCatalogExtractor().extract(symbolRoot: symbolRoot, footprintRoot: footprintRoot)).map { catalog in
+                try? cache.write(catalog, to: cacheDirectory)
+                return catalog
+            }
+        guard let catalog,
+              !catalog.symbols.isEmpty || !catalog.footprints.isEmpty else {
+            return nil
+        }
+        return KiCadLibraryCatalogProvider(symbols: catalog.symbols, footprints: catalog.footprints)
     }
 
     private func decodeJSONFile<T: Decodable>(_ path: String) -> T? {
@@ -2577,6 +2733,33 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return nil
         }
         return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private func catalogCacheTTLSeconds(from object: [String: Any], config: RuntimeCatalogConfig) -> Int {
+        optionalIntValue(object, key: "catalog_cache_ttl_seconds") ?? config.catalogCacheTTLSeconds ?? 86_400
+    }
+
+    private func catalogCacheDirectory(from config: RuntimeCatalogConfig, context: WorkspaceHandlerContext) -> URL {
+        config.catalogCacheDirectory.map(URL.init(fileURLWithPath:))
+            ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+    }
+
+    private func loadProviderCandidateCache(providerID: String, directory: URL, ttlSeconds: Int) throws -> [ComponentCandidate]? {
+        let url = directory.appendingPathComponent("\(providerID.lowercased())-candidates.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let envelope = try JSONDecoder().decode(ProviderCandidateCacheEnvelope.self, from: Data(contentsOf: url))
+        guard ttlSeconds <= 0 || Date().timeIntervalSince(envelope.generatedAt) <= Double(ttlSeconds) else {
+            return nil
+        }
+        return envelope.candidates
+    }
+
+    private func writeProviderCandidateCache(_ candidates: [ComponentCandidate], providerID: String, directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let envelope = ProviderCandidateCacheEnvelope(generatedAt: Date(), candidates: candidates)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(envelope).write(to: directory.appendingPathComponent("\(providerID.lowercased())-candidates.json"))
     }
 
     private func providerCandidate(
@@ -2630,6 +2813,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let number = object[key] as? NSNumber { return number.intValue }
         if let string = object[key] as? String, let int = Int(string) { return int }
         return defaultValue
+    }
+
+    private func optionalIntValue(_ object: [String: Any], key: String) -> Int? {
+        if let int = object[key] as? Int { return int }
+        if let number = object[key] as? NSNumber { return number.intValue }
+        if let string = object[key] as? String, let int = Int(string) { return int }
+        return nil
     }
 
     private func componentSelectionDecision(

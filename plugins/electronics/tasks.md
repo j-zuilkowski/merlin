@@ -42,6 +42,16 @@ red tests; each matching `b` task implements the behavior.
 | Runtime evidence pipeline | `tasks/task-414a-electronics-runtime-evidence-pipeline-tests.md` | `tasks/task-414b-electronics-runtime-evidence-pipeline.md` |
 | Evidence action orchestration | `tasks/task-415a-electronics-evidence-action-orchestration-tests.md` | `tasks/task-415b-electronics-evidence-action-orchestration.md` |
 | Discrete Circuit IR synthesis | `tasks/task-416a-discrete-circuit-ir-synthesis-tests.md` | `tasks/task-416b-discrete-circuit-ir-synthesis.md` |
+| Circuit IR component selection | `tasks/task-417a-circuit-ir-component-selection-tests.md` | `tasks/task-417b-circuit-ir-component-selection.md` |
+| Circuit IR footprint coverage | `tasks/task-418a-circuit-ir-footprint-coverage-tests.md` | `tasks/task-418b-circuit-ir-footprint-coverage.md` |
+| Runtime catalog provider selection | `tasks/task-419a-runtime-catalog-provider-selection-tests.md` | `tasks/task-419b-runtime-catalog-provider-selection.md` |
+| Runtime footprint provider evidence | `tasks/task-420a-runtime-footprint-provider-evidence-tests.md` | `tasks/task-420b-runtime-footprint-provider-evidence.md` |
+| Local KiCad catalog extraction | `tasks/task-421a-local-kicad-catalog-extraction-tests.md` | `tasks/task-421b-local-kicad-catalog-extraction.md` |
+| Local KiCad catalog cache | `tasks/task-422a-local-kicad-catalog-cache-tests.md` | `tasks/task-422b-local-kicad-catalog-cache.md` |
+| Provider config cache | `tasks/task-423a-provider-config-cache-tests.md` | `tasks/task-423b-provider-config-cache.md` |
+| Runtime KiCad config | `tasks/task-424a-runtime-kicad-config-tests.md` | `tasks/task-424b-runtime-kicad-config.md` |
+| Workflow artifact handoff | `tasks/task-425a-workflow-artifact-handoff-tests.md` | `tasks/task-425b-workflow-artifact-handoff.md` |
+| Focused cache handoff | `tasks/task-426a-electronics-focused-cache-handoff-tests.md` | `tasks/task-426b-electronics-focused-cache-handoff.md` |
 
 ## Phase 0: Safety And Drift Cleanup
 
@@ -688,3 +698,100 @@ Exit criteria:
 - Provider-selected candidates can include local footprint candidates.
 - Footprint assignment can consume provider-generated matrices.
 - Missing footprint evidence remains a blocker.
+
+## Phase 34: Local KiCad Catalog Extraction
+
+Goal: extract local KiCad symbol and footprint evidence from installed or
+workspace-provided library roots.
+
+1. Parse `.kicad_sym` symbol libraries into symbol definitions.
+2. Parse `.pretty/*.kicad_mod` footprint libraries into footprint definitions.
+3. Preserve library-qualified names for symbol/footprint lookup.
+4. Keep extraction generic and independent of any demo target.
+
+Exit criteria:
+
+- Local symbol roots produce `KiCadSymbolDefinition` rows.
+- Local footprint roots produce `KiCadFootprintDefinition` rows.
+- Runtime component selection can use extracted local library evidence.
+
+## Phase 35: Local KiCad Catalog Cache
+
+Goal: avoid re-extracting local KiCad libraries on every electronics tool call.
+
+1. Write extracted catalogs to a plugin-owned cache file.
+2. Load cache entries while they are within TTL.
+3. Re-extract when the cache is missing or stale.
+
+Exit criteria:
+
+- Fresh local KiCad catalog cache is reused.
+- Stale cache is ignored.
+- Cache behavior is covered by focused tests.
+
+## Phase 36: Provider Config Cache
+
+Goal: avoid repeating catalog provider setup and fixture mapping in every tool
+call.
+
+1. Read provider fixture paths from explicit config or workspace-local plugin
+   config.
+2. Let request payload values override config values.
+3. Cache mapped provider candidates by provider ID.
+4. Reuse cached provider candidates when the fixture file is unavailable and
+   the cache is fresh.
+
+Exit criteria:
+
+- Runtime selection can run from provider config alone.
+- Provider candidate cache can satisfy a later selection call.
+- Provider provenance remains visible in the component matrix.
+
+## Phase 37: Runtime KiCad Config
+
+Goal: wire local KiCad library roots and cache controls into runtime component
+selection.
+
+1. Accept `kicad_symbol_library_root` and `kicad_footprint_library_root`.
+2. Accept `kicad_catalog_cache_directory` and TTL.
+3. Extract/cache local KiCad libraries when explicit JSON catalog files are not
+   supplied.
+4. Use extracted footprint evidence to enrich provider-selected parts.
+
+Exit criteria:
+
+- Local KiCad roots can replace hand-authored JSON catalog path inputs.
+- Runtime-selected parts can carry local KiCad footprint candidates.
+
+## Phase 38: Workflow Artifact Handoff
+
+Goal: carry verified artifact paths through structured tool results instead of
+requiring narrative inference.
+
+1. Add a structured handoff object to KiCad tool results.
+2. Preserve input paths such as DesignIntent, Circuit IR, component matrix, and
+   footprint assignment.
+3. Add newly produced artifact paths to the handoff before returning.
+4. Keep next actions separate from artifact evidence.
+
+Exit criteria:
+
+- Component selection returns handoff paths for DesignIntent, Circuit IR, and
+  component matrix.
+- Footprint assignment returns handoff paths for prior evidence and the new
+  footprint assignment artifact.
+
+## Phase 39: Focused Cache Handoff Slice
+
+Goal: prove the runtime cache/config/handoff path as one focused electronics
+slice.
+
+1. Run component selection from provider config.
+2. Reuse provider cache after fixture removal.
+3. Extract/cache local KiCad library evidence.
+4. Use handoff paths to drive footprint assignment.
+
+Exit criteria:
+
+- Focused catalog extraction, provider cache, local KiCad cache, and handoff
+  tests pass together.

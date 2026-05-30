@@ -29,6 +29,174 @@ struct KiCadFootprintDefinition: Codable, Sendable, Equatable {
     }
 }
 
+struct KiCadLocalLibraryCatalog: Codable, Sendable, Equatable {
+    var generatedAt: Date
+    var symbols: [KiCadSymbolDefinition]
+    var footprints: [KiCadFootprintDefinition]
+}
+
+struct KiCadLibraryCatalogCache: Sendable {
+    let fileName = "kicad-library-catalog.json"
+
+    func load(from directory: URL, maxAgeSeconds: Int, now: Date = Date()) throws -> KiCadLocalLibraryCatalog? {
+        let url = directory.appendingPathComponent(fileName)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let catalog = try JSONDecoder().decode(KiCadLocalLibraryCatalog.self, from: Data(contentsOf: url))
+        guard maxAgeSeconds <= 0 || now.timeIntervalSince(catalog.generatedAt) <= Double(maxAgeSeconds) else {
+            return nil
+        }
+        return catalog
+    }
+
+    func write(_ catalog: KiCadLocalLibraryCatalog, to directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(catalog).write(to: directory.appendingPathComponent(fileName))
+    }
+}
+
+struct KiCadLibraryCatalogExtractor: Sendable {
+    func extract(symbolRoot: URL?, footprintRoot: URL?) throws -> KiCadLocalLibraryCatalog {
+        KiCadLocalLibraryCatalog(
+            generatedAt: Date(),
+            symbols: try symbolRoot.map(extractSymbols(from:)) ?? [],
+            footprints: try footprintRoot.map(extractFootprints(from:)) ?? []
+        )
+    }
+
+    func extractSymbols(from root: URL) throws -> [KiCadSymbolDefinition] {
+        let files = try libraryFiles(under: root, extension: "kicad_sym")
+        return try files.flatMap { file in
+            let libraryName = file.deletingPathExtension().lastPathComponent
+            let text = try String(contentsOf: file, encoding: .utf8)
+            return symbolBlocks(in: text).compactMap { block -> KiCadSymbolDefinition? in
+                guard let rawName = firstQuotedValue(after: "(symbol", in: block) else { return nil }
+                let name = rawName.contains(":") ? rawName : "\(libraryName):\(rawName)"
+                let pins = blocks(named: "pin", in: block).compactMap(parsePin)
+                return KiCadSymbolDefinition(name: name, pins: pins)
+            }
+        }
+        .sorted { $0.name < $1.name }
+    }
+
+    func extractFootprints(from root: URL) throws -> [KiCadFootprintDefinition] {
+        let files = try libraryFiles(under: root, extension: "kicad_mod")
+        return try files.compactMap { file -> KiCadFootprintDefinition? in
+            let libraryName = footprintLibraryName(for: file)
+            let text = try String(contentsOf: file, encoding: .utf8)
+            let rawName = firstQuotedValue(after: "(footprint", in: text) ?? file.deletingPathExtension().lastPathComponent
+            let name = libraryName.isEmpty || rawName.contains(":") ? rawName : "\(libraryName):\(rawName)"
+            let pads = blocks(named: "pad", in: text).compactMap(parsePad)
+            return KiCadFootprintDefinition(name: name, pads: pads)
+        }
+        .sorted { $0.name < $1.name }
+    }
+
+    private func libraryFiles(under root: URL, extension expectedExtension: String) throws -> [URL] {
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+        return enumerator.compactMap { entry in
+            guard let url = entry as? URL,
+                  url.pathExtension == expectedExtension else { return nil }
+            return url
+        }
+        .sorted { $0.path < $1.path }
+    }
+
+    private func symbolBlocks(in text: String) -> [String] {
+        blocks(named: "symbol", in: text).filter { block in
+            firstQuotedValue(after: "(symbol", in: block) != nil
+        }
+    }
+
+    private func parsePin(_ block: String) -> KiCadSymbolPin? {
+        let electricalType = firstToken(after: "(pin", in: block) ?? "unspecified"
+        guard let number = propertyValue("number", in: block) else { return nil }
+        let name = propertyValue("name", in: block) ?? number
+        return KiCadSymbolPin(number: number, name: name, electricalType: electricalType)
+    }
+
+    private func parsePad(_ block: String) -> KiCadFootprintPad? {
+        guard let number = firstQuotedValue(after: "(pad", in: block) else { return nil }
+        let name = propertyValue("pinfunction", in: block) ?? number
+        return KiCadFootprintPad(number: number, name: name)
+    }
+
+    private func footprintLibraryName(for file: URL) -> String {
+        let parent = file.deletingLastPathComponent().lastPathComponent
+        guard parent.hasSuffix(".pretty") else { return "" }
+        return String(parent.dropLast(".pretty".count))
+    }
+
+    private func propertyValue(_ property: String, in text: String) -> String? {
+        firstQuotedValue(after: "(\(property)", in: text)
+    }
+
+    private func firstToken(after marker: String, in text: String) -> String? {
+        guard let range = text.range(of: marker) else { return nil }
+        let remainder = text[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return remainder.split { $0 == " " || $0 == "\n" || $0 == "\t" || $0 == ")" }.first.map(String.init)
+    }
+
+    private func firstQuotedValue(after marker: String, in text: String) -> String? {
+        guard let range = text.range(of: marker),
+              let firstQuote = text[range.upperBound...].firstIndex(of: "\"") else {
+            return nil
+        }
+        let afterFirstQuote = text.index(after: firstQuote)
+        guard let secondQuote = text[afterFirstQuote...].firstIndex(of: "\"") else { return nil }
+        return String(text[afterFirstQuote..<secondQuote])
+    }
+
+    private func blocks(named name: String, in text: String) -> [String] {
+        let marker = "(\(name)"
+        var blocks: [String] = []
+        var searchStart = text.startIndex
+        while let markerRange = text.range(of: marker, range: searchStart..<text.endIndex) {
+            guard let end = balancedBlockEnd(startingAt: markerRange.lowerBound, in: text) else {
+                break
+            }
+            blocks.append(String(text[markerRange.lowerBound..<end]))
+            searchStart = end
+        }
+        return blocks
+    }
+
+    private func balancedBlockEnd(startingAt start: String.Index, in text: String) -> String.Index? {
+        var index = start
+        var depth = 0
+        var inString = false
+        var escaped = false
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if character == "\\" {
+                    escaped = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return text.index(after: index)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+}
+
 struct KiCadLibraryResolutionIssue: Codable, Sendable, Equatable {
     var code: String
     var message: String

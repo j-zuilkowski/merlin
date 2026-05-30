@@ -225,6 +225,115 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
     }
 
+    func testRuntimeCatalogSelectionExtractsAndCachesLocalKiCadLibraries() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RFILT1",
+                role: "sweepable boost/cut resistor",
+                selectedSymbol: "Device:R",
+                selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                pins: ["1", "2"]
+            ),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+        let symbolRoot = try writeKiCadSymbolTree(root: root)
+        let footprintRoot = try writeKiCadFootprintTree(root: root)
+        let cacheURL = root.appendingPathComponent("kicad-cache", isDirectory: true)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"},"kicad_symbol_library_root":"\#(symbolRoot.path)","kicad_footprint_library_root":"\#(footprintRoot.path)","kicad_catalog_cache_directory":"\#(cacheURL.path)","kicad_catalog_cache_ttl_seconds":3600}"#
+        )
+
+        XCTAssertEqual(selection.status, .ok)
+        let matrix = try decodeMatrix(from: selection)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.footprintCandidates.first?.sourceProviderID, "kicad_local")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cacheURL.appendingPathComponent("kicad-library-catalog.json").path))
+    }
+
+    func testRuntimeProviderConfigSuppliesFixtureAndCachesProviderCandidates() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+        let providerCacheURL = root.appendingPathComponent("provider-cache", isDirectory: true)
+        let configURL = root.appendingPathComponent("electronics-provider-config.json")
+        try """
+        {
+          "catalog_provider_fixture_paths": {
+            "mouser": "\(mouserURL.path)"
+          },
+          "catalog_cache_directory": "\(providerCacheURL.path)",
+          "catalog_cache_ttl_seconds": 3600
+        }
+        """.write(to: configURL, atomically: true, encoding: .utf8)
+
+        let first = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+        )
+        XCTAssertEqual(first.status, .ok)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: providerCacheURL.appendingPathComponent("mouser-candidates.json").path))
+
+        try FileManager.default.removeItem(at: mouserURL)
+        let cached = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+        )
+
+        XCTAssertEqual(cached.status, .ok)
+        let matrix = try decodeMatrix(from: cached)
+        XCTAssertEqual(matrix.providers, ["mouser"])
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(matrix.cacheMetadata["source"], "runtime_catalog_providers")
+    }
+
+    func testWorkflowHandoffCarriesArtifactPathsAcrossEvidencePipeline() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RFILT1",
+                role: "sweepable boost/cut resistor",
+                selectedSymbol: "Device:R",
+                selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                pins: ["1", "2"]
+            ),
+        ], root: root)
+        let mouserURL = try writeMouserFixture(root: root)
+        let symbolsURL = try writeSymbols(root: root)
+        let footprintsURL = try writeFootprints(root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"},"kicad_symbol_catalog_path":"\#(symbolsURL.path)","kicad_footprint_catalog_path":"\#(footprintsURL.path)"}"#
+        )
+        let selectionResult = try XCTUnwrap(selection.payload?.decodeJSON(KiCadToolResult.self))
+        let handoffAfterSelection = try XCTUnwrap(selectionResult.handoff)
+        XCTAssertEqual(handoffAfterSelection.designIntentPath, intentURL.path)
+        XCTAssertEqual(handoffAfterSelection.circuitIRPath, circuitIRURL.path)
+        let matrixPath = try XCTUnwrap(handoffAfterSelection.componentMatrixPath)
+
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(handoffAfterSelection.designIntentPath ?? "")","circuit_ir_path":"\#(handoffAfterSelection.circuitIRPath ?? "")","component_matrix_path":"\#(matrixPath)"}"#
+        )
+        let footprintResult = try XCTUnwrap(footprintResponse.payload?.decodeJSON(KiCadToolResult.self))
+        let handoffAfterFootprints = try XCTUnwrap(footprintResult.handoff)
+        XCTAssertEqual(handoffAfterFootprints.componentMatrixPath, matrixPath)
+        XCTAssertNotNil(handoffAfterFootprints.footprintAssignmentPath)
+    }
+
     func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -427,6 +536,31 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(footprints).write(to: url)
         return url
+    }
+
+    private func writeKiCadSymbolTree(root: URL) throws -> URL {
+        let symbolRoot = root.appendingPathComponent("kicad-symbols", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try """
+        (kicad_symbol_lib
+          (version 20250114)
+          (symbol "R"
+            (pin passive line (at 0 0 0) (length 2.54) (name "1") (number "1"))
+            (pin passive line (at 5.08 0 180) (length 2.54) (name "2") (number "2"))))
+        """.write(to: symbolRoot.appendingPathComponent("Device.kicad_sym"), atomically: true, encoding: .utf8)
+        return symbolRoot
+    }
+
+    private func writeKiCadFootprintTree(root: URL) throws -> URL {
+        let footprintRoot = root.appendingPathComponent("kicad-footprints", isDirectory: true)
+        let libraryRoot = footprintRoot.appendingPathComponent("Resistor_SMD.pretty", isDirectory: true)
+        try FileManager.default.createDirectory(at: libraryRoot, withIntermediateDirectories: true)
+        try """
+        (footprint "R_0603_1608Metric"
+          (pad "1" smd roundrect (at -0.8 0) (size 0.8 0.95) (layers "F.Cu"))
+          (pad "2" smd roundrect (at 0.8 0) (size 0.8 0.95) (layers "F.Cu")))
+        """.write(to: libraryRoot.appendingPathComponent("R_0603_1608Metric.kicad_mod"), atomically: true, encoding: .utf8)
+        return footprintRoot
     }
 
     private func send(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {

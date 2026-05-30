@@ -37,6 +37,72 @@ struct KiCadWarning: Codable, Sendable, Equatable {
     var suggestedAction: String?
 }
 
+struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
+    var designIntentPath: String?
+    var circuitIRPath: String?
+    var componentMatrixPath: String?
+    var footprintAssignmentPath: String?
+    var projectPath: String?
+
+    init(designIntentPath: String? = nil,
+         circuitIRPath: String? = nil,
+         componentMatrixPath: String? = nil,
+         footprintAssignmentPath: String? = nil,
+         projectPath: String? = nil) {
+        self.designIntentPath = designIntentPath
+        self.circuitIRPath = circuitIRPath
+        self.componentMatrixPath = componentMatrixPath
+        self.footprintAssignmentPath = footprintAssignmentPath
+        self.projectPath = projectPath
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: FlexibleCodingKey.self)
+        designIntentPath = Self.string(in: container, for: ["designIntentPath", "design_intent_path"])
+        circuitIRPath = Self.string(in: container, for: ["circuitIRPath", "circuitIrPath", "circuit_ir_path"])
+        componentMatrixPath = Self.string(in: container, for: ["componentMatrixPath", "component_matrix_path"])
+        footprintAssignmentPath = Self.string(in: container, for: ["footprintAssignmentPath", "footprint_assignment_path"])
+        projectPath = Self.string(in: container, for: ["projectPath", "project_path"])
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: FlexibleCodingKey.self)
+        try container.encodeIfPresent(designIntentPath, forKey: FlexibleCodingKey("designIntentPath"))
+        try container.encodeIfPresent(circuitIRPath, forKey: FlexibleCodingKey("circuitIRPath"))
+        try container.encodeIfPresent(componentMatrixPath, forKey: FlexibleCodingKey("componentMatrixPath"))
+        try container.encodeIfPresent(footprintAssignmentPath, forKey: FlexibleCodingKey("footprintAssignmentPath"))
+        try container.encodeIfPresent(projectPath, forKey: FlexibleCodingKey("projectPath"))
+    }
+
+    private struct FlexibleCodingKey: CodingKey {
+        var stringValue: String
+        var intValue: Int?
+
+        init(_ stringValue: String) {
+            self.stringValue = stringValue
+            self.intValue = nil
+        }
+
+        init?(stringValue: String) {
+            self.init(stringValue)
+        }
+
+        init?(intValue: Int) {
+            self.stringValue = "\(intValue)"
+            self.intValue = intValue
+        }
+    }
+
+    private static func string(
+        in container: KeyedDecodingContainer<FlexibleCodingKey>,
+        for keys: [String]
+    ) -> String? {
+        keys.compactMap {
+            try? container.decodeIfPresent(String.self, forKey: FlexibleCodingKey($0))
+        }.first ?? nil
+    }
+}
+
 struct KiCadToolResult: Codable, Sendable, Equatable {
     var status: KiCadStatus
     var artifacts: [ArtifactRef]
@@ -45,6 +111,7 @@ struct KiCadToolResult: Codable, Sendable, Equatable {
     var metrics: [String: Double]
     var questions: [ClarificationQuestion]
     var nextActions: [String]
+    var handoff: KiCadWorkflowHandoff?
 
     init(status: KiCadStatus,
          artifacts: [ArtifactRef] = [],
@@ -52,7 +119,8 @@ struct KiCadToolResult: Codable, Sendable, Equatable {
          warnings: [KiCadWarning] = [],
          metrics: [String: Double] = [:],
          questions: [ClarificationQuestion] = [],
-         nextActions: [String] = []) {
+         nextActions: [String] = [],
+         handoff: KiCadWorkflowHandoff? = nil) {
         self.status = status
         self.artifacts = artifacts
         self.violations = violations
@@ -60,6 +128,7 @@ struct KiCadToolResult: Codable, Sendable, Equatable {
         self.metrics = metrics
         self.questions = questions
         self.nextActions = nextActions
+        self.handoff = handoff
     }
 }
 
