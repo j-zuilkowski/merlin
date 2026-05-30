@@ -346,14 +346,15 @@ actor CriticEngine {
             fm.fileExists(atPath: projectPath + "/" + name)
         }
         if has("Cargo.toml") {
+            let cargoEnv = "source \"$HOME/.cargo/env\" 2>/dev/null; export PATH=\"$HOME/.cargo/bin:$PATH\""
             return [
                 VerificationCommand(
                     label: "cargo build",
-                    command: "cd '\(quoted)' && cargo build --quiet 2>&1",
+                    command: "\(cargoEnv); cd '\(quoted)' && cargo build --quiet 2>&1",
                     passCondition: .exitCode(0)),
                 VerificationCommand(
                     label: "cargo test",
-                    command: "cd '\(quoted)' && cargo test --quiet 2>&1",
+                    command: "\(cargoEnv); cd '\(quoted)' && cargo test --quiet 2>&1",
                     passCondition: .exitCode(0)),
             ]
         }

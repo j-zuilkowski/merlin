@@ -53,7 +53,7 @@ class ContextManager: ObservableObject {
     }
 
     func messagesForProvider() -> [Message] {
-        messages
+        messages.sanitizedForOpenAIToolCallWireFormat()
     }
 
     func forceCompaction() {
@@ -514,5 +514,86 @@ class ContextManager: ObservableObject {
 
     private func tokenEstimate(forText text: String) -> Int {
         Int(Double(text.utf8.count) / 3.5)
+    }
+}
+
+private extension Array where Element == Message {
+    /// OpenAI-compatible providers require an assistant message carrying
+    /// `tool_calls` to be followed immediately by one tool-result message for
+    /// every declared `tool_call_id`. Merlin's internal context can carry
+    /// system notes between tool results; keep those notes, but move them after
+    /// the complete tool-result block at the provider boundary.
+    func sanitizedForOpenAIToolCallWireFormat() -> [Message] {
+        var output: [Message] = []
+        var index = 0
+
+        while index < count {
+            let message = self[index]
+            guard message.role == .assistant,
+                  let calls = message.toolCalls,
+                  calls.isEmpty == false else {
+                output.append(message.role == .tool ? message.asSystemToolContext() : message)
+                index += 1
+                continue
+            }
+
+            let expectedIDs = calls.map(\.id)
+            let expectedIDSet = Set(expectedIDs)
+            var toolByID: [String: Message] = [:]
+            var deferred: [Message] = []
+            var scan = index + 1
+
+            while scan < count {
+                let candidate = self[scan]
+                if candidate.role == .assistant || candidate.role == .user {
+                    break
+                }
+                if candidate.role == .tool,
+                   let toolCallID = candidate.toolCallId,
+                   expectedIDSet.contains(toolCallID),
+                   toolByID[toolCallID] == nil {
+                    toolByID[toolCallID] = candidate
+                } else {
+                    deferred.append(candidate.role == .tool
+                                    ? candidate.asSystemToolContext()
+                                    : candidate)
+                }
+                scan += 1
+            }
+
+            if expectedIDs.allSatisfy({ toolByID[$0] != nil }) {
+                output.append(message)
+                output.append(contentsOf: expectedIDs.compactMap { toolByID[$0] })
+                output.append(contentsOf: deferred)
+            } else {
+                output.append(message.withoutToolCalls())
+                output.append(contentsOf: deferred)
+            }
+            index = scan
+        }
+
+        return output
+    }
+}
+
+private extension Message {
+    func withoutToolCalls() -> Message {
+        var copy = self
+        let names = (toolCalls ?? []).map(\.function.name).joined(separator: ", ")
+        let existing = copy.content.plainText.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.toolCalls = nil
+        copy.toolCallId = nil
+        copy.content = .text(existing.isEmpty
+                             ? "[tool calls omitted from provider history: \(names)]"
+                             : existing)
+        return copy
+    }
+
+    func asSystemToolContext() -> Message {
+        Message(
+            role: .system,
+            content: .text("[tool result context for \(toolCallId ?? "unknown")]: \(content.plainText)"),
+            timestamp: timestamp
+        )
     }
 }

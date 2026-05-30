@@ -1,5 +1,8 @@
 # Merlin End-to-End Proving Suite
 
+Current stabilization status lives in `CURRENT-STATUS.md`. Treat that file as
+the plan of record; older harness logs and rerun folders are evidence only.
+
 Acceptance scenarios that exercise every major Merlin capability end-to-end and produce
 concrete evidence the app actually works. Built because a prior audit found Merlin had
 shipped multiple silently-dead features.
@@ -70,5 +73,6 @@ against the rubric, and write a dated result file to `results/`.
 ## Capability baseline (probed 2026-05-16)
 
 All six scenario areas are testable on this machine: Rust 1.94, Python 3.9.13 +
-mlx_lm/mlx, ngspice, vale, KiCad 10.0.3, FreeRouting (bundled JRE), merlin-kicad-mcp,
-xcalibre-server source, LM Studio. See `BLOCKED.md` for any exceptions found later.
+mlx_lm/mlx, ngspice, vale, KiCad 10.0.3, FreeRouting (bundled JRE), the
+bus-backed `plugins/electronics` runtime plugin, xcalibre-server source, LM Studio.
+See `BLOCKED.md` for any exceptions found later.

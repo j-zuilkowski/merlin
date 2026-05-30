@@ -189,6 +189,7 @@ final class LiveSession: ObservableObject, Identifiable {
     /// offered no MCP tools.
     func awaitMCPReady() async {
         await mcpStartupTask?.value
+        await appState.awaitRuntimePluginsReady()
     }
 
     func close() async {

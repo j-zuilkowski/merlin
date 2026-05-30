@@ -17,65 +17,77 @@ private func loadImageAsJPEG(_ path: String) -> Data? {
 @MainActor
 func registerAllTools(
     router: ToolRouter,
+    defaultProjectPath: String? = nil,
     visionProvider: @escaping @MainActor () -> (any LLMProvider)? = { nil }
 ) {
     // MARK: File System
     router.register(name: "read_file") { args in
         let a = try decode(args, as: PathArgs.self)
-        let output = try await FileSystemTools.readFile(path: a.path)
-        return ToolOutput.clamp(output)
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        let output = try await FileSystemTools.readFile(path: scoped.path)
+        return ToolOutput.clamp(scoped.prefixed(output))
     }
     router.register(name: "write_file") { args in
         let a = try decode(args, as: WriteFileArgs.self)
-        try await FileSystemTools.writeFile(path: a.path, content: a.content)
-        return "Written"
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        try await FileSystemTools.writeFile(path: scoped.path, content: a.content)
+        return scoped.prefixed("Written")
     }
     router.register(name: "create_file") { args in
         let a = try decode(args, as: PathArgs.self)
-        try await FileSystemTools.createFile(path: a.path)
-        return "Created"
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        try await FileSystemTools.createFile(path: scoped.path)
+        return scoped.prefixed("Created")
     }
     router.register(name: "delete_file") { args in
         let a = try decode(args, as: PathArgs.self)
-        try await FileSystemTools.deleteFile(path: a.path)
-        return "Deleted"
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        try await FileSystemTools.deleteFile(path: scoped.path)
+        return scoped.prefixed("Deleted")
     }
     router.register(name: "list_directory") { args in
         let a = try decode(args, as: ListDirectoryArgs.self)
-        return try await FileSystemTools.listDirectory(path: a.path, recursive: a.recursive ?? false)
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        let output = try await FileSystemTools.listDirectory(path: scoped.path, recursive: a.recursive ?? false)
+        return scoped.prefixed(output)
     }
     router.register(name: "move_file") { args in
         let a = try decode(args, as: MoveFileArgs.self)
-        try await FileSystemTools.moveFile(src: a.src, dst: a.dst)
-        return "Moved"
+        let src = BuiltInToolScope.resolvePath(a.src, defaultProjectPath: defaultProjectPath)
+        let dst = BuiltInToolScope.resolvePath(a.dst, defaultProjectPath: defaultProjectPath)
+        try await FileSystemTools.moveFile(src: src.path, dst: dst.path)
+        return src.mergingWarning(with: dst).prefixed("Moved")
     }
     router.register(name: "search_files") { args in
         let a = try decode(args, as: SearchFilesArgs.self)
-        let output = try await FileSystemTools.searchFiles(path: a.path, pattern: a.pattern, contentPattern: a.contentPattern)
-        return ToolOutput.clamp(output)
+        let scoped = BuiltInToolScope.resolvePath(a.path, defaultProjectPath: defaultProjectPath)
+        let output = try await FileSystemTools.searchFiles(path: scoped.path, pattern: a.pattern, contentPattern: a.contentPattern)
+        return ToolOutput.clamp(scoped.prefixed(output))
     }
 
     // MARK: Shell
     router.register(name: "run_shell") { args in
         let a = try decode(args, as: RunShellArgs.self)
+        let scoped = BuiltInToolScope.resolveCWD(a.cwd, defaultProjectPath: defaultProjectPath)
         let result = try await ShellTool.run(
             command: a.command,
-            cwd: a.cwd,
+            cwd: scoped.path,
             timeoutSeconds: a.timeoutSeconds ?? 120
         )
         let output = "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
-        return ToolOutput.clamp(output)
+        return ToolOutput.clamp(scoped.prefixed(output))
     }
     // Alias for models trained on Claude computer-use format (e.g. DeepSeek V4 Pro)
     router.register(name: "bash") { args in
         let a = try decode(args, as: RunShellArgs.self)
+        let scoped = BuiltInToolScope.resolveCWD(a.cwd, defaultProjectPath: defaultProjectPath)
         let result = try await ShellTool.run(
             command: a.command,
-            cwd: a.cwd,
+            cwd: scoped.path,
             timeoutSeconds: a.timeoutSeconds ?? 120
         )
         let output = "exit:\(result.exitCode)\nstdout:\(result.stdout)\nstderr:\(result.stderr)"
-        return ToolOutput.clamp(output)
+        return ToolOutput.clamp(scoped.prefixed(output))
     }
 
     // MARK: App Control
@@ -101,7 +113,7 @@ func registerAllTools(
 
     // MARK: Tool Discovery
     router.register(name: "tool_discover") { _ in
-        let tools = await ToolDiscovery.scan()
+        let tools = await ToolDiscovery.scan(summarize: false)
         return tools.map { "\($0.name): \($0.path)" }.joined(separator: "\n")
     }
 
@@ -176,7 +188,7 @@ func registerAllTools(
     }
     router.register(name: "xcode_xcresult_parse") { args in
         let a = try decode(args, as: PathArgs.self)
-        let summary = try XcodeTools.parseXcresult(path: a.path)
+        let summary = try XcodeTools.parseXcresult(path: a.path ?? "")
         let failures = summary.testFailures ?? []
         guard failures.isEmpty == false else {
             return "No failures"
@@ -328,12 +340,88 @@ private func decode<T: Decodable>(_ json: String, as type: T.Type) throws -> T {
     return try decoder.decode(type, from: data)
 }
 
-private struct PathArgs: Decodable { var path: String }
-private struct WriteFileArgs: Decodable { var path: String; var content: String }
-private struct ListDirectoryArgs: Decodable { var path: String; var recursive: Bool? }
-private struct MoveFileArgs: Decodable { var src: String; var dst: String }
-private struct SearchFilesArgs: Decodable { var path: String; var pattern: String; var contentPattern: String? }
-private struct RunShellArgs: Decodable { var command: String; var cwd: String?; var timeoutSeconds: Int? }
+struct BuiltInToolScope {
+    var path: String
+    var warning: String?
+
+    func prefixed(_ output: String) -> String {
+        guard let warning else { return output }
+        return warning + "\n" + output
+    }
+
+    func mergingWarning(with other: BuiltInToolScope) -> BuiltInToolScope {
+        let merged = [warning, other.warning].compactMap { $0 }.joined(separator: "\n")
+        return BuiltInToolScope(path: path, warning: merged.isEmpty ? nil : merged)
+    }
+
+    static func resolvePath(_ rawPath: String?, defaultProjectPath: String?) -> BuiltInToolScope {
+        let projectRoot = normalizedRoot(defaultProjectPath)
+        let trimmed = rawPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let effectiveRaw = trimmed.isEmpty ? "." : trimmed
+        let url: URL
+        if effectiveRaw.hasPrefix("/") {
+            url = URL(fileURLWithPath: effectiveRaw)
+        } else if let projectRoot {
+            url = URL(fileURLWithPath: projectRoot, isDirectory: true)
+                .appendingPathComponent(effectiveRaw)
+        } else {
+            url = URL(fileURLWithPath: effectiveRaw)
+        }
+
+        let path = url.standardizedFileURL.path
+        return BuiltInToolScope(path: path, warning: outsideProjectWarning(path: path, projectRoot: projectRoot))
+    }
+
+    static func resolveCWD(_ rawCWD: String?, defaultProjectPath: String?) -> BuiltInToolScope {
+        let projectRoot = normalizedRoot(defaultProjectPath)
+        let trimmed = rawCWD?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else {
+            return BuiltInToolScope(path: projectRoot ?? ".", warning: nil)
+        }
+        return resolvePath(trimmed, defaultProjectPath: defaultProjectPath)
+    }
+
+    private static func normalizedRoot(_ defaultProjectPath: String?) -> String? {
+        guard let defaultProjectPath,
+              !defaultProjectPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return URL(fileURLWithPath: defaultProjectPath, isDirectory: true).standardizedFileURL.path
+    }
+
+    private static func outsideProjectWarning(path: String, projectRoot: String?) -> String? {
+        guard let projectRoot else { return nil }
+        guard path == projectRoot || path.hasPrefix(projectRoot + "/") else {
+            return "Warning: requested path is outside current project root. Current project root: \(projectRoot). Requested path: \(path)."
+        }
+        return nil
+    }
+}
+
+private struct PathArgs: Decodable { var path: String? }
+private struct WriteFileArgs: Decodable { var path: String?; var content: String }
+private struct ListDirectoryArgs: Decodable { var path: String?; var recursive: Bool? }
+private struct MoveFileArgs: Decodable { var src: String?; var dst: String? }
+private struct SearchFilesArgs: Decodable { var path: String?; var pattern: String; var contentPattern: String? }
+private struct RunShellArgs: Decodable {
+    var command: String
+    var cwd: String?
+    var timeoutSeconds: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case command
+        case cwd
+        case timeoutSeconds
+        case timeoutSecondsSnake = "timeout_seconds"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        command = try container.decode(String.self, forKey: .command)
+        cwd = try container.decodeIfPresent(String.self, forKey: .cwd)
+        timeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .timeoutSeconds)
+            ?? container.decodeIfPresent(Int.self, forKey: .timeoutSecondsSnake)
+    }
+}
 private struct LaunchAppArgs: Decodable { var bundleId: String; var arguments: [String]? }
 private struct BundleIDArgs: Decodable { var bundleId: String }
 private struct CwdArgs: Decodable { var cwd: String? }

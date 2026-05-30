@@ -7,7 +7,7 @@ Merlin runs across three distinct LLM pools. Each has a different role.
 | Pool | Hardware | Models | Role in Merlin |
 |---|---|---|---|
 | **Windows 11 machine (xcalibre-server)** | RTX 2070 | phi-3-mini-4k-instruct + nomic-embed-text-v1.5 (LM Studio) | xcalibre-server — ebook library maintenance tasks and vector embeddings for RAG. `ragRerank` defaults to `false` because the RTX 2070 benefits from the reduced load. No code changes needed to enable reranking on an RTX 5080 upgrade. |
-| **M4 Mac 128GB (Merlin local)** | 128GB unified memory | Qwen2.5-VL-72B-Instruct (LM Studio, vision slot) + LoRA base model via mlx_lm.server (execute slot after training) | Primary Merlin host — vision queries, LoRA training via `mlx_lm.lora`, adapter inference via `mlx_lm.server`. MLX backend preferred over GGUF for 15–30% speed improvement. |
+| **M4 Mac 128GB (Merlin local)** | 128GB unified memory | Qwen3-Coder + Qwen3-VL GGUF/mmproj via llama.cpp router mode; LoRA base model via mlx_lm.server after training | Primary Merlin host — local general+vision queries through the preferred llama.cpp router provider, LoRA training via `mlx_lm.lora`, adapter inference via `mlx_lm.server`. |
 | **External APIs** | — | DeepSeek V4 Pro/Flash, Anthropic Claude, OpenAI GPT-5.5/GPT-5.4 family, Qwen, OpenRouter | Remote providers for reason/orchestrate slots and sessions where local capacity is insufficient. |
 
 ---
@@ -18,7 +18,8 @@ Merlin runs across three distinct LLM pools. Each has a different role.
 |---|---|---|---|
 | DeepSeek V4 Pro | `https://api.deepseek.com/v1` | API key | Reasoning, long context, code, tool calls |
 | DeepSeek V4 Flash | `https://api.deepseek.com/v1` | API key | Fast agentic loops, cheap tool iteration |
-| LM Studio (local) | `http://localhost:1234/v1` | None | Vision tasks, offline, privacy |
+| llama.cpp router mode (local) | `http://localhost:8081/v1` | None | Preferred local general+vision provider; one router-mode server hosts explicit text and vision model IDs |
+| LM Studio (local) | `http://localhost:1234/v1` | None | Reliable local alternative for vision tasks, offline, privacy |
 | mlx_lm.server (local) | configurable, default `http://localhost:8080/v1` | None | LoRA-adapted model inference on M4 Mac |
 
 ---

@@ -10,9 +10,9 @@ Merlin version: v2.2.5
 
 | Feature | Notes |
 |---|---|
-| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal — API key only, no subscription lock-in. Claude Code is Anthropic-only; no local model support beyond a limited Ollama workaround |
-| **Local model support (full)** | LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal with zero API cost; model picker switches provider per session |
-| **Local vision model** | LM Studio + Qwen2.5-VL for on-device screenshot analysis — no cloud dependency |
+| **Multi-provider + bring-your-own model** | Anthropic, DeepSeek, OpenAI, Qwen, OpenRouter, llama.cpp router mode, LM Studio, Jan.ai, and other local runtimes — API key only, no subscription lock-in. llama.cpp router mode is preferred locally; LM Studio and Jan.ai are reliable alternatives. Claude Code is Anthropic-only; no local model support beyond a limited Ollama workaround |
+| **Local model support (full)** | llama.cpp router mode with zero API cost is preferred; LM Studio and Jan.ai are reliable alternatives; model picker switches provider per session |
+| **Local vision model** | llama.cpp router mode + Qwen3-VL GGUF/mmproj for on-device screenshot analysis — no cloud dependency |
 | **Auth sandbox + pattern memory** | Per-tool glob ACL with an interactive Allow/Deny popup (Allow Once / Allow Always / Deny Once / Deny Always) and persistent allow/deny patterns per tool. Claude Code uses a classifier (auto mode) and static allowlists — no per-turn interactive popup or per-tool glob pattern memory |
 | **Accessibility tree inspection** | Full AX API integration for reading live UI state; finds, reads, and interacts with AX elements — Claude Code has no AX equivalent |
 | **CGEvent mouse/keyboard automation** | Synthesizes low-level input events; works in terminal apps; no screen recording permission needed; fully on-device |

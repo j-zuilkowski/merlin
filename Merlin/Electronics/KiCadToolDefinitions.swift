@@ -131,11 +131,14 @@ enum KiCadToolDefinitions {
             name: "kicad_route_pass",
             description: "Run one FreeRouting-backed route iteration via KiCad DSN/SES interchange",
             properties: [
-                "project_path": .string("KiCad project path"),
-                "router_profile_json": .string("JSON encoded router profile"),
-                "iteration": .integer("Route iteration number"),
+                "job_id": .string("Stable electronics job id"),
+                "board_path": .string("Absolute path to the KiCad board file"),
+                "dsn_path": .string("Absolute path for the Specctra DSN interchange file"),
+                "ses_path": .string("Absolute path for the routed Specctra SES result"),
+                "log_path": .string("Absolute path for the route log"),
+                "max_iterations": .integer("Maximum FreeRouting iterations"),
             ],
-            required: ["project_path", "router_profile_json", "iteration"]
+            required: ["job_id", "board_path", "dsn_path", "ses_path", "log_path"]
         ),
         tool(
             name: "kicad_check_connectivity",

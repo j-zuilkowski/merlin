@@ -2,7 +2,7 @@
 
 ## Overview
 
-Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (LM Studio, Ollama, Jan.ai, LocalAI, Mistral.rs, vLLM-Metal, llama.cpp) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
+Merlin is a personal, non-distributed agentic development assistant for macOS. It connects to multiple LLM providers — remote (DeepSeek, OpenAI, Anthropic, Qwen, OpenRouter) and local (llama.cpp router mode preferred; LM Studio and Jan.ai reliable alternatives; Ollama, LocalAI, Mistral.rs, and vLLM-Metal configurable but not currently recommended for the full local surface) — exposes a rich tool registry covering file system, shell, Xcode, and GUI automation, and presents a SwiftUI chat interface.
 
 ## Spec-Driven Development Methodology
 
@@ -53,7 +53,8 @@ code is written.
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
 **[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `task`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
-**[v2.3]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only.
+**[v2.3.0]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; preferred local provider for Merlin's general+vision workflow; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only. **Shipped v2.3.0** (build 25, tag `v2.3.0`).
+**[v2.4]** Full green E2E release gate: the complete Merlin proving run is a blocking acceptance surface, not a screenshot exercise. Core tests, GUI runner bootstrapping, focused visual tests, live DeepSeek execution, local-provider pair smokes, xcalibre RAG readiness, S1/S2 capability convergence, and electronics/KiCad checks must all pass or produce explicit environment skips for missing provider keys only. GitHub feature screenshots are deferred until this battery is green.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -238,7 +239,7 @@ Three LLM pool wiring:
 
   execute slot ──────→ mlx_lm.server (LoRA adapter, M4 Mac local)
   reason/critic slot → external API provider (base model, unmodified)
-  vision slot ───────→ Qwen2.5-VL-72B via LM Studio (M4 Mac local)
+  vision slot ───────→ Qwen3-VL via llama.cpp router mode (M4 Mac local)
   RAG embed/search ──→ nomic-embed-text + phi-3-mini (Windows RTX 2070)
 ```
 
@@ -366,6 +367,9 @@ Every supported local provider has a different mechanism for changing load-time 
 Router/load-unload capability flags default to `false` so existing provider managers do not gain accidental behavior. A manager must opt in explicitly before AppState or ProviderRegistry calls runtime load/unload APIs.
 
 ### Capability Matrix
+
+llama.cpp router mode is the preferred local provider for Merlin's full
+general+vision surface. LM Studio and Jan.ai remain reliable alternatives.
 
 | Provider | Runtime Reload | Router Mode | Context Length | GPU Layers | CPU Threads | Flash Attn | KV Cache Type | Rope Base | Batch Size | mmap/mlock |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -603,9 +607,48 @@ First-class support is not complete until all of these pass:
 5. Router `POST /models/load` and `POST /models/unload` are covered by unit tests with mocked URLSession responses.
 6. Single-model fallback returns restart instructions instead of pretending runtime reload is available.
 7. Live smoke test covers text completion, streaming, tool-call prompt shape, vision image request, `/health`, `/v1/models`, and no HTTP 400 responses.
-8. Local-provider docs state the one-local-provider-pair-at-a-time rule: do not run llama.cpp router beside LM Studio/Jan/LocalAI pairs during calibration unless memory pressure has been measured.
+8. Local-provider docs state the one-local-provider-pair-at-a-time rule: do not run llama.cpp router beside LM Studio or Jan pairs during calibration unless memory pressure has been measured.
 
 May 25, 2026 validation status: passed against Homebrew `llama-server` 9290 with one router-mode server on `127.0.0.1:8081`, `Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf`, `Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf`, and `mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf`. `/health`, `/v1/models`, `/models/load`, text completion, streaming, tool-call request shape, and data-URI image request returned HTTP 200.
+
+---
+
+## Full Green E2E Battery [v2.4]
+
+The full E2E battery is the release-quality proof that Merlin can be used end to end as a human would use it. It must exercise the app, the provider stack, live agentic loops, local-provider model pairs, domain tools, and generated evidence. A run only passes when every non-key-gated surface below is green and every temporary service is shut down afterward.
+
+The May 26-27, 2026 shell runner and its harness-specific unit tests are retired. They are archived under `docs/archive/2026-05-27-retired-full-battery-harness/` and are not part of active verification. Until a replacement is designed, this proof is executed as direct operator-driven GUI and targeted command validation; any future automation must be created as a new harness, not by extending the archived runner.
+
+### Required Surfaces
+
+1. Core test target: `MerlinTests` passes after `xcodegen generate`.
+2. GUI test target: the full `MerlinUITests` target boots reliably under the documented supported DerivedData/signing mode.
+3. Focused visual target: `MerlinUITests/VisualLayoutTests` passes in the same supported mode as the full GUI target.
+4. Live agent loop: DeepSeek-backed live agentic tests pass when the required remote key is present.
+5. Local-provider pairs: each configured local provider is started, loaded with its paired text and vision models where supported, smoke-tested, then shut down before the next provider starts.
+6. llama.cpp router: the smoke path must use explicit model IDs for the text and vision requests and must not silently select the router's `default` catalog entry for completion, streaming, tool-call, or image requests.
+7. xcalibre RAG: the live server health, configured Merlin base URL, authenticated search endpoint, and cleanup path are verified.
+8. Capability scenarios: S1 Swift GUI debug and S2 Rust debug must converge by applying fixes until the target verification commands pass.
+9. Electronics/KiCad: the active `plugins/electronics` runtime plugin, KiCad CLI generation, ERC/DRC fixture, and current documentation sweep pass. Archived `merlin-kicad-mcp` material is historical evidence only.
+
+### Failure Semantics
+
+- Missing API keys may skip only the providers that require those keys. Local-provider model incompatibility may be reported separately, but unsupported models must not hide framework, runner, cleanup, or model-selection defects.
+- If the GUI test runner cannot bootstrap under a chosen DerivedData/signing configuration, the verification process must reject that configuration before treating the result as product evidence.
+- S1/S2 live runs must not stop at natural-language diagnosis while verification still fails. Repetition, no-progress loops, or false environment claims are failures unless a documented bounded recovery policy captures the remaining failing command output.
+- Evidence directories must not retain screenshots intended for GitHub before the full battery is green, provider secret material, temporary xcalibre databases, config backups, or orphaned service processes.
+- A passing report must list the exact command, provider, model ID, service port, and cleanup result for each surface above.
+
+### Current Remediation Scope
+
+The May 26, 2026 rerun exposed four non-key-gated defects that block the full green gate:
+
+1. GUI runner bootstrap under the `/tmp/merlin-e2e-derived` no-signing configuration exits before XCTest establishes the automation connection, while focused visual tests pass under default DerivedData.
+2. S1 reaches the live loop timeout with `TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex()` and `TaskStoreTests.testSummaryCountsDoneOnly()` still failing.
+3. S2 leaves `tests::total_does_not_overflow_on_a_large_ledger` failing and can emit a false `cargo not found` diagnosis after `cargo test` has actually run.
+4. `docs/local-provider-configs/smoke-test.sh llamacpp` can select the router's `default` model from `/v1/models`, causing completion/tool-call failures instead of explicitly smoking the configured text and vision model pair.
+
+The old Tasks 386 through 389 targeted the retired full-battery runner and have been archived with it. New work must be specified from direct GUI/operator validation or from a newly designed harness.
 
 ---
 

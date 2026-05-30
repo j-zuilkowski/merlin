@@ -18,15 +18,21 @@ explicit slot assignments, not by selecting a provider from the chat header.
 
 **Local (no API key required)**
 
+Preferred local provider: **llama.cpp router mode**. It is the default
+recommendation for local general+vision operation because a single router-mode
+`llama-server` can expose explicit text and vision model IDs, load/unload them
+through router endpoints, and serve the GGUF + `mmproj` pair through Merlin's
+standard OpenAI-compatible provider path.
+
 | Provider | Status | Notes |
 |---|---|---|
-| LM Studio | Fully supported | Recommended. General + vision pair passed live calibration. |
-| Jan.ai | Fully supported | Recommended. General + vision pair passed live calibration. |
-| LocalAI | Fully supported | Recommended. General + vision pair passed live calibration. |
-| llama.cpp (router mode) | Live smoke validated | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair on May 25, 2026. |
-| Ollama | Not recommended | General model works, but the tested vision model crashes the runner on real image requests. |
-| vLLM-Metal | Not recommended | General model works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
-| Mistral.rs | Currently unusable | The tested Qwen3 MoE GGUF model fails on first inference on Metal. |
+| llama.cpp (router mode) | Preferred reliable | First-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair. |
+| LM Studio | Reliable alternative | General + vision pair passed live calibration. |
+| Jan.ai | Reliable alternative | General + vision pair passed live calibration. |
+| LocalAI | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls`. |
+| Ollama | Non-working for Merlin full surface | General model works, but the tested Qwen3-VL model crashes the runner on real image requests. |
+| vLLM-Metal | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented in the tested `vllm-metal` runtime on Metal. |
+| Mistral.rs | Non-working for tested model | The tested Qwen3 MoE GGUF model fails on first inference on Metal. |
 
 Upstream issue tracking for the malfunctioning local providers is recorded in
 [`docs/local-provider-configs/RESULTS.md`](docs/local-provider-configs/RESULTS.md).
@@ -122,9 +128,12 @@ Local providers expose load-time controls in Settings → Providers. The editor 
 - LocalAI, Mistral.rs, and vLLM-Metal are restart-only and surface a copyable command plus any config snippet they need.
 - LM Studio, Ollama, and Jan.ai now all participate in advisory-driven context auto-resize. Restart-only providers still require the manual restart flow.
 - llama.cpp uses router endpoints (`/models`, `/models/load`, `/models/unload`) when available; single-model `/v1/models` servers fall back to restart guidance using the current `llama-server --models-dir` and `--models-preset` flags.
-- Recommended local providers for full general+vision use are LM Studio, Jan.ai, and LocalAI.
-- Ollama and vLLM-Metal remain available for general-model use, but are not recommended for pair calibration because the tested vision path failed live.
-- Mistral.rs remains listed for completeness, but is currently unusable for the tested Qwen3 MoE model on Apple Metal.
+- Preferred local provider for full general+vision use is llama.cpp router mode.
+- LM Studio and Jan.ai remain reliable alternatives when their model lifecycle is more convenient for a given run.
+- LocalAI remains configurable, but is non-working for Merlin's full expected local surface until OpenAI-compatible tool calls return `tool_calls` instead of plain text.
+- Ollama remains configurable, but is non-working for the full local pair because the tested Qwen3-VL path crashes the runner on real image requests; skip it unless upstream issue tracking shows a fix.
+- vLLM-Metal remains configurable, but should be avoided for the foreseeable future because forced tool choice is unreliable and vision is not implemented on Metal.
+- Mistral.rs remains listed for completeness, but is non-working for the tested Qwen3 MoE model on Apple Metal.
 - The Performance Dashboard automatically detects truncation, critic-score variance, trigram repetition, and context-overflow markers.
 - Each advisory has a one-tap `Fix this` action that routes through the same `applyAdvisory(_:)` path used by the engine.
 
@@ -560,7 +569,7 @@ The trained adapter is served by an **MLX-native runtime**. Three runtimes serve
 |---|---|
 | `mlx_lm.server` | Direct: `--adapter-path <adapter>` on top of the base (default Merlin routing target) |
 | **LM Studio** | Direct: load adapter via the LM Studio UI |
-| **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required, but not recommended for the current general+vision pair workflow |
+| **vLLM-Metal** | `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>` then `vllm serve <merged>` — no GGUF conversion required, but non-working for the current general+vision pair workflow |
 
 GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**, **llama.cpp**) require an additional step: fuse the adapter, then convert to GGUF via `llama.cpp/convert_hf_to_gguf.py`. **Mistral.rs cannot serve Qwen3-MoE on Metal** today regardless of fine-tuning (see Per-Provider Notes below) — fine-tuning targeting Mistral.rs is only useful for non-MoE base models.
 
@@ -584,7 +593,7 @@ GGUF providers (**Ollama**, **Jan.ai**, **LocalAI**, **llama.cpp**) require an a
      `python -m mlx_lm.server --model <base> --adapter-path <adapter> --port 8080`
    - **vLLM-Metal** — fuse first via `mlx_lm.fuse --model <base> --adapter-path <adapter> --save-path <merged>`,
      then `vllm serve <merged> --port 8000 --enable-auto-tool-choice --tool-call-parser qwen3_coder`
-     (text-only use is the safer assumption; not recommended for the current general+vision pair workflow)
+     (text-only use is the safer assumption; non-working for the current general+vision pair workflow)
    - **LM Studio** — load the base + attach the adapter via the LM Studio UI; endpoint `:1234/v1`
    - **Custom** — any other MLX-compatible OpenAI-compat endpoint
 7. Set **Server URL** to match the chosen runtime (the picker pre-fills sensible defaults)

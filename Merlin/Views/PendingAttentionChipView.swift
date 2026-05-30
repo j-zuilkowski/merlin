@@ -6,27 +6,31 @@ struct PendingAttentionChipView: View {
 
     @ObservedObject var viewModel: PendingAttentionViewModel
 
+    @ViewBuilder
     var body: some View {
-        Button {
-            viewModel.isExpanded.toggle()
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(chipColor)
-                Text("\(viewModel.totalCount)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundColor(.primary)
+        if viewModel.totalCount > 0 {
+            Button {
+                viewModel.isExpanded.toggle()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(chipColor)
+                    Text("\(viewModel.totalCount)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color(nsColor: .controlBackgroundColor))
+                )
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(nsColor: .controlBackgroundColor))
-            )
+            .buttonStyle(.plain)
+            .help("Discipline: \(viewModel.totalCount) pending findings")
+            .accessibilityLabel("Pending discipline findings")
+            .accessibilityValue("\(viewModel.totalCount)")
         }
-        .buttonStyle(.plain)
-        .help("Discipline: \(viewModel.totalCount) pending findings")
-        .opacity(viewModel.totalCount == 0 ? 0 : 1)
     }
 
     private var chipColor: Color {

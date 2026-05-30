@@ -67,6 +67,8 @@ final class CriticEngineTests: XCTestCase {
         XCTAssertEqual(commands.count, 2, "cargo project → build + test commands")
         XCTAssertTrue(commands.allSatisfy { $0.command.contains("cargo") })
         XCTAssertTrue(commands.contains { $0.command.contains("cargo test") })
+        XCTAssertTrue(commands.allSatisfy { $0.command.contains("$HOME/.cargo/bin") },
+                      "Cargo verification must work under the app/test host's stripped PATH")
     }
 
     func testAutoDetectSkipsNonCodeTaskType() async {

@@ -65,6 +65,7 @@ private struct ProjectSection: View {
                     Circle()
                         .fill(.purple)
                         .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                     Text(mgr.projectRef.displayName)
                         .font(.caption.weight(.semibold))
                         .lineLimit(1)
@@ -299,6 +300,7 @@ private struct LiveSessionRow: View {
                     Circle()
                         .fill(.purple)
                         .frame(width: 5, height: 5)
+                        .accessibilityHidden(true)
                 }
             }
             Spacer()

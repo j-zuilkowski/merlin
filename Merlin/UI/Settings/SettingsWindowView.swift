@@ -34,16 +34,20 @@ struct SettingsWindowView: View {
     @State private var selectedSection: SettingsSection = .general
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
             List(SettingsSection.allCases, id: \.self, selection: $selectedSection) { section in
                 Label(section.label, systemImage: section.icon)
             }
-            .navigationSplitViewColumnWidth(min: 160, ideal: 180)
-        } detail: {
+            .listStyle(.sidebar)
+            .frame(minWidth: 160, idealWidth: 180, maxWidth: 220)
+
+            Divider()
+
             detailView(for: selectedSection)
+                .id(selectedSection)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .navigationTitle(selectedSection.label)
         }
+        .navigationTitle(selectedSection.label)
         .frame(minWidth: 640, minHeight: 480)
     }
 

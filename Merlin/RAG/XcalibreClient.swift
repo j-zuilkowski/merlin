@@ -163,6 +163,10 @@ actor XcalibreClient {
         self.fetcher = fetcher
     }
 
+    func configuredBaseURLForTesting() -> String {
+        baseURL
+    }
+
     // MARK: - Availability probe
 
     func probe() async {

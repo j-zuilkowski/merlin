@@ -36,6 +36,19 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertTrue(finalText.contains("pong received"))
     }
 
+    func testElectronicsWorkflowToolCallIsExclusiveWithinTurn() {
+        let engine = makeEngine()
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        let selected = engine.authoritativeToolCallNamesForTesting([
+            "tool_discover",
+            ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+            "read_file",
+            "kicad_run_spice",
+        ])
+
+        XCTAssertEqual(selected, [ElectronicsWorkflowRoute.requirementsToPCB.rawValue])
+    }
+
     func testProviderSelectionFlash() async throws {
         let flash = MockProvider(chunks: [.init(delta: .init(content: "ok"), finishReason: "stop")])
         flash.id_ = "deepseek-v4-flash"

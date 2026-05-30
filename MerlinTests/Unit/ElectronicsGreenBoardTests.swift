@@ -56,6 +56,27 @@ final class ElectronicsGreenBoardTests: XCTestCase {
         XCTAssertEqual(report.status, .complete)
     }
 
+    func testCheckedInKiCadFixturePassesRealERCAndDRCWhenCLIAvailable() throws {
+        let kicadCLI = try findKiCadCLIOrSkip()
+        let fixtureRoot = repoURL("merlin-eval/fixtures/electronics/schematic-image/kicad-project")
+        let schematic = fixtureRoot.appendingPathComponent("project.kicad_sch")
+        let board = fixtureRoot.appendingPathComponent("project.kicad_pcb")
+        let output = temporaryDirectory("kicad-green-fixture")
+        let ercReport = output.appendingPathComponent("erc.json")
+        let drcReport = output.appendingPathComponent("drc.json")
+        let gerberDirectory = output.appendingPathComponent("gerbers", isDirectory: true)
+
+        try runKiCad(kicadCLI, ["sch", "erc", schematic.path, "--format", "json", "--output", ercReport.path])
+        try runKiCad(kicadCLI, ["pcb", "drc", board.path, "--format", "json", "--output", drcReport.path])
+        try assertKiCadReportHasNoViolations(drcReport)
+
+        try FileManager.default.createDirectory(at: gerberDirectory, withIntermediateDirectories: true)
+        try runKiCad(kicadCLI, ["pcb", "export", "gerbers", "--output", gerberDirectory.path, board.path])
+        let gerbers = try FileManager.default.contentsOfDirectory(atPath: gerberDirectory.path)
+        XCTAssertTrue(gerbers.contains { $0.contains("Edge_Cuts") || $0.hasSuffix(".gm1") }, gerbers.joined(separator: ", "))
+        XCTAssertTrue(gerbers.contains { $0.hasSuffix(".gtl") || $0.contains("F_Cu") }, gerbers.joined(separator: ", "))
+    }
+
     private func fixturePayload(for tool: String) -> String {
         switch tool {
         case "kicad_check_version":
@@ -86,5 +107,47 @@ final class ElectronicsGreenBoardTests: XCTestCase {
         default:
             return #"{"design_id":"fixture"}"#
         }
+    }
+
+    private func findKiCadCLIOrSkip() throws -> URL {
+        let candidates = [
+            "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
+            "/Applications/KiCad.app/Contents/MacOS/kicad-cli",
+            "/opt/homebrew/bin/kicad-cli",
+            "/usr/local/bin/kicad-cli"
+        ]
+        if let path = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) {
+            return URL(fileURLWithPath: path)
+        }
+        throw XCTSkip("kicad-cli is not installed")
+    }
+
+    private func runKiCad(_ executable: URL, _ arguments: [String]) throws {
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        try process.run()
+        process.waitUntilExit()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        let text = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertEqual(process.terminationStatus, 0, "kicad-cli \(arguments.joined(separator: " ")) failed:\n\(text)")
+    }
+
+    private func assertKiCadReportHasNoViolations(_ reportURL: URL) throws {
+        let data = try Data(contentsOf: reportURL)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let violations = object["violations"] as? [Any] ?? []
+        let unconnected = object["unconnected_items"] as? [Any] ?? []
+        XCTAssertTrue(
+            violations.isEmpty,
+            "Expected zero DRC violations in \(reportURL.path): \(String(data: data, encoding: .utf8) ?? "")"
+        )
+        XCTAssertTrue(
+            unconnected.isEmpty,
+            "Expected zero unconnected DRC items in \(reportURL.path): \(String(data: data, encoding: .utf8) ?? "")"
+        )
     }
 }

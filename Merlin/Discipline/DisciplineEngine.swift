@@ -100,25 +100,7 @@ actor DisciplineEngine {
             var findings: [Finding] = []
             let now = Date()
 
-            // Convert drift findings to queue findings. Surface red (absent),
-            // yellow (signature-drift) and orange (undeclared) drift — all as nudges.
-            // Task drift is advisory: a symbol declared many  tasks ago and since
-            // refactored is normal evolution, not a commit-blocker. green = no-op.
-            for d in drift where d.severity == .red
-                || d.severity == .yellow || d.severity == .orange {
-                let f = Finding(
-                    id: UUID(),
-                    category: .taskDrift,
-                    severity: .nudge,
-                    summary: d.surface,
-                    detail: d.evidence,
-                    suggestedAction: d.suggestedAction,
-                    createdAt: now,
-                    lastSeenAt: now
-                )
-                await queue.add(f)
-                findings.append(f)
-            }
+            await appendDriftFindings(from: drift, to: &findings, now: now)
 
             // Coverage gaps.
             for gap in gaps {
@@ -299,6 +281,30 @@ actor DisciplineEngine {
     func pendingAttention(projectPath: String) async -> [Finding] {
         _ = projectPath
         return await queue.top(n: 50)
+    }
+
+    private func appendDriftFindings(
+        from drift: [DriftFinding],
+        to findings: inout [Finding],
+        now: Date
+    ) async {
+        // Surface red (absent), yellow (signature-drift), and orange (undeclared)
+        // drift as advisory nudges. Green drift is already satisfied.
+        for d in drift where d.severity == .red
+            || d.severity == .yellow || d.severity == .orange {
+            let f = Finding(
+                id: UUID(),
+                category: .taskDrift,
+                severity: .nudge,
+                summary: d.surface,
+                detail: d.evidence,
+                suggestedAction: d.suggestedAction,
+                createdAt: now,
+                lastSeenAt: now
+            )
+            await queue.add(f)
+            findings.append(f)
+        }
     }
 
     /// The full count of queued findings (the chip badge total, uncapped).

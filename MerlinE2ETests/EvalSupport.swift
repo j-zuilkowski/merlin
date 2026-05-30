@@ -79,6 +79,7 @@ enum EvalShell {
 /// part of the suite is started by hand.
 final class EvalService {
     private let process = Process()
+    private var logHandle: FileHandle?
     let label: String
 
     init(label: String) { self.label = label }
@@ -86,15 +87,24 @@ final class EvalService {
     /// Launches `executable` (a *built binary*, not a `cargo run` wrapper, so
     /// `terminate()` kills the real server rather than a parent shell).
     func launch(executable: String, args: [String] = [],
-                cwd: String, env: [String: String] = [:]) throws {
+                cwd: String, env: [String: String] = [:],
+                logPath: String? = nil) throws {
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = args
         process.currentDirectoryURL = URL(fileURLWithPath: cwd)
         var merged = ProcessInfo.processInfo.environment
         for (k, v) in env { merged[k] = v }
         process.environment = merged
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
+        if let logPath {
+            FileManager.default.createFile(atPath: logPath, contents: nil)
+            let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: logPath))
+            logHandle = handle
+            process.standardOutput = handle
+            process.standardError = handle
+        } else {
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+        }
         try process.run()
     }
 
@@ -114,7 +124,16 @@ final class EvalService {
     func terminate() {
         guard process.isRunning else { return }
         process.terminate()
+        let deadline = Date().addingTimeInterval(10)
+        while process.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        if process.isRunning {
+            kill(process.processIdentifier, SIGKILL)
+        }
         process.waitUntilExit()
+        try? logHandle?.close()
+        logHandle = nil
     }
 }
 
@@ -149,14 +168,85 @@ enum EvalLMStudio {
     /// falling back to `orchestrate`. `nil` when LM Studio is not slotted.
     @MainActor
     static func textProvider() -> ProviderConfig? {
-        resolved(slot: .execute, vision: false)
-            ?? resolved(slot: .orchestrate, vision: false)
+        if let provider = resolved(slot: .execute, vision: false)
+            ?? resolved(slot: .orchestrate, vision: false) {
+            return provider
+        }
+        guard var base = providers.first(where: { $0.id == "lmstudio" }) else { return nil }
+        if !base.model.isEmpty && !base.supportsVision {
+            return base
+        }
+        guard let model = installedModelKey(vision: false) else { return nil }
+        base.model = model
+        base.supportsVision = false
+        return base
     }
 
     /// The LM Studio vision model (S6 Part B schematic OCR) - from the `vision` slot.
     @MainActor
     static func visionProvider() -> ProviderConfig? {
-        resolved(slot: .vision, vision: true)
+        if let provider = resolved(slot: .vision, vision: true) {
+            return provider
+        }
+        guard var base = providers.first(where: { $0.id == "lmstudio" }) else { return nil }
+        if !base.model.isEmpty && base.supportsVision {
+            return base
+        }
+        guard let model = installedModelKey(vision: true) else { return nil }
+        base.model = model
+        base.supportsVision = true
+        return base
+    }
+
+    /// Returns an installed LM Studio model by capability when slots are configured
+    /// to remote providers but a focused local-provider scenario still needs LM Studio.
+    static func installedModelKey(vision: Bool) -> String? {
+        guard let output = runLMS(["ls", "--json"]),
+              let object = try? JSONSerialization.jsonObject(with: Data(output.utf8)) else {
+            return nil
+        }
+        let entries = (object as? [[String: Any]])
+            ?? ((object as? [String: Any])?["data"] as? [[String: Any]])
+            ?? []
+        let matching = entries.filter { entry in
+            guard (entry["type"] as? String) == "llm",
+                  let modelKey = entry["modelKey"] as? String,
+                  !modelKey.isEmpty else { return false }
+            return (entry["vision"] as? Bool ?? false) == vision
+        }
+        let preferred = matching.first { $0["trainedForToolUse"] as? Bool == true }
+            ?? matching.first
+        return preferred?["modelKey"] as? String
+    }
+
+    /// Starts LM Studio's OpenAI-compatible server when needed and waits until its
+    /// `/v1/models` endpoint answers. Returns false when the CLI is absent or the
+    /// server never becomes reachable.
+    static func ensureServerRunning(baseURL: String = "http://localhost:1234",
+                                    timeout: TimeInterval = 60) -> Bool {
+        if openAIEndpointAvailable(baseURL: baseURL) {
+            return true
+        }
+        guard runLMS(["server", "start"]) != nil else {
+            return false
+        }
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if openAIEndpointAvailable(baseURL: baseURL) {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        return false
+    }
+
+    private static func openAIEndpointAvailable(baseURL: String) -> Bool {
+        let output = EvalShell.run(
+            "/usr/bin/curl",
+            ["-fsS", "--max-time", "2", "\(baseURL)/v1/models"],
+            cwd: NSTemporaryDirectory(),
+            timeout: 3)
+        return output.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("{")
     }
 
     /// Resolves an LM Studio model id (e.g. `qwen3-coder-next`) to its on-disk model
@@ -393,13 +483,19 @@ enum EvalPrompts {
     it, launch it, and use it the way a user would: add tasks, mark some done, delete \
     one, open the Stats window, click every toolbar button. It has logic and visual \
     defects. Find every defect by exercising the running app, fix each in the source, \
-    rebuild, and re-verify. Report each defect, the fix, and how you confirmed it.
+    rebuild, and re-verify with `xcodegen generate` and `xcodebuild -scheme TaskBoard \
+    test -destination 'platform=macOS' CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO \
+    CODE_SIGNING_ALLOWED=NO` until TaskBoardTests pass. Do not report done while any \
+    TaskBoardTests failure remains. Report each defect, the fix, and how you confirmed it.
     """
     static let s2 = """
     The Rust project at this project path is an expense-ledger library and CLI. Build \
     it, run `cargo test`, exercise the CLI. It has logic, error-handling, and \
     concurrency bugs. Find every defect, fix it, and re-verify until `cargo test` is \
-    green. Report each defect, root cause, fix, and how you confirmed it.
+    green. If `cargo test` executes and reports a failing Rust test, treat that as a \
+    source defect to repair, not as a missing cargo environment. Do not report done \
+    while any cargo test failure remains. Report each defect, root cause, fix, and \
+    how you confirmed it.
     """
     static let s4 = """
     Using the connected knowledge base, answer and cite each: (1) At what pressure does \
@@ -411,8 +507,11 @@ enum EvalPrompts {
     Design a 555-timer astable LED blinker in this project: NE555 (U1), R1 10k, R2 47k, \
     C1 10uF, C2 10nF, R3 330, an LED (D1), 5V supply, standard astable. Create the \
     KiCad schematic, assign footprints, lay out the PCB, route it with FreeRouting, and \
-    run an ngspice simulation confirming the output oscillates. Report the netlist, the \
-    routing result, and the simulated blink frequency vs the ~1.4 Hz target.
+    run an ngspice simulation confirming the output oscillates. Use the first-party \
+    electronics workflow entrypoint `workflow.requirements_to_pcb` as the first tool \
+    call, then use `kicad_*` tools only if additional verification is needed. Do not \
+    call shell or generic file-authoring tools. Report the netlist, the routing result, \
+    and the simulated blink frequency vs the ~1.4 Hz target.
     """
 
     static func s6OCR(imagePath: String) -> String {

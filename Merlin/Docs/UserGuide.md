@@ -45,7 +45,7 @@ When you first open Merlin you will see the **Project Picker**. Click **Open Pro
 
 Before the AI can respond you need a provider API key. Merlin defaults to **DeepSeek**. Go to **Settings → Providers**, find DeepSeek, and paste your API key. Debug/dev-loop builds store provider keys in `~/.merlin/api-keys.json` with owner-only permissions; Release builds store them in macOS Keychain. Merlin's pre-push/release checks and CI block tracked local-only key files so the Debug key file cannot ship as part of the repo.
 
-If you want to use a local model no remote API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 25, 2026, the fully supported local providers are **LM Studio**, **Jan.ai**, **LocalAI**, and **llama.cpp**. llama.cpp is a first-class local provider (`llamacpp`) at `http://localhost:8081/v1`; one router-mode `llama-server` served the local general+vision GGUF pair, including the vision `mmproj`, in live smoke validation. **Ollama** and **vLLM-Metal** remain available but are not recommended because the tested vision path failed live. **Mistral.rs** is currently unusable for the tested Qwen3 MoE model on Apple Metal.
+If you want to use a local model no remote API key is required. Enable the relevant provider in Settings and make sure its server is running. As of May 27, 2026, the preferred local provider is **llama.cpp router mode** (`llamacpp`) at `http://localhost:8081/v1`. Use it first for local general+vision work: one router-mode `llama-server` served the local general+vision GGUF pair, including the vision `mmproj`, in live smoke validation. **LM Studio** and **Jan.ai** remain reliable alternatives. **LocalAI**, **Ollama**, **vLLM-Metal**, and **Mistral.rs** remain configurable, but are not working for Merlin's full expected local surface; check the upstream issue tracking before using them in future test runs.
 
 Upstream issue tracking for the malfunctioning local providers is maintained in
 [`docs/local-provider-configs/RESULTS.md`](../../docs/local-provider-configs/RESULTS.md).
@@ -207,11 +207,11 @@ Available providers:
 | Anthropic | Remote | Requires API key. Supports thinking mode and vision. |
 | Qwen | Remote | Requires API key. |
 | OpenRouter | Remote | Routes to any model via single API key. |
+| llama.cpp | Local | `localhost:8081`. Preferred first-class router-mode provider; one `llama-server` can host the general+vision pair. Runtime load/unload uses router endpoints when available, restart guidance uses the current `--models-dir` / `--models-preset` llama-server flags, and the local Qwen3 Coder + Qwen3-VL pair passed live smoke validation. |
+| LM Studio | Local | `localhost:1234`. Reliable alternative. Supports vision and passed live pair calibration. |
+| Jan.ai | Local | `localhost:1337`. Reliable alternative and passed live pair calibration. |
+| LocalAI | Local | `localhost:8080`. Non-working for Merlin's full expected local surface until tool calls return OpenAI `tool_calls`. |
 | Ollama | Local | `localhost:11434`. Not recommended: general works, but the tested vision model crashed on real image requests. |
-| LM Studio | Local | `localhost:1234`. Fully supported. Supports vision and passed live pair calibration. |
-| Jan.ai | Local | `localhost:1337`. Fully supported and passed live pair calibration. |
-| LocalAI | Local | `localhost:8080`. Fully supported and passed live pair calibration. |
-| llama.cpp | Local | `localhost:8081`. First-class router-mode provider; one `llama-server` can host the general+vision pair. Runtime load/unload uses router endpoints when available, restart guidance uses the current `--models-dir` / `--models-preset` llama-server flags, and the local Qwen3 Coder + Qwen3-VL pair passed live smoke validation on May 25, 2026. |
 | Mistral.rs | Local | `localhost:1235`. Currently unusable for the tested Qwen3 MoE model on Apple Metal. |
 | vLLM-Metal | Local | `localhost:8000`. Not recommended: general works, but vision is not implemented in the tested `vllm-metal` runtime on Metal. |
 | mlx_lm.server | Local | OpenAI-compatible server for LoRA-adapted model inference on Apple Silicon. Configure URL in Settings → LoRA. Used automatically by the execute slot when LoRA Auto-Load is enabled. |

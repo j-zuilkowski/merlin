@@ -123,7 +123,7 @@ final class AppSettings: ObservableObject {
         didSet { syncActiveDomainID(from: activeDomainIDs) }
     }
     @Published var maxPlanRetries: Int = 2
-    @Published var maxLoopIterations: Int = 100
+    @Published var maxLoopIterations: Int = 10
     /// TOML key `critic_enabled`. Default: `true`. Set to false to disable critic entirely.
     @Published var criticEnabled: Bool = true
     /// TOML key `max_critic_retries`. Default: `2`. Max times engine retries after critic fail.
@@ -206,7 +206,7 @@ final class AppSettings: ObservableObject {
         activeDomainID = SoftwareDomain.defaultID
         activeDomainIDs = SoftwareDomain.defaultActiveDomainIDs
         maxPlanRetries = 2
-        maxLoopIterations = 100
+        maxLoopIterations = 10
         criticEnabled = true
         maxCriticRetries = 2
         dpoEnabled = true

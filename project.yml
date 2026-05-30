@@ -13,8 +13,8 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
-    MARKETING_VERSION: "2.2.5"
-    CURRENT_PROJECT_VERSION: 24
+    MARKETING_VERSION: "2.3.0"
+    CURRENT_PROJECT_VERSION: 25
 
 targets:
   Merlin:
@@ -31,7 +31,12 @@ targets:
       # Bundle.main/Builtin and copy the skills to ~/.merlin/skills at launch.
       - path: Merlin/Skills/Builtin
         type: folder
+    resources:
+      - path: plugins/electronics
+        type: folder
     dependencies:
+      - target: MerlinElectronicsPlugin
+        embed: true
       - target: merlin-discipline
         embed: true
         copy:
@@ -48,6 +53,7 @@ targets:
         CODE_SIGN_IDENTITY: Merlin Dev Signing
         ENABLE_HARDENED_RUNTIME: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../Resources"
 
   merlin-discipline:
     type: tool
@@ -69,14 +75,18 @@ targets:
       - plugins/electronics/Sources
     postBuildScripts:
       - name: Copy first-party electronics plugin dylib
+        outputFiles:
+          - $(SRCROOT)/plugins/electronics/libMerlinElectronicsPlugin.dylib
         script: |
           mkdir -p "$SRCROOT/plugins/electronics"
           cp "$BUILT_PRODUCTS_DIR/MerlinElectronicsPlugin.dylib" "$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib"
+          codesign --force --sign - "$SRCROOT/plugins/electronics/libMerlinElectronicsPlugin.dylib"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.merlin.plugins.electronics
         PRODUCT_NAME: MerlinElectronicsPlugin
         MACH_O_TYPE: mh_dylib
+        LD_DYLIB_INSTALL_NAME: "@rpath/MerlinElectronicsPlugin.dylib"
 
   TestTargetApp:
     type: application
@@ -170,6 +180,7 @@ schemes:
   MerlinTests-Live:
     build:
       targets:
+        MerlinElectronicsPlugin: all
         Merlin: all
         MerlinLiveTests: [test]
         MerlinE2ETests: [test]
@@ -179,3 +190,12 @@ schemes:
       targets: [MerlinLiveTests, MerlinE2ETests, MerlinUITests]
       environmentVariables:
         RUN_LIVE_TESTS: "1"
+
+  MerlinUITests:
+    build:
+      targets:
+        MerlinElectronicsPlugin: all
+        Merlin: all
+        MerlinUITests: [test]
+    test:
+      targets: [MerlinUITests]

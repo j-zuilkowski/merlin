@@ -4,7 +4,7 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed; build from source via the steps in [`Requirements.md`](Requirements.md).
 
-**Version 2.2.5** (build 24, tag v2.2.5)
+**Version 2.3.0** (build 25, tag v2.3.0)
 
 ---
 
@@ -18,7 +18,7 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
 
-**Electronics / KiCad Domain** (v2.0) — a full electronics workflow built on `merlin-kicad-mcp`: raster/PDF schematic ingestion, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. High-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
+**Electronics / KiCad Domain** (v2.0) — a full electronics workflow built on the bus-backed `plugins/electronics` runtime plugin: raster/PDF schematic ingestion, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. Evidence-gated completion and high-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
 
 **Multi-Domain Sessions** — each session carries its own active domain IDs. Switching from a software session to an electronics session is instant; the engine, critic, and task-type routing all follow without touching other open sessions.
 
@@ -28,7 +28,7 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Budget-Aware Execution** (v2.1) — every LLM request is sized to the active provider's context window before it is sent. A pre-flight estimator gates each call; working-set caps bound the system prompt, RAG injection, recent turns, and tool-call bursts independently. Oversized work is decomposed into smaller substeps first, with cross-provider routing to a larger-context model only as a last resort.
 
-**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal (after a one-shot `mlx_lm.fuse`, though vLLM-Metal is not recommended for the current general+vision pair workflow). For GGUF providers (Ollama / Jan.ai / LocalAI / llama.cpp), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
+**LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal after a one-shot `mlx_lm.fuse` for text-only experiments, though vLLM-Metal is non-working for the current Merlin general+vision pair workflow and should be avoided for the foreseeable future. For GGUF providers (Ollama / Jan.ai / LocalAI / llama.cpp), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
 
 **Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD task pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and task-file/code sync. Five `/project:*` skills (`init`, `task`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
 
@@ -41,17 +41,22 @@ See [`spec.md`](spec.md) for implementation details and design decisions.
 
 Remote: **Anthropic**, **DeepSeek**, **OpenAI**, **Qwen**, **OpenRouter**
 
-Local provider status (validated live on May 22, 2026):
+Local provider status (validated live on May 27, 2026):
+
+Preferred local provider: **llama.cpp router mode**. Use it first for local
+general+vision work because one router-mode `llama-server` can own the GGUF text
+model, the GGUF vision model, and the vision `mmproj` behind one OpenAI-compatible
+endpoint. LM Studio and Jan.ai remain reliable alternatives.
 
 | Provider | Status | Notes |
 |---|---|---|
-| LM Studio | Fully supported | General + vision pair passed live calibration |
-| Jan.ai | Fully supported | General + vision pair passed live calibration |
-| LocalAI | Fully supported | General + vision pair passed live calibration |
-| llama.cpp (router mode) | Live smoke validated | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local general+vision GGUF pair on May 25, 2026 |
-| Ollama | Not recommended | General passed; vision runtime crashed on real image requests |
-| vLLM-Metal | Not recommended | General passed; vision unsupported in `vllm-metal` on Metal |
-| Mistral.rs | Currently unusable | Your Qwen3 MoE GGUF model loads, then fails on first inference on Metal |
+| llama.cpp (router mode) | Preferred reliable | First-class provider at `http://localhost:8081/v1`; one router-mode server handled the local general+vision GGUF pair |
+| LM Studio | Reliable alternative | General + vision pair passed live calibration |
+| Jan.ai | Reliable alternative | General + vision pair passed live calibration |
+| LocalAI | Non-working for Merlin full surface | Text, streaming, and vision responded, but tool-call requests returned plain content without OpenAI `tool_calls` |
+| Ollama | Non-working for Merlin full surface | Text works, but the tested Qwen3-VL path crashes the runner on real image requests; skip until upstream fixes land |
+| vLLM-Metal | Non-working / avoid | Text and auto tool calls can work, but forced tool choice is unreliable and vision is not implemented on Metal; avoid for the foreseeable future |
+| Mistral.rs | Non-working for tested model | The tested Qwen3 MoE GGUF model loads, then fails on first inference on Apple Metal |
 
 Upstream blocker tracking for the malfunctioning local providers lives in
 [`docs/local-provider-configs/RESULTS.md`](docs/local-provider-configs/RESULTS.md).

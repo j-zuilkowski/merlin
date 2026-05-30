@@ -50,6 +50,32 @@ final class DisciplineEngineTests: XCTestCase {
         _ = findings
     }
 
+    func testMissingMerlinDirectoryResolvesStubAdapterAndKeepsTaskDrift() async throws {
+        let proj = FileManager.default.temporaryDirectory
+            .appendingPathComponent("discipline-no-merlin-\(UUID())")
+        try FileManager.default.createDirectory(at: proj, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: proj.appendingPathComponent("tasks"),
+            withIntermediateDirectories: true)
+        try """
+        # Task 999a
+
+        New surface introduced in task 999a:
+          - `func absentSymbol()` — test surface
+        """.write(
+            to: proj.appendingPathComponent("tasks/task-999a-missing.md"),
+            atomically: true,
+            encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: proj) }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: proj.appendingPathComponent(".merlin").path))
+
+        let adapter = await DisciplineEngine.resolveProjectAdapter(projectPath: proj.path)
+        let drift = await TaskScanner().scan(projectPath: proj.path)
+
+        XCTAssertEqual(adapter.language, "swift")
+        XCTAssertTrue(drift.contains { $0.severity == .red && $0.surface.contains("absentSymbol") })
+    }
+
     // MARK: - dismiss removes finding
 
     func testDismissRemovesFinding() async throws {

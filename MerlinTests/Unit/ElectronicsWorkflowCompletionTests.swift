@@ -27,6 +27,65 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.missingArtifact.rawValue)
     }
 
+    func testRequirementsWorkflowCanSynthesizeCompleteEvidenceFromPromptContract() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let output = temporaryDirectory("requirements-to-pcb")
+        let ngspice = try writeFakeNgspice()
+        let payload = #"{"job_id":"s6","requirements":"555 astable LED blinker","output_directory":"\#(output.path)","high_stakes":false,"ngspice_path":"\#(ngspice.path)"}"#
+
+        let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
+        XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.ok)
+        let report = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsFinalReport.self))
+        XCTAssertEqual(report.status, .complete)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("merlin-board.kicad_pro").path))
+        XCTAssertTrue(report.artifacts.contains { $0.kind == .routingResult })
+        let spice = try XCTUnwrap(report.artifacts.first { $0.kind == .spiceMeasurements })
+        let spiceOutput = try String(contentsOfFile: spice.path, encoding: .utf8)
+        XCTAssertTrue(spiceOutput.contains("frequency"), spiceOutput)
+        XCTAssertEqual(report.gates.first { $0.gate == .simulation }?.status, .pass)
+        XCTAssertTrue(report.gates.allSatisfy { $0.status == .pass })
+    }
+
+    func testRunSpiceRejectsSummaryLogsBeforeInvokingNgspice() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let output = temporaryDirectory("spice-invalid-input")
+        let project = output.appendingPathComponent("project.kicad_pro")
+        let summary = output.appendingPathComponent("spice.log")
+        try "{}".write(to: project, atomically: true, encoding: .utf8)
+        try "555 astable transient simulation\noscillation=pass\n".write(to: summary, atomically: true, encoding: .utf8)
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_run_spice",
+            payload: #"{"project_path":"\#(project.path)","scenario_path":"\#(summary.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.invalidInputQuality.rawValue)
+    }
+
+    func testSynthesizedRequirementsProjectSupportsKiCadERC() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let output = temporaryDirectory("requirements-to-pcb-erc")
+        let project = output.appendingPathComponent("merlin-board.kicad_pro").path
+        let ngspice = try writeFakeNgspice()
+        let payload = #"{"job_id":"s6-erc","requirements":"555 astable LED blinker","output_directory":"\#(output.path)","high_stakes":false,"ngspice_path":"\#(ngspice.path)"}"#
+
+        let workflow = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
+        XCTAssertEqual(workflow.status, WorkspaceMessageResponseStatus.ok)
+
+        let erc = await sendElectronics(
+            runtime,
+            capability: "kicad_run_erc",
+            payload: #"{"project_path":"\#(project)","kicad_cli_path":"\#(try writeFakeKiCadCLI().path)"}"#
+        )
+        XCTAssertEqual(erc.status, WorkspaceMessageResponseStatus.ok, erc.diagnostics.map(\.message).joined(separator: "\n"))
+        XCTAssertFalse(erc.artifacts.isEmpty)
+    }
+
     func testHighStakesWorkflowBlocksWithoutSignoff() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
@@ -44,5 +103,53 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         let response = await sendElectronics(runtime, capability: "kicad_submit_vendor_order", payload: #"{"job_id":"order-1"}"#, scope: .userApprovedIrreversible)
         XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.blocked)
         XCTAssertEqual(response.diagnostics.first?.code, "APPROVAL_REQUIRED")
+    }
+
+    private func writeFakeNgspice() throws -> URL {
+        let directory = temporaryDirectory("fake-ngspice")
+        let executable = directory.appendingPathComponent("ngspice")
+        let script = """
+        #!/bin/sh
+        output=""
+        while [ "$#" -gt 0 ]; do
+          if [ "$1" = "-o" ]; then
+            shift
+            output="$1"
+          fi
+          shift
+        done
+        if [ -z "$output" ]; then
+          exit 2
+        fi
+        mkdir -p "$(dirname "$output")"
+        printf 'frequency = 1.40\\n' > "$output"
+        exit 0
+        """
+        try script.write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+        return executable
+    }
+
+    private func writeFakeKiCadCLI() throws -> URL {
+        let directory = temporaryDirectory("fake-kicad")
+        let executable = directory.appendingPathComponent("kicad-cli")
+        let script = """
+        #!/bin/sh
+        case "$*" in
+          *"--version"*) echo "KiCad Version: 10.0.0"; exit 0 ;;
+        esac
+        while [ "$#" -gt 0 ]; do
+          if [ "$1" = "--output" ]; then
+            shift
+            mkdir -p "$(dirname "$1")"
+            printf '{"status":"pass"}\\n' > "$1"
+          fi
+          shift
+        done
+        exit 0
+        """
+        try script.write(to: executable, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
+        return executable
     }
 }

@@ -15,6 +15,7 @@ struct ContentView: View {
     // tool-log pane; otherwise collapsed by default.
     @State private var showToolPane =
         ProcessInfo.processInfo.arguments.contains("--open-test-project")
+        && ProcessInfo.processInfo.arguments.contains("--accessibility-audit-fixture") == false
     @State private var engineRunning = false
     @State private var activeProviderID = ""
 

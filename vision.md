@@ -9,6 +9,51 @@ upstream of committed design.
 
 ## Active
 
+### Merlin-native web search and page extraction
+
+Merlin needs a free-first web search path, but not a Python service stack and not
+an AGPL code dependency. SearXNG is useful as a concept — metasearch fanout,
+normalization, dedupe, and merged results — but Merlin should not import, port, or
+rewrite SearXNG code. The implementation should be a clean Swift design owned by
+Merlin.
+
+**What:**
+- **Separate search from extraction** — model this as two interfaces:
+  `SearchProvider` finds candidate URLs and snippets; `PageExtractionProvider`
+  fetches and converts selected URLs into readable text/Markdown.
+- **Swift-native metasearch coordinator** — fan out a query to enabled providers,
+  normalize results, canonicalize/dedupe URLs, merge/rank results, and return
+  cited sources with provider diagnostics.
+- **Free/default providers first** — start with providers that do not require a paid
+  managed search stack: DuckDuckGo HTML/lite, Wikipedia API, GitHub Search API,
+  Stack Exchange API, and Hacker News Algolia API.
+- **Optional managed providers** — keep Brave Search, Tavily, and Firecrawl as
+  optional adapters when configured. Brave is the quality general-web fallback;
+  Tavily is the simple managed search/extract path; Firecrawl is the managed
+  crawler/extractor, not the primary search engine.
+- **No SearXNG code import** — avoid AGPL contamination and avoid inheriting the
+  Python/Jinja/WSGI/Docker deployment model. Do not copy engine adapters, parser
+  code, ranking code, templates, or configuration files from SearXNG.
+- **Respect failure modes** — upstream HTML providers can rate-limit, CAPTCHA, or
+  change markup. Provider diagnostics must surface blocked/rate-limited/degraded
+  states instead of returning fake success.
+- **Workspace-aware behavior** — web search should route through the workspace
+  message bus like other tools, inherit workspace/session scope, and expose
+  configuration through Settings without requiring a separate server process.
+
+**Why:** Merlin needs current-web grounding for research, citations, and agentic
+tasks, but the default path should remain local/free and fit the Swift app. A
+small native metasearch layer gives Merlin the useful parts of SearXNG's model
+without a Python service, AGPL obligations, or a large external maintenance burden.
+Separating URL discovery from page extraction keeps Firecrawl/Tavily-style managed
+services optional rather than architectural dependencies.
+
+**Promotion trigger:** promote to `spec.md` when implementing the web-search
+replacement for the current Brave-only path. The first spec should cover provider
+protocols, result schema, ranking/dedupe rules, Settings configuration, message-bus
+tool dispatch, diagnostics, caching/rate limits, and TDD coverage for degraded
+providers.
+
 ### Spec-Driven Development alignment
 
 Merlin's discipline subsystem now uses Spec-Driven Development (SDD) terms directly:

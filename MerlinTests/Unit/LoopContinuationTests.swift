@@ -39,6 +39,12 @@ private final class SpyPlanner: PlannerEngineProtocol, @unchecked Sendable {
     }
 }
 
+private struct PassCritic: CriticEngineProtocol {
+    func evaluate(taskType: DomainTaskType, output: String, context: [Message]) async -> CriticResult {
+        .pass
+    }
+}
+
 // MARK: - Tests
 
 @MainActor
@@ -103,6 +109,75 @@ final class LoopContinuationTests: XCTestCase {
                       "Inject file must open with [CONTINUATION] sentinel")
         XCTAssertTrue(contents.contains("step two"),
                       "Inject file must include the remaining steps")
+    }
+
+    /// A critic pass means the user-visible task is done, even if the initial
+    /// planner created later batches. Those queued continuations must be cleared
+    /// so the engine exits cleanly instead of resubmitting already-complete work.
+    func testCriticPassClearsPendingContinuation() async throws {
+        let provider = MockProvider(responses: [MockLLMResponse.text("All tests pass.")])
+        let engine = makeEngine(provider: provider)
+
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.criticOverride = PassCritic()
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "test"),
+            steps: [
+                PlanStep(description: "step one", successCriteria: "", complexity: .standard),
+                PlanStep(description: "step two", successCriteria: "", complexity: .standard),
+                PlanStep(description: "step three", successCriteria: "", complexity: .standard),
+            ]
+        )
+
+        var notes: [String] = []
+        for await event in engine.send(userMessage: "do many things") {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+        }
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path),
+                       "A passing critic verdict should clear queued continuation injects")
+        XCTAssertTrue(notes.contains { $0.contains("verification passed") },
+                      "Expected an observable note when a passing critic clears queued continuations")
+    }
+
+    /// If the model runs a real verification tool and it passes, the engine should
+    /// be able to stop immediately after critic confirmation. This covers models
+    /// that keep asking for more tools instead of emitting a final no-tool answer.
+    func testVerificationToolPassStopsWithoutFinalAssistantMessage() async throws {
+        let provider = MockProvider(responses: [
+            MockLLMResponse.toolCall(id: "verify", name: "xcode_test", args: #"{"scheme":"TaskBoard"}"#),
+            MockLLMResponse.toolCall(id: "repeat", name: "xcode_test", args: #"{"scheme":"TaskBoard"}"#),
+        ])
+        let engine = makeEngine(provider: provider)
+
+        engine.maxIterationsOverride = 4
+        engine.criticOverride = PassCritic()
+        engine.registerTool("xcode_test") { _ in
+            """
+            Test Suite 'Selected tests' passed.
+                 Executed 5 tests, with 0 failures (0 unexpected)
+            ** TEST SUCCEEDED **
+            """
+        }
+
+        var notes: [String] = []
+        var toolResults: [String] = []
+        for await event in engine.send(userMessage: "fix and verify the project") {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+            if case .toolCallResult(let result) = event {
+                toolResults.append(result.content)
+            }
+        }
+
+        XCTAssertEqual(toolResults.count, 1,
+                       "Engine should stop after the first green verification tool result; notes=\(notes); results=\(toolResults)")
+        XCTAssertTrue(notes.contains { $0.contains("verification passed after tool result") },
+                      "Expected an observable post-tool verification stop note")
     }
 
     /// A plan whose step count fits within the per-turn budget does NOT write a continuation inject.
