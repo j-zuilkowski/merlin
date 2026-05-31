@@ -1217,14 +1217,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     ) -> WorkspaceMessageResponse? {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: artifact.path)),
               let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: data),
-              matrix.decisions.contains(where: { $0.status == .blocked }) else {
+              !matrix.decisions.allSatisfy({ $0.status == .selected && $0.selectedCandidate != nil }) else {
             return nil
         }
         let warning = KiCadWarning(
             code: "COMPONENT_SELECTION_BLOCKED",
-            message: "Component selection has blocked decisions that require catalog evidence or revised constraints.",
+            message: "Component selection has unresolved decisions that require catalog evidence, a concrete part choice, or revised constraints.",
             affectedRefs: affectedRefs(from: request),
-            suggestedAction: "Revise component constraints or provide valid catalog evidence before continuing."
+            suggestedAction: "Resolve every component decision before assigning footprints or compiling KiCad artifacts."
         )
         return WorkspaceMessageResponse(
             requestID: request.id,
@@ -3140,7 +3140,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var candidates: [ComponentCandidate] = []
         var providers: [String] = []
         var sourceKinds: [String] = []
-        let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
+        let localFootprintResolver = selectionComponents.contains {
+            !($0.constraints["selected_footprint"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+            ? localKiCadCatalogProvider(from: object, config: config, context: context)
+            : nil
 
         if let path = object["catalog_candidates_path"] as? String,
            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),

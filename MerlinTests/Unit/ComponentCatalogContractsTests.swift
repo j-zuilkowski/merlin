@@ -191,6 +191,20 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertEqual(roots.footprintRoot.path, footprintRoot.path)
     }
 
+    func testKiCadLibraryRootDiscoveryFindsAppSharedSupportLayout() throws {
+        let root = try temporaryDirectory()
+        let installRoot = root.appendingPathComponent("KiCad.app/Contents/SharedSupport", isDirectory: true)
+        let symbolRoot = installRoot.appendingPathComponent("symbols", isDirectory: true)
+        let footprintRoot = installRoot.appendingPathComponent("footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: footprintRoot, withIntermediateDirectories: true)
+
+        let roots = try XCTUnwrap(KiCadLibraryRootDiscovery().discover(searchRoots: [root]))
+
+        XCTAssertEqual(roots.symbolRoot.path, symbolRoot.path)
+        XCTAssertEqual(roots.footprintRoot.path, footprintRoot.path)
+    }
+
     func testKiCadLibraryRootCacheHonorsTTL() throws {
         let root = try temporaryDirectory()
         let cacheURL = root.appendingPathComponent("root-cache", isDirectory: true)

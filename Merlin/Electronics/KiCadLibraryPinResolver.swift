@@ -95,7 +95,9 @@ struct KiCadLibraryRootDiscovery: Sendable {
         [
             root,
             root.appendingPathComponent("share/kicad", isDirectory: true),
+            root.appendingPathComponent("Contents/SharedSupport", isDirectory: true),
             root.appendingPathComponent("Contents/SharedSupport/kicad", isDirectory: true),
+            root.appendingPathComponent("KiCad.app/Contents/SharedSupport", isDirectory: true),
             root.appendingPathComponent("KiCad.app/Contents/SharedSupport/kicad", isDirectory: true),
         ]
     }

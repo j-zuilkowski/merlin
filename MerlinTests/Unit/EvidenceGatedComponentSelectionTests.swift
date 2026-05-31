@@ -14,7 +14,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)"}"#
         )
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .blocked)
         let matrix = try decodeMatrix(from: response)
         XCTAssertEqual(matrix.decisions.map(\.status), [.requiresVendorResolution])
         XCTAssertNil(matrix.decisions.first?.selectedCandidate)
@@ -54,7 +54,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
         )
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .blocked)
         let matrix = try decodeMatrix(from: response)
         XCTAssertEqual(matrix.decisions.map(\.status), [.ambiguous])
         XCTAssertEqual(matrix.decisions.first?.candidateSet.count, 2)
@@ -140,7 +140,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
         )
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .blocked)
         let matrix = try decodeMatrix(from: response)
         XCTAssertEqual(matrix.decisions.map(\.refdes), ["RFILT1", "CFILT1"])
         XCTAssertEqual(matrix.decisions.map(\.status), [.requiresVendorResolution, .requiresVendorResolution])
