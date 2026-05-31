@@ -38,6 +38,17 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertNil(KiCadRuntimeEvidencePipeline.toolName(forNextAction: "provide_compile_evidence"))
     }
 
+    func test_electronicsPromptRoutesFocusedIntentSlicesAwayFromRequirementsWorkflow() throws {
+        let prompt = try XCTUnwrap(ElectronicsDomain().systemPromptAddendum)
+
+        XCTAssertTrue(prompt.contains("Use `workflow.requirements_to_pcb` only"))
+        XCTAssertTrue(prompt.contains("For focused validation slices"))
+        XCTAssertTrue(prompt.contains("`kicad_build_intent_model`"))
+        XCTAssertTrue(prompt.contains("`kicad_approve_design_intent`"))
+        XCTAssertTrue(prompt.contains("`kicad_generate_circuit_ir`"))
+        XCTAssertTrue(prompt.contains("Do not call `workflow.requirements_to_pcb` for a"))
+    }
+
     func test_orchestratorRunsCircuitIRBeforeComponentSelectionAndCompile() async {
         let executor = FakeKiCadWorkflowExecutor()
         let orchestrator = KiCadWorkflowOrchestrator(executor: executor)

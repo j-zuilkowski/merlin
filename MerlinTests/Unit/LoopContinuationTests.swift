@@ -192,6 +192,48 @@ final class LoopContinuationTests: XCTestCase {
                       "Expected an observable post-tool verification stop note")
     }
 
+    func testRequestedStopBoundaryStopsAfterMatchingToolResult() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            MockLLMResponse.toolCall(id: "ir1", name: "kicad_generate_circuit_ir", args: "{}"),
+            MockLLMResponse.toolCall(id: "ir2", name: "kicad_generate_circuit_ir", args: "{}"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.registerTool("kicad_generate_circuit_ir") { _ in
+            #"{"artifact":{"kind":"circuit_ir","path":"/tmp/amp-circuit-ir.json"}}"#
+        }
+
+        var notes: [String] = []
+        var toolResults: [String] = []
+        for await event in engine.send(
+            userMessage: "Call kicad_generate_circuit_ir, then stop immediately after the Circuit IR artifact exists."
+        ) {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+            if case .toolCallResult(let result) = event {
+                toolResults.append(result.content)
+            }
+        }
+
+        XCTAssertEqual(
+            toolResults.count,
+            1,
+            "Engine must not continue after a successful tool result that satisfies an explicit stop boundary"
+        )
+        XCTAssertTrue(
+            notes.contains { $0.contains("requested stop boundary satisfied") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path))
+    }
+
     /// A plan whose step count fits within the per-turn budget does NOT write a continuation inject.
     func testSmallPlanDoesNotScheduleContinuation() async throws {
         let provider = MockProvider(responses: [MockLLMResponse.text("done")])

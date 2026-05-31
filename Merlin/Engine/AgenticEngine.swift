@@ -1611,6 +1611,19 @@ final class AgenticEngine {
                     ))
                     break turnLoop
                 }
+                if hasSatisfiedRequestedStopBoundary(
+                    originalTask: userMessage,
+                    calls: regularCalls,
+                    results: regularResults
+                ) {
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    continuation.yield(.systemNote(
+                        "[requested stop boundary satisfied after tool result - stopping]"
+                    ))
+                    break turnLoop
+                }
                 if await shouldStopAfterPostToolVerification(
                     calls: regularCalls,
                     results: regularResults,
@@ -2042,7 +2055,8 @@ final class AgenticEngine {
 
         Original task: \(originalTask)
         \(executionInstruction)
-        For requirements-to-PCB work, call the exact tool `workflow.requirements_to_pcb`.
+        For full end-to-end requirements-to-PCB completion work, call the exact tool `workflow.requirements_to_pcb`.
+        For focused DesignIntent approval or Circuit IR slices, use the explicit `kicad_build_intent_model`, `kicad_approve_design_intent`, and `kicad_generate_circuit_ir` tool path instead.
         Do not use app/UI tools for electronics workflow execution; use the electronics workflow or `kicad_*` tools.
         Do not claim a schematic, simulation, fabrication export, or BOM step is complete unless the relevant KiCad/SPICE artifact evidence exists in tool results.
         If this step is already complete, respond with [STEP_ALREADY_DONE] and take no further action.
@@ -2373,6 +2387,78 @@ final class AgenticEngine {
             }
         }
         return false
+    }
+
+    private func hasSatisfiedRequestedStopBoundary(
+        originalTask: String,
+        calls: [ToolCall],
+        results: [ToolResult]
+    ) -> Bool {
+        guard requestedStopBoundaryIsPresent(in: originalTask) else { return false }
+        let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
+        for result in results where !result.isError {
+            guard let call = callsByID[result.toolCallId] else { continue }
+            if requestedStopBoundary(in: originalTask, matchesToolNamed: call.function.name) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func requestedStopBoundaryIsPresent(in task: String) -> Bool {
+        let lower = task.lowercased()
+        return lower.contains("stop after")
+            || lower.contains("stop immediately after")
+            || lower.contains("stop once")
+            || lower.contains("stop when")
+            || lower.contains("stop at")
+    }
+
+    private func requestedStopBoundary(in task: String, matchesToolNamed toolName: String) -> Bool {
+        let lower = task.lowercased()
+        let stopPhrases = ["stop immediately after", "stop after", "stop once", "stop when", "stop at"]
+        let stopWindows = stopPhrases.flatMap { phrase -> [Substring] in
+            var windows: [Substring] = []
+            var searchStart = lower.startIndex
+            while let range = lower.range(of: phrase, range: searchStart..<lower.endIndex) {
+                let end = lower.index(range.lowerBound, offsetBy: 320, limitedBy: lower.endIndex) ?? lower.endIndex
+                windows.append(lower[range.lowerBound..<end])
+                searchStart = range.upperBound
+            }
+            return windows
+        }
+        guard !stopWindows.isEmpty else { return false }
+
+        let aliases = stopBoundaryAliases(for: toolName)
+        return stopWindows.contains { window in
+            aliases.contains { alias in
+                guard alias.count >= 4 else { return false }
+                return window.contains(alias)
+            }
+        }
+    }
+
+    private func stopBoundaryAliases(for toolName: String) -> Set<String> {
+        let lower = toolName.lowercased()
+        let spaced = lower.replacingOccurrences(of: "_", with: " ")
+        var aliases: Set<String> = [lower, spaced]
+
+        let words = spaced
+            .split(separator: " ")
+            .map(String.init)
+            .filter { word in
+                ![
+                    "kicad", "workflow", "generate", "build", "create", "run",
+                    "export", "prepare", "approve", "select", "assign"
+                ].contains(word)
+            }
+        if !words.isEmpty {
+            aliases.insert(words.joined(separator: " "))
+        }
+        if words.count > 1 {
+            aliases.insert(words.suffix(2).joined(separator: " "))
+        }
+        return aliases
     }
 
     private func isCompleteElectronicsWorkflowReport(_ content: String) -> Bool {
