@@ -338,6 +338,59 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.cacheMetadata["source"], "runtime_catalog_providers")
     }
 
+    func testExplicitLiveCatalogProviderWithoutCredentialsBlocksTruthfully() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"]}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertTrue(response.diagnostics.contains { $0.code == "CATALOG_PROVIDER_NOT_CONFIGURED" })
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertTrue(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED") })
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+    }
+
+    func testLiveCatalogCacheCanSelectWithoutCredentialsOnLaterRun() async throws {
+        let root = try temporaryDirectory()
+        let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+        let cachedCandidate = validCandidate(mpn: "RC0603FR-0710KL", category: "resistor")
+        try LiveCatalogQueryCache().write(
+            candidates: [cachedCandidate],
+            rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
+            providerID: "mouser",
+            query: "Device:R",
+            requestURL: URL(string: "https://api.mouser.test/api/v2/search/keyword"),
+            to: cacheDirectory,
+            now: Date()
+        )
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"]}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.cacheMetadata["source"], "live_catalog_cache")
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+    }
+
     func testWorkflowHandoffCarriesArtifactPathsAcrossEvidencePipeline() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)

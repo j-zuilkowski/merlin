@@ -211,6 +211,152 @@ protocol ComponentCatalogProvider: Sendable {
     func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate]
 }
 
+protocol CatalogHTTPTransport: Sendable {
+    func data(for request: URLRequest) async throws -> (Data, URLResponse)
+}
+
+extension URLSession: CatalogHTTPTransport {}
+
+struct LiveCatalogSearchResult: Sendable, Equatable {
+    var candidates: [ComponentCandidate]
+    var rawResponse: Data
+    var requestURL: URL?
+}
+
+protocol LiveCatalogProviderClient: ComponentCatalogProvider {
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult
+}
+
+enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
+    case invalidEndpoint(String)
+    case missingCredential(String)
+    case httpStatus(Int)
+    case missingAccessToken
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidEndpoint(let endpoint):
+            return "Invalid catalog provider endpoint: \(endpoint)"
+        case .missingCredential(let name):
+            return "Missing catalog provider credential: \(name)"
+        case .httpStatus(let status):
+            return "Catalog provider returned HTTP \(status)."
+        case .missingAccessToken:
+            return "Digi-Key token response did not include an access token."
+        }
+    }
+}
+
+struct CatalogSearchQueryBuilder: Sendable {
+    func keyword(for request: ComponentSearchRequest) -> String {
+        let constraints = request.constraints
+        for key in ["manufacturer_part_number", "mpn", "value", "selected_symbol"] {
+            if let value = constraints[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+        }
+        return [request.role, request.refdes]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+}
+
+struct LiveCatalogQueryCacheEntry: Codable, Sendable, Equatable {
+    var generatedAt: Date
+    var providerID: String
+    var query: String
+    var candidates: [ComponentCandidate]
+
+    enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case providerID = "provider_id"
+        case query
+        case candidates
+    }
+}
+
+struct LiveCatalogRawResponseCacheEntry: Codable, Sendable, Equatable {
+    var generatedAt: Date
+    var providerID: String
+    var query: String
+    var requestURL: String?
+    var responseBase64: String
+
+    enum CodingKeys: String, CodingKey {
+        case generatedAt = "generated_at"
+        case providerID = "provider_id"
+        case query
+        case requestURL = "request_url"
+        case responseBase64 = "response_base64"
+    }
+}
+
+struct LiveCatalogQueryCache: Sendable {
+    func key(providerID: String, query: String) -> String {
+        let input = "\(providerID.lowercased())\n\(query.lowercased())"
+        return SHA256.hash(data: Data(input.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    func loadCandidates(
+        providerID: String,
+        query: String,
+        from directory: URL,
+        maxAgeSeconds: Int,
+        now: Date = Date()
+    ) throws -> [ComponentCandidate]? {
+        let entryURL = candidatesURL(providerID: providerID, query: query, directory: directory)
+        guard FileManager.default.fileExists(atPath: entryURL.path) else { return nil }
+        let entry = try JSONDecoder().decode(LiveCatalogQueryCacheEntry.self, from: Data(contentsOf: entryURL))
+        guard maxAgeSeconds <= 0 || now.timeIntervalSince(entry.generatedAt) <= Double(maxAgeSeconds) else {
+            return nil
+        }
+        return entry.candidates
+    }
+
+    func write(
+        candidates: [ComponentCandidate],
+        rawResponse: Data,
+        providerID: String,
+        query: String,
+        requestURL: URL?,
+        to directory: URL,
+        now: Date = Date()
+    ) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
+        let candidateEntry = LiveCatalogQueryCacheEntry(
+            generatedAt: now,
+            providerID: providerID,
+            query: query,
+            candidates: candidates
+        )
+        try encoder.encode(candidateEntry).write(to: candidatesURL(providerID: providerID, query: query, directory: directory))
+
+        let rawEntry = LiveCatalogRawResponseCacheEntry(
+            generatedAt: now,
+            providerID: providerID,
+            query: query,
+            requestURL: requestURL?.absoluteString,
+            responseBase64: rawResponse.base64EncodedString()
+        )
+        try encoder.encode(rawEntry).write(to: rawURL(providerID: providerID, query: query, directory: directory))
+    }
+
+    func candidatesURL(providerID: String, query: String, directory: URL) -> URL {
+        directory.appendingPathComponent("\(providerID.lowercased())-\(key(providerID: providerID, query: query))-candidates.json")
+    }
+
+    func rawURL(providerID: String, query: String, directory: URL) -> URL {
+        directory.appendingPathComponent("\(providerID.lowercased())-\(key(providerID: providerID, query: query))-raw.json")
+    }
+}
+
 struct StaticFixtureCatalogProvider: ComponentCatalogProvider {
     var providerID: String
     var candidates: [ComponentCandidate]
@@ -533,6 +679,195 @@ struct AggregatorCatalogProviderAdapter: Sendable {
             )
         }
     }
+}
+
+struct LiveMouserCatalogProvider: LiveCatalogProviderClient {
+    let providerID = "mouser"
+    var apiKey: String
+    var endpoint: URL
+    var resultLimit: Int
+    var transport: any CatalogHTTPTransport
+    var now: @Sendable () -> Date
+
+    init(
+        apiKey: String,
+        endpoint: URL = URL(string: "https://api.mouser.com/api/v2/search/keyword")!,
+        resultLimit: Int = 10,
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.apiKey = apiKey
+        self.endpoint = endpoint
+        self.resultLimit = resultLimit
+        self.transport = transport
+        self.now = now
+    }
+
+    func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
+        try await searchWithRawResponse(request).candidates
+    }
+
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult {
+        let keyword = CatalogSearchQueryBuilder().keyword(for: request)
+        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        var queryItems = components?.queryItems ?? []
+        queryItems.append(URLQueryItem(name: "apiKey", value: apiKey))
+        components?.queryItems = queryItems
+        guard let url = components?.url else {
+            throw LiveCatalogProviderError.invalidEndpoint(endpoint.absoluteString)
+        }
+
+        var urlRequest = URLRequest(url: url, timeoutInterval: 20)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+            "SearchByKeywordRequest": [
+                "keyword": keyword,
+                "records": resultLimit,
+                "startingRecord": 0,
+                "searchOptions": "InStock",
+                "searchWithYourSignUpLanguage": "en",
+            ],
+        ])
+
+        let (data, response) = try await transport.data(for: urlRequest)
+        try validate(response: response)
+        let retrievedAt = ISO8601DateFormatter().string(from: now())
+        let candidates = try MouserCatalogProviderAdapter()
+            .mapRecordedResponse(data)
+            .map { liveAnnotated($0, retrievedAt: retrievedAt, cachePolicy: "live_api") }
+        return LiveCatalogSearchResult(candidates: candidates, rawResponse: data, requestURL: url)
+    }
+
+    private func validate(response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard (200...299).contains(http.statusCode) else {
+            throw LiveCatalogProviderError.httpStatus(http.statusCode)
+        }
+    }
+}
+
+struct LiveDigiKeyCatalogProvider: LiveCatalogProviderClient {
+    let providerID = "digikey"
+    var clientID: String
+    var clientSecret: String?
+    var accessToken: String?
+    var searchEndpoint: URL
+    var tokenEndpoint: URL
+    var resultLimit: Int
+    var transport: any CatalogHTTPTransport
+    var now: @Sendable () -> Date
+
+    init(
+        clientID: String,
+        clientSecret: String? = nil,
+        accessToken: String? = nil,
+        searchEndpoint: URL = URL(string: "https://api.digikey.com/products/v4/search/keyword")!,
+        tokenEndpoint: URL = URL(string: "https://api.digikey.com/v1/oauth2/token")!,
+        resultLimit: Int = 10,
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.clientID = clientID
+        self.clientSecret = clientSecret
+        self.accessToken = accessToken
+        self.searchEndpoint = searchEndpoint
+        self.tokenEndpoint = tokenEndpoint
+        self.resultLimit = resultLimit
+        self.transport = transport
+        self.now = now
+    }
+
+    func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
+        try await searchWithRawResponse(request).candidates
+    }
+
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult {
+        let token = try await resolvedAccessToken()
+        let keyword = CatalogSearchQueryBuilder().keyword(for: request)
+        var urlRequest = URLRequest(url: searchEndpoint, timeoutInterval: 20)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue(clientID, forHTTPHeaderField: "X-DIGIKEY-Client-Id")
+        urlRequest.setValue("en", forHTTPHeaderField: "X-DIGIKEY-Locale-Language")
+        urlRequest.setValue("US", forHTTPHeaderField: "X-DIGIKEY-Locale-Site")
+        urlRequest.setValue("USD", forHTTPHeaderField: "X-DIGIKEY-Locale-Currency")
+        urlRequest.setValue("US", forHTTPHeaderField: "X-DIGIKEY-Locale-ShipTo")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+            "Keywords": keyword,
+            "Limit": resultLimit,
+            "Offset": 0,
+        ])
+
+        let (data, response) = try await transport.data(for: urlRequest)
+        try validate(response: response)
+        let retrievedAt = ISO8601DateFormatter().string(from: now())
+        let candidates = try DigiKeyCatalogProviderAdapter()
+            .mapRecordedResponse(data)
+            .map { liveAnnotated($0, retrievedAt: retrievedAt, cachePolicy: "live_api") }
+        return LiveCatalogSearchResult(candidates: candidates, rawResponse: data, requestURL: searchEndpoint)
+    }
+
+    private func resolvedAccessToken() async throws -> String {
+        if let accessToken, !accessToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return accessToken
+        }
+        guard let clientSecret, !clientSecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LiveCatalogProviderError.missingCredential("DIGIKEY_CLIENT_SECRET")
+        }
+        var request = URLRequest(url: tokenEndpoint, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let body = [
+            "client_id": clientID,
+            "client_secret": clientSecret,
+            "grant_type": "client_credentials",
+        ]
+            .map { "\($0.key)=\(urlFormEscaped($0.value))" }
+            .joined(separator: "&")
+        request.httpBody = Data(body.utf8)
+        let (data, response) = try await transport.data(for: request)
+        try validate(response: response)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = object["access_token"] as? String,
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LiveCatalogProviderError.missingAccessToken
+        }
+        return token
+    }
+
+    private func validate(response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard (200...299).contains(http.statusCode) else {
+            throw LiveCatalogProviderError.httpStatus(http.statusCode)
+        }
+    }
+}
+
+private func liveAnnotated(_ candidate: ComponentCandidate, retrievedAt: String, cachePolicy: String) -> ComponentCandidate {
+    var candidate = candidate
+    candidate.evidence = candidate.evidence.map { evidence in
+        var evidence = evidence
+        evidence.retrievedAt = retrievedAt
+        evidence.cachePolicy = cachePolicy
+        return evidence
+    }
+    candidate.datasheets = candidate.datasheets.map { datasheet in
+        var datasheet = datasheet
+        datasheet.retrievedAt = retrievedAt
+        datasheet.license = cachePolicy
+        return datasheet
+    }
+    return candidate
+}
+
+private func urlFormEscaped(_ value: String) -> String {
+    var allowed = CharacterSet.urlQueryAllowed
+    allowed.remove(charactersIn: "+&=")
+    return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
 }
 
 struct CatalogProviderCredentialPolicy: Sendable, Equatable {

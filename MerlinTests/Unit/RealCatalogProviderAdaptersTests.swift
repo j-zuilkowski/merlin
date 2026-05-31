@@ -73,4 +73,155 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertFalse(RealCatalogLiveTestPolicy(environment: [:]).shouldRunLiveTests)
         XCTAssertTrue(RealCatalogLiveTestPolicy(environment: ["MERLIN_LIVE_CATALOG_TESTS": "1"]).shouldRunLiveTests)
     }
+
+    func testLiveMouserProviderBuildsKeywordRequestAndMapsCachedEvidenceShape() async throws {
+        let response = Data("""
+        {"SearchResults":{"Parts":[{"Manufacturer":"Yageo","ManufacturerPartNumber":"RC0603FR-0710KL","Description":"RES 10K OHM 1% 1/10W 0603","Category":"Resistors","DataSheetUrl":"https://example.invalid/rc0603.pdf","ProductDetailUrl":"https://mouser.example/RC0603","LifecycleStatus":"Active","Availability":"9,000 In Stock","ProductAttributes":[{"AttributeName":"Package / Case","AttributeValue":"0603"},{"AttributeName":"Resistance","AttributeValue":"10 kOhms"}]}]}}
+        """.utf8)
+        let transport = MockCatalogHTTPTransport(responses: [response])
+        let provider = LiveMouserCatalogProvider(
+            apiKey: "test-key",
+            endpoint: URL(string: "https://api.mouser.test/api/v2/search/keyword")!,
+            transport: transport,
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = try await provider.searchWithRawResponse(ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable filter resistor",
+            constraints: ["selected_symbol": "Device:R"],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        let request = try XCTUnwrap(transport.requests.first)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertTrue(try XCTUnwrap(request.url?.absoluteString).contains("apiKey=test-key"))
+        let body = try XCTUnwrap(request.httpBody).utf8String
+        XCTAssertTrue(body.contains("Device:R"))
+        XCTAssertEqual(result.candidates.first?.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_api")
+        XCTAssertEqual(result.rawResponse, response)
+    }
+
+    func testLiveDigiKeyProviderUsesClientCredentialsThenKeywordSearch() async throws {
+        let token = Data(#"{"access_token":"token-123","expires_in":1800}"#.utf8)
+        let search = Data("""
+        {"Products":[{"Manufacturer":{"Name":"onsemi"},"ManufacturerProductNumber":"MJ15003G","ProductDescription":"NPN power transistor","DatasheetUrl":"https://example.invalid/mj15003g.pdf","ProductUrl":"https://digikey.example/MJ15003G","LifecycleStatus":"Active","QuantityAvailable":42,"Parameters":[{"ParameterText":"Package / Case","ValueText":"TO-3"},{"ParameterText":"Power - Max","ValueText":"250 W"}]}]}
+        """.utf8)
+        let transport = MockCatalogHTTPTransport(responses: [token, search])
+        let provider = LiveDigiKeyCatalogProvider(
+            clientID: "client-id",
+            clientSecret: "client-secret",
+            searchEndpoint: URL(string: "https://api.digikey.test/products/v4/search/keyword")!,
+            tokenEndpoint: URL(string: "https://api.digikey.test/v1/oauth2/token")!,
+            transport: transport,
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = try await provider.searchWithRawResponse(ComponentSearchRequest(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: ["manufacturer_part_number": "MJ15003G"],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        XCTAssertEqual(transport.requests.count, 2)
+        let tokenRequest = transport.requests[0]
+        XCTAssertEqual(tokenRequest.httpMethod, "POST")
+        XCTAssertEqual(tokenRequest.value(forHTTPHeaderField: "Content-Type"), "application/x-www-form-urlencoded")
+        XCTAssertTrue(try XCTUnwrap(tokenRequest.httpBody).utf8String.contains("grant_type=client_credentials"))
+
+        let searchRequest = transport.requests[1]
+        XCTAssertEqual(searchRequest.value(forHTTPHeaderField: "Authorization"), "Bearer token-123")
+        XCTAssertEqual(searchRequest.value(forHTTPHeaderField: "X-DIGIKEY-Client-Id"), "client-id")
+        XCTAssertTrue(try XCTUnwrap(searchRequest.httpBody).utf8String.contains("MJ15003G"))
+        XCTAssertEqual(result.candidates.first?.mpn, "MJ15003G")
+        XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_api")
+    }
+
+    func testLiveCatalogQueryCachePersistsNormalizedAndRawProviderResponses() throws {
+        let root = try temporaryDirectory()
+        let cache = LiveCatalogQueryCache()
+        let candidate = ComponentCandidate(
+            mpn: "RC0603FR-0710KL",
+            manufacturer: "Yageo",
+            normalizedCategory: "resistors",
+            value: nil,
+            package: "0603",
+            ratings: ["resistance": "10 kOhms"],
+            lifecycleState: "Active",
+            availabilitySummary: "9,000 In Stock",
+            datasheets: [DatasheetEvidence(manufacturer: "Yageo", mpn: "RC0603FR-0710KL", url: "https://example.invalid/rc0603.pdf", localPath: nil, sha256: nil, providerID: "mouser", retrievedAt: "test", license: "test", citations: [])],
+            evidence: [ComponentEvidence(providerID: "mouser", sourceURL: nil, localPath: nil, retrievedAt: "test", cachePolicy: "live_api", sha256: nil, extractedParameters: ["package": "0603"], confidence: 1.0, warnings: [])],
+            footprintCandidates: []
+        )
+
+        try cache.write(
+            candidates: [candidate],
+            rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
+            providerID: "mouser",
+            query: "Device:R",
+            requestURL: URL(string: "https://api.mouser.test/search"),
+            to: root,
+            now: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let loaded = try cache.loadCandidates(
+            providerID: "mouser",
+            query: "Device:R",
+            from: root,
+            maxAgeSeconds: 60,
+            now: Date(timeIntervalSince1970: 1_030)
+        )
+        XCTAssertEqual(loaded?.first?.mpn, "RC0603FR-0710KL")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cache.rawURL(providerID: "mouser", query: "Device:R", directory: root).path))
+        let stale = try cache.loadCandidates(
+            providerID: "mouser",
+            query: "Device:R",
+            from: root,
+            maxAgeSeconds: 60,
+            now: Date(timeIntervalSince1970: 1_061)
+        )
+        XCTAssertNil(stale)
+    }
+
+    private func temporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merlin-live-catalog-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+}
+
+private final class MockCatalogHTTPTransport: CatalogHTTPTransport, @unchecked Sendable {
+    private(set) var requests: [URLRequest] = []
+    private var responses: [Data]
+
+    init(responses: [Data]) {
+        self.responses = responses
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        requests.append(request)
+        let data = responses.isEmpty ? Data() : responses.removeFirst()
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "https://example.invalid")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (data, response)
+    }
+}
+
+private extension Data {
+    var utf8String: String {
+        String(data: self, encoding: .utf8) ?? ""
+    }
 }

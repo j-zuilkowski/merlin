@@ -1221,7 +1221,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return nil
         }
         let warning = KiCadWarning(
-            code: "COMPONENT_SELECTION_BLOCKED",
+            code: componentSelectionBlockedCode(matrix),
             message: "Component selection has unresolved decisions that require catalog evidence, a concrete part choice, or revised constraints.",
             affectedRefs: affectedRefs(from: request),
             suggestedAction: "Resolve every component decision before assigning footprints or compiling KiCad artifacts."
@@ -1248,6 +1248,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error"),
             ]
         )
+    }
+
+    private func componentSelectionBlockedCode(_ matrix: ComponentMatrix) -> String {
+        matrix.warnings.contains { $0.hasPrefix("CATALOG_PROVIDER_NOT_CONFIGURED") }
+            ? "CATALOG_PROVIDER_NOT_CONFIGURED"
+            : "COMPONENT_SELECTION_BLOCKED"
     }
 
     private func handleFootprintAssignment(
@@ -3012,7 +3018,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let matrix = ComponentMatrix(
             designId: circuitIR?.designId ?? intent.designId,
             decisions: selectionComponents.map { componentSelectionDecision(for: $0, candidates: catalogEvidence.candidates) },
-            warnings: [],
+            warnings: catalogEvidence.warnings,
             providers: catalogEvidence.providers,
             cacheMetadata: componentSelectionCacheMetadata(catalogEvidence: catalogEvidence, circuitIR: circuitIR)
         )
@@ -3044,6 +3050,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var providers: [String]
         var sourceKinds: [String]
         var ttlSeconds: Int?
+        var warnings: [String]
     }
 
     private struct RuntimeCatalogConfig: Codable {
@@ -3057,6 +3064,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var kicadLibraryRootCacheTTLSeconds: Int? = nil
         var kicadCatalogCacheDirectory: String? = nil
         var kicadCatalogCacheTTLSeconds: Int? = nil
+        var liveCatalogProviders: [String]? = nil
+        var liveCatalogResultLimit: Int? = nil
+        var mouserAPIKeyEnv: String? = nil
+        var mouserAPIKeyKeychainID: String? = nil
+        var mouserSearchEndpoint: String? = nil
+        var digikeyClientIDEnv: String? = nil
+        var digikeyClientIDKeychainID: String? = nil
+        var digikeyClientSecretEnv: String? = nil
+        var digikeyClientSecretKeychainID: String? = nil
+        var digikeyAccessTokenEnv: String? = nil
+        var digikeyAccessTokenKeychainID: String? = nil
+        var digikeySearchEndpoint: String? = nil
+        var digikeyTokenEndpoint: String? = nil
 
         enum CodingKeys: String, CodingKey {
             case catalogProviderFixturePaths = "catalog_provider_fixture_paths"
@@ -3069,6 +3089,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case kicadLibraryRootCacheTTLSeconds = "kicad_library_root_cache_ttl_seconds"
             case kicadCatalogCacheDirectory = "kicad_catalog_cache_directory"
             case kicadCatalogCacheTTLSeconds = "kicad_catalog_cache_ttl_seconds"
+            case liveCatalogProviders = "live_catalog_providers"
+            case liveCatalogResultLimit = "live_catalog_result_limit"
+            case mouserAPIKeyEnv = "mouser_api_key_env"
+            case mouserAPIKeyKeychainID = "mouser_api_key_keychain_id"
+            case mouserSearchEndpoint = "mouser_search_endpoint"
+            case digikeyClientIDEnv = "digikey_client_id_env"
+            case digikeyClientIDKeychainID = "digikey_client_id_keychain_id"
+            case digikeyClientSecretEnv = "digikey_client_secret_env"
+            case digikeyClientSecretKeychainID = "digikey_client_secret_keychain_id"
+            case digikeyAccessTokenEnv = "digikey_access_token_env"
+            case digikeyAccessTokenKeychainID = "digikey_access_token_keychain_id"
+            case digikeySearchEndpoint = "digikey_search_endpoint"
+            case digikeyTokenEndpoint = "digikey_token_endpoint"
         }
     }
 
@@ -3140,6 +3173,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var candidates: [ComponentCandidate] = []
         var providers: [String] = []
         var sourceKinds: [String] = []
+        var warnings: [String] = []
         let localFootprintResolver = selectionComponents.contains {
             !($0.constraints["selected_footprint"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
@@ -3192,15 +3226,66 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             }
         }
 
+        let liveProviders = liveCatalogProviderIDs(from: object, config: config)
+        if !liveProviders.isEmpty {
+            let cache = LiveCatalogQueryCache()
+            let cacheDirectory = catalogCacheDirectory(from: config, context: context)
+            let ttlSeconds = catalogCacheTTLSeconds(from: object, config: config)
+            for providerID in liveProviders {
+                for component in selectionComponents {
+                    let searchRequest = liveCatalogSearchRequest(for: component, preferredProviderID: providerID)
+                    let query = CatalogSearchQueryBuilder().keyword(for: searchRequest)
+                    if let cached = try? cache.loadCandidates(
+                        providerID: providerID,
+                        query: query,
+                        from: cacheDirectory,
+                        maxAgeSeconds: ttlSeconds
+                    ) {
+                        for candidate in cached {
+                            candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                        }
+                        providers.append(providerID)
+                        sourceKinds.append("live_catalog_cache")
+                        continue
+                    }
+                    guard let liveProvider = liveCatalogProvider(providerID: providerID, config: config) else {
+                        warnings.append("CATALOG_PROVIDER_NOT_CONFIGURED: \(providerID) credentials are missing and no fresh cache entry exists.")
+                        continue
+                    }
+                    do {
+                        let result = try await liveProvider.searchWithRawResponse(searchRequest)
+                        try? cache.write(
+                            candidates: result.candidates,
+                            rawResponse: result.rawResponse,
+                            providerID: providerID,
+                            query: query,
+                            requestURL: result.requestURL,
+                            to: cacheDirectory
+                        )
+                        for candidate in result.candidates {
+                            candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                        }
+                        providers.append(providerID)
+                        sourceKinds.append("live_catalog_api")
+                    } catch {
+                        warnings.append("CATALOG_PROVIDER_QUERY_FAILED: \(providerID) \(error.localizedDescription)")
+                    }
+                }
+            }
+        }
+
         let uniqueProviders = uniqueRefdes(providers)
         let ttlSeconds = sourceKinds.contains("runtime_catalog_providers")
+            || sourceKinds.contains("live_catalog_api")
+            || sourceKinds.contains("live_catalog_cache")
             ? catalogCacheTTLSeconds(from: object, config: config)
             : nil
         return RuntimeCatalogEvidence(
             candidates: candidates,
             providers: uniqueProviders,
             sourceKinds: uniqueRefdes(sourceKinds),
-            ttlSeconds: ttlSeconds
+            ttlSeconds: ttlSeconds,
+            warnings: uniqueRefdes(warnings)
         )
     }
 
@@ -3241,6 +3326,45 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         if let value = optionalIntValue(object, key: "kicad_catalog_cache_ttl_seconds") {
             config.kicadCatalogCacheTTLSeconds = value
+        }
+        if let value = stringArrayValue(object, key: "live_catalog_providers") {
+            config.liveCatalogProviders = value
+        }
+        if let value = optionalIntValue(object, key: "live_catalog_result_limit") {
+            config.liveCatalogResultLimit = value
+        }
+        if let value = object["mouser_api_key_env"] as? String {
+            config.mouserAPIKeyEnv = value
+        }
+        if let value = object["mouser_api_key_keychain_id"] as? String {
+            config.mouserAPIKeyKeychainID = value
+        }
+        if let value = object["mouser_search_endpoint"] as? String {
+            config.mouserSearchEndpoint = value
+        }
+        if let value = object["digikey_client_id_env"] as? String {
+            config.digikeyClientIDEnv = value
+        }
+        if let value = object["digikey_client_id_keychain_id"] as? String {
+            config.digikeyClientIDKeychainID = value
+        }
+        if let value = object["digikey_client_secret_env"] as? String {
+            config.digikeyClientSecretEnv = value
+        }
+        if let value = object["digikey_client_secret_keychain_id"] as? String {
+            config.digikeyClientSecretKeychainID = value
+        }
+        if let value = object["digikey_access_token_env"] as? String {
+            config.digikeyAccessTokenEnv = value
+        }
+        if let value = object["digikey_access_token_keychain_id"] as? String {
+            config.digikeyAccessTokenKeychainID = value
+        }
+        if let value = object["digikey_search_endpoint"] as? String {
+            config.digikeySearchEndpoint = value
+        }
+        if let value = object["digikey_token_endpoint"] as? String {
+            config.digikeyTokenEndpoint = value
         }
         return config
     }
@@ -3378,6 +3502,136 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func catalogCacheDirectory(from config: RuntimeCatalogConfig, context: WorkspaceHandlerContext) -> URL {
         config.catalogCacheDirectory.map(URL.init(fileURLWithPath:))
             ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+    }
+
+    private func liveCatalogProviderIDs(from object: [String: Any], config: RuntimeCatalogConfig) -> [String] {
+        let explicit = stringArrayValue(object, key: "live_catalog_providers") ?? config.liveCatalogProviders
+        if let explicit {
+            return uniqueRefdes(explicit.map { $0.lowercased() })
+        }
+        var detected: [String] = []
+        if credentialValue(
+            envName: config.mouserAPIKeyEnv,
+            defaultEnvName: "MOUSER_API_KEY",
+            keychainID: config.mouserAPIKeyKeychainID,
+            defaultKeychainID: "electronics.mouser.api_key"
+        ) != nil {
+            detected.append("mouser")
+        }
+        if credentialValue(
+            envName: config.digikeyClientIDEnv,
+            defaultEnvName: "DIGIKEY_CLIENT_ID",
+            keychainID: config.digikeyClientIDKeychainID,
+            defaultKeychainID: "electronics.digikey.client_id"
+        ) != nil,
+           (credentialValue(
+                envName: config.digikeyAccessTokenEnv,
+                defaultEnvName: "DIGIKEY_ACCESS_TOKEN",
+                keychainID: config.digikeyAccessTokenKeychainID,
+                defaultKeychainID: "electronics.digikey.access_token"
+           ) != nil
+           || credentialValue(
+                envName: config.digikeyClientSecretEnv,
+                defaultEnvName: "DIGIKEY_CLIENT_SECRET",
+                keychainID: config.digikeyClientSecretKeychainID,
+                defaultKeychainID: "electronics.digikey.client_secret"
+           ) != nil) {
+            detected.append("digikey")
+        }
+        return detected
+    }
+
+    private func liveCatalogProvider(providerID: String, config: RuntimeCatalogConfig) -> (any LiveCatalogProviderClient)? {
+        let limit = config.liveCatalogResultLimit ?? 10
+        switch providerID.lowercased() {
+        case "mouser":
+            guard let apiKey = credentialValue(
+                envName: config.mouserAPIKeyEnv,
+                defaultEnvName: "MOUSER_API_KEY",
+                keychainID: config.mouserAPIKeyKeychainID,
+                defaultKeychainID: "electronics.mouser.api_key"
+            ) else {
+                return nil
+            }
+            let endpoint = config.mouserSearchEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://api.mouser.com/api/v2/search/keyword")!
+            return LiveMouserCatalogProvider(apiKey: apiKey, endpoint: endpoint, resultLimit: limit)
+        case "digikey", "digi-key":
+            guard let clientID = credentialValue(
+                envName: config.digikeyClientIDEnv,
+                defaultEnvName: "DIGIKEY_CLIENT_ID",
+                keychainID: config.digikeyClientIDKeychainID,
+                defaultKeychainID: "electronics.digikey.client_id"
+            ) else {
+                return nil
+            }
+            let accessToken = credentialValue(
+                envName: config.digikeyAccessTokenEnv,
+                defaultEnvName: "DIGIKEY_ACCESS_TOKEN",
+                keychainID: config.digikeyAccessTokenKeychainID,
+                defaultKeychainID: "electronics.digikey.access_token"
+            )
+            let clientSecret = credentialValue(
+                envName: config.digikeyClientSecretEnv,
+                defaultEnvName: "DIGIKEY_CLIENT_SECRET",
+                keychainID: config.digikeyClientSecretKeychainID,
+                defaultKeychainID: "electronics.digikey.client_secret"
+            )
+            guard accessToken != nil || clientSecret != nil else { return nil }
+            let searchEndpoint = config.digikeySearchEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://api.digikey.com/products/v4/search/keyword")!
+            let tokenEndpoint = config.digikeyTokenEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://api.digikey.com/v1/oauth2/token")!
+            return LiveDigiKeyCatalogProvider(
+                clientID: clientID,
+                clientSecret: clientSecret,
+                accessToken: accessToken,
+                searchEndpoint: searchEndpoint,
+                tokenEndpoint: tokenEndpoint,
+                resultLimit: limit
+            )
+        default:
+            return nil
+        }
+    }
+
+    private func credentialValue(
+        envName: String?,
+        defaultEnvName: String,
+        keychainID: String?,
+        defaultKeychainID: String
+    ) -> String? {
+        for name in [envName, defaultEnvName] {
+            guard let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            if let raw = getenv(name) {
+                let value = String(cString: raw).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty { return value }
+            }
+        }
+        for id in [keychainID, defaultKeychainID] {
+            guard let id, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            if let value = KeychainManager.readAPIKey(for: id)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private func liveCatalogSearchRequest(for component: ComponentIntent, preferredProviderID: String) -> ComponentSearchRequest {
+        var constraints = component.constraints
+        if let mpn = constraints["manufacturer_part_number"], constraints["mpn"] == nil {
+            constraints["mpn"] = mpn
+        }
+        return ComponentSearchRequest(
+            refdes: component.refdes,
+            role: component.role,
+            constraints: constraints,
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: [preferredProviderID],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        )
     }
 
     private func loadProviderCandidateCache(providerID: String, directory: URL, ttlSeconds: Int) throws -> [ComponentCandidate]? {
