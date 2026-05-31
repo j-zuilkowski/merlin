@@ -602,6 +602,35 @@ final class LoopContinuationTests: XCTestCase {
             return false
         }
         XCTAssertTrue(hasWarning, "Expected a near-ceiling ⚠️ system note")
+        XCTAssertFalse(
+            events.contains {
+                if case .systemNote(let note) = $0 { return note.contains("commit all pending work") }
+                return false
+            },
+            "Near-ceiling warning must not tell non-repo domain runs to commit"
+        )
+    }
+
+    func testDefaultNearCeilingWarningDoesNotFireAfterFirstToolCall() async throws {
+        let provider = MockProvider(responses: [
+            MockLLMResponse.toolCall(id: "t1", name: "noop", args: "{}"),
+            MockLLMResponse.text("finished"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.registerTool("noop") { _ in "ok" }
+        engine.maxIterationsOverride = 10
+
+        var notes: [String] = []
+        for await event in engine.send(userMessage: "run a simple domain tool then continue") {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+        }
+
+        XCTAssertFalse(
+            notes.contains { $0.contains("loop iteration(s) remaining") },
+            notes.joined(separator: "\n")
+        )
     }
 
     /// The near-ceiling warning is only emitted once per turn regardless of how many

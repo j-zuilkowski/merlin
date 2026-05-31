@@ -239,14 +239,15 @@ final class AgenticEngine {
     // MARK: - Near-ceiling warning
 
     /// Non-nil while the engine is within nearCeilingThreshold iterations of the ceiling.
-    /// Appended to the system prompt so the LLM knows to commit and wrap up.
+    /// Appended to the system prompt so the LLM knows to wrap up the active turn.
     /// Reset to nil at turn end.
     var nearCeilingWarningAddendum: String?
 
     /// How many iterations from the ceiling triggers the near-ceiling warning.
     /// Exposed as a var so tests can set a larger value when maxIterations is small.
-    /// Default is 8 — gives the LLM enough runway to commit and wrap up complex tasks.
-    var nearCeilingThreshold = 8
+    /// Default is 2 so normal multi-tool domain runs are not nudged into premature
+    /// wrap-up behavior after their first tool call.
+    var nearCeilingThreshold = 2
 
     // Prefix cache — rebuilt only when source properties change.
     // nearCeilingWarningAddendum is excluded because it changes per loop iteration.
@@ -1011,17 +1012,17 @@ final class AgenticEngine {
                 loopCount += 1
 
                 // Warn the LLM (via system prompt addendum + visible note) when
-                // the loop budget is nearly exhausted so it commits and wraps up.
+                // the loop budget is nearly exhausted so it wraps up the active turn.
                 let loopsRemaining = maxIterations - loopCount
                 if loopsRemaining <= nearCeilingThreshold && !nearCeilingEmitted {
                     nearCeilingEmitted = true
                     nearCeilingWarningAddendum = """
                     ⚠️ LOOP BUDGET CRITICAL: You have \(loopsRemaining) iteration(s) remaining \
-                    in this turn. Immediately commit all pending work (git commit), save any \
-                    in-progress files, and wrap up. Do not start new tasks.
+                    in this turn. Finish the current required action, save any in-progress \
+                    files if you changed files, and wrap up. Do not start unrelated tasks.
                     """
                     continuation.yield(.systemNote(
-                        "[⚠️ \(loopsRemaining) loop iteration(s) remaining — commit all pending work now]"
+                        "[⚠️ \(loopsRemaining) loop iteration(s) remaining — finish current action and wrap up]"
                     ))
                 }
 
