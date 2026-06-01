@@ -326,6 +326,53 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("should not summarize"))
     }
 
+    func testBlockedElectronicsWorkflowResultStopsWithoutReadOnlyContinuation() async throws {
+        struct BlockedToolError: Error {}
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "workflow",
+                name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+                args: #"{"requirements":"25W Class A guitar amplifier"}"#
+            ),
+            .toolCall(
+                id: "read-after-block",
+                name: "read_file",
+                args: #"{"path":"/tmp/AmpDemo/spec.md"}"#
+            ),
+            .text("should not continue after blocked workflow"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.registerTool(ElectronicsWorkflowRoute.requirementsToPCB.rawValue) { _ in
+            throw BlockedToolError()
+        }
+        engine.registerTool("read_file") { _ in "spec contents" }
+
+        var cleanStopSummary = ""
+        var toolNames: [String] = []
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .toolCallStarted(let call):
+                toolNames.append(call.function.name)
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertEqual(toolNames, [ElectronicsWorkflowRoute.requirementsToPCB.rawValue])
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow blocked"), cleanStopSummary)
+        XCTAssertTrue(cleanStopSummary.contains(ElectronicsWorkflowRoute.requirementsToPCB.rawValue), cleanStopSummary)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
     func testProviderSelectionFlash() async throws {
         let flash = MockProvider(chunks: [.init(delta: .init(content: "ok"), finishReason: "stop")])
         flash.id_ = "deepseek-v4-flash"

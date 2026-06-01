@@ -1650,6 +1650,17 @@ final class AgenticEngine {
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
                 recordContinuationEvidence(calls: regularCalls, results: regularResults)
+                if let failure = blockingElectronicsToolFailure(calls: regularCalls, results: regularResults) {
+                    finalCriticResult = .fail(reason: failure.content)
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    continuation.yield(.cleanStop(
+                        reason: "electronics workflow blocked",
+                        summary: "Stopped after \(failure.toolName) returned a blocking electronics result. \(failure.content)"
+                    ))
+                    break turnLoop
+                }
                 if hasTerminalElectronicsWorkflowCompletion(calls: regularCalls, results: regularResults) {
                     finalCriticResult = .pass
                     consecutiveCriticFailures = 0
@@ -2277,8 +2288,30 @@ final class AgenticEngine {
         return text.contains("blocked_verification_gate")
             || text.contains("\"status\":\"blocked\"")
             || text.contains("\"status\": \"blocked\"")
-            || text.contains("\"blockedreasons\"")
-            || text.contains("\"blocked_reasons\"")
+            || text.contains("\"blockedreasons\":[\"")
+            || text.contains("\"blockedreasons\": [\"")
+            || text.contains("\"blocked_reasons\":[\"")
+            || text.contains("\"blocked_reasons\": [\"")
+    }
+
+    private func blockingElectronicsToolFailure(
+        calls: [ToolCall],
+        results: [ToolResult]
+    ) -> (toolName: String, content: String)? {
+        guard electronicsWorkflowLockIsActive() else { return nil }
+        let callsByID = Dictionary(uniqueKeysWithValues: calls.map { ($0.id, $0) })
+        for result in results {
+            guard let call = callsByID[result.toolCallId] else { continue }
+            let toolName = call.function.name
+            let rawText = "\(toolName) \(call.function.arguments) \(result.content)"
+            guard electronicsToolResultBlocksContinuation(
+                toolName: toolName,
+                result: result,
+                rawText: rawText
+            ) else { continue }
+            return (toolName, result.content)
+        }
+        return nil
     }
 
     private func evidenceText(_ evidence: ContinuationToolEvidence) -> String {
