@@ -218,6 +218,7 @@ struct KiCadWorkflowOrchestrator {
             }
 
             if isTerminalBlocked(result.status) {
+                handoff.merge(result.handoff)
                 return KiCadWorkflowState(
                     executedSteps: executed,
                     status: result.status,
@@ -239,6 +240,7 @@ struct KiCadWorkflowOrchestrator {
                 handoff.merge(result.handoff)
                 executed.append(.orderSubmit)
             } else {
+                handoff.merge(result.handoff)
                 return KiCadWorkflowState(executedSteps: executed, status: result.status, isPaused: false, pauseReason: nil, handoff: handoff)
             }
         }

@@ -235,6 +235,60 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertFalse(executor.executedSteps.contains(.checks))
         XCTAssertNil(executor.argumentsByStep[.checks])
     }
+
+    func test_validationRepairSliceStopsOnERC_DRCAndSPICEFailuresWithoutDroppingDiagnostics() async {
+        let ercFailure = await runValidationFailureSlice(
+            failingStep: .ercChecks,
+            result: KiCadToolResult(
+                status: .blocked,
+                handoff: KiCadWorkflowHandoff(ercReportPath: "/tmp/failing-erc.json")
+            )
+        )
+        XCTAssertEqual(ercFailure.state.status, .blocked)
+        XCTAssertTrue(ercFailure.executed.contains(.ercChecks))
+        XCTAssertFalse(ercFailure.executed.contains(.checks))
+        XCTAssertEqual(ercFailure.state.handoff?.ercReportPath, "/tmp/failing-erc.json")
+
+        let drcFailure = await runValidationFailureSlice(
+            failingStep: .checks,
+            result: KiCadToolResult(
+                status: .blocked,
+                handoff: KiCadWorkflowHandoff(drcReportPath: "/tmp/failing-drc.json")
+            )
+        )
+        XCTAssertEqual(drcFailure.state.status, .blocked)
+        XCTAssertTrue(drcFailure.executed.contains(.checks))
+        XCTAssertFalse(drcFailure.executed.contains(.simulation))
+        XCTAssertEqual(drcFailure.state.handoff?.drcReportPath, "/tmp/failing-drc.json")
+
+        let spiceFailure = await runValidationFailureSlice(
+            failingStep: .simulation,
+            result: KiCadToolResult(
+                status: .blockedSimulation,
+                handoff: KiCadWorkflowHandoff(spiceMeasurementsPath: "/tmp/failing-spice.log")
+            )
+        )
+        XCTAssertEqual(spiceFailure.state.status, .blockedSimulation)
+        XCTAssertTrue(spiceFailure.executed.contains(.simulation))
+        XCTAssertFalse(spiceFailure.executed.contains(.visualQA))
+        XCTAssertEqual(spiceFailure.state.handoff?.spiceMeasurementsPath, "/tmp/failing-spice.log")
+    }
+
+    private func runValidationFailureSlice(
+        failingStep: KiCadWorkflowStep,
+        result: KiCadToolResult
+    ) async -> (state: KiCadWorkflowState, executed: [KiCadWorkflowStep]) {
+        let executor = FakeKiCadWorkflowExecutor()
+        executor.resultsByStep[failingStep] = result
+        let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
+
+        let state = await orchestrator.run(
+            mode: .requirementsToSchematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: validatedInitialArguments()
+        )
+        return (state, executor.executedSteps)
+    }
 }
 
 private func validatedInitialArguments() -> [String: Any] {
