@@ -839,6 +839,7 @@ final class AgenticEngine {
         }
         var batchPrompt = effectiveMessage
         var currentPlanStep: PlanStep? = nil
+        var electronicsToolInvocationCorrectionCount = 0
 
         // Compute the loop ceiling early so the planner batch-split logic can reference it.
         let maxIterations = max(1, effectiveLoopCeiling(for: classification.complexity))
@@ -1261,6 +1262,46 @@ final class AgenticEngine {
                                 "↩︎ Continuation step already done — remaining steps cancelled."
                             ))
                         }
+                    }
+
+                    if shouldForceElectronicsToolInvocation(
+                        originalTask: userMessage,
+                        responseText: fullText
+                    ) {
+                        if electronicsToolInvocationCorrectionCount < 2 {
+                            electronicsToolInvocationCorrectionCount += 1
+                            let availableTools = availableElectronicsToolNamesForCorrection()
+                            let toolList = availableTools.isEmpty
+                                ? "No electronics tools are currently offered."
+                                : "Available electronics tools: \(availableTools.joined(separator: ", "))."
+                            continuation.yield(.systemNote(
+                                "[electronics workflow guard: read-only/prose response cannot satisfy requested electronics tool boundary]"
+                            ))
+                            context.append(Message(
+                                role: .user,
+                                content: .text("""
+                                [ELECTRONICS_TOOL_REQUIRED] The task is not complete. A read-only inspection or narrative \
+                                blocker is not a real electronics/KiCad tool invocation. \(toolList)
+
+                                Call a real offered electronics tool now. For the first design-intent step, call \
+                                `kicad_build_intent_model` with the requirements/spec artifact path and a board profile. \
+                                Use `workflow.requirements_to_pcb` only for an explicit full end-to-end completion run. \
+                                Do not describe GUI setup, provider setup, or future steps as a substitute for the tool call. \
+                                If no electronics tool is offered, respond exactly `[ELECTRONICS_TOOLS_UNAVAILABLE]`.
+                                """),
+                                timestamp: Date()
+                            ))
+                            continue turnLoop
+                        }
+
+                        continuationAborted = true
+                        pendingContinuationSteps.removeAll()
+                        try? FileManager.default.removeItem(at: continuationInjectURL)
+                        continuation.yield(.cleanStop(
+                            reason: "electronics workflow stalled",
+                            summary: "Stopped because the active electronics workflow produced prose after read-only inspection instead of invoking an offered electronics/KiCad tool."
+                        ))
+                        break turnLoop
                     }
                     // Fire critic when policy allows it. Resolver precedence is:
                     // skill directive -> step directive -> deterministic checks -> heuristic.
@@ -2434,6 +2475,14 @@ final class AgenticEngine {
         }
         guard !stopWindows.isEmpty else { return false }
 
+        if isKiCadTool(toolName),
+           stopWindows.contains(where: { window in
+               (window.contains("kicad") || window.contains("electronics"))
+                   && (window.contains("tool") || window.contains("plugin") || window.contains("invocation"))
+           }) {
+            return true
+        }
+
         let aliases = stopBoundaryAliases(for: toolName)
         return stopWindows.contains { window in
             aliases.contains { alias in
@@ -2464,6 +2513,40 @@ final class AgenticEngine {
             aliases.insert(words.suffix(2).joined(separator: " "))
         }
         return aliases
+    }
+
+    private func shouldForceElectronicsToolInvocation(
+        originalTask: String,
+        responseText: String
+    ) -> Bool {
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID),
+              requestedStopBoundaryIsPresent(in: originalTask),
+              originalTask.lowercased().contains("first"),
+              originalTask.lowercased().contains("tool")
+                || originalTask.lowercased().contains("plugin")
+                || originalTask.lowercased().contains("kicad"),
+              !pendingContinuationEvidence.contains(where: { isKiCadTool($0.toolName) })
+        else { return false }
+
+        let available = availableElectronicsToolNamesForCorrection()
+        guard !available.isEmpty else { return false }
+
+        let lowerResponse = responseText.lowercased()
+        return lowerResponse.contains("cannot")
+            || lowerResponse.contains("blocker")
+            || lowerResponse.contains("would require")
+            || lowerResponse.contains("would occur")
+            || lowerResponse.contains("first actual")
+            || pendingContinuationEvidence.contains { evidence in
+                Self.electronicsReadOnlyInspectionToolNames.contains(evidence.toolName)
+            }
+    }
+
+    private func availableElectronicsToolNamesForCorrection() -> [String] {
+        offeredTools()
+            .map(\.function.name)
+            .filter { isKiCadTool($0) }
+            .sorted()
     }
 
     private func isCompleteElectronicsWorkflowReport(_ content: String) -> Bool {

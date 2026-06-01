@@ -521,7 +521,14 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                 candidate.evidence.contains { ["mouser", "digikey"].contains($0.providerID) }
             }
         })
-        XCTAssertFalse(matrix.decisions.contains { $0.status == .selected })
+        XCTAssertTrue(matrix.decisions.contains { $0.status != .selected })
+        XCTAssertTrue(matrix.decisions.contains { $0.status == .selected })
+        for decision in matrix.decisions where decision.status == .selected {
+            let candidate = try XCTUnwrap(decision.selectedCandidate)
+            XCTAssertFalse(candidate.evidence.isEmpty, "Selected \(decision.refdes) without provider evidence.")
+            XCTAssertFalse(candidate.datasheets.isEmpty, "Selected \(decision.refdes) without datasheet evidence.")
+            XCTAssertFalse(candidate.ratings.isEmpty, "Selected \(decision.refdes) without extracted ratings.")
+        }
         print("AmpDemo live component matrix: \(artifact.url.path)")
     }
 

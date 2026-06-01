@@ -209,6 +209,64 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("should not continue"))
     }
 
+    func testActiveElectronicsReadOnlyNarrativeCannotSatisfyRequestedToolBoundary() async throws {
+        ToolRegistry.shared.registerBuiltins()
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "read",
+                name: "read_file",
+                args: #"{"path":"/tmp/AmpDemo/spec.md"}"#
+            ),
+            .text("""
+            I read the spec. The first actual electronics tool invocation would occur later after GUI setup.
+            Blocker: I cannot invoke electronics tools yet because the workflow requires GUI automation setup.
+            """),
+            .toolCall(
+                id: "intent",
+                name: "kicad_build_intent_model",
+                args: #"{"input_artifact_path":"/tmp/AmpDemo/spec.md","board_profile_id":"amp_low_voltage_audio"}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.registerTool("read_file") { _ in "AmpDemo 25W Class-A amplifier requirements" }
+        engine.registerTool("kicad_build_intent_model") { _ in
+            #"{"status":"draft","artifacts":[{"kind":"design_intent","path":"/tmp/AmpDemo/.merlin/electronics-artifacts/design_intent.json"}]}"#
+        }
+
+        var toolNames: [String] = []
+        var notes: [String] = []
+        var finalText = ""
+        for await event in engine.send(
+            userMessage: "Using the electronics domain, read /tmp/AmpDemo/spec.md, then stop after the first real electronics plugin/KiCad tool invocation is attempted or completed."
+        ) {
+            switch event {
+            case .toolCallStarted(let call):
+                toolNames.append(call.function.name)
+            case .systemNote(let note):
+                notes.append(note)
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(toolNames, ["read_file", "kicad_build_intent_model"])
+        XCTAssertTrue(
+            notes.contains { $0.contains("read-only/prose response cannot satisfy requested electronics tool boundary") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertTrue(
+            notes.contains { $0.contains("requested stop boundary satisfied") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
     func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
