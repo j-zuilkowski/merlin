@@ -183,13 +183,13 @@ final class AgenticEngine {
     private let maxSpawnsPerTask = 8
 
     /// Built-in tools a coding model can use to "fake" domain work — hand-writing a
-    /// domain file, shelling out to a CLI, inspecting unrelated app UI, or delegating
-    /// to context-free subagents instead of calling a connected domain backend's
-    /// tools. When an authoritative domain backend is connected, these are withheld
-    /// from the turn's tool list so the model is forced down the supported, verified
-    /// path. Read-only file inspection stays available so a domain task can still
-    /// load user-authored requirements and project context before calling the domain
-    /// tools. This is what makes S6 (KiCad) deterministic:
+    /// domain file, shelling out to a CLI, inspecting unrelated app UI, opening Xcode,
+    /// or delegating to context-free subagents instead of calling a connected domain
+    /// backend's tools. When an authoritative domain backend is connected, these are
+    /// withheld from the turn's tool list so the model is forced down the supported,
+    /// verified path. Read-only file inspection stays available so a domain task can
+    /// still load user-authored requirements and project context before calling the
+    /// domain tools. This is what makes S6 (KiCad) deterministic:
     /// the 4-bit execute model otherwise non-deterministically writes `.kicad_sch`
     /// by hand — and it reaches for *any* available file/shell tool, so all of them
     /// must go. `bash` and `run_shell` are both shell tools (gating only `run_shell`
@@ -203,6 +203,10 @@ final class AgenticEngine {
         "ui_inspect", "ui_find_element", "ui_get_element_value", "ui_click",
         "ui_double_click", "ui_right_click", "ui_drag", "ui_type", "ui_key",
         "ui_scroll", "ui_screenshot",
+        "xcode_build", "xcode_test", "xcode_clean", "xcode_derived_data_clean",
+        "xcode_open_file", "xcode_xcresult_parse", "xcode_simulator_list",
+        "xcode_simulator_boot", "xcode_simulator_screenshot",
+        "xcode_simulator_install", "xcode_spm_resolve", "xcode_spm_list",
     ]
     /// MCP servers whose tool set fully covers their domain's authoring workflow, so
     /// the generic file/shell tools are redundant and only invite improvisation.
@@ -2495,7 +2499,7 @@ final class AgenticEngine {
     }
 
     private func electronicsWorkflowLockIsActive() -> Bool {
-        activeDomainIDs.contains(ElectronicsDomain.defaultID) && hasAuthoritativeDomainTools()
+        activeDomainIDs.contains(ElectronicsDomain.defaultID)
     }
 
     private func isAllowedDuringElectronicsWorkflowLock(_ toolName: String) -> Bool {
@@ -3365,9 +3369,11 @@ final class AgenticEngine {
         toolRouter.connectedMCPServerNames(activeDomainIDs: activeDomainIDs)
     }
 
-    /// The improvisation tools currently *withheld* from the model — non-empty only
-    /// when an authoritative domain backend is connected. Empty otherwise, so
-    /// non-domain tasks keep the full tool set.
+    /// The improvisation tools currently *withheld* from the model — non-empty when
+    /// an authoritative backend is connected. For active electronics work, the
+    /// stricter workflow lock below withholds all non-inspection/non-KiCad tools even
+    /// when the backend is late or unavailable, so general Xcode/shell/UI tools cannot
+    /// become a false substitute.
     private func gatedImprovisationToolNames() -> Set<String> {
         hasAuthoritativeDomainTools() ? Self.improvisationToolNames : []
     }

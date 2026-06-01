@@ -173,6 +173,42 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("should not continue"))
     }
 
+    func testActiveElectronicsWorkflowLockRejectsXcodeToolWithoutRuntimeTools() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "drift",
+                name: "xcode_spm_list",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo"}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Read the spec, then invoke the first KiCad electronics tool") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("xcode_spm_list"), rejection)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
     func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
