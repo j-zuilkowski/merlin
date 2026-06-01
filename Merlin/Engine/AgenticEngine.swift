@@ -228,6 +228,9 @@ final class AgenticEngine {
 
     private enum ElectronicsContinuationRequirement {
         case requirementsInspection
+        case designIntent
+        case designIntentApproval
+        case circuitIR
         case schematic
         case simulation
         case fabrication
@@ -1538,7 +1541,9 @@ final class AgenticEngine {
                     break turnLoop
                 }
 
-                let calls = authoritativeElectronicsWorkflowCalls(from: modelCalls)
+                let calls = redirectedElectronicsHandoffCalls(
+                    from: authoritativeElectronicsWorkflowCalls(from: modelCalls)
+                )
                 totalToolCallCount += calls.count
 
                 for call in calls {
@@ -1640,6 +1645,27 @@ final class AgenticEngine {
                     continuation: continuation,
                     context: context
                 )
+                if let blockedCalls = electronicsHandoffDriftBlockedCalls(in: regularCalls),
+                   !blockedCalls.isEmpty {
+                    for call in blockedCalls {
+                        let rejection = electronicsHandoffDriftRejection(for: call)
+                        continuation.yield(.toolCallResult(rejection))
+                        context.append(Message(
+                            role: .tool,
+                            content: .text(rejection.content),
+                            toolCallId: call.id,
+                            timestamp: Date()))
+                    }
+                    continuationAborted = true
+                    pendingContinuationSteps.removeAll()
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    let names = blockedCalls.map(\.function.name).joined(separator: ", ")
+                    continuation.yield(.cleanStop(
+                        reason: "electronics workflow handoff drift",
+                        summary: "Stopped because a DesignIntent artifact already exists and the workflow attempted stale handoff call(s): \(names)."
+                    ))
+                    break turnLoop
+                }
                 let regularResults = await dispatchRegularCalls(
                     regularCalls,
                     turn: turn,
@@ -1650,6 +1676,29 @@ final class AgenticEngine {
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
                 recordContinuationEvidence(calls: regularCalls, results: regularResults)
+                if shouldCompleteFocusedElectronicsHandoffSlice() {
+                    finalCriticResult = .pass
+                    consecutiveCriticFailures = 0
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    continuation.yield(.cleanStop(
+                        reason: "focused electronics handoff complete",
+                        summary: "Focused electronics handoff stopped after verified Circuit IR artifact evidence."
+                    ))
+                    break turnLoop
+                }
+                if pendingContinuationUsesEvidenceGate,
+                   activeDomainIDs.contains(ElectronicsDomain.defaultID),
+                   let currentPlanStep,
+                   electronicsStepVerified(currentPlanStep),
+                   !pendingContinuationSteps.isEmpty {
+                    continuation.yield(.systemNote(
+                        "[electronics evidence verified for current step - scheduling next verified continuation]"
+                    ))
+                    schedulePendingContinuation()
+                    break turnLoop
+                }
                 if let failure = blockingElectronicsToolFailure(calls: regularCalls, results: regularResults) {
                     finalCriticResult = .fail(reason: failure.content)
                     pendingContinuationSteps.removeAll()
@@ -2109,6 +2158,7 @@ final class AgenticEngine {
         } else {
             executionInstruction = "Task: \(thisBatch[0].description)"
         }
+        let handoffInstruction = electronicsHandoffInstruction() ?? ""
 
         let message = """
         [CONTINUATION] \(verifiedSummary) Continue from the first unverified electronics step:
@@ -2116,6 +2166,7 @@ final class AgenticEngine {
 
         Original task: \(originalTask)
         \(executionInstruction)
+        \(handoffInstruction)
         For full end-to-end requirements-to-PCB completion work, call the exact tool `workflow.requirements_to_pcb`.
         For focused DesignIntent approval or Circuit IR slices, use the explicit `kicad_build_intent_model`, `kicad_approve_design_intent`, and `kicad_generate_circuit_ir` tool path instead.
         Do not use app/UI tools for electronics workflow execution; use the electronics workflow or `kicad_*` tools.
@@ -2132,6 +2183,22 @@ final class AgenticEngine {
         ])
     }
 
+    private func electronicsHandoffInstruction() -> String? {
+        guard let designIntentPath = latestDesignIntentArtifactPath() else { return nil }
+        let nextTool = nextFocusedElectronicsHandoffToolName()
+        let exactToolInstruction = nextTool.map {
+            """
+            Next required electronics handoff tool: `\($0)`.
+            The next assistant tool call must be exactly `\($0)` with `design_intent_path` set to the existing artifact path. Do not call `read_file`, `list_directory`, or `search_files` at this handoff boundary.
+            """
+        } ?? ""
+        return """
+        Existing DesignIntent artifact: \(designIntentPath)
+        Do not call `kicad_build_intent_model` again for this DesignIntent, and do not reread the original spec as a substitute for the next electronics tool. Call `kicad_approve_design_intent` with `design_intent_path` set to the existing artifact path, or call `kicad_generate_circuit_ir` with that same `design_intent_path` after approval.
+        \(exactToolInstruction)
+        """
+    }
+
     private func shouldEvidenceGateContinuations(for steps: [PlanStep]) -> Bool {
         guard activeDomainIDs.contains(ElectronicsDomain.defaultID) else { return false }
         let text = steps
@@ -2139,9 +2206,11 @@ final class AgenticEngine {
             .joined(separator: " ")
             .lowercased()
         let keywords = [
-            "kicad", "pcb", "schematic", "spice", "simulation", "gerber",
-            "drill", "fabrication", "bom", "bill of materials", "digikey",
-            "digi-key", "mouser"
+            "electronics", "kicad", "pcb", "schematic", "spice", "simulation",
+            "gerber", "drill", "fabrication", "bom", "bill of materials",
+            "digikey", "digi-key", "mouser", "toolchain", "design intent",
+            "designintent", "design-intent", "circuit ir", "circuit_ir",
+            "circuitir"
         ]
         return keywords.contains { text.contains($0) }
     }
@@ -2183,12 +2252,73 @@ final class AgenticEngine {
         return completed
     }
 
+    private func shouldCompleteFocusedElectronicsHandoffSlice() -> Bool {
+        guard pendingContinuationUsesEvidenceGate,
+              activeDomainIDs.contains(ElectronicsDomain.defaultID),
+              pendingContinuationBlockedReason == nil
+        else { return false }
+
+        let planSteps = pendingContinuationAllSteps.isEmpty
+            ? pendingContinuationSteps
+            : pendingContinuationAllSteps
+        guard !planSteps.isEmpty else { return false }
+
+        let requirements = planSteps.map { electronicsRequirement(for: $0) }
+        let hasCircuitIRStep = requirements.contains { requirement in
+            if case .circuitIR = requirement { return true }
+            return false
+        }
+        let hasDownstreamStep = requirements.contains { requirement in
+            switch requirement {
+            case .schematic, .simulation, .fabrication, .bom:
+                return true
+            default:
+                return false
+            }
+        }
+        guard hasCircuitIRStep, !hasDownstreamStep else { return false }
+
+        let verifiedCount = verifiedElectronicsCompletedPrefix(in: planSteps)
+        guard verifiedCount >= planSteps.count else { return false }
+        return electronicsStepVerified(PlanStep(
+            description: "Generate Circuit IR",
+            successCriteria: "Circuit IR artifact exists",
+            complexity: .standard
+        ))
+    }
+
     private func electronicsStepVerified(_ step: PlanStep) -> Bool {
         let requirement = electronicsRequirement(for: step)
         switch requirement {
         case .requirementsInspection:
             return pendingContinuationEvidence.contains { evidence in
                 ["read_file", "list_directory", "search_files"].contains(evidence.toolName)
+            }
+        case .designIntent:
+            return pendingContinuationEvidence.contains { evidence in
+                guard isKiCadTool(evidence.toolName) else { return false }
+                let text = evidenceText(evidence)
+                return designIntentArtifactPath(from: evidence) != nil
+                    || text.contains("design_intent")
+                    || text.contains("designintent")
+            }
+        case .designIntentApproval:
+            return pendingContinuationEvidence.contains { evidence in
+                guard evidence.toolName == "kicad_approve_design_intent" else { return false }
+                let text = evidenceText(evidence)
+                return text.contains("approved")
+                    || text.contains("\"status\":\"ok\"")
+                    || text.contains("\"status\": \"ok\"")
+                    || text.contains("\"approved\":true")
+                    || text.contains("\"approved\": true")
+            }
+        case .circuitIR:
+            return pendingContinuationEvidence.contains { evidence in
+                guard evidence.toolName == "kicad_generate_circuit_ir" else { return false }
+                let text = evidenceText(evidence)
+                return text.contains("circuit_ir")
+                    || text.contains("circuitir")
+                    || text.contains(".json")
             }
         case .schematic:
             return pendingContinuationEvidence.contains { evidence in
@@ -2257,6 +2387,17 @@ final class AgenticEngine {
             || text.contains("fab ") || text.contains("cam") {
             return .fabrication
         }
+        if text.contains("circuit ir") || text.contains("circuit_ir") || text.contains("circuitir") {
+            return .circuitIR
+        }
+        if text.contains("approve")
+            && (text.contains("designintent") || text.contains("design intent") || text.contains("design-intent")) {
+            return .designIntentApproval
+        }
+        if text.contains("designintent") || text.contains("design intent")
+            || text.contains("design-intent") {
+            return .designIntent
+        }
         if text.contains("schematic") || text.contains("kicad") || text.contains("pcb")
             || text.contains("board") || text.contains("footprint") || text.contains("component")
             || text.contains("circuit") || text.contains("design") {
@@ -2320,6 +2461,88 @@ final class AgenticEngine {
 
     private func rawEvidenceText(_ evidence: ContinuationToolEvidence) -> String {
         "\(evidence.toolName) \(evidence.arguments) \(evidence.output)"
+    }
+
+    private func latestDesignIntentArtifactPath() -> String? {
+        for evidence in pendingContinuationEvidence.reversed() {
+            if let path = designIntentArtifactPath(from: evidence) {
+                return path
+            }
+        }
+        return nil
+    }
+
+    private func designIntentArtifactPath(from evidence: ContinuationToolEvidence) -> String? {
+        let rawText = rawEvidenceText(evidence)
+        if let path = designIntentArtifactPath(fromJSONText: evidence.output) {
+            return path
+        }
+        if let path = designIntentArtifactPath(fromJSONText: evidence.arguments) {
+            return path
+        }
+        if rawText.lowercased().contains("design_intent"),
+           let path = extractedPaths(from: rawText).first(where: {
+               $0.lowercased().contains("design_intent") || $0.lowercased().contains("designintent")
+           }) {
+            return path
+        }
+        return nil
+    }
+
+    private func designIntentArtifactPath(fromJSONText text: String) -> String? {
+        guard let data = text.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data)
+        else { return nil }
+        return designIntentArtifactPath(fromJSONObject: json)
+    }
+
+    private func designIntentArtifactPath(fromJSONObject json: Any) -> String? {
+        if let dictionary = json as? [String: Any] {
+            if let direct = dictionary["design_intent_path"] as? String, !direct.isEmpty {
+                return direct
+            }
+            if let direct = dictionary["designIntentPath"] as? String, !direct.isEmpty {
+                return direct
+            }
+            if let artifact = dictionary["artifact"],
+               let path = designIntentArtifactPath(fromArtifactObject: artifact) {
+                return path
+            }
+            if let artifacts = dictionary["artifacts"] as? [Any] {
+                for artifact in artifacts {
+                    if let path = designIntentArtifactPath(fromArtifactObject: artifact) {
+                        return path
+                    }
+                }
+            }
+            for value in dictionary.values {
+                if let path = designIntentArtifactPath(fromJSONObject: value) {
+                    return path
+                }
+            }
+        }
+        if let array = json as? [Any] {
+            for value in array {
+                if let path = designIntentArtifactPath(fromJSONObject: value) {
+                    return path
+                }
+            }
+        }
+        return nil
+    }
+
+    private func designIntentArtifactPath(fromArtifactObject artifact: Any) -> String? {
+        guard let dictionary = artifact as? [String: Any] else { return nil }
+        let kind = (dictionary["kind"] as? String ?? dictionary["type"] as? String ?? "")
+            .lowercased()
+        guard kind.contains("design_intent") || kind.contains("designintent") else { return nil }
+        if let path = dictionary["path"] as? String, !path.isEmpty {
+            return path
+        }
+        if let url = dictionary["url"] as? String, !url.isEmpty {
+            return URL(string: url)?.path ?? url
+        }
+        return nil
     }
 
     private func textContainsVendorBOMEvidence(_ text: String) -> Bool {
@@ -2678,6 +2901,107 @@ final class AgenticEngine {
                 + "Automatic continuation stopped so the workflow cannot advance from narrative drift.",
             isError: true
         )
+    }
+
+    private func electronicsHandoffDriftBlockedCalls(in calls: [ToolCall]) -> [ToolCall]? {
+        guard electronicsWorkflowLockIsActive(),
+              latestDesignIntentArtifactPath() != nil
+        else { return nil }
+        return calls.filter { call in
+            if call.function.name == "kicad_build_intent_model" {
+                return true
+            }
+            guard Self.electronicsReadOnlyInspectionToolNames.contains(call.function.name) else {
+                return false
+            }
+            let input = inputDictionary(from: call.function.arguments)
+            let inspectedText = input.values.joined(separator: " ").lowercased()
+            return inspectedText.contains("spec.md")
+                || inspectedText.contains("/spec")
+                || inspectedText.contains("requirements")
+        }
+    }
+
+    private func electronicsHandoffDriftRejection(for call: ToolCall) -> ToolResult {
+        let designIntentPath = latestDesignIntentArtifactPath() ?? "<existing DesignIntent artifact>"
+        return ToolResult(
+            toolCallId: call.id,
+            content: "`\(call.function.name)` cannot be used for this electronics continuation because "
+                + "a DesignIntent artifact already exists at \(designIntentPath). Do not reread the original "
+                + "spec or rebuild DesignIntent. Continue the verified handoff by calling "
+                + "`kicad_approve_design_intent` with `design_intent_path` set to that path, or "
+                + "`kicad_generate_circuit_ir` with the same `design_intent_path` after approval. "
+                + "Automatic continuation stopped so the workflow cannot falsely advance.",
+            isError: true
+        )
+    }
+
+    private func redirectedElectronicsHandoffCalls(from calls: [ToolCall]) -> [ToolCall] {
+        calls.map { call in
+            redirectedElectronicsHandoffCall(for: call) ?? call
+        }
+    }
+
+    private func redirectedElectronicsHandoffCall(for call: ToolCall) -> ToolCall? {
+        guard electronicsWorkflowLockIsActive(),
+              Self.electronicsReadOnlyInspectionToolNames.contains(call.function.name),
+              let designIntentPath = latestDesignIntentArtifactPath(),
+              let nextToolName = nextFocusedElectronicsHandoffToolName()
+        else { return nil }
+
+        let input = inputDictionary(from: call.function.arguments)
+        let inspectedText = input.values.joined(separator: " ").lowercased()
+        guard inspectedText.contains("spec.md")
+            || inspectedText.contains("/spec")
+            || inspectedText.contains("requirements")
+        else { return nil }
+
+        let argumentsData = try? JSONSerialization.data(
+            withJSONObject: ["design_intent_path": designIntentPath],
+            options: [.sortedKeys]
+        )
+        let arguments = argumentsData.flatMap { String(data: $0, encoding: .utf8) }
+            ?? #"{"design_intent_path":"\#(designIntentPath)"}"#
+        return ToolCall(
+            id: call.id,
+            type: call.type,
+            function: FunctionCall(name: nextToolName, arguments: arguments)
+        )
+    }
+
+    private func nextFocusedElectronicsHandoffToolName() -> String? {
+        let planSteps = pendingContinuationAllSteps.isEmpty
+            ? pendingContinuationSteps
+            : pendingContinuationAllSteps
+        let requirements = planSteps.map { electronicsRequirement(for: $0) }
+
+        let needsApproval = requirements.contains { requirement in
+            if case .designIntentApproval = requirement { return true }
+            return false
+        }
+        if needsApproval,
+           !electronicsStepVerified(PlanStep(
+               description: "Approve DesignIntent",
+               successCriteria: "DesignIntent approved",
+               complexity: .standard
+           )) {
+            return "kicad_approve_design_intent"
+        }
+
+        let needsCircuitIR = requirements.contains { requirement in
+            if case .circuitIR = requirement { return true }
+            return false
+        }
+        if needsCircuitIR,
+           !electronicsStepVerified(PlanStep(
+               description: "Generate Circuit IR",
+               successCriteria: "Circuit IR artifact exists",
+               complexity: .standard
+           )) {
+            return "kicad_generate_circuit_ir"
+        }
+
+        return nil
     }
 
     private func makeCritic(domain: any DomainPlugin) -> any CriticEngineProtocol {

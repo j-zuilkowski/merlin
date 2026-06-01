@@ -3,6 +3,42 @@ import XCTest
 
 @MainActor
 final class DesignIntentApprovalFlowTests: XCTestCase {
+    func testAmpDemoSpecFileBuildsMeaningfulDesignIntent() async throws {
+        let root = try temporaryDirectory()
+        let specURL = root.appendingPathComponent("spec.md")
+        try ampDemoSpecText.write(to: specURL, atomically: true, encoding: .utf8)
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","input_artifact_path":"\#(specURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let requirementText = intent.requirements.map(\.text).joined(separator: " ").lowercased()
+        XCTAssertTrue(requirementText.contains("25 watt") || requirementText.contains("25w"), requirementText)
+        XCTAssertTrue(requirementText.contains("pure class a") || requirementText.contains("class-a"), requirementText)
+        XCTAssertTrue(requirementText.contains("single-ended"), requirementText)
+        XCTAssertTrue(requirementText.contains("guitar"), requirementText)
+        XCTAssertTrue(requirementText.contains("8 ohm"), requirementText)
+        XCTAssertTrue(intent.safetyProfile.isolationRequired)
+        XCTAssertEqual(intent.boards.first?.safetyDomain, "isolated_secondary")
+        XCTAssertTrue(intent.verificationPlan.ercRequired)
+        XCTAssertTrue(intent.verificationPlan.drcRequired)
+        XCTAssertTrue(intent.verificationPlan.spiceRequired)
+        XCTAssertTrue(intent.components.contains { $0.refdes == "QOUT1" && $0.role.contains("Class-A") })
+        XCTAssertTrue(intent.components.contains { $0.refdes == "JSEC" && $0.constraints["mains_primary"] == "off_board" })
+        XCTAssertTrue(intent.components.contains { $0.refdes == "TONE1" && $0.constraints["bands"] == "bass,mid,treble" })
+        XCTAssertTrue(intent.components.contains { $0.refdes == "FILTER1" && $0.role.contains("boost/cut") })
+        XCTAssertTrue(intent.nets.contains { $0.name == "SPK_OUT" && $0.source == "QOUT1" && $0.destination == "JSPK" })
+        XCTAssertGreaterThanOrEqual(intent.components.count, 8)
+        XCTAssertGreaterThanOrEqual(intent.nets.count, 6)
+    }
+
     func testRequirementsDraftDesignIntentWithoutCreatingKiCadFiles() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -120,6 +156,32 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(intent.assumptions.contains { $0.text.contains("thermal") || $0.text.contains("heatsink") })
     }
 
+    func testConstraintAliasPayloadSynthesizesClassATopologyEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"component_policy":"discrete_signal_path","isolation":"transformer_isolated","load_ohms":8,"mains_input":"120VAC_North_American","pcb_scope":"secondary_side_only","power_output_watts":25,"tone_controls":["3_band_bass_mid_treble","sweepable_boost_cut"],"topology":"single_ended_class_a"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"standard_2layer","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        XCTAssertTrue(intent.components.contains { $0.refdes == "QOUT1" && $0.role.contains("Class-A") })
+        XCTAssertTrue(intent.components.contains { $0.refdes == "TONE1" })
+        XCTAssertTrue(intent.components.contains { $0.refdes == "FILTER1" })
+        XCTAssertTrue(intent.nets.contains { $0.name == "SPK_OUT" && $0.source == "QOUT1" && $0.destination == "JSPK" })
+        XCTAssertEqual(intent.boards.first?.safetyDomain, "isolated_secondary")
+        XCTAssertTrue(intent.verificationPlan.ercRequired)
+        XCTAssertTrue(intent.verificationPlan.drcRequired)
+        XCTAssertTrue(intent.verificationPlan.spiceRequired)
+    }
+
     func testComponentSelectionConsumesSynthesizedTopologyEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -213,6 +275,79 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertEqual(response.status, .blocked)
         XCTAssertTrue(response.diagnostics.contains { $0.code == "DESIGN_INTENT_EXPLICIT_APPROVAL_REQUIRED" })
         XCTAssertFalse(response.artifacts.contains { $0.kind == "design_intent" })
+    }
+
+    func testApprovalBlocksEmptyDesignIntentEvenWithExplicitApproval() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(DesignIntent(
+            designId: "empty",
+            title: "Empty shell",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .draft),
+            requirements: [],
+            assumptions: [],
+            components: [],
+            nets: [],
+            boards: [],
+            safetyProfile: SafetyProfile(isolationRequired: false, creepageMm: 0, notes: []),
+            verificationPlan: VerificationPlan()
+        ), root: root)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_approve_design_intent",
+            payload: #"{"design_intent_path":"\#(intentURL.path)","approved":true,"approved_by":"jon"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertTrue(response.diagnostics.contains { $0.code == "BLOCKED_INPUT_QUALITY" })
+        let result = try XCTUnwrap(jsonObject(from: response.payload))
+        let warnings = try XCTUnwrap(result["warnings"] as? [[String: Any]])
+        XCTAssertTrue(warnings.contains { $0["code"] as? String == "DESIGN_INTENT_REQUIREMENTS_MISSING" })
+        XCTAssertTrue(warnings.contains { $0["code"] as? String == "DESIGN_INTENT_COMPONENTS_MISSING" })
+        XCTAssertFalse(response.artifacts.contains { $0.kind == "design_intent" })
+    }
+
+    func testCircuitIRBlocksContradictoryDesignIntentBeforeApprovalHandoff() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(DesignIntent(
+            designId: "contradictory",
+            title: "Contradictory isolated amp",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved),
+            requirements: [
+                Requirement(id: "req-1", text: "Transformer-isolated mains supply for pure Class-A guitar amplifier", priority: "must"),
+            ],
+            assumptions: [],
+            components: [
+                ComponentIntent(refdes: "QOUT1", role: "single-ended Class-A output transistor", constraints: ["component_category": "power_transistor"]),
+            ],
+            nets: [
+                NetIntent(name: "SPK_OUT", role: "speaker output", source: "QOUT1", destination: "JSPK"),
+            ],
+            boards: [
+                BoardIntent(id: "lv", title: "Low voltage board", safetyDomain: "isolated_secondary"),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: false, creepageMm: 0, notes: []),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        ), root: root)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_generate_circuit_ir",
+            payload: #"{"design_intent_path":"\#(intentURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        XCTAssertTrue(response.diagnostics.contains { $0.code == "BLOCKED_INPUT_QUALITY" })
+        let result = try XCTUnwrap(jsonObject(from: response.payload))
+        let warnings = try XCTUnwrap(result["warnings"] as? [[String: Any]])
+        XCTAssertTrue(warnings.contains { $0["code"] as? String == "DESIGN_INTENT_SAFETY_CONTRADICTION" })
+        XCTAssertFalse(response.artifacts.contains { $0.kind == "circuit_ir" })
     }
 
     func testApprovalContinuationProducesApprovedIntentAndEnablesCircuitIR() async throws {
@@ -427,10 +562,57 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         return String(data: data, encoding: .utf8) ?? #""""#
     }
 
+    private func jsonObject(from payload: WorkspaceMessagePayload?) throws -> [String: Any]? {
+        guard let payload else { return nil }
+        return try JSONSerialization.jsonObject(with: payload.data) as? [String: Any]
+    }
+
     private func temporaryDirectory() throws -> URL {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("merlin-design-intent-approval-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+
+    private var ampDemoSpecText: String {
+        """
+        # AmpDemo Specification
+
+        ## Project
+
+        AmpDemo is a soup-to-nuts Merlin electronics-domain demonstration project.
+
+        ## Amplifier Requirements
+
+        - 25 watt nominal audio output.
+        - Guitar amplifier use case.
+        - Pure Class A solid-state topology.
+        - Single-ended Class A output-stage topology.
+        - Discrete components for the amplifier signal path and power output stage.
+        - North American mains input.
+        - Transformer-isolated power supply.
+        - 8 ohm guitar speaker load target.
+        - 3-band tone circuit.
+        - Sweepable boost/cut tone filter.
+        - PCB and Gerber output suitable for review.
+        - BOM with Digi-Key and Mouser ordering references.
+
+        ## Safety And Power Supply Requirements
+
+        The mains section must be transformer-isolated. Offline, non-isolated mains conversion is out of scope.
+        The PCB should contain only isolated low-voltage secondary-side circuitry.
+        Off-board mains inlet, fuse, switch, and transformer primary wiring are preferred.
+
+        ## Simulation Requirements
+
+        Merlin must generate and run SPICE simulation for the design or a representative simulation subset.
+
+        ## KiCad And Fabrication Artifacts
+
+        Required KiCad checks:
+        - ERC, if schematic generation reaches KiCad.
+        - DRC, if PCB generation reaches KiCad.
+        - Gerber export, if PCB generation succeeds.
+        """
     }
 }

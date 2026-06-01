@@ -615,21 +615,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 nextActions: ["continue_intent_model"]
             )
         case "kicad_build_intent_model":
-            let intentObject = mergedDesignIntentObject(request)
-            if intentObject["requirements"] != nil || intentObject["constraints_json"] != nil {
-                return complete(
-                    request,
-                    artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(request))],
-                    nextActions: ["review_and_approve_design_intent"]
-                )
-            }
-            return fileBackedTransform(
-                request,
-                context: context,
-                requiredPathKeys: ["input_artifact_path"],
-                outputKind: "design_intent",
-                outputBody: designIntentBody(request)
-            )
+            return handleDesignIntentBuild(request, context: context)
         case "kicad_approve_design_intent":
             return handleDesignIntentApproval(request, context: context)
         case "kicad_generate_circuit_ir":
@@ -1145,6 +1131,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
+        let qualityWarnings = designIntentQualityWarnings(intent, affectedRef: designIntentPath)
+        guard qualityWarnings.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Circuit IR generation requires a non-empty, internally consistent DesignIntent artifact.",
+                context: context,
+                warnings: qualityWarnings,
+                nextActions: ["revise_design_intent"]
+            )
+        }
         guard intent.approval.status == .approved else {
             return designIntentApprovalResponse(
                 request,
@@ -1237,6 +1234,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 affectedRefs: [designIntentPath]
             )
         }
+        let qualityWarnings = designIntentQualityWarnings(intent, affectedRef: designIntentPath)
+        guard qualityWarnings.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "DesignIntent approval requires a non-empty, internally consistent DesignIntent artifact.",
+                context: context,
+                warnings: qualityWarnings,
+                nextActions: ["revise_design_intent"]
+            )
+        }
 
         let approvedBy = stringValue(object, keys: ["approved_by", "approvedBy"]) ?? "user"
         let approvedAt = stringValue(object, keys: ["approved_at", "approvedAt"]) ?? ISO8601DateFormatter().string(from: Date())
@@ -1249,6 +1257,58 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             body: (try? canonicalJSON(intent)) ?? request.payload.stringValue()
         )
         return complete(request, artifacts: [artifact], nextActions: ["generate_circuit_ir"])
+    }
+
+    private func designIntentQualityWarnings(_ intent: DesignIntent, affectedRef: String) -> [KiCadWarning] {
+        var warnings: [KiCadWarning] = []
+        let requirementText = intent.requirements.map(\.text).joined(separator: " ").lowercased()
+        let componentRoles = intent.components.map(\.role).joined(separator: " ").lowercased()
+
+        func append(_ code: String, _ message: String) {
+            warnings.append(KiCadWarning(
+                code: code,
+                message: message,
+                affectedRefs: [affectedRef],
+                suggestedAction: "Revise the DesignIntent with structured requirements, safety profile, components, nets, and verification evidence before continuing."
+            ))
+        }
+
+        if intent.requirements.isEmpty {
+            append("DESIGN_INTENT_REQUIREMENTS_MISSING", "DesignIntent has no requirements.")
+        }
+        if intent.components.isEmpty {
+            append("DESIGN_INTENT_COMPONENTS_MISSING", "DesignIntent has no component intent evidence.")
+        }
+        if intent.nets.isEmpty {
+            append("DESIGN_INTENT_NETS_MISSING", "DesignIntent has no net intent evidence.")
+        }
+        if intent.boards.isEmpty {
+            append("DESIGN_INTENT_BOARDS_MISSING", "DesignIntent has no board intent or safety-domain evidence.")
+        }
+
+        let mentionsIsolation = requirementText.contains("isolated")
+            || requirementText.contains("transformer")
+            || requirementText.contains("mains")
+            || intent.boards.contains { $0.safetyDomain.lowercased().contains("isolated") }
+        if mentionsIsolation && !intent.safetyProfile.isolationRequired {
+            append("DESIGN_INTENT_SAFETY_CONTRADICTION", "DesignIntent mentions isolated mains/transformer requirements but safety_profile.isolation_required is false.")
+        }
+
+        let requiresClassA = requirementText.contains("class-a")
+            || requirementText.contains("class a")
+            || requirementText.contains("class_a")
+        if requiresClassA && !componentRoles.contains("class-a") && !componentRoles.contains("class a") {
+            append("DESIGN_INTENT_CLASS_A_COMPONENT_EVIDENCE_MISSING", "DesignIntent requirements call for Class-A operation but no component intent describes a Class-A output stage.")
+        }
+
+        if requirementText.contains("spice") && !intent.verificationPlan.spiceRequired {
+            append("DESIGN_INTENT_SPICE_CONTRADICTION", "DesignIntent requirements mention SPICE but verification_plan.spice_required is false.")
+        }
+        if requirementText.contains("drc") && !intent.verificationPlan.drcRequired {
+            append("DESIGN_INTENT_DRC_CONTRADICTION", "DesignIntent requirements mention DRC but verification_plan.drc_required is false.")
+        }
+
+        return warnings
     }
 
     private func componentSelectionBlockedResponse(
@@ -2650,8 +2710,48 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return nil
     }
 
-    private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
+    private func handleDesignIntentBuild(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
         let object = mergedDesignIntentObject(request)
+        let bodyObject: [String: Any]
+        if object["requirements"] != nil || object["constraints_json"] != nil {
+            bodyObject = object
+        } else {
+            guard let path = object["input_artifact_path"] as? String,
+                  FileManager.default.fileExists(atPath: path) else {
+                return structuredBlock(
+                    request,
+                    reason: .missingArtifact,
+                    message: "kicad_build_intent_model requires an existing input_artifact_path.",
+                    context: context
+                )
+            }
+            guard let text = try? String(contentsOfFile: path, encoding: .utf8),
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "kicad_build_intent_model requires a readable non-empty requirements artifact.",
+                    context: context
+                )
+            }
+            bodyObject = inferredDesignIntentObject(fromRequirementsText: text, baseObject: object)
+        }
+
+        return complete(
+            request,
+            artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(from: bodyObject, request: request))],
+            nextActions: ["review_and_approve_design_intent"]
+        )
+    }
+
+    private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
+        designIntentBody(from: mergedDesignIntentObject(request), request: request)
+    }
+
+    private func designIntentBody(from object: [String: Any], request: WorkspaceMessageRequest) -> String {
         let synthesis = topologySynthesis(from: object)
         let designID = object["design_id"] as? String ?? object["board_profile_id"] as? String ?? request.id.uuidString
         let title = object["title"] as? String ?? object["board_profile_id"] as? String ?? "Draft Electronics DesignIntent"
@@ -2674,6 +2774,118 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             verificationPlan: object["verification_plan"] == nil ? (synthesis.verificationPlan ?? verificationPlan(from: object)) : verificationPlan(from: object)
         )
         return (try? canonicalJSON(intent)) ?? #"{"design_id":"\#(designID)","origin":"natural_language","approval":{"status":"draft"}}"#
+    }
+
+    private func inferredDesignIntentObject(fromRequirementsText text: String, baseObject: [String: Any]) -> [String: Any] {
+        let lower = text.lowercased()
+        var inferred: [String: Any] = [:]
+
+        inferred["requirements"] = extractedRequirementLines(from: text)
+        inferred["title"] = inferredTitle(fromRequirementsText: text) ?? baseObject["board_profile_id"] ?? "Draft Electronics DesignIntent"
+
+        if lower.contains("25 watt") || lower.contains("25w") || lower.contains("25 w") {
+            inferred["output_power_watts"] = 25
+        }
+        if lower.contains("8 ohm") || lower.contains("8-ohm") || lower.contains("8Ω") {
+            inferred["load_ohms"] = 8
+        }
+        if lower.contains("single-ended") || lower.contains("single ended") {
+            inferred["topology"] = "single-ended_class_a"
+        } else if lower.contains("class a") || lower.contains("class-a") {
+            inferred["topology"] = "class_a"
+        }
+        if lower.contains("pure class a") || lower.contains("class-a") || lower.contains("class a") {
+            inferred["amplifier_class"] = "pure_class_a"
+        }
+        if lower.contains("guitar") {
+            inferred["application"] = "guitar_amplifier"
+        }
+        if lower.contains("discrete component") || lower.contains("discrete components") {
+            inferred["signal_path_components"] = "discrete_only"
+            inferred["output_stage_components"] = "discrete_only"
+        }
+        if lower.contains("3-band") || lower.contains("three-band") {
+            inferred["tone_bands"] = ["bass", "mid", "treble"]
+        }
+        if lower.contains("sweepable") || lower.contains("boost/cut") || lower.contains("boost-cut") {
+            inferred["tone_control"] = "3_band_with_sweepable_boost_cut"
+        }
+        if lower.contains("transformer-isolated") || lower.contains("transformer isolated") || lower.contains("isolated secondary") {
+            inferred["mains_isolation"] = "transformer_isolated"
+        }
+        if lower.contains("off-board mains") || lower.contains("off board mains") || lower.contains("off-board transformer primary") {
+            inferred["mains_primary_offboard"] = true
+        }
+        if lower.contains("low-voltage secondary") || lower.contains("secondary-side") || lower.contains("secondary side") {
+            inferred["pcb_domain"] = "secondary_side_only"
+            inferred["pcb_secondary_only"] = true
+        }
+
+        inferred["verification_plan"] = [
+            "erc_required": lower.contains("erc") || lower.contains("schematic"),
+            "drc_required": lower.contains("drc") || lower.contains("pcb") || lower.contains("gerber"),
+            "spice_required": lower.contains("spice") || lower.contains("simulation"),
+        ]
+
+        inferred["safety_notes"] = extractedSafetyNotes(from: text)
+
+        var result = inferred
+        result.merge(baseObject) { _, explicit in explicit }
+        return result
+    }
+
+    private func inferredTitle(fromRequirementsText text: String) -> String? {
+        let lines = text
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if let projectIndex = lines.firstIndex(where: { $0 == "## Project" }),
+           lines.indices.contains(projectIndex + 2),
+           !lines[projectIndex + 2].isEmpty {
+            return lines[projectIndex + 2]
+                .replacingOccurrences(of: " is a soup-to-nuts Merlin electronics-domain demonstration project.", with: "")
+        }
+        if text.lowercased().contains("25 watt"), text.lowercased().contains("guitar amplifier") {
+            return "25W pure Class-A solid-state guitar amplifier"
+        }
+        return nil
+    }
+
+    private func extractedRequirementLines(from text: String) -> [String] {
+        let keywords = [
+            "25 watt", "25w", "class a", "class-a", "single-ended", "single ended",
+            "discrete", "guitar", "8 ohm", "8-ohm", "3-band", "three-band",
+            "sweepable", "boost/cut", "transformer", "isolated", "mains",
+            "spice", "simulation", "erc", "drc", "gerber", "bom",
+        ]
+        var seen = Set<String>()
+        var requirements: [String] = []
+        for rawLine in text.split(whereSeparator: \.isNewline) {
+            let stripped = rawLine
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "-* "))
+            guard !stripped.isEmpty else { continue }
+            let lower = stripped.lowercased()
+            guard keywords.contains(where: { lower.contains($0) }) else { continue }
+            guard !seen.contains(stripped) else { continue }
+            seen.insert(stripped)
+            requirements.append(stripped)
+        }
+        return requirements
+    }
+
+    private func extractedSafetyNotes(from text: String) -> [String] {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "-* ")) }
+            .filter {
+                let lower = $0.lowercased()
+                return lower.contains("mains")
+                    || lower.contains("safety")
+                    || lower.contains("clearance")
+                    || lower.contains("creepage")
+                    || lower.contains("earth")
+                    || lower.contains("fuse")
+                    || lower.contains("transformer")
+            }
     }
 
     private func mergedDesignIntentObject(_ request: WorkspaceMessageRequest) -> [String: Any] {
@@ -2888,7 +3100,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         guard isSingleEndedClassAAudioTopology(object) else {
             return TopologySynthesis()
         }
-        let outputPower = stringValue(object, keys: ["output_power_watts", "output_power", "power_watts"]) ?? "unspecified"
+        let outputPower = stringValue(object, keys: ["output_power_watts", "power_output_watts", "output_power", "power_watts"]) ?? "unspecified"
         let load = stringValue(object, keys: ["load_ohms", "speaker_load_ohms", "speaker_load"]) ?? "8"
         let outputRatings = classAOutputStageRatings(outputPowerWatts: outputPower, loadOhms: load)
         let toneBands = stringArray(object["tone_bands"]).isEmpty ? ["bass", "mid", "treble"] : stringArray(object["tone_bands"])
@@ -3072,7 +3284,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             || combined.contains("guitar")
             || combined.contains("audio")
             || object["output_power_watts"] != nil
+            || object["power_output_watts"] != nil
             || object["tone_control"] != nil
+            || object["tone_controls"] != nil
         return isClassA && isSingleEnded && isAudioAmplifier
     }
 

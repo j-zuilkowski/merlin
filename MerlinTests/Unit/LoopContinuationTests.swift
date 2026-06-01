@@ -282,105 +282,80 @@ final class LoopContinuationTests: XCTestCase {
             in: artifactRoot
         )
 
-        let provider = MockProvider(responses: [
-            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
-            .text("Spec read."),
-            .text("The schematic is complete."),
-            .toolCall(id: "schematic", name: "kicad_compile_project", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
-            .text("Schematic artifacts exist."),
-            .text("Simulation is complete."),
-            .toolCall(id: "spice", name: "kicad_run_spice", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
-            .text("SPICE artifacts exist."),
-            .text("Gerbers are complete."),
-            .toolCall(id: "fab", name: "kicad_export_fab", args: #"{"project_path":"/tmp/amp.kicad_pro"}"#),
-            .text("Fabrication artifacts exist."),
-            .text("BOM is complete."),
-            .toolCall(id: "bom", name: "kicad_prepare_vendor_order", args: #"{"normalized_bom_path":"\#(bomPath.path)","vendor_id":"Digi-Key","quantity":1}"#),
-            .text("BOM evidence exists.")
-        ])
-        let engine = makeEngine(provider: provider)
-        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
-        engine.permissionMode = .autoAccept
-        engine.maxIterationsOverride = 4
-        engine.continuationInjectURL = injectURL
-        engine.classifierOverride = StubPlanner(
-            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+        func makeEvidenceEngine(
+            toolName: String,
+            toolResult: String,
+            steps: [PlanStep]
+        ) -> AgenticEngine {
+            let provider = MockProvider(responses: [
+                .toolCall(id: "evidence", name: toolName, args: #"{"project_path":"/tmp/amp.kicad_pro"}"#)
+            ])
+            let engine = makeEngine(provider: provider)
+            engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+            engine.permissionMode = .autoAccept
+            engine.maxIterationsOverride = 4
+            engine.continuationInjectURL = injectURL
+            engine.classifierOverride = StubPlanner(
+                classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+                steps: steps
+            )
+            engine.registerTool(toolName) { _ in toolResult }
+            return engine
+        }
+
+        try? FileManager.default.removeItem(at: injectURL)
+        var engine = makeEvidenceEngine(
+            toolName: "kicad_compile_project",
+            toolResult: #"{"artifacts":[{"kind":"kicad_schematic","path":"\#(schematicPath.path)"}]}"#,
             steps: [
-                PlanStep(description: "Read AmpDemo spec", successCriteria: "spec read", complexity: .standard),
                 PlanStep(description: "Create KiCad schematic", successCriteria: "schematic artifact exists", complexity: .standard),
                 PlanStep(description: "Run SPICE simulation", successCriteria: "SPICE output exists", complexity: .standard),
+            ]
+        )
+        for await _ in engine.send(userMessage: "Create the schematic artifact") {}
+        var continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence."), continuationText)
+        XCTAssertTrue(continuationText.contains("  2. Run SPICE simulation"), continuationText)
+
+        try? FileManager.default.removeItem(at: injectURL)
+        engine = makeEvidenceEngine(
+            toolName: "kicad_run_spice",
+            toolResult: #"{"artifacts":[{"kind":"spice_measurements","path":"\#(spicePath.path)"}]}"#,
+            steps: [
+                PlanStep(description: "Run SPICE simulation", successCriteria: "SPICE output exists", complexity: .standard),
+                PlanStep(description: "Export Gerbers and drill files", successCriteria: "Gerber and drill files exist", complexity: .standard),
+            ]
+        )
+        for await _ in engine.send(userMessage: "Run SPICE simulation") {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence."), continuationText)
+        XCTAssertTrue(continuationText.contains("  2. Export Gerbers and drill files"), continuationText)
+
+        try? FileManager.default.removeItem(at: injectURL)
+        engine = makeEvidenceEngine(
+            toolName: "kicad_export_fab",
+            toolResult: #"{"artifacts":[{"kind":"gerbers","path":"\#(gerberDirectory.path)"},{"kind":"drills","path":"\#(gerberDirectory.appendingPathComponent("amp.drl").path)"}]}"#,
+            steps: [
                 PlanStep(description: "Export Gerbers and drill files", successCriteria: "Gerber and drill files exist", complexity: .standard),
                 PlanStep(description: "Produce BOM with Digi-Key and Mouser part numbers", successCriteria: "vendor BOM artifact exists", complexity: .standard),
             ]
         )
-        engine.registerTool("read_file") { _ in
-            "25W pure Class A solid-state guitar amplifier requirements"
-        }
-        engine.registerTool("kicad_compile_project") { _ in
-            #"{"artifacts":[{"kind":"kicad_schematic","path":"\#(schematicPath.path)"}]}"#
-        }
-        engine.registerTool("kicad_run_spice") { _ in
-            #"{"artifacts":[{"kind":"spice_measurements","path":"\#(spicePath.path)"}]}"#
-        }
-        engine.registerTool("kicad_export_fab") { _ in
-            #"{"artifacts":[{"kind":"gerbers","path":"\#(gerberDirectory.path)"},{"kind":"drills","path":"\#(gerberDirectory.appendingPathComponent("amp.drl").path)"}]}"#
-        }
-        engine.registerTool("kicad_prepare_vendor_order") { _ in
-            #"{"artifacts":[{"kind":"bom","path":"\#(bomPath.path)"}],"vendors":["Digi-Key","Mouser"]}"#
-        }
+        for await _ in engine.send(userMessage: "Export fabrication files") {}
+        continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence."), continuationText)
+        XCTAssertTrue(continuationText.contains("  2. Produce BOM with Digi-Key and Mouser part numbers"), continuationText)
 
-        for await _ in engine.send(userMessage: "Build the AmpDemo electronics workflow artifacts") {}
-        var continuationText = try readInject()
-        XCTAssertTrue(
-            continuationText.contains("Steps 1-1 have verified tool/artifact evidence."),
-            continuationText
+        try? FileManager.default.removeItem(at: injectURL)
+        engine = makeEvidenceEngine(
+            toolName: "kicad_prepare_vendor_order",
+            toolResult: #"{"artifacts":[{"kind":"bom","path":"\#(bomPath.path)"}],"vendors":["Digi-Key","Mouser"]}"#,
+            steps: [
+                PlanStep(description: "Produce BOM with Digi-Key and Mouser part numbers", successCriteria: "vendor BOM artifact exists", complexity: .standard),
+            ]
         )
-        XCTAssertTrue(continuationText.contains("  2. Create KiCad schematic"), continuationText)
-        XCTAssertFalse(continuationText.contains("  3. Run SPICE simulation"))
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  2. Create KiCad schematic"))
-        XCTAssertFalse(continuationText.contains("  3. Run SPICE simulation"),
-                       "Narrative alone must not complete the schematic step")
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-2 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  3. Run SPICE simulation"))
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-2 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  3. Run SPICE simulation"),
-                      "Narrative alone must not complete the SPICE step")
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-3 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  4. Export Gerbers and drill files"))
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-3 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  4. Export Gerbers and drill files"),
-                      "Narrative alone must not complete fabrication output")
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-4 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  5. Produce BOM with Digi-Key and Mouser part numbers"))
-
-        for await _ in engine.send(userMessage: continuationText) {}
-        continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-4 have verified tool/artifact evidence."))
-        XCTAssertTrue(continuationText.contains("  5. Produce BOM with Digi-Key and Mouser part numbers"),
-                      "Narrative alone must not complete the vendor BOM step")
-
-        for await _ in engine.send(userMessage: continuationText) {}
+        for await _ in engine.send(userMessage: "Produce the vendor BOM") {}
         XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path),
-                       "All electronics steps with artifact evidence should clear the continuation inject")
+                       "Final BOM evidence should clear the continuation inject")
     }
 
     func testElectronicsRequirementsReadStepCountsWhenCriteriaMentionsDesign() async throws {
@@ -496,6 +471,392 @@ final class LoopContinuationTests: XCTestCase {
             continuationText.contains("Steps 1-2 have verified tool/artifact evidence."),
             "Reading a spec that mentions BOM vendors must not complete the toolchain/BOM readiness step"
         )
+    }
+
+    func testSpecReadCanOnlyCompleteInspectionStepsBeforeDesignIntent() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .text("Spec read.")
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read AmpDemo spec.md",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Verify the spec.md file exists and is readable",
+                    successCriteria: "requirements file readable",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Build DesignIntent with the electronics KiCad domain tool",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Generate KiCad schematic from DesignIntent",
+                    successCriteria: "schematic artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+
+        for await _ in engine.send(userMessage: "Run the focused AmpDemo electronics slice") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-2 have verified tool/artifact evidence."),
+            continuationText
+        )
+        XCTAssertTrue(
+            continuationText.contains("  3. Build DesignIntent with the electronics KiCad domain tool"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("  4. Generate KiCad schematic from DesignIntent"),
+            "Spec inspection must not advance through DesignIntent or schematic generation"
+        )
+    }
+
+    func testElectronicsReadStepStopsBeforeReadOnlyDrift() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .toolCall(id: "drift", name: "list_directory", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo"}"#),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read AmpDemo spec.md",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Build DesignIntent with the electronics KiCad domain tool",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        var listDirectoryCallCount = 0
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool("list_directory") { _ in
+            listDirectoryCallCount += 1
+            return "This read-only drift should not be dispatched after spec evidence is verified"
+        }
+
+        var notes: [String] = []
+        for await event in engine.send(userMessage: "Run the focused AmpDemo electronics slice") {
+            if case .systemNote(let note) = event {
+                notes.append(note)
+            }
+        }
+
+        XCTAssertEqual(listDirectoryCallCount, 0, "Current-step evidence should stop the turn before extra read-only drift")
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-1 have verified tool/artifact evidence."),
+            continuationText
+        )
+        XCTAssertTrue(
+            continuationText.contains("  2. Build DesignIntent with the electronics KiCad domain tool"),
+            continuationText
+        )
+        XCTAssertTrue(
+            notes.contains { $0.contains("electronics evidence verified for current step") },
+            notes.joined(separator: "\n")
+        )
+    }
+
+    func testDesignIntentArtifactForcesNextHandoffInsteadOfSpecReread() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-design-intent-handoff")
+        let designIntentPath = try writeArtifact(
+            name: "amp-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"25W Class A"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = artifactRoot.appendingPathComponent("amp-circuit_ir.json")
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "intent",
+                name: "kicad_build_intent_model",
+                args: #"{"input_artifact_path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md","board_profile_id":"amp_low_voltage_audio"}"#
+            ),
+            .toolCall(
+                id: "reread",
+                name: "read_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+            .toolCall(
+                id: "reread-again",
+                name: "read_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Build DesignIntent with the electronics KiCad domain tool",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Approve DesignIntent using the generated artifact path",
+                    successCriteria: "DesignIntent approved",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Generate Circuit IR from approved DesignIntent",
+                    successCriteria: "Circuit IR artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("kicad_build_intent_model") { _ in
+            #"{"artifacts":[{"kind":"design_intent","path":"\#(designIntentPath.path)"}],"nextActions":["review_and_approve_design_intent"]}"#
+        }
+        var readFileCallCount = 0
+        engine.registerTool("read_file") { _ in
+            readFileCallCount += 1
+            return "This stale read should be blocked after DesignIntent exists"
+        }
+        var approveCallCount = 0
+        var approveArguments = ""
+        engine.registerTool("kicad_approve_design_intent") { args in
+            approveCallCount += 1
+            approveArguments = args
+            return #"{"approval":{"status":"approved"},"artifacts":[{"kind":"design_intent","path":"\#(designIntentPath.path)"}]}"#
+        }
+        var circuitIRCallCount = 0
+        engine.registerTool("kicad_generate_circuit_ir") { _ in
+            circuitIRCallCount += 1
+            try? #"{"design_id":"AmpDemo","components":[],"nets":[]}"#.write(
+                to: circuitIRPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"circuit_ir","path":"\#(circuitIRPath.path)"}]}"#
+        }
+
+        for await _ in engine.send(userMessage: "Run the focused AmpDemo electronics handoff") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Existing DesignIntent artifact: \(designIntentPath.path)"), continuationText)
+        XCTAssertTrue(continuationText.contains("Do not call `kicad_build_intent_model` again"), continuationText)
+        XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_approve_design_intent`"), continuationText)
+        XCTAssertTrue(continuationText.contains("kicad_approve_design_intent"), continuationText)
+
+        var startedToolNames: [String] = []
+        var cleanStops: [String] = []
+        var toolResults: [ToolResult] = []
+        for await event in engine.send(userMessage: continuationText) {
+            if case .toolCallStarted(let call) = event {
+                startedToolNames.append(call.function.name)
+            }
+            if case .cleanStop(_, let summary) = event {
+                cleanStops.append(summary)
+            }
+            if case .toolCallResult(let result) = event {
+                toolResults.append(result)
+            }
+        }
+
+        XCTAssertEqual(readFileCallCount, 0, "Stale spec reread must be redirected before dispatch")
+        XCTAssertEqual(approveCallCount, 1)
+        XCTAssertEqual(circuitIRCallCount, 1)
+        XCTAssertTrue(approveArguments.contains("amp-design_intent.json"), approveArguments)
+        XCTAssertTrue(startedToolNames.contains("kicad_approve_design_intent"), startedToolNames.joined(separator: ", "))
+        XCTAssertTrue(startedToolNames.contains("kicad_generate_circuit_ir"), startedToolNames.joined(separator: ", "))
+        XCTAssertFalse(toolResults.contains { $0.isError }, toolResults.map(\.content).joined(separator: "\n"))
+        XCTAssertTrue(
+            cleanStops.contains { $0.contains("verified Circuit IR artifact evidence") },
+            cleanStops.joined(separator: "\n")
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path))
+    }
+
+    func testFocusedElectronicsHandoffStopsCleanlyAfterCircuitIR() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-focused-handoff-complete")
+        let designIntentPath = artifactRoot.appendingPathComponent("amp-design_intent.json")
+        let circuitIRPath = artifactRoot.appendingPathComponent("amp-circuit_ir.json")
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "spec",
+                name: "read_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+            .toolCall(
+                id: "intent",
+                name: "kicad_build_intent_model",
+                args: #"{"input_artifact_path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+            .toolCall(
+                id: "approve",
+                name: "kicad_approve_design_intent",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)"}"#
+            ),
+            .toolCall(
+                id: "ir",
+                name: "kicad_generate_circuit_ir",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)"}"#
+            ),
+            .toolCall(
+                id: "stale",
+                name: "read_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read the AmpDemo specification file",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Build DesignIntent with the electronics KiCad domain tool",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Approve DesignIntent using the generated artifact path",
+                    successCriteria: "DesignIntent approved",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Generate Circuit IR from approved DesignIntent",
+                    successCriteria: "Circuit IR artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        var readFileCallCount = 0
+        var buildIntentCallCount = 0
+        var schematicCallCount = 0
+        var spiceCallCount = 0
+        var fabCallCount = 0
+        var bomCallCount = 0
+        engine.registerTool("read_file") { _ in
+            readFileCallCount += 1
+            return "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool("kicad_build_intent_model") { _ in
+            buildIntentCallCount += 1
+            try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+            try? #"{"project":"AmpDemo","topology":"25W Class A"}"#.write(
+                to: designIntentPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"design_intent","path":"\#(designIntentPath.path)"}],"nextActions":["review_and_approve_design_intent"]}"#
+        }
+        engine.registerTool("kicad_approve_design_intent") { _ in
+            #"{"approval":{"status":"approved"},"artifacts":[{"kind":"design_intent","path":"\#(designIntentPath.path)"}]}"#
+        }
+        engine.registerTool("kicad_generate_circuit_ir") { _ in
+            try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+            try? #"{"design_id":"AmpDemo","components":[],"nets":[]}"#.write(
+                to: circuitIRPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"circuit_ir","path":"\#(circuitIRPath.path)"}]}"#
+        }
+        engine.registerTool("kicad_compile_project") { _ in
+            schematicCallCount += 1
+            return #"{"artifact":{"kind":"schematic","path":"/tmp/amp.kicad_sch"}}"#
+        }
+        engine.registerTool("kicad_run_spice") { _ in
+            spiceCallCount += 1
+            return #"{"artifact":{"kind":"spice_measurements","path":"/tmp/spice.log"}}"#
+        }
+        engine.registerTool("kicad_export_fab") { _ in
+            fabCallCount += 1
+            return #"{"artifact":{"kind":"gerber","path":"/tmp/fab.zip"}}"#
+        }
+        engine.registerTool("kicad_prepare_vendor_order") { _ in
+            bomCallCount += 1
+            return #"{"artifact":{"kind":"bom","path":"/tmp/bom.csv"}}"#
+        }
+
+        var cleanStops: [String] = []
+        var message = "Run only the focused AmpDemo electronics handoff slice"
+        for _ in 0..<5 {
+            for await event in engine.send(userMessage: message) {
+                if case .cleanStop(_, let summary) = event {
+                    cleanStops.append(summary)
+                }
+            }
+            if !cleanStops.isEmpty {
+                break
+            }
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: injectURL.path),
+                "Expected a continuation until Circuit IR is verified"
+            )
+            message = try readInject()
+        }
+
+        XCTAssertEqual(provider.callCount, 4, "Focused handoff must stop before a stale post-Circuit-IR spec reread")
+        XCTAssertEqual(readFileCallCount, 1, "Spec should be read once and never reread after DesignIntent exists")
+        XCTAssertEqual(buildIntentCallCount, 1, "DesignIntent must not be rebuilt after the artifact exists")
+        XCTAssertEqual(schematicCallCount, 0)
+        XCTAssertEqual(spiceCallCount, 0)
+        XCTAssertEqual(fabCallCount, 0)
+        XCTAssertEqual(bomCallCount, 0)
+        XCTAssertTrue(
+            cleanStops.contains { $0.contains("verified Circuit IR artifact evidence") },
+            cleanStops.joined(separator: "\n")
+        )
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path))
     }
 
     func testElectronicsEvidencePlansDoNotUseSpawnAgentBatches() async throws {
