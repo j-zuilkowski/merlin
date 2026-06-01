@@ -2228,7 +2228,7 @@ final class AgenticEngine {
                 let rawText = rawEvidenceText(evidence)
                 guard evidence.toolName == "kicad_prepare_vendor_order"
                     || evidence.toolName == "kicad_export_fab"
-                    || text.contains("bom")
+                    || (isWorkflowTool(evidence.toolName) && text.contains("bom"))
                 else { return false }
                 return textContainsVendorBOMEvidence(text)
                     || extractedPaths(from: rawText).contains { pathContainsVendorBOMEvidence($0) }

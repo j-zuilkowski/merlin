@@ -443,6 +443,61 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testReadOnlySpecDoesNotSatisfyToolchainOrVendorBOMStep() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#),
+            .text("Spec read.")
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read and parse the AmpDemo spec.md to extract all functional, electrical, and artifact requirements",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Verify toolchain availability: KiCad, ngspice, Digi-Key/Mouser API access, and output directory paths",
+                    successCriteria: "toolchain and vendor API readiness verified",
+                    complexity: .highStakes
+                ),
+                PlanStep(
+                    description: "Design Intent Document: define topology, component families, and safety constraints",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "AmpDemo requires a BOM with Digi-Key and Mouser part numbers plus KiCad/SPICE/Gerber artifacts."
+        }
+
+        for await _ in engine.send(userMessage: "Run the full AmpDemo electronics workflow") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-1 have verified tool/artifact evidence."),
+            continuationText
+        )
+        XCTAssertTrue(
+            continuationText.contains("  2. Verify toolchain availability"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("Steps 1-2 have verified tool/artifact evidence."),
+            "Reading a spec that mentions BOM vendors must not complete the toolchain/BOM readiness step"
+        )
+    }
+
     func testElectronicsEvidencePlansDoNotUseSpawnAgentBatches() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
