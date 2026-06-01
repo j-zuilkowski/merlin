@@ -42,6 +42,36 @@ final class PCBDRCFollowOnTests: XCTestCase {
         XCTAssertEqual(report.blockingViolations.map(\.id), ["clearance-1"])
     }
 
+    func testDRCParserExtractsKiCad10SheetViolationsAndObjectItems() throws {
+        let data = Data("""
+        {
+          "sheets": [
+            {
+              "path": "/",
+              "violations": [
+                {
+                  "id": "drc-sheet-1",
+                  "type": "unrouted_net",
+                  "severity": "error",
+                  "description": "Net is not fully routed.",
+                  "items": [
+                    { "ref": "J1" },
+                    { "description": "Net-(J1-Pad1)" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """.utf8)
+
+        let report = try KiCadDRCParser().parse(jsonData: data)
+
+        XCTAssertEqual(report.blockingViolations.map(\.code), ["unrouted_net"])
+        XCTAssertEqual(report.blockingViolations.first?.message, "Net is not fully routed.")
+        XCTAssertEqual(report.blockingViolations.first?.refs, ["J1", "Net-(J1-Pad1)"])
+    }
+
     func testBoundedDRCRepairLoopRepairsSupportedClassesAndStopsAfterThreeAttempts() throws {
         let failing = try KiCadDRCParser().parse(jsonData: drcJSON([
             drcViolation(id: "place", code: "courtyard_collision", severity: "error", message: "Courtyard collision", refs: ["Q1", "R1"]),

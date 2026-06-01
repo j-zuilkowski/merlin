@@ -1,6 +1,47 @@
 import Foundation
 
 struct ElectronicsRuntimePlugin {
+    static let settingsNamespace = "plugin.electronics"
+
+    static let settingsSchema = WorkspaceSettingsSchema(
+        namespace: settingsNamespace,
+        title: "Electronics",
+        fields: [
+            WorkspaceSettingsField(
+                key: "kicad_cli_path",
+                label: "KiCad CLI Path",
+                kind: .path,
+                defaultValue: nil,
+                isSecret: false,
+                help: "Path to kicad-cli."
+            ),
+            WorkspaceSettingsField(
+                key: "catalog_provider_mouser_enabled",
+                label: "Mouser catalog provider",
+                kind: .boolean,
+                defaultValue: .boolean(true),
+                isSecret: false,
+                help: "Allow the electronics plugin to query Mouser for component catalog evidence."
+            ),
+            WorkspaceSettingsField(
+                key: "catalog_provider_digikey_enabled",
+                label: "Digi-Key catalog provider",
+                kind: .boolean,
+                defaultValue: .boolean(true),
+                isSecret: false,
+                help: "Allow the electronics plugin to query Digi-Key for component catalog evidence."
+            ),
+            WorkspaceSettingsField(
+                key: "catalog_provider_nexar_enabled",
+                label: "Nexar/Octopart catalog provider",
+                kind: .boolean,
+                defaultValue: .boolean(false),
+                isSecret: false,
+                help: "Allow the electronics plugin to query Nexar/Octopart for component catalog evidence."
+            ),
+        ]
+    )
+
     let metadata: RuntimePluginMetadata
     private let tooling: ElectronicsToolingState
     private let routeBackend: any ElectronicsRoutePassRunning
@@ -73,7 +114,7 @@ struct ElectronicsRuntimePlugin {
                     isRequired: false
                 ),
             ],
-            settingsSchema: ElectronicsDomain().settingsSchema
+            settingsSchema: Self.settingsSchema
         )
     }
 
@@ -1801,7 +1842,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 gate: "erc",
                 artifacts: artifacts,
                 violations: blocking.map {
-                    KiCadViolation(gate: "erc", severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
+                    KiCadViolation(gate: "erc", code: $0.code, severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
                 },
                 warnings: blocking.map {
                     KiCadWarning(
@@ -1823,7 +1864,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 gate: "drc",
                 artifacts: artifacts,
                 violations: blocking.map {
-                    KiCadViolation(gate: "drc", severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
+                    KiCadViolation(gate: "drc", code: $0.code, severity: $0.severity.rawValue, message: $0.message, affectedRefs: $0.refs)
                 },
                 warnings: blocking.map {
                     KiCadWarning(
@@ -2235,7 +2276,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 artifacts: artifacts,
                 violations: violations,
                 warnings: warnings,
-                nextActions: nextActions
+                nextActions: nextActions,
+                handoff: workflowHandoff(for: request, artifacts: artifacts)
             )),
             artifacts: workspaceArtifacts(from: artifacts, request: request),
             diagnostics: warnings.map {
@@ -2848,6 +2890,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         let outputPower = stringValue(object, keys: ["output_power_watts", "output_power", "power_watts"]) ?? "unspecified"
         let load = stringValue(object, keys: ["load_ohms", "speaker_load_ohms", "speaker_load"]) ?? "8"
+        let outputRatings = classAOutputStageRatings(outputPowerWatts: outputPower, loadOhms: load)
         let toneBands = stringArray(object["tone_bands"]).isEmpty ? ["bass", "mid", "treble"] : stringArray(object["tone_bands"])
         let toneBandValue = toneBands.joined(separator: ",")
 
@@ -2858,8 +2901,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     role: "isolated transformer secondary input connector",
                     constraints: [
                         "kind": "connector",
+                        "component_category": "terminal_block",
                         "domain": "isolated_secondary",
                         "mains_primary": "off_board",
+                        "positions": "2",
+                        "current_rating": "10A",
+                        "voltage_rating": "300V",
+                        "mounting": "through_hole",
                     ]
                 ),
                 ComponentIntent(
@@ -2867,7 +2915,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     role: "bridge rectifier for isolated secondary supply",
                     constraints: [
                         "kind": "rectifier",
+                        "component_category": "bridge_rectifier",
                         "domain": "low_voltage_secondary",
+                        "current_rating": "8A",
+                        "voltage_rating": "100V",
+                        "mounting": "through_hole",
                     ]
                 ),
                 ComponentIntent(
@@ -2875,7 +2927,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     role: "bulk reservoir capacitor for raw Class-A rail",
                     constraints: [
                         "kind": "capacitor",
+                        "component_category": "aluminum_electrolytic_capacitor",
                         "rail": "VRAW",
+                        "capacitance": "10000uF",
+                        "voltage_rating": "50V",
+                        "mounting": "through_hole",
                     ]
                 ),
                 ComponentIntent(
@@ -2883,15 +2939,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     role: "high impedance guitar input connector",
                     constraints: [
                         "kind": "connector",
+                        "component_category": "phone_audio_jack",
                         "signal_domain": "audio_input",
+                        "contact_form": "mono",
+                        "positions": "2",
+                        "mounting": "panel_mount",
                     ]
                 ),
                 ComponentIntent(
                     refdes: "QPRE1",
                     role: "low-noise small-signal preamp transistor stage",
                     constraints: [
+                        "component_category": "low_noise_transistor",
                         "implementation": "discrete",
                         "device_family": "JFET_or_low_noise_BJT",
+                        "polarity": "NPN_or_N_channel",
+                        "package": "TO-92",
                     ]
                 ),
                 ComponentIntent(
@@ -2922,18 +2985,30 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     refdes: "QDRV1",
                     role: "discrete voltage driver stage",
                     constraints: [
+                        "component_category": "driver_transistor",
                         "implementation": "discrete",
                         "drives": "QOUT1",
+                        "polarity": "NPN",
+                        "voltage_rating": outputRatings.voltage,
+                        "current_rating": "1A",
+                        "power_rating": "1W",
+                        "package": "TO-126_or_TO-220",
                     ]
                 ),
                 ComponentIntent(
                     refdes: "QOUT1",
                     role: "single-ended Class-A output transistor",
                     constraints: [
+                        "component_category": "power_transistor",
                         "implementation": "discrete",
                         "output_power_watts": outputPower,
                         "load_ohms": load,
                         "thermal": "external_heatsink_required",
+                        "polarity": "NPN",
+                        "voltage_rating": outputRatings.voltage,
+                        "current_rating": outputRatings.current,
+                        "power_rating": outputRatings.dissipation,
+                        "package": "TO-3_or_TO-247",
                     ]
                 ),
                 ComponentIntent(
@@ -2949,7 +3024,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     role: "\(load) ohm speaker output connector",
                     constraints: [
                         "kind": "connector",
+                        "component_category": "speaker_connector",
                         "load_ohms": load,
+                        "positions": "2",
+                        "current_rating": outputRatings.current,
+                        "mounting": "panel_mount",
                     ]
                 ),
             ],
@@ -2995,6 +3074,29 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             || object["output_power_watts"] != nil
             || object["tone_control"] != nil
         return isClassA && isSingleEnded && isAudioAmplifier
+    }
+
+    private func classAOutputStageRatings(
+        outputPowerWatts: String?,
+        loadOhms: String?
+    ) -> (voltage: String, current: String, dissipation: String) {
+        guard let power = outputPowerWatts.flatMap(Double.init),
+              let load = loadOhms.flatMap(Double.init),
+              power > 0,
+              load > 0 else {
+            return (voltage: "80V", current: "8A", dissipation: "100W")
+        }
+
+        let peakVoltage = (2.0 * power * load).squareRoot()
+        let peakCurrent = (2.0 * power / load).squareRoot()
+        let voltageRating = max(80.0, ceil((peakVoltage * 4.0) / 10.0) * 10.0)
+        let currentRating = max(5.0, ceil(peakCurrent * 3.0))
+        let dissipationRating = max(100.0, ceil(power * 4.0 / 10.0) * 10.0)
+        return (
+            voltage: "\(Int(voltageRating))V",
+            current: "\(Int(currentRating))A",
+            dissipation: "\(Int(dissipationRating))W"
+        )
     }
 
     private func mergedAssumptions(_ explicit: [Assumption], _ synthesized: [Assumption]) -> [Assumption] {
@@ -3077,6 +3179,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var digikeyAccessTokenKeychainID: String? = nil
         var digikeySearchEndpoint: String? = nil
         var digikeyTokenEndpoint: String? = nil
+        var nexarClientIDEnv: String? = nil
+        var nexarClientIDKeychainID: String? = nil
+        var nexarClientSecretEnv: String? = nil
+        var nexarClientSecretKeychainID: String? = nil
+        var nexarAccessTokenEnv: String? = nil
+        var nexarAccessTokenKeychainID: String? = nil
+        var nexarGraphQLEndpoint: String? = nil
+        var nexarTokenEndpoint: String? = nil
 
         enum CodingKeys: String, CodingKey {
             case catalogProviderFixturePaths = "catalog_provider_fixture_paths"
@@ -3102,6 +3212,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case digikeyAccessTokenKeychainID = "digikey_access_token_keychain_id"
             case digikeySearchEndpoint = "digikey_search_endpoint"
             case digikeyTokenEndpoint = "digikey_token_endpoint"
+            case nexarClientIDEnv = "nexar_client_id_env"
+            case nexarClientIDKeychainID = "nexar_client_id_keychain_id"
+            case nexarClientSecretEnv = "nexar_client_secret_env"
+            case nexarClientSecretKeychainID = "nexar_client_secret_keychain_id"
+            case nexarAccessTokenEnv = "nexar_access_token_env"
+            case nexarAccessTokenKeychainID = "nexar_access_token_keychain_id"
+            case nexarGraphQLEndpoint = "nexar_graphql_endpoint"
+            case nexarTokenEndpoint = "nexar_token_endpoint"
         }
     }
 
@@ -3138,10 +3256,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
     private func componentIntents(from circuitIR: CircuitIR) -> [ComponentIntent] {
         circuitIR.components.map { component in
-            var constraints: [String: String] = [
-                "selected_symbol": component.selectedSymbol,
-                "source": "circuit_ir",
-            ]
+            var constraints = component.constraints
+            constraints["selected_symbol"] = component.selectedSymbol
+            constraints["source"] = "circuit_ir"
             let pins = requiredPins(for: component)
             if !pins.isEmpty {
                 constraints["required_pins"] = pins.joined(separator: ",")
@@ -3226,7 +3343,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             }
         }
 
-        let liveProviders = liveCatalogProviderIDs(from: object, config: config)
+        let liveProviders = liveCatalogProviderIDs(from: object, config: config, settings: context.settings)
         if !liveProviders.isEmpty {
             let cache = LiveCatalogQueryCache()
             let cacheDirectory = catalogCacheDirectory(from: config, context: context)
@@ -3366,6 +3483,30 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let value = object["digikey_token_endpoint"] as? String {
             config.digikeyTokenEndpoint = value
         }
+        if let value = object["nexar_client_id_env"] as? String {
+            config.nexarClientIDEnv = value
+        }
+        if let value = object["nexar_client_id_keychain_id"] as? String {
+            config.nexarClientIDKeychainID = value
+        }
+        if let value = object["nexar_client_secret_env"] as? String {
+            config.nexarClientSecretEnv = value
+        }
+        if let value = object["nexar_client_secret_keychain_id"] as? String {
+            config.nexarClientSecretKeychainID = value
+        }
+        if let value = object["nexar_access_token_env"] as? String {
+            config.nexarAccessTokenEnv = value
+        }
+        if let value = object["nexar_access_token_keychain_id"] as? String {
+            config.nexarAccessTokenKeychainID = value
+        }
+        if let value = object["nexar_graphql_endpoint"] as? String {
+            config.nexarGraphQLEndpoint = value
+        }
+        if let value = object["nexar_token_endpoint"] as? String {
+            config.nexarTokenEndpoint = value
+        }
         return config
     }
 
@@ -3504,10 +3645,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
     }
 
-    private func liveCatalogProviderIDs(from object: [String: Any], config: RuntimeCatalogConfig) -> [String] {
+    private func liveCatalogProviderIDs(
+        from object: [String: Any],
+        config: RuntimeCatalogConfig,
+        settings: WorkspaceSettingsNamespace
+    ) -> [String] {
         let explicit = stringArrayValue(object, key: "live_catalog_providers") ?? config.liveCatalogProviders
         if let explicit {
             return uniqueRefdes(explicit.map { $0.lowercased() })
+                .filter { catalogProviderIsEnabled($0, settings: settings) }
         }
         var detected: [String] = []
         if credentialValue(
@@ -3515,7 +3661,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             defaultEnvName: "MOUSER_API_KEY",
             keychainID: config.mouserAPIKeyKeychainID,
             defaultKeychainID: "electronics.mouser.api_key"
-        ) != nil {
+        ) != nil,
+           catalogProviderIsEnabled("mouser", settings: settings) {
             detected.append("mouser")
         }
         if credentialValue(
@@ -3535,10 +3682,55 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 defaultEnvName: "DIGIKEY_CLIENT_SECRET",
                 keychainID: config.digikeyClientSecretKeychainID,
                 defaultKeychainID: "electronics.digikey.client_secret"
-           ) != nil) {
+            ) != nil),
+           catalogProviderIsEnabled("digikey", settings: settings) {
             detected.append("digikey")
         }
+        if credentialValue(
+            envName: config.nexarClientIDEnv,
+            defaultEnvName: "NEXAR_CLIENT_ID",
+            keychainID: config.nexarClientIDKeychainID,
+            defaultKeychainID: "electronics.nexar.client_id"
+        ) != nil,
+           (credentialValue(
+                envName: config.nexarAccessTokenEnv,
+                defaultEnvName: "NEXAR_ACCESS_TOKEN",
+                keychainID: config.nexarAccessTokenKeychainID,
+                defaultKeychainID: "electronics.nexar.access_token"
+           ) != nil
+           || credentialValue(
+                envName: config.nexarClientSecretEnv,
+                defaultEnvName: "NEXAR_CLIENT_SECRET",
+                keychainID: config.nexarClientSecretKeychainID,
+                defaultKeychainID: "electronics.nexar.client_secret"
+            ) != nil),
+           catalogProviderIsEnabled("nexar", settings: settings) {
+            detected.append("nexar")
+        }
         return detected
+    }
+
+    private func catalogProviderIsEnabled(_ providerID: String, settings: WorkspaceSettingsNamespace) -> Bool {
+        let key: String
+        let defaultValue: Bool
+        switch providerID.lowercased() {
+        case "mouser":
+            key = "catalog_provider_mouser_enabled"
+            defaultValue = true
+        case "digikey", "digi-key":
+            key = "catalog_provider_digikey_enabled"
+            defaultValue = true
+        case "nexar", "octopart":
+            key = "catalog_provider_nexar_enabled"
+            defaultValue = false
+        default:
+            return true
+        }
+        guard let value = settings.values[key] else { return defaultValue }
+        if case .boolean(let enabled) = value {
+            return enabled
+        }
+        return defaultValue
     }
 
     private func liveCatalogProvider(providerID: String, config: RuntimeCatalogConfig) -> (any LiveCatalogProviderClient)? {
@@ -3590,6 +3782,40 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 tokenEndpoint: tokenEndpoint,
                 resultLimit: limit
             )
+        case "nexar", "octopart":
+            guard let clientID = credentialValue(
+                envName: config.nexarClientIDEnv,
+                defaultEnvName: "NEXAR_CLIENT_ID",
+                keychainID: config.nexarClientIDKeychainID,
+                defaultKeychainID: "electronics.nexar.client_id"
+            ) else {
+                return nil
+            }
+            let accessToken = credentialValue(
+                envName: config.nexarAccessTokenEnv,
+                defaultEnvName: "NEXAR_ACCESS_TOKEN",
+                keychainID: config.nexarAccessTokenKeychainID,
+                defaultKeychainID: "electronics.nexar.access_token"
+            )
+            let clientSecret = credentialValue(
+                envName: config.nexarClientSecretEnv,
+                defaultEnvName: "NEXAR_CLIENT_SECRET",
+                keychainID: config.nexarClientSecretKeychainID,
+                defaultKeychainID: "electronics.nexar.client_secret"
+            )
+            guard accessToken != nil || clientSecret != nil else { return nil }
+            let graphqlEndpoint = config.nexarGraphQLEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://api.nexar.com/graphql/")!
+            let tokenEndpoint = config.nexarTokenEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://identity.nexar.com/connect/token")!
+            return LiveNexarCatalogProvider(
+                clientID: clientID,
+                clientSecret: clientSecret,
+                accessToken: accessToken,
+                graphqlEndpoint: graphqlEndpoint,
+                tokenEndpoint: tokenEndpoint,
+                resultLimit: limit
+            )
         default:
             return nil
         }
@@ -3601,15 +3827,23 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         keychainID: String?,
         defaultKeychainID: String
     ) -> String? {
-        for name in [envName, defaultEnvName] {
-            guard let name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+        let envNames = envName.flatMap { name -> [String]? in
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : [trimmed]
+        } ?? [defaultEnvName]
+        for name in envNames {
+            guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             if let raw = getenv(name) {
                 let value = String(cString: raw).trimmingCharacters(in: .whitespacesAndNewlines)
                 if !value.isEmpty { return value }
             }
         }
-        for id in [keychainID, defaultKeychainID] {
-            guard let id, !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+        let keychainIDs = keychainID.flatMap { id -> [String]? in
+            let trimmed = id.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : [trimmed]
+        } ?? [defaultKeychainID]
+        for id in keychainIDs {
+            guard !id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             if let value = KeychainManager.readAPIKey(for: id)?.trimmingCharacters(in: .whitespacesAndNewlines),
                !value.isEmpty {
                 return value
@@ -3802,22 +4036,39 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 $0.extractedParameters["target_refdes"] == component.refdes
             }
         }
-        if !targeted.isEmpty {
-            return targeted
-        }
         let hints = componentCategoryHints(for: component)
+        if !targeted.isEmpty {
+            let filteredTargeted = filterCandidates(targeted, matching: hints)
+            if !filteredTargeted.isEmpty {
+                return filteredTargeted
+            }
+        }
+        guard !hints.isEmpty else { return candidates }
+        return filterCandidates(candidates, matching: hints)
+    }
+
+    private func filterCandidates(_ candidates: [ComponentCandidate], matching hints: [String]) -> [ComponentCandidate] {
         guard !hints.isEmpty else { return candidates }
         return candidates.filter { candidate in
-            let candidateText = [
-                candidate.normalizedCategory,
-                candidate.value ?? "",
-                candidate.package,
-                candidate.mpn,
-                candidate.manufacturer,
-            ]
-                .joined(separator: " ")
-                .lowercased()
-            return hints.contains { candidateText.contains($0) }
+            candidateMatchesCategoryHints(candidate, hints: hints)
+        }
+    }
+
+    private func candidateMatchesCategoryHints(_ candidate: ComponentCandidate, hints: [String]) -> Bool {
+        let candidateText = [
+            candidate.normalizedCategory,
+            candidate.value ?? "",
+            candidate.package,
+            candidate.mpn,
+            candidate.manufacturer,
+        ]
+            .joined(separator: " ")
+            .lowercased()
+        if candidateText.contains("accessor") || candidateText.contains(" tool") || candidateText.contains("_tool") {
+            return false
+        }
+        return hints.contains { hint in
+            candidateText.contains(hint)
         }
     }
 
@@ -3825,7 +4076,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let refdes = component.refdes.uppercased()
         let role = component.role.lowercased()
         let symbol = component.constraints["selected_symbol"]?.lowercased() ?? ""
-        let combined = "\(role) \(symbol)"
+        let category = [
+            component.constraints["component_category"],
+            component.constraints["category"],
+            component.constraints["kind"],
+            component.constraints["device_family"],
+        ]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        let combined = "\(category) \(role) \(symbol)"
 
         if refdes.hasPrefix("BR") || combined.contains("bridge") || combined.contains("rectifier") {
             return ["bridge", "rectifier"]
@@ -3966,7 +4225,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if intent.constraints["kind"] == "resistor_network" {
             return resistorNetworkComponents(from: intent)
         }
-        return [circuitComponent(refdes: intent.refdes, role: intent.role, sourceRefdes: intent.refdes)]
+        return [circuitComponent(refdes: intent.refdes, role: intent.role, sourceIntent: intent)]
     }
 
     private func toneCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
@@ -3976,29 +4235,29 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             .filter { !$0.isEmpty }
         return bands.flatMap { band in
             [
-                circuitComponent(refdes: "R\(band)1", role: "\(band.lowercased()) tone resistor", sourceRefdes: intent.refdes),
-                circuitComponent(refdes: "C\(band)1", role: "\(band.lowercased()) tone capacitor", sourceRefdes: intent.refdes),
+                circuitComponent(refdes: "R\(band)1", role: "\(band.lowercased()) tone resistor", sourceIntent: intent),
+                circuitComponent(refdes: "C\(band)1", role: "\(band.lowercased()) tone capacitor", sourceIntent: intent),
             ]
         }
     }
 
     private func filterCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
         [
-            circuitComponent(refdes: "RFILT1", role: "sweepable filter resistor", sourceRefdes: intent.refdes),
-            circuitComponent(refdes: "CFILT1", role: "sweepable filter capacitor", sourceRefdes: intent.refdes),
-            circuitComponent(refdes: "RVFILT1", role: "sweepable filter frequency control potentiometer", sourceRefdes: intent.refdes),
+            circuitComponent(refdes: "RFILT1", role: "sweepable filter resistor", sourceIntent: intent),
+            circuitComponent(refdes: "CFILT1", role: "sweepable filter capacitor", sourceIntent: intent),
+            circuitComponent(refdes: "RVFILT1", role: "sweepable filter frequency control potentiometer", sourceIntent: intent),
         ]
     }
 
     private func resistorNetworkComponents(from intent: ComponentIntent) -> [CircuitComponent] {
         let base = intent.refdes
         return [
-            circuitComponent(refdes: "\(base)A", role: "\(intent.role) upper resistor", sourceRefdes: intent.refdes),
-            circuitComponent(refdes: "\(base)B", role: "\(intent.role) lower resistor", sourceRefdes: intent.refdes),
+            circuitComponent(refdes: "\(base)A", role: "\(intent.role) upper resistor", sourceIntent: intent),
+            circuitComponent(refdes: "\(base)B", role: "\(intent.role) lower resistor", sourceIntent: intent),
         ]
     }
 
-    private func circuitComponent(refdes: String, role: String, sourceRefdes: String) -> CircuitComponent {
+    private func circuitComponent(refdes: String, role: String, sourceIntent: ComponentIntent) -> CircuitComponent {
         let symbol = circuitSymbol(for: refdes, role: role)
         return CircuitComponent(
             refdes: refdes,
@@ -4006,9 +4265,152 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             selectedSymbol: symbol,
             selectedFootprint: nil,
             manufacturerPartNumber: nil,
-            sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: sourceRefdes)],
-            pins: circuitPins(refdes: refdes, symbol: symbol)
+            sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: sourceIntent.refdes)],
+            pins: circuitPins(refdes: refdes, symbol: symbol),
+            constraints: circuitConstraints(refdes: refdes, role: role, sourceIntent: sourceIntent)
         )
+    }
+
+    private func circuitConstraints(refdes: String, role: String, sourceIntent: ComponentIntent) -> [String: String] {
+        let upperRefdes = refdes.uppercased()
+        let lowerRole = role.lowercased()
+        let sourceRefdes = sourceIntent.refdes.uppercased()
+        let ratings = classAOutputStageRatings(
+            outputPowerWatts: sourceIntent.constraints["output_power_watts"],
+            loadOhms: sourceIntent.constraints["load_ohms"]
+        )
+        var constraints = sourceIntent.constraints
+        constraints["source_refdes"] = sourceIntent.refdes
+        constraints["selection_basis"] = constraints["selection_basis"] ?? "derived_from_approved_design_intent"
+
+        var defaults: [String: String] = [:]
+        if upperRefdes.hasPrefix("BR") || lowerRole.contains("rectifier") {
+            defaults = [
+                "component_category": "bridge_rectifier",
+                "voltage_rating": "100V",
+                "current_rating": "8A",
+                "mounting": "through_hole",
+            ]
+        } else if upperRefdes == "CRES1" || lowerRole.contains("reservoir") || lowerRole.contains("bulk") {
+            defaults = [
+                "component_category": "aluminum_electrolytic_capacitor",
+                "capacitance": "10000uF",
+                "voltage_rating": "50V",
+                "mounting": "through_hole",
+                "dielectric": "aluminum_electrolytic",
+            ]
+        } else if upperRefdes.hasPrefix("C") {
+            defaults = capacitorDefaults(refdes: upperRefdes, role: lowerRole)
+        } else if upperRefdes.hasPrefix("RV") {
+            defaults = [
+                "component_category": "potentiometer",
+                "resistance": "100kOhm",
+                "taper": "linear",
+                "mounting": "through_hole",
+            ]
+        } else if upperRefdes.hasPrefix("R") {
+            defaults = resistorDefaults(refdes: upperRefdes, role: lowerRole, sourceRefdes: sourceRefdes)
+        } else if upperRefdes == "QOUT1" || lowerRole.contains("output transistor") {
+            defaults = [
+                "component_category": "power_transistor",
+                "polarity": "NPN",
+                "voltage_rating": ratings.voltage,
+                "current_rating": ratings.current,
+                "power_rating": ratings.dissipation,
+                "package": "TO-3_or_TO-247",
+                "thermal": "external_heatsink_required",
+                "requires_soa_review": "true",
+            ]
+        } else if upperRefdes.hasPrefix("Q") && lowerRole.contains("driver") {
+            defaults = [
+                "component_category": "driver_transistor",
+                "polarity": "NPN",
+                "voltage_rating": ratings.voltage,
+                "current_rating": "1A",
+                "power_rating": "1W",
+                "package": "TO-126_or_TO-220",
+            ]
+        } else if upperRefdes.hasPrefix("Q") {
+            defaults = [
+                "component_category": "low_noise_transistor",
+                "device_family": constraints["device_family"] ?? "JFET_or_low_noise_BJT",
+                "polarity": "NPN_or_N_channel",
+                "package": "TO-92",
+            ]
+        } else if upperRefdes == "JIN" || lowerRole.contains("guitar input") {
+            defaults = [
+                "component_category": "phone_audio_jack",
+                "positions": "2",
+                "contact_form": "mono",
+                "mounting": "panel_mount",
+            ]
+        } else if upperRefdes == "JSPK" || lowerRole.contains("speaker") {
+            defaults = [
+                "component_category": "speaker_connector",
+                "positions": "2",
+                "current_rating": ratings.current,
+                "mounting": "panel_mount",
+            ]
+        } else if upperRefdes.hasPrefix("J") || upperRefdes.hasPrefix("P") {
+            defaults = [
+                "component_category": "terminal_block",
+                "positions": "2",
+                "current_rating": "10A",
+                "voltage_rating": "300V",
+                "mounting": "through_hole",
+            ]
+        }
+
+        for (key, value) in defaults where constraints[key] == nil || constraints[key]?.isEmpty == true {
+            constraints[key] = value
+        }
+        return constraints
+    }
+
+    private func resistorDefaults(refdes: String, role: String, sourceRefdes: String) -> [String: String] {
+        var defaults: [String: String] = [
+            "component_category": "resistor",
+            "tolerance": "1%",
+            "power_rating": "0.25W",
+            "package": "through_hole_axial",
+        ]
+        if sourceRefdes == "RPRE1" {
+            defaults["resistance"] = refdes.hasSuffix("A") ? "1MOhm" : "100kOhm"
+        } else if sourceRefdes == "RBIAS1" {
+            defaults["resistance"] = refdes.hasSuffix("A") ? "10kOhm" : "1kOhm"
+            defaults["power_rating"] = "0.5W"
+        } else if refdes.contains("BASS") {
+            defaults["resistance"] = "1MOhm"
+        } else if refdes.contains("MID") {
+            defaults["resistance"] = "25kOhm"
+        } else if refdes.contains("TREBLE") {
+            defaults["resistance"] = "250kOhm"
+        } else if refdes.contains("FILT") {
+            defaults["resistance"] = "10kOhm"
+        }
+        return defaults
+    }
+
+    private func capacitorDefaults(refdes: String, role: String) -> [String: String] {
+        var defaults: [String: String] = [
+            "component_category": "film_or_c0g_capacitor",
+            "voltage_rating": "50V",
+            "mounting": "through_hole",
+        ]
+        if refdes.contains("BASS") {
+            defaults["capacitance"] = "100nF"
+            defaults["dielectric"] = "film"
+        } else if refdes.contains("MID") {
+            defaults["capacitance"] = "22nF"
+            defaults["dielectric"] = "film"
+        } else if refdes.contains("TREBLE") {
+            defaults["capacitance"] = "470pF"
+            defaults["dielectric"] = "C0G"
+        } else if refdes.contains("FILT") || role.contains("filter") {
+            defaults["capacitance"] = "47nF"
+            defaults["dielectric"] = "film"
+        }
+        return defaults
     }
 
     private func circuitSymbol(for refdes: String, role: String) -> String {
@@ -4304,7 +4706,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 status: status,
                 artifacts: artifacts,
                 warnings: [warning],
-                nextActions: nextActions
+                nextActions: nextActions,
+                handoff: workflowHandoff(for: request, artifacts: artifacts)
             )),
             artifacts: workspaceArtifacts(from: artifacts, request: request),
             diagnostics: [WorkspaceDiagnostic(code: code, message: message, severity: "error")]
@@ -4339,7 +4742,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 status: .blockedSimulation,
                 artifacts: artifacts,
                 warnings: [warning],
-                nextActions: ["repair_spice_from_diagnostics", "rerun_spice"]
+                nextActions: ["repair_spice_from_diagnostics", "rerun_spice"],
+                handoff: workflowHandoff(for: request, artifacts: artifacts)
             )),
             artifacts: workspaceArtifacts(from: artifacts, request: request),
             diagnostics: [WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error")]

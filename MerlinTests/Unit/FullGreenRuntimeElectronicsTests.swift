@@ -202,9 +202,12 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertEqual(result.status, .blocked)
         XCTAssertEqual(result.violations.map(\.gate), ["erc"])
+        XCTAssertEqual(result.violations.map(\.code), ["power_pin_not_driven"])
         XCTAssertTrue(result.warnings.contains { $0.code == "power_pin_not_driven" })
         XCTAssertTrue(result.nextActions.contains("repair_erc_from_diagnostics"))
-        XCTAssertTrue(result.artifacts.contains { $0.kind == "erc_report" && FileManager.default.fileExists(atPath: $0.path) })
+        let ercPath = try XCTUnwrap(result.artifacts.first { $0.kind == "erc_report" }?.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: ercPath))
+        XCTAssertEqual(result.handoff?.ercReportPath, ercPath)
     }
 
     func testKiCadDRCGateBlocksOnParsedBlockingDiagnostics() async throws {
@@ -223,9 +226,12 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertEqual(result.status, .blocked)
         XCTAssertEqual(result.violations.map(\.gate), ["drc"])
+        XCTAssertEqual(result.violations.map(\.code), ["clearance"])
         XCTAssertTrue(result.warnings.contains { $0.code == "clearance" })
         XCTAssertTrue(result.nextActions.contains("repair_drc_from_diagnostics"))
-        XCTAssertTrue(result.artifacts.contains { $0.kind == "drc_report" && FileManager.default.fileExists(atPath: $0.path) })
+        let drcPath = try XCTUnwrap(result.artifacts.first { $0.kind == "drc_report" }?.path)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: drcPath))
+        XCTAssertEqual(result.handoff?.drcReportPath, drcPath)
     }
 
     func testSPICEGateBlocksOnNgspiceErrorsAndPreservesRepairDiagnostics() async throws {

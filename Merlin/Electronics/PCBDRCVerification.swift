@@ -524,6 +524,26 @@ private struct FlexibleDRCReport: Decodable {
     enum CodingKeys: String, CodingKey {
         case violations
         case errors
+        case sheets
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let topLevel = try container.decodeIfPresent([FlexibleDRCViolation].self, forKey: .violations)
+            ?? container.decodeIfPresent([FlexibleDRCViolation].self, forKey: .errors)
+            ?? []
+        let sheetLevel = try container.decodeIfPresent([FlexibleDRCSheet].self, forKey: .sheets)?
+            .flatMap(\.violations) ?? []
+        violations = topLevel + sheetLevel
+    }
+}
+
+private struct FlexibleDRCSheet: Decodable {
+    var violations: [FlexibleDRCViolation]
+
+    enum CodingKeys: String, CodingKey {
+        case violations
+        case errors
     }
 
     init(from decoder: Decoder) throws {
@@ -540,8 +560,10 @@ private struct FlexibleDRCViolation: Decodable {
     enum CodingKeys: String, CodingKey {
         case id
         case code
+        case type
         case severity
         case message
+        case description
         case refs
         case items
     }
@@ -549,13 +571,53 @@ private struct FlexibleDRCViolation: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
-        let code = try container.decodeIfPresent(String.self, forKey: .code) ?? "unknown"
+        let code = try container.decodeIfPresent(String.self, forKey: .code)
+            ?? container.decodeIfPresent(String.self, forKey: .type)
+            ?? "unknown"
         let severityText = (try container.decodeIfPresent(String.self, forKey: .severity) ?? "error").lowercased()
         let severity = KiCadDRCSeverity(rawValue: severityText) ?? .error
-        let message = try container.decodeIfPresent(String.self, forKey: .message) ?? code
+        let message = try container.decodeIfPresent(String.self, forKey: .message)
+            ?? container.decodeIfPresent(String.self, forKey: .description)
+            ?? code
         let refs = try container.decodeIfPresent([String].self, forKey: .refs)
-            ?? container.decodeIfPresent([String].self, forKey: .items)
+            ?? FlexibleDRCItemRefs.decode(from: decoder, key: .items)
             ?? []
         violation = KiCadDRCViolation(id: id, code: code, severity: severity, message: message, refs: refs)
+    }
+}
+
+private enum FlexibleDRCItemRefs {
+    static func decode(from decoder: Decoder, key: FlexibleDRCViolation.CodingKeys) -> [String]? {
+        guard let container = try? decoder.container(keyedBy: FlexibleDRCViolation.CodingKeys.self),
+              container.contains(key) else {
+            return nil
+        }
+        if let strings = try? container.decode([String].self, forKey: key) {
+            return strings
+        }
+        if let objects = try? container.decode([FlexibleDRCItem].self, forKey: key) {
+            return objects.map(\.reference).filter { !$0.isEmpty }
+        }
+        return nil
+    }
+}
+
+private struct FlexibleDRCItem: Decodable {
+    var reference: String
+
+    enum CodingKeys: String, CodingKey {
+        case ref
+        case reference
+        case description
+        case uuid
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        reference = try container.decodeIfPresent(String.self, forKey: .ref)
+            ?? container.decodeIfPresent(String.self, forKey: .reference)
+            ?? container.decodeIfPresent(String.self, forKey: .description)
+            ?? container.decodeIfPresent(String.self, forKey: .uuid)
+            ?? ""
     }
 }

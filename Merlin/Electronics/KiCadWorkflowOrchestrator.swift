@@ -17,6 +17,7 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
     case circuitIR = "circuit_ir"
     case footprints = "footprints"
     case compile = "compile"
+    case ercChecks = "erc_checks"
     case applyProfile = "apply_profile"
     case netClasses = "net_classes"
     case placement = "placement"
@@ -42,6 +43,7 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
         case "kicad_select_components": self = .componentSelection
         case "kicad_assign_footprints": self = .footprints
         case "kicad_compile_project": self = .compile
+        case "kicad_run_erc": self = .ercChecks
         case "kicad_apply_board_profile": self = .applyProfile
         case "kicad_generate_net_classes": self = .netClasses
         case "kicad_place_components": self = .placement
@@ -69,6 +71,7 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
         case .circuitIR: return "kicad_generate_circuit_ir"
         case .footprints: return "kicad_assign_footprints"
         case .compile: return "kicad_compile_project"
+        case .ercChecks: return "kicad_run_erc"
         case .applyProfile: return "kicad_apply_board_profile"
         case .netClasses: return "kicad_generate_net_classes"
         case .placement: return "kicad_place_components"
@@ -100,12 +103,12 @@ struct KiCadWorkflowState: Codable, Sendable, Equatable {
 struct KiCadWorkflowPlanner: Sendable {
     func steps(for mode: KiCadWorkflowMode) -> [KiCadWorkflowStep] {
         let schematicCore: [KiCadWorkflowStep] = [
-            .ingest, .clarify, .intent, .circuitIR, .componentSelection, .footprints, .compile, .applyProfile,
+            .ingest, .clarify, .intent, .circuitIR, .componentSelection, .footprints, .compile, .ercChecks, .applyProfile,
             .netClasses, .placement, .route, .checks, .simulation, .visualQA,
             .fab, .package,
         ]
         let requirementsCore: [KiCadWorkflowStep] = [
-            .intent, .circuitIR, .componentSelection, .footprints, .compile, .applyProfile,
+            .intent, .circuitIR, .componentSelection, .footprints, .compile, .ercChecks, .applyProfile,
             .netClasses, .placement, .route, .checks, .simulation, .visualQA,
             .fab, .package,
         ]
@@ -301,8 +304,11 @@ struct KiCadWorkflowOrchestrator {
                 && hasPath("component_matrix_path", in: arguments)
                 && hasPath("footprint_assignment_path", in: arguments)
                 && hasPath("output_directory", in: arguments)
+        case .ercChecks:
+            return hasPath("project_path", in: arguments)
         case .checks:
             return hasPath("project_path", in: arguments)
+                && hasPath("erc_report_path", in: arguments)
         case .simulation:
             return hasPath("project_path", in: arguments)
                 && hasPath("drc_report_path", in: arguments)

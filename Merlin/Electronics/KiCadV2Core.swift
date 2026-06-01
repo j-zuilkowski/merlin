@@ -19,6 +19,7 @@ struct ArtifactRef: Codable, Sendable, Equatable {
 
 struct KiCadViolation: Codable, Sendable, Equatable {
     var gate: String
+    var code: String? = nil
     var severity: String
     var message: String
     var affectedRefs: [String]

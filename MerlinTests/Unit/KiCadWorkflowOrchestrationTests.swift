@@ -9,8 +9,8 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertEqual(
             steps.map(\.rawValue),
             [
-                "ingest", "clarify", "intent", "circuit_ir", "component_selection", "footprints", "compile", "apply_profile",
-                "net_classes", "placement", "route", "checks", "simulation", "visual_qa", "fab", "package",
+                "ingest", "clarify", "intent", "circuit_ir", "component_selection", "footprints", "compile", "erc_checks",
+                "apply_profile", "net_classes", "placement", "route", "checks", "simulation", "visual_qa", "fab", "package",
             ]
         )
     }
@@ -218,6 +218,23 @@ final class KiCadWorkflowOrchestrationTests: XCTestCase {
         XCTAssertFalse(executor.executedSteps.contains(.simulation))
         XCTAssertNil(executor.argumentsByStep[.simulation])
     }
+
+    func test_orchestratorRequiresERCReportBeforeDRC() async {
+        let executor = FakeKiCadWorkflowExecutor()
+        executor.resultsByStep[.ercChecks] = KiCadToolResult(status: .complete)
+        let orchestrator = KiCadWorkflowOrchestrator(executor: executor)
+
+        let state = await orchestrator.run(
+            mode: .requirementsToSchematicToPCB,
+            approvals: [.highStakesSignoff],
+            initialArguments: validatedInitialArguments()
+        )
+
+        XCTAssertEqual(state.status, .blockedInputQuality)
+        XCTAssertTrue(executor.executedSteps.contains(.ercChecks))
+        XCTAssertFalse(executor.executedSteps.contains(.checks))
+        XCTAssertNil(executor.argumentsByStep[.checks])
+    }
 }
 
 private func validatedInitialArguments() -> [String: Any] {
@@ -263,6 +280,8 @@ private final class FakeKiCadWorkflowExecutor: KiCadToolExecutor {
             handoff.footprintAssignmentPath = handoff.footprintAssignmentPath ?? "/tmp/footprints.json"
         case .compile:
             handoff.projectPath = handoff.projectPath ?? "/tmp/project.kicad_pro"
+        case .ercChecks:
+            handoff.ercReportPath = handoff.ercReportPath ?? "/tmp/erc-report.json"
         case .checks:
             handoff.drcReportPath = handoff.drcReportPath ?? "/tmp/drc-report.json"
         case .simulation:

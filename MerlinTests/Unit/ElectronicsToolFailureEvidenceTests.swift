@@ -20,6 +20,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertNotEqual(toolResult.status, .complete)
         let drcPath = try XCTUnwrap(toolResult.artifacts.first { $0.kind == "drc_report" }?.path)
         XCTAssertTrue(FileManager.default.fileExists(atPath: drcPath))
+        XCTAssertEqual(toolResult.handoff?.drcReportPath, drcPath)
 
         let evidencePaths = try writeHarnessArtifactPaths(drcReportPath: drcPath)
         let evidence = try ElectronicsEvidenceArtifactAdapter().buildEvidence(evidencePaths)
@@ -63,6 +64,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertNotEqual(toolResult.status, .complete)
         let spicePath = try XCTUnwrap(toolResult.artifacts.first { $0.kind == "spice_measurements" }?.path)
         XCTAssertTrue(FileManager.default.fileExists(atPath: spicePath))
+        XCTAssertEqual(toolResult.handoff?.spiceMeasurementsPath, spicePath)
         let log = try String(contentsOfFile: spicePath, encoding: .utf8)
         XCTAssertTrue(log.contains("fatal ngspice fixture error"))
     }
