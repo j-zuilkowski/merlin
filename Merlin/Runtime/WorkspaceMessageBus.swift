@@ -8,6 +8,7 @@ actor WorkspaceMessageBus {
 
     let workspaceID: String
     let workspaceRoot: URL
+    let settingsRootURL: URL?
 
     private var handlers: [WorkspaceMessageAddress: any WorkspaceMessageHandler] = [:]
     private var capabilities: [WorkspaceCapability] = []
@@ -17,9 +18,10 @@ actor WorkspaceMessageBus {
     private var subscribers: [UUID: Subscriber] = [:]
     private var eventCapacity: Int
 
-    init(workspaceID: String, workspaceRoot: URL, eventCapacity: Int = 1_000) {
+    init(workspaceID: String, workspaceRoot: URL, settingsRootURL: URL? = nil, eventCapacity: Int = 1_000) {
         self.workspaceID = workspaceID
         self.workspaceRoot = workspaceRoot
+        self.settingsRootURL = settingsRootURL
         self.eventCapacity = WorkspaceRuntime.clampedEventCapacity(eventCapacity)
     }
 
@@ -82,7 +84,7 @@ actor WorkspaceMessageBus {
         let context = WorkspaceHandlerContext(
             bus: self,
             workspaceRoot: workspaceRoot,
-            settings: WorkspaceSettingsNamespace(namespace: request.address.namespace, values: [:])
+            settings: loadSettings(namespace: request.address.namespace)
         )
         let response = await run(handler: handler, request: request, context: context, timeout: timeout)
         if cancelledRequestIDs.contains(request.id), response.status == .ok {
@@ -159,6 +161,44 @@ actor WorkspaceMessageBus {
 
     private func removeSubscriber(id: UUID) {
         subscribers.removeValue(forKey: id)
+    }
+
+    private func loadSettings(namespace: String) -> WorkspaceSettingsNamespace {
+        guard let settingsRootURL else {
+            return WorkspaceSettingsNamespace(namespace: namespace, values: [:])
+        }
+        let url = settingsRootURL.appendingPathComponent("\(namespace).toml")
+        guard FileManager.default.fileExists(atPath: url.path),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return WorkspaceSettingsNamespace(namespace: namespace, values: [:])
+        }
+        var values: [String: WorkspaceSettingsValue] = [:]
+        for rawLine in text.split(separator: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            guard line.isEmpty == false,
+                  line.hasPrefix("#") == false,
+                  let separator = line.firstIndex(of: "=") else {
+                continue
+            }
+            let key = line[..<separator].trimmingCharacters(in: .whitespaces)
+            let value = line[line.index(after: separator)...].trimmingCharacters(in: .whitespaces)
+            values[String(key)] = parseSettingsValue(String(value))
+        }
+        return WorkspaceSettingsNamespace(namespace: namespace, values: values)
+    }
+
+    private func parseSettingsValue(_ value: String) -> WorkspaceSettingsValue {
+        if value == "true" { return .boolean(true) }
+        if value == "false" { return .boolean(false) }
+        if value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
+            var text = value
+            text.removeFirst()
+            text.removeLast()
+            return .string(text.replacingOccurrences(of: "\\\"", with: "\"").replacingOccurrences(of: "\\\\", with: "\\"))
+        }
+        if let integer = Int(value) { return .integer(integer) }
+        if let double = Double(value) { return .double(double) }
+        return .string(value)
     }
 
     private func trimEventBuffer() {

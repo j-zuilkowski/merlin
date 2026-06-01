@@ -62,6 +62,7 @@ public enum AccessibilityID {
     public static let settingsProviderKeyField = "settings-provider-key-field"
     public static let settingsProviderKeyCancelButton = "settings-provider-key-cancel-button"
     public static let settingsProviderKeySaveButton = "settings-provider-key-save-button"
+    public static let settingsProviderKeyClearButton = "settings-provider-key-clear-button"
 
     // MARK: - Settings / general
 

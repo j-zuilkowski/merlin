@@ -16,6 +16,17 @@ final class ElectronicsPluginRoleTests: XCTestCase {
         XCTAssertEqual(role?.isRequired, false)
     }
 
+    func testElectronicsPluginManifestDecodesAnalogCriticRole() throws {
+        let url = repoURL("plugins/electronics/plugin.json")
+        let data = try Data(contentsOf: url)
+        let metadata = try WorkspaceJSON.decoder.decode(RuntimePluginMetadata.self, from: data)
+
+        let role = try XCTUnwrap(metadata.roles.first { $0.id == "electronics.analog_critic" })
+        XCTAssertEqual(role.pluginID, "electronics")
+        XCTAssertEqual(role.fallbackSlot, .reason)
+        XCTAssertEqual(role.requiredCapabilities, ["structured_output", "long_context"])
+    }
+
     func testAnalogCriticRoleIsNotDeclaredByMerlinCore() {
         let registry = DynamicRoleRegistry()
 

@@ -33,7 +33,7 @@ struct PluginRoleDefinition: Codable, Equatable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id
         case displayName
-        case pluginID
+        case pluginID = "pluginId"
         case scope
         case fallbackSlot = "defaultFallback"
         case requiredCapabilities

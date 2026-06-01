@@ -20,6 +20,44 @@
       "is_required": false
     }
   ],
+  "settings_schema": {
+    "namespace": "plugin.electronics",
+    "title": "Electronics",
+    "fields": [
+      {
+        "key": "kicad_cli_path",
+        "label": "KiCad CLI Path",
+        "kind": "path",
+        "default_value": null,
+        "is_secret": false,
+        "help": "Path to kicad-cli."
+      },
+      {
+        "key": "catalog_provider_mouser_enabled",
+        "label": "Mouser catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": true } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Mouser for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_digikey_enabled",
+        "label": "Digi-Key catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": true } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Digi-Key for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_nexar_enabled",
+        "label": "Nexar/Octopart catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Nexar/Octopart for component catalog evidence."
+      }
+    ]
+  },
   "capabilities": [
     {
       "id": "plugin.electronics.kicad_check_version",

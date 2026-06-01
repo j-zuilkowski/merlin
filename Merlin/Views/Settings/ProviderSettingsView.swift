@@ -4,9 +4,15 @@ struct ProviderSettingsView: View {
     @EnvironmentObject var registry: ProviderRegistry
     @EnvironmentObject private var appState: AppState
     @State private var editingKeyFor: EditingKeyTarget? = nil
+    @State private var editingElectronicsCredentialsFor: ElectronicsCatalogProviderSettingsDefinition? = nil
     @State private var keyDraft: String = ""
     @State private var isFetchingModels = false
     @State private var didLoadModels = false
+    @State private var pluginSettingsSchemas: [WorkspaceSettingsSchema] = []
+    @State private var electronicsSettings = WorkspaceSettingsNamespace(
+        namespace: ElectronicsRuntimePlugin.settingsNamespace,
+        values: [:]
+    )
 
     var body: some View {
         Form {
@@ -65,6 +71,26 @@ struct ProviderSettingsView: View {
                     .accessibilityIdentifier(AccessibilityID.settingsProvidersRefreshButton)
                 }
             }
+
+            if let electronicsCatalogSchema {
+                Section("Electronics Catalog Providers") {
+                    ForEach(ElectronicsCatalogProviderSettingsDefinition.all.filter { definition in
+                        electronicsCatalogSchema.fields.contains { $0.key == definition.settingKey }
+                    }) { definition in
+                        ElectronicsCatalogProviderSettingsRow(
+                            definition: definition,
+                            isEnabled: electronicsCatalogProviderEnabled(definition),
+                            credentialState: electronicsCatalogCredentialState(definition),
+                            onToggle: { enabled in
+                                setElectronicsCatalogProvider(definition, enabled: enabled)
+                            },
+                            onEditCredentials: {
+                                editingElectronicsCredentialsFor = definition
+                            }
+                        )
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
         .sheet(item: $editingKeyFor) { target in
@@ -83,10 +109,27 @@ struct ProviderSettingsView: View {
                 }
             )
         }
+        .sheet(item: $editingElectronicsCredentialsFor) { definition in
+            ElectronicsCatalogCredentialEntrySheet(
+                definition: definition,
+                onCancel: {
+                    editingElectronicsCredentialsFor = nil
+                },
+                onSave: { values in
+                    saveElectronicsCatalogCredentials(values)
+                    editingElectronicsCredentialsFor = nil
+                },
+                onClear: {
+                    clearElectronicsCatalogCredentials(definition)
+                    editingElectronicsCredentialsFor = nil
+                }
+            )
+        }
         .task {
             guard !didLoadModels else { return }
             didLoadModels = true
             isFetchingModels = true
+            await loadPluginProviderSettings()
             await refreshModels(forceRefresh: false)
             isFetchingModels = false
         }
@@ -95,6 +138,307 @@ struct ProviderSettingsView: View {
     private func refreshModels(forceRefresh: Bool) async {
         await registry.probeAndFetchModels(forceRefresh: forceRefresh)
         await registry.fetchAllModels(forceRefresh: forceRefresh)
+    }
+
+    private var electronicsCatalogSchema: WorkspaceSettingsSchema? {
+        pluginSettingsSchemas.first { $0.namespace == ElectronicsRuntimePlugin.settingsNamespace }
+    }
+
+    @MainActor
+    private func loadPluginProviderSettings() async {
+        await appState.awaitRuntimePluginsReady()
+        pluginSettingsSchemas = await appState.workspaceRuntime.bus.registeredSettingsSchemas()
+        electronicsSettings = (try? appState.workspaceRuntime.settingsStore.load(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace
+        )) ?? WorkspaceSettingsNamespace(namespace: ElectronicsRuntimePlugin.settingsNamespace, values: [:])
+    }
+
+    private func electronicsCatalogProviderEnabled(_ definition: ElectronicsCatalogProviderSettingsDefinition) -> Bool {
+        if case .boolean(let enabled)? = electronicsSettings.values[definition.settingKey] {
+            return enabled
+        }
+        return definition.defaultEnabled
+    }
+
+    private func setElectronicsCatalogProvider(
+        _ definition: ElectronicsCatalogProviderSettingsDefinition,
+        enabled: Bool
+    ) {
+        Task { @MainActor in
+            var values = electronicsSettings.values
+            values[definition.settingKey] = .boolean(enabled)
+            let namespace = WorkspaceSettingsNamespace(
+                namespace: ElectronicsRuntimePlugin.settingsNamespace,
+                values: values
+            )
+            try? await appState.workspaceRuntime.settingsStore.save(namespace)
+            electronicsSettings = namespace
+        }
+    }
+
+    private func electronicsCatalogCredentialState(
+        _ definition: ElectronicsCatalogProviderSettingsDefinition
+    ) -> ElectronicsCatalogProviderCredentialState {
+        switch definition.id {
+        case "mouser":
+            return credentialValue(envName: "MOUSER_API_KEY", keychainID: "electronics.mouser.api_key") == nil
+                ? .missing
+                : .configured
+        case "digikey":
+            let hasClientID = credentialValue(envName: "DIGIKEY_CLIENT_ID", keychainID: "electronics.digikey.client_id") != nil
+            let hasToken = credentialValue(envName: "DIGIKEY_ACCESS_TOKEN", keychainID: "electronics.digikey.access_token") != nil
+            let hasSecret = credentialValue(envName: "DIGIKEY_CLIENT_SECRET", keychainID: "electronics.digikey.client_secret") != nil
+            return hasClientID && (hasToken || hasSecret) ? .configured : .missing
+        case "nexar":
+            let hasClientID = credentialValue(envName: "NEXAR_CLIENT_ID", keychainID: "electronics.nexar.client_id") != nil
+            let hasToken = credentialValue(envName: "NEXAR_ACCESS_TOKEN", keychainID: "electronics.nexar.access_token") != nil
+            let hasSecret = credentialValue(envName: "NEXAR_CLIENT_SECRET", keychainID: "electronics.nexar.client_secret") != nil
+            return hasClientID && (hasToken || hasSecret) ? .configured : .missing
+        default:
+            return .unknown
+        }
+    }
+
+    private func credentialValue(envName: String, keychainID: String) -> String? {
+        if let raw = getenv(envName) {
+            let value = String(cString: raw).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !value.isEmpty { return value }
+        }
+        let value = KeychainManager.readAPIKey(for: keychainID)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return value?.isEmpty == false ? value : nil
+    }
+
+    private func saveElectronicsCatalogCredentials(_ values: [String: String]) {
+        for (keychainID, rawValue) in values {
+            let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            if value.isEmpty {
+                try? KeychainManager.deleteAPIKey(for: keychainID)
+            } else {
+                try? KeychainManager.writeAPIKey(value, for: keychainID)
+            }
+        }
+    }
+
+    private func clearElectronicsCatalogCredentials(_ definition: ElectronicsCatalogProviderSettingsDefinition) {
+        for field in definition.credentialFields {
+            try? KeychainManager.deleteAPIKey(for: field.keychainID)
+        }
+    }
+}
+
+private struct ElectronicsCatalogProviderSettingsDefinition: Identifiable {
+    var id: String
+    var displayName: String
+    var detail: String
+    var settingKey: String
+    var defaultEnabled: Bool
+    var credentialFields: [ElectronicsCatalogCredentialField]
+
+    static let all = [
+        ElectronicsCatalogProviderSettingsDefinition(
+            id: "mouser",
+            displayName: "Mouser",
+            detail: "Live component catalog, stock, pricing, and datasheet evidence.",
+            settingKey: "catalog_provider_mouser_enabled",
+            defaultEnabled: true,
+            credentialFields: [
+                ElectronicsCatalogCredentialField(
+                    label: "API Key",
+                    placeholder: "Mouser API key",
+                    keychainID: "electronics.mouser.api_key",
+                    envName: "MOUSER_API_KEY"
+                ),
+            ]
+        ),
+        ElectronicsCatalogProviderSettingsDefinition(
+            id: "digikey",
+            displayName: "Digi-Key",
+            detail: "Live product information and distributor evidence.",
+            settingKey: "catalog_provider_digikey_enabled",
+            defaultEnabled: true,
+            credentialFields: [
+                ElectronicsCatalogCredentialField(
+                    label: "Client ID",
+                    placeholder: "Digi-Key client ID",
+                    keychainID: "electronics.digikey.client_id",
+                    envName: "DIGIKEY_CLIENT_ID"
+                ),
+                ElectronicsCatalogCredentialField(
+                    label: "Client Secret",
+                    placeholder: "Digi-Key client secret",
+                    keychainID: "electronics.digikey.client_secret",
+                    envName: "DIGIKEY_CLIENT_SECRET"
+                ),
+                ElectronicsCatalogCredentialField(
+                    label: "Access Token",
+                    placeholder: "Optional Digi-Key access token",
+                    keychainID: "electronics.digikey.access_token",
+                    envName: "DIGIKEY_ACCESS_TOKEN"
+                ),
+            ]
+        ),
+        ElectronicsCatalogProviderSettingsDefinition(
+            id: "nexar",
+            displayName: "Nexar / Octopart",
+            detail: "Aggregator search across suppliers; disabled until quota is enabled.",
+            settingKey: "catalog_provider_nexar_enabled",
+            defaultEnabled: false,
+            credentialFields: [
+                ElectronicsCatalogCredentialField(
+                    label: "Client ID",
+                    placeholder: "Nexar client ID",
+                    keychainID: "electronics.nexar.client_id",
+                    envName: "NEXAR_CLIENT_ID"
+                ),
+                ElectronicsCatalogCredentialField(
+                    label: "Client Secret",
+                    placeholder: "Nexar client secret",
+                    keychainID: "electronics.nexar.client_secret",
+                    envName: "NEXAR_CLIENT_SECRET"
+                ),
+                ElectronicsCatalogCredentialField(
+                    label: "Access Token",
+                    placeholder: "Optional Nexar access token",
+                    keychainID: "electronics.nexar.access_token",
+                    envName: "NEXAR_ACCESS_TOKEN"
+                ),
+            ]
+        ),
+    ]
+}
+
+private struct ElectronicsCatalogCredentialField: Hashable {
+    var label: String
+    var placeholder: String
+    var keychainID: String
+    var envName: String
+}
+
+private enum ElectronicsCatalogProviderCredentialState {
+    case configured
+    case missing
+    case unknown
+
+    var label: String {
+        switch self {
+        case .configured: return "Configured"
+        case .missing: return "Missing credentials"
+        case .unknown: return "Unknown"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .configured: return .green
+        case .missing: return Color(nsColor: .tertiaryLabelColor)
+        case .unknown: return Color(nsColor: .secondaryLabelColor)
+        }
+    }
+}
+
+private struct ElectronicsCatalogProviderSettingsRow: View {
+    var definition: ElectronicsCatalogProviderSettingsDefinition
+    var isEnabled: Bool
+    var credentialState: ElectronicsCatalogProviderCredentialState
+    var onToggle: (Bool) -> Void
+    var onEditCredentials: () -> Void
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(definition.displayName)
+                    .fontWeight(.medium)
+                Text(definition.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(credentialState.color)
+                        .frame(width: 6, height: 6)
+                    Text(credentialState.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            Button("Credentials", action: onEditCredentials)
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .accessibilityIdentifier(AccessibilityID.settingsProviderKeyButtonPrefix + "electronics-\(definition.id)")
+            Toggle("", isOn: Binding(
+                get: { isEnabled },
+                set: { enabled in onToggle(enabled) }
+            ))
+                .labelsHidden()
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct ElectronicsCatalogCredentialEntrySheet: View {
+    let definition: ElectronicsCatalogProviderSettingsDefinition
+    let onCancel: () -> Void
+    let onSave: ([String: String]) -> Void
+    let onClear: () -> Void
+
+    @State private var drafts: [String: String] = [:]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(definition.displayName) Credentials")
+                .font(.headline)
+
+            Text("Stored in \(KeychainManager.storageDescription). Environment values are detected but not shown here.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ForEach(definition.credentialFields, id: \.keychainID) { field in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(field.label)
+                        if hasEnvironmentCredential(field) {
+                            Text("env")
+                                .font(.caption2)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color(nsColor: .quaternaryLabelColor))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    SecureField(field.placeholder, text: Binding(
+                        get: { drafts[field.keychainID, default: ""] },
+                        set: { drafts[field.keychainID] = $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeyField + "-\(definition.id)-\(field.keychainID)")
+                }
+            }
+
+            HStack {
+                Button("Clear Stored Credentials", role: .destructive, action: onClear)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeyClearButton)
+                Spacer()
+                Button("Cancel", action: onCancel)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeyCancelButton)
+                Button("Save") {
+                    onSave(drafts)
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(AccessibilityID.settingsProviderKeySaveButton)
+            }
+        }
+        .padding(24)
+        .frame(width: 440)
+        .onAppear {
+            drafts = Dictionary(uniqueKeysWithValues: definition.credentialFields.map { field in
+                (field.keychainID, KeychainManager.readAPIKey(for: field.keychainID) ?? "")
+            })
+        }
+    }
+
+    private func hasEnvironmentCredential(_ field: ElectronicsCatalogCredentialField) -> Bool {
+        guard let raw = getenv(field.envName) else { return false }
+        return !String(cString: raw).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
 
