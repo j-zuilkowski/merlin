@@ -136,10 +136,10 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         let response = await send(
             runtime,
             capability: "kicad_select_components",
-            payload: #"{"design_id":"ampdemo_classa_25w","design_intent_path":"\#(intentArtifact.url.path)"}"#
+            payload: #"{"design_id":"ampdemo_classa_25w","design_intent_path":"\#(intentArtifact.url.path)","live_catalog_providers":[]}"#
         )
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .blocked)
         let matrix = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
         let data = try Data(contentsOf: matrix.url)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
@@ -147,6 +147,10 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(components.contains { $0["refdes"] as? String == "QOUT1" })
         XCTAssertTrue(components.contains { $0["refdes"] as? String == "BR1" })
         XCTAssertTrue(components.allSatisfy { $0["selection_status"] as? String == "requires_vendor_resolution" })
+        let qout = try XCTUnwrap(components.first { $0["refdes"] as? String == "QOUT1" })
+        let qoutConstraints = try XCTUnwrap(qout["constraints"] as? [String: String])
+        XCTAssertEqual(qoutConstraints["component_category"], "power_transistor")
+        XCTAssertEqual(qoutConstraints["voltage_rating"], "80V")
     }
 
     func testApprovedClassATopologyGeneratesDiscreteCircuitIR() async throws {
@@ -176,6 +180,19 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertFalse(refdes.contains("FILTER1"))
         XCTAssertTrue(refdes.isSuperset(of: ["JIN", "QPRE1", "RBASS1", "CBASS1", "RMID1", "CMID1", "RTREBLE1", "CTREBLE1", "RFILT1", "CFILT1", "QDRV1", "QOUT1", "JSPK"]))
         XCTAssertTrue(circuitIR.components.allSatisfy { !$0.sourceEvidence.isEmpty })
+        let componentsByRefdes = Dictionary(circuitIR.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["component_category"], "power_transistor")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["output_power_watts"], "25")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["load_ohms"], "8")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["voltage_rating"], "80V")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["current_rating"], "8A")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["power_rating"], "100W")
+        XCTAssertEqual(componentsByRefdes["CRES1"]?.constraints["capacitance"], "10000uF")
+        XCTAssertEqual(componentsByRefdes["CRES1"]?.constraints["voltage_rating"], "50V")
+        XCTAssertEqual(componentsByRefdes["RBASS1"]?.constraints["resistance"], "1MOhm")
+        XCTAssertEqual(componentsByRefdes["CBASS1"]?.constraints["capacitance"], "100nF")
+        XCTAssertEqual(componentsByRefdes["JIN"]?.constraints["component_category"], "phone_audio_jack")
+        XCTAssertEqual(componentsByRefdes["JSPK"]?.constraints["current_rating"], "8A")
         let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: intentArtifact.url))
         let validation = ElectronicsSchemaValidator.validateReadyForKiCadMutation(designIntent: intent, circuitIR: circuitIR)
         XCTAssertTrue(validation.isValid, validation.issues.map(\.code).joined(separator: ","))

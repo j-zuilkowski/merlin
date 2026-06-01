@@ -3655,59 +3655,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return uniqueRefdes(explicit.map { $0.lowercased() })
                 .filter { catalogProviderIsEnabled($0, settings: settings) }
         }
-        var detected: [String] = []
-        if credentialValue(
-            envName: config.mouserAPIKeyEnv,
-            defaultEnvName: "MOUSER_API_KEY",
-            keychainID: config.mouserAPIKeyKeychainID,
-            defaultKeychainID: "electronics.mouser.api_key"
-        ) != nil,
-           catalogProviderIsEnabled("mouser", settings: settings) {
-            detected.append("mouser")
-        }
-        if credentialValue(
-            envName: config.digikeyClientIDEnv,
-            defaultEnvName: "DIGIKEY_CLIENT_ID",
-            keychainID: config.digikeyClientIDKeychainID,
-            defaultKeychainID: "electronics.digikey.client_id"
-        ) != nil,
-           (credentialValue(
-                envName: config.digikeyAccessTokenEnv,
-                defaultEnvName: "DIGIKEY_ACCESS_TOKEN",
-                keychainID: config.digikeyAccessTokenKeychainID,
-                defaultKeychainID: "electronics.digikey.access_token"
-           ) != nil
-           || credentialValue(
-                envName: config.digikeyClientSecretEnv,
-                defaultEnvName: "DIGIKEY_CLIENT_SECRET",
-                keychainID: config.digikeyClientSecretKeychainID,
-                defaultKeychainID: "electronics.digikey.client_secret"
-            ) != nil),
-           catalogProviderIsEnabled("digikey", settings: settings) {
-            detected.append("digikey")
-        }
-        if credentialValue(
-            envName: config.nexarClientIDEnv,
-            defaultEnvName: "NEXAR_CLIENT_ID",
-            keychainID: config.nexarClientIDKeychainID,
-            defaultKeychainID: "electronics.nexar.client_id"
-        ) != nil,
-           (credentialValue(
-                envName: config.nexarAccessTokenEnv,
-                defaultEnvName: "NEXAR_ACCESS_TOKEN",
-                keychainID: config.nexarAccessTokenKeychainID,
-                defaultKeychainID: "electronics.nexar.access_token"
-           ) != nil
-           || credentialValue(
-                envName: config.nexarClientSecretEnv,
-                defaultEnvName: "NEXAR_CLIENT_SECRET",
-                keychainID: config.nexarClientSecretKeychainID,
-                defaultKeychainID: "electronics.nexar.client_secret"
-            ) != nil),
-           catalogProviderIsEnabled("nexar", settings: settings) {
-            detected.append("nexar")
-        }
-        return detected
+        return []
     }
 
     private func catalogProviderIsEnabled(_ providerID: String, settings: WorkspaceSettingsNamespace) -> Bool {

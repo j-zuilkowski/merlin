@@ -2,6 +2,21 @@ import XCTest
 @testable import Merlin
 
 final class ElectronicsPluginSchemaTests: XCTestCase {
+    func testElectronicsPluginOwnsCatalogProviderSettingsSchema() {
+        let schema = ElectronicsRuntimePlugin.settingsSchema
+
+        XCTAssertEqual(schema.namespace, "plugin.electronics")
+        XCTAssertTrue(schema.fields.contains {
+            $0.key == "catalog_provider_mouser_enabled" && $0.defaultValue == .boolean(true)
+        })
+        XCTAssertTrue(schema.fields.contains {
+            $0.key == "catalog_provider_digikey_enabled" && $0.defaultValue == .boolean(true)
+        })
+        XCTAssertTrue(schema.fields.contains {
+            $0.key == "catalog_provider_nexar_enabled" && $0.defaultValue == .boolean(false)
+        })
+    }
+
     func testDesignIntentAndCircuitIRRoundTrip() throws {
         XCTAssertRoundTrips(validApprovedIntent())
         XCTAssertRoundTrips(validCircuitIR())

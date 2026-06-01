@@ -349,7 +349,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
 
         let response = await send(
             runtime,
-            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"]}"#
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"],"mouser_api_key_env":"MERLIN_TEST_MISSING_MOUSER_API_KEY","mouser_api_key_keychain_id":"merlin.test.missing.mouser.api_key"}"#
         )
 
         XCTAssertEqual(response.status, .blocked)
@@ -359,15 +359,78 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
     }
 
+    func testLiveCatalogQueryUsesStructuredIntentInsteadOfKiCadSymbolName() throws {
+        let request = ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable boost/cut resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "required_pins": "1,2",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        )
+
+        let query = CatalogSearchQueryBuilder().keyword(for: request)
+
+        XCTAssertNotEqual(query, "Device:R")
+        XCTAssertTrue(query.contains("resistor"))
+        XCTAssertFalse(query.contains("Device:R"))
+    }
+
+    func testTargetedLiveCandidateStillMustMatchComponentCategory() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        var wrongTargeted = validCandidate(mpn: "1N4148W", category: "switching_diodes")
+        wrongTargeted.evidence = wrongTargeted.evidence.map { evidence in
+            var evidence = evidence
+            evidence.extractedParameters["target_refdes"] = "RFILT1"
+            return evidence
+        }
+        let rightResistor = validCandidate(mpn: "RC0603FR-0710KL", category: "resistors")
+        let candidatesURL = try writeCandidates([wrongTargeted, rightResistor], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(candidatesURL.path)","live_catalog_providers":[]}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+    }
+
     func testLiveCatalogCacheCanSelectWithoutCredentialsOnLaterRun() async throws {
         let root = try temporaryDirectory()
         let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
         let cachedCandidate = validCandidate(mpn: "RC0603FR-0710KL", category: "resistor")
+        let query = CatalogSearchQueryBuilder().keyword(for: ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable boost/cut resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "source": "circuit_ir",
+                "required_pins": "1,2",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        ))
+        XCTAssertNotEqual(query, "Device:R")
         try LiveCatalogQueryCache().write(
             candidates: [cachedCandidate],
             rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
             providerID: "mouser",
-            query: "Device:R",
+            query: query,
             requestURL: URL(string: "https://api.mouser.test/api/v2/search/keyword"),
             to: cacheDirectory,
             now: Date()
@@ -389,6 +452,77 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.cacheMetadata["source"], "live_catalog_cache")
         XCTAssertEqual(matrix.decisions.first?.status, .selected)
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+    }
+
+    func testDisabledPluginCatalogProviderIsNotQueriedEvenWhenRequested() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: ["catalog_provider_mouser_enabled": .boolean(false)]
+        ))
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"]}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertTrue(matrix.providers.isEmpty)
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED") })
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+    }
+
+    func testAmpDemoLiveCatalogSelectionBlocksTruthfullyWhenValuesAreMissing() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-live-catalog-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_LIVE_CATALOG"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_LIVE_CATALOG=1 or create \(runSentinel.path) to run the AmpDemo live catalog slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let intentURL = root.appendingPathComponent(".merlin/electronics-artifacts/DEB83454-D536-4F25-87EF-BE0038093026-design_intent.json")
+        let circuitIRURL = root.appendingPathComponent(".merlin/electronics-artifacts/68724178-3614-4D07-A5B2-B45F08EC86F0-circuit_ir.json")
+        let configURL = root.appendingPathComponent(".merlin/electronics-provider-config.json")
+        for url in [intentURL, circuitIRURL, configURL] {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "Missing \(url.path)")
+        }
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: [
+                "catalog_provider_mouser_enabled": .boolean(true),
+                "catalog_provider_digikey_enabled": .boolean(true),
+                "catalog_provider_nexar_enabled": .boolean(false),
+            ]
+        ))
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
+        let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
+        XCTAssertEqual(Set(matrix.providers), Set(["mouser", "digikey"]))
+        XCTAssertFalse(matrix.providers.contains("nexar"))
+        XCTAssertTrue(matrix.decisions.contains { decision in
+            decision.candidateSet.contains { candidate in
+                candidate.evidence.contains { ["mouser", "digikey"].contains($0.providerID) }
+            }
+        })
+        XCTAssertFalse(matrix.decisions.contains { $0.status == .selected })
+        print("AmpDemo live component matrix: \(artifact.url.path)")
     }
 
     func testWorkflowHandoffCarriesArtifactPathsAcrossEvidencePipeline() async throws {

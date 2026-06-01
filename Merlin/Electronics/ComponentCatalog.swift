@@ -242,7 +242,7 @@ enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
         case .httpStatus(let status):
             return "Catalog provider returned HTTP \(status)."
         case .missingAccessToken:
-            return "Digi-Key token response did not include an access token."
+            return "Catalog provider token response did not include an access token."
         }
     }
 }
@@ -250,16 +250,189 @@ enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
 struct CatalogSearchQueryBuilder: Sendable {
     func keyword(for request: ComponentSearchRequest) -> String {
         let constraints = request.constraints
-        for key in ["manufacturer_part_number", "mpn", "value", "selected_symbol"] {
+        for key in ["manufacturer_part_number", "mpn"] {
             if let value = constraints[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
                !value.isEmpty {
                 return value
             }
         }
+
+        let family = componentFamily(for: request)
+        var terms = [String]()
+        if let family, !family.keyword.isEmpty {
+            terms.append(family.keyword)
+        }
+        terms.append(contentsOf: valueTerms(from: constraints))
+        if let footprint = constraints["selected_footprint"] {
+            terms.append(contentsOf: footprintTerms(from: footprint))
+        }
+        if let family {
+            terms.append(contentsOf: family.defaultTerms)
+        }
+        terms.append(contentsOf: roleTerms(from: request.role, excluding: family?.excludedRoleTokens ?? []))
+
+        let query = uniqueTerms(terms)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if !query.isEmpty {
+            return query
+        }
         return [request.role, request.refdes]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+
+    private struct ComponentFamily {
+        var keyword: String
+        var defaultTerms: [String]
+        var excludedRoleTokens: Set<String>
+    }
+
+    private func componentFamily(for request: ComponentSearchRequest) -> ComponentFamily? {
+        let refdes = request.refdes.uppercased()
+        let role = request.role.lowercased()
+        let symbol = (request.constraints["selected_symbol"] ?? "").lowercased()
+        let category = [
+            request.constraints["component_category"],
+            request.constraints["category"],
+            request.constraints["kind"],
+        ]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        let combined = "\(category) \(role) \(symbol)"
+
+        if refdes.hasPrefix("BR") || combined.contains("bridge") || combined.contains("rectifier") {
+            return ComponentFamily(
+                keyword: "bridge rectifier",
+                defaultTerms: ["through hole"],
+                excludedRoleTokens: ["bridge", "rectifier"]
+            )
+        }
+        if refdes.hasPrefix("RV") || combined.contains("potentiometer") || combined.contains("pot") {
+            return ComponentFamily(
+                keyword: "potentiometer",
+                defaultTerms: [],
+                excludedRoleTokens: ["potentiometer", "control"]
+            )
+        }
+        if refdes.hasPrefix("R") || combined.contains("resistor") || symbol.hasSuffix(":r") {
+            return ComponentFamily(
+                keyword: "resistor",
+                defaultTerms: [],
+                excludedRoleTokens: ["resistor"]
+            )
+        }
+        if refdes.hasPrefix("C") || combined.contains("capacitor") || symbol.hasSuffix(":c") {
+            return ComponentFamily(
+                keyword: "capacitor",
+                defaultTerms: [],
+                excludedRoleTokens: ["capacitor"]
+            )
+        }
+        if refdes.hasPrefix("Q") || combined.contains("transistor") || combined.contains("mosfet") || combined.contains("bjt") {
+            let keyword = combined.contains("pnp") ? "PNP transistor" : "NPN transistor"
+            return ComponentFamily(
+                keyword: keyword,
+                defaultTerms: [],
+                excludedRoleTokens: ["transistor", "stage"]
+            )
+        }
+        if refdes.hasPrefix("D") || combined.contains("diode") {
+            return ComponentFamily(
+                keyword: "diode",
+                defaultTerms: [],
+                excludedRoleTokens: ["diode"]
+            )
+        }
+        if refdes.hasPrefix("J") || refdes.hasPrefix("P") || combined.contains("connector") || combined.contains("jack") {
+            let pinCount = pinCount(from: request.constraints["required_pins"])
+            let keyword = pinCount.map { "\($0) position connector" } ?? "connector"
+            return ComponentFamily(
+                keyword: keyword,
+                defaultTerms: [],
+                excludedRoleTokens: ["connector"]
+            )
+        }
+        if refdes.hasPrefix("U") || combined.contains("regulator") || combined.contains("op amp") || combined.contains("opamp") {
+            return ComponentFamily(
+                keyword: combined.contains("regulator") ? "voltage regulator" : "integrated circuit",
+                defaultTerms: [],
+                excludedRoleTokens: ["ic", "regulator", "op", "amp"]
+            )
+        }
+        return nil
+    }
+
+    private func valueTerms(from constraints: [String: String]) -> [String] {
+        [
+            "value",
+            "resistance",
+            "capacitance",
+            "inductance",
+            "voltage_rating",
+            "current_rating",
+            "power_rating",
+            "tolerance",
+            "package",
+            "mounting",
+            "positions",
+            "polarity",
+            "contact_form",
+            "dielectric",
+            "taper",
+        ]
+            .compactMap { constraints[$0]?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .map {
+                $0
+                    .replacingOccurrences(of: "_", with: " ")
+                    .replacingOccurrences(of: "-", with: " ")
+            }
+            .filter { !$0.isEmpty }
+    }
+
+    private func footprintTerms(from footprint: String) -> [String] {
+        let normalized = footprint
+            .replacingOccurrences(of: ":", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .lowercased()
+        let knownPackages = ["01005", "0201", "0402", "0603", "0805", "1206", "1210", "1812", "sot23", "sot 23", "to 92", "to 220", "to 247", "to 3"]
+        return knownPackages.filter { normalized.contains($0) }
+    }
+
+    private func roleTerms(from role: String, excluding excluded: Set<String>) -> [String] {
+        let stopWords: Set<String> = [
+            "for", "and", "the", "with", "stage", "network", "circuit", "path", "supply", "audio",
+            "signal", "input", "output", "upper", "lower", "boost", "cut", "tone", "sweepable",
+        ]
+        return role
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { token in
+                token.count > 2 && !stopWords.contains(token) && !excluded.contains(token)
+            }
+    }
+
+    private func pinCount(from requiredPins: String?) -> Int? {
+        let pins = requiredPins?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty } ?? []
+        return pins.isEmpty ? nil : pins.count
+    }
+
+    private func uniqueTerms(_ terms: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for term in terms {
+            let normalized = term.lowercased()
+            guard !seen.contains(normalized) else { continue }
+            seen.insert(normalized)
+            result.append(term)
+        }
+        return result
     }
 }
 
@@ -522,16 +695,34 @@ struct DigiKeyCatalogProviderAdapter: Sendable {
                 nameKey: "ParameterText",
                 valueKey: "ValueText"
             )
-            let package = parameters["Package / Case"] ?? parameters["Package"] ?? ""
+            let descriptionObject = product["Description"] as? [String: Any]
+            let productDescription = CatalogFixtureJSON.firstNonEmpty([
+                CatalogFixtureJSON.string(product, "ProductDescription"),
+                CatalogFixtureJSON.string(descriptionObject, "ProductDescription"),
+                CatalogFixtureJSON.string(descriptionObject, "DetailedDescription"),
+            ])
+            let categoryName = CatalogFixtureJSON.categoryName(product["Category"] as? [String: Any])
+            let package = CatalogFixtureJSON.packageEvidence(
+                parameters,
+                category: categoryName,
+                description: productDescription
+            )
             let ratings = CatalogFixtureJSON.normalized(parameters)
             return ComponentCandidate(
                 mpn: mpn,
                 manufacturer: manufacturer,
-                normalizedCategory: CatalogFixtureJSON.normalizedKey(CatalogFixtureJSON.string(product, "ProductDescription")),
+                normalizedCategory: CatalogFixtureJSON.normalizedKey(CatalogFixtureJSON.firstNonEmpty([
+                    categoryName,
+                    productDescription,
+                ])),
                 value: nil,
                 package: package,
                 ratings: ratings,
-                lifecycleState: CatalogFixtureJSON.string(product, "LifecycleStatus", defaultValue: "unknown"),
+                lifecycleState: CatalogFixtureJSON.firstNonEmpty([
+                    CatalogFixtureJSON.string(product, "LifecycleStatus"),
+                    CatalogFixtureJSON.string(product, "ProductStatus"),
+                    "unknown",
+                ]),
                 availabilitySummary: "\(CatalogFixtureJSON.int(product, "QuantityAvailable")) available",
                 datasheets: [
                     DatasheetEvidence(
@@ -580,7 +771,13 @@ struct MouserCatalogProviderAdapter: Sendable {
                 nameKey: "AttributeName",
                 valueKey: "AttributeValue"
             )
-            let package = attributes["Package / Case"] ?? attributes["Package"] ?? ""
+            let description = CatalogFixtureJSON.string(part, "Description")
+            let category = CatalogFixtureJSON.string(part, "Category")
+            let package = CatalogFixtureJSON.packageEvidence(
+                attributes,
+                category: category,
+                description: description
+            )
             let ratings = CatalogFixtureJSON.normalized(attributes)
             return ComponentCandidate(
                 mpn: mpn,
@@ -678,6 +875,167 @@ struct AggregatorCatalogProviderAdapter: Sendable {
                 footprintCandidates: []
             )
         }
+    }
+}
+
+struct NexarCatalogProviderAdapter: Sendable {
+    let providerID = "nexar"
+
+    func mapRecordedResponse(_ data: Data) throws -> [ComponentCandidate] {
+        let object = try CatalogFixtureJSON.object(data)
+        if let errors = object["errors"] as? [[String: Any]], !errors.isEmpty {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: [],
+                debugDescription: CatalogFixtureJSON.string(errors.first, "message", defaultValue: "Nexar GraphQL returned errors.")
+            ))
+        }
+        let dataObject = object["data"] as? [String: Any] ?? object
+        let searchObject = (dataObject["supSearchMpn"] as? [String: Any])
+            ?? (dataObject["supSearch"] as? [String: Any])
+
+        if let results = searchObject?["results"] as? [[String: Any]] {
+            return results.compactMap { result in
+                guard let part = result["part"] as? [String: Any] else { return nil }
+                return candidate(from: part, resultDescription: CatalogFixtureJSON.optionalString(result, "description"))
+            }
+        }
+        if let multiMatch = dataObject["supMultiMatch"] as? [String: Any],
+           let parts = multiMatch["parts"] as? [[String: Any]] {
+            return parts.map { candidate(from: $0, resultDescription: nil) }
+        }
+        return []
+    }
+
+    private func candidate(from part: [String: Any], resultDescription: String?) -> ComponentCandidate {
+        let manufacturerObject = part["manufacturer"] as? [String: Any]
+        let categoryObject = part["category"] as? [String: Any]
+        let manufacturer = CatalogFixtureJSON.string(manufacturerObject, "name")
+        let mpn = CatalogFixtureJSON.string(part, "mpn")
+        let specs = specMap(from: part["specs"] as? [[String: Any]])
+        let ratings = CatalogFixtureJSON.normalized(specs)
+        let package = firstPresent(
+            in: ratings,
+            keys: ["package_case", "package", "case_package", "supplier_device_package", "mounting_type"]
+        )
+        let lifecycle = firstPresent(
+            in: ratings,
+            keys: ["lifecycle_status", "lifecyclestatus", "manufacturer_lifecycle_status"]
+        )
+        let sourceURL = CatalogFixtureJSON.optionalString(part, "octopartUrl")
+            ?? CatalogFixtureJSON.optionalString(part, "url")
+            ?? CatalogFixtureJSON.optionalString(manufacturerObject ?? [:], "homepageUrl")
+        let datasheets = datasheets(from: part, manufacturer: manufacturer, mpn: mpn)
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: manufacturer,
+            normalizedCategory: CatalogFixtureJSON.normalizedKey(CatalogFixtureJSON.string(categoryObject, "name")),
+            value: nil,
+            package: package,
+            ratings: ratings,
+            lifecycleState: lifecycle.isEmpty ? "unknown" : lifecycle,
+            availabilitySummary: availabilitySummary(from: part),
+            datasheets: datasheets,
+            evidence: [
+                ComponentEvidence(
+                    providerID: providerID,
+                    sourceURL: sourceURL,
+                    localPath: nil,
+                    retrievedAt: "recorded_fixture",
+                    cachePolicy: "recorded_fixture",
+                    sha256: nil,
+                    extractedParameters: ratings.merging([
+                        "name": CatalogFixtureJSON.string(part, "name"),
+                        "description": resultDescription ?? CatalogFixtureJSON.string(part, "shortDescription"),
+                        "package": package,
+                    ]) { first, _ in first },
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+    }
+
+    private func specMap(from specs: [[String: Any]]?) -> [String: String] {
+        (specs ?? []).reduce(into: [String: String]()) { result, spec in
+            let attribute = spec["attribute"] as? [String: Any]
+            let name = CatalogFixtureJSON.string(attribute, "shortname").isEmpty
+                ? CatalogFixtureJSON.string(attribute, "name")
+                : CatalogFixtureJSON.string(attribute, "shortname")
+            guard !name.isEmpty else { return }
+            let displayValue = CatalogFixtureJSON.string(spec, "displayValue")
+            let rawValue = CatalogFixtureJSON.string(spec, "value")
+            let units = CatalogFixtureJSON.string(spec, "unitsSymbol").isEmpty
+                ? CatalogFixtureJSON.string(spec, "unitsName")
+                : CatalogFixtureJSON.string(spec, "unitsSymbol")
+            let value = !displayValue.isEmpty
+                ? displayValue
+                : [rawValue, units].filter { !$0.isEmpty }.joined(separator: " ")
+            if !value.isEmpty {
+                result[name] = value
+            }
+        }
+    }
+
+    private func datasheets(from part: [String: Any], manufacturer: String, mpn: String) -> [DatasheetEvidence] {
+        var urls: [String] = []
+        if let best = part["bestDatasheet"] as? [String: Any],
+           let url = CatalogFixtureJSON.optionalString(best, "url") {
+            urls.append(url)
+        }
+        let collections = part["documentCollections"] as? [[String: Any]] ?? []
+        for collection in collections {
+            for document in collection["documents"] as? [[String: Any]] ?? [] {
+                guard let url = CatalogFixtureJSON.optionalString(document, "url") else { continue }
+                urls.append(url)
+            }
+        }
+        return uniqueValues(urls).map { url in
+            DatasheetEvidence(
+                manufacturer: manufacturer,
+                mpn: mpn,
+                url: url,
+                localPath: nil,
+                sha256: nil,
+                providerID: providerID,
+                retrievedAt: "recorded_fixture",
+                license: "recorded_fixture",
+                citations: []
+            )
+        }
+    }
+
+    private func availabilitySummary(from part: [String: Any]) -> String {
+        if let total = part["totalAvail"] as? Int {
+            return "\(total) total available"
+        }
+        if let total = part["totalAvail"] as? NSNumber {
+            return "\(total.intValue) total available"
+        }
+        let sellers = part["sellers"] as? [[String: Any]] ?? []
+        let sellerSummaries = sellers.compactMap { seller -> String? in
+            guard let company = seller["company"] as? [String: Any] else { return nil }
+            let name = CatalogFixtureJSON.string(company, "name")
+            let inventory = (seller["offers"] as? [[String: Any]] ?? [])
+                .compactMap { offer -> Int? in
+                    if let value = offer["inventoryLevel"] as? Int { return value }
+                    if let value = offer["inventoryLevel"] as? NSNumber { return value.intValue }
+                    return nil
+                }
+                .reduce(0, +)
+            guard !name.isEmpty else { return nil }
+            return inventory > 0 ? "\(name): \(inventory)" : name
+        }
+        return sellerSummaries.isEmpty ? "unknown" : sellerSummaries.joined(separator: "; ")
+    }
+
+    private func firstPresent(in values: [String: String], keys: [String]) -> String {
+        for key in keys {
+            if let value = values[key], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return value
+            }
+        }
+        return ""
     }
 }
 
@@ -847,6 +1205,139 @@ struct LiveDigiKeyCatalogProvider: LiveCatalogProviderClient {
     }
 }
 
+struct LiveNexarCatalogProvider: LiveCatalogProviderClient {
+    let providerID = "nexar"
+    var clientID: String
+    var clientSecret: String?
+    var accessToken: String?
+    var graphqlEndpoint: URL
+    var tokenEndpoint: URL
+    var resultLimit: Int
+    var transport: any CatalogHTTPTransport
+    var now: @Sendable () -> Date
+
+    init(
+        clientID: String,
+        clientSecret: String? = nil,
+        accessToken: String? = nil,
+        graphqlEndpoint: URL = URL(string: "https://api.nexar.com/graphql/")!,
+        tokenEndpoint: URL = URL(string: "https://identity.nexar.com/connect/token")!,
+        resultLimit: Int = 10,
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.clientID = clientID
+        self.clientSecret = clientSecret
+        self.accessToken = accessToken
+        self.graphqlEndpoint = graphqlEndpoint
+        self.tokenEndpoint = tokenEndpoint
+        self.resultLimit = resultLimit
+        self.transport = transport
+        self.now = now
+    }
+
+    func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
+        try await searchWithRawResponse(request).candidates
+    }
+
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult {
+        let token = try await resolvedAccessToken()
+        let keyword = CatalogSearchQueryBuilder().keyword(for: request)
+        let mpnSearch = isMPNSearch(request)
+        var urlRequest = URLRequest(url: graphqlEndpoint, timeoutInterval: 20)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+            "query": graphQLQuery(mpnSearch: mpnSearch),
+            "variables": [
+                "q": keyword,
+                "limit": max(1, min(resultLimit, 100)),
+            ],
+        ])
+
+        let (data, response) = try await transport.data(for: urlRequest)
+        try validate(response: response)
+        let retrievedAt = ISO8601DateFormatter().string(from: now())
+        let candidates = try NexarCatalogProviderAdapter()
+            .mapRecordedResponse(data)
+            .map { liveAnnotated($0, retrievedAt: retrievedAt, cachePolicy: "live_api") }
+        return LiveCatalogSearchResult(candidates: candidates, rawResponse: data, requestURL: graphqlEndpoint)
+    }
+
+    private func resolvedAccessToken() async throws -> String {
+        if let accessToken, !accessToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return accessToken
+        }
+        guard let clientSecret, !clientSecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LiveCatalogProviderError.missingCredential("NEXAR_CLIENT_SECRET")
+        }
+        var request = URLRequest(url: tokenEndpoint, timeoutInterval: 20)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let body = [
+            "client_id": clientID,
+            "client_secret": clientSecret,
+            "grant_type": "client_credentials",
+            "scope": "supply.domain",
+        ]
+            .map { "\($0.key)=\(urlFormEscaped($0.value))" }
+            .joined(separator: "&")
+        request.httpBody = Data(body.utf8)
+        let (data, response) = try await transport.data(for: request)
+        try validate(response: response)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = object["access_token"] as? String,
+              !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LiveCatalogProviderError.missingAccessToken
+        }
+        return token
+    }
+
+    private func isMPNSearch(_ request: ComponentSearchRequest) -> Bool {
+        ["manufacturer_part_number", "mpn"].contains { key in
+            !(request.constraints[key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private func graphQLQuery(mpnSearch: Bool) -> String {
+        let operation = mpnSearch ? "supSearchMpn" : "supSearch"
+        return """
+        query MerlinComponentSearch($q: String!, $limit: Int!) {
+          \(operation)(q: $q, limit: $limit, country: "US") {
+            hits
+            results {
+              description
+              part {
+                id
+                name
+                mpn
+                shortDescription
+                totalAvail
+                manufacturer { name homepageUrl }
+                category { name }
+                specs { attribute { name shortname } displayValue value unitsSymbol unitsName }
+                bestDatasheet { url }
+                sellers(authorizedOnly: true) {
+                  company { name }
+                  offers { inventoryLevel }
+                }
+              }
+            }
+          }
+        }
+        """
+    }
+
+    private func validate(response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard (200...299).contains(http.statusCode) else {
+            throw LiveCatalogProviderError.httpStatus(http.statusCode)
+        }
+    }
+}
+
 private func liveAnnotated(_ candidate: ComponentCandidate, retrievedAt: String, cachePolicy: String) -> ComponentCandidate {
     var candidate = candidate
     candidate.evidence = candidate.evidence.map { evidence in
@@ -868,6 +1359,18 @@ private func urlFormEscaped(_ value: String) -> String {
     var allowed = CharacterSet.urlQueryAllowed
     allowed.remove(charactersIn: "+&=")
     return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+}
+
+private func uniqueValues(_ values: [String]) -> [String] {
+    var seen = Set<String>()
+    var ordered: [String] = []
+    for value in values {
+        let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty, !seen.contains(normalized) else { continue }
+        seen.insert(normalized)
+        ordered.append(normalized)
+    }
+    return ordered
 }
 
 struct CatalogProviderCredentialPolicy: Sendable, Equatable {
@@ -928,6 +1431,55 @@ private enum CatalogFixtureJSON {
                 result[name] = value
             }
         }
+    }
+
+    static func firstNonEmpty(_ values: [String]) -> String {
+        values.first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? ""
+    }
+
+    static func categoryName(_ category: [String: Any]?) -> String {
+        guard let category else { return "" }
+        let childNames = (category["ChildCategories"] as? [[String: Any]] ?? [])
+            .map(categoryName)
+            .filter { !$0.isEmpty }
+        if let deepest = childNames.first {
+            return deepest
+        }
+        return string(category, "Name")
+    }
+
+    static func packageEvidence(_ parameters: [String: String], category: String, description: String) -> String {
+        let directKeys = [
+            "Package / Case",
+            "Supplier Device Package",
+            "Package",
+            "Case",
+            "Mounting Type",
+            "Termination",
+            "Connector Type",
+            "Connector Style",
+            "Size / Dimension",
+        ]
+        let direct = firstNonEmpty(directKeys.compactMap { parameters[$0] })
+        if !direct.isEmpty {
+            return direct
+        }
+
+        let combined = "\(category) \(description)".lowercased()
+        let inferred: [(String, String)] = [
+            ("smd", "SMD"),
+            ("smt", "SMT"),
+            ("surface mount", "surface_mount"),
+            ("through hole", "through_hole"),
+            ("through-hole", "through_hole"),
+            ("chassis mount", "chassis_mount"),
+            ("panel mount", "panel_mount"),
+            ("to-3", "TO-3"),
+            ("to-220", "TO-220"),
+            ("to-247", "TO-247"),
+            ("to-92", "TO-92"),
+        ]
+        return inferred.first { combined.contains($0.0) }?.1 ?? ""
     }
 
     static func normalized(_ values: [String: String]) -> [String: String] {

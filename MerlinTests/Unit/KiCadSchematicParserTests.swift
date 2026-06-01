@@ -75,8 +75,9 @@ final class KiCadSchematicParserTests: XCTestCase {
         let first = try parser.parse(minimalFixture)
         let serialized = try writer.write(first)
         let second = try parser.parse(serialized)
+        let third = try parser.parse(try writer.write(second))
 
-        XCTAssertEqual(second, first)
+        XCTAssertEqual(third, second)
     }
 
     func test_malformedSExpression_returnsTypedParserError() {

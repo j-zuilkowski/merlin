@@ -410,6 +410,27 @@ struct CircuitComponent: Codable, Sendable, Equatable {
     var manufacturerPartNumber: String?
     var sourceEvidence: [SourceEvidence]
     var pins: [CircuitPin]
+    var constraints: [String: String]
+
+    init(
+        refdes: String,
+        role: String,
+        selectedSymbol: String,
+        selectedFootprint: String?,
+        manufacturerPartNumber: String?,
+        sourceEvidence: [SourceEvidence],
+        pins: [CircuitPin],
+        constraints: [String: String] = [:]
+    ) {
+        self.refdes = refdes
+        self.role = role
+        self.selectedSymbol = selectedSymbol
+        self.selectedFootprint = selectedFootprint
+        self.manufacturerPartNumber = manufacturerPartNumber
+        self.sourceEvidence = sourceEvidence
+        self.pins = pins
+        self.constraints = constraints
+    }
 
     enum CodingKeys: String, CodingKey {
         case refdes
@@ -419,6 +440,33 @@ struct CircuitComponent: Codable, Sendable, Equatable {
         case manufacturerPartNumber = "manufacturer_part_number"
         case sourceEvidence = "source_evidence"
         case pins
+        case constraints
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        refdes = try container.decode(String.self, forKey: .refdes)
+        role = try container.decode(String.self, forKey: .role)
+        selectedSymbol = try container.decode(String.self, forKey: .selectedSymbol)
+        selectedFootprint = try container.decodeIfPresent(String.self, forKey: .selectedFootprint)
+        manufacturerPartNumber = try container.decodeIfPresent(String.self, forKey: .manufacturerPartNumber)
+        sourceEvidence = try container.decodeIfPresent([SourceEvidence].self, forKey: .sourceEvidence) ?? []
+        pins = try container.decodeIfPresent([CircuitPin].self, forKey: .pins) ?? []
+        constraints = try container.decodeIfPresent([String: String].self, forKey: .constraints) ?? [:]
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(refdes, forKey: .refdes)
+        try container.encode(role, forKey: .role)
+        try container.encode(selectedSymbol, forKey: .selectedSymbol)
+        try container.encodeIfPresent(selectedFootprint, forKey: .selectedFootprint)
+        try container.encodeIfPresent(manufacturerPartNumber, forKey: .manufacturerPartNumber)
+        try container.encode(sourceEvidence, forKey: .sourceEvidence)
+        try container.encode(pins, forKey: .pins)
+        if !constraints.isEmpty {
+            try container.encode(constraints, forKey: .constraints)
+        }
     }
 }
 
