@@ -267,6 +267,24 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("should not continue"))
     }
 
+    func testDesignProducingElectronicsBoundaryIgnoresKiCadHealthCheck() {
+        let engine = makeEngine()
+        let task = "Using the electronics domain, read /tmp/AmpDemo/spec.md, then stop after the first design-producing electronics/KiCad tool invocation is attempted or completed."
+
+        XCTAssertFalse(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_check_version"
+        ))
+        XCTAssertTrue(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_build_intent_model"
+        ))
+        XCTAssertTrue(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_generate_circuit_ir"
+        ))
+    }
+
     func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

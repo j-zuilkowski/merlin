@@ -399,6 +399,10 @@ final class AgenticEngine {
         return authoritativeElectronicsWorkflowCalls(from: calls).map(\.function.name)
     }
 
+    func requestedStopBoundaryMatchesForTesting(task: String, toolName: String) -> Bool {
+        requestedStopBoundary(in: task, matchesToolNamed: toolName)
+    }
+
     var currentModelID: String {
         modelID(for: resolvedProvider(for: .execute))
     }
@@ -2475,6 +2479,10 @@ final class AgenticEngine {
         }
         guard !stopWindows.isEmpty else { return false }
 
+        if requestedDesignProducingStopBoundary(in: stopWindows) {
+            return isDesignProducingElectronicsTool(toolName)
+        }
+
         if isKiCadTool(toolName),
            stopWindows.contains(where: { window in
                (window.contains("kicad") || window.contains("electronics"))
@@ -2490,6 +2498,41 @@ final class AgenticEngine {
                 return window.contains(alias)
             }
         }
+    }
+
+    private func requestedDesignProducingStopBoundary(in stopWindows: [Substring]) -> Bool {
+        stopWindows.contains { window in
+            window.contains("design-producing")
+                || window.contains("design producing")
+                || window.contains("design generation")
+                || window.contains("first design")
+                || window.contains("intent/model")
+                || window.contains("intent model")
+                || window.contains("circuit ir")
+                || window.contains("component selection")
+                || window.contains("pcb workflow")
+        }
+    }
+
+    private func isDesignProducingElectronicsTool(_ name: String) -> Bool {
+        let normalized = name
+            .replacingOccurrences(of: "mcp:kicad:", with: "")
+            .lowercased()
+        return [
+            "kicad_ingest_schematic",
+            "kicad_build_intent_model",
+            "kicad_generate_circuit_ir",
+            "kicad_select_components",
+            "kicad_prepare_libraries",
+            "kicad_assign_footprints",
+            "kicad_compile_project",
+            "kicad_apply_board_profile",
+            "kicad_generate_net_classes",
+            "kicad_place_components",
+            "kicad_route_pass",
+            ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+            ElectronicsWorkflowRoute.schematicToPCB.rawValue,
+        ].contains(normalized)
     }
 
     private func stopBoundaryAliases(for toolName: String) -> Set<String> {
@@ -2525,7 +2568,9 @@ final class AgenticEngine {
               originalTask.lowercased().contains("tool")
                 || originalTask.lowercased().contains("plugin")
                 || originalTask.lowercased().contains("kicad"),
-              !pendingContinuationEvidence.contains(where: { isKiCadTool($0.toolName) })
+              !pendingContinuationEvidence.contains(where: {
+                  requestedStopBoundary(in: originalTask, matchesToolNamed: $0.toolName)
+              })
         else { return false }
 
         let available = availableElectronicsToolNamesForCorrection()
