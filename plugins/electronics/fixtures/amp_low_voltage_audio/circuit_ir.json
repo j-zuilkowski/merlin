@@ -22,10 +22,10 @@
       "manufacturer_part_number": "KBU4G",
       "source_evidence": [{ "kind": "datasheet", "reference": "KBU bridge rectifier datasheet" }],
       "pins": [
-        { "component_refdes": "BR1", "pin_number": "1", "canonical_name": "AC1", "electrical_type": "passive", "symbol_pin": "AC1", "footprint_pad": "1" },
-        { "component_refdes": "BR1", "pin_number": "2", "canonical_name": "AC2", "electrical_type": "passive", "symbol_pin": "AC2", "footprint_pad": "2" },
-        { "component_refdes": "BR1", "pin_number": "3", "canonical_name": "PLUS", "electrical_type": "power", "symbol_pin": "+", "footprint_pad": "3" },
-        { "component_refdes": "BR1", "pin_number": "4", "canonical_name": "MINUS", "electrical_type": "power", "symbol_pin": "-", "footprint_pad": "4" }
+        { "component_refdes": "BR1", "pin_number": "1", "canonical_name": "PLUS", "electrical_type": "power", "symbol_pin": "+", "footprint_pad": "1" },
+        { "component_refdes": "BR1", "pin_number": "2", "canonical_name": "MINUS", "electrical_type": "power", "symbol_pin": "-", "footprint_pad": "2" },
+        { "component_refdes": "BR1", "pin_number": "3", "canonical_name": "AC1", "electrical_type": "passive", "symbol_pin": "3", "footprint_pad": "3" },
+        { "component_refdes": "BR1", "pin_number": "4", "canonical_name": "AC2", "electrical_type": "passive", "symbol_pin": "4", "footprint_pad": "4" }
       ]
     },
     {
@@ -44,12 +44,12 @@
       "refdes": "JIN",
       "role": "input jack for guitar signal",
       "selected_symbol": "Connector:AudioJack2",
-      "selected_footprint": "Connector_Audio:Jack_6.35mm",
+      "selected_footprint": "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2_Horizontal",
       "manufacturer_part_number": "Switchcraft-12A",
       "source_evidence": [{ "kind": "datasheet", "reference": "Switchcraft open-frame jack catalog" }],
       "pins": [
-        { "component_refdes": "JIN", "pin_number": "1", "canonical_name": "TIP", "electrical_type": "passive", "symbol_pin": "T", "footprint_pad": "1" },
-        { "component_refdes": "JIN", "pin_number": "2", "canonical_name": "SLEEVE", "electrical_type": "passive", "symbol_pin": "S", "footprint_pad": "2" }
+        { "component_refdes": "JIN", "pin_number": "T", "canonical_name": "TIP", "electrical_type": "passive", "symbol_pin": "T", "footprint_pad": "T" },
+        { "component_refdes": "JIN", "pin_number": "S", "canonical_name": "SLEEVE", "electrical_type": "passive", "symbol_pin": "S", "footprint_pad": "S" }
       ]
     },
     {
@@ -80,7 +80,7 @@
       "refdes": "QPRE1",
       "role": "discrete preamp JFET gain stage",
       "selected_symbol": "Device:Q_NJFET_DSG",
-      "selected_footprint": "Package_TO_SOT_THT:TO-92_Inline_DSG",
+      "selected_footprint": "Package_TO_SOT_THT:TO-92_Inline",
       "manufacturer_part_number": "J113",
       "source_evidence": [{ "kind": "datasheet", "reference": "onsemi J113 JFET datasheet" }],
       "pins": [
@@ -250,7 +250,7 @@
       "refdes": "QDRV1",
       "role": "voltage driver transistor for output stage",
       "selected_symbol": "Device:Q_NPN_BCE",
-      "selected_footprint": "Package_TO_SOT_THT:TO-92_Inline",
+      "selected_footprint": "Package_TO_SOT_THT:TO-126-3_Vertical",
       "manufacturer_part_number": "MJE340",
       "source_evidence": [{ "kind": "datasheet", "reference": "onsemi MJE340 datasheet" }],
       "pins": [
@@ -312,7 +312,7 @@
       "refdes": "JSPK",
       "role": "speaker output connector",
       "selected_symbol": "Connector:Conn_01x02_Pin",
-      "selected_footprint": "TerminalBlock:TerminalBlock_bornier-2_P5.08mm",
+      "selected_footprint": "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-3-2-5.08_1x02_P5.08mm_Horizontal",
       "manufacturer_part_number": "Phoenix-1725656",
       "source_evidence": [{ "kind": "datasheet", "reference": "Phoenix Contact terminal block datasheet" }],
       "pins": [
@@ -322,11 +322,11 @@
     }
   ],
   "nets": [
-    { "name": "AC_SEC1", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "1" }, { "component_refdes": "BR1", "pin_number": "1" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
-    { "name": "AC_SEC2", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "2" }, { "component_refdes": "BR1", "pin_number": "2" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
-    { "name": "VRAW", "role": "low-voltage positive rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "3" }, { "component_refdes": "CRES1", "pin_number": "1" }, { "component_refdes": "RPRE_D", "pin_number": "1" }, { "component_refdes": "RDRV_C", "pin_number": "1" }, { "component_refdes": "QOUT1", "pin_number": "2" }], "net_class": "power", "safety_domain": "isolated_secondary" },
-    { "name": "GND", "role": "low-voltage reference rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "4" }, { "component_refdes": "CRES1", "pin_number": "2" }, { "component_refdes": "JIN", "pin_number": "2" }, { "component_refdes": "RIN", "pin_number": "2" }, { "component_refdes": "RPRE_S", "pin_number": "2" }, { "component_refdes": "CPRE_BYP", "pin_number": "2" }, { "component_refdes": "CBASS", "pin_number": "2" }, { "component_refdes": "CMID", "pin_number": "2" }, { "component_refdes": "CTREBLE", "pin_number": "2" }, { "component_refdes": "CFILT1", "pin_number": "2" }, { "component_refdes": "RDRV_E", "pin_number": "2" }, { "component_refdes": "REMIT", "pin_number": "2" }, { "component_refdes": "JSPK", "pin_number": "2" }], "net_class": "ground", "safety_domain": "isolated_secondary" },
-    { "name": "GUITAR_IN", "role": "input signal", "endpoints": [{ "component_refdes": "JIN", "pin_number": "1" }, { "component_refdes": "CIN", "pin_number": "1" }, { "component_refdes": "RIN", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
+    { "name": "AC_SEC1", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "1" }, { "component_refdes": "BR1", "pin_number": "3" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
+    { "name": "AC_SEC2", "role": "isolated secondary input", "endpoints": [{ "component_refdes": "JSEC", "pin_number": "2" }, { "component_refdes": "BR1", "pin_number": "4" }], "net_class": "secondary_ac", "safety_domain": "isolated_secondary" },
+    { "name": "VRAW", "role": "low-voltage positive rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "1" }, { "component_refdes": "CRES1", "pin_number": "1" }, { "component_refdes": "RPRE_D", "pin_number": "1" }, { "component_refdes": "RDRV_C", "pin_number": "1" }, { "component_refdes": "QOUT1", "pin_number": "2" }], "net_class": "power", "safety_domain": "isolated_secondary" },
+    { "name": "GND", "role": "low-voltage reference rail", "endpoints": [{ "component_refdes": "BR1", "pin_number": "2" }, { "component_refdes": "CRES1", "pin_number": "2" }, { "component_refdes": "JIN", "pin_number": "S" }, { "component_refdes": "RIN", "pin_number": "2" }, { "component_refdes": "RPRE_S", "pin_number": "2" }, { "component_refdes": "CPRE_BYP", "pin_number": "2" }, { "component_refdes": "CBASS", "pin_number": "2" }, { "component_refdes": "CMID", "pin_number": "2" }, { "component_refdes": "CTREBLE", "pin_number": "2" }, { "component_refdes": "CFILT1", "pin_number": "2" }, { "component_refdes": "RDRV_E", "pin_number": "2" }, { "component_refdes": "REMIT", "pin_number": "2" }, { "component_refdes": "JSPK", "pin_number": "2" }], "net_class": "ground", "safety_domain": "isolated_secondary" },
+    { "name": "GUITAR_IN", "role": "input signal", "endpoints": [{ "component_refdes": "JIN", "pin_number": "T" }, { "component_refdes": "CIN", "pin_number": "1" }, { "component_refdes": "RIN", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
     { "name": "PRE_BIAS", "role": "preamp gate bias", "endpoints": [{ "component_refdes": "CIN", "pin_number": "2" }, { "component_refdes": "QPRE1", "pin_number": "3" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
     { "name": "PRE_DRAIN", "role": "preamp amplified node", "endpoints": [{ "component_refdes": "QPRE1", "pin_number": "1" }, { "component_refdes": "RPRE_D", "pin_number": "2" }, { "component_refdes": "CTONE_IN", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },
     { "name": "PRE_SOURCE", "role": "preamp source bias", "endpoints": [{ "component_refdes": "QPRE1", "pin_number": "2" }, { "component_refdes": "RPRE_S", "pin_number": "1" }, { "component_refdes": "CPRE_BYP", "pin_number": "1" }], "net_class": "audio_signal", "safety_domain": "isolated_secondary" },

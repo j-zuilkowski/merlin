@@ -43,6 +43,8 @@ enum ERCRepairClass: String, Codable, Sendable, Equatable {
     case netLabelMismatch = "net_label_mismatch"
     case knownEndpointConnection = "known_endpoint_connection"
     case pinMappingCorrection = "pin_mapping_correction"
+    case generatedArtifactBug = "generated_artifact_bug"
+    case incompleteCircuit = "incomplete_circuit"
 }
 
 struct ERCRepairPatch: Codable, Sendable, Equatable {
@@ -94,6 +96,10 @@ struct ERCRepairPlanner: Sendable {
         resolverEvidence: [KiCadLibraryPinResolution]
     ) -> ERCRepairClass? {
         switch violation.code {
+        case "wire_dangling", "label_dangling", "unconnected_wire_endpoint":
+            return .generatedArtifactBug
+        case "pin_not_driven", "input_pin_not_driven":
+            return .incompleteCircuit
         case "no_connect", "pin_not_connected", "unconnected_pin":
             return .explicitNoConnect
         case "power_flag_missing", "power_input_not_driven", "power_pin_not_driven":
@@ -140,6 +146,10 @@ struct ERCRepairPlanner: Sendable {
             return "connect_known_endpoint"
         case .pinMappingCorrection:
             return "correct_pin_mapping_from_resolver"
+        case .generatedArtifactBug:
+            return "regenerate_schematic_from_pin_geometry"
+        case .incompleteCircuit:
+            return "complete_or_correct_circuit_ir"
         }
     }
 }
@@ -382,18 +392,22 @@ private struct FlexibleERCReport: Decodable {
     enum CodingKeys: String, CodingKey {
         case violations
         case errors
+        case sheets
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        if let violations = try container.decodeIfPresent([FlexibleERCViolation].self, forKey: .violations) {
-            self.violations = violations
-        } else if let errors = try container.decodeIfPresent([FlexibleERCViolation].self, forKey: .errors) {
-            self.violations = errors
-        } else {
-            self.violations = []
-        }
+        let topLevelViolations = try container.decodeIfPresent([FlexibleERCViolation].self, forKey: .violations) ?? []
+        let errors = try container.decodeIfPresent([FlexibleERCViolation].self, forKey: .errors) ?? []
+        let sheetViolations = try container
+            .decodeIfPresent([FlexibleERCSheet].self, forKey: .sheets)?
+            .flatMap(\.violations) ?? []
+        self.violations = topLevelViolations + errors + sheetViolations
     }
+}
+
+private struct FlexibleERCSheet: Decodable {
+    var violations: [FlexibleERCViolation]
 }
 
 private struct FlexibleERCViolation: Decodable {
@@ -402,8 +416,10 @@ private struct FlexibleERCViolation: Decodable {
     enum CodingKeys: String, CodingKey {
         case id
         case code
+        case type
         case severity
         case message
+        case description
         case refs
         case items
     }
@@ -411,13 +427,18 @@ private struct FlexibleERCViolation: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
-        let code = try container.decodeIfPresent(String.self, forKey: .code) ?? "unknown"
+        let code = try container.decodeIfPresent(String.self, forKey: .code)
+            ?? container.decodeIfPresent(String.self, forKey: .type)
+            ?? "unknown"
         let severityText = (try container.decodeIfPresent(String.self, forKey: .severity) ?? "error").lowercased()
         let severity = KiCadERCSeverity(rawValue: severityText) ?? .error
-        let message = try container.decodeIfPresent(String.self, forKey: .message) ?? code
-        let refs = try container.decodeIfPresent([String].self, forKey: .refs)
-            ?? container.decodeIfPresent([String].self, forKey: .items)
-            ?? []
+        let message = try container.decodeIfPresent(String.self, forKey: .message)
+            ?? container.decodeIfPresent(String.self, forKey: .description)
+            ?? code
+        let directRefs = (try? container.decodeIfPresent([String].self, forKey: .refs)) ?? nil
+        let stringItems = (try? container.decodeIfPresent([String].self, forKey: .items)) ?? nil
+        let objectItems = (try? container.decodeIfPresent([FlexibleERCItem].self, forKey: .items)) ?? nil
+        let refs = directRefs ?? stringItems ?? (objectItems ?? []).map(\.reference)
         self.violation = KiCadERCViolation(
             id: id,
             code: code,
@@ -425,5 +446,21 @@ private struct FlexibleERCViolation: Decodable {
             message: message,
             refs: refs
         )
+    }
+}
+
+private struct FlexibleERCItem: Decodable {
+    var reference: String
+
+    enum CodingKeys: String, CodingKey {
+        case description
+        case uuid
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        reference = try container.decodeIfPresent(String.self, forKey: .description)
+            ?? container.decodeIfPresent(String.self, forKey: .uuid)
+            ?? ""
     }
 }

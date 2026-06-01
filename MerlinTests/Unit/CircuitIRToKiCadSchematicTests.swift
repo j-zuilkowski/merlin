@@ -16,19 +16,22 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" })
     }
 
-    func testMaterializedCircuitIRUsesMerlinNetMetadataInsteadOfDanglingKiCadLabels() throws {
+    func testMaterializedCircuitIREmitsRealKiCadSymbolsAndConnectivity() throws {
         let document = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: validCircuitIR())
         let serialized = try KiCadSchematicWriter().write(document)
         let parsed = try KiCadSchematicParser().parse(serialized)
 
-        XCTAssertTrue(serialized.contains(#"(text "MERLIN_NET: DRV_OUT""#), serialized)
-        XCTAssertFalse(serialized.contains("(label \"DRV_OUT\""), serialized)
-        XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && !$0.emitsKiCadConnectivity })
-        XCTAssertTrue(parsed.symbols.contains { $0.property(named: "Reference") == "Q1" && !$0.emitsKiCadSymbol })
-        XCTAssertTrue(parsed.wires.isEmpty)
+        XCTAssertTrue(serialized.contains(#"(lib_id "Transistor_BJT:Q_NPN_BCE")"#), serialized)
+        XCTAssertTrue(serialized.contains(#"(label "DRV_OUT""#), serialized)
+        XCTAssertTrue(serialized.contains(#"(symbol "Transistor_BJT:Q_NPN_BCE""#), serialized)
+        XCTAssertTrue(serialized.contains(#"(pin "1""#), serialized)
+        XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && $0.emitsKiCadConnectivity && $0.at != nil })
+        XCTAssertTrue(parsed.labels.contains { $0.text == "GND" && $0.emitsKiCadConnectivity && $0.at != nil })
+        XCTAssertTrue(parsed.symbols.contains { $0.property(named: "Reference") == "Q1" && $0.emitsKiCadSymbol })
+        XCTAssertFalse(parsed.labels.isEmpty)
     }
 
-    func testMaterializedCircuitIRPassesRealKiCadERCWhenAvailable() throws {
+    func testMaterializedCircuitIRRunsRealKiCadERCAndReportsOnlyCircuitLevelGaps() throws {
         let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
         guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
             throw XCTSkip("KiCad CLI is not installed at \(kicadCLI)")
@@ -48,7 +51,10 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
 
         XCTAssertEqual(process.terminationStatus, 0)
         let reportText = try String(contentsOf: report, encoding: .utf8)
-        XCTAssertTrue(reportText.contains(#""violations": []"#), reportText)
+        XCTAssertTrue(reportText.contains(#""violations""#), reportText)
+        XCTAssertFalse(reportText.contains(#""wire_dangling""#), reportText)
+        XCTAssertFalse(reportText.contains(#""label_dangling""#), reportText)
+        XCTAssertTrue(reportText.contains(#""pin_not_connected""#) || reportText.contains(#""pin_not_driven""#), reportText)
     }
 
     func testValidCircuitIRCreatesKiCadProjectAndSchematic() throws {
@@ -64,7 +70,37 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
 
         let parsed = try KiCadSchematicParser().parse(String(contentsOf: result.schematicURL, encoding: .utf8))
         XCTAssertEqual(parsed.symbols.count, 2)
-        XCTAssertEqual(parsed.labels.map(\.text).sorted(), ["DRV_OUT", "GND"])
+        XCTAssertEqual(Set(parsed.labels.map(\.text)), ["DRV_OUT", "GND"])
+        XCTAssertEqual(parsed.wires.count, 0)
+    }
+
+    func testMaterializationBlocksWhenKiCadPinGeometryCannotBeResolved() throws {
+        var circuitIR = validCircuitIR()
+        circuitIR.components[0].selectedSymbol = "Missing:NoSuchSymbol"
+        let outputDirectory = temporaryDirectory("circuit-ir-missing-pin-geometry")
+
+        XCTAssertThrowsError(try CircuitIRKiCadSchematicMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputDirectory
+        )) { error in
+            guard case CircuitIRKiCadSchematicMaterializerError.unresolvedPinGeometry(let issues) = error else {
+                return XCTFail("Expected unresolved pin geometry error, got \(error)")
+            }
+            XCTAssertTrue(issues.contains { $0.code == "PIN_GEOMETRY_UNRESOLVED" })
+        }
+    }
+
+    func testKiCadSymbolGeometryResolverExtractsPinLocationsFromInstalledLibraries() throws {
+        let roots = KiCadLibraryRootDiscovery().discover()
+        guard roots != nil else {
+            throw XCTSkip("KiCad libraries are not installed")
+        }
+
+        let geometry = try XCTUnwrap(KiCadSymbolGeometryResolver(roots: roots).resolve(libraryID: "Device:R"))
+
+        XCTAssertEqual(geometry.libraryID, "Device:R")
+        XCTAssertTrue(geometry.pins.contains { $0.number == "1" && $0.at == KiCadSchematicDocument.Point(x: 0, y: 3.81) })
+        XCTAssertTrue(geometry.pins.contains { $0.number == "2" && $0.at == KiCadSchematicDocument.Point(x: 0, y: -3.81) })
     }
 
     func testParityPassesWhenCircuitIRMatchesSchematic() throws {
@@ -95,6 +131,9 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         for forbidden in ["AmpDemo", "ESP32", "25W", "Class-A", "MJ15003G"] {
             XCTAssertFalse(source.contains(forbidden), "Schematic materializer must stay product-generic; found \(forbidden)")
         }
+        for forbidden in ["q_npn", "bridge_rectifier", "potentiometer"] {
+            XCTAssertFalse(source.lowercased().contains(forbidden), "Schematic materializer must use library pin geometry, not symbol-name offset shortcuts")
+        }
     }
 
     private func validCircuitIR() -> CircuitIR {
@@ -123,7 +162,7 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
                     sourceEvidence: [SourceEvidence(kind: "datasheet", reference: "driver datasheet")],
                     pins: [
                         CircuitPin(componentRefdes: "Q2", pinNumber: "1", canonicalName: "B", electricalType: "input", symbolPin: "B", footprintPad: "1"),
-                        CircuitPin(componentRefdes: "Q2", pinNumber: "2", canonicalName: "E", electricalType: "passive", symbolPin: "E", footprintPad: "2"),
+                        CircuitPin(componentRefdes: "Q2", pinNumber: "3", canonicalName: "E", electricalType: "passive", symbolPin: "E", footprintPad: "3"),
                     ]
                 ),
             ],
@@ -142,7 +181,7 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
                     name: "GND",
                     role: "reference",
                     endpoints: [
-                        CircuitNetEndpoint(componentRefdes: "Q2", pinNumber: "2"),
+                        CircuitNetEndpoint(componentRefdes: "Q2", pinNumber: "3"),
                     ],
                     netClass: "power",
                     safetyDomain: "isolated_secondary"

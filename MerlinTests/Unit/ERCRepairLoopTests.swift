@@ -15,6 +15,41 @@ final class ERCRepairLoopTests: XCTestCase {
         XCTAssertEqual(report.blockingViolations.map(\.id), ["v1"])
     }
 
+    func testERCJSONParserExtractsKiCad10SheetViolations() throws {
+        let data = Data("""
+        {
+          "sheets": [
+            {
+              "path": "/",
+              "violations": [
+                {
+                  "type": "pin_not_connected",
+                  "severity": "error",
+                  "description": "Pin not connected",
+                  "items": [
+                    { "description": "Symbol R1 Pin 1 [Passive, Line]", "uuid": "abc" }
+                  ]
+                },
+                {
+                  "type": "unconnected_wire_endpoint",
+                  "severity": "warning",
+                  "description": "Unconnected wire endpoint",
+                  "items": []
+                }
+              ]
+            }
+          ]
+        }
+        """.utf8)
+
+        let report = try KiCadERCParser().parse(jsonData: data)
+
+        XCTAssertEqual(report.violations.map(\.code), ["pin_not_connected", "unconnected_wire_endpoint"])
+        XCTAssertEqual(report.violations[0].message, "Pin not connected")
+        XCTAssertEqual(report.violations[0].refs, ["Symbol R1 Pin 1 [Passive, Line]"])
+        XCTAssertEqual(report.blockingViolations.map(\.code), ["pin_not_connected"])
+    }
+
     func testPlannerSupportsAllowedFirstMilestoneRepairClasses() throws {
         let report = try KiCadERCParser().parse(jsonData: ercJSON([
             ercViolation(id: "nc", code: "no_connect", severity: "error", message: "Add explicit no-connect", refs: ["J1.2"]),
@@ -50,6 +85,24 @@ final class ERCRepairLoopTests: XCTestCase {
         XCTAssertFalse(plan.isRepairable)
         XCTAssertEqual(plan.unsupportedViolations.map(\.code), ["pin_conflict"])
     }
+
+    func testPlannerClassifiesGeneratedArtifactAndIncompleteCircuitFailures() throws {
+        let report = try KiCadERCParser().parse(jsonData: ercJSON([
+            ercViolation(id: "wire", code: "wire_dangling", severity: "error", message: "Generated wire is not attached", refs: ["DRV_OUT"]),
+            ercViolation(id: "drive", code: "pin_not_driven", severity: "error", message: "Input pin lacks driver", refs: ["Q1.1"]),
+        ]))
+
+        let plan = ERCRepairPlanner().planRepairs(
+            report: report,
+            circuitIR: validCircuitIR(),
+            resolverEvidence: []
+        )
+
+        XCTAssertTrue(plan.isRepairable)
+        XCTAssertEqual(plan.patches.map(\.repairClass), [.generatedArtifactBug, .incompleteCircuit])
+        XCTAssertEqual(plan.patches.map(\.action), ["regenerate_schematic_from_pin_geometry", "complete_or_correct_circuit_ir"])
+    }
+
 
     func testRepairLoopStopsAfterThreeIterations() throws {
         let failing = try KiCadERCParser().parse(jsonData: ercJSON([

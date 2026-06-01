@@ -195,7 +195,7 @@ struct KiCadLibraryCatalogExtractor: Sendable {
 
     private func parsePad(_ block: String) -> KiCadFootprintPad? {
         guard let number = firstQuotedValue(after: "(pad", in: block) else { return nil }
-        let name = propertyValue("pinfunction", in: block) ?? number
+        let name = propertyValue("pinfunction", in: block)
         return KiCadFootprintPad(number: number, name: name)
     }
 

@@ -396,7 +396,7 @@ struct ElectronicsEndToEndHarness: Sendable {
                     name: footprint,
                     pads: component.pins.compactMap { pin in
                         guard let pad = pin.footprintPad else { return nil }
-                        return KiCadFootprintPad(number: pad, name: pin.symbolPin)
+                        return KiCadFootprintPad(number: pad, name: nil)
                     }
                 )
             }

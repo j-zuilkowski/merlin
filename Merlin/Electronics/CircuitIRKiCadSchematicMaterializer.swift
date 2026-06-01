@@ -6,11 +6,26 @@ struct CircuitIRSchematicMaterialization: Sendable, Equatable {
     var sourceMap: [String: String]
 }
 
+enum CircuitIRKiCadSchematicMaterializerError: Error, Equatable {
+    case unresolvedPinGeometry([ElectronicsSchemaIssue])
+}
+
 struct CircuitIRKiCadSchematicMaterializer: Sendable {
+    private let pinGeometryResolver: KiCadSymbolGeometryResolver
+
+    init(pinGeometryResolver: KiCadSymbolGeometryResolver = KiCadSymbolGeometryResolver()) {
+        self.pinGeometryResolver = pinGeometryResolver
+    }
+
     func materialize(
         circuitIR: CircuitIR,
         outputDirectory: URL
     ) throws -> CircuitIRSchematicMaterialization {
+        let geometryValidation = validatePinGeometry(circuitIR: circuitIR)
+        guard geometryValidation.isValid else {
+            throw CircuitIRKiCadSchematicMaterializerError.unresolvedPinGeometry(geometryValidation.issues)
+        }
+
         try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
 
         let projectURL = outputDirectory.appendingPathComponent("\(circuitIR.boardId).kicad_pro")
@@ -43,15 +58,13 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
             symbols: circuitIR.components.enumerated().map { index, component in
                 symbol(for: component, index: index)
             },
-            wires: [],
-            junctions: [],
-            labels: circuitIR.nets.map { net in
-                KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: false)
-            },
+            wires: wires(for: circuitIR),
+            junctions: junctions(for: circuitIR),
+            labels: labels(for: circuitIR),
             sheets: [],
             opaqueNodes: [
                 .list([.atom("paper"), .string("A4")]),
-                .list([.atom("lib_symbols")]),
+                KiCadEmbeddedSymbolLibraryBuilder().libSymbolsNode(for: circuitIR.components.map(\.selectedSymbol)),
                 .list([
                     .atom("sheet_instances"),
                     .list([.atom("path"), .string("/"), .list([.atom("page"), .string("1")])]),
@@ -61,10 +74,31 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
         )
     }
 
+    func validatePinGeometry(circuitIR: CircuitIR) -> ElectronicsSchemaValidationResult {
+        var issues: [ElectronicsSchemaIssue] = []
+        for component in circuitIR.components {
+            guard let geometry = pinGeometryResolver.resolve(libraryID: component.selectedSymbol) else {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "PIN_GEOMETRY_UNRESOLVED",
+                    message: "\(component.refdes) uses \(component.selectedSymbol), but KiCad pin geometry could not be resolved from installed libraries."
+                ))
+                continue
+            }
+            for pin in component.pins where geometry.pin(number: pin.pinNumber, name: pin.symbolPin) == nil {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "PIN_GEOMETRY_UNRESOLVED",
+                    message: "\(component.refdes).\(pin.pinNumber) \(pin.symbolPin) is not present in \(geometry.libraryID)."
+                ))
+            }
+        }
+        return ElectronicsSchemaValidationResult(issues: issues)
+    }
+
     private func symbol(for component: CircuitComponent, index: Int) -> KiCadSchematicDocument.Symbol {
         var properties: [String: String] = [
             "Reference": component.refdes,
-            "Value": component.role,
+            "Value": componentValue(for: component),
+            "Role": component.role,
             "Symbol": component.selectedSymbol,
             "Source": "circuit-component:\(component.refdes)",
             "Pins": component.pins
@@ -86,31 +120,83 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
                 .map { "\($0.kind):\($0.reference)" }
                 .joined(separator: "; ")
         }
+        for (key, value) in component.constraints where !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            properties["Constraint:\(key)"] = value
+        }
 
         return KiCadSchematicDocument.Symbol(
             uuid: stableUUID("symbol", component.refdes, "\(index)"),
             properties: properties,
-            emitsKiCadSymbol: false
+            at: symbolPlacement(index: index),
+            emitsKiCadSymbol: true
         )
     }
 
-    private func wires(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Wire] {
-        var wires: [KiCadSchematicDocument.Wire] = []
-        for (index, net) in circuitIR.nets.enumerated() where net.endpoints.count > 1 {
-            let y = Double(20 + (index * 10))
-            wires.append(KiCadSchematicDocument.Wire(
-                start: .init(x: 10, y: y),
-                end: .init(x: 10 + Double(net.endpoints.count * 10), y: y)
-            ))
+    private func componentValue(for component: CircuitComponent) -> String {
+        for key in ["value", "resistance", "capacitance", "inductance", "manufacturer_part_number"] {
+            if let value = component.constraints[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                return value
+            }
         }
-        return wires
+        if let manufacturerPartNumber = component.manufacturerPartNumber?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !manufacturerPartNumber.isEmpty {
+            return manufacturerPartNumber
+        }
+        return component.role
+    }
+
+    private func wires(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Wire] {
+        []
+    }
+
+    private func labels(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Label] {
+        circuitIR.nets.flatMap { net -> [KiCadSchematicDocument.Label] in
+            let labels = net.endpoints.compactMap { endpoint -> KiCadSchematicDocument.Label? in
+                guard let at = pinPoint(for: endpoint, circuitIR: circuitIR) else { return nil }
+                return KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: true, at: at)
+            }
+            if labels.isEmpty {
+                return [KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: false)]
+            }
+            return labels
+        }
+    }
+
+    private func pinPoint(
+        for endpoint: CircuitNetEndpoint,
+        circuitIR: CircuitIR
+    ) -> KiCadSchematicDocument.Point? {
+        guard let index = circuitIR.components.firstIndex(where: { $0.refdes == endpoint.componentRefdes }) else {
+            return nil
+        }
+        let component = circuitIR.components[index]
+        let origin = symbolPlacement(index: index)
+        guard let pin = component.pins.first(where: { $0.pinNumber == endpoint.pinNumber }),
+              let offset = pinOffset(component: component, pin: pin) else {
+            return nil
+        }
+        return KiCadSchematicDocument.Point(x: origin.x + offset.x, y: origin.y - offset.y)
+    }
+
+    private func symbolPlacement(index: Int) -> KiCadSchematicDocument.Point {
+        let column = index % 4
+        let row = index / 4
+        return KiCadSchematicDocument.Point(
+            x: 25.4 + Double(column) * 50.8,
+            y: 25.4 + Double(row) * 38.1
+        )
+    }
+
+    private func pinOffset(component: CircuitComponent, pin: CircuitPin) -> KiCadSchematicDocument.Point? {
+        pinGeometryResolver
+            .resolve(libraryID: component.selectedSymbol)?
+            .pin(number: pin.pinNumber, name: pin.symbolPin)?
+            .at
     }
 
     private func junctions(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Junction] {
-        circuitIR.nets.enumerated().compactMap { index, net in
-            guard net.endpoints.count > 2 else { return nil }
-            return KiCadSchematicDocument.Junction(at: .init(x: 20, y: Double(20 + (index * 10))))
-        }
+        []
     }
 
     private func sourceMap(for circuitIR: CircuitIR) -> [String: String] {

@@ -15,6 +15,7 @@ struct KiCadSchematicDocument: Equatable, Sendable {
     struct Symbol: Equatable, Sendable {
         var uuid: String?
         var properties: [String: String]
+        var at: Point? = nil
         var emitsKiCadSymbol: Bool = true
 
         func property(named name: String) -> String? {
@@ -41,6 +42,7 @@ struct KiCadSchematicDocument: Equatable, Sendable {
         var kind: Kind
         var text: String
         var emitsKiCadConnectivity: Bool = true
+        var at: Point? = nil
     }
 
     struct SheetPin: Equatable, Sendable {
@@ -167,6 +169,16 @@ struct KiCadSchematicParser {
         )
     }
 
+    func parseFragment(_ input: String) throws -> KiCadSExpression {
+        let tokens = try tokenize(input)
+        var cursor = 0
+        let expression = try parseExpression(tokens, &cursor)
+        guard cursor == tokens.count else {
+            throw KiCadSchematicParserError.malformed("Trailing tokens after expression fragment")
+        }
+        return expression
+    }
+
     private func parseSymbol(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Symbol {
         guard case .list(let list) = expression else {
             throw KiCadSchematicParserError.malformed("symbol must be a list")
@@ -174,6 +186,7 @@ struct KiCadSchematicParser {
 
         var uuid: String?
         var properties: [String: String] = [:]
+        var at: KiCadSchematicDocument.Point?
 
         for item in list.dropFirst() {
             guard case .list(let child) = item,
@@ -185,6 +198,13 @@ struct KiCadSchematicParser {
                 uuid = value
             }
 
+            if head == "at",
+               child.count >= 3,
+               let x = child[1].doubleValue,
+               let y = child[2].doubleValue {
+                at = KiCadSchematicDocument.Point(x: x, y: y)
+            }
+
             if head == "property",
                child.count >= 3,
                let key = child[1].stringOrAtomValue,
@@ -193,7 +213,7 @@ struct KiCadSchematicParser {
             }
         }
 
-        return KiCadSchematicDocument.Symbol(uuid: uuid, properties: properties, emitsKiCadSymbol: true)
+        return KiCadSchematicDocument.Symbol(uuid: uuid, properties: properties, at: at, emitsKiCadSymbol: true)
     }
 
     private func parseWire(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Wire {
@@ -254,7 +274,18 @@ struct KiCadSchematicParser {
             throw KiCadSchematicParserError.unsupported("Unsupported label type: \(head)")
         }
 
-        return KiCadSchematicDocument.Label(kind: kind, text: text, emitsKiCadConnectivity: true)
+        let at = list.compactMap { item -> KiCadSchematicDocument.Point? in
+            guard case .list(let child) = item,
+                  child.first == .atom("at"),
+                  child.count >= 3,
+                  let x = child[1].doubleValue,
+                  let y = child[2].doubleValue else {
+                return nil
+            }
+            return KiCadSchematicDocument.Point(x: x, y: y)
+        }.first
+
+        return KiCadSchematicDocument.Label(kind: kind, text: text, emitsKiCadConnectivity: true, at: at)
     }
 
     private func parseSheet(_ expression: KiCadSExpression) throws -> KiCadSchematicDocument.Sheet {
@@ -311,7 +342,7 @@ struct KiCadSchematicParser {
             guard !name.isEmpty else {
                 throw KiCadSchematicParserError.malformed("MERLIN_NET metadata missing net name")
             }
-            return .net(KiCadSchematicDocument.Label(kind: .local, text: name, emitsKiCadConnectivity: false))
+            return .net(KiCadSchematicDocument.Label(kind: .local, text: name, emitsKiCadConnectivity: false, at: nil))
         }
 
         if text.hasPrefix("MERLIN_COMPONENT:") {
@@ -455,6 +486,14 @@ struct KiCadSchematicWriter {
             .list([.atom("uuid"), .string(document.uuid)]),
         ]
         var metadataTextIndex = 0
+        let frontOpaqueHeads: Set<String> = ["paper", "title_block", "lib_symbols"]
+        let frontOpaqueNodes = document.opaqueNodes.filter { node in
+            node.listHead.map(frontOpaqueHeads.contains) ?? false
+        }
+        let trailingOpaqueNodes = document.opaqueNodes.filter { node in
+            !(node.listHead.map(frontOpaqueHeads.contains) ?? false)
+        }
+        nodes.append(contentsOf: frontOpaqueNodes)
 
         for symbol in document.symbols {
             if !symbol.emitsKiCadSymbol {
@@ -462,16 +501,52 @@ struct KiCadSchematicWriter {
                 metadataTextIndex += 1
                 continue
             }
+            let reference = symbol.properties["Reference"] ?? "U?"
+            let libID = KiCadLibraryIDCanonicalizer.canonical(symbol.properties["Symbol"] ?? "Device:R")
+            let at = symbol.at ?? symbolPlacement(index: metadataTextIndex)
             var symbolNodes: [KiCadSExpression] = [.atom("symbol")]
+            symbolNodes.append(.list([.atom("lib_id"), .string(libID)]))
+            symbolNodes.append(.list([.atom("at"), .atom(numberString(at.x)), .atom(numberString(at.y)), .atom("0")]))
+            symbolNodes.append(.list([.atom("unit"), .atom("1")]))
+            symbolNodes.append(.list([.atom("exclude_from_sim"), .atom("no")]))
+            symbolNodes.append(.list([.atom("in_bom"), .atom("yes")]))
+            symbolNodes.append(.list([.atom("on_board"), .atom("yes")]))
+            symbolNodes.append(.list([.atom("dnp"), .atom("no")]))
             if let uuid = symbol.uuid {
                 symbolNodes.append(.list([.atom("uuid"), .string(uuid)]))
             }
-            for key in symbol.properties.keys.sorted() {
+            for (propertyIndex, key) in symbol.properties.keys.sorted().enumerated() {
                 if let value = symbol.properties[key] {
-                    symbolNodes.append(.list([.atom("property"), .string(key), .string(value)]))
+                    symbolNodes.append(propertyNode(
+                        key: key,
+                        value: value,
+                        at: KiCadSchematicDocument.Point(x: at.x, y: at.y + Double(propertyIndex + 1) * 1.27),
+                        hidden: hiddenPropertyNames.contains(key) || key.hasPrefix("Constraint:")
+                    ))
                 }
             }
+            for pinNumber in pinNumbers(for: symbol) {
+                symbolNodes.append(.list([
+                    .atom("pin"),
+                    .string(pinNumber),
+                    .list([.atom("uuid"), .string(stableTextUUID("pin", reference, pinNumber))]),
+                ]))
+            }
+            symbolNodes.append(.list([
+                .atom("instances"),
+                .list([
+                    .atom("project"),
+                    .string("merlin"),
+                    .list([
+                        .atom("path"),
+                        .string("/"),
+                        .list([.atom("reference"), .string(reference)]),
+                        .list([.atom("unit"), .atom("1")]),
+                    ]),
+                ]),
+            ]))
             nodes.append(.list(symbolNodes))
+            metadataTextIndex += 1
         }
 
         for wire in document.wires {
@@ -482,6 +557,12 @@ struct KiCadSchematicWriter {
                     .list([.atom("xy"), .atom(numberString(wire.start.x)), .atom(numberString(wire.start.y))]),
                     .list([.atom("xy"), .atom(numberString(wire.end.x)), .atom(numberString(wire.end.y))]),
                 ]),
+                .list([
+                    .atom("stroke"),
+                    .list([.atom("width"), .atom("0")]),
+                    .list([.atom("type"), .atom("default")]),
+                ]),
+                .list([.atom("uuid"), .string(stableTextUUID("wire", numberString(wire.start.x), numberString(wire.start.y), numberString(wire.end.x), numberString(wire.end.y)))]),
             ]))
         }
 
@@ -489,6 +570,9 @@ struct KiCadSchematicWriter {
             nodes.append(.list([
                 .atom("junction"),
                 .list([.atom("at"), .atom(numberString(junction.at.x)), .atom(numberString(junction.at.y))]),
+                .list([.atom("diameter"), .atom("0")]),
+                .list([.atom("color"), .atom("0"), .atom("0"), .atom("0"), .atom("0")]),
+                .list([.atom("uuid"), .string(stableTextUUID("junction", numberString(junction.at.x), numberString(junction.at.y)))]),
             ]))
         }
 
@@ -507,7 +591,23 @@ struct KiCadSchematicWriter {
             case .hierarchical:
                 head = "hierarchical_label"
             }
-            nodes.append(.list([.atom(head), .string(label.text)]))
+            guard let at = label.at else {
+                nodes.append(.list([.atom(head), .string(label.text)]))
+                continue
+            }
+            nodes.append(.list([
+                .atom(head),
+                .string(label.text),
+                .list([.atom("at"), .atom(numberString(at.x)), .atom(numberString(at.y)), .atom("0")]),
+                .list([
+                    .atom("effects"),
+                    .list([
+                        .atom("font"),
+                        .list([.atom("size"), .atom("1.27"), .atom("1.27")]),
+                    ]),
+                ]),
+                .list([.atom("uuid"), .string(stableTextUUID("label", label.text, numberString(at.x), numberString(at.y)))]),
+            ]))
         }
 
         for sheet in document.sheets {
@@ -523,7 +623,7 @@ struct KiCadSchematicWriter {
             nodes.append(.list(sheetNodes))
         }
 
-        nodes.append(contentsOf: document.opaqueNodes)
+        nodes.append(contentsOf: trailingOpaqueNodes)
         return render(.list(nodes))
     }
 
@@ -534,6 +634,55 @@ struct KiCadSchematicWriter {
         )) ?? Data("{}".utf8)
         let json = String(data: data, encoding: .utf8) ?? "{}"
         return "MERLIN_COMPONENT: \(json)"
+    }
+
+    private var hiddenPropertyNames: Set<String> {
+        ["Symbol", "Source", "SourceEvidence", "Pins", "Role"]
+    }
+
+    private func propertyNode(
+        key: String,
+        value: String,
+        at: KiCadSchematicDocument.Point,
+        hidden: Bool
+    ) -> KiCadSExpression {
+        var effects: [KiCadSExpression] = [
+            .atom("effects"),
+            .list([
+                .atom("font"),
+                .list([.atom("size"), .atom("1.27"), .atom("1.27")]),
+            ]),
+        ]
+        if hidden {
+            effects.append(.atom("hide"))
+        }
+        return .list([
+            .atom("property"),
+            .string(key),
+            .string(value),
+            .list([.atom("at"), .atom(numberString(at.x)), .atom(numberString(at.y)), .atom("0")]),
+            .list(effects),
+        ])
+    }
+
+    private func symbolPlacement(index: Int) -> KiCadSchematicDocument.Point {
+        let column = index % 4
+        let row = index / 4
+        return KiCadSchematicDocument.Point(
+            x: 25.4 + Double(column) * 50.8,
+            y: 25.4 + Double(row) * 38.1
+        )
+    }
+
+    private func pinNumbers(for symbol: KiCadSchematicDocument.Symbol) -> [String] {
+        guard let pins = symbol.properties["Pins"] else { return [] }
+        return pins
+            .split(separator: ",")
+            .compactMap { entry in
+                entry.split(separator: ":").first.map(String.init)
+            }
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     private func metadataTextNode(text: String, index: Int) -> KiCadSExpression {
@@ -586,7 +735,316 @@ struct KiCadSchematicWriter {
     }
 }
 
+struct KiCadLibraryIDCanonicalizer {
+    static func canonical(_ symbol: String) -> String {
+        switch symbol {
+        case "Device:Q_NPN_BCE":
+            return "Transistor_BJT:Q_NPN_BCE"
+        case "Device:Bridge_Rectifier":
+            return "Device:D_Bridge_+-AA"
+        case "Device:CP":
+            return "Device:C_Polarized"
+        case "Device:R_POT":
+            return "Device:R_Potentiometer"
+        case "Connector:AudioJack2":
+            return "Connector_Audio:AudioJack2"
+        case "Connector:Conn_01x02_Pin":
+            return "Connector:Conn_01x02_Pin"
+        default:
+            return symbol
+        }
+    }
+}
+
+struct KiCadEmbeddedSymbolLibraryBuilder: Sendable {
+    func libSymbolsNode(for requestedSymbols: [String]) -> KiCadSExpression {
+        let canonicalIDs = stableUnique(requestedSymbols.map(KiCadLibraryIDCanonicalizer.canonical))
+        let symbols = canonicalIDs.compactMap { id -> KiCadSExpression? in
+            guard let block = symbolBlock(for: id),
+                  let expression = try? KiCadSchematicParser().parseFragment(block) else {
+                return nil
+            }
+            return expression
+        }
+        return .list([.atom("lib_symbols")] + symbols)
+    }
+
+    private func symbolBlock(for libID: String) -> String? {
+        let parts = libID.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return nil }
+        let libraryName = parts[0]
+        let symbolName = parts[1]
+        guard let roots = KiCadLibraryRootDiscovery().discover() else { return nil }
+        let file = roots.symbolRoot.appendingPathComponent("\(libraryName).kicad_sym")
+        guard let text = try? String(contentsOf: file, encoding: .utf8),
+              var block = block(named: "symbol", quotedName: symbolName, in: text) else {
+            return nil
+        }
+        block = block.replacingOccurrences(
+            of: "(symbol \"\(symbolName)\"",
+            with: "(symbol \"\(libID)\"",
+            options: [],
+            range: block.startIndex..<block.endIndex
+        )
+        return block
+    }
+
+    private func stableUnique(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in values where !seen.contains(value) {
+            seen.insert(value)
+            result.append(value)
+        }
+        return result
+    }
+
+    private func block(named name: String, quotedName: String, in text: String) -> String? {
+        let marker = "(\(name) \"\(quotedName)\""
+        var searchStart = text.startIndex
+        while let range = text.range(of: marker, range: searchStart..<text.endIndex) {
+            guard isTopLevelLibrarySymbol(at: range.lowerBound, in: text),
+                  let end = balancedBlockEnd(startingAt: range.lowerBound, in: text) else {
+                searchStart = range.upperBound
+                continue
+            }
+            return String(text[range.lowerBound..<end])
+        }
+        return nil
+    }
+
+    private func isTopLevelLibrarySymbol(at start: String.Index, in text: String) -> Bool {
+        guard start > text.startIndex else { return true }
+        var index = text.index(before: start)
+        while index > text.startIndex {
+            let character = text[index]
+            if character == "\n" {
+                let line = text[text.index(after: index)..<start]
+                return line.allSatisfy { $0 == "\t" || $0 == " " }
+            }
+            index = text.index(before: index)
+        }
+        return true
+    }
+
+    private func balancedBlockEnd(startingAt start: String.Index, in text: String) -> String.Index? {
+        var index = start
+        var depth = 0
+        var inString = false
+        var escaped = false
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if character == "\\" {
+                    escaped = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return text.index(after: index)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+}
+
+struct KiCadSymbolPinGeometry: Sendable, Equatable {
+    var number: String
+    var name: String
+    var electricalType: String
+    var at: KiCadSchematicDocument.Point
+}
+
+struct KiCadSymbolGeometry: Sendable, Equatable {
+    var libraryID: String
+    var pins: [KiCadSymbolPinGeometry]
+
+    func pin(number: String, name: String) -> KiCadSymbolPinGeometry? {
+        pins.first { pin in
+            let numberMatches = pin.number == number || pin.name == number
+            let nameMatches = name.isEmpty || pin.number == name || pin.name == name
+            return numberMatches && nameMatches
+        }
+    }
+}
+
+struct KiCadSymbolGeometryResolver: Sendable {
+    private let roots: KiCadLibraryRoots?
+    private let cache: KiCadSymbolGeometryCache
+
+    init(
+        roots: KiCadLibraryRoots? = KiCadLibraryRootDiscovery().discover(),
+        cache: KiCadSymbolGeometryCache = KiCadSymbolGeometryCache()
+    ) {
+        self.roots = roots
+        self.cache = cache
+    }
+
+    func resolve(libraryID: String) -> KiCadSymbolGeometry? {
+        let canonicalID = KiCadLibraryIDCanonicalizer.canonical(libraryID)
+        if let cached = cache.geometry(for: canonicalID) {
+            return cached
+        }
+        let parts = canonicalID.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2,
+              let roots else { return nil }
+        let file = roots.symbolRoot.appendingPathComponent("\(parts[0]).kicad_sym")
+        guard let text = try? String(contentsOf: file, encoding: .utf8),
+              let block = block(named: "symbol", quotedName: parts[1], in: text),
+              let expression = try? KiCadSchematicParser().parseFragment(block) else {
+            return nil
+        }
+        let pins = pinNodes(in: expression).compactMap(parsePinGeometry)
+        guard !pins.isEmpty else { return nil }
+        let geometry = KiCadSymbolGeometry(libraryID: canonicalID, pins: pins)
+        cache.set(geometry, for: canonicalID)
+        return geometry
+    }
+
+    private func parsePinGeometry(_ expression: KiCadSExpression) -> KiCadSymbolPinGeometry? {
+        guard case .list(let nodes) = expression,
+              nodes.count >= 3,
+              case .atom(let electricalType) = nodes[1] else {
+            return nil
+        }
+        var at: KiCadSchematicDocument.Point?
+        var name: String?
+        var number: String?
+
+        for node in nodes.dropFirst(3) {
+            guard case .list(let child) = node,
+                  let head = child.first?.atomValue else {
+                continue
+            }
+            switch head {
+            case "at":
+                if child.count >= 3,
+                   let x = child[1].doubleValue,
+                   let y = child[2].doubleValue {
+                    at = KiCadSchematicDocument.Point(x: x, y: y)
+                }
+            case "name":
+                name = child.dropFirst().first?.stringOrAtomValue
+            case "number":
+                number = child.dropFirst().first?.stringOrAtomValue
+            default:
+                break
+            }
+        }
+
+        guard let at,
+              let number,
+              let name else { return nil }
+        return KiCadSymbolPinGeometry(
+            number: number,
+            name: name,
+            electricalType: electricalType,
+            at: at
+        )
+    }
+
+    private func pinNodes(in expression: KiCadSExpression) -> [KiCadSExpression] {
+        guard case .list(let nodes) = expression else { return [] }
+        return nodes.flatMap { node -> [KiCadSExpression] in
+            if node.listHead == "pin" {
+                return [node]
+            }
+            return pinNodes(in: node)
+        }
+    }
+
+    private func block(named name: String, quotedName: String, in text: String) -> String? {
+        let marker = "(\(name) \"\(quotedName)\""
+        var searchStart = text.startIndex
+        while let range = text.range(of: marker, range: searchStart..<text.endIndex) {
+            guard isTopLevelLibrarySymbol(at: range.lowerBound, in: text),
+                  let end = balancedBlockEnd(startingAt: range.lowerBound, in: text) else {
+                searchStart = range.upperBound
+                continue
+            }
+            return String(text[range.lowerBound..<end])
+        }
+        return nil
+    }
+
+    private func isTopLevelLibrarySymbol(at start: String.Index, in text: String) -> Bool {
+        guard start > text.startIndex else { return true }
+        var index = text.index(before: start)
+        while index > text.startIndex {
+            let character = text[index]
+            if character == "\n" {
+                let line = text[text.index(after: index)..<start]
+                return line.allSatisfy { $0 == "\t" || $0 == " " }
+            }
+            index = text.index(before: index)
+        }
+        return true
+    }
+
+    private func balancedBlockEnd(startingAt start: String.Index, in text: String) -> String.Index? {
+        var index = start
+        var depth = 0
+        var inString = false
+        var escaped = false
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if character == "\\" {
+                    escaped = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return text.index(after: index)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+}
+
+final class KiCadSymbolGeometryCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var geometries: [String: KiCadSymbolGeometry] = [:]
+
+    func geometry(for libraryID: String) -> KiCadSymbolGeometry? {
+        lock.lock()
+        defer { lock.unlock() }
+        return geometries[libraryID]
+    }
+
+    func set(_ geometry: KiCadSymbolGeometry, for libraryID: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        geometries[libraryID] = geometry
+    }
+}
+
 private extension KiCadSExpression {
+    var listHead: String? {
+        guard case .list(let nodes) = self else { return nil }
+        return nodes.first?.atomValue
+    }
+
     var atomValue: String? {
         if case .atom(let value) = self { return value }
         return nil

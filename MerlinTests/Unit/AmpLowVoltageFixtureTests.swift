@@ -77,6 +77,66 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
         XCTAssertEqual(verification.status, .schematicVerified)
     }
 
+    func testFixtureRealKiCadERCGateUsesGeneratedSchematicEvidence() throws {
+        let kicadCLI = try findKiCadCLIOrSkip()
+        let intent: DesignIntent = try loadFixture("design_intent.json")
+        let circuitIR: CircuitIR = try loadFixture("circuit_ir.json")
+        let schemaResult = ElectronicsSchemaValidator.validateReadyForKiCadMutation(
+            designIntent: intent,
+            circuitIR: circuitIR
+        )
+        XCTAssertTrue(schemaResult.isValid, schemaResult.issues.map(\.message).joined(separator: "\n"))
+
+        let outputDirectory = temporaryDirectory("amp-low-voltage-real-erc")
+        let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputDirectory
+        )
+        let reportURL = outputDirectory.appendingPathComponent("erc-report.json")
+        let result = try runKiCad(kicadCLI, [
+            "sch", "erc",
+            "--format", "json",
+            "--output", reportURL.path,
+            materialized.schematicURL.path,
+        ])
+        XCTAssertTrue(
+            FileManager.default.fileExists(atPath: reportURL.path),
+            "kicad-cli did not produce an ERC report. Exit \(result.status): \(result.output)"
+        )
+
+        let report = try KiCadERCParser().parse(jsonData: Data(contentsOf: reportURL))
+        let codes = Set(report.violations.map(\.code))
+        XCTAssertFalse(codes.contains("wire_dangling"), result.output)
+        XCTAssertFalse(codes.contains("label_dangling"), result.output)
+        XCTAssertFalse(codes.contains("unconnected_wire_endpoint"), result.output)
+
+        let resolver = KiCadLibraryPinResolver(
+            symbols: circuitIR.components.map(symbolDefinition),
+            footprints: circuitIR.components.compactMap(footprintDefinition)
+        )
+        let repairResult = ERCRepairLoop().run(
+            initialSchematic: try KiCadSchematicParser().parse(String(contentsOf: materialized.schematicURL, encoding: .utf8)),
+            circuitIR: circuitIR,
+            ercReports: [report],
+            resolverEvidence: circuitIR.components.map { resolver.resolve(component: $0, pcbBound: true) }
+        )
+        let verification = SchematicVerificationGate().evaluate(SchematicVerificationEvidence(
+            approvedDesignIntent: intent.approval.status == .approved,
+            circuitIRValidationPassed: schemaResult.isValid,
+            kicadProjectPath: materialized.projectURL.path,
+            kicadSchematicPath: materialized.schematicURL.path,
+            ercReportPath: reportURL.path,
+            hasSchematicVerificationReport: true,
+            blockingERCViolations: report.blockingViolations,
+            repairLoopStatus: repairResult.status
+        ))
+        if report.blockingViolations.isEmpty {
+            XCTAssertEqual(verification.status, .schematicVerified)
+        } else {
+            XCTAssertEqual(verification.status, .blocked)
+        }
+    }
+
     func testMainsPowerSupplyFixtureIsSeparateHighStakesStub() throws {
         let intent: DesignIntent = try loadFixture("mains_power_supply_design_intent.json")
         let text = intent.requirements.map(\.text).joined(separator: " ").lowercased()
@@ -124,7 +184,7 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
             name: footprint,
             pads: component.pins.compactMap { pin in
                 guard let pad = pin.footprintPad else { return nil }
-                return KiCadFootprintPad(number: pad, name: pin.symbolPin)
+                return KiCadFootprintPad(number: pad, name: nil)
             }
         )
     }
@@ -140,6 +200,32 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
 
     private func repoText(_ relativePath: String) throws -> String {
         try String(contentsOf: repoRoot().appendingPathComponent(relativePath), encoding: .utf8)
+    }
+
+    private func findKiCadCLIOrSkip() throws -> URL {
+        let candidates = [
+            "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli",
+            "/Applications/KiCad.app/Contents/MacOS/kicad-cli",
+            "/opt/homebrew/bin/kicad-cli",
+            "/usr/local/bin/kicad-cli",
+        ]
+        if let path = candidates.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) {
+            return URL(fileURLWithPath: path)
+        }
+        throw XCTSkip("kicad-cli is not installed")
+    }
+
+    private func runKiCad(_ executable: URL, _ arguments: [String]) throws -> (status: Int32, output: String) {
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = arguments
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        try process.run()
+        process.waitUntilExit()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        return (process.terminationStatus, String(data: data, encoding: .utf8) ?? "")
     }
 
     private func repoRoot() -> URL {
