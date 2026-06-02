@@ -109,6 +109,13 @@ struct ElectronicsRuntimePlugin {
                 address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "settings.validate"),
                 requiredPermissionScope: .readOnly
             ),
+            WorkspaceCapability(
+                id: "plugin.electronics.catalog.import_vendor_feed",
+                displayName: "Import Vendor Feed",
+                kind: .workflow,
+                address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "catalog.import_vendor_feed"),
+                requiredPermissionScope: .externalSideEffect
+            ),
         ]
         self.metadata = RuntimePluginMetadata(
             id: "electronics",
@@ -182,6 +189,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         if request.address.capability == "settings.validate" {
             return .ok(requestID: request.id, payload: .jsonString(#"{"status":"valid"}"#))
+        }
+
+        if request.address.capability == "catalog.import_vendor_feed" {
+            return handleVendorFeedImport(request, context: context)
         }
 
         if request.address.capability == "workflow.requirements_to_pcb"
@@ -1122,6 +1133,105 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return blocked
         }
         return complete(request, artifacts: [artifact], nextActions: ["prepare_libraries", "assign_footprints"])
+    }
+
+    private func handleVendorFeedImport(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        let sourcePaths = uniqueRefdes(
+            (stringArrayValue(object, key: "vendor_feed_paths")
+                ?? stringArrayValue(object, key: "paths")
+                ?? stringValue(object, keys: ["vendor_feed_path", "path"]).map { [$0] }
+                ?? [])
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+        guard !sourcePaths.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Vendor feed import requires vendor_feed_paths with one or more CSV or JSON files.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "VENDOR_FEED_PATH_REQUIRED",
+                    message: "Vendor feed import requires vendor_feed_paths with one or more CSV or JSON files.",
+                    affectedRefs: [],
+                    suggestedAction: "Supply explicit local CSV or JSON feed paths."
+                )],
+                nextActions: ["supply_vendor_feed_paths"]
+            )
+        }
+
+        let feedDirectory = context.workspaceRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-vendor-feeds", isDirectory: true)
+        let configURL = context.workspaceRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-provider-config.json")
+        do {
+            try FileManager.default.createDirectory(at: feedDirectory, withIntermediateDirectories: true)
+            var imported: [String] = []
+            var warnings: [KiCadWarning] = []
+            for path in sourcePaths {
+                let sourceURL = URL(fileURLWithPath: path)
+                let extensionName = sourceURL.pathExtension.lowercased()
+                guard ["csv", "json"].contains(extensionName) else {
+                    warnings.append(KiCadWarning(
+                        code: "VENDOR_FEED_UNSUPPORTED_FORMAT",
+                        message: "Vendor feed \(path) is not a CSV or JSON file.",
+                        affectedRefs: [path],
+                        suggestedAction: "Export the feed as CSV or JSON."
+                    ))
+                    continue
+                }
+                var isDirectory: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), !isDirectory.boolValue else {
+                    warnings.append(KiCadWarning(
+                        code: "VENDOR_FEED_NOT_FOUND",
+                        message: "Vendor feed \(path) does not exist or is a directory.",
+                        affectedRefs: [path],
+                        suggestedAction: "Supply an existing CSV or JSON file."
+                    ))
+                    continue
+                }
+                let destinationURL = feedDirectory.appendingPathComponent(vendorFeedDestinationName(for: sourceURL))
+                if FileManager.default.fileExists(atPath: destinationURL.path) {
+                    try FileManager.default.removeItem(at: destinationURL)
+                }
+                try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
+                imported.append(destinationURL.path)
+            }
+            guard !imported.isEmpty else {
+                return structuredBlock(
+                    request,
+                    reason: .missingArtifact,
+                    message: "Vendor feed import did not copy any usable CSV or JSON files.",
+                    context: context,
+                    warnings: warnings,
+                    nextActions: ["supply_vendor_feed_paths"]
+                )
+            }
+            try updateVendorFeedProviderConfig(configURL: configURL, importedPaths: imported)
+            let artifacts = imported.map { ArtifactRef(path: $0, kind: "vendor_feed") }
+                + [ArtifactRef(path: configURL.path, kind: "provider_config")]
+            return complete(request, artifacts: artifacts, warnings: warnings, nextActions: ["select_components"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Vendor feed import failed: \(error.localizedDescription)",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "VENDOR_FEED_IMPORT_FAILED",
+                    message: error.localizedDescription,
+                    affectedRefs: sourcePaths,
+                    suggestedAction: "Check feed file permissions and retry import."
+                )],
+                nextActions: ["retry_vendor_feed_import"]
+            )
+        }
     }
 
     private func handleCircuitIRGeneration(
@@ -3815,6 +3925,33 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         uniqueRefdes((stringArrayValue(object, key: "vendor_feed_paths") ?? config.vendorFeedPaths ?? [])
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty })
+    }
+
+    private func vendorFeedDestinationName(for sourceURL: URL) -> String {
+        let base = sourceURL.deletingPathExtension().lastPathComponent
+            .split { !$0.isLetter && !$0.isNumber && $0 != "-" && $0 != "_" }
+            .joined(separator: "_")
+        let safeBase = base.isEmpty ? "vendor-feed" : base
+        let ext = sourceURL.pathExtension.lowercased()
+        return "\(safeBase)-\(UUID().uuidString).\(ext)"
+    }
+
+    private func updateVendorFeedProviderConfig(configURL: URL, importedPaths: [String]) throws {
+        try FileManager.default.createDirectory(
+            at: configURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        var object = ((try? Data(contentsOf: configURL)).flatMap {
+            try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
+        }) ?? [:]
+        let existing = (object["vendor_feed_paths"] as? [String]) ?? []
+        object["vendor_feed_paths"] = uniqueRefdes(existing + importedPaths)
+        object["live_catalog_providers"] = object["live_catalog_providers"] ?? []
+        let data = try JSONSerialization.data(
+            withJSONObject: object,
+            options: [.prettyPrinted, .sortedKeys]
+        )
+        try data.write(to: configURL, options: .atomic)
     }
 
     private func providerCatalogCandidates(

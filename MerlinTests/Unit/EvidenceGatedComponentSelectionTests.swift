@@ -1046,6 +1046,56 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "vendor_feed")
     }
 
+    func testVendorFeedImportCopiesFeedAndUpdatesProviderConfigForSelection() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let sourceFeedURL = try writeVendorFeedCSV(root: root)
+
+        let importResponse = await sendCatalogImport(
+            runtime,
+            payload: #"{"vendor_feed_paths":["\#(sourceFeedURL.path)"]}"#
+        )
+
+        XCTAssertEqual(importResponse.status, .ok)
+        let importedArtifact = try XCTUnwrap(importResponse.artifacts.first { $0.kind == "vendor_feed" })
+        XCTAssertTrue(FileManager.default.fileExists(atPath: importedArtifact.url.path))
+        XCTAssertTrue(importedArtifact.url.path.contains("/.merlin/electronics-vendor-feeds/"))
+        let configURL = root.appendingPathComponent(".merlin/electronics-provider-config.json")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: configURL.path))
+        let config = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: configURL)) as? [String: Any])
+        let paths = try XCTUnwrap(config["vendor_feed_paths"] as? [String])
+        XCTAssertEqual(paths, [importedArtifact.url.path])
+
+        let intentURL = try writeIntent(component(refdes: "OUTPUT1", role: "output stage"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                selectedSymbol: "Device:Q_NPN_BCE",
+                pins: ["B", "C", "E"],
+                constraints: [
+                    "component_category": "power_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "120V",
+                    "current_rating": "10A",
+                    "power_rating": "150W",
+                    "package": "TO-3",
+                ]
+            ),
+        ], root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+        )
+
+        XCTAssertEqual(selection.status, .ok)
+        let matrix = try decodeMatrix(from: selection)
+        XCTAssertEqual(matrix.providers, ["vendor_feed"])
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+    }
+
     func testRuntimeCatalogSelectionAttachesLocalKiCadFootprintEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1438,6 +1488,63 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             XCTAssertFalse(candidate.ratings.isEmpty, "Selected \(decision.refdes) without extracted ratings.")
         }
         print("AmpDemo live component matrix: \(artifact.url.path)")
+    }
+
+    func testAmpDemoVendorFeedImportAndSelectionUsesLocalFeedOnly() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-vendor-feed-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_VENDOR_FEED_SLICE"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_VENDOR_FEED_SLICE=1 or create \(runSentinel.path) to run the AmpDemo vendor feed slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
+        let sourceFeedURL = root.appendingPathComponent("vendor-feeds/ampdemo-25w-vendor-feed.csv")
+        for url in [intentURL, circuitIRURL, sourceFeedURL] {
+            XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "Missing \(url.path)")
+        }
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: [
+                "catalog_provider_vendor_feed_enabled": .boolean(true),
+                "catalog_provider_mouser_enabled": .boolean(false),
+                "catalog_provider_digikey_enabled": .boolean(false),
+                "catalog_provider_nexar_enabled": .boolean(false),
+                "catalog_provider_trustedparts_enabled": .boolean(false),
+            ]
+        ))
+
+        let importResponse = await sendCatalogImport(
+            runtime,
+            payload: #"{"vendor_feed_paths":["\#(sourceFeedURL.path)"]}"#
+        )
+        XCTAssertEqual(importResponse.status, .ok)
+        let importedFeed = try XCTUnwrap(importResponse.artifacts.first { $0.kind == "vendor_feed" })
+        let configURL = try XCTUnwrap(importResponse.artifacts.first { $0.kind == "provider_config" }).url
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)","live_catalog_providers":[]}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.providers, ["vendor_feed"])
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected }, "Vendor feed should cover every AmpDemo selection decision.")
+        XCTAssertTrue(matrix.decisions.allSatisfy { decision in
+            decision.selectedCandidate?.evidence.contains { $0.providerID == "vendor_feed" } == true
+        })
+        XCTAssertTrue(matrix.decisions.contains { $0.refdes == "QOUT1" && $0.selectedCandidate?.mpn == "MJ15003G" })
+        XCTAssertTrue(matrix.decisions.contains { $0.refdes == "BR1" && $0.selectedCandidate?.mpn == "GBU8J-E3/45" })
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
+        print("AmpDemo imported vendor feed: \(importedFeed.url.path)")
+        print("AmpDemo vendor-feed component matrix: \(artifact.url.path)")
     }
 
     private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
@@ -1939,6 +2046,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_select_components"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendCatalogImport(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "catalog.import_vendor_feed"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,
