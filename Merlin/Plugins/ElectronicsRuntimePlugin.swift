@@ -39,6 +39,22 @@ struct ElectronicsRuntimePlugin {
                 isSecret: false,
                 help: "Allow the electronics plugin to query Nexar/Octopart for component catalog evidence."
             ),
+            WorkspaceSettingsField(
+                key: "catalog_provider_trustedparts_enabled",
+                label: "TrustedParts catalog provider",
+                kind: .boolean,
+                defaultValue: .boolean(false),
+                isSecret: false,
+                help: "Allow the electronics plugin to query TrustedParts for authorized distributor catalog evidence."
+            ),
+            WorkspaceSettingsField(
+                key: "catalog_provider_vendor_feed_enabled",
+                label: "Vendor feed catalog provider",
+                kind: .boolean,
+                defaultValue: .boolean(true),
+                isSecret: false,
+                help: "Allow the electronics plugin to use local user-supplied CSV/JSON vendor feed files as catalog evidence."
+            ),
         ]
     )
 
@@ -3401,6 +3417,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var nexarAccessTokenKeychainID: String? = nil
         var nexarGraphQLEndpoint: String? = nil
         var nexarTokenEndpoint: String? = nil
+        var trustedPartsCompanyIDEnv: String? = nil
+        var trustedPartsCompanyIDKeychainID: String? = nil
+        var trustedPartsAPIKeyEnv: String? = nil
+        var trustedPartsAPIKeyKeychainID: String? = nil
+        var trustedPartsSearchEndpoint: String? = nil
+        var vendorFeedPaths: [String]? = nil
 
         enum CodingKeys: String, CodingKey {
             case catalogProviderFixturePaths = "catalog_provider_fixture_paths"
@@ -3434,6 +3456,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case nexarAccessTokenKeychainID = "nexar_access_token_keychain_id"
             case nexarGraphQLEndpoint = "nexar_graphql_endpoint"
             case nexarTokenEndpoint = "nexar_token_endpoint"
+            case trustedPartsCompanyIDEnv = "trustedparts_company_id_env"
+            case trustedPartsCompanyIDKeychainID = "trustedparts_company_id_keychain_id"
+            case trustedPartsAPIKeyEnv = "trustedparts_api_key_env"
+            case trustedPartsAPIKeyKeychainID = "trustedparts_api_key_keychain_id"
+            case trustedPartsSearchEndpoint = "trustedparts_search_endpoint"
+            case vendorFeedPaths = "vendor_feed_paths"
         }
     }
 
@@ -3553,6 +3581,31 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 }
             }
             if runtimeProviderFound {
+                sourceKinds.append("runtime_catalog_providers")
+            }
+        }
+
+        let vendorFeedPaths = vendorFeedPaths(from: object, config: config)
+        if !vendorFeedPaths.isEmpty, catalogProviderIsEnabled("vendor_feed", settings: context.settings) {
+            var foundVendorFeed = false
+            for path in vendorFeedPaths {
+                guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+                      let mapped = try? VendorFeedCatalogProviderAdapter().mapRecordedResponse(data) else {
+                    warnings.append("CATALOG_PROVIDER_FEED_UNREADABLE: vendor_feed \(path)")
+                    continue
+                }
+                for component in selectionComponents {
+                    let matching = matchingCandidates(for: component, candidates: mapped)
+                    for candidate in matching {
+                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                    }
+                }
+                if !mapped.isEmpty {
+                    providers.append("vendor_feed")
+                    foundVendorFeed = true
+                }
+            }
+            if foundVendorFeed {
                 sourceKinds.append("runtime_catalog_providers")
             }
         }
@@ -3721,6 +3774,24 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let value = object["nexar_token_endpoint"] as? String {
             config.nexarTokenEndpoint = value
         }
+        if let value = object["trustedparts_company_id_env"] as? String {
+            config.trustedPartsCompanyIDEnv = value
+        }
+        if let value = object["trustedparts_company_id_keychain_id"] as? String {
+            config.trustedPartsCompanyIDKeychainID = value
+        }
+        if let value = object["trustedparts_api_key_env"] as? String {
+            config.trustedPartsAPIKeyEnv = value
+        }
+        if let value = object["trustedparts_api_key_keychain_id"] as? String {
+            config.trustedPartsAPIKeyKeychainID = value
+        }
+        if let value = object["trustedparts_search_endpoint"] as? String {
+            config.trustedPartsSearchEndpoint = value
+        }
+        if let value = stringArrayValue(object, key: "vendor_feed_paths") {
+            config.vendorFeedPaths = value
+        }
         return config
     }
 
@@ -3738,6 +3809,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             paths[entry.key.lowercased()] = path
         }
         return paths
+    }
+
+    private func vendorFeedPaths(from object: [String: Any], config: RuntimeCatalogConfig) -> [String] {
+        uniqueRefdes((stringArrayValue(object, key: "vendor_feed_paths") ?? config.vendorFeedPaths ?? [])
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty })
     }
 
     private func providerCatalogCandidates(
@@ -3766,7 +3843,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return try DigiKeyCatalogProviderAdapter().mapRecordedResponse(data)
         case "mouser":
             return try MouserCatalogProviderAdapter().mapRecordedResponse(data)
-        case "octopart", "nexar", "aggregator":
+        case "nexar":
+            return try NexarCatalogProviderAdapter().mapRecordedResponse(data)
+        case "trustedparts", "trusted-parts", "trusted_parts":
+            return try TrustedPartsCatalogProviderAdapter().mapRecordedResponse(data)
+        case "vendor_feed", "vendor-feed", "vendorfeed":
+            return try VendorFeedCatalogProviderAdapter().mapRecordedResponse(data)
+        case "octopart", "aggregator":
             return try AggregatorCatalogProviderAdapter(providerID: providerID.lowercased()).mapRecordedResponse(data)
         default:
             return try AggregatorCatalogProviderAdapter(providerID: providerID.lowercased()).mapRecordedResponse(data)
@@ -3885,6 +3968,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         case "nexar", "octopart":
             key = "catalog_provider_nexar_enabled"
             defaultValue = false
+        case "trustedparts", "trusted-parts", "trusted_parts":
+            key = "catalog_provider_trustedparts_enabled"
+            defaultValue = false
+        case "vendor_feed", "vendor-feed", "vendorfeed":
+            key = "catalog_provider_vendor_feed_enabled"
+            defaultValue = true
         default:
             return true
         }
@@ -3976,6 +4065,31 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 accessToken: accessToken,
                 graphqlEndpoint: graphqlEndpoint,
                 tokenEndpoint: tokenEndpoint,
+                resultLimit: limit
+            )
+        case "trustedparts", "trusted-parts", "trusted_parts":
+            guard let companyID = credentialValue(
+                envName: config.trustedPartsCompanyIDEnv,
+                defaultEnvName: "TRUSTEDPARTS_COMPANY_ID",
+                keychainID: config.trustedPartsCompanyIDKeychainID,
+                defaultKeychainID: "electronics.trustedparts.company_id"
+            ) else {
+                return nil
+            }
+            guard let apiKey = credentialValue(
+                envName: config.trustedPartsAPIKeyEnv,
+                defaultEnvName: "TRUSTEDPARTS_API_KEY",
+                keychainID: config.trustedPartsAPIKeyKeychainID,
+                defaultKeychainID: "electronics.trustedparts.api_key"
+            ) else {
+                return nil
+            }
+            let endpoint = config.trustedPartsSearchEndpoint.flatMap(URL.init(string:))
+                ?? URL(string: "https://api.trustedparts.com/v2/search")!
+            return LiveTrustedPartsCatalogProvider(
+                companyID: companyID,
+                apiKey: apiKey,
+                endpoint: endpoint,
                 resultLimit: limit
             )
         default:
@@ -4140,6 +4254,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         candidates: [ComponentCandidate]
     ) -> PartSelectionDecision {
         let candidates = matchingCandidates(for: component, candidates: candidates)
+            .map(hydratedCandidate)
+            .mergedSamePartEvidence()
         guard !candidates.isEmpty else {
             return PartSelectionDecision(
                 refdes: component.refdes,
@@ -4166,14 +4282,28 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 unresolvedDecisions: ["Provide manufacturer, MPN, package, ratings, datasheet, and provenance evidence for \(component.refdes)."]
             )
         }
-        if validCandidates.count == 1, let selected = validCandidates.first {
+        let rankedCandidates = rankedComponentCandidates(validCandidates, for: component)
+        if rankedCandidates.count == 1, let selected = rankedCandidates.first?.candidate {
             return PartSelectionDecision(
                 refdes: component.refdes,
                 status: .selected,
                 selectedCandidate: selected,
-                candidateSet: validCandidates,
+                candidateSet: [selected],
                 rationale: "Single catalog candidate satisfies required evidence checks.",
                 evidenceReferences: selected.evidence,
+                unresolvedDecisions: []
+            )
+        }
+        if let first = rankedCandidates.first,
+           let second = rankedCandidates.dropFirst().first,
+           first.score > second.score {
+            return PartSelectionDecision(
+                refdes: component.refdes,
+                status: .selected,
+                selectedCandidate: first.candidate,
+                candidateSet: rankedCandidates.map(\.candidate),
+                rationale: "Selected highest-ranked catalog candidate using lifecycle, stock, package, and electrical constraint evidence.",
+                evidenceReferences: first.candidate.evidence,
                 unresolvedDecisions: []
             )
         }
@@ -4181,11 +4311,348 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             refdes: component.refdes,
             status: .ambiguous,
             selectedCandidate: nil,
-            candidateSet: validCandidates,
+            candidateSet: rankedCandidates.map(\.candidate),
             rationale: "Multiple catalog candidates satisfy required evidence checks.",
-            evidenceReferences: validCandidates.flatMap(\.evidence),
+            evidenceReferences: rankedCandidates.flatMap(\.candidate.evidence),
             unresolvedDecisions: ["Choose one candidate for \(component.refdes) or add tighter constraints."]
         )
+    }
+
+    private func hydratedCandidate(_ candidate: ComponentCandidate) -> ComponentCandidate {
+        var hydrated = candidate
+        let extracted = candidate.evidence.reduce(into: [String: String]()) { result, evidence in
+            for (key, value) in evidence.extractedParameters where result[key] == nil {
+                result[key] = value
+            }
+        }
+        if hydrated.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            hydrated.package = firstNonEmptyCandidateField(
+                dictionaries: [candidate.ratings, extracted],
+                keys: ["package", "package_case", "case_package", "supplier_device_package", "mounting_type"]
+            )
+        }
+        if hydrated.ratings.isEmpty {
+            hydrated.ratings = extracted.filter { entry in
+                entry.key != "target_refdes"
+                    && entry.key != "datasheet_url"
+                    && entry.key != "datasheet"
+                    && entry.key != "source_url"
+            }
+        } else {
+            hydrated.ratings = extracted.merging(hydrated.ratings) { _, existing in existing }
+        }
+        let datasheetURL = firstNonEmptyCandidateField(
+            dictionaries: [candidate.ratings, extracted],
+            keys: ["datasheet_url", "datasheet", "datasheeturl", "data_sheet_url"]
+        )
+        if hydrated.datasheets.isEmpty, !datasheetURL.isEmpty {
+            hydrated.datasheets = [
+                DatasheetEvidence(
+                    manufacturer: hydrated.manufacturer,
+                    mpn: hydrated.mpn,
+                    url: datasheetURL,
+                    localPath: nil,
+                    sha256: nil,
+                    providerID: hydrated.evidence.first?.providerID ?? "catalog",
+                    retrievedAt: hydrated.evidence.first?.retrievedAt ?? "unknown",
+                    license: hydrated.evidence.first?.cachePolicy ?? "catalog",
+                    citations: []
+                ),
+            ]
+        }
+        return hydrated
+    }
+
+    private func rankedComponentCandidates(
+        _ candidates: [ComponentCandidate],
+        for component: ComponentIntent
+    ) -> [(candidate: ComponentCandidate, score: Int)] {
+        candidates
+            .map { candidate in
+                (candidate, componentCandidateScore(candidate, for: component))
+            }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score {
+                    return lhs.score > rhs.score
+                }
+                return lhs.candidate.mpn.localizedStandardCompare(rhs.candidate.mpn) == .orderedAscending
+            }
+    }
+
+    private func componentCandidateScore(_ candidate: ComponentCandidate, for component: ComponentIntent) -> Int {
+        var score = 0
+        let text = candidateSearchText(candidate)
+        if !candidate.datasheets.isEmpty { score += 5 }
+        if !candidate.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { score += 5 }
+        if !candidate.ratings.isEmpty { score += 3 }
+        if candidate.evidence.contains(where: { $0.extractedParameters["target_refdes"] == component.refdes }) { score += 8 }
+        if availabilityCount(candidate.availabilitySummary) > 0 { score += 4 }
+        let lifecycle = candidate.lifecycleState.lowercased()
+        if lifecycle.contains("active") || lifecycle.contains("new product") { score += 4 }
+        if lifecycle.contains("obsolete") || lifecycle.contains("not for new") { score -= 8 }
+        score += componentConstraintScore(component, candidate: candidate, candidateText: text)
+        return score
+    }
+
+    private func componentConstraintScore(_ component: ComponentIntent, candidate: ComponentCandidate, candidateText: String) -> Int {
+        var score = 0
+        let constraints = component.constraints
+        for key in ["package", "mounting", "selected_footprint"] {
+            guard let value = constraints[key]?.lowercased(), !value.isEmpty else { continue }
+            let tokens = value
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(of: "-", with: " ")
+                .split(separator: " ")
+                .map(String.init)
+            if tokens.contains(where: { candidateText.contains($0) }) {
+                score += 4
+            }
+        }
+        for (constraintKey, ratingKeys) in [
+            ("voltage_rating", ["voltage_v", "voltage_rated", "voltage", "voltage_rating_ac", "voltage_rating_dc", "vce", "collector_emitter_breakdown_voltage"]),
+            ("current_rating", ["current_a", "current", "current_rating", "ic", "collector_current"]),
+            ("power_rating", ["power_w", "power", "power_rating", "power_max", "power_dissipation"]),
+        ] {
+            guard let required = numericPrefix(constraints[constraintKey]) else { continue }
+            let available = ratingKeys.compactMap { numericPrefix(candidate.ratings[$0]) }.max() ?? numericPrefix(candidateText)
+            if let available {
+                score += ratingMarginScore(required: required, available: available)
+            }
+        }
+        score += valueMatchScore(
+            required: normalizedResistanceOhms(component.constraints["resistance"]),
+            available: normalizedResistanceOhms(candidate.ratings["resistance"])
+                ?? normalizedResistanceOhms(candidate.value)
+                ?? normalizedResistanceOhms(candidate.mpn),
+            toleranceRatio: 0.05
+        )
+        score += valueMatchScore(
+            required: normalizedCapacitanceUF(component.constraints["capacitance"]),
+            available: normalizedCapacitanceUF(candidate.ratings["capacitance"])
+                ?? normalizedCapacitanceUF(candidate.value)
+                ?? normalizedCapacitanceUF(candidate.mpn),
+            toleranceRatio: 0.10
+        )
+        if let required = normalizedPositionCount(component.constraints["positions"]) {
+            if let available = candidatePositionCount(candidate) {
+                score += available == required ? 10 : -12
+            }
+        }
+        if let required = normalizedPolarity(component.constraints["polarity"]) {
+            let available = normalizedPolarity(candidate.ratings["polarity"]) ?? normalizedPolarity(candidateText)
+            if let available {
+                score += available == required ? 8 : -10
+            }
+        }
+        if let required = normalizedTaper(component.constraints["taper"]) {
+            let available = normalizedTaper(candidate.ratings["taper"]) ?? normalizedTaper(candidateText)
+            if let available {
+                score += available == required ? 8 : -10
+            }
+        }
+        return score
+    }
+
+    private func ratingMarginScore(required: Double, available: Double) -> Int {
+        guard required > 0 else { return 0 }
+        if available < required {
+            return -6
+        }
+        let ratio = available / required
+        if abs(available - required) / required <= 0.05 {
+            return 9
+        }
+        if ratio <= 1.5 {
+            return 6
+        }
+        if ratio <= 3 {
+            return 3
+        }
+        return 1
+    }
+
+    private func candidateSearchText(_ candidate: ComponentCandidate) -> String {
+        ([
+            candidate.normalizedCategory,
+            candidate.value ?? "",
+            candidate.package,
+            candidate.mpn,
+            candidate.manufacturer,
+            candidate.lifecycleState,
+            candidate.availabilitySummary,
+        ] + candidate.ratings.map { "\($0.key) \($0.value)" })
+            .joined(separator: " ")
+            .lowercased()
+    }
+
+    private func firstNonEmptyCandidateField(dictionaries: [[String: String]], keys: [String]) -> String {
+        for dictionary in dictionaries {
+            for key in keys {
+                if let value = dictionary[key]?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
+                    return value
+                }
+            }
+        }
+        return ""
+    }
+
+    private func availabilityCount(_ value: String) -> Int {
+        let digits = value.filter { $0.isNumber }
+        return Int(digits) ?? 0
+    }
+
+    private func numericPrefix(_ value: String?) -> Double? {
+        guard let value else { return nil }
+        let pattern = #"(\d+(?:\.\d+)?)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)),
+              let range = Range(match.range(at: 1), in: value) else {
+            return nil
+        }
+        return Double(value[range])
+    }
+
+    private func valueMatchScore(required: Double?, available: Double?, toleranceRatio: Double) -> Int {
+        guard let required,
+              let available,
+              required > 0 else {
+            return 0
+        }
+        let ratio = abs(available - required) / required
+        if ratio <= toleranceRatio {
+            return 12
+        }
+        if ratio <= toleranceRatio * 4 {
+            return 2
+        }
+        return -16
+    }
+
+    private func normalizedResistanceOhms(_ value: String?) -> Double? {
+        guard let value else { return nil }
+        let normalized = value
+            .replacingOccurrences(of: "Ω", with: "ohm")
+            .replacingOccurrences(of: "R", with: "r")
+            .replacingOccurrences(of: "K", with: "k")
+            .replacingOccurrences(of: "M", with: "m")
+        if let explicit = firstEngineeringValue(
+            in: normalized,
+            pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*([km]?)\s*(?:ohm|ohms)\b"#
+        ) {
+            return explicit
+        }
+        if let compact = firstEngineeringValue(
+            in: normalized,
+            pattern: #"(?i)\b(\d+(?:\.\d+)?)([rkm])(\d*)\b"#
+        ) {
+            return compact
+        }
+        return nil
+    }
+
+    private func firstEngineeringValue(in text: String, pattern: String) -> Double? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              match.numberOfRanges > 2,
+              let numberRange = Range(match.range(at: 1), in: text),
+              let unitRange = Range(match.range(at: 2), in: text) else {
+            return nil
+        }
+        var numberText = String(text[numberRange])
+        if match.numberOfRanges > 3,
+           let suffixRange = Range(match.range(at: 3), in: text),
+           !text[suffixRange].isEmpty {
+            numberText += ".\(text[suffixRange])"
+        }
+        guard let number = Double(numberText) else { return nil }
+        switch String(text[unitRange]).lowercased() {
+        case "k":
+            return number * 1_000
+        case "m":
+            return number * 1_000_000
+        default:
+            return number
+        }
+    }
+
+    private func normalizedCapacitanceUF(_ value: String?) -> Double? {
+        guard let value,
+              let number = numericPrefix(value) else {
+            return nil
+        }
+        let lower = value.lowercased()
+        if lower.contains("pf") {
+            return number / 1_000_000
+        }
+        if lower.contains("nf") {
+            return number / 1_000
+        }
+        if lower.contains("mf") {
+            return number * 1_000
+        }
+        if lower.contains("f") && !lower.contains("uf") && !lower.contains("µf") {
+            return number * 1_000_000
+        }
+        return number
+    }
+
+    private func normalizedPositionCount(_ value: String?) -> Int? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let exact = Int(trimmed) {
+            return exact
+        }
+        return firstPositionCount(in: trimmed)
+    }
+
+    private func candidatePositionCount(_ candidate: ComponentCandidate) -> Int? {
+        for key in ["positions", "number_of_positions", "contacts", "number_of_contacts", "pin_count"] {
+            if let count = normalizedPositionCount(candidate.ratings[key]) {
+                return count
+            }
+        }
+        return firstPositionCount(in: candidateSearchText(candidate))
+    }
+
+    private func firstPositionCount(in text: String) -> Int? {
+        let patterns = [
+            #"(?i)\b(\d+)\s*(?:pin|pins|position|positions|pos|ckt|circuit|circuits|cond|contacts?)\b"#,
+            #"(?i)\b(\d+)p\b"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let range = Range(match.range(at: 1), in: text),
+                  let count = Int(text[range]) else {
+                continue
+            }
+            return count
+        }
+        return nil
+    }
+
+    private func normalizedPolarity(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let lower = value.lowercased()
+        if lower.contains("npn") || lower.contains("n-channel") || lower.contains("n channel") {
+            return "n"
+        }
+        if lower.contains("pnp") || lower.contains("p-channel") || lower.contains("p channel") {
+            return "p"
+        }
+        return nil
+    }
+
+    private func normalizedTaper(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let lower = value.lowercased()
+        if lower.contains("linear") {
+            return "linear"
+        }
+        if lower.contains("audio") || lower.contains("logarithmic") || lower.contains(" log ") {
+            return "audio"
+        }
+        return nil
     }
 
     private func matchingCandidates(
@@ -4201,12 +4668,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let hints = componentCategoryHints(for: component)
         if !targeted.isEmpty {
             let filteredTargeted = filterCandidates(targeted, matching: hints)
-            if !filteredTargeted.isEmpty {
-                return filteredTargeted
+            let constrainedTargeted = filterCandidates(filteredTargeted, satisfying: component)
+            if !constrainedTargeted.isEmpty {
+                return constrainedTargeted
             }
         }
-        guard !hints.isEmpty else { return candidates }
-        return filterCandidates(candidates, matching: hints)
+        let categoryFiltered = hints.isEmpty ? candidates : filterCandidates(candidates, matching: hints)
+        return filterCandidates(categoryFiltered, satisfying: component)
     }
 
     private func filterCandidates(_ candidates: [ComponentCandidate], matching hints: [String]) -> [ComponentCandidate] {
@@ -4234,6 +4702,101 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
     }
 
+    private func filterCandidates(_ candidates: [ComponentCandidate], satisfying component: ComponentIntent) -> [ComponentCandidate] {
+        candidates.filter { !candidateViolatesRequiredConstraints($0, component: component) }
+    }
+
+    private func candidateViolatesRequiredConstraints(_ candidate: ComponentCandidate, component: ComponentIntent) -> Bool {
+        let text = candidateSearchText(candidate)
+        if let requiredPackage = component.constraints["package"],
+           !requiredPackage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           !candidatePackageMatches(candidate, requiredPackage: requiredPackage) {
+            return true
+        }
+        if (component.constraints["mounting"] ?? "").lowercased().contains("through"),
+           text.contains("surface mount") || text.contains("smd") || text.contains("smt") || text.contains("0402") || text.contains("0603") || text.contains("0805") {
+            return true
+        }
+        if let required = normalizedCapacitanceUF(component.constraints["capacitance"]),
+           let available = normalizedCapacitanceUF(candidate.ratings["capacitance"]) ?? normalizedCapacitanceUF(candidate.value),
+           abs(available - required) / required > 0.10 {
+            return true
+        }
+        if let required = normalizedResistanceOhms(component.constraints["resistance"]),
+           let available = normalizedResistanceOhms(candidate.ratings["resistance"]) ?? normalizedResistanceOhms(candidate.value) ?? normalizedResistanceOhms(candidate.mpn),
+           abs(available - required) / required > 0.05 {
+            return true
+        }
+        for (constraintKey, ratingKeys) in [
+            ("voltage_rating", ["voltage_v", "voltage_rated", "voltage", "voltage_rating_ac", "voltage_rating_dc", "vce", "collector_emitter_breakdown_voltage"]),
+            ("current_rating", ["current_a", "current", "current_rating", "ic", "collector_current"]),
+            ("power_rating", ["power_w", "power", "power_rating", "power_max", "power_dissipation"]),
+        ] {
+            guard let required = numericPrefix(component.constraints[constraintKey]) else { continue }
+            let available = ratingKeys.compactMap { numericPrefix(candidate.ratings[$0]) }.max()
+            if let available, available < required {
+                return true
+            }
+        }
+        if let required = normalizedPositionCount(component.constraints["positions"]),
+           let available = candidatePositionCount(candidate),
+           available != required {
+            return true
+        }
+        if let required = normalizedPolarity(component.constraints["polarity"]),
+           let available = normalizedPolarity(candidate.ratings["polarity"]) ?? normalizedPolarity(text),
+           available != required {
+            return true
+        }
+        if let required = normalizedTaper(component.constraints["taper"]),
+           let available = normalizedTaper(candidate.ratings["taper"]) ?? normalizedTaper(text),
+           available != required {
+            return true
+        }
+        return false
+    }
+
+    private func candidatePackageMatches(_ candidate: ComponentCandidate, requiredPackage: String) -> Bool {
+        let requiredTokens = normalizedPackageTokens(requiredPackage)
+        guard !requiredTokens.isEmpty else { return true }
+        let candidatePackages = [
+            candidate.package,
+            candidate.ratings["package"] ?? "",
+            candidate.ratings["package_case"] ?? "",
+            candidate.ratings["case_package"] ?? "",
+            candidate.ratings["supplier_device_package"] ?? "",
+        ] + candidate.footprintCandidates.flatMap { footprint in
+            [footprint.name, footprint.library]
+        }
+        let candidateTokens = Set(candidatePackages.flatMap(normalizedPackageTokens))
+        guard !candidateTokens.isEmpty else { return true }
+        return requiredTokens.contains { required in
+            candidateTokens.contains { candidate in
+                candidate == required || candidate.contains(required) || required.contains(candidate)
+            }
+        }
+    }
+
+    private func normalizedPackageTokens(_ value: String) -> [String] {
+        let ignoredTokens: Set<String> = ["pkg", "package", "sot", "smt", "smd", "tht", "through", "hole"]
+        let normalized = value
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+        var tokens = Set<String>()
+        for token in normalized where token.count >= 3 && !ignoredTokens.contains(token) {
+            tokens.insert(token)
+        }
+        let compact = value
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+        if compact.count >= 3 && !ignoredTokens.contains(compact) {
+            tokens.insert(compact)
+        }
+        return Array(tokens)
+    }
+
     private func componentCategoryHints(for component: ComponentIntent) -> [String] {
         let refdes = component.refdes.uppercased()
         let role = component.role.lowercased()
@@ -4250,6 +4813,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         if refdes.hasPrefix("BR") || combined.contains("bridge") || combined.contains("rectifier") {
             return ["bridge", "rectifier"]
+        }
+        if refdes.hasPrefix("RV") || combined.contains("potentiometer") || combined.contains("pot") {
+            return ["potentiometer", "trimmer"]
         }
         if refdes.hasPrefix("R") || combined.contains("resistor") || symbol.hasSuffix(":r") {
             return ["resistor", "potentiometer", "trimmer"]
@@ -5043,6 +5609,121 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         case .missingArtifact:
             return "A required electronics completion artifact is missing."
         }
+    }
+}
+
+private extension Array where Element == ComponentCandidate {
+    func mergedSamePartEvidence() -> [ComponentCandidate] {
+        var orderedKeys: [String] = []
+        var grouped: [String: [ComponentCandidate]] = [:]
+        for (index, candidate) in enumerated() {
+            let key = Self.samePartKey(candidate) ?? "unique:\(index):\(candidate.mpn)"
+            if grouped[key] == nil {
+                orderedKeys.append(key)
+            }
+            grouped[key, default: []].append(candidate)
+        }
+        return orderedKeys.compactMap { key in
+            guard let candidates = grouped[key] else { return nil }
+            return Self.mergeSamePart(candidates)
+        }
+    }
+
+    private static func mergeSamePart(_ candidates: [ComponentCandidate]) -> ComponentCandidate? {
+        guard var merged = candidates.first else { return nil }
+        for candidate in candidates.dropFirst() {
+            if merged.manufacturer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                merged.manufacturer = candidate.manufacturer
+            }
+            if merged.normalizedCategory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                merged.normalizedCategory = candidate.normalizedCategory
+            }
+            if merged.value?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true,
+               let value = candidate.value?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !value.isEmpty {
+                merged.value = value
+            }
+            if merged.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                merged.package = candidate.package
+            }
+            if merged.lifecycleState.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || merged.lifecycleState.lowercased() == "unknown" {
+                merged.lifecycleState = candidate.lifecycleState
+            }
+            if merged.availabilitySummary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || merged.availabilitySummary.lowercased() == "unknown" {
+                merged.availabilitySummary = candidate.availabilitySummary
+            }
+            merged.ratings = candidate.ratings.merging(merged.ratings) { _, existing in existing }
+            merged.datasheets = mergedDatasheets(merged.datasheets, candidate.datasheets)
+            merged.evidence = mergedEvidence(merged.evidence, candidate.evidence)
+            merged.footprintCandidates = mergedFootprints(merged.footprintCandidates, candidate.footprintCandidates)
+        }
+        return merged
+    }
+
+    private static func samePartKey(_ candidate: ComponentCandidate) -> String? {
+        let mpn = canonicalPartToken(candidate.mpn)
+        guard !mpn.isEmpty else { return nil }
+        return mpn
+    }
+
+    private static func canonicalPartToken(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static func mergedDatasheets(_ current: [DatasheetEvidence], _ additional: [DatasheetEvidence]) -> [DatasheetEvidence] {
+        var seen = Set(current.map { $0.url.lowercased() })
+        var result = current
+        for datasheet in additional {
+            let key = datasheet.url.lowercased()
+            guard !key.isEmpty, !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(datasheet)
+        }
+        return result
+    }
+
+    private static func mergedEvidence(_ current: [ComponentEvidence], _ additional: [ComponentEvidence]) -> [ComponentEvidence] {
+        var seen = Set(current.map(evidenceKey))
+        var result = current
+        for evidence in additional {
+            let key = evidenceKey(evidence)
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(evidence)
+        }
+        return result
+    }
+
+    private static func evidenceKey(_ evidence: ComponentEvidence) -> String {
+        [
+            evidence.providerID,
+            evidence.sourceURL ?? "",
+            evidence.localPath ?? "",
+            evidence.extractedParameters.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: "&"),
+        ]
+            .joined(separator: "|")
+            .lowercased()
+    }
+
+    private static func mergedFootprints(_ current: [FootprintCandidate], _ additional: [FootprintCandidate]) -> [FootprintCandidate] {
+        var seen = Set(current.map(footprintKey))
+        var result = current
+        for footprint in additional {
+            let key = footprintKey(footprint)
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(footprint)
+        }
+        return result
+    }
+
+    private static func footprintKey(_ footprint: FootprintCandidate) -> String {
+        "\(footprint.library):\(footprint.name)".lowercased()
     }
 }
 

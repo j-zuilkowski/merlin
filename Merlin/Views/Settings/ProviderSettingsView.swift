@@ -194,6 +194,12 @@ struct ProviderSettingsView: View {
             let hasToken = credentialValue(envName: "NEXAR_ACCESS_TOKEN", keychainID: "electronics.nexar.access_token") != nil
             let hasSecret = credentialValue(envName: "NEXAR_CLIENT_SECRET", keychainID: "electronics.nexar.client_secret") != nil
             return hasClientID && (hasToken || hasSecret) ? .configured : .missing
+        case "trustedparts":
+            let hasCompanyID = credentialValue(envName: "TRUSTEDPARTS_COMPANY_ID", keychainID: "electronics.trustedparts.company_id") != nil
+            let hasAPIKey = credentialValue(envName: "TRUSTEDPARTS_API_KEY", keychainID: "electronics.trustedparts.api_key") != nil
+            return hasCompanyID && hasAPIKey ? .configured : .missing
+        case "vendor_feed":
+            return .configured
         default:
             return .unknown
         }
@@ -304,6 +310,35 @@ private struct ElectronicsCatalogProviderSettingsDefinition: Identifiable {
                 ),
             ]
         ),
+        ElectronicsCatalogProviderSettingsDefinition(
+            id: "trustedparts",
+            displayName: "TrustedParts",
+            detail: "Authorized distributor inventory, pricing, product, and datasheet evidence.",
+            settingKey: "catalog_provider_trustedparts_enabled",
+            defaultEnabled: false,
+            credentialFields: [
+                ElectronicsCatalogCredentialField(
+                    label: "Company ID",
+                    placeholder: "TrustedParts company ID",
+                    keychainID: "electronics.trustedparts.company_id",
+                    envName: "TRUSTEDPARTS_COMPANY_ID"
+                ),
+                ElectronicsCatalogCredentialField(
+                    label: "API Key",
+                    placeholder: "TrustedParts API key",
+                    keychainID: "electronics.trustedparts.api_key",
+                    envName: "TRUSTEDPARTS_API_KEY"
+                ),
+            ]
+        ),
+        ElectronicsCatalogProviderSettingsDefinition(
+            id: "vendor_feed",
+            displayName: "Vendor Feed",
+            detail: "Local user-supplied CSV/JSON distributor exports; no network access.",
+            settingKey: "catalog_provider_vendor_feed_enabled",
+            defaultEnabled: true,
+            credentialFields: []
+        ),
     ]
 }
 
@@ -361,10 +396,12 @@ private struct ElectronicsCatalogProviderSettingsRow: View {
                 }
             }
             Spacer()
-            Button("Credentials", action: onEditCredentials)
-                .buttonStyle(.borderless)
-                .font(.caption)
-                .accessibilityIdentifier(AccessibilityID.settingsProviderKeyButtonPrefix + "electronics-\(definition.id)")
+            if !definition.credentialFields.isEmpty {
+                Button("Credentials", action: onEditCredentials)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .accessibilityIdentifier(AccessibilityID.settingsProviderKeyButtonPrefix + "electronics-\(definition.id)")
+            }
             Toggle("", isOn: Binding(
                 get: { isEnabled },
                 set: { enabled in onToggle(enabled) }

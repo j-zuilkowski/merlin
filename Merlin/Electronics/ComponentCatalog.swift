@@ -348,6 +348,7 @@ struct CatalogSearchQueryBuilder: Sendable {
         }
         if refdes.hasPrefix("J") || refdes.hasPrefix("P") || combined.contains("connector") || combined.contains("jack") {
             let pinCount = pinCount(from: request.constraints["required_pins"])
+                ?? numericCount(from: request.constraints["positions"])
             let keyword = pinCount.map { "\($0) position connector" } ?? "connector"
             return ComponentFamily(
                 keyword: keyword,
@@ -423,6 +424,12 @@ struct CatalogSearchQueryBuilder: Sendable {
         return pins.isEmpty ? nil : pins.count
     }
 
+    private func numericCount(from value: String?) -> Int? {
+        guard let value else { return nil }
+        let digits = value.trimmingCharacters(in: .whitespacesAndNewlines).filter(\.isNumber)
+        return digits.isEmpty ? nil : Int(digits)
+    }
+
     private func uniqueTerms(_ terms: [String]) -> [String] {
         var seen = Set<String>()
         var result: [String] = []
@@ -437,12 +444,16 @@ struct CatalogSearchQueryBuilder: Sendable {
 }
 
 struct LiveCatalogQueryCacheEntry: Codable, Sendable, Equatable {
+    static let currentSchemaVersion = 6
+
+    var schemaVersion: Int?
     var generatedAt: Date
     var providerID: String
     var query: String
     var candidates: [ComponentCandidate]
 
     enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
         case generatedAt = "generated_at"
         case providerID = "provider_id"
         case query
@@ -484,6 +495,9 @@ struct LiveCatalogQueryCache: Sendable {
         let entryURL = candidatesURL(providerID: providerID, query: query, directory: directory)
         guard FileManager.default.fileExists(atPath: entryURL.path) else { return nil }
         let entry = try JSONDecoder().decode(LiveCatalogQueryCacheEntry.self, from: Data(contentsOf: entryURL))
+        guard entry.schemaVersion == LiveCatalogQueryCacheEntry.currentSchemaVersion else {
+            return nil
+        }
         guard maxAgeSeconds <= 0 || now.timeIntervalSince(entry.generatedAt) <= Double(maxAgeSeconds) else {
             return nil
         }
@@ -504,6 +518,7 @@ struct LiveCatalogQueryCache: Sendable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
         let candidateEntry = LiveCatalogQueryCacheEntry(
+            schemaVersion: LiveCatalogQueryCacheEntry.currentSchemaVersion,
             generatedAt: now,
             providerID: providerID,
             query: query,
@@ -707,7 +722,7 @@ struct DigiKeyCatalogProviderAdapter: Sendable {
                 category: categoryName,
                 description: productDescription
             )
-            let ratings = CatalogFixtureJSON.normalized(parameters)
+            let ratings = CatalogFixtureJSON.normalizedWithDescription(parameters, description: productDescription)
             return ComponentCandidate(
                 mpn: mpn,
                 manufacturer: manufacturer,
@@ -715,7 +730,7 @@ struct DigiKeyCatalogProviderAdapter: Sendable {
                     categoryName,
                     productDescription,
                 ])),
-                value: nil,
+                value: productDescription.isEmpty ? nil : productDescription,
                 package: package,
                 ratings: ratings,
                 lifecycleState: CatalogFixtureJSON.firstNonEmpty([
@@ -778,12 +793,12 @@ struct MouserCatalogProviderAdapter: Sendable {
                 category: category,
                 description: description
             )
-            let ratings = CatalogFixtureJSON.normalized(attributes)
+            let ratings = CatalogFixtureJSON.normalizedWithDescription(attributes, description: description)
             return ComponentCandidate(
                 mpn: mpn,
                 manufacturer: manufacturer,
                 normalizedCategory: CatalogFixtureJSON.normalizedKey(CatalogFixtureJSON.string(part, "Category")),
-                value: nil,
+                value: description.isEmpty ? nil : description,
                 package: package,
                 ratings: ratings,
                 lifecycleState: CatalogFixtureJSON.string(part, "LifecycleStatus", defaultValue: "unknown"),
@@ -841,7 +856,7 @@ struct AggregatorCatalogProviderAdapter: Sendable {
                 mpn: mpn,
                 manufacturer: manufacturer,
                 normalizedCategory: CatalogFixtureJSON.normalizedKey(CatalogFixtureJSON.string(part, "category")),
-                value: nil,
+                value: CatalogFixtureJSON.optionalString(part, "description"),
                 package: CatalogFixtureJSON.string(part, "package"),
                 ratings: ratings,
                 lifecycleState: CatalogFixtureJSON.string(part, "lifecycle", defaultValue: "unknown"),
@@ -875,6 +890,258 @@ struct AggregatorCatalogProviderAdapter: Sendable {
                 footprintCandidates: []
             )
         }
+    }
+}
+
+struct VendorFeedCatalogProviderAdapter: Sendable {
+    let providerID = "vendor_feed"
+
+    func mapRecordedResponse(_ data: Data) throws -> [ComponentCandidate] {
+        if let object = try? CatalogFixtureJSON.object(data) {
+            return mapJSON(object)
+        }
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Expected UTF-8 CSV or JSON vendor feed."))
+        }
+        return try mapCSV(text)
+    }
+
+    private func mapJSON(_ object: [String: Any]) -> [ComponentCandidate] {
+        let parts = objects(forAnyKey: ["parts", "Parts", "products", "Products", "items", "Items"], in: object)
+        return parts.map { candidate(from: flattenJSONPart($0)) }
+    }
+
+    private func mapCSV(_ text: String) throws -> [ComponentCandidate] {
+        let rows = parseCSV(text).filter { row in
+            row.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
+        guard let header = rows.first else { return [] }
+        let keys = header.map(normalizedHeader)
+        return rows.dropFirst().map { row in
+            var fields: [String: String] = [:]
+            for index in keys.indices {
+                guard !keys[index].isEmpty, index < row.count else { continue }
+                let value = row[index].trimmingCharacters(in: .whitespacesAndNewlines)
+                if !value.isEmpty {
+                    fields[keys[index]] = value
+                }
+            }
+            return candidate(from: fields)
+        }
+    }
+
+    private func candidate(from fields: [String: String]) -> ComponentCandidate {
+        let manufacturer = first(fields, ["manufacturer", "mfr", "manufacturer_name", "mfg"])
+        let mpn = first(fields, ["mpn", "manufacturer_part_number", "manufacturer_product_number", "part_number"])
+        let description = first(fields, ["description", "product_description", "detailed_description"])
+        let category = first(fields, ["category", "product_category", "normalized_category"])
+        let package = CatalogFixtureJSON.firstNonEmpty([
+            first(fields, ["package", "package_case", "package_type", "case", "mounting_type"]),
+            CatalogFixtureJSON.packageEvidence(fields, category: category, description: description),
+        ])
+        let ratings = normalizedVendorRatings(fields, description: description)
+        let distributor = first(fields, ["distributor", "supplier", "seller", "vendor"])
+        let availability = availabilitySummary(fields: fields, distributor: distributor)
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: manufacturer,
+            normalizedCategory: CatalogFixtureJSON.normalizedKey(category),
+            value: description.isEmpty ? nil : description,
+            package: package,
+            ratings: ratings,
+            lifecycleState: CatalogFixtureJSON.firstNonEmpty([first(fields, ["lifecycle", "lifecycle_status", "product_status"]), "unknown"]),
+            availabilitySummary: availability,
+            datasheets: datasheets(from: fields, manufacturer: manufacturer, mpn: mpn),
+            evidence: [
+                ComponentEvidence(
+                    providerID: providerID,
+                    sourceURL: optional(first(fields, ["source_url", "product_url", "product_detail_url", "buy_url", "url"])),
+                    localPath: nil,
+                    retrievedAt: "user_supplied_feed",
+                    cachePolicy: "user_supplied_feed",
+                    sha256: nil,
+                    extractedParameters: ratings.merging([
+                        "description": description,
+                        "package": package,
+                        "availability": availability,
+                        "distributor": distributor,
+                    ]) { current, _ in current },
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+    }
+
+    private func flattenJSONPart(_ part: [String: Any]) -> [String: String] {
+        var fields: [String: String] = [:]
+        for (key, value) in part {
+            let normalized = normalizedHeader(key)
+            if let string = value as? String {
+                fields[normalized] = string
+            } else if let number = value as? NSNumber {
+                fields[normalized] = number.stringValue
+            } else if let dictionary = value as? [String: Any] {
+                if normalized == "ratings" || normalized == "specs" || normalized == "parameters" {
+                    for (ratingKey, ratingValue) in dictionary {
+                        fields[normalizedHeader(ratingKey)] = "\(ratingValue)"
+                    }
+                } else if let name = dictionary["name"] as? String {
+                    fields[normalized] = name
+                }
+            }
+        }
+        return fields
+    }
+
+    private func normalizedVendorRatings(_ fields: [String: String], description: String) -> [String: String] {
+        var result = CatalogFixtureJSON.normalizedWithDescription(fields, description: description)
+        let source = result
+        copyFirstPresent(in: source, to: &result, target: "voltage_v", keys: [
+            "voltage",
+            "voltage_rating",
+            "vce",
+            "collector_emitter_breakdown_voltage",
+            "voltage_v",
+        ])
+        copyFirstPresent(in: source, to: &result, target: "current_a", keys: [
+            "current",
+            "current_rating",
+            "ic",
+            "collector_current",
+            "current_a",
+        ])
+        copyFirstPresent(in: source, to: &result, target: "power_w", keys: [
+            "power",
+            "power_rating",
+            "power_max",
+            "power_dissipation",
+            "power_w",
+        ])
+        copyFirstPresent(in: source, to: &result, target: "moq", keys: [
+            "moq",
+            "minimum_order_quantity",
+            "min_order_qty",
+        ])
+        copyFirstPresent(in: source, to: &result, target: "lead_time", keys: [
+            "lead_time",
+            "factory_lead_time",
+        ])
+        return result
+    }
+
+    private func availabilitySummary(fields: [String: String], distributor: String) -> String {
+        let availability = first(fields, ["availability", "quantity_available", "stock", "inventory", "qty_available"])
+        guard !availability.isEmpty else { return "unknown" }
+        return distributor.isEmpty ? availability : "\(distributor): \(availability)"
+    }
+
+    private func datasheets(from fields: [String: String], manufacturer: String, mpn: String) -> [DatasheetEvidence] {
+        let urls = uniqueValues([
+            first(fields, ["datasheet_url", "data_sheet_url", "datasheet", "document_url"]),
+        ])
+        return urls.map { url in
+            DatasheetEvidence(
+                manufacturer: manufacturer,
+                mpn: mpn,
+                url: url,
+                localPath: nil,
+                sha256: nil,
+                providerID: providerID,
+                retrievedAt: "user_supplied_feed",
+                license: "user_supplied_feed",
+                citations: []
+            )
+        }
+    }
+
+    private func parseCSV(_ text: String) -> [[String]] {
+        var rows: [[String]] = []
+        var row: [String] = []
+        var field = ""
+        var inQuotes = false
+        var iterator = Array(text).makeIterator()
+        while let character = iterator.next() {
+            if character == "\"" {
+                if inQuotes, let next = iterator.next() {
+                    if next == "\"" {
+                        field.append("\"")
+                    } else {
+                        inQuotes = false
+                        if next == "," {
+                            row.append(field)
+                            field = ""
+                        } else if next == "\n" {
+                            row.append(field)
+                            rows.append(row)
+                            row = []
+                            field = ""
+                        } else if next != "\r" {
+                            field.append(next)
+                        }
+                    }
+                } else {
+                    inQuotes.toggle()
+                }
+            } else if character == ",", !inQuotes {
+                row.append(field)
+                field = ""
+            } else if character == "\n", !inQuotes {
+                row.append(field)
+                rows.append(row)
+                row = []
+                field = ""
+            } else if character != "\r" {
+                field.append(character)
+            }
+        }
+        if !field.isEmpty || !row.isEmpty {
+            row.append(field)
+            rows.append(row)
+        }
+        return rows
+    }
+
+    private func normalizedHeader(_ value: String) -> String {
+        CatalogFixtureJSON.normalizedKey(value)
+            .replacingOccurrences(of: "_url", with: "_url")
+    }
+
+    private func first(_ fields: [String: String], _ keys: [String]) -> String {
+        for key in keys {
+            if let value = fields[key]?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
+                return value
+            }
+        }
+        return ""
+    }
+
+    private func optional(_ value: String) -> String? {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
+    }
+
+    private func objects(forAnyKey keys: [String], in object: [String: Any]) -> [[String: Any]] {
+        for key in keys {
+            guard let value = object[key] else { continue }
+            if let rows = value as? [[String: Any]] { return rows }
+            if let row = value as? [String: Any] { return [row] }
+        }
+        return []
+    }
+
+    private func copyFirstPresent(in source: [String: String], to result: inout [String: String], target: String, keys: [String]) {
+        let value = first(source, keys)
+        if !value.isEmpty {
+            let current = result[target]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if current.isEmpty || (!containsUnitLikeText(current) && containsUnitLikeText(value)) {
+                result[target] = value
+            }
+        }
+    }
+
+    private func containsUnitLikeText(_ value: String) -> Bool {
+        value.contains { $0.isLetter || $0 == "%" || $0 == "Ω" || $0 == "µ" }
     }
 }
 
@@ -912,7 +1179,10 @@ struct NexarCatalogProviderAdapter: Sendable {
         let manufacturer = CatalogFixtureJSON.string(manufacturerObject, "name")
         let mpn = CatalogFixtureJSON.string(part, "mpn")
         let specs = specMap(from: part["specs"] as? [[String: Any]])
-        let ratings = CatalogFixtureJSON.normalized(specs)
+        let description = resultDescription ?? CatalogFixtureJSON.string(part, "shortDescription")
+        let ratings = normalizedNexarRatings(
+            CatalogFixtureJSON.normalizedWithDescription(specs, description: description)
+        )
         let package = firstPresent(
             in: ratings,
             keys: ["package_case", "package", "case_package", "supplier_device_package", "mounting_type"]
@@ -945,7 +1215,7 @@ struct NexarCatalogProviderAdapter: Sendable {
                     sha256: nil,
                     extractedParameters: ratings.merging([
                         "name": CatalogFixtureJSON.string(part, "name"),
-                        "description": resultDescription ?? CatalogFixtureJSON.string(part, "shortDescription"),
+                        "description": description,
                         "package": package,
                     ]) { first, _ in first },
                     confidence: 1.0,
@@ -954,6 +1224,56 @@ struct NexarCatalogProviderAdapter: Sendable {
             ],
             footprintCandidates: []
         )
+    }
+
+    private func normalizedNexarRatings(_ ratings: [String: String]) -> [String: String] {
+        var result = ratings
+        copyFirstPresent(in: ratings, to: &result, target: "voltage_v", keys: [
+            "vce",
+            "voltage_collector_emitter_breakdown_max",
+            "voltage_collector_emitter_breakdown",
+            "collector_emitter_breakdown_voltage",
+            "voltage_rating",
+            "voltage",
+        ])
+        copyFirstPresent(in: ratings, to: &result, target: "current_a", keys: [
+            "ic",
+            "current_collector_ic_max",
+            "current_collector_max",
+            "collector_current",
+            "current_rating",
+            "current",
+        ])
+        copyFirstPresent(in: ratings, to: &result, target: "power_w", keys: [
+            "power_max",
+            "power_dissipation",
+            "power_rating",
+            "power",
+        ])
+        copyFirstPresent(in: ratings, to: &result, target: "polarity", keys: [
+            "transistor_polarity",
+            "polarity",
+        ])
+        return result
+    }
+
+    private func copyFirstPresent(
+        in source: [String: String],
+        to result: inout [String: String],
+        target: String,
+        keys: [String]
+    ) {
+        guard result[target]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true else {
+            return
+        }
+        for key in keys {
+            guard let value = source[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty else {
+                continue
+            }
+            result[target] = value
+            return
+        }
     }
 
     private func specMap(from specs: [[String: Any]]?) -> [String: String] {
@@ -1027,6 +1347,323 @@ struct NexarCatalogProviderAdapter: Sendable {
             return inventory > 0 ? "\(name): \(inventory)" : name
         }
         return sellerSummaries.isEmpty ? "unknown" : sellerSummaries.joined(separator: "; ")
+    }
+
+    private func firstPresent(in values: [String: String], keys: [String]) -> String {
+        for key in keys {
+            if let value = values[key], !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return value
+            }
+        }
+        return ""
+    }
+}
+
+struct TrustedPartsCatalogProviderAdapter: Sendable {
+    let providerID = "trustedparts"
+
+    func mapRecordedResponse(_ data: Data) throws -> [ComponentCandidate] {
+        let object = try CatalogFixtureJSON.object(data)
+        return partObjects(from: object).map(candidate(from:)).filter {
+            !$0.mpn.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || !$0.manufacturer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private func partObjects(from object: [String: Any]) -> [[String: Any]] {
+        let resultRows = objects(forAnyKey: ["Results", "results", "SearchResults", "searchResults"], in: object)
+        let nestedParts = resultRows.flatMap { row in
+            let parts = objects(forAnyKey: ["Parts", "parts", "Items", "items", "Products", "products"], in: row)
+            return parts.isEmpty ? [row] : parts
+        }
+        if !nestedParts.isEmpty { return nestedParts }
+        return objects(forAnyKey: ["Parts", "parts", "Items", "items", "Products", "products"], in: object)
+    }
+
+    private func candidate(from part: [String: Any]) -> ComponentCandidate {
+        let manufacturer = string(part, keys: [
+            "Manufacturer",
+            "manufacturer",
+            "ManufacturerName",
+            "manufacturerName",
+            "Mfr",
+            "mfr",
+        ], nestedKeys: ["Name", "name"])
+        let mpn = string(part, keys: [
+            "ManufacturerPartNumber",
+            "manufacturerPartNumber",
+            "ManufacturerProductNumber",
+            "manufacturerProductNumber",
+            "PartNumber",
+            "partNumber",
+            "Mpn",
+            "MPN",
+            "mpn",
+        ])
+        let description = string(part, keys: [
+            "Description",
+            "description",
+            "ProductDescription",
+            "productDescription",
+            "DetailedDescription",
+            "detailedDescription",
+        ])
+        let category = string(part, keys: ["Category", "category", "ProductCategory", "productCategory"], nestedKeys: ["Name", "name"])
+        let parameterMap = parameterMap(from: part)
+        var ratings = normalizedTrustedPartsRatings(CatalogFixtureJSON.normalizedWithDescription(parameterMap, description: description))
+        let offers = offerObjects(from: part)
+        ratings.merge(offerRatings(from: offers)) { current, _ in current }
+        let package = CatalogFixtureJSON.firstNonEmpty([
+            string(part, keys: ["Package", "package", "PackageType", "packageType", "PackageCase", "packageCase"]),
+            firstPresent(in: ratings, keys: [
+                "package_case",
+                "package",
+                "supplier_device_package",
+                "mounting_type",
+                "termination",
+            ]),
+            CatalogFixtureJSON.packageEvidence(parameterMap, category: category, description: description),
+        ])
+        let sourceURL = string(part, keys: [
+            "ProductUrl",
+            "ProductURL",
+            "productUrl",
+            "ProductDetailUrl",
+            "productDetailUrl",
+            "BuyUrl",
+            "BuyURL",
+            "buyUrl",
+        ])
+
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: manufacturer,
+            normalizedCategory: CatalogFixtureJSON.normalizedKey(category),
+            value: description.isEmpty ? nil : description,
+            package: package,
+            ratings: ratings,
+            lifecycleState: CatalogFixtureJSON.firstNonEmpty([
+                string(part, keys: ["LifecycleStatus", "lifecycleStatus", "LifeCycleStatus", "ProductStatus", "productStatus"]),
+                "unknown",
+            ]),
+            availabilitySummary: availabilitySummary(from: part, offers: offers),
+            datasheets: datasheets(from: part, manufacturer: manufacturer, mpn: mpn),
+            evidence: [
+                ComponentEvidence(
+                    providerID: providerID,
+                    sourceURL: sourceURL.isEmpty ? nil : sourceURL,
+                    localPath: nil,
+                    retrievedAt: "recorded_fixture",
+                    cachePolicy: "recorded_fixture",
+                    sha256: nil,
+                    extractedParameters: ratings.merging([
+                        "description": description,
+                        "package": package,
+                        "availability": availabilitySummary(from: part, offers: offers),
+                    ]) { current, _ in current },
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+    }
+
+    private func datasheets(from part: [String: Any], manufacturer: String, mpn: String) -> [DatasheetEvidence] {
+        let directURLs = [
+            string(part, keys: ["DatasheetUrl", "DataSheetUrl", "DatasheetURL", "datasheetUrl", "datasheetURL"]),
+            string(part, keys: ["Datasheet", "datasheet"], nestedKeys: ["Url", "URL", "url"]),
+        ]
+        let documentURLs = objects(forAnyKey: ["Documents", "documents", "Datasheets", "datasheets"], in: part)
+            .map { string($0, keys: ["Url", "URL", "url", "DatasheetUrl", "datasheetUrl"]) }
+        return uniqueValues(directURLs + documentURLs).map { url in
+            DatasheetEvidence(
+                manufacturer: manufacturer,
+                mpn: mpn,
+                url: url,
+                localPath: nil,
+                sha256: nil,
+                providerID: providerID,
+                retrievedAt: "recorded_fixture",
+                license: "recorded_fixture",
+                citations: []
+            )
+        }
+    }
+
+    private func availabilitySummary(from part: [String: Any], offers: [[String: Any]]) -> String {
+        let direct = string(part, keys: ["Availability", "availability", "Stock", "stock"])
+        if !direct.isEmpty { return direct }
+        let quantity = int(part, keys: ["QuantityAvailable", "quantityAvailable", "TotalAvailable", "totalAvailable"])
+        if quantity > 0 { return "\(quantity) total available" }
+        let summaries = offers.compactMap { offer -> String? in
+            let distributor = string(offer, keys: [
+                "Distributor",
+                "distributor",
+                "Supplier",
+                "supplier",
+                "Seller",
+                "seller",
+                "Company",
+                "company",
+            ], nestedKeys: ["Name", "name"])
+            guard !distributor.isEmpty else { return nil }
+            let quantity = int(offer, keys: [
+                "QuantityAvailable",
+                "quantityAvailable",
+                "Inventory",
+                "inventory",
+                "Stock",
+                "stock",
+                "Available",
+                "available",
+                "inventoryLevel",
+            ])
+            return quantity > 0 ? "\(distributor): \(quantity)" : distributor
+        }
+        return summaries.isEmpty ? "unknown" : summaries.joined(separator: "; ")
+    }
+
+    private func offerRatings(from offers: [[String: Any]]) -> [String: String] {
+        var ratings: [String: String] = [:]
+        for offer in offers {
+            copyFirstPresent(from: offer, to: &ratings, target: "packaging", keys: ["Packaging", "packaging"])
+            copyFirstPresent(from: offer, to: &ratings, target: "moq", keys: ["Moq", "MOQ", "moq", "MinimumOrderQuantity"])
+            copyFirstPresent(from: offer, to: &ratings, target: "lead_time", keys: ["LeadTime", "leadTime", "FactoryLeadTime"])
+            copyFirstPresent(from: offer, to: &ratings, target: "source", keys: ["Distributor", "Supplier", "Seller"])
+        }
+        return ratings
+    }
+
+    private func parameterMap(from part: [String: Any]) -> [String: String] {
+        var result: [String: String] = [:]
+        let rows = objects(forAnyKey: ["Parameters", "parameters", "ProductAttributes", "productAttributes", "Attributes", "attributes", "Specs", "specs"], in: part)
+        for row in rows {
+            let name = string(row, keys: [
+                "Name",
+                "name",
+                "ParameterText",
+                "parameterText",
+                "ParameterName",
+                "parameterName",
+                "AttributeName",
+                "attributeName",
+                "shortname",
+            ])
+            let value = string(row, keys: [
+                "Value",
+                "value",
+                "ValueText",
+                "valueText",
+                "ParameterValue",
+                "parameterValue",
+                "AttributeValue",
+                "attributeValue",
+                "DisplayValue",
+                "displayValue",
+            ])
+            if !name.isEmpty, !value.isEmpty {
+                result[name] = value
+            }
+        }
+        for key in ["Package", "PackageType", "Packaging", "Voltage", "Current", "Power", "Tolerance", "Resistance", "Capacitance"] {
+            let value = string(part, keys: [key, key.prefix(1).lowercased() + key.dropFirst()])
+            if !value.isEmpty {
+                result[key] = value
+            }
+        }
+        return result
+    }
+
+    private func normalizedTrustedPartsRatings(_ ratings: [String: String]) -> [String: String] {
+        var result = ratings
+        copyFirstPresent(in: ratings, to: &result, target: "voltage_v", keys: [
+            "voltage_collector_emitter_breakdown_max",
+            "voltage_collector_emitter_breakdown",
+            "collector_emitter_breakdown_voltage",
+            "voltage_rating",
+            "voltage",
+        ])
+        copyFirstPresent(in: ratings, to: &result, target: "current_a", keys: [
+            "current_collector_ic_max",
+            "current_collector_max",
+            "collector_current",
+            "current_rating",
+            "current",
+        ])
+        copyFirstPresent(in: ratings, to: &result, target: "power_w", keys: [
+            "power_max",
+            "power_dissipation",
+            "power_rating",
+            "power",
+        ])
+        return result
+    }
+
+    private func offerObjects(from part: [String: Any]) -> [[String: Any]] {
+        objects(forAnyKey: ["Offers", "offers", "DistributorOffers", "distributorOffers", "Sellers", "sellers"], in: part)
+    }
+
+    private func objects(forAnyKey keys: [String], in object: [String: Any]) -> [[String: Any]] {
+        for key in keys {
+            guard let value = object[key] else { continue }
+            if let rows = value as? [[String: Any]] { return rows }
+            if let row = value as? [String: Any] { return [row] }
+        }
+        return []
+    }
+
+    private func string(_ object: [String: Any], keys: [String], nestedKeys: [String] = []) -> String {
+        for key in keys {
+            guard let value = object[key] else { continue }
+            if let string = value as? String {
+                let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+            if let number = value as? NSNumber {
+                return number.stringValue
+            }
+            if let nested = value as? [String: Any] {
+                let nested = string(nested, keys: nestedKeys.isEmpty ? keys : nestedKeys)
+                if !nested.isEmpty { return nested }
+            }
+        }
+        return ""
+    }
+
+    private func int(_ object: [String: Any], keys: [String]) -> Int {
+        for key in keys {
+            guard let value = object[key] else { continue }
+            if let int = value as? Int { return int }
+            if let number = value as? NSNumber { return number.intValue }
+            if let string = value as? String {
+                let digits = string.filter { $0.isNumber }
+                if let int = Int(digits) { return int }
+            }
+        }
+        return 0
+    }
+
+    private func copyFirstPresent(from object: [String: Any], to result: inout [String: String], target: String, keys: [String]) {
+        guard result[target]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true else { return }
+        let value = string(object, keys: keys)
+        if !value.isEmpty {
+            result[target] = value
+        }
+    }
+
+    private func copyFirstPresent(in source: [String: String], to result: inout [String: String], target: String, keys: [String]) {
+        let value = firstPresent(in: source, keys: keys)
+        if !value.isEmpty {
+            let current = result[target]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if current.isEmpty || (!containsUnitLikeText(current) && containsUnitLikeText(value)) {
+                result[target] = value
+            }
+        }
+    }
+
+    private func containsUnitLikeText(_ value: String) -> Bool {
+        value.contains { $0.isLetter || $0 == "%" || $0 == "Ω" || $0 == "µ" }
     }
 
     private func firstPresent(in values: [String: String], keys: [String]) -> String {
@@ -1338,6 +1975,80 @@ struct LiveNexarCatalogProvider: LiveCatalogProviderClient {
     }
 }
 
+struct LiveTrustedPartsCatalogProvider: LiveCatalogProviderClient {
+    let providerID = "trustedparts"
+    var companyID: String
+    var apiKey: String
+    var endpoint: URL
+    var resultLimit: Int
+    var transport: any CatalogHTTPTransport
+    var now: @Sendable () -> Date
+
+    init(
+        companyID: String,
+        apiKey: String,
+        endpoint: URL = URL(string: "https://api.trustedparts.com/v2/search")!,
+        resultLimit: Int = 10,
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.companyID = companyID
+        self.apiKey = apiKey
+        self.endpoint = endpoint
+        self.resultLimit = resultLimit
+        self.transport = transport
+        self.now = now
+    }
+
+    func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
+        try await searchWithRawResponse(request).candidates
+    }
+
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult {
+        let keyword = CatalogSearchQueryBuilder().keyword(for: request)
+        var urlRequest = URLRequest(url: endpoint, timeoutInterval: 20)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+            "CompanyId": companyID,
+            "ApiKey": apiKey,
+            "UserAgent": "Merlin electronics plugin component selection",
+            "CountryCode": "US",
+            "CurrencyCode": "USD",
+            "Queries": [
+                [
+                    "SearchToken": keyword,
+                    "ExactMatch": isMPNSearch(request),
+                    "InStockOnly": true,
+                    "MaxResults": max(1, min(resultLimit, 100)),
+                ],
+            ],
+        ])
+
+        let (data, response) = try await transport.data(for: urlRequest)
+        try validate(response: response)
+        let retrievedAt = ISO8601DateFormatter().string(from: now())
+        let candidates = try TrustedPartsCatalogProviderAdapter()
+            .mapRecordedResponse(data)
+            .map { liveAnnotated($0, retrievedAt: retrievedAt, cachePolicy: "live_api") }
+        return LiveCatalogSearchResult(candidates: candidates, rawResponse: data, requestURL: endpoint)
+    }
+
+    private func isMPNSearch(_ request: ComponentSearchRequest) -> Bool {
+        ["manufacturer_part_number", "mpn"].contains { key in
+            !(request.constraints[key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private func validate(response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        guard (200...299).contains(http.statusCode) else {
+            throw LiveCatalogProviderError.httpStatus(http.statusCode)
+        }
+    }
+}
+
 private func liveAnnotated(_ candidate: ComponentCandidate, retrievedAt: String, cachePolicy: String) -> ComponentCandidate {
     var candidate = candidate
     candidate.evidence = candidate.evidence.map { evidence in
@@ -1466,20 +2177,59 @@ private enum CatalogFixtureJSON {
         }
 
         let combined = "\(category) \(description)".lowercased()
+        if let package = firstRegexMatch(
+            in: combined,
+            patterns: [
+                #"\btssop[- ]?\d+\b"#,
+                #"\bssop[- ]?\d+\b"#,
+                #"\bsoic[- ]?\d+\b"#,
+                #"\bdip[- ]?\d+\b"#,
+                #"\bqfn[- ]?\d+\b"#,
+                #"\bsot[- ]?23\b"#,
+                #"\bto[- ]?3\b"#,
+                #"\bto[- ]?92\b"#,
+                #"\bto[- ]?126\b"#,
+                #"\bto[- ]?252\b"#,
+                #"\bto[- ]?220\b"#,
+                #"\bto[- ]?247\b"#,
+                #"\bgbu\b"#,
+                #"\bkbpc\b"#,
+                #"\bdbs\b"#,
+                #"\b0603\b"#,
+                #"\b0805\b"#,
+                #"\b1206\b"#,
+            ]
+        ) {
+            return package.uppercased().replacingOccurrences(of: " ", with: "-")
+        }
         let inferred: [(String, String)] = [
             ("smd", "SMD"),
             ("smt", "SMT"),
             ("surface mount", "surface_mount"),
             ("through hole", "through_hole"),
             ("through-hole", "through_hole"),
+            ("tht", "through_hole"),
+            ("radial", "Radial"),
+            ("axial", "Axial"),
+            ("screw terminal", "screw_terminal"),
+            ("snap in", "snap_in"),
+            ("snap-in", "snap_in"),
+            ("lead spacing", "Radial"),
+            ("ls ", "Radial"),
             ("chassis mount", "chassis_mount"),
             ("panel mount", "panel_mount"),
             ("to-3", "TO-3"),
             ("to-220", "TO-220"),
             ("to-247", "TO-247"),
             ("to-92", "TO-92"),
+            ("to-126", "TO-126"),
+            ("to-252", "TO-252"),
         ]
         return inferred.first { combined.contains($0.0) }?.1 ?? ""
+    }
+
+    static func normalizedWithDescription(_ values: [String: String], description: String) -> [String: String] {
+        normalized(values).merging(descriptionRatings(description)) { current, _ in current }
     }
 
     static func normalized(_ values: [String: String]) -> [String: String] {
@@ -1496,5 +2246,72 @@ private enum CatalogFixtureJSON {
         return String(scalars)
             .split(separator: "_")
             .joined(separator: "_")
+    }
+
+    private static func descriptionRatings(_ description: String) -> [String: String] {
+        [
+            "voltage_v": firstCapture(in: description, pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*(?:volt|volts|v)\b"#),
+            "current_a": firstCapture(in: description, pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*(?:amp|amps|a)\b"#),
+            "power_w": firstCapture(in: description, pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*(?:watt|watts|w)\b"#),
+            "capacitance": firstValueWithUnit(in: description, pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*(uF|µF|nF|pF)\b"#),
+            "resistance": firstResistanceValue(in: description),
+            "positions": firstCapture(in: description, pattern: #"(?i)\b(\d+)\s*(?:pin|pins|position|positions|pos|ckt|circuit|circuits|cond|contacts?)\b"#),
+            "polarity": firstCapture(in: description, pattern: #"(?i)\b(NPN|PNP|N-Channel|P-Channel)\b"#),
+            "taper": firstCapture(in: description, pattern: #"(?i)\b(linear|audio|logarithmic|log)\s+taper\b"#),
+        ]
+            .compactMapValues { $0 }
+    }
+
+    private static func firstResistanceValue(in text: String) -> String? {
+        if let value = firstValueWithUnit(in: text, pattern: #"(?i)\b(\d+(?:\.\d+)?)\s*([kKmM]?)\s*(?:ohm|ohms|Ω)\b"#) {
+            return value
+        }
+        return firstValueWithUnit(in: text, pattern: #"(?i)\b(\d+(?:\.\d+)?)([RrKkMm])(\d*)\b"#)
+    }
+
+    private static func firstValueWithUnit(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              match.numberOfRanges > 2,
+              let numberRange = Range(match.range(at: 1), in: text),
+              let unitRange = Range(match.range(at: 2), in: text) else {
+            return nil
+        }
+        var number = String(text[numberRange])
+        let unit = String(text[unitRange])
+        if match.numberOfRanges > 3,
+           let suffixRange = Range(match.range(at: 3), in: text),
+           !text[suffixRange].isEmpty {
+            number += ".\(text[suffixRange])"
+        }
+        return "\(number)\(unit)"
+    }
+
+    private static func firstRegexMatch(in text: String, patterns: [String]) -> String? {
+        for pattern in patterns {
+            if let match = firstMatch(in: text, pattern: pattern) {
+                return match
+            }
+        }
+        return nil
+    }
+
+    private static func firstCapture(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        return String(text[range])
+    }
+
+    private static func firstMatch(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range, in: text) else {
+            return nil
+        }
+        return String(text[range])
     }
 }

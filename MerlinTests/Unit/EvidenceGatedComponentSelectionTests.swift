@@ -61,6 +61,806 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertNil(matrix.decisions.first?.selectedCandidate)
     }
 
+    func testMultipleValidCandidatesSelectsUniqueBestRankedCandidate() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "BR1",
+            role: "bridge rectifier",
+            constraints: [
+                "component_category": "bridge_rectifier",
+                "mounting": "through_hole",
+                "voltage_rating": "100V",
+                "current_rating": "8A",
+            ]
+        ), root: root)
+        var weaker = validCandidate(mpn: "GBU406", category: "bridge_rectifiers")
+        weaker.package = "SMD"
+        weaker.ratings = ["voltage_v": "50", "current_a": "4"]
+        weaker.lifecycleState = "Obsolete"
+        weaker.availabilitySummary = "0 In Stock"
+        var preferred = validCandidate(mpn: "GBU810-G", category: "bridge_rectifiers")
+        preferred.manufacturer = "Comchip Technology"
+        preferred.package = "through_hole"
+        preferred.ratings = ["voltage_v": "100", "current_a": "8", "mounting_type": "Through Hole"]
+        preferred.lifecycleState = "Active"
+        preferred.availabilitySummary = "27 In Stock"
+        let catalogURL = try writeCandidates([weaker, preferred], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "GBU810-G")
+        XCTAssertEqual(matrix.decisions.first?.candidateSet.map(\.mpn), ["GBU810-G"])
+    }
+
+    func testCandidateEvidenceHydrationPreventsFalsePackageDatasheetBlock() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "BR1", role: "bridge rectifier"), root: root)
+        let candidate = ComponentCandidate(
+            mpn: "GBU810-G",
+            manufacturer: "Comchip Technology",
+            normalizedCategory: "bridge_rectifiers",
+            value: nil,
+            package: "",
+            ratings: [:],
+            lifecycleState: "Active",
+            availabilitySummary: "27 In Stock",
+            datasheets: [],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "mouser",
+                    sourceURL: "https://example.invalid/GBU810-G",
+                    localPath: nil,
+                    retrievedAt: "2026-06-02T00:00:00Z",
+                    cachePolicy: "fixture",
+                    sha256: nil,
+                    extractedParameters: [
+                        "target_refdes": "BR1",
+                        "package_case": "GBU",
+                        "mounting_type": "Through Hole",
+                        "voltage_v": "100",
+                        "current_a": "8",
+                        "datasheet_url": "https://example.invalid/GBU810-G.pdf",
+                    ],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+        let catalogURL = try writeCandidates([candidate], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        let selected = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        XCTAssertEqual(selected.package, "GBU")
+        XCTAssertEqual(selected.ratings["voltage_v"], "100")
+        XCTAssertEqual(selected.datasheets.first?.url, "https://example.invalid/GBU810-G.pdf")
+    }
+
+    func testSamePartProviderEvidenceHydratesBeforeValidation() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "BR1",
+            role: "bridge rectifier",
+            constraints: [
+                "component_category": "bridge_rectifier",
+                "voltage_rating": "100V",
+                "current_rating": "8A",
+                "mounting": "through_hole",
+            ]
+        ), root: root)
+        var mouserSearch = catalogCandidate(
+            refdes: "BR1",
+            mpn: "GBU810-G",
+            category: "bridge_rectifiers",
+            value: "Bridge Rectifiers 100 Volt 8.0 Amp Glass Passivated GBU Through Hole",
+            package: "GBU",
+            ratings: ["voltage_v": "100", "current_a": "8", "mounting_type": "Through Hole"]
+        )
+        mouserSearch.datasheets = []
+        mouserSearch.evidence = mouserSearch.evidence.map { evidence in
+            var evidence = evidence
+            evidence.providerID = "mouser"
+            evidence.sourceURL = "https://mouser.example/GBU810-G"
+            return evidence
+        }
+        var nexarDetail = catalogCandidate(
+            refdes: "BR1",
+            mpn: "GBU810-G",
+            manufacturer: "Comchip Technology",
+            category: "bridge_rectifiers",
+            value: "GBU810-G bridge rectifier",
+            package: "",
+            ratings: ["datasheet_url": "https://example.invalid/GBU810-G.pdf"]
+        )
+        nexarDetail.datasheets = [
+            DatasheetEvidence(
+                manufacturer: "Comchip Technology",
+                mpn: "GBU810-G",
+                url: "https://example.invalid/GBU810-G.pdf",
+                localPath: nil,
+                sha256: nil,
+                providerID: "nexar",
+                retrievedAt: "2026-06-02T12:00:00Z",
+                license: "fixture",
+                citations: []
+            ),
+        ]
+        nexarDetail.evidence = nexarDetail.evidence.map { evidence in
+            var evidence = evidence
+            evidence.providerID = "nexar"
+            evidence.sourceURL = "https://octopart.example/GBU810-G"
+            return evidence
+        }
+        let catalogURL = try writeCandidates([mouserSearch, nexarDetail], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        let selected = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(selected.mpn, "GBU810-G")
+        XCTAssertEqual(selected.package, "GBU")
+        XCTAssertEqual(selected.ratings["current_a"], "8")
+        XCTAssertEqual(selected.datasheets.first?.url, "https://example.invalid/GBU810-G.pdf")
+        XCTAssertEqual(Set(selected.evidence.map(\.providerID)), Set(["mouser", "nexar"]))
+    }
+
+    func testExplicitPackageConstraintRejectsIncompatibleCatalogCandidate() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "QPRE1",
+            role: "low-noise small-signal preamp transistor stage",
+            constraints: [
+                "component_category": "low_noise_transistor",
+                "device_family": "JFET_or_low_noise_BJT",
+                "package": "TO-92",
+            ]
+        ), root: root)
+        var candidate = validCandidate(mpn: "ULN2003AT16-13", category: "darlington_transistors")
+        candidate.manufacturer = "Diodes Incorporated"
+        candidate.package = "TSSOP-16"
+        candidate.ratings = ["package": "TSSOP-16"]
+        candidate.lifecycleState = "New Product"
+        candidate.availabilitySummary = "2061 In Stock"
+        let catalogURL = try writeCandidates([candidate], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertNotEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertNil(matrix.decisions.first?.selectedCandidate)
+    }
+
+    func testMouserAdapterExtractsPackageAndRatingsFromDescription() throws {
+        let data = Data("""
+        {"SearchResults":{"Parts":[{
+          "Manufacturer":"Comchip Technology",
+          "ManufacturerPartNumber":"GBU810-G",
+          "Description":"Bridge Rectifiers 100 Volt 8.0 Amp Glass Passivated GBU Through Hole",
+          "Category":"Bridge Rectifiers",
+          "DataSheetUrl":"https://example.invalid/GBU810-G.pdf",
+          "ProductDetailUrl":"https://mouser.example/GBU810-G",
+          "LifecycleStatus":"Active",
+          "Availability":"27 In Stock",
+          "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Tube"}]
+        }]}}
+        """.utf8)
+
+        let candidate = try XCTUnwrap(MouserCatalogProviderAdapter().mapRecordedResponse(data).first)
+
+        XCTAssertEqual(candidate.package, "GBU")
+        XCTAssertEqual(candidate.ratings["voltage_v"], "100")
+        XCTAssertEqual(candidate.ratings["current_a"], "8.0")
+        XCTAssertFalse(candidate.datasheets.isEmpty)
+    }
+
+    func testDigiKeyAdapterPreservesDatasheetPackageStockAndRatings() throws {
+        let data = Data("""
+        {"Products":[{
+          "Manufacturer":{"Name":"YAGEO"},
+          "ManufacturerProductNumber":"MFR-25FBF52-10K",
+          "ProductDescription":"RES 10K OHM 1% 1/4W AXIAL",
+          "Description":{"DetailedDescription":"10 kOhms ±1% 0.25W Through Hole Axial Resistor"},
+          "Category":{"Name":"Through Hole Resistors"},
+          "DatasheetUrl":"https://example.invalid/MFR-25FBF52-10K.pdf",
+          "ProductUrl":"https://digikey.example/MFR-25FBF52-10K",
+          "ProductStatus":"Active",
+          "QuantityAvailable":12345,
+          "Parameters":[
+            {"ParameterText":"Resistance","ValueText":"10 kOhms"},
+            {"ParameterText":"Power (Watts)","ValueText":"0.25W"},
+            {"ParameterText":"Tolerance","ValueText":"±1%"},
+            {"ParameterText":"Package / Case","ValueText":"Axial"}
+          ]
+        }]}
+        """.utf8)
+
+        let candidate = try XCTUnwrap(DigiKeyCatalogProviderAdapter().mapRecordedResponse(data).first)
+
+        XCTAssertEqual(candidate.mpn, "MFR-25FBF52-10K")
+        XCTAssertEqual(candidate.manufacturer, "YAGEO")
+        XCTAssertEqual(candidate.package, "Axial")
+        XCTAssertEqual(candidate.availabilitySummary, "12345 available")
+        XCTAssertEqual(candidate.lifecycleState, "Active")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://example.invalid/MFR-25FBF52-10K.pdf")
+        XCTAssertEqual(candidate.ratings["resistance"], "10 kOhms")
+        XCTAssertEqual(candidate.ratings["power_watts"], "0.25W")
+        XCTAssertEqual(candidate.evidence.first?.sourceURL, "https://digikey.example/MFR-25FBF52-10K")
+    }
+
+    func testMouserNonResistorAdapterExtractsPackageAndDatasheetEvidence() throws {
+        let data = Data("""
+        {"SearchResults":{"Parts":[
+          {
+            "Manufacturer":"Comchip Technology",
+            "ManufacturerPartNumber":"GBU810-G",
+            "Description":"Bridge Rectifiers 100 Volt 8.0 Amp Glass Passivated GBU Through Hole",
+            "Category":"Bridge Rectifiers",
+            "DataSheetUrl":"https://example.invalid/GBU810-G.pdf",
+            "ProductDetailUrl":"https://mouser.example/GBU810-G",
+            "LifecycleStatus":"Active",
+            "Availability":"27 In Stock",
+            "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Tube"}]
+          },
+          {
+            "Manufacturer":"KEMET",
+            "ManufacturerPartNumber":"SMR5104J50J01L4BULK",
+            "Description":"Film Capacitors 50volts 0.10uF 5% LS 5mm Radial",
+            "Category":"Film Capacitors",
+            "DataSheetUrl":"https://example.invalid/SMR5104.pdf",
+            "ProductDetailUrl":"https://mouser.example/SMR5104",
+            "LifecycleStatus":"Active",
+            "Availability":"2000 In Stock",
+            "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Bulk"}]
+          },
+          {
+            "Manufacturer":"Same Sky",
+            "ManufacturerPartNumber":"TBP06H-500-02BK",
+            "Description":"Pluggable Terminal Blocks Terminal Block Header, Male Pins, Unshrouded, 2 pin, 5.0mm, Vertical Through Hole",
+            "Category":"Pluggable Terminal Blocks",
+            "DataSheetUrl":"https://example.invalid/TBP06H.pdf",
+            "ProductDetailUrl":"https://mouser.example/TBP06H",
+            "LifecycleStatus":"New Product",
+            "Availability":"5999 In Stock",
+            "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Bulk"}]
+          },
+          {
+            "Manufacturer":"Microchip / Microsemi",
+            "ManufacturerPartNumber":"2N3421",
+            "Description":"Bipolar Transistors - BJT 80V 3A 1W NPN Power BJT TO-126 THT",
+            "Category":"Bipolar Transistors - BJT",
+            "DataSheetUrl":"https://example.invalid/2N3421.pdf",
+            "ProductDetailUrl":"https://mouser.example/2N3421",
+            "LifecycleStatus":"Active",
+            "Availability":"473 In Stock",
+            "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Bulk"}]
+          },
+          {
+            "Manufacturer":"Amphenol Piher",
+            "ManufacturerPartNumber":"PT15GV15-104A2020-E-PF-S",
+            "Description":"Trimmer Resistors - Through Hole 100K ohm linear taper",
+            "Category":"Trimmer Resistors - Through Hole",
+            "DataSheetUrl":"https://example.invalid/PT15.pdf",
+            "ProductDetailUrl":"https://mouser.example/PT15",
+            "LifecycleStatus":"Active",
+            "Availability":"400 In Stock",
+            "ProductAttributes":[{"AttributeName":"Packaging","AttributeValue":"Bulk"}]
+          }
+        ]}}
+        """.utf8)
+
+        let candidates = try MouserCatalogProviderAdapter().mapRecordedResponse(data)
+        let byMPN = Dictionary(uniqueKeysWithValues: candidates.map { ($0.mpn, $0) })
+
+        let bridge = try XCTUnwrap(byMPN["GBU810-G"])
+        XCTAssertEqual(bridge.package, "GBU")
+        XCTAssertEqual(bridge.ratings["voltage_v"], "100")
+        XCTAssertEqual(bridge.ratings["current_a"], "8.0")
+        XCTAssertEqual(bridge.datasheets.first?.url, "https://example.invalid/GBU810-G.pdf")
+
+        let capacitor = try XCTUnwrap(byMPN["SMR5104J50J01L4BULK"])
+        XCTAssertEqual(capacitor.package, "Radial")
+        XCTAssertEqual(capacitor.ratings["capacitance"], "0.10uF")
+        XCTAssertEqual(capacitor.ratings["voltage_v"], "50")
+        XCTAssertEqual(capacitor.datasheets.first?.url, "https://example.invalid/SMR5104.pdf")
+
+        let connector = try XCTUnwrap(byMPN["TBP06H-500-02BK"])
+        XCTAssertEqual(connector.package, "through_hole")
+        XCTAssertEqual(connector.ratings["positions"], "2")
+        XCTAssertEqual(connector.datasheets.first?.url, "https://example.invalid/TBP06H.pdf")
+
+        let transistor = try XCTUnwrap(byMPN["2N3421"])
+        XCTAssertEqual(transistor.package, "TO-126")
+        XCTAssertEqual(transistor.ratings["polarity"], "NPN")
+        XCTAssertEqual(transistor.ratings["voltage_v"], "80")
+        XCTAssertEqual(transistor.ratings["current_a"], "3")
+        XCTAssertEqual(transistor.ratings["power_w"], "1")
+        XCTAssertEqual(transistor.datasheets.first?.url, "https://example.invalid/2N3421.pdf")
+
+        let potentiometer = try XCTUnwrap(byMPN["PT15GV15-104A2020-E-PF-S"])
+        XCTAssertEqual(potentiometer.package, "through_hole")
+        XCTAssertEqual(potentiometer.ratings["resistance"], "100K")
+        XCTAssertEqual(potentiometer.ratings["taper"], "linear")
+        XCTAssertEqual(potentiometer.datasheets.first?.url, "https://example.invalid/PT15.pdf")
+    }
+
+    func testDigiKeyNonResistorAdapterExtractsPackageAndDatasheetEvidence() throws {
+        let data = Data("""
+        {"Products":[{
+          "Manufacturer":{"Name":"KEMET"},
+          "ManufacturerProductNumber":"PHE426MJ5470JR05",
+          "Description":{"ProductDescription":"47NF63 5%V","DetailedDescription":"0.047 µF Film Capacitor 250V 630V Polypropylene (PP), Metallized Radial"},
+          "Category":{"Name":"Capacitors","ChildCategories":[{"Name":"Film Capacitors","ChildCategories":[]}]},
+          "DatasheetUrl":"https://example.invalid/PHE426.pdf",
+          "ProductUrl":"https://digikey.example/PHE426",
+          "ProductStatus":"Active",
+          "QuantityAvailable":42,
+          "Parameters":[
+            {"ParameterText":"Capacitance","ValueText":"0.047 µF"},
+            {"ParameterText":"Voltage Rating - DC","ValueText":"630V"},
+            {"ParameterText":"Package / Case","ValueText":"Radial"},
+            {"ParameterText":"Mounting Type","ValueText":"Through Hole"}
+          ]
+        },{
+          "Manufacturer":{"Name":"Microchip / Microsemi"},
+          "ManufacturerProductNumber":"2N3421",
+          "Description":{"DetailedDescription":"NPN Bipolar Transistor 80V 3A 1W TO-126 Through Hole"},
+          "Category":{"Name":"Discrete Semiconductor Products","ChildCategories":[{"Name":"Bipolar Transistors - BJT","ChildCategories":[]}]},
+          "DatasheetUrl":"https://example.invalid/2N3421.pdf",
+          "ProductUrl":"https://digikey.example/2N3421",
+          "ProductStatus":"Active",
+          "QuantityAvailable":7,
+          "Parameters":[
+            {"ParameterText":"Transistor Polarity","ValueText":"NPN"},
+            {"ParameterText":"Voltage - Collector Emitter Breakdown (Max)","ValueText":"80V"},
+            {"ParameterText":"Current - Collector (Ic) (Max)","ValueText":"3A"},
+            {"ParameterText":"Power - Max","ValueText":"1W"},
+            {"ParameterText":"Package / Case","ValueText":"TO-126"}
+          ]
+        }]}
+        """.utf8)
+
+        let candidates = try DigiKeyCatalogProviderAdapter().mapRecordedResponse(data)
+        let byMPN = Dictionary(uniqueKeysWithValues: candidates.map { ($0.mpn, $0) })
+
+        let capacitor = try XCTUnwrap(byMPN["PHE426MJ5470JR05"])
+        XCTAssertEqual(capacitor.package, "Radial")
+        XCTAssertEqual(capacitor.ratings["capacitance"], "0.047 µF")
+        XCTAssertEqual(capacitor.ratings["voltage_rating_dc"], "630V")
+        XCTAssertEqual(capacitor.datasheets.first?.url, "https://example.invalid/PHE426.pdf")
+        XCTAssertEqual(capacitor.evidence.first?.sourceURL, "https://digikey.example/PHE426")
+
+        let transistor = try XCTUnwrap(byMPN["2N3421"])
+        XCTAssertEqual(transistor.package, "TO-126")
+        XCTAssertEqual(transistor.ratings["polarity"], "NPN")
+        XCTAssertEqual(transistor.ratings["voltage_v"], "80")
+        XCTAssertEqual(transistor.ratings["current_a"], "3")
+        XCTAssertEqual(transistor.ratings["power_w"], "1")
+        XCTAssertEqual(transistor.datasheets.first?.url, "https://example.invalid/2N3421.pdf")
+        XCTAssertEqual(transistor.evidence.first?.sourceURL, "https://digikey.example/2N3421")
+    }
+
+    func testResistorRoleQueriesUseStructuredElectricalIntent() throws {
+        let preampRequest = ComponentSearchRequest(
+            refdes: "RPRE1",
+            role: "preamp collector load resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "resistance": "10 kOhm",
+                "power_rating": "0.25W",
+                "tolerance": "1%",
+                "selected_footprint": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["digikey", "mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        )
+        let biasRequest = ComponentSearchRequest(
+            refdes: "RBIAS1",
+            role: "output stage bias resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "resistance": "0.47 ohm",
+                "power_rating": "5W",
+                "tolerance": "5%",
+                "mounting": "through_hole",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["digikey", "mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        )
+
+        let builder = CatalogSearchQueryBuilder()
+        let preampQuery = builder.keyword(for: preampRequest)
+        let biasQuery = builder.keyword(for: biasRequest)
+
+        XCTAssertTrue(preampQuery.lowercased().contains("resistor"))
+        XCTAssertTrue(preampQuery.contains("10 kOhm"))
+        XCTAssertTrue(preampQuery.contains("0.25W"))
+        XCTAssertFalse(preampQuery.contains("Device:R"))
+        XCTAssertTrue(biasQuery.lowercased().contains("resistor"))
+        XCTAssertTrue(biasQuery.contains("0.47 ohm"))
+        XCTAssertTrue(biasQuery.contains("5W"))
+        XCTAssertTrue(biasQuery.lowercased().contains("through hole"))
+        XCTAssertFalse(biasQuery.contains("Device:R"))
+    }
+
+    func testNonResistorQueriesUseStructuredElectricalIntent() throws {
+        let builder = CatalogSearchQueryBuilder()
+        let requests = [
+            ComponentSearchRequest(
+                refdes: "BR1",
+                role: "bridge rectifier for isolated secondary supply",
+                constraints: [
+                    "component_category": "bridge_rectifier",
+                    "voltage_rating": "100V",
+                    "current_rating": "8A",
+                    "selected_symbol": "Device:Bridge_Rectifier",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+            ComponentSearchRequest(
+                refdes: "CBASS1",
+                role: "bass tone capacitor",
+                constraints: [
+                    "component_category": "film_or_c0g_capacitor",
+                    "capacitance": "100nF",
+                    "voltage_rating": "50V",
+                    "dielectric": "film",
+                    "selected_symbol": "Device:C",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+            ComponentSearchRequest(
+                refdes: "QDRV1",
+                role: "Class-A output driver transistor",
+                constraints: [
+                    "component_category": "driver_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "80V",
+                    "current_rating": "1A",
+                    "selected_symbol": "Device:Q_NPN_BCE",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+            ComponentSearchRequest(
+                refdes: "JSEC",
+                role: "isolated transformer secondary connector",
+                constraints: [
+                    "component_category": "terminal_block",
+                    "positions": "2",
+                    "current_rating": "10A",
+                    "voltage_rating": "300V",
+                    "selected_symbol": "Connector_Generic:Conn_01x02",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+            ComponentSearchRequest(
+                refdes: "RVFILT1",
+                role: "sweepable filter frequency control potentiometer",
+                constraints: [
+                    "component_category": "potentiometer",
+                    "resistance": "100kOhm",
+                    "taper": "linear",
+                    "selected_symbol": "Device:R_POT",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+        ]
+
+        let queries = requests.map { builder.keyword(for: $0) }
+
+        XCTAssertTrue(queries[0].lowercased().contains("bridge rectifier"))
+        XCTAssertTrue(queries[0].contains("100V"))
+        XCTAssertTrue(queries[0].contains("8A"))
+        XCTAssertFalse(queries[0].contains("Device:Bridge_Rectifier"))
+        XCTAssertTrue(queries[1].lowercased().contains("capacitor"))
+        XCTAssertTrue(queries[1].contains("100nF"))
+        XCTAssertTrue(queries[1].lowercased().contains("film"))
+        XCTAssertFalse(queries[1].contains("Device:C"))
+        XCTAssertTrue(queries[2].lowercased().contains("npn transistor"))
+        XCTAssertTrue(queries[2].contains("80V"))
+        XCTAssertTrue(queries[2].contains("1A"))
+        XCTAssertFalse(queries[2].contains("Device:Q_NPN_BCE"))
+        XCTAssertTrue(queries[3].lowercased().contains("2 position connector"))
+        XCTAssertTrue(queries[3].contains("10A"))
+        XCTAssertFalse(queries[3].contains("Connector_Generic"))
+        XCTAssertTrue(queries[4].lowercased().contains("potentiometer"))
+        XCTAssertTrue(queries[4].contains("100kOhm"))
+        XCTAssertTrue(queries[4].lowercased().contains("linear"))
+        XCTAssertFalse(queries[4].contains("Device:R_POT"))
+    }
+
+    func testCapacitorSelectionUsesValueVoltageAndDielectricEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "TONE1", role: "tone circuit"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "CBASS1",
+                role: "bass tone capacitor",
+                selectedSymbol: "Device:C",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "film_capacitor",
+                    "capacitance": "100nF",
+                    "voltage_rating": "50V",
+                    "dielectric": "film",
+                    "mounting": "through_hole",
+                ]
+            ),
+        ], root: root)
+        let wrongValue = catalogCandidate(
+            refdes: "CBASS1",
+            mpn: "DME2S22K-F",
+            category: "film_capacitors",
+            value: "Film Capacitors DME 250V 0.022uF",
+            package: "Radial",
+            ratings: ["capacitance": "0.022uF", "voltage_v": "250", "dielectric_material": "Polyester Film", "mounting_type": "Through Hole"]
+        )
+        let preferred = catalogCandidate(
+            refdes: "CBASS1",
+            mpn: "SMR5104J50J01L4BULK",
+            category: "film_capacitors",
+            value: "Film Capacitors 50volts 0.10uF 5% LS 5mm",
+            package: "Radial",
+            ratings: ["capacitance": "0.10uF", "voltage_v": "50", "dielectric_material": "Polyester Film", "mounting_type": "Through Hole"]
+        )
+        let catalogURL = try writeCandidates([wrongValue, preferred], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "SMR5104J50J01L4BULK")
+    }
+
+    func testDeterministicRankingPrefersExactRatingsOverOverspecifiedValidCandidates() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "TONE1", role: "tone circuit"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "CBASS1",
+                role: "bass tone capacitor",
+                selectedSymbol: "Device:C",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "film_capacitor",
+                    "capacitance": "100nF",
+                    "voltage_rating": "50V",
+                    "dielectric": "film",
+                    "mounting": "through_hole",
+                ]
+            ),
+        ], root: root)
+        let oversized = catalogCandidate(
+            refdes: "CBASS1",
+            mpn: "PHE426DJ6100JR06",
+            category: "film_capacitors",
+            value: "Film Capacitor 0.10uF 250V Radial Through Hole",
+            package: "Radial",
+            ratings: ["capacitance": "0.10uF", "voltage_v": "250", "dielectric_material": "Polyester Film", "mounting_type": "Through Hole"]
+        )
+        let exact = catalogCandidate(
+            refdes: "CBASS1",
+            mpn: "SMR5104J50J01L4BULK",
+            category: "film_capacitors",
+            value: "Film Capacitor 0.10uF 50V Radial Through Hole",
+            package: "Radial",
+            ratings: ["capacitance": "0.10uF", "voltage_v": "50", "dielectric_material": "Polyester Film", "mounting_type": "Through Hole"]
+        )
+        let catalogURL = try writeCandidates([oversized, exact], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "SMR5104J50J01L4BULK")
+    }
+
+    func testSemiconductorSelectionUsesPolarityAndRatingsEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "QDRV1", role: "voltage driver"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QDRV1",
+                role: "Class-A output driver transistor",
+                selectedSymbol: "Device:Q_NPN_BCE",
+                pins: ["B", "C", "E"],
+                constraints: [
+                    "component_category": "driver_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "80V",
+                    "current_rating": "1A",
+                    "power_rating": "1W",
+                    "package": "TO-126_or_TO-220",
+                ]
+            ),
+        ], root: root)
+        let wrongPolarity = catalogCandidate(
+            refdes: "QDRV1",
+            mpn: "MJE350G",
+            category: "bipolar_transistors_bjt",
+            value: "Bipolar Transistors - BJT PNP 300V 0.5A TO-126",
+            package: "TO-126",
+            ratings: ["polarity": "PNP", "voltage_v": "300", "current_a": "0.5", "power_w": "4"]
+        )
+        let preferred = catalogCandidate(
+            refdes: "QDRV1",
+            mpn: "MJE340G",
+            category: "bipolar_transistors_bjt",
+            value: "Bipolar Transistors - BJT NPN 300V 0.5A TO-126",
+            package: "TO-126",
+            ratings: ["polarity": "NPN", "voltage_v": "300", "current_a": "1", "power_w": "4"]
+        )
+        let catalogURL = try writeCandidates([wrongPolarity, preferred], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJE340G")
+    }
+
+    func testConnectorSelectionUsesPositionAndRatingEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "JSEC", role: "secondary connector"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "JSEC",
+                role: "isolated transformer secondary connector",
+                selectedSymbol: "Connector_Generic:Conn_01x02",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "terminal_block",
+                    "positions": "2",
+                    "current_rating": "10A",
+                    "voltage_rating": "300V",
+                    "mounting": "through_hole",
+                ]
+            ),
+        ], root: root)
+        let wrongPositions = catalogCandidate(
+            refdes: "JSEC",
+            mpn: "TBP06H-500-03BK",
+            category: "pluggable_terminal_blocks",
+            value: "Terminal Block Header 3 pin 5.0mm Vertical Through Hole",
+            package: "through_hole",
+            ratings: ["positions": "3", "current_a": "16", "voltage_v": "300", "mounting_type": "Through Hole"]
+        )
+        let preferred = catalogCandidate(
+            refdes: "JSEC",
+            mpn: "TBP06H-500-02BK",
+            category: "pluggable_terminal_blocks",
+            value: "Terminal Block Header 2 pin 5.0mm Vertical Through Hole",
+            package: "through_hole",
+            ratings: ["positions": "2", "current_a": "16", "voltage_v": "300", "mounting_type": "Through Hole"]
+        )
+        let catalogURL = try writeCandidates([wrongPositions, preferred], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "TBP06H-500-02BK")
+    }
+
+    func testPotentiometerSelectionUsesResistanceAndTaperEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RVFILT1",
+                role: "sweepable filter frequency control potentiometer",
+                selectedSymbol: "Device:R_POT",
+                pins: ["1", "2", "3"],
+                constraints: [
+                    "component_category": "potentiometer",
+                    "resistance": "100kOhm",
+                    "taper": "linear",
+                    "mounting": "through_hole",
+                ]
+            ),
+        ], root: root)
+        let wrongTaper = catalogCandidate(
+            refdes: "RVFILT1",
+            mpn: "PT15GV15-104B2020",
+            category: "trimmer_resistors_through_hole",
+            value: "Trimmer Resistors Through Hole 100K audio taper",
+            package: "through_hole",
+            ratings: ["resistance": "100K", "taper": "audio", "mounting_type": "Through Hole"]
+        )
+        let preferred = catalogCandidate(
+            refdes: "RVFILT1",
+            mpn: "PT15GV15-104A2020",
+            category: "trimmer_resistors_through_hole",
+            value: "Trimmer Resistors Through Hole 100K linear taper",
+            package: "through_hole",
+            ratings: ["resistance": "100K", "taper": "linear", "mounting_type": "Through Hole"]
+        )
+        let catalogURL = try writeCandidates([wrongTaper, preferred], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "PT15GV15-104A2020")
+    }
+
     func testIncompleteProviderCandidateBlocksSelection() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -170,6 +970,80 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .selected)
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "mouser")
+    }
+
+    func testNexarProviderFixtureUsesNexarAdapterForSelectionEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "OUTPUT1", role: "output stage"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                selectedSymbol: "Device:Q_NPN_BCE",
+                pins: ["B", "C", "E"],
+                constraints: [
+                    "component_category": "power_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "120V",
+                    "current_rating": "10A",
+                    "power_rating": "150W",
+                    "package": "TO-3",
+                ]
+            ),
+        ], root: root)
+        let nexarURL = try writeNexarFixture(root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"nexar":"\#(nexarURL.path)"}}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.providers, ["nexar"])
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.datasheets.first?.providerID, "nexar")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "nexar")
+    }
+
+    func testVendorFeedPathProvidesLocalCatalogEvidenceForSelection() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "OUTPUT1", role: "output stage"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                selectedSymbol: "Device:Q_NPN_BCE",
+                pins: ["B", "C", "E"],
+                constraints: [
+                    "component_category": "power_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "120V",
+                    "current_rating": "10A",
+                    "power_rating": "150W",
+                    "package": "TO-3",
+                ]
+            ),
+        ], root: root)
+        let feedURL = try writeVendorFeedCSV(root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","vendor_feed_paths":["\#(feedURL.path)"]}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.providers, ["vendor_feed"])
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.datasheets.first?.providerID, "vendor_feed")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "vendor_feed")
     }
 
     func testRuntimeCatalogSelectionAttachesLocalKiCadFootprintEvidence() async throws {
@@ -479,6 +1353,37 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
     }
 
+    func testTrustedPartsDisabledPluginCatalogProviderIsNotQueriedEvenWhenRequested() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: ["catalog_provider_trustedparts_enabled": .boolean(false)]
+        ))
+        let intentURL = try writeIntent(component(refdes: "QOUT1", role: "single-ended Class-A output transistor"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                selectedSymbol: "Transistor_BJT:MJ15003G",
+                pins: ["1", "2", "3"],
+                constraints: ["manufacturer_part_number": "MJ15003G"]
+            ),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["trustedparts"]}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertTrue(matrix.providers.isEmpty)
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED") })
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+    }
+
     func testAmpDemoLiveCatalogSelectionBlocksTruthfullyWhenValuesAreMissing() async throws {
         let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-live-catalog-slice")
         guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_LIVE_CATALOG"] == "1"
@@ -488,8 +1393,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         }
 
         let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
-        let intentURL = root.appendingPathComponent(".merlin/electronics-artifacts/DEB83454-D536-4F25-87EF-BE0038093026-design_intent.json")
-        let circuitIRURL = root.appendingPathComponent(".merlin/electronics-artifacts/68724178-3614-4D07-A5B2-B45F08EC86F0-circuit_ir.json")
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
         let configURL = root.appendingPathComponent(".merlin/electronics-provider-config.json")
         for url in [intentURL, circuitIRURL, configURL] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "Missing \(url.path)")
@@ -503,6 +1409,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                 "catalog_provider_mouser_enabled": .boolean(true),
                 "catalog_provider_digikey_enabled": .boolean(true),
                 "catalog_provider_nexar_enabled": .boolean(false),
+                "catalog_provider_trustedparts_enabled": .boolean(false),
             ]
         ))
 
@@ -516,6 +1423,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
         XCTAssertEqual(Set(matrix.providers), Set(["mouser", "digikey"]))
         XCTAssertFalse(matrix.providers.contains("nexar"))
+        XCTAssertFalse(matrix.providers.contains("trustedparts"))
         XCTAssertTrue(matrix.decisions.contains { decision in
             decision.candidateSet.contains { candidate in
                 candidate.evidence.contains { ["mouser", "digikey"].contains($0.providerID) }
@@ -530,6 +1438,39 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             XCTAssertFalse(candidate.ratings.isEmpty, "Selected \(decision.refdes) without extracted ratings.")
         }
         print("AmpDemo live component matrix: \(artifact.url.path)")
+    }
+
+    private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
+        let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
+            .filter { $0.lastPathComponent.hasSuffix("design_intent.json") }
+            .filter { url in
+                guard let data = try? Data(contentsOf: url),
+                      let intent = try? JSONDecoder().decode(DesignIntent.self, from: data) else {
+                    return false
+                }
+                return intent.approval.status == .approved
+            }
+        return try XCTUnwrap(
+            newestURL(candidates),
+            "Missing approved DesignIntent artifact in \(directory.path)"
+        )
+    }
+
+    private func newestArtifact(in directory: URL, suffix: String) throws -> URL {
+        let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
+            .filter { $0.lastPathComponent.hasSuffix(suffix) }
+        return try XCTUnwrap(
+            newestURL(candidates),
+            "Missing \(suffix) artifact in \(directory.path)"
+        )
+    }
+
+    private func newestURL(_ urls: [URL]) -> URL? {
+        urls.max { lhs, rhs in
+            let lhsDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return lhsDate < rhsDate
+        }
     }
 
     func testWorkflowHandoffCarriesArtifactPathsAcrossEvidencePipeline() async throws {
@@ -645,8 +1586,12 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
     }
 
-    private func component(refdes: String, role: String) -> ComponentIntent {
-        ComponentIntent(refdes: refdes, role: role, constraints: ["implementation": "discrete"])
+    private func component(refdes: String, role: String, constraints: [String: String] = [:]) -> ComponentIntent {
+        ComponentIntent(
+            refdes: refdes,
+            role: role,
+            constraints: ["implementation": "discrete"].merging(constraints) { _, new in new }
+        )
     }
 
     private func writeIntent(_ component: ComponentIntent, root: URL) throws -> URL {
@@ -749,7 +1694,8 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         role: String,
         selectedSymbol: String,
         selectedFootprint: String? = nil,
-        pins: [String]
+        pins: [String],
+        constraints: [String: String] = [:]
     ) -> CircuitComponent {
         CircuitComponent(
             refdes: refdes,
@@ -767,7 +1713,57 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                     symbolPin: $0,
                     footprintPad: nil
                 )
-            }
+            },
+            constraints: constraints
+        )
+    }
+
+    private func catalogCandidate(
+        refdes: String,
+        mpn: String,
+        manufacturer: String = "fixture",
+        category: String,
+        value: String,
+        package: String,
+        ratings: [String: String]
+    ) -> ComponentCandidate {
+        let hydratedRatings = ratings.merging(["target_refdes": refdes]) { existing, _ in existing }
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: manufacturer,
+            normalizedCategory: category,
+            value: value,
+            package: package,
+            ratings: hydratedRatings,
+            lifecycleState: "Active",
+            availabilitySummary: "100 In Stock",
+            datasheets: [
+                DatasheetEvidence(
+                    manufacturer: manufacturer,
+                    mpn: mpn,
+                    url: "https://example.invalid/\(mpn).pdf",
+                    localPath: nil,
+                    sha256: nil,
+                    providerID: "fixture",
+                    retrievedAt: "2026-06-02T12:00:00Z",
+                    license: "fixture",
+                    citations: []
+                ),
+            ],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "fixture",
+                    sourceURL: "https://example.invalid/\(mpn)",
+                    localPath: nil,
+                    retrievedAt: "2026-06-02T12:00:00Z",
+                    cachePolicy: "fixture_no_cache",
+                    sha256: nil,
+                    extractedParameters: hydratedRatings.merging(["package": package]) { existing, _ in existing },
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
         )
     }
 
@@ -825,6 +1821,23 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let url = root.appendingPathComponent("mouser-fixture.json")
         try """
         {"SearchResults":{"Parts":[{"Manufacturer":"Yageo","ManufacturerPartNumber":"RC0603FR-0710KL","Description":"RES 10K OHM 1% 1/10W 0603","Category":"Resistors","DataSheetUrl":"https://example.invalid/rc0603.pdf","ProductDetailUrl":"https://mouser.example/RC0603","LifecycleStatus":"Active","Availability":"9,000 In Stock","ProductAttributes":[{"AttributeName":"Package / Case","AttributeValue":"0603"},{"AttributeName":"Resistance","AttributeValue":"10 kOhms"},{"AttributeName":"Power Rating","AttributeValue":"0.1 W"}]}]}}
+        """.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    private func writeNexarFixture(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("nexar-fixture.json")
+        try """
+        {"data":{"supSearchMpn":{"results":[{"description":"NPN power transistor","part":{"name":"MJ15003G","mpn":"MJ15003G","shortDescription":"NPN transistor","totalAvail":128,"manufacturer":{"name":"onsemi","homepageUrl":"https://www.onsemi.com"},"category":{"name":"Bipolar Transistors"},"specs":[{"attribute":{"name":"Package / Case","shortname":"Package / Case"},"displayValue":"TO-3"},{"attribute":{"name":"Power - Max","shortname":"Power - Max"},"displayValue":"250 W"},{"attribute":{"name":"Voltage - Collector Emitter Breakdown (Max)","shortname":"Vce"},"displayValue":"140 V"},{"attribute":{"name":"Current - Collector (Ic) (Max)","shortname":"Ic"},"displayValue":"20 A"},{"attribute":{"name":"Transistor Polarity","shortname":"Polarity"},"displayValue":"NPN"},{"attribute":{"name":"Lifecycle Status","shortname":"Lifecycle Status"},"displayValue":"Active"}],"bestDatasheet":{"url":"https://example.invalid/mj15003g.pdf"},"sellers":[{"company":{"name":"Digi-Key"},"offers":[{"inventoryLevel":50}]},{"company":{"name":"Mouser"},"offers":[{"inventoryLevel":78}]}]}}]}}}
+        """.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    private func writeVendorFeedCSV(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("vendor-feed.csv")
+        try """
+        Manufacturer,MPN,Description,Category,Package,Voltage,Current,Power,Datasheet URL,Product URL,Availability,Distributor,MOQ,Packaging,Lead Time,Lifecycle
+        onsemi,MJ15003G,"NPN Bipolar Transistor 140V 20A 250W TO-3",Bipolar Transistors,TO-3,140 V,20 A,250 W,https://example.invalid/mj15003g.pdf,https://vendor.example/MJ15003G,50,Digi-Key,1,Tube,0 weeks,Active
         """.write(to: url, atomically: true, encoding: .utf8)
         return url
     }

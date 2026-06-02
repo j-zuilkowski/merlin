@@ -87,6 +87,71 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(candidate.evidence.first?.sourceURL, "https://www.onsemi.com")
     }
 
+    func testTrustedPartsAdapterMapsAuthorizedInventoryEvidence() throws {
+        let data = Data("""
+        {"Results":[{"SearchToken":"MJ15003G","Parts":[{"Manufacturer":"onsemi","ManufacturerPartNumber":"MJ15003G","Description":"NPN Bipolar Transistor 140V 20A 250W TO-3","Category":"Bipolar Transistors","DatasheetUrl":"https://example.invalid/mj15003g.pdf","ProductUrl":"https://trustedparts.example/MJ15003G","LifecycleStatus":"Active","Package":"TO-3","Parameters":[{"Name":"Package / Case","Value":"TO-3"},{"Name":"Power - Max","Value":"250 W"},{"Name":"Voltage - Collector Emitter Breakdown (Max)","Value":"140 V"},{"Name":"Current - Collector (Ic) (Max)","Value":"20 A"}],"Offers":[{"Distributor":"Digi-Key","QuantityAvailable":50,"BuyUrl":"https://digikey.example/MJ15003G","Packaging":"Tube","Moq":1,"LeadTime":"0 weeks"}]}]}]}
+        """.utf8)
+
+        let candidates = try TrustedPartsCatalogProviderAdapter().mapRecordedResponse(data)
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(candidate.manufacturer, "onsemi")
+        XCTAssertEqual(candidate.mpn, "MJ15003G")
+        XCTAssertEqual(candidate.normalizedCategory, "bipolar_transistors")
+        XCTAssertEqual(candidate.package, "TO-3")
+        XCTAssertEqual(candidate.ratings["power_max"], "250 W")
+        XCTAssertEqual(candidate.ratings["voltage_v"], "140 V")
+        XCTAssertEqual(candidate.ratings["current_a"], "20 A")
+        XCTAssertEqual(candidate.ratings["packaging"], "Tube")
+        XCTAssertEqual(candidate.ratings["moq"], "1")
+        XCTAssertEqual(candidate.lifecycleState, "Active")
+        XCTAssertEqual(candidate.availabilitySummary, "Digi-Key: 50")
+        XCTAssertEqual(candidate.datasheets.first?.providerID, "trustedparts")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://example.invalid/mj15003g.pdf")
+        XCTAssertEqual(candidate.evidence.first?.providerID, "trustedparts")
+        XCTAssertEqual(candidate.evidence.first?.sourceURL, "https://trustedparts.example/MJ15003G")
+    }
+
+    func testVendorFeedAdapterMapsCSVExportIntoStrictEvidence() throws {
+        let data = Data("""
+        Manufacturer,MPN,Description,Category,Package,Voltage,Current,Power,Datasheet URL,Product URL,Availability,Distributor,MOQ,Packaging,Lead Time,Lifecycle
+        onsemi,MJ15003G,"NPN Bipolar Transistor 140V 20A 250W TO-3",Bipolar Transistors,TO-3,140 V,20 A,250 W,https://example.invalid/mj15003g.pdf,https://vendor.example/MJ15003G,50,Digi-Key,1,Tube,0 weeks,Active
+        """.utf8)
+
+        let candidates = try VendorFeedCatalogProviderAdapter().mapRecordedResponse(data)
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(candidate.manufacturer, "onsemi")
+        XCTAssertEqual(candidate.mpn, "MJ15003G")
+        XCTAssertEqual(candidate.normalizedCategory, "bipolar_transistors")
+        XCTAssertEqual(candidate.package, "TO-3")
+        XCTAssertEqual(candidate.ratings["voltage_v"], "140 V")
+        XCTAssertEqual(candidate.ratings["current_a"], "20 A")
+        XCTAssertEqual(candidate.ratings["power_w"], "250 W")
+        XCTAssertEqual(candidate.ratings["moq"], "1")
+        XCTAssertEqual(candidate.availabilitySummary, "Digi-Key: 50")
+        XCTAssertEqual(candidate.datasheets.first?.providerID, "vendor_feed")
+        XCTAssertEqual(candidate.evidence.first?.providerID, "vendor_feed")
+        XCTAssertEqual(candidate.evidence.first?.sourceURL, "https://vendor.example/MJ15003G")
+    }
+
+    func testVendorFeedAdapterMapsJSONExportIntoStrictEvidence() throws {
+        let data = Data("""
+        {"parts":[{"manufacturer":"Yageo","mpn":"RC0603FR-0710KL","description":"RES 10K OHM 1% 1/10W 0603","category":"Resistors","package":"0603","ratings":{"resistance":"10 kOhms","power":"0.1 W"},"datasheet_url":"https://example.invalid/rc0603.pdf","source_url":"https://vendor.example/RC0603","availability":"Mouser: 9000","lifecycle":"Active"}]}
+        """.utf8)
+
+        let candidates = try VendorFeedCatalogProviderAdapter().mapRecordedResponse(data)
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(candidate.manufacturer, "Yageo")
+        XCTAssertEqual(candidate.mpn, "RC0603FR-0710KL")
+        XCTAssertEqual(candidate.package, "0603")
+        XCTAssertEqual(candidate.ratings["resistance"], "10 kOhms")
+        XCTAssertEqual(candidate.ratings["power_w"], "0.1 W")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://example.invalid/rc0603.pdf")
+        XCTAssertEqual(candidate.evidence.first?.providerID, "vendor_feed")
+    }
+
     func testMissingCredentialsDisableLiveProvidersCleanly() {
         let digikey = CatalogProviderCredentialPolicy(
             providerID: "digikey",
@@ -218,6 +283,50 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(searchRequest.value(forHTTPHeaderField: "Authorization"), "Bearer nexar-token")
         XCTAssertTrue(try XCTUnwrap(searchRequest.httpBody).utf8String.contains("supSearchMpn"))
         XCTAssertTrue(try XCTUnwrap(searchRequest.httpBody).utf8String.contains("MJ15003G"))
+        XCTAssertEqual(result.candidates.first?.mpn, "MJ15003G")
+        XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_api")
+        XCTAssertEqual(result.rawResponse, search)
+    }
+
+    func testLiveTrustedPartsProviderBuildsConservativeInventoryRequest() async throws {
+        let search = Data("""
+        {"Results":[{"SearchToken":"MJ15003G","Parts":[{"Manufacturer":"onsemi","ManufacturerPartNumber":"MJ15003G","Description":"NPN Bipolar Transistor 140V 20A 250W TO-3","Category":"Bipolar Transistors","DatasheetUrl":"https://example.invalid/mj15003g.pdf","ProductUrl":"https://trustedparts.example/MJ15003G","LifecycleStatus":"Active","Package":"TO-3","Parameters":[{"Name":"Package / Case","Value":"TO-3"},{"Name":"Power - Max","Value":"250 W"}],"Offers":[{"Distributor":"Digi-Key","QuantityAvailable":50}]}]}]}
+        """.utf8)
+        let transport = MockCatalogHTTPTransport(responses: [search])
+        let provider = LiveTrustedPartsCatalogProvider(
+            companyID: "company-id",
+            apiKey: "api-key",
+            endpoint: URL(string: "https://api.trustedparts.test/v2/search")!,
+            transport: transport,
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = try await provider.searchWithRawResponse(ComponentSearchRequest(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: ["manufacturer_part_number": "MJ15003G"],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        let request = try XCTUnwrap(transport.requests.first)
+        XCTAssertEqual(transport.requests.count, 1)
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+        let body = try XCTUnwrap(request.httpBody).utf8String
+        XCTAssertTrue(body.contains("CompanyId"))
+        XCTAssertTrue(body.contains("company-id"))
+        XCTAssertTrue(body.contains("ApiKey"))
+        XCTAssertTrue(body.contains("api-key"))
+        XCTAssertTrue(body.contains("Queries"))
+        XCTAssertTrue(body.contains("MJ15003G"))
+        XCTAssertTrue(body.contains("ExactMatch"))
+        XCTAssertTrue(body.contains("InStockOnly"))
+        XCTAssertTrue(body.contains("UserAgent"))
+        XCTAssertFalse(body.contains("SourceIp"))
         XCTAssertEqual(result.candidates.first?.mpn, "MJ15003G")
         XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_api")
         XCTAssertEqual(result.rawResponse, search)
