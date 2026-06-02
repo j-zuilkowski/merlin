@@ -712,6 +712,78 @@ final class LoopContinuationTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path))
     }
 
+    func testExplicitComponentSelectionSliceDoesNotInheritCircuitIRHandoff() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-component-selection-handoff")
+        let designIntentPath = try writeArtifact(
+            name: "amp-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"25W Class A"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "amp-circuit_ir.json",
+            contents: #"{"design_id":"AmpDemo","components":[],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "intent",
+                name: "read_file",
+                args: #"{"path":"\#(designIntentPath.path)"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read the existing AmpDemo requirements and artifact files",
+                    successCriteria: "requirements and existing artifact files read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Run kicad_select_components using the existing Circuit IR artifact",
+                    successCriteria: "component-selection matrix artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Stop truthfully after kicad_select_components reports selected or blocked components",
+                    successCriteria: "component selection status reported",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)"}"#
+        }
+
+        for await _ in engine.send(
+            userMessage: "Run the focused AmpDemo `kicad_select_components` slice and stop truthfully after component selection."
+        ) {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("kicad_select_components"), continuationText)
+        XCTAssertFalse(
+            continuationText.contains("Next required electronics handoff tool: `kicad_generate_circuit_ir`"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("Call `kicad_approve_design_intent`"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("or call `kicad_generate_circuit_ir`"),
+            continuationText
+        )
+    }
+
     func testFocusedElectronicsHandoffStopsCleanlyAfterCircuitIR() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
@@ -949,7 +1021,12 @@ final class LoopContinuationTests: XCTestCase {
             )
         }
 
-        for await _ in engine.send(userMessage: "Run the full AmpDemo electronics workflow") {}
+        var message = "Run the full AmpDemo electronics workflow"
+        for _ in 0..<3 {
+            for await _ in engine.send(userMessage: message) {}
+            guard FileManager.default.fileExists(atPath: injectURL.path) else { break }
+            message = try readInject()
+        }
 
         XCTAssertFalse(
             FileManager.default.fileExists(atPath: injectURL.path),

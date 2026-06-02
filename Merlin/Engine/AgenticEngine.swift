@@ -243,6 +243,26 @@ final class AgenticEngine {
         "read_file", "list_directory", "search_files",
     ]
 
+    private static let focusedElectronicsToolNames: [String] = [
+        "kicad_ingest_schematic",
+        "kicad_build_intent_model",
+        "kicad_approve_design_intent",
+        "kicad_generate_circuit_ir",
+        "kicad_select_components",
+        "kicad_prepare_libraries",
+        "kicad_assign_footprints",
+        "kicad_compile_project",
+        "kicad_apply_board_profile",
+        "kicad_generate_net_classes",
+        "kicad_place_components",
+        "kicad_route_pass",
+        "kicad_run_spice",
+        "kicad_evaluate_simulation",
+        "kicad_export_fab",
+        "kicad_prepare_vendor_order",
+        "kicad_package_release",
+    ]
+
     // MARK: - Near-ceiling warning
 
     /// Non-nil while the engine is within nearCeilingThreshold iterations of the ceiling.
@@ -2158,7 +2178,23 @@ final class AgenticEngine {
         } else {
             executionInstruction = "Task: \(thisBatch[0].description)"
         }
-        let handoffInstruction = electronicsHandoffInstruction() ?? ""
+        let requestedHandoffTool = explicitFocusedElectronicsToolName(
+            for: originalTask,
+            steps: thisBatch
+        )
+        let handoffInstruction = electronicsHandoffInstruction(
+            requestedToolName: requestedHandoffTool
+        ) ?? ""
+        let focusedToolInstruction: String
+        if let requestedHandoffTool {
+            focusedToolInstruction = """
+            The current focused electronics slice explicitly names `\(requestedHandoffTool)`. Preserve that requested tool boundary; do not substitute earlier DesignIntent or Circuit IR handoff tools.
+            """
+        } else {
+            focusedToolInstruction = """
+            For focused DesignIntent approval or Circuit IR slices, use the explicit `kicad_build_intent_model`, `kicad_approve_design_intent`, and `kicad_generate_circuit_ir` tool path instead.
+            """
+        }
 
         let message = """
         [CONTINUATION] \(verifiedSummary) Continue from the first unverified electronics step:
@@ -2168,7 +2204,7 @@ final class AgenticEngine {
         \(executionInstruction)
         \(handoffInstruction)
         For full end-to-end requirements-to-PCB completion work, call the exact tool `workflow.requirements_to_pcb`.
-        For focused DesignIntent approval or Circuit IR slices, use the explicit `kicad_build_intent_model`, `kicad_approve_design_intent`, and `kicad_generate_circuit_ir` tool path instead.
+        \(focusedToolInstruction)
         Do not use app/UI tools for electronics workflow execution; use the electronics workflow or `kicad_*` tools.
         Do not claim a schematic, simulation, fabrication export, or BOM step is complete unless the relevant KiCad/SPICE artifact evidence exists in tool results.
         If this step is already complete, respond with [STEP_ALREADY_DONE] and take no further action.
@@ -2183,9 +2219,17 @@ final class AgenticEngine {
         ])
     }
 
-    private func electronicsHandoffInstruction() -> String? {
+    private func electronicsHandoffInstruction(requestedToolName: String?) -> String? {
         guard let designIntentPath = latestDesignIntentArtifactPath() else { return nil }
         let nextTool = nextFocusedElectronicsHandoffToolName()
+        if let requestedToolName,
+           requestedToolName != nextTool {
+            return """
+            Existing DesignIntent artifact: \(designIntentPath)
+            Do not call `kicad_build_intent_model` again for this DesignIntent, and do not reread the original spec as a substitute for the requested electronics tool.
+            Current focused slice explicitly names `\(requestedToolName)`. Preserve that requested tool boundary; do not substitute `kicad_approve_design_intent` or `kicad_generate_circuit_ir` unless this slice explicitly asks for them.
+            """
+        }
         let exactToolInstruction = nextTool.map {
             """
             Next required electronics handoff tool: `\($0)`.
@@ -2197,6 +2241,26 @@ final class AgenticEngine {
         Do not call `kicad_build_intent_model` again for this DesignIntent, and do not reread the original spec as a substitute for the next electronics tool. Call `kicad_approve_design_intent` with `design_intent_path` set to the existing artifact path, or call `kicad_generate_circuit_ir` with that same `design_intent_path` after approval.
         \(exactToolInstruction)
         """
+    }
+
+    private func explicitFocusedElectronicsToolName(
+        for task: String,
+        steps: [PlanStep] = []
+    ) -> String? {
+        let stepText = steps
+            .map { "\($0.description) \($0.proseSummary)" }
+            .joined(separator: " ")
+        return explicitFocusedElectronicsToolName(in: "\(task) \(stepText)")
+    }
+
+    private func explicitFocusedElectronicsToolName(in text: String) -> String? {
+        let lower = text.lowercased()
+        return Self.focusedElectronicsToolNames.first { toolName in
+            let spacedName = toolName.replacingOccurrences(of: "_", with: " ")
+            return lower.contains("`\(toolName)`")
+                || lower.contains(toolName)
+                || lower.contains(spacedName)
+        }
     }
 
     private func shouldEvidenceGateContinuations(for steps: [PlanStep]) -> Bool {
@@ -2924,13 +2988,21 @@ final class AgenticEngine {
 
     private func electronicsHandoffDriftRejection(for call: ToolCall) -> ToolResult {
         let designIntentPath = latestDesignIntentArtifactPath() ?? "<existing DesignIntent artifact>"
+        let requestedToolName = explicitFocusedElectronicsToolName(
+            for: pendingContinuationOriginalTask,
+            steps: pendingContinuationAllSteps.isEmpty ? pendingContinuationSteps : pendingContinuationAllSteps
+        )
+        let continuationInstruction: String
+        if let requestedToolName {
+            continuationInstruction = "Continue the verified handoff by calling `\(requestedToolName)` with the required artifact paths and structured arguments for that tool."
+        } else {
+            continuationInstruction = "Continue the verified handoff by calling `kicad_approve_design_intent` with `design_intent_path` set to that path, or `kicad_generate_circuit_ir` with the same `design_intent_path` after approval."
+        }
         return ToolResult(
             toolCallId: call.id,
             content: "`\(call.function.name)` cannot be used for this electronics continuation because "
                 + "a DesignIntent artifact already exists at \(designIntentPath). Do not reread the original "
-                + "spec or rebuild DesignIntent. Continue the verified handoff by calling "
-                + "`kicad_approve_design_intent` with `design_intent_path` set to that path, or "
-                + "`kicad_generate_circuit_ir` with the same `design_intent_path` after approval. "
+                + "spec or rebuild DesignIntent. \(continuationInstruction) "
                 + "Automatic continuation stopped so the workflow cannot falsely advance.",
             isError: true
         )
@@ -2948,6 +3020,12 @@ final class AgenticEngine {
               let designIntentPath = latestDesignIntentArtifactPath(),
               let nextToolName = nextFocusedElectronicsHandoffToolName()
         else { return nil }
+        if let requestedToolName = explicitFocusedElectronicsToolName(
+            for: pendingContinuationOriginalTask,
+            steps: pendingContinuationAllSteps.isEmpty ? pendingContinuationSteps : pendingContinuationAllSteps
+        ), requestedToolName != nextToolName {
+            return nil
+        }
 
         let input = inputDictionary(from: call.function.arguments)
         let inspectedText = input.values.joined(separator: " ").lowercased()
