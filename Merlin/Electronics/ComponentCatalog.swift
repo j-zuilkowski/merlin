@@ -584,28 +584,30 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
     }
 
     func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
-        guard let symbolName = request.constraints["symbol"],
-              let symbol = symbolsByName[symbolName] else {
+        let symbolName = request.constraints["symbol"]
+        let symbol = symbolName.flatMap { symbolsByName[$0] }
+        let footprintMatches = footprintCandidates(for: request)
+        guard symbol != nil || !footprintMatches.isEmpty else {
             return []
         }
-        let footprintName = request.constraints["footprint"]
-        let footprint = footprintName.flatMap { footprintsByName[$0] }
         let evidence = [
-            ComponentEvidence(
-                providerID: providerID,
-                sourceURL: nil,
-                localPath: symbol.name,
-                retrievedAt: "local",
-                cachePolicy: "local_library",
-                sha256: nil,
-                extractedParameters: [
-                    "symbol": symbol.name,
-                    "pin_count": "\(symbol.pins.count)",
-                ],
-                confidence: 1.0,
-                warnings: []
-            ),
-            footprint.map {
+            symbol.map {
+                ComponentEvidence(
+                    providerID: providerID,
+                    sourceURL: nil,
+                    localPath: $0.name,
+                    retrievedAt: "local",
+                    cachePolicy: "local_library",
+                    sha256: nil,
+                    extractedParameters: [
+                        "symbol": $0.name,
+                        "pin_count": "\($0.pins.count)",
+                    ],
+                    confidence: 1.0,
+                    warnings: []
+                )
+            },
+            footprintMatches.first.map {
                 ComponentEvidence(
                     providerID: providerID,
                     sourceURL: nil,
@@ -622,31 +624,31 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
                 )
             },
         ].compactMap { $0 }
-        let footprintCandidates = footprint.map { footprint -> [FootprintCandidate] in
-            [
-                FootprintCandidate(
-                    library: libraryName(from: footprint.name),
-                    name: footprintNameOnly(from: footprint.name),
-                    packageCompatibilityEvidence: "local KiCad footprint requested by constraint",
-                    pinPadMap: Dictionary(uniqueKeysWithValues: footprint.pads.compactMap { pad in
-                        guard let name = pad.name, !name.isEmpty else { return nil }
-                        return (name, pad.number)
-                    }),
-                    sourceProviderID: providerID,
-                    sourcePath: footprint.name,
-                    threeDModel: nil
-                ),
-            ]
-        } ?? []
+        let footprintCandidates = footprintMatches.prefix(8).map { footprint in
+            FootprintCandidate(
+                library: libraryName(from: footprint.name),
+                name: footprintNameOnly(from: footprint.name),
+                packageCompatibilityEvidence: packageCompatibilityEvidence(for: footprint, request: request),
+                pinPadMap: Dictionary(uniqueKeysWithValues: footprint.pads.compactMap { pad in
+                    let name = pad.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    let key = name.isEmpty ? pad.number : name
+                    guard !key.isEmpty, !pad.number.isEmpty else { return nil }
+                    return (key, pad.number)
+                }),
+                sourceProviderID: providerID,
+                sourcePath: footprint.name,
+                threeDModel: nil
+            )
+        }
 
         return [
             ComponentCandidate(
-                mpn: request.constraints["mpn"] ?? "kicad-local-\(symbol.name)",
+                mpn: request.constraints["mpn"] ?? "kicad-local-\(symbol?.name ?? footprintMatches.first?.name ?? "asset")",
                 manufacturer: request.constraints["manufacturer"] ?? "local_kicad_library",
                 normalizedCategory: "kicad_library_asset",
                 value: request.constraints["value"],
-                package: footprintName ?? request.constraints["package"] ?? "symbol_only",
-                ratings: ["symbol_pin_count": "\(symbol.pins.count)"],
+                package: footprintMatches.first?.name ?? request.constraints["package"] ?? "symbol_only",
+                ratings: symbol.map { ["symbol_pin_count": "\($0.pins.count)"] } ?? ["footprint_match_count": "\(footprintMatches.count)"],
                 lifecycleState: "library_asset",
                 availabilitySummary: "local_library",
                 datasheets: [],
@@ -663,6 +665,70 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
     private func footprintNameOnly(from footprint: String) -> String {
         let parts = footprint.split(separator: ":", maxSplits: 1).map(String.init)
         return parts.count == 2 ? parts[1] : footprint
+    }
+
+    private func footprintCandidates(for request: ComponentSearchRequest) -> [KiCadFootprintDefinition] {
+        if let footprintName = request.constraints["footprint"], let exact = footprintsByName[footprintName] {
+            return [exact]
+        }
+        let packageValues = [
+            request.constraints["selected_footprint"],
+            request.constraints["package"],
+            request.constraints["package_case"],
+            request.constraints["case_package"],
+            request.constraints["supplier_device_package"],
+        ]
+            .compactMap { $0 }
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let queryText = ([request.refdes, request.role] + packageValues + Array(request.constraints.values))
+            .joined(separator: " ")
+            .lowercased()
+        let tokens = Set(packageValues.flatMap(packageTokens))
+        let scored = footprintsByName.values.compactMap { footprint -> (KiCadFootprintDefinition, Int)? in
+            let text = footprint.name.lowercased()
+            let compactText = text.filter { $0.isLetter || $0.isNumber }
+            var score = 0
+            if !tokens.isEmpty {
+                let matched = tokens.filter { text.contains($0) || compactText.contains($0) }
+                score += matched.count * 10
+            }
+            if queryText.contains("resistor"), text.contains("resistor") { score += 8 }
+            if queryText.contains("capacitor"), text.contains("capacitor") { score += 8 }
+            if queryText.contains("terminal"), text.contains("terminal") { score += 8 }
+            if queryText.contains("connector"), text.contains("connector") { score += 6 }
+            if queryText.contains("jack"), text.contains("jack") || text.contains("audio") { score += 8 }
+            if queryText.contains("transistor"), text.contains("package_to") || text.contains("to-") { score += 6 }
+            if queryText.contains("bridge"), text.contains("diode") || text.contains("bridge") || text.contains("gbu") { score += 8 }
+            if queryText.contains("potentiometer"), text.contains("potentiometer") || text.contains("pot") { score += 8 }
+            guard score > 0 else { return nil }
+            return (footprint, score)
+        }
+        return scored.sorted { lhs, rhs in
+            if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
+            return lhs.0.name.localizedStandardCompare(rhs.0.name) == .orderedAscending
+        }.map(\.0)
+    }
+
+    private func packageTokens(from value: String) -> [String] {
+        let ignored: Set<String> = ["package", "case", "pkg", "through", "hole", "tht", "smd", "smt", "lead", "leaded", "to"]
+        var tokens = value
+            .lowercased()
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+            .filter { $0.count >= 2 && !ignored.contains($0) }
+        let compact = value.lowercased().filter { $0.isLetter || $0.isNumber }
+        if compact.count >= 2, !ignored.contains(compact) {
+            tokens.append(compact)
+        }
+        return tokens
+    }
+
+    private func packageCompatibilityEvidence(for footprint: KiCadFootprintDefinition, request: ComponentSearchRequest) -> String {
+        if request.constraints["footprint"] == footprint.name {
+            return "local KiCad footprint requested by constraint"
+        }
+        let package = request.constraints["package"] ?? request.constraints["package_case"] ?? request.constraints["case_package"] ?? "unspecified package"
+        return "local KiCad footprint matched package/search constraints: \(package)"
     }
 }
 

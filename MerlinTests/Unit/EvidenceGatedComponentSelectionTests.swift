@@ -1547,6 +1547,59 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo vendor-feed component matrix: \(artifact.url.path)")
     }
 
+    func testAmpDemoVendorFeedMatrixAssignsEvidenceBackedFootprints() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-footprint-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_FOOTPRINT_SLICE"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_FOOTPRINT_SLICE=1 or create \(runSentinel.path) to run the AmpDemo footprint slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
+        let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: matrixURL))
+        XCTAssertEqual(matrix.providers, ["vendor_feed"], "AmpDemo footprint slice must use the vendor-feed component matrix.")
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected })
+        let footprintCatalogURL = try writeAmpDemoFootprints(root: try temporaryDirectory())
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let response = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","kicad_footprint_catalog_path":"\#(footprintCatalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "footprint_assignment" })
+        let report = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: artifact.url))
+        XCTAssertEqual(report.assignments.count, circuitIR.components.count)
+        XCTAssertEqual(report.unknownFootprints, 0)
+        let assignmentsByRefdes = Dictionary(uniqueKeysWithValues: report.assignments.map { ($0.refdes, $0) })
+        for component in circuitIR.components {
+            let assignment = try XCTUnwrap(assignmentsByRefdes[component.refdes], "Missing footprint for \(component.refdes)")
+            XCTAssertEqual(assignment.sourceProviderID, "kicad_local")
+            XCTAssertFalse(assignment.footprint.isEmpty)
+            XCTAssertFalse(assignment.packageCompatibilityEvidence.isEmpty)
+            let requiredPins = component.pins.compactMap { pin -> String? in
+                let canonical = pin.canonicalName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !canonical.isEmpty { return canonical }
+                let symbol = pin.symbolPin.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !symbol.isEmpty { return symbol }
+                let number = pin.pinNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+                return number.isEmpty ? nil : number
+            }
+            XCTAssertTrue(
+                requiredPins.allSatisfy { assignment.pinPadMap[$0]?.isEmpty == false },
+                "Missing pin-pad evidence for \(component.refdes)."
+            )
+        }
+        print("AmpDemo footprint assignment: \(artifact.url.path)")
+    }
+
     private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
         let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
             .filter { $0.lastPathComponent.hasSuffix("design_intent.json") }
@@ -2015,6 +2068,36 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         try encoder.encode(footprints).write(to: url)
         return url
+    }
+
+    private func writeAmpDemoFootprints(root: URL) throws -> URL {
+        let url = root.appendingPathComponent("ampdemo-footprints.json")
+        let footprints = [
+            KiCadFootprintDefinition(name: "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Diode_THT:Diode_Bridge_GBU", pads: namedPads(["AC1", "AC2", "PLUS", "MINUS"])),
+            KiCadFootprintDefinition(name: "Capacitor_THT:CP_Radial_D18.0mm_P7.50mm", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-92_Inline", pads: namedPads(["B", "C", "E"])),
+            KiCadFootprintDefinition(name: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Capacitor_THT:C_Radial_D5.0mm_P5.00mm", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Potentiometer_THT:Potentiometer_Bourns_PDB241-GTR", pads: namedPads(["A", "W", "B"])),
+            KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-220-3_Vertical", pads: namedPads(["B", "C", "E"])),
+            KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-3", pads: namedPads(["B", "C", "E"])),
+        ]
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(footprints).write(to: url)
+        return url
+    }
+
+    private func numberedPads(_ numbers: [String]) -> [KiCadFootprintPad] {
+        numbers.map { KiCadFootprintPad(number: $0, name: $0) }
+    }
+
+    private func namedPads(_ names: [String]) -> [KiCadFootprintPad] {
+        names.enumerated().map { index, name in
+            KiCadFootprintPad(number: "\(index + 1)", name: name)
+        }
     }
 
     private func writeKiCadSymbolTree(root: URL, directoryName: String = "kicad-symbols") throws -> URL {

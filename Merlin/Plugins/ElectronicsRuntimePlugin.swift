@@ -658,7 +658,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputBody: #"{"status":"prepared","symbols":"project_local","footprints":"verified","models":"referenced"}"#
             )
         case "kicad_assign_footprints":
-            return handleFootprintAssignment(request, context: context)
+            return await handleFootprintAssignment(request, context: context)
         case "kicad_compile_project":
             return handleCompileProject(request, context: context)
         case "kicad_apply_board_profile":
@@ -1486,7 +1486,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func handleFootprintAssignment(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext
-    ) -> WorkspaceMessageResponse {
+    ) async -> WorkspaceMessageResponse {
         let object = request.payload.jsonObject() ?? [:]
         let missing = ["design_intent_path", "component_matrix_path"].filter { key in
             guard let path = object[key] as? String else { return true }
@@ -1529,6 +1529,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let circuitComponentsByRefdes = Dictionary((circuitIR?.components ?? []).map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
         let decisionsByRefdes = Dictionary(matrix.decisions.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
         let targetRefdes = circuitIR.map { uniqueRefdes($0.components.map(\.refdes)) } ?? matrix.decisions.map(\.refdes)
+        let config = runtimeCatalogConfig(from: object, context: context)
+        let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
         var assignments: [FootprintAssignment] = []
         var warnings: [KiCadWarning] = []
 
@@ -1544,7 +1546,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 ))
                 continue
             }
-            guard let footprint = candidate.footprintCandidates.first else {
+            guard let footprint = await selectedFootprintCandidate(
+                for: candidate,
+                component: componentsByRefdes[refdes],
+                circuitComponent: circuitComponentsByRefdes[refdes],
+                localFootprintResolver: localFootprintResolver
+            ) else {
                 warnings.append(KiCadWarning(
                     code: "FOOTPRINT_CANDIDATE_REQUIRED",
                     message: "Selected component \(refdes) has no evidence-backed footprint candidate.",
@@ -4343,6 +4350,79 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             footprint.pinPadMap[entry.key] = entry.value
         }
         return footprint
+    }
+
+    private func selectedFootprintCandidate(
+        for candidate: ComponentCandidate,
+        component: ComponentIntent?,
+        circuitComponent: CircuitComponent?,
+        localFootprintResolver: KiCadLibraryCatalogProvider?
+    ) async -> FootprintCandidate? {
+        let requiredPins = circuitComponent.map(requiredPins(for:)) ?? requiredPins(for: component)
+        let existingFootprints = candidate.footprintCandidates.map {
+            applyingPinPadEvidence($0, requiredPins: requiredPins, component: component)
+        }
+        if let exact = existingFootprints.first(where: { footprintCoversRequiredPins($0, requiredPins: requiredPins) }) {
+            return exact
+        }
+        if let fallback = existingFootprints.first {
+            return fallback
+        }
+        guard let localFootprintResolver else { return nil }
+        var constraints = component?.constraints ?? [:]
+        constraints["mpn"] = candidate.mpn
+        constraints["manufacturer"] = candidate.manufacturer
+        if !candidate.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            constraints["package"] = candidate.package
+        }
+        for key in ["package", "package_case", "case_package", "supplier_device_package"] {
+            if constraints[key] == nil, let value = candidate.ratings[key], !value.isEmpty {
+                constraints[key] = value
+            }
+        }
+        if constraints["footprint"] == nil, let selected = constraints["selected_footprint"], !selected.isEmpty {
+            constraints["footprint"] = selected
+        }
+        let request = ComponentSearchRequest(
+            refdes: component?.refdes ?? circuitComponent?.refdes ?? "",
+            role: component?.role ?? circuitComponent?.role ?? candidate.normalizedCategory,
+            constraints: constraints,
+            requiredEvidenceTypes: ["footprint"],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "library_asset"
+        )
+        let resolved = (try? await localFootprintResolver.search(request)) ?? []
+        let footprints = resolved
+            .flatMap(\.footprintCandidates)
+            .map { applyingPinPadEvidence($0, requiredPins: requiredPins, component: component) }
+        return footprints.first(where: { footprintCoversRequiredPins($0, requiredPins: requiredPins) }) ?? footprints.first
+    }
+
+    private func applyingPinPadEvidence(
+        _ footprint: FootprintCandidate,
+        requiredPins: [String],
+        component: ComponentIntent?
+    ) -> FootprintCandidate {
+        var footprint = component.map { applyingPinPadConstraint(footprint, component: $0) } ?? footprint
+        let missingPins = requiredPins.filter { footprint.pinPadMap[$0]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true }
+        guard !missingPins.isEmpty else { return footprint }
+        let padNumbers = footprint.pinPadMap.values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        guard padNumbers.count == requiredPins.count else { return footprint }
+        for (pin, pad) in zip(requiredPins, padNumbers) where footprint.pinPadMap[pin] == nil {
+            footprint.pinPadMap[pin] = pad
+        }
+        return footprint
+    }
+
+    private func footprintCoversRequiredPins(_ footprint: FootprintCandidate, requiredPins: [String]) -> Bool {
+        guard !requiredPins.isEmpty else { return false }
+        return requiredPins.allSatisfy {
+            footprint.pinPadMap[$0]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        }
     }
 
     private func mergedFootprints(_ current: [FootprintCandidate], _ additional: [FootprintCandidate]) -> [FootprintCandidate] {
