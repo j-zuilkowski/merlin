@@ -1026,6 +1026,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     circuitIR: circuitIR,
                     outputDirectory: directoryURL
                 )
+                if let schematicBlock = schematicEvidenceBlock(
+                    request,
+                    context: context,
+                    circuitIR: circuitIR,
+                    schematicURL: materialized.schematicURL
+                ) {
+                    return schematicBlock
+                }
                 let boardURL = directoryURL.appendingPathComponent("\(circuitIR.boardId).kicad_pcb")
                 try minimalKiCadBoardText(generator: "merlin-electronics")
                     .write(to: boardURL, atomically: true, encoding: .utf8)
@@ -1767,7 +1775,231 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     }
 
     private func compileCircuitIR(from object: [String: Any]) -> CircuitIR? {
-        decodeCompileArtifact(object, key: "circuit_ir_path", as: CircuitIR.self)
+        guard let circuitIR = decodeCompileArtifact(object, key: "circuit_ir_path", as: CircuitIR.self) else {
+            return nil
+        }
+        let matrix = decodeCompileArtifact(object, key: "component_matrix_path", as: ComponentMatrix.self)
+        let footprints = decodeCompileArtifact(object, key: "footprint_assignment_path", as: FootprintAssignmentReport.self)
+        return evidenceEnrichedCircuitIR(circuitIR, matrix: matrix, footprintReport: footprints)
+    }
+
+    private func evidenceEnrichedCircuitIR(
+        _ circuitIR: CircuitIR,
+        matrix: ComponentMatrix?,
+        footprintReport: FootprintAssignmentReport?
+    ) -> CircuitIR {
+        let decisionsByRefdes = Dictionary((matrix?.decisions ?? []).map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let footprintsByRefdes = Dictionary((footprintReport?.assignments ?? []).map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        var enriched = circuitIR
+        enriched.components = circuitIR.components.map { component in
+            var component = component
+            if let candidate = decisionsByRefdes[component.refdes]?.selectedCandidate {
+                component.manufacturerPartNumber = nonEmpty(candidate.mpn) ?? component.manufacturerPartNumber
+                component.constraints = component.constraints.merging(evidenceConstraints(from: candidate)) { existing, _ in existing }
+                component.sourceEvidence = mergedSourceEvidence(
+                    component.sourceEvidence,
+                    sourceEvidence(from: candidate)
+                )
+            }
+            if let assignment = footprintsByRefdes[component.refdes] {
+                component.selectedFootprint = nonEmpty(assignment.footprint) ?? component.selectedFootprint
+                component.sourceEvidence = mergedSourceEvidence(
+                    component.sourceEvidence,
+                    [SourceEvidence(
+                        kind: "footprint:\(assignment.sourceProviderID)",
+                        reference: [
+                            assignment.footprint,
+                            assignment.sourcePath,
+                            nonEmpty(assignment.packageCompatibilityEvidence),
+                        ]
+                            .compactMap { $0 }
+                            .joined(separator: " | ")
+                    )]
+                )
+                component.pins = component.pins.map { pin in
+                    var pin = pin
+                    pin.footprintPad = footprintPad(for: pin, in: assignment.pinPadMap) ?? pin.footprintPad
+                    return pin
+                }
+            }
+            return component
+        }
+        return enriched
+    }
+
+    private func evidenceConstraints(from candidate: ComponentCandidate) -> [String: String] {
+        var constraints: [String: String] = [:]
+        constraints["value"] = nonEmpty(candidate.value) ?? nonEmpty(candidate.mpn)
+        constraints["manufacturer"] = nonEmpty(candidate.manufacturer)
+        constraints["manufacturer_part_number"] = nonEmpty(candidate.mpn)
+        constraints["component_category"] = nonEmpty(candidate.normalizedCategory)
+        constraints["package"] = nonEmpty(candidate.package)
+        for (key, value) in candidate.ratings where nonEmpty(value) != nil {
+            constraints[key] = value
+        }
+        return constraints
+    }
+
+    private func sourceEvidence(from candidate: ComponentCandidate) -> [SourceEvidence] {
+        var evidence = candidate.evidence.map { item in
+            SourceEvidence(
+                kind: "catalog:\(item.providerID)",
+                reference: [
+                    item.sourceURL,
+                    item.localPath,
+                    nonEmpty(item.extractedParameters["target_refdes"]),
+                    nonEmpty(item.sha256),
+                ]
+                    .compactMap { $0 }
+                    .joined(separator: " | ")
+            )
+        }
+        evidence.append(contentsOf: candidate.datasheets.map { datasheet in
+            SourceEvidence(kind: "datasheet:\(datasheet.providerID)", reference: datasheet.url)
+        })
+        return evidence
+    }
+
+    private func mergedSourceEvidence(_ existing: [SourceEvidence], _ added: [SourceEvidence]) -> [SourceEvidence] {
+        var seen = Set(existing.map { "\($0.kind)|\($0.reference)" })
+        var merged = existing
+        for item in added where !item.reference.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let key = "\(item.kind)|\(item.reference)"
+            if seen.insert(key).inserted {
+                merged.append(item)
+            }
+        }
+        return merged
+    }
+
+    private func footprintPad(for pin: CircuitPin, in map: [String: String]) -> String? {
+        for key in [pin.canonicalName, pin.symbolPin, pin.pinNumber] {
+            let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let value = map[trimmed]?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
+    private func schematicEvidenceBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        circuitIR: CircuitIR,
+        schematicURL: URL
+    ) -> WorkspaceMessageResponse? {
+        guard let text = try? String(contentsOf: schematicURL, encoding: .utf8),
+              let schematic = try? KiCadSchematicParser().parse(text) else {
+            return compileSchematicEvidenceBlock(
+                request,
+                context: context,
+                code: "SCHEMATIC_PARSE_REQUIRED",
+                message: "Compiled schematic must parse as KiCad schematic evidence.",
+                affectedRefs: [schematicURL.path]
+            )
+        }
+        let parity = CircuitIRSchematicParityChecker().check(circuitIR: circuitIR, schematic: schematic)
+        var warnings = parity.issues.map { issue in
+            KiCadWarning(
+                code: issue.code,
+                message: issue.message,
+                affectedRefs: [schematicURL.path],
+                suggestedAction: "Regenerate schematic from Circuit IR and upstream evidence artifacts."
+            )
+        }
+        warnings.append(contentsOf: schematicEvidenceWarnings(circuitIR: circuitIR, schematic: schematic, schematicPath: schematicURL.path))
+        guard warnings.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Compiled schematic is missing required discrete component, footprint, source, or net evidence.",
+                context: context,
+                warnings: warnings,
+                nextActions: ["repair_schematic_synthesis"]
+            )
+        }
+        return nil
+    }
+
+    private func schematicEvidenceWarnings(
+        circuitIR: CircuitIR,
+        schematic: KiCadSchematicDocument,
+        schematicPath: String
+    ) -> [KiCadWarning] {
+        var warnings: [KiCadWarning] = []
+        let symbolsByRefdes = Dictionary(schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+            guard let refdes = symbol.property(named: "Reference") else { return nil }
+            return (refdes, symbol)
+        }, uniquingKeysWith: { first, _ in first })
+        let labels = Set(schematic.labels.map(\.text))
+
+        for component in circuitIR.components {
+            guard let symbol = symbolsByRefdes[component.refdes] else {
+                warnings.append(compileWarning("SCHEMATIC_COMPONENT_MISSING", "\(component.refdes) is missing from the generated schematic.", [component.refdes, schematicPath]))
+                continue
+            }
+            let symbolID = symbol.property(named: "Symbol") ?? ""
+            if !symbol.emitsKiCadSymbol || symbolID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                warnings.append(compileWarning("SCHEMATIC_REAL_SYMBOL_REQUIRED", "\(component.refdes) must emit a real KiCad symbol.", [component.refdes, schematicPath]))
+            }
+            if component.selectedFootprint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+                warnings.append(compileWarning("SCHEMATIC_FOOTPRINT_REQUIRED", "\(component.refdes) has no selected footprint evidence.", [component.refdes, schematicPath]))
+            }
+            if component.manufacturerPartNumber?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+                warnings.append(compileWarning("SCHEMATIC_MPN_REQUIRED", "\(component.refdes) has no selected component MPN evidence.", [component.refdes, schematicPath]))
+            }
+            if component.sourceEvidence.isEmpty {
+                warnings.append(compileWarning("SCHEMATIC_SOURCE_EVIDENCE_REQUIRED", "\(component.refdes) has no source evidence.", [component.refdes, schematicPath]))
+            }
+            if (symbol.property(named: "Value") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || symbol.property(named: "Value") == component.role {
+                warnings.append(compileWarning("SCHEMATIC_VALUE_REQUIRED", "\(component.refdes) has no concrete value or selected part value.", [component.refdes, schematicPath]))
+            }
+            let missingPads = component.pins.filter {
+                $0.footprintPad?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true
+            }
+            if !missingPads.isEmpty {
+                warnings.append(compileWarning("SCHEMATIC_PIN_PAD_EVIDENCE_REQUIRED", "\(component.refdes) has pins without footprint pad evidence.", [component.refdes, schematicPath]))
+            }
+        }
+        for net in circuitIR.nets where !net.endpoints.isEmpty && !labels.contains(net.name) {
+            warnings.append(compileWarning("SCHEMATIC_NET_LABEL_REQUIRED", "\(net.name) is missing from the generated schematic.", [net.name, schematicPath]))
+        }
+        return warnings
+    }
+
+    private func compileSchematicEvidenceBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        code: String,
+        message: String,
+        affectedRefs: [String]
+    ) -> WorkspaceMessageResponse {
+        structuredBlock(
+            request,
+            reason: .invalidInputQuality,
+            message: message,
+            context: context,
+            warnings: [compileWarning(code, message, affectedRefs)],
+            nextActions: ["repair_schematic_synthesis"]
+        )
+    }
+
+    private func compileWarning(_ code: String, _ message: String, _ affectedRefs: [String]) -> KiCadWarning {
+        KiCadWarning(
+            code: code,
+            message: message,
+            affectedRefs: affectedRefs,
+            suggestedAction: "Regenerate schematic from verified Circuit IR, component matrix, and footprint assignment evidence."
+        )
     }
 
     private func footprintAssignmentsCoverPCBComponents(

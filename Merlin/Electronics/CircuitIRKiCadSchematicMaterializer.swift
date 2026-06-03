@@ -84,7 +84,8 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
                 ))
                 continue
             }
-            for pin in component.pins where geometry.pin(number: pin.pinNumber, name: pin.symbolPin) == nil {
+            for pin in component.pins where geometry.pin(number: pin.pinNumber, name: pin.symbolPin) == nil
+                && geometry.pin(number: pin.pinNumber, name: "") == nil {
                 issues.append(ElectronicsSchemaIssue(
                     code: "PIN_GEOMETRY_UNRESOLVED",
                     message: "\(component.refdes).\(pin.pinNumber) \(pin.symbolPin) is not present in \(geometry.libraryID)."
@@ -189,10 +190,11 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func pinOffset(component: CircuitComponent, pin: CircuitPin) -> KiCadSchematicDocument.Point? {
-        pinGeometryResolver
-            .resolve(libraryID: component.selectedSymbol)?
-            .pin(number: pin.pinNumber, name: pin.symbolPin)?
-            .at
+        guard let geometry = pinGeometryResolver.resolve(libraryID: component.selectedSymbol) else {
+            return nil
+        }
+        return geometry.pin(number: pin.pinNumber, name: pin.symbolPin)?.at
+            ?? geometry.pin(number: pin.pinNumber, name: "")?.at
     }
 
     private func junctions(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Junction] {

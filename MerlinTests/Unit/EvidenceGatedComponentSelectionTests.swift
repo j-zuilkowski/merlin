@@ -1600,6 +1600,85 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo footprint assignment: \(artifact.url.path)")
     }
 
+    func testAmpDemoEvidenceBackedSchematicCompileRejectsCaricatureOutput() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-schematic-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_SCHEMATIC_SLICE"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_SCHEMATIC_SLICE=1 or create \(runSentinel.path) to run the AmpDemo schematic slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
+        let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
+        let footprintURL = try newestArtifact(in: artifactsURL, suffix: "footprint_assignment.json")
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: matrixURL))
+        let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
+        XCTAssertEqual(matrix.providers, ["vendor_feed"], "AmpDemo schematic slice must use the vendor-feed component matrix.")
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected && $0.selectedCandidate != nil })
+        XCTAssertEqual(footprints.assignments.count, circuitIR.components.count)
+        XCTAssertEqual(footprints.unknownFootprints, 0)
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputURL = root
+            .appendingPathComponent(".merlin/schematic-slice", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let compileResponse = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(footprintURL.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+
+        XCTAssertEqual(compileResponse.status, .ok)
+        let schematicArtifact = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
+        let schematicText = try String(contentsOf: schematicArtifact.url, encoding: .utf8)
+        let schematic = try KiCadSchematicParser().parse(schematicText)
+        XCTAssertEqual(schematic.symbols.count, circuitIR.components.count)
+        XCTAssertFalse(schematic.symbols.contains { $0.emitsKiCadSymbol == false })
+
+        let symbolsByRefdes = Dictionary(uniqueKeysWithValues: schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+            guard let refdes = symbol.property(named: "Reference") else { return nil }
+            return (refdes, symbol)
+        })
+        let decisionsByRefdes = Dictionary(uniqueKeysWithValues: matrix.decisions.map { ($0.refdes, $0) })
+        let footprintsByRefdes = Dictionary(uniqueKeysWithValues: footprints.assignments.map { ($0.refdes, $0) })
+        for component in circuitIR.components {
+            let symbol = try XCTUnwrap(symbolsByRefdes[component.refdes], "Missing real schematic symbol for \(component.refdes)")
+            let candidate = try XCTUnwrap(decisionsByRefdes[component.refdes]?.selectedCandidate)
+            let assignment = try XCTUnwrap(footprintsByRefdes[component.refdes])
+            XCTAssertEqual(symbol.property(named: "Symbol"), component.selectedSymbol)
+            XCTAssertEqual(symbol.property(named: "Footprint"), assignment.footprint)
+            XCTAssertEqual(symbol.property(named: "ManufacturerPartNumber"), candidate.mpn)
+            XCTAssertNotEqual(symbol.property(named: "Value"), component.role)
+            XCTAssertFalse((symbol.property(named: "SourceEvidence") ?? "").isEmpty)
+            XCTAssertFalse((symbol.property(named: "Pins") ?? "").isEmpty)
+        }
+
+        let schematicLabels = Set(schematic.labels.map(\.text))
+        for net in circuitIR.nets where !net.endpoints.isEmpty {
+            XCTAssertTrue(schematicLabels.contains(net.name), "Missing schematic net label \(net.name)")
+        }
+
+        let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+        guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
+            print("AmpDemo schematic: \(schematicArtifact.url.path)")
+            throw XCTSkip("KiCad CLI is not installed at \(kicadCLI)")
+        }
+        let projectArtifact = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue })
+        let ercResponse = await sendERC(
+            runtime,
+            payload: #"{"project_path":"\#(projectArtifact.url.path)","kicad_cli_path":"\#(kicadCLI)"}"#
+        )
+        XCTAssertTrue([WorkspaceMessageResponseStatus.ok, WorkspaceMessageResponseStatus.blocked].contains(ercResponse.status))
+        let ercArtifact = try XCTUnwrap(ercResponse.artifacts.first { $0.kind == "erc_report" })
+        XCTAssertTrue(FileManager.default.fileExists(atPath: ercArtifact.url.path))
+        print("AmpDemo schematic: \(schematicArtifact.url.path)")
+        print("AmpDemo ERC report: \(ercArtifact.url.path)")
+    }
+
     private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
         let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
             .filter { $0.lastPathComponent.hasSuffix("design_intent.json") }
@@ -2174,6 +2253,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_compile_project"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendERC(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_erc"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,
