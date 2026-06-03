@@ -5759,8 +5759,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         for netIntent in netIntents {
             let source = endpointRefdes(for: netIntent.source, expansions: expansions, usage: .source)
             let destination = endpointRefdes(for: netIntent.destination, expansions: expansions, usage: .destination)
-            guard let sourceEndpoint = circuitEndpoint(for: source, usage: .source, componentsByRefdes: componentsByRefdes),
-                  let destinationEndpoint = circuitEndpoint(for: destination, usage: .destination, componentsByRefdes: componentsByRefdes) else {
+            guard let sourceEndpoint = circuitEndpoint(for: source, usage: .source, netIntent: netIntent, componentsByRefdes: componentsByRefdes),
+                  let destinationEndpoint = circuitEndpoint(for: destination, usage: .destination, netIntent: netIntent, componentsByRefdes: componentsByRefdes) else {
                 continue
             }
             let net = CircuitNet(
@@ -5777,8 +5777,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         for (sourceRefdes, expandedRefdes) in expansions where expandedRefdes.count > 1 {
             for pair in zip(expandedRefdes, expandedRefdes.dropFirst()) {
-                guard let sourceEndpoint = circuitEndpoint(for: pair.0, usage: .source, componentsByRefdes: componentsByRefdes),
-                      let destinationEndpoint = circuitEndpoint(for: pair.1, usage: .destination, componentsByRefdes: componentsByRefdes) else {
+                guard let sourceEndpoint = circuitEndpoint(for: pair.0, usage: .source, netIntent: nil, componentsByRefdes: componentsByRefdes),
+                      let destinationEndpoint = circuitEndpoint(for: pair.1, usage: .destination, netIntent: nil, componentsByRefdes: componentsByRefdes) else {
                     continue
                 }
                 let name = "\(sourceRefdes)_INTERNAL_\(pair.0)_\(pair.1)"
@@ -5821,17 +5821,46 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func circuitEndpoint(
         for refdes: String,
         usage: CircuitEndpointUsage,
+        netIntent: NetIntent?,
         componentsByRefdes: [String: CircuitComponent]
     ) -> CircuitNetEndpoint? {
         guard let component = componentsByRefdes[refdes] else { return nil }
-        let pinNumber: String
+        let pinNumber = preferredPinNumber(for: component, usage: usage, netIntent: netIntent)
+        return CircuitNetEndpoint(componentRefdes: refdes, pinNumber: pinNumber)
+    }
+
+    private func preferredPinNumber(
+        for component: CircuitComponent,
+        usage: CircuitEndpointUsage,
+        netIntent: NetIntent?
+    ) -> String {
+        let refdes = component.refdes.uppercased()
+        let netText = "\(netIntent?.name ?? "") \(netIntent?.role ?? "")".lowercased()
+        if refdes.hasPrefix("BR") {
+            if netText.contains("vraw") || netText.contains("supply rail") || netText.contains("power rail") {
+                return component.pins.first { $0.canonicalName.uppercased() == "PLUS" }?.pinNumber ?? "3"
+            }
+            if netText.contains("gnd") || netText.contains("ground") || netText.contains("common") {
+                return component.pins.first { $0.canonicalName.uppercased() == "MINUS" }?.pinNumber ?? "4"
+            }
+            if netText.contains("ac") {
+                return component.pins.first { $0.canonicalName.uppercased() == "AC1" }?.pinNumber ?? "1"
+            }
+        }
+        if refdes == "CRES1" || component.role.lowercased().contains("reservoir") {
+            if netText.contains("vraw") || netText.contains("supply rail") || netText.contains("power rail") {
+                return "1"
+            }
+            if netText.contains("gnd") || netText.contains("ground") || netText.contains("common") {
+                return "2"
+            }
+        }
         switch usage {
         case .source:
-            pinNumber = component.pins.last?.pinNumber ?? "1"
+            return component.pins.last?.pinNumber ?? "1"
         case .destination:
-            pinNumber = component.pins.first?.pinNumber ?? "1"
+            return component.pins.first?.pinNumber ?? "1"
         }
-        return CircuitNetEndpoint(componentRefdes: refdes, pinNumber: pinNumber)
     }
 
     private func netClass(for intent: NetIntent) -> String {

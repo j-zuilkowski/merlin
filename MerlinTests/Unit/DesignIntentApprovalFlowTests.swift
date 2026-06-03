@@ -251,6 +251,21 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["power_rating"], "100W")
         XCTAssertEqual(componentsByRefdes["CRES1"]?.constraints["capacitance"], "10000uF")
         XCTAssertEqual(componentsByRefdes["CRES1"]?.constraints["voltage_rating"], "50V")
+        let netsByName = Dictionary(circuitIR.nets.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(
+            Set(netsByName["VRAW"]?.endpoints.map { "\($0.componentRefdes).\($0.pinNumber)" } ?? []),
+            ["BR1.3", "CRES1.1"]
+        )
+        XCTAssertEqual(
+            Set(netsByName["GND"]?.endpoints.map { "\($0.componentRefdes).\($0.pinNumber)" } ?? []),
+            ["BR1.4", "CRES1.2"]
+        )
+        let endpointOwners = circuitIR.nets.flatMap { net in
+            net.endpoints.map { ("\($0.componentRefdes).\($0.pinNumber)", net.name) }
+        }
+        let duplicatedEndpoints = Dictionary(grouping: endpointOwners, by: \.0)
+            .filter { Set($0.value.map(\.1)).count > 1 }
+        XCTAssertTrue(duplicatedEndpoints.isEmpty, "CircuitIR endpoints must not be assigned to multiple nets: \(duplicatedEndpoints)")
         XCTAssertEqual(componentsByRefdes["RBASS1"]?.constraints["resistance"], "1MOhm")
         XCTAssertEqual(componentsByRefdes["CBASS1"]?.constraints["capacitance"], "100nF")
         XCTAssertEqual(componentsByRefdes["JIN"]?.constraints["component_category"], "phone_audio_jack")

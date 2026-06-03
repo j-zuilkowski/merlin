@@ -1690,14 +1690,20 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
         let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
         let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
-        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
         let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
         let footprintURL = try newestArtifact(in: artifactsURL, suffix: "footprint_assignment.json")
-        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
-        let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
 
         let runtime = try WorkspaceRuntime(rootURL: root)
         try await ElectronicsRuntimePlugin().register(into: runtime)
+        let circuitIRResponse = await sendCircuitIR(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)"}"#
+        )
+        XCTAssertEqual(circuitIRResponse.status, .ok)
+        let circuitIRURL = try XCTUnwrap(circuitIRResponse.artifacts.first { $0.kind == "circuit_ir" }).url
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
+
         let outputURL = root
             .appendingPathComponent(".merlin/pcb-slice", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -1745,6 +1751,22 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(
             libraryFootprintViolations.isEmpty,
             "PCB must embed real KiCad library footprints; library footprint DRC violations: \(libraryFootprintViolations)"
+        )
+        let placementViolations = drcReport.violations.filter {
+            ["courtyards_overlap", "pth_inside_courtyard", "silk_overlap"].contains($0.code)
+        }
+        XCTAssertTrue(
+            placementViolations.isEmpty,
+            "PCB placement must leave enough space for footprint courtyards, PTH pads, and silkscreen: \(placementViolations)"
+        )
+        let unconnectedViolations = drcReport.violations.filter { $0.code == "unconnected_items" }
+        XCTAssertTrue(
+            unconnectedViolations.isEmpty,
+            "PCB routing must connect every routed net endpoint: \(unconnectedViolations)"
+        )
+        XCTAssertTrue(
+            drcReport.blockingViolations.isEmpty,
+            "PCB DRC must be clean before the PCB slice is considered verified: \(drcReport.blockingViolations)"
         )
         print("AmpDemo PCB: \(boardArtifact.url.path)")
         print("AmpDemo DRC report: \(drcArtifact.url.path)")
@@ -1920,6 +1942,46 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(boardText.contains(#"(net 1 "VIN")"#))
         XCTAssertTrue(boardText.contains(#"(net 2 "VOUT")"#))
         XCTAssertFalse(boardText.contains(#"(pad "1" thru_hole circle"#))
+    }
+
+    func testBoardMaterializerRejectsEndpointAssignedToMultipleNets() throws {
+        let root = try temporaryDirectory()
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let circuitIR = CircuitIR(
+            designId: "net-conflict-test",
+            boardId: "net-conflict-test",
+            components: [
+                CircuitComponent(
+                    refdes: "J1",
+                    role: "test connector",
+                    selectedSymbol: "Connector_Generic:Conn_01x02",
+                    selectedFootprint: "Connector_Generic:Conn_01x02",
+                    manufacturerPartNumber: nil,
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "J1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "J1", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ],
+                    constraints: [:]
+                ),
+            ],
+            nets: [
+                CircuitNet(name: "VRAW", role: "raw supply", endpoints: [CircuitNetEndpoint(componentRefdes: "J1", pinNumber: "1")], netClass: "power", safetyDomain: "isolated_secondary"),
+                CircuitNet(name: "GND", role: "common", endpoints: [CircuitNetEndpoint(componentRefdes: "J1", pinNumber: "1")], netClass: "ground", safetyDomain: "isolated_secondary"),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+
+        XCTAssertThrowsError(try CircuitIRKiCadBoardMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputURL
+        )) { error in
+            guard case CircuitIRKiCadBoardMaterializerError.invalidBoardEvidence(let issues) = error else {
+                return XCTFail("Expected invalid board evidence, got \(error)")
+            }
+            XCTAssertTrue(issues.contains { $0.code == "PCB_ENDPOINT_NET_CONFLICT" })
+        }
     }
 
     func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {
@@ -2336,6 +2398,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_select_components"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendCircuitIR(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_generate_circuit_ir"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,

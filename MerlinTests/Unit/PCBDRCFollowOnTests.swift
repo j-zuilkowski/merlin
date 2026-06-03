@@ -72,9 +72,33 @@ final class PCBDRCFollowOnTests: XCTestCase {
         XCTAssertEqual(report.blockingViolations.first?.refs, ["J1", "Net-(J1-Pad1)"])
     }
 
+    func testDRCParserExtractsKiCad10UnconnectedItems() throws {
+        let data = Data("""
+        {
+          "violations": [],
+          "unconnected_items": [
+            {
+              "type": "unconnected_items",
+              "severity": "error",
+              "description": "Missing connection between items",
+              "items": [
+                { "description": "PTH pad 2 [NET1] of J1" },
+                { "description": "PTH pad 1 [NET1] of R1" }
+              ]
+            }
+          ]
+        }
+        """.utf8)
+
+        let report = try KiCadDRCParser().parse(jsonData: data)
+
+        XCTAssertEqual(report.blockingViolations.map(\.code), ["unconnected_items"])
+        XCTAssertEqual(report.blockingViolations.first?.refs, ["PTH pad 2 [NET1] of J1", "PTH pad 1 [NET1] of R1"])
+    }
+
     func testBoundedDRCRepairLoopRepairsSupportedClassesAndStopsAfterThreeAttempts() throws {
         let failing = try KiCadDRCParser().parse(jsonData: drcJSON([
-            drcViolation(id: "place", code: "courtyard_collision", severity: "error", message: "Courtyard collision", refs: ["Q1", "R1"]),
+            drcViolation(id: "place", code: "courtyards_overlap", severity: "error", message: "Courtyard overlap", refs: ["Q1", "R1"]),
             drcViolation(id: "route", code: "unrouted_net", severity: "error", message: "Unrouted net", refs: ["NET1"]),
         ]))
 
