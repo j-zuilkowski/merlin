@@ -1679,6 +1679,69 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo ERC report: \(ercArtifact.url.path)")
     }
 
+    func testAmpDemoEvidenceBackedPCBCompilePlacesAllFootprintsAndRunsDRC() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-pcb-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_PCB_SLICE"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_PCB_SLICE=1 or create \(runSentinel.path) to run the AmpDemo PCB slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
+        let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
+        let footprintURL = try newestArtifact(in: artifactsURL, suffix: "footprint_assignment.json")
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputURL = root
+            .appendingPathComponent(".merlin/pcb-slice", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let compileResponse = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(footprintURL.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+
+        XCTAssertEqual(compileResponse.status, .ok)
+        let boardArtifact = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.board.rawValue })
+        let projectArtifact = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue })
+        let boardText = try String(contentsOf: boardArtifact.url, encoding: .utf8)
+        XCTAssertTrue(boardText.contains(#""Edge.Cuts""#), "PCB must include a board outline.")
+        XCTAssertEqual(boardText.components(separatedBy: #"(footprint ""#).count - 1, circuitIR.components.count)
+
+        let assignmentsByRefdes = Dictionary(uniqueKeysWithValues: footprints.assignments.map { ($0.refdes, $0) })
+        for component in circuitIR.components {
+            let assignment = try XCTUnwrap(assignmentsByRefdes[component.refdes])
+            XCTAssertTrue(boardText.contains(#"(property "Reference" "\#(component.refdes)""#), "Missing placed reference for \(component.refdes)")
+            XCTAssertTrue(boardText.contains(#"(footprint "\#(assignment.footprint)""#), "Missing assigned footprint \(assignment.footprint)")
+            for pad in Set(assignment.pinPadMap.values) {
+                XCTAssertTrue(boardText.contains(#"(pad "\#(pad)""#), "Missing pad \(pad) for \(component.refdes)")
+            }
+        }
+        for net in circuitIR.nets where !net.endpoints.isEmpty {
+            XCTAssertTrue(boardText.contains(#""\#(net.name)""#), "Missing PCB net \(net.name)")
+        }
+
+        let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+        guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
+            print("AmpDemo PCB: \(boardArtifact.url.path)")
+            throw XCTSkip("KiCad CLI is not installed at \(kicadCLI)")
+        }
+        let drcResponse = await sendDRC(
+            runtime,
+            payload: #"{"project_path":"\#(projectArtifact.url.path)","kicad_cli_path":"\#(kicadCLI)"}"#
+        )
+        XCTAssertTrue([WorkspaceMessageResponseStatus.ok, WorkspaceMessageResponseStatus.blocked].contains(drcResponse.status))
+        let drcArtifact = try XCTUnwrap(drcResponse.artifacts.first { $0.kind == "drc_report" })
+        XCTAssertTrue(FileManager.default.fileExists(atPath: drcArtifact.url.path))
+        print("AmpDemo PCB: \(boardArtifact.url.path)")
+        print("AmpDemo DRC report: \(drcArtifact.url.path)")
+    }
+
     private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
         let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
             .filter { $0.lastPathComponent.hasSuffix("design_intent.json") }
@@ -2268,6 +2331,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_erc"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendDRC(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_drc"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,

@@ -1034,15 +1034,24 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 ) {
                     return schematicBlock
                 }
-                let boardURL = directoryURL.appendingPathComponent("\(circuitIR.boardId).kicad_pcb")
-                try minimalKiCadBoardText(generator: "merlin-electronics")
-                    .write(to: boardURL, atomically: true, encoding: .utf8)
+                let board = try CircuitIRKiCadBoardMaterializer().materialize(
+                    circuitIR: circuitIR,
+                    outputDirectory: directoryURL
+                )
+                if let boardBlock = boardEvidenceBlock(
+                    request,
+                    context: context,
+                    circuitIR: circuitIR,
+                    boardURL: board.boardURL
+                ) {
+                    return boardBlock
+                }
                 return complete(
                     request,
                     artifacts: [
                         ArtifactRef(path: materialized.projectURL.path, kind: ElectronicsArtifactKind.kicadProject.rawValue),
                         ArtifactRef(path: materialized.schematicURL.path, kind: ElectronicsArtifactKind.schematic.rawValue),
-                        ArtifactRef(path: boardURL.path, kind: ElectronicsArtifactKind.board.rawValue),
+                        ArtifactRef(path: board.boardURL.path, kind: ElectronicsArtifactKind.board.rawValue),
                     ],
                     nextActions: ["apply_board_profile", "generate_net_classes"]
                 )
@@ -1999,6 +2008,77 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             message: message,
             affectedRefs: affectedRefs,
             suggestedAction: "Regenerate schematic from verified Circuit IR, component matrix, and footprint assignment evidence."
+        )
+    }
+
+    private func boardEvidenceBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        circuitIR: CircuitIR,
+        boardURL: URL
+    ) -> WorkspaceMessageResponse? {
+        guard let text = try? String(contentsOf: boardURL, encoding: .utf8) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Compiled PCB must produce readable KiCad board evidence.",
+                context: context,
+                warnings: [boardWarning("PCB_PARSE_REQUIRED", "Compiled PCB must produce readable KiCad board evidence.", [boardURL.path])],
+                nextActions: ["repair_pcb_placement"]
+            )
+        }
+        let warnings = boardEvidenceWarnings(circuitIR: circuitIR, boardText: text, boardPath: boardURL.path)
+        guard warnings.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Compiled PCB is missing required placement, outline, footprint, or net evidence.",
+                context: context,
+                warnings: warnings,
+                nextActions: ["repair_pcb_placement"]
+            )
+        }
+        return nil
+    }
+
+    private func boardEvidenceWarnings(
+        circuitIR: CircuitIR,
+        boardText: String,
+        boardPath: String
+    ) -> [KiCadWarning] {
+        var warnings: [KiCadWarning] = []
+        if !boardText.contains(#"(gr_rect"#) || !boardText.contains(#""Edge.Cuts""#) {
+            warnings.append(boardWarning("PCB_OUTLINE_REQUIRED", "PCB has no Edge.Cuts board outline.", [boardPath]))
+        }
+        for component in circuitIR.components {
+            if !boardText.contains(#"(property "Reference" "\#(component.refdes)""#)
+                && !boardText.contains(#"(fp_text reference "\#(component.refdes)""#) {
+                warnings.append(boardWarning("PCB_FOOTPRINT_REFERENCE_REQUIRED", "\(component.refdes) is missing as a placed footprint reference.", [component.refdes, boardPath]))
+            }
+            if let footprint = component.selectedFootprint,
+               !boardText.contains(#"(footprint "\#(footprint)""#) {
+                warnings.append(boardWarning("PCB_FOOTPRINT_REQUIRED", "\(component.refdes) footprint \(footprint) is missing from the board.", [component.refdes, footprint, boardPath]))
+            }
+            for pin in component.pins {
+                guard let pad = pin.footprintPad,
+                      boardText.contains(#"(pad "\#(pad)""#) else {
+                    warnings.append(boardWarning("PCB_PAD_REQUIRED", "\(component.refdes).\(pin.pinNumber) pad evidence is missing from the board.", [component.refdes, boardPath]))
+                    continue
+                }
+            }
+        }
+        for net in circuitIR.nets where !net.endpoints.isEmpty && !boardText.contains(#""\#(net.name)""#) {
+            warnings.append(boardWarning("PCB_NET_REQUIRED", "\(net.name) is missing from the board net table or pads.", [net.name, boardPath]))
+        }
+        return warnings
+    }
+
+    private func boardWarning(_ code: String, _ message: String, _ affectedRefs: [String]) -> KiCadWarning {
+        KiCadWarning(
+            code: code,
+            message: message,
+            affectedRefs: affectedRefs,
+            suggestedAction: "Regenerate PCB placement from verified Circuit IR, schematic, and footprint assignment evidence."
         )
     }
 

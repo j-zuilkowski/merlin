@@ -69,6 +69,229 @@ struct PCBBoardPlanner: Sendable {
     }
 }
 
+struct CircuitIRKiCadBoardMaterialization: Sendable, Equatable {
+    var boardURL: URL
+}
+
+enum CircuitIRKiCadBoardMaterializerError: Error, Equatable {
+    case invalidBoardEvidence([ElectronicsSchemaIssue])
+}
+
+struct CircuitIRKiCadBoardMaterializer: Sendable {
+    func materialize(
+        circuitIR: CircuitIR,
+        outputDirectory: URL
+    ) throws -> CircuitIRKiCadBoardMaterialization {
+        let validation = validate(circuitIR: circuitIR)
+        guard validation.isValid else {
+            throw CircuitIRKiCadBoardMaterializerError.invalidBoardEvidence(validation.issues)
+        }
+
+        try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        let boardURL = outputDirectory.appendingPathComponent("\(circuitIR.boardId).kicad_pcb")
+        try boardText(circuitIR: circuitIR).write(to: boardURL, atomically: true, encoding: .utf8)
+        return CircuitIRKiCadBoardMaterialization(boardURL: boardURL)
+    }
+
+    func validate(circuitIR: CircuitIR) -> ElectronicsSchemaValidationResult {
+        var issues: [ElectronicsSchemaIssue] = []
+        for component in circuitIR.components {
+            if component.selectedFootprint?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+                issues.append(issue("PCB_FOOTPRINT_REQUIRED", "\(component.refdes) has no selected footprint."))
+            }
+            if component.pins.isEmpty {
+                issues.append(issue("PCB_PINS_REQUIRED", "\(component.refdes) has no pin evidence."))
+            }
+            for pin in component.pins where pin.footprintPad?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true {
+                issues.append(issue("PCB_PIN_PAD_REQUIRED", "\(component.refdes).\(pin.pinNumber) has no footprint pad evidence."))
+            }
+        }
+        return ElectronicsSchemaValidationResult(issues: issues)
+    }
+
+    private func boardText(circuitIR: CircuitIR) -> String {
+        let outline = boardOutline(componentCount: circuitIR.components.count)
+        let netIDs = netIDsByName(circuitIR: circuitIR)
+        let pinNetNames = netNamesByEndpoint(circuitIR: circuitIR)
+        let nets = netIDs
+            .sorted { $0.value < $1.value }
+            .map { #"  (net \#($0.value) "\#(escaped($0.key))")"# }
+            .joined(separator: "\n")
+        let footprints = circuitIR.components.enumerated().map { index, component in
+            footprintNode(
+                component: component,
+                index: index,
+                outline: outline,
+                netIDs: netIDs,
+                pinNetNames: pinNetNames
+            )
+        }
+            .joined(separator: "\n")
+
+        return """
+        (kicad_pcb
+          (version 20250114)
+          (generator "merlin-electronics")
+          (general (thickness 1.6))
+          (paper "A4")
+          (layers
+            (0 "F.Cu" signal)
+            (31 "B.Cu" signal)
+            (32 "B.Adhes" user "B.Adhesive")
+            (33 "F.Adhes" user "F.Adhesive")
+            (34 "B.Paste" user)
+            (35 "F.Paste" user)
+            (36 "B.SilkS" user "B.Silkscreen")
+            (37 "F.SilkS" user "F.Silkscreen")
+            (38 "B.Mask" user)
+            (39 "F.Mask" user)
+            (40 "Dwgs.User" user "User.Drawings")
+            (41 "Cmts.User" user "User.Comments")
+            (42 "Eco1.User" user "User.Eco1")
+            (43 "Eco2.User" user "User.Eco2")
+            (44 "Edge.Cuts" user)
+            (45 "Margin" user)
+            (46 "B.CrtYd" user "B.Courtyard")
+            (47 "F.CrtYd" user)
+            (48 "B.Fab" user)
+            (49 "F.Fab" user)
+          )
+          (setup
+            (pad_to_mask_clearance 0)
+            (allow_soldermask_bridges_in_footprints no)
+            (pcbplotparams)
+          )
+          (net 0 "")
+        \(nets)
+          (gr_rect
+            (start 0 0)
+            (end \(number(outline.widthMm)) \(number(outline.heightMm)))
+            (stroke (width 0.1) (type default))
+            (fill no)
+            (layer "Edge.Cuts")
+            (uuid "\(stableUUID("outline", circuitIR.designId, circuitIR.boardId))")
+          )
+        \(footprints)
+        )
+        """
+    }
+
+    private func footprintNode(
+        component: CircuitComponent,
+        index: Int,
+        outline: BoardOutline,
+        netIDs: [String: Int],
+        pinNetNames: [String: String]
+    ) -> String {
+        let at = placement(index: index, outline: outline)
+        let footprint = escaped(component.selectedFootprint ?? "Merlin:Unresolved")
+        let value = escaped(component.constraints["value"] ?? component.manufacturerPartNumber ?? component.role)
+        let pads = component.pins.enumerated().map { padIndex, pin in
+            padNode(
+                component: component,
+                pin: pin,
+                padIndex: padIndex,
+                netIDs: netIDs,
+                pinNetNames: pinNetNames
+            )
+        }
+            .joined(separator: "\n")
+
+        return """
+          (footprint "\(footprint)"
+            (layer "F.Cu")
+            (uuid "\(stableUUID("footprint", component.refdes))")
+            (at \(number(at.x)) \(number(at.y)) 0)
+            (property "Reference" "\(escaped(component.refdes))" (at 0 -2 0) (layer "F.SilkS") (uuid "\(stableUUID("property", component.refdes, "reference"))")
+              (effects (font (size 1 1) (thickness 0.15))))
+            (property "Value" "\(value)" (at 0 2 0) (layer "F.Fab") (uuid "\(stableUUID("property", component.refdes, "value"))")
+              (effects (font (size 1 1) (thickness 0.15))))
+            (property "Footprint" "\(footprint)" (at 0 3.5 0) (layer "F.Fab") hide (uuid "\(stableUUID("property", component.refdes, "footprint"))")
+              (effects (font (size 1 1) (thickness 0.15))))
+            (fp_text reference "\(escaped(component.refdes))" (at 0 -2 0) (layer "F.SilkS")
+              (effects (font (size 1 1) (thickness 0.15))))
+            (fp_text value "\(value)" (at 0 2 0) (layer "F.Fab")
+              (effects (font (size 1 1) (thickness 0.15))))
+            (attr through_hole)
+        \(pads)
+          )
+        """
+    }
+
+    private func padNode(
+        component: CircuitComponent,
+        pin: CircuitPin,
+        padIndex: Int,
+        netIDs: [String: Int],
+        pinNetNames: [String: String]
+    ) -> String {
+        let pad = escaped(pin.footprintPad ?? pin.pinNumber)
+        let netName = pinNetNames["\(component.refdes)|\(pin.pinNumber)"] ?? ""
+        let netID = netIDs[netName] ?? 0
+        let net = netID == 0 ? "" : #" (net \#(netID) "\#(escaped(netName))")"#
+        let x = Double(padIndex) * 2.54
+        return #"    (pad "\#(pad)" thru_hole circle (at \#(number(x)) 0) (size 1.6 1.6) (drill 0.8) (layers "*.Cu" "*.Mask")\#(net) (uuid "\#(stableUUID("pad", component.refdes, pad))"))"#
+    }
+
+    private func netIDsByName(circuitIR: CircuitIR) -> [String: Int] {
+        var result: [String: Int] = [:]
+        for net in circuitIR.nets where !net.endpoints.isEmpty && result[net.name] == nil {
+            result[net.name] = result.count + 1
+        }
+        return result
+    }
+
+    private func netNamesByEndpoint(circuitIR: CircuitIR) -> [String: String] {
+        var result: [String: String] = [:]
+        for net in circuitIR.nets {
+            for endpoint in net.endpoints {
+                result["\(endpoint.componentRefdes)|\(endpoint.pinNumber)"] = net.name
+            }
+        }
+        return result
+    }
+
+    private func boardOutline(componentCount: Int) -> BoardOutline {
+        let columns = min(max(componentCount, 1), 6)
+        let rows = Int(ceil(Double(max(componentCount, 1)) / Double(columns)))
+        return BoardOutline(widthMm: max(120, Double(columns) * 26 + 20), heightMm: max(80, Double(rows) * 22 + 20))
+    }
+
+    private func placement(index: Int, outline: BoardOutline) -> KiCadSchematicDocument.Point {
+        let columns = max(1, Int((outline.widthMm - 20) / 26))
+        let column = index % columns
+        let row = index / columns
+        return KiCadSchematicDocument.Point(x: 12 + Double(column) * 26, y: 14 + Double(row) * 22)
+    }
+
+    private func issue(_ code: String, _ message: String) -> ElectronicsSchemaIssue {
+        ElectronicsSchemaIssue(code: code, message: message)
+    }
+
+    private func escaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private func number(_ value: Double) -> String {
+        let rounded = (value * 1000).rounded() / 1000
+        if rounded == floor(rounded) {
+            return String(Int(rounded))
+        }
+        return String(format: "%.3f", rounded).replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+    }
+
+    private func stableUUID(_ parts: String...) -> String {
+        let input = parts.joined(separator: "|")
+        let hash = input.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) { partial, scalar in
+            (partial ^ UInt64(scalar.value)) &* 1_099_511_628_211
+        }
+        return String(format: "%016llx", hash)
+    }
+}
+
 struct FootprintAssignmentVerifier: Sendable {
     func verify(
         circuitIR: CircuitIR,
