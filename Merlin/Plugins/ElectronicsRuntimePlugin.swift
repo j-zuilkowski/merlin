@@ -1022,6 +1022,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let directoryURL = URL(fileURLWithPath: outputDirectory, isDirectory: true)
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
             if let circuitIR = compileCircuitIR(from: object) {
+                let catalogConfig = runtimeCatalogConfig(from: object, context: context)
+                let footprintRoot = boardFootprintRoot(from: object, config: catalogConfig, context: context)
                 let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
                     circuitIR: circuitIR,
                     outputDirectory: directoryURL
@@ -1034,7 +1036,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 ) {
                     return schematicBlock
                 }
-                let board = try CircuitIRKiCadBoardMaterializer().materialize(
+                let board = try CircuitIRKiCadBoardMaterializer(footprintRoot: footprintRoot).materialize(
                     circuitIR: circuitIR,
                     outputDirectory: directoryURL
                 )
@@ -4380,6 +4382,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         try? cache.write(discovered, to: cacheDirectory)
         return discovered
+    }
+
+    private func boardFootprintRoot(
+        from object: [String: Any],
+        config: RuntimeCatalogConfig,
+        context: WorkspaceHandlerContext
+    ) -> URL? {
+        if let path = stringValue(object, keys: ["kicad_footprint_library_root"]) {
+            return URL(fileURLWithPath: path)
+        }
+        if let path = config.kicadFootprintLibraryRoot {
+            return URL(fileURLWithPath: path)
+        }
+        return discoveredKiCadLibraryRoots(from: object, config: config, context: context)?.footprintRoot
     }
 
     private func decodeJSONFile<T: Decodable>(_ path: String) -> T? {

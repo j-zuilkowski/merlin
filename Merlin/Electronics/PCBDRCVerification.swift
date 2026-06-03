@@ -78,6 +78,12 @@ enum CircuitIRKiCadBoardMaterializerError: Error, Equatable {
 }
 
 struct CircuitIRKiCadBoardMaterializer: Sendable {
+    var footprintRoot: URL?
+
+    init(footprintRoot: URL? = nil) {
+        self.footprintRoot = footprintRoot
+    }
+
     func materialize(
         circuitIR: CircuitIR,
         outputDirectory: URL
@@ -184,8 +190,20 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         pinNetNames: [String: String]
     ) -> String {
         let at = placement(index: index, outline: outline)
-        let footprint = escaped(component.selectedFootprint ?? "Merlin:Unresolved")
+        let footprint = component.selectedFootprint ?? "Merlin:Unresolved"
         let value = escaped(component.constraints["value"] ?? component.manufacturerPartNumber ?? component.role)
+        if let imported = importedFootprintNode(
+            component: component,
+            footprint: footprint,
+            value: value,
+            at: at,
+            netIDs: netIDs,
+            pinNetNames: pinNetNames
+        ) {
+            return imported
+        }
+
+        let escapedFootprint = escaped(footprint)
         let pads = component.pins.enumerated().map { padIndex, pin in
             padNode(
                 component: component,
@@ -198,7 +216,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             .joined(separator: "\n")
 
         return """
-          (footprint "\(footprint)"
+          (footprint "\(escapedFootprint)"
             (layer "F.Cu")
             (uuid "\(stableUUID("footprint", component.refdes))")
             (at \(number(at.x)) \(number(at.y)) 0)
@@ -206,7 +224,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
               (effects (font (size 1 1) (thickness 0.15))))
             (property "Value" "\(value)" (at 0 2 0) (layer "F.Fab") (uuid "\(stableUUID("property", component.refdes, "value"))")
               (effects (font (size 1 1) (thickness 0.15))))
-            (property "Footprint" "\(footprint)" (at 0 3.5 0) (layer "F.Fab") hide (uuid "\(stableUUID("property", component.refdes, "footprint"))")
+            (property "Footprint" "\(escapedFootprint)" (at 0 3.5 0) (layer "F.Fab") hide (uuid "\(stableUUID("property", component.refdes, "footprint"))")
               (effects (font (size 1 1) (thickness 0.15))))
             (fp_text reference "\(escaped(component.refdes))" (at 0 -2 0) (layer "F.SilkS")
               (effects (font (size 1 1) (thickness 0.15))))
@@ -216,6 +234,224 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         \(pads)
           )
         """
+    }
+
+    private func importedFootprintNode(
+        component: CircuitComponent,
+        footprint: String,
+        value: String,
+        at: KiCadSchematicDocument.Point,
+        netIDs: [String: Int],
+        pinNetNames: [String: String]
+    ) -> String? {
+        guard let sourceURL = footprintSourceURL(for: footprint),
+              var text = try? String(contentsOf: sourceURL, encoding: .utf8) else {
+            return nil
+        }
+        text = rewriteFootprintHeader(text, fullName: footprint)
+        text = ensureFootprintPlacement(text, component: component, at: at)
+        text = rewriteFootprintProperty(text, name: "Reference", value: component.refdes)
+        text = rewriteFootprintProperty(text, name: "Value", value: value)
+        text = rewriteFootprintText(text, kind: "reference", value: component.refdes)
+        text = rewriteFootprintText(text, kind: "value", value: value)
+        text = rewriteFootprintPadNets(text, component: component, netIDs: netIDs, pinNetNames: pinNetNames)
+        text = rewriteUUIDs(text, component: component)
+        return text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .map { "  \($0)" }
+            .joined(separator: "\n")
+    }
+
+    private func footprintSourceURL(for footprint: String) -> URL? {
+        guard let footprintRoot,
+              let separator = footprint.firstIndex(of: ":") else {
+            return nil
+        }
+        let library = String(footprint[..<separator])
+        let name = String(footprint[footprint.index(after: separator)...])
+        let url = footprintRoot
+            .appendingPathComponent("\(library).pretty", isDirectory: true)
+            .appendingPathComponent("\(name).kicad_mod")
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
+    private func rewriteFootprintHeader(_ text: String, fullName: String) -> String {
+        guard let firstQuote = text.firstIndex(of: "\""),
+              let secondQuote = text[text.index(after: firstQuote)...].firstIndex(of: "\"") else {
+            return text
+        }
+        var result = text
+        result.replaceSubrange(text.index(after: firstQuote)..<secondQuote, with: escaped(fullName))
+        return result
+    }
+
+    private func ensureFootprintPlacement(
+        _ text: String,
+        component: CircuitComponent,
+        at: KiCadSchematicDocument.Point
+    ) -> String {
+        let placement = #"(at \#(number(at.x)) \#(number(at.y)) 0)"#
+        let result = insertAfterFirstNode(named: "layer", in: text, node: "\t\(placement)")
+        return insertAfterFirstNode(
+            named: "at",
+            in: result,
+            node: "\t(uuid \"\(stableUUID("footprint", component.refdes))\")"
+        )
+    }
+
+    private func rewriteFootprintProperty(_ text: String, name: String, value: String) -> String {
+        let replaced = replaceFirstMatching(
+            text,
+            pattern: #"\(property\s+"\#(NSRegularExpression.escapedPattern(for: name))"\s+"(?:[^"\\]|\\.)*""#,
+            replacement: #"(property "\#(escaped(name))" "\#(escaped(value))""#
+        )
+        if replaced != text {
+            return replaced
+        }
+        return insertAfterFirstNode(
+            named: "at",
+            in: text,
+            node: "\t(property \"\(escaped(name))\" \"\(escaped(value))\" (at 0 0 0) (layer \"F.Fab\") (uuid \"\(stableUUID("property", value, name))\"))"
+        )
+    }
+
+    private func rewriteFootprintText(_ text: String, kind: String, value: String) -> String {
+        replaceFirstMatching(
+            text,
+            pattern: #"\(fp_text\s+\#(NSRegularExpression.escapedPattern(for: kind))\s+"(?:[^"\\]|\\.)*""#,
+            replacement: #"(fp_text \#(kind) "\#(escaped(value))""#
+        )
+    }
+
+    private func rewriteFootprintPadNets(
+        _ text: String,
+        component: CircuitComponent,
+        netIDs: [String: Int],
+        pinNetNames: [String: String]
+    ) -> String {
+        var result = text
+        var searchIndex = result.startIndex
+        while let padStart = result[searchIndex...].range(of: "(pad ")?.lowerBound,
+              let padEnd = balancedNodeEnd(in: result, start: padStart) {
+            let originalBlock = String(result[padStart..<padEnd])
+            let padName = firstQuotedValue(in: originalBlock)
+            let netName = padName.flatMap { pad in
+                component.pins.first(where: { ($0.footprintPad ?? $0.pinNumber) == pad })
+                    .flatMap { pinNetNames["\(component.refdes)|\($0.pinNumber)"] }
+            } ?? ""
+            let replacement: String
+            if let netID = netIDs[netName], netID > 0 {
+                replacement = replaceOrInsertNet(
+                    in: originalBlock,
+                    netID: netID,
+                    netName: netName
+                )
+            } else {
+                replacement = originalBlock
+            }
+            result.replaceSubrange(padStart..<padEnd, with: replacement)
+            searchIndex = result.index(padStart, offsetBy: replacement.count, limitedBy: result.endIndex) ?? result.endIndex
+        }
+        return result
+    }
+
+    private func replaceOrInsertNet(in padBlock: String, netID: Int, netName: String) -> String {
+        let netNode = #"(net \#(netID) "\#(escaped(netName))")"#
+        let replaced = replaceFirstNode(named: "net", in: padBlock, with: "\t\t\(netNode)")
+        if replaced != padBlock {
+            return replaced
+        }
+        guard let final = padBlock.lastIndex(of: ")") else { return padBlock }
+        var result = padBlock
+        result.insert(contentsOf: "\n\t\t\(netNode)", at: final)
+        return result
+    }
+
+    private func rewriteUUIDs(_ text: String, component: CircuitComponent) -> String {
+        var count = 0
+        return replaceAllMatching(text, pattern: #"\(uuid\s+"[^"]+"\)"#) {
+            count += 1
+            return #"(uuid "\#(stableUUID("footprint-uuid", component.refdes, "\(count)"))")"#
+        }
+    }
+
+    private func replaceFirstNode(named name: String, in text: String, with replacement: String) -> String {
+        guard let start = text.range(of: "(\(name) ")?.lowerBound,
+              let end = balancedNodeEnd(in: text, start: start) else {
+            return text
+        }
+        var result = text
+        result.replaceSubrange(start..<end, with: replacement)
+        return result
+    }
+
+    private func insertAfterFirstNode(named name: String, in text: String, node: String) -> String {
+        guard let start = text.range(of: "(\(name) ")?.lowerBound,
+              let end = balancedNodeEnd(in: text, start: start) else {
+            return text
+        }
+        var result = text
+        result.insert(contentsOf: "\n\(node)", at: end)
+        return result
+    }
+
+    private func balancedNodeEnd(in text: String, start: String.Index) -> String.Index? {
+        var depth = 0
+        var inString = false
+        var escapedCharacter = false
+        var index = start
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escapedCharacter {
+                    escapedCharacter = false
+                } else if character == "\\" {
+                    escapedCharacter = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return text.index(after: index)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+
+    private func firstQuotedValue(in text: String) -> String? {
+        guard let firstQuote = text.firstIndex(of: "\""),
+              let secondQuote = text[text.index(after: firstQuote)...].firstIndex(of: "\"") else {
+            return nil
+        }
+        return String(text[text.index(after: firstQuote)..<secondQuote])
+    }
+
+    private func replaceFirstMatching(_ text: String, pattern: String, replacement: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.stringByReplacingMatches(in: text, range: range, withTemplate: replacement)
+    }
+
+    private func replaceAllMatching(
+        _ text: String,
+        pattern: String,
+        replacement: () -> String
+    ) -> String {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        let matches = regex.matches(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)).reversed()
+        var result = text
+        for match in matches {
+            guard let range = Range(match.range, in: result) else { continue }
+            result.replaceSubrange(range, with: replacement())
+        }
+        return result
     }
 
     private func padNode(

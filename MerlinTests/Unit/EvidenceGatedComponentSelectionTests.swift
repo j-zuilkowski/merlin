@@ -1738,6 +1738,14 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue([WorkspaceMessageResponseStatus.ok, WorkspaceMessageResponseStatus.blocked].contains(drcResponse.status))
         let drcArtifact = try XCTUnwrap(drcResponse.artifacts.first { $0.kind == "drc_report" })
         XCTAssertTrue(FileManager.default.fileExists(atPath: drcArtifact.url.path))
+        let drcReport = try KiCadDRCParser().parse(jsonData: Data(contentsOf: drcArtifact.url))
+        let libraryFootprintViolations = drcReport.violations.filter {
+            $0.code == "lib_footprint_issues" || $0.code == "lib_footprint_mismatch"
+        }
+        XCTAssertTrue(
+            libraryFootprintViolations.isEmpty,
+            "PCB must embed real KiCad library footprints; library footprint DRC violations: \(libraryFootprintViolations)"
+        )
         print("AmpDemo PCB: \(boardArtifact.url.path)")
         print("AmpDemo DRC report: \(drcArtifact.url.path)")
     }
@@ -1855,6 +1863,63 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let schematicText = try String(contentsOf: schematic.url, encoding: .utf8)
         XCTAssertTrue(schematicText.contains("QOUT1"))
         XCTAssertTrue(schematicText.contains("RBASS"))
+    }
+
+    func testBoardMaterializerEmbedsRealKiCadFootprintBodyAndNets() throws {
+        let root = try temporaryDirectory()
+        let footprintRoot = try writeKiCadFootprintTree(root: root)
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let circuitIR = CircuitIR(
+            designId: "resistor-test",
+            boardId: "resistor-test",
+            components: [
+                CircuitComponent(
+                    refdes: "R1",
+                    role: "test resistor",
+                    selectedSymbol: "Device:R",
+                    selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                    manufacturerPartNumber: "RC0603FR-0710KL",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "R1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "R1", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ],
+                    constraints: ["value": "10k"]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "VIN",
+                    role: "input",
+                    endpoints: [CircuitNetEndpoint(componentRefdes: "R1", pinNumber: "1")],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+                CircuitNet(
+                    name: "VOUT",
+                    role: "output",
+                    endpoints: [CircuitNetEndpoint(componentRefdes: "R1", pinNumber: "2")],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+
+        let materialized = try CircuitIRKiCadBoardMaterializer(footprintRoot: footprintRoot).materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputURL
+        )
+
+        let boardText = try String(contentsOf: materialized.boardURL, encoding: .utf8)
+        XCTAssertTrue(boardText.contains(#"(footprint "Resistor_SMD:R_0603_1608Metric""#))
+        XCTAssertTrue(boardText.contains(#"(property "Reference" "R1""#))
+        XCTAssertTrue(boardText.contains(#"(property "Value" "10k""#))
+        XCTAssertTrue(boardText.contains(#"(pad "1" smd roundrect"#), "The board must embed the real library pad geometry, not a synthetic through-hole pad.")
+        XCTAssertTrue(boardText.contains(#"(net 1 "VIN")"#))
+        XCTAssertTrue(boardText.contains(#"(net 2 "VOUT")"#))
+        XCTAssertFalse(boardText.contains(#"(pad "1" thru_hole circle"#))
     }
 
     func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {
@@ -2215,14 +2280,14 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
     private func writeAmpDemoFootprints(root: URL) throws -> URL {
         let url = root.appendingPathComponent("ampdemo-footprints.json")
         let footprints = [
-            KiCadFootprintDefinition(name: "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm", pads: numberedPads(["1", "2"])),
-            KiCadFootprintDefinition(name: "Diode_THT:Diode_Bridge_GBU", pads: namedPads(["AC1", "AC2", "PLUS", "MINUS"])),
+            KiCadFootprintDefinition(name: "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Diode_THT:Diode_Bridge_Vishay_GBU", pads: namedPads(["AC1", "AC2", "PLUS", "MINUS"])),
             KiCadFootprintDefinition(name: "Capacitor_THT:CP_Radial_D18.0mm_P7.50mm", pads: numberedPads(["1", "2"])),
-            KiCadFootprintDefinition(name: "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2_Horizontal", pads: numberedPads(["1", "2"])),
             KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-92_Inline", pads: namedPads(["B", "C", "E"])),
             KiCadFootprintDefinition(name: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal", pads: numberedPads(["1", "2"])),
-            KiCadFootprintDefinition(name: "Capacitor_THT:C_Radial_D5.0mm_P5.00mm", pads: numberedPads(["1", "2"])),
-            KiCadFootprintDefinition(name: "Potentiometer_THT:Potentiometer_Bourns_PDB241-GTR", pads: namedPads(["A", "W", "B"])),
+            KiCadFootprintDefinition(name: "Capacitor_THT:C_Rect_L7.2mm_W3.5mm_P5.00mm", pads: numberedPads(["1", "2"])),
+            KiCadFootprintDefinition(name: "Potentiometer_THT:Potentiometer_Bourns_PTV09A-1_Single_Vertical", pads: namedPads(["A", "W", "B"])),
             KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-220-3_Vertical", pads: namedPads(["B", "C", "E"])),
             KiCadFootprintDefinition(name: "Package_TO_SOT_THT:TO-3", pads: namedPads(["B", "C", "E"])),
         ]
