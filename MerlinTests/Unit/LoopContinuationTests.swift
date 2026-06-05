@@ -478,6 +478,83 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testElectronicsEvidenceGateProseCannotBeClearedByCriticPass() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = true
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "read-spec",
+                name: "read_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md"}"#
+            ),
+            .text("I have reviewed the requirements and the schematic design is acceptable, but I will not call a KiCad tool."),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.criticOverride = PassCritic()
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read and parse the AmpDemo spec.md to extract all requirements",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Create DesignIntent document with topology, power supply, and safety constraints",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .highStakes
+                ),
+                PlanStep(
+                    description: "Build KiCad schematic",
+                    successCriteria: "schematic artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool("kicad_build_intent_model") { _ in
+            XCTFail("The regression exercises the prose/no-tool path; no tool should be reached.")
+            return #"{"artifacts":[]}"#
+        }
+
+        for await _ in engine.send(userMessage: "Run the full AmpDemo electronics workflow") {}
+        let continuationText = try readInject()
+
+        var notes: [String] = []
+        var cleanStops: [String] = []
+        for await event in engine.send(userMessage: continuationText) {
+            switch event {
+            case .systemNote(let note):
+                notes.append(note)
+            case .cleanStop(let reason, let summary):
+                cleanStops.append("\(reason): \(summary)")
+            default:
+                break
+            }
+        }
+
+        XCTAssertTrue(
+            notes.contains { $0.contains("electronics workflow guard") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertFalse(
+            notes.contains { $0.contains("verification passed") },
+            "Critic pass must not clear electronics continuations without verified tool/artifact evidence"
+        )
+        XCTAssertTrue(
+            cleanStops.contains { $0.contains("electronics workflow produced prose") },
+            cleanStops.joined(separator: "\n")
+        )
+    }
+
     func testReadOnlySpecDoesNotSatisfyToolchainOrVendorBOMStep() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

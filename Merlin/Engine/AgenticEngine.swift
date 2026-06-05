@@ -1375,7 +1375,7 @@ final class AgenticEngine {
                     if shouldForceElectronicsToolInvocation(
                         originalTask: userMessage,
                         responseText: fullText
-                    ) {
+                    ) || shouldForceElectronicsToolInvocationForEvidenceGate() {
                         if electronicsToolInvocationCorrectionCount < 2 {
                             electronicsToolInvocationCorrectionCount += 1
                             let availableTools = availableElectronicsToolNamesForCorrection()
@@ -4241,6 +4241,32 @@ final class AgenticEngine {
             || pendingContinuationEvidence.contains { evidence in
                 Self.electronicsReadOnlyInspectionToolNames.contains(evidence.toolName)
             }
+    }
+
+    private func shouldForceElectronicsToolInvocationForEvidenceGate() -> Bool {
+        guard activeDomainIDs.contains(ElectronicsDomain.defaultID),
+              pendingContinuationUsesEvidenceGate,
+              pendingContinuationBlockedReason == nil,
+              hasVerifiedRequirementsInspectionEvidence()
+        else { return false }
+
+        let planSteps = pendingContinuationAllSteps.isEmpty
+            ? pendingContinuationSteps
+            : pendingContinuationAllSteps
+        guard !planSteps.isEmpty else { return false }
+
+        let verifiedCount = verifiedElectronicsCompletedPrefix(in: planSteps)
+        guard verifiedCount < planSteps.count else { return false }
+
+        switch electronicsRequirement(for: planSteps[verifiedCount]) {
+        case .designIntent, .designIntentApproval, .circuitIR, .componentSelection,
+             .footprintAssignment, .schematic, .boardProfile, .netClasses,
+             .placement, .routing, .erc, .drc, .simulation, .fabrication,
+             .bom, .electronicsTool:
+            return true
+        case .requirementsInspection, .generic:
+            return false
+        }
     }
 
     private func availableElectronicsToolNamesForCorrection() -> [String] {
