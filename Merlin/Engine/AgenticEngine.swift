@@ -3047,7 +3047,7 @@ final class AgenticEngine {
         if let circuitIRPath = circuitIRArtifactPath(from: evidence) {
             latestVerifiedCircuitIRArtifactPath = circuitIRPath
         }
-        if let componentMatrixPath = componentMatrixArtifactPath(from: evidence) {
+        if let componentMatrixPath = completeComponentMatrixArtifactPath(from: evidence) {
             latestVerifiedComponentMatrixArtifactPath = componentMatrixPath
         }
         if let footprintAssignmentPath = footprintAssignmentArtifactPath(from: evidence) {
@@ -3078,7 +3078,7 @@ final class AgenticEngine {
         if let circuitIRPath = circuitIRArtifactPath(from: evidence) {
             latestVerifiedCircuitIRArtifactPath = circuitIRPath
         }
-        if let componentMatrixPath = componentMatrixArtifactPath(from: evidence) {
+        if let componentMatrixPath = completeComponentMatrixArtifactPath(from: evidence) {
             latestVerifiedComponentMatrixArtifactPath = componentMatrixPath
         }
         if let footprintAssignmentPath = footprintAssignmentArtifactPath(from: evidence) {
@@ -3251,10 +3251,12 @@ final class AgenticEngine {
             return pendingContinuationEvidence.contains { evidence in
                 guard evidence.toolName == "kicad_select_components" else { return false }
                 let text = evidenceText(evidence)
-                return componentMatrixArtifactPath(from: evidence) != nil
+                return completeComponentMatrixArtifactPath(from: evidence) != nil
                     || latestComponentMatrixArtifactPath() != nil
-                    || text.contains("component_matrix")
-                    || text.contains("componentmatrix")
+                    || ((text.contains("component_matrix") || text.contains("componentmatrix"))
+                        && extractedPaths(from: rawEvidenceText(evidence)).contains {
+                            ComponentMatrixEvidence.isCompleteSelectionArtifact(atPath: $0)
+                        })
             }
         case .footprintAssignment:
             return pendingContinuationEvidence.contains { evidence in
@@ -3484,6 +3486,14 @@ final class AgenticEngine {
         guard isKiCadTool(toolName) else { return false }
         if result.isError { return true }
         let text = rawText.lowercased()
+        if toolName == "kicad_select_components",
+           extractedPaths(from: rawText).contains(where: { path in
+               let name = URL(fileURLWithPath: path).lastPathComponent.lowercased()
+               guard name.contains("component_matrix") || name.contains("componentmatrix") else { return false }
+               return ComponentMatrixEvidence.selectionState(atPath: path) != .complete
+           }) {
+            return true
+        }
         return text.contains("blocked_verification_gate")
             || text.contains("\"status\":\"blocked\"")
             || text.contains("\"status\": \"blocked\"")
@@ -3595,12 +3605,19 @@ final class AgenticEngine {
 
     private func latestComponentMatrixArtifactPath() -> String? {
         for evidence in pendingContinuationEvidence.reversed() {
-            if let path = componentMatrixArtifactPath(from: evidence) {
+            if let path = completeComponentMatrixArtifactPath(from: evidence) {
                 return path
             }
         }
-        return latestVerifiedComponentMatrixArtifactPath
-            ?? latestProjectElectronicsArtifactPath(kindNeedles: ["component_matrix", "componentmatrix"])
+        if let path = latestVerifiedComponentMatrixArtifactPath,
+           ComponentMatrixEvidence.isCompleteSelectionArtifact(atPath: path) {
+            return path
+        }
+        guard let path = latestProjectElectronicsArtifactPath(kindNeedles: ["component_matrix", "componentmatrix"]),
+              ComponentMatrixEvidence.isCompleteSelectionArtifact(atPath: path) else {
+            return nil
+        }
+        return path
     }
 
     private func latestFootprintAssignmentArtifactPath() -> String? {
@@ -3875,6 +3892,14 @@ final class AgenticEngine {
             kindNeedles: ["component_matrix", "componentmatrix"],
             pathNeedles: ["component_matrix", "componentmatrix"]
         )
+    }
+
+    private func completeComponentMatrixArtifactPath(from evidence: ContinuationToolEvidence) -> String? {
+        guard let path = componentMatrixArtifactPath(from: evidence),
+              ComponentMatrixEvidence.isCompleteSelectionArtifact(atPath: path) else {
+            return nil
+        }
+        return path
     }
 
     private func footprintAssignmentArtifactPath(from evidence: ContinuationToolEvidence) -> String? {

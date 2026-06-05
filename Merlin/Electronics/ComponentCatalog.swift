@@ -188,6 +188,95 @@ struct ComponentMatrix: Codable, Sendable, Equatable {
     }
 }
 
+enum ComponentMatrixSelectionState: Equatable {
+    case complete
+    case blocked
+    case invalid
+}
+
+enum ComponentMatrixEvidence {
+    static func selectionState(atPath path: String) -> ComponentMatrixSelectionState {
+        guard FileManager.default.fileExists(atPath: path),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return .invalid
+        }
+        return selectionState(in: data)
+    }
+
+    static func selectionState(in data: Data) -> ComponentMatrixSelectionState {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .invalid
+        }
+
+        let decisionStates = selectionStates(in: object["decisions"] as? [[String: Any]])
+        let legacyComponentStates = selectionStates(inLegacyComponents: object["components"] as? [[String: Any]])
+        let states = decisionStates + legacyComponentStates
+        if !states.isEmpty {
+            return aggregate(states)
+        }
+
+        return .invalid
+    }
+
+    static func isCompleteSelectionArtifact(atPath path: String) -> Bool {
+        selectionState(atPath: path) == .complete
+    }
+
+    static func isBlockedSelectionArtifact(atPath path: String) -> Bool {
+        selectionState(atPath: path) == .blocked
+    }
+
+    private static func aggregate(_ states: [ComponentMatrixSelectionState]) -> ComponentMatrixSelectionState {
+        guard states.allSatisfy({ $0 == .complete }) else { return .blocked }
+        return .complete
+    }
+
+    private static func selectionStates(in decisions: [[String: Any]]?) -> [ComponentMatrixSelectionState] {
+        guard let decisions, !decisions.isEmpty else { return [] }
+        return decisions.map { decision in
+            let status = normalizedStatus(decision["status"])
+            guard status == PartSelectionStatus.selected.rawValue else { return .blocked }
+            guard let candidate = decision["selected_candidate"] as? [String: Any],
+                  hasConcreteCandidateIdentity(candidate) else {
+                return .blocked
+            }
+            return .complete
+        }
+    }
+
+    private static func selectionStates(inLegacyComponents components: [[String: Any]]?) -> [ComponentMatrixSelectionState] {
+        guard let components, !components.isEmpty else { return [] }
+        return components.map { component in
+            let status = normalizedStatus(component["selection_status"])
+            if !status.isEmpty, status != PartSelectionStatus.selected.rawValue {
+                return .blocked
+            }
+            return hasConcreteCandidateIdentity(component) ? .complete : .blocked
+        }
+    }
+
+    private static func normalizedStatus(_ value: Any?) -> String {
+        (value as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            ?? ""
+    }
+
+    private static func hasConcreteCandidateIdentity(_ object: [String: Any]) -> Bool {
+        let mpn = nonEmptyString(object["mpn"])
+            ?? nonEmptyString(object["manufacturer_part_number"])
+            ?? nonEmptyString(object["vendor_part"])
+        let manufacturer = nonEmptyString(object["manufacturer"])
+        return mpn != nil && manufacturer != nil
+    }
+
+    private static func nonEmptyString(_ value: Any?) -> String? {
+        guard let string = value as? String else { return nil }
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
 struct ComponentCatalogValidationIssue: Codable, Sendable, Equatable {
     var code: String
     var message: String

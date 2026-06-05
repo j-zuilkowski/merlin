@@ -1477,13 +1477,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         artifact: ArtifactRef,
         context: WorkspaceHandlerContext
     ) -> WorkspaceMessageResponse? {
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: artifact.path)),
-              let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: data),
-              !matrix.decisions.allSatisfy({ $0.status == .selected && $0.selectedCandidate != nil }) else {
+        guard ComponentMatrixEvidence.selectionState(atPath: artifact.path) != .complete else {
             return nil
         }
         let warning = KiCadWarning(
-            code: componentSelectionBlockedCode(matrix),
+            code: componentSelectionBlockedCode(atPath: artifact.path),
             message: "Component selection has unresolved decisions that require catalog evidence, a concrete part choice, or revised constraints.",
             affectedRefs: affectedRefs(from: request),
             suggestedAction: "Resolve every component decision before assigning footprints or compiling KiCad artifacts."
@@ -1512,8 +1510,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         )
     }
 
-    private func componentSelectionBlockedCode(_ matrix: ComponentMatrix) -> String {
-        matrix.warnings.contains { $0.hasPrefix("CATALOG_PROVIDER_NOT_CONFIGURED") }
+    private func componentSelectionBlockedCode(atPath path: String) -> String {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let warnings = object["warnings"] as? [String] else {
+            return "COMPONENT_SELECTION_BLOCKED"
+        }
+        return warnings.contains { $0.hasPrefix("CATALOG_PROVIDER_NOT_CONFIGURED") }
             ? "CATALOG_PROVIDER_NOT_CONFIGURED"
             : "COMPONENT_SELECTION_BLOCKED"
     }

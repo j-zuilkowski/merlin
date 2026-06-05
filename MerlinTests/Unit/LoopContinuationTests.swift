@@ -78,6 +78,45 @@ final class LoopContinuationTests: XCTestCase {
         return url
     }
 
+    private func selectedComponentMatrixJSON(
+        refdes: String = "QOUT1",
+        mpn: String = "MJ15003G",
+        manufacturer: String = "onsemi"
+    ) -> String {
+        """
+        {
+          "design_id": "AmpDemo",
+          "decisions": [
+            {
+              "refdes": "\(refdes)",
+              "status": "selected",
+              "selected_candidate": {
+                "mpn": "\(mpn)",
+                "manufacturer": "\(manufacturer)"
+              },
+              "candidate_set": [],
+              "rationale": "Selected catalog-backed test candidate.",
+              "evidence_references": [],
+              "unresolved_decisions": []
+            }
+          ],
+          "components": [
+            {
+              "refdes": "\(refdes)",
+              "role": "output transistor",
+              "constraints": {},
+              "selection_status": "selected",
+              "mpn": "\(mpn)",
+              "manufacturer": "\(manufacturer)"
+            }
+          ],
+          "warnings": [],
+          "providers": ["fixture"],
+          "cache_metadata": {}
+        }
+        """
+    }
+
     // MARK: - Fix 1: Plan batching & continuation inject
 
     /// When the planner returns more steps than the per-turn budget (maxIterations / 4),
@@ -366,7 +405,7 @@ final class LoopContinuationTests: XCTestCase {
         let artifactRoot = temporaryDirectory("electronics-component-catalog-evidence")
         let componentMatrixPath = try writeArtifact(
             name: "component_matrix.json",
-            contents: #"{"components":[{"ref":"QOUT1","mpn":"MJL3281AG","vendors":["Digi-Key","Mouser"]}]}"#,
+            contents: selectedComponentMatrixJSON(mpn: "MJL3281AG", manufacturer: "onsemi"),
             in: artifactRoot
         )
 
@@ -418,6 +457,85 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testBlockedComponentMatrixClearsContinuationInsteadOfAssigningFootprints() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-blocked-component-matrix-evidence")
+        let componentMatrixPath = try writeArtifact(
+            name: "component_matrix.json",
+            contents: """
+            {
+              "design_id": "AmpDemo",
+              "decisions": [
+                {
+                  "refdes": "RPRE1B",
+                  "status": "blocked",
+                  "selected_candidate": null,
+                  "candidate_set": [],
+                  "rationale": "No catalog candidate satisfies constraints.",
+                  "evidence_references": [],
+                  "unresolved_decisions": ["Resolve RPRE1B before footprints."]
+                }
+              ],
+              "components": [
+                {
+                  "refdes": "RPRE1B",
+                  "role": "preamp resistor",
+                  "constraints": {},
+                  "selection_status": "blocked",
+                  "mpn": "",
+                  "manufacturer": ""
+                }
+              ],
+              "warnings": [],
+              "providers": ["fixture"],
+              "cache_metadata": {}
+            }
+            """,
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "components",
+                name: "kicad_select_components",
+                args: #"{"circuit_ir_path":"/tmp/circuit_ir.json","live_catalog_providers":["mouser","digikey"]}"#
+            )
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Select components using live catalog evidence",
+                    successCriteria: "Component matrix artifact exists with selected candidates",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Assign KiCad footprints from selected component package constraints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("kicad_select_components") { _ in
+            #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath.path)"}],"nextActions":["assign_footprints"],"status":"COMPLETE"}"#
+        }
+
+        for await _ in engine.send(userMessage: "Select AmpDemo parts from live component catalogs") {}
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: injectURL.path),
+            "A blocked component matrix must stop instead of scheduling kicad_assign_footprints"
+        )
+    }
+
     func testComponentSelectionHandoffRecoversComponentMatrixFromProjectArtifacts() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
@@ -439,7 +557,7 @@ final class LoopContinuationTests: XCTestCase {
         )
         let componentMatrixPath = try writeArtifact(
             name: "amp-component_matrix.json",
-            contents: #"{"decisions":[{"refdes":"QOUT1","selected_mpn":"MJ15003G"}]}"#,
+            contents: selectedComponentMatrixJSON(),
             in: artifactRoot
         )
 
@@ -568,7 +686,7 @@ final class LoopContinuationTests: XCTestCase {
         }
         engine.registerTool("kicad_select_components") { _ in
             try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
-            try? #"{"decisions":[{"refdes":"QOUT1","selected_mpn":"MJ15003G"}]}"#.write(
+            try? self.selectedComponentMatrixJSON().write(
                 to: componentMatrixPath,
                 atomically: true,
                 encoding: .utf8
@@ -1631,7 +1749,7 @@ final class LoopContinuationTests: XCTestCase {
         )
         let componentMatrixPath = try writeArtifact(
             name: "amp-component_matrix.json",
-            contents: #"{"components":[]}"#,
+            contents: selectedComponentMatrixJSON(),
             in: artifactRoot
         )
         let footprintAssignmentPath = try writeArtifact(
@@ -1750,7 +1868,7 @@ final class LoopContinuationTests: XCTestCase {
         )
         let componentMatrixPath = try writeArtifact(
             name: "amp-component_matrix.json",
-            contents: #"{"components":[{"ref":"QOUT1","mpn":"MJL3281AG"}]}"#,
+            contents: selectedComponentMatrixJSON(mpn: "MJL3281AG", manufacturer: "onsemi"),
             in: artifactRoot
         )
         let footprintAssignmentPath = try writeArtifact(
@@ -2520,6 +2638,21 @@ final class LoopContinuationTests: XCTestCase {
         let circuitIRPath = NSTemporaryDirectory() + "/circuit_ir-\(UUID().uuidString).json"
         let componentMatrixPath = NSTemporaryDirectory() + "/component_matrix-\(UUID().uuidString).json"
         let footprintAssignmentPath = NSTemporaryDirectory() + "/footprint_assignment-\(UUID().uuidString).json"
+        try #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#.write(
+            toFile: designIntentPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        try #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#.write(
+            toFile: circuitIRPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        try selectedComponentMatrixJSON().write(
+            toFile: componentMatrixPath,
+            atomically: true,
+            encoding: .utf8
+        )
         let provider = MockProvider(responses: [
             .toolCall(
                 id: "footprints",
@@ -2814,6 +2947,22 @@ final class LoopContinuationTests: XCTestCase {
         let componentMatrixPath = artifactRoot.appendingPathComponent("component_matrix.json").path
         let footprintAssignmentPath = artifactRoot.appendingPathComponent("footprint_assignment.json").path
         let outputDirectory = projectRoot.appendingPathComponent("kicad", isDirectory: true).path
+        try FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+        try #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#.write(
+            toFile: designIntentPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        try #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#.write(
+            toFile: circuitIRPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        try selectedComponentMatrixJSON().write(
+            toFile: componentMatrixPath,
+            atomically: true,
+            encoding: .utf8
+        )
 
         let provider = MockProvider(responses: [
             .toolCall(
