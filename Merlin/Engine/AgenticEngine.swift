@@ -3241,7 +3241,9 @@ final class AgenticEngine {
             return pendingContinuationEvidence.contains { evidence in
                 guard evidence.toolName == "kicad_generate_circuit_ir" else { return false }
                 let text = evidenceText(evidence)
-                return text.contains("circuit_ir")
+                return circuitIRArtifactPath(from: evidence) != nil
+                    || latestCircuitIRArtifactPath() != nil
+                    || text.contains("circuit_ir")
                     || text.contains("circuitir")
                     || text.contains(".json")
             }
@@ -3250,7 +3252,9 @@ final class AgenticEngine {
                 guard evidence.toolName == "kicad_select_components" else { return false }
                 let text = evidenceText(evidence)
                 let rawText = rawEvidenceText(evidence)
-                return text.contains("component_matrix")
+                return componentMatrixArtifactPath(from: evidence) != nil
+                    || latestComponentMatrixArtifactPath() != nil
+                    || text.contains("component_matrix")
                     || text.contains("componentmatrix")
                     || hasExistingPathEvidence(in: rawText, extensions: ["json"])
             }
@@ -3572,6 +3576,7 @@ final class AgenticEngine {
             }
         }
         return latestVerifiedDesignIntentArtifactPath
+            ?? latestProjectElectronicsArtifactPath(kindNeedles: ["design_intent", "designintent"])
     }
 
     private func latestCircuitIRArtifactPath() -> String? {
@@ -3581,6 +3586,7 @@ final class AgenticEngine {
             }
         }
         return latestVerifiedCircuitIRArtifactPath
+            ?? latestProjectElectronicsArtifactPath(kindNeedles: ["circuit_ir", "circuitir"])
     }
 
     private func latestComponentMatrixArtifactPath() -> String? {
@@ -3590,6 +3596,7 @@ final class AgenticEngine {
             }
         }
         return latestVerifiedComponentMatrixArtifactPath
+            ?? latestProjectElectronicsArtifactPath(kindNeedles: ["component_matrix", "componentmatrix"])
     }
 
     private func latestFootprintAssignmentArtifactPath() -> String? {
@@ -3599,6 +3606,34 @@ final class AgenticEngine {
             }
         }
         return latestVerifiedFootprintAssignmentArtifactPath
+            ?? latestProjectElectronicsArtifactPath(kindNeedles: ["footprint_assignment", "footprintassignment"])
+    }
+
+    private func latestProjectElectronicsArtifactPath(kindNeedles: [String]) -> String? {
+        guard let currentProjectPath else { return nil }
+        let artifactDirectory = URL(fileURLWithPath: currentProjectPath)
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: artifactDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        return files
+            .compactMap { url -> (URL, Date)? in
+                let name = url.lastPathComponent.lowercased()
+                guard kindNeedles.contains(where: { name.contains($0) }) else { return nil }
+                guard (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true else {
+                    return nil
+                }
+                let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                return (url, modified)
+            }
+            .sorted { $0.1 > $1.1 }
+            .first?
+            .0
+            .path
     }
 
     private func latestKiCadProjectArtifactPath() -> String? {

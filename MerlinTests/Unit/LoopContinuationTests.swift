@@ -418,6 +418,77 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testComponentSelectionHandoffRecoversComponentMatrixFromProjectArtifacts() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let projectRoot = temporaryDirectory("electronics-component-handoff-project-artifacts")
+        let artifactRoot = projectRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        let designIntentPath = try writeArtifact(
+            name: "amp-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"25W Class A"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "amp-circuit_ir.json",
+            contents: #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let componentMatrixPath = try writeArtifact(
+            name: "amp-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","selected_mpn":"MJ15003G"}]}"#,
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "components",
+                name: "kicad_select_components",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)"}"#
+            )
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Select components using the approved DesignIntent and generated CircuitIR/netlist",
+                    successCriteria: "Component matrix artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Assign KiCad footprints from selected component package constraints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("kicad_select_components") { _ in
+            #"{"status":"complete","nextActions":["assign_footprints"]}"#
+        }
+
+        for await _ in engine.send(userMessage: "Continue the AmpDemo electronics workflow after component selection") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("Next required electronics handoff tool: `kicad_assign_footprints`"),
+            continuationText
+        )
+        XCTAssertTrue(continuationText.contains(componentMatrixPath.path), continuationText)
+        XCTAssertFalse(
+            continuationText.contains("Next required electronics handoff tool: `kicad_select_components`"),
+            continuationText
+        )
+    }
+
     func testElectronicsRequirementsReadStepCountsWhenCriteriaMentionsDesign() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
