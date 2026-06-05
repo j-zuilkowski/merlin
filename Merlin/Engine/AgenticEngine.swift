@@ -3402,6 +3402,20 @@ final class AgenticEngine {
             || text.contains("footprint_assignment") {
             return .footprintAssignment
         }
+        if text.contains("circuit ir") || text.contains("circuit_ir") || text.contains("circuitir") {
+            return .circuitIR
+        }
+        if text.contains("schematic")
+            || text.contains("kicad_sch")
+            || text.contains("kicad schematic")
+            || text.contains("compile_project")
+            || text.contains("compile project")
+            || text.contains("compile kicad")
+            || text.contains("create kicad project")
+            || text.contains("initialize schematic")
+            || text.contains("schematic and pcb") {
+            return .schematic
+        }
         if text.contains("bom") || text.contains("bill of materials")
             || text.contains("digikey") || text.contains("digi-key") || text.contains("mouser") {
             return .bom
@@ -3434,9 +3448,6 @@ final class AgenticEngine {
         if text.contains("net class") || text.contains("net classes") || text.contains("netclass") {
             return .netClasses
         }
-        if text.contains("circuit ir") || text.contains("circuit_ir") || text.contains("circuitir") {
-            return .circuitIR
-        }
         if text.contains("kicad_approve_design_intent")
             || text.contains("approve_design_intent")
             || text.contains("review_and_approve_design_intent")
@@ -3453,17 +3464,6 @@ final class AgenticEngine {
             || text.contains("build_intent")
             || text.contains("intent model") {
             return .designIntent
-        }
-        if text.contains("schematic")
-            || text.contains("kicad_sch")
-            || text.contains("kicad schematic")
-            || text.contains("compile_project")
-            || text.contains("compile project")
-            || text.contains("compile kicad")
-            || text.contains("create kicad project")
-            || text.contains("initialize schematic")
-            || text.contains("schematic and pcb") {
-            return .schematic
         }
         if ["electronics", "amplifier", "class a", "class-a", "mains", "transformer"]
             .contains(where: { text.contains($0) }) {

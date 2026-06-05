@@ -489,6 +489,109 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testCircuitIRNetlistPlanStepWithSpiceTextAdvancesToFootprintHandoff() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let projectRoot = temporaryDirectory("electronics-circuit-ir-spice-wording")
+        let artifactRoot = projectRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        let specPath = projectRoot.appendingPathComponent("spec.md")
+        let designIntentPath = artifactRoot.appendingPathComponent("amp-design_intent.json")
+        let circuitIRPath = artifactRoot.appendingPathComponent("amp-circuit_ir.json")
+        let componentMatrixPath = artifactRoot.appendingPathComponent("amp-component_matrix.json")
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read", name: "read_file", args: #"{"path":"\#(specPath.path)"}"#),
+            .toolCall(id: "intent", name: "kicad_build_intent_model", args: #"{"input_artifact_path":"\#(specPath.path)"}"#),
+            .toolCall(id: "circuit", name: "kicad_generate_circuit_ir", args: #"{"design_intent_path":"\#(designIntentPath.path)"}"#),
+            .toolCall(id: "components", name: "kicad_select_components", args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)"}"#),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Read and parse /Users/jonzuilkowski/Documents/localProject/AmpDemo/spec.md to extract requirements",
+                    successCriteria: "Spec requirements read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Create DesignIntent document: define topology, power supply, audio stages, and constraints",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Generate CircuitIR/netlist: create hierarchical SPICE netlist with subcircuits for preamp, tone, filter, driver, output, and PSU",
+                    successCriteria: "Circuit IR artifact exists",
+                    complexity: .highStakes
+                ),
+                PlanStep(
+                    description: "Select components: choose transformer, bridge rectifier, transistors, passives, pots, connectors, and heat-related parts",
+                    successCriteria: "Component matrix artifact exists",
+                    complexity: .highStakes
+                ),
+                PlanStep(
+                    description: "Assign footprints: map each component to KiCad footprints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in
+            "25W pure Class A solid-state guitar amplifier requirements"
+        }
+        engine.registerTool("kicad_build_intent_model") { _ in
+            try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+            try? #"{"project":"AmpDemo","topology":"25W Class A"}"#.write(
+                to: designIntentPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"design_intent","path":"\#(designIntentPath.path)"}],"status":"COMPLETE"}"#
+        }
+        engine.registerTool("kicad_generate_circuit_ir") { _ in
+            try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+            try? #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#.write(
+                to: circuitIRPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"circuit_ir","path":"\#(circuitIRPath.path)"}],"status":"COMPLETE"}"#
+        }
+        engine.registerTool("kicad_select_components") { _ in
+            try? FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+            try? #"{"decisions":[{"refdes":"QOUT1","selected_mpn":"MJ15003G"}]}"#.write(
+                to: componentMatrixPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath.path)"}],"status":"COMPLETE"}"#
+        }
+
+        var prompt = "Run the full AmpDemo electronics workflow"
+        var continuationText = ""
+        for _ in 0..<5 {
+            for await _ in engine.send(userMessage: prompt) {}
+            continuationText = try readInject()
+            if continuationText.contains("Next required electronics handoff tool: `kicad_assign_footprints`") {
+                break
+            }
+            prompt = continuationText
+        }
+
+        XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_assign_footprints`"), continuationText)
+        XCTAssertTrue(continuationText.contains(componentMatrixPath.path), continuationText)
+        XCTAssertFalse(continuationText.contains("Run SPICE"), continuationText)
+    }
+
     func testElectronicsRequirementsReadStepCountsWhenCriteriaMentionsDesign() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
