@@ -610,6 +610,54 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testElectronicsKeywordPlanUsesEvidenceGateWhenDomainStateDrops() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "read-spec", name: "read_file", args: #"{"path":"/tmp/spec.md"}"#),
+            .text("Spec read.")
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "transient domain state"),
+            steps: [
+                PlanStep(
+                    description: "Read and parse spec.md",
+                    successCriteria: "spec read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Build KiCad schematic and PCB with SPICE simulation, Gerbers, drill files, and BOM",
+                    successCriteria: "KiCad schematic, PCB, SPICE, Gerbers, drill files, and BOM artifacts exist",
+                    complexity: .highStakes
+                ),
+            ]
+        )
+        engine.registerTool("read_file") { _ in "electronics requirements" }
+
+        for await _ in engine.send(userMessage: "Run the AmpDemo workflow") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("verified tool/artifact evidence"),
+            continuationText
+        )
+        XCTAssertTrue(
+            continuationText.contains("Continue from the first unverified electronics step"),
+            continuationText
+        )
+        XCTAssertFalse(
+            continuationText.contains("Steps 1–1 of the following task are complete"),
+            "Electronics artifact plans must not use narrative continuation accounting"
+        )
+    }
+
     func testSpecReadCanOnlyCompleteInspectionStepsBeforeDesignIntent() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

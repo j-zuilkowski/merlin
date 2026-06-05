@@ -2978,13 +2978,12 @@ final class AgenticEngine {
     }
 
     private func shouldEvidenceGateContinuations(for steps: [PlanStep]) -> Bool {
-        guard activeDomainIDs.contains(ElectronicsDomain.defaultID) else { return false }
         let text = steps
             .map { "\($0.description) \($0.proseSummary)" }
             .joined(separator: " ")
             .lowercased()
         let keywords = [
-            "electronics", "kicad", "pcb", "schematic", "spice", "simulation",
+            "electronics", "kicad", "pcb", "schematic", "spice",
             "gerber", "drill", "fabrication", "bom", "bill of materials",
             "digikey", "digi-key", "mouser", "toolchain", "design intent",
             "designintent", "design-intent", "circuit ir", "circuit_ir",
