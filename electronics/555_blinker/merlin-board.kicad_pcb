@@ -1,0 +1,8 @@
+(kicad_pcb
+  (version 20250114)
+  (generator "Merlin")
+  (general (thickness 1.6))
+  (paper "A4")
+  (title_block (title "555 astable LED blinker") (comment 1 "job_id=555_blinker_design"))
+  (gr_rect (start 0 0) (end 50 50) (stroke (width 0.1) (type solid)) (fill none) (layer "Edge.Cuts"))
+)

@@ -55,7 +55,8 @@ final class LiveSession: ObservableObject, Identifiable {
          initialMessages: [Message] = [],
          sessionStore: SessionStore? = nil,
          workspaceRuntime: WorkspaceRuntime? = nil,
-         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs) {
+         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
+         inferProjectDomains: Bool = true) {
         self.id = UUID()
         self.workspaceRuntime = workspaceRuntime ?? (try! WorkspaceRuntime(rootURL: URL(fileURLWithPath: projectRef.path)))
         self.subagentSidebar = SubagentSidebarViewModel(parentSessionID: self.id)
@@ -63,12 +64,15 @@ final class LiveSession: ObservableObject, Identifiable {
         self.createdAt = Date()
         self.activeDomainIDs = Self.inferredActiveDomainIDs(
             requested: activeDomainIDs,
-            projectPath: projectRef.path
+            projectPath: projectRef.path,
+            inferProjectDomains: inferProjectDomains
         )
         self.appState = AppState(
             projectPath: projectRef.path,
             activeDomainIDs: self.activeDomainIDs,
-            workspaceRuntime: self.workspaceRuntime
+            workspaceRuntime: self.workspaceRuntime,
+            inferProjectDomains: inferProjectDomains,
+            enableStartupProjectScans: inferProjectDomains
         )
         self.skillsRegistry = SkillsRegistry(projectPath: projectRef.path)
         self.appState.engine.skillsRegistry = self.skillsRegistry
@@ -124,8 +128,8 @@ final class LiveSession: ObservableObject, Identifiable {
         lifecycleTasks.append(mcpTask)
 
         // File-based message injection: poll ~/.merlin/inject.txt every 2 seconds.
-        // When the file exists, post merlinInjectMessage so the active ChatView
-        // submits it as a real user message (visible in the UI with full response).
+        // Submit through this session's owned ChatViewModel so command-line and
+        // continuation injections do not depend on SwiftUI notification delivery.
         // Usage from shell: echo "your prompt" > ~/.merlin/inject.txt
         lifecycleTasks.append(Task { @MainActor in
             let injectURL = URL(fileURLWithPath: (ProcessInfo.processInfo.environment["HOME"] ?? "") + "/.merlin/inject.txt")
@@ -134,11 +138,7 @@ final class LiveSession: ObservableObject, Identifiable {
                    let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !text.isEmpty {
                     try? FileManager.default.removeItem(at: injectURL)
-                    NotificationCenter.default.post(
-                        name: .merlinInjectMessage,
-                        object: nil,
-                        userInfo: ["message": text]
-                    )
+                    await self.submitInjectedMessage(text)
                 }
                 do {
                     try await Task.sleep(for: .seconds(2))
@@ -170,6 +170,19 @@ final class LiveSession: ObservableObject, Identifiable {
                 await self.memoryEngine.startIdleTimer(timeout: timeout)
             }
         })
+    }
+
+    private func submitInjectedMessage(_ text: String) async {
+        while chatViewModel.isSending && Task.isCancelled == false {
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return
+            }
+        }
+        guard Task.isCancelled == false else { return }
+        chatViewModel.draft = text
+        await chatViewModel.submit(appState: appState)
     }
 
     var stagingBuffer: StagingBuffer {
@@ -210,9 +223,11 @@ final class LiveSession: ObservableObject, Identifiable {
 
     private static func inferredActiveDomainIDs(
         requested ids: [String],
-        projectPath: String
+        projectPath: String,
+        inferProjectDomains: Bool
     ) -> [String] {
         var resolved = ids.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : ids
+        guard inferProjectDomains else { return resolved }
         if ElectronicsDomain.projectLooksLikeElectronics(projectPath),
            !resolved.contains(ElectronicsDomain.defaultID) {
             resolved.append(ElectronicsDomain.defaultID)

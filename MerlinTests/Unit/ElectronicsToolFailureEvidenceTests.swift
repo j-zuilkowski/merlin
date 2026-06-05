@@ -233,7 +233,8 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertEqual(ercApplyResult.nextActions, ["kicad_run_erc"])
         XCTAssertNil(ercApplyResult.handoff?.ercReportPath)
         let updatedSchematic = try String(contentsOf: schematic, encoding: .utf8)
-        XCTAssertTrue(updatedSchematic.contains("merlin_erc_repair"), updatedSchematic)
+        XCTAssertFalse(updatedSchematic.contains("merlin_erc_repair"), updatedSchematic)
+        XCTAssertNoThrow(try KiCadSchematicParser().parse(updatedSchematic))
 
         let drcPlan = try writeFixtureFile(
             name: "drc-plan.json",

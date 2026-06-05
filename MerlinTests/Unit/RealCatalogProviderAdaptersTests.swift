@@ -51,6 +51,92 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(candidate.evidence.first?.providerID, "mouser")
     }
 
+    func testMouserAdapterMapsAlternateDatasheetAndPackageEvidence() throws {
+        let data = Data("""
+        {"SearchResults":{"Parts":[{"Manufacturer":"Comchip Technology","ManufacturerPartNumber":"GBU810-G","Description":"Bridge Rectifiers 100 Volt 8.0 Amp Glass Passivated GBU Through Hole","Category":"Bridge Rectifiers","DatasheetURL":"https://example.invalid/gbu810.pdf","ProductDetailUrl":"https://mouser.example/GBU810-G","LifecycleStatus":"Active","Availability":"27 In Stock","PackageType":"GBU","ProductAttributes":[{"AttributeName":"Voltage Rating","AttributeValue":"100 V"},{"AttributeName":"Current Rating","AttributeValue":"8 A"},{"AttributeName":"Mounting Style","AttributeValue":"Through Hole"}]}]}}
+        """.utf8)
+
+        let candidates = try MouserCatalogProviderAdapter().mapRecordedResponse(data)
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(candidate.package, "GBU")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://example.invalid/gbu810.pdf")
+        XCTAssertEqual(candidate.ratings["voltage_v"], "100")
+        XCTAssertEqual(candidate.ratings["current_a"], "8.0")
+    }
+
+    func testCatalogQueryBuilderKeepsGenericPassiveFallbacksBroad() throws {
+        let builder = CatalogSearchQueryBuilder()
+        let queries = builder.keywords(for: ComponentSearchRequest(
+            refdes: "RTREBLE1",
+            role: "treble shelf network resistor",
+            constraints: [
+                "component_category": "resistor",
+                "resistance": "250kOhm",
+                "power_rating": "0.25W",
+                "tolerance": "1%",
+                "mounting": "through_hole",
+                "selected_symbol": "Device:R",
+            ],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        XCTAssertTrue(queries.contains("resistor 250kOhm 0.25W 1% through hole"))
+        XCTAssertFalse(queries.first?.contains("treble") ?? true)
+        XCTAssertTrue(queries.contains("resistor 250kOhm"))
+        XCTAssertTrue(queries.contains("resistor 250kOhm 1%"))
+        XCTAssertTrue(queries.contains("resistor 250kOhm 0.25W"))
+    }
+
+    func testCatalogQueryBuilderAddsBroadFallbacksForPowerTransistorsAndConnectors() throws {
+        let builder = CatalogSearchQueryBuilder()
+
+        let transistorQueries = builder.keywords(for: ComponentSearchRequest(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: [
+                "component_category": "power_transistor",
+                "polarity": "NPN",
+                "voltage_rating": "80V",
+                "current_rating": "8A",
+                "power_rating": "100W",
+                "package": "TO-3_or_TO-247",
+            ],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        XCTAssertFalse(transistorQueries.first?.contains("single") ?? true)
+        XCTAssertTrue(transistorQueries.contains("NPN power transistor"))
+        XCTAssertTrue(transistorQueries.contains("NPN power transistor 100W"))
+        XCTAssertTrue(transistorQueries.contains("NPN power transistor TO-3"))
+
+        let connectorQueries = builder.keywords(for: ComponentSearchRequest(
+            refdes: "JSEC",
+            role: "isolated transformer secondary input connector",
+            constraints: [
+                "component_category": "terminal_block",
+                "positions": "2",
+                "current_rating": "10A",
+                "voltage_rating": "300V",
+                "mounting": "through_hole",
+            ],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        XCTAssertTrue(connectorQueries.contains("2 position terminal block"))
+        XCTAssertTrue(connectorQueries.contains("terminal block 10A"))
+        XCTAssertFalse(connectorQueries.first?.contains("isolated") ?? true)
+    }
+
     func testAggregatorAdapterMapsRecordedFixtureIntoLifecycleAndAvailabilityEvidence() throws {
         let data = Data("""
         {"parts":[{"manufacturer":"Texas Instruments","mpn":"NE5532P","category":"op_amp","package":"PDIP-8","lifecycle":"Active","availability":"Digi-Key: 100; Mouser: 200","datasheet_url":"https://example.invalid/ne5532.pdf","source_url":"https://aggregator.example/NE5532P","specs":{"supply_voltage":"30 V","channels":"2"}}]}

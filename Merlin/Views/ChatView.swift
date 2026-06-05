@@ -132,7 +132,6 @@ struct ChatView: View {
         .onChange(of: model.isSending) { _, isSending in
             guard isSending == false, let pending = pendingInjectMessage else { return }
             pendingInjectMessage = nil
-            guard pending == currentInjectFileContents() else { return }
             model.draft = pending
             sendMessage()
         }
@@ -373,6 +372,7 @@ struct ChatView: View {
             },
             shouldResumeScroll: $shouldResumeScroll
         )
+        .id(model.revision)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if scrollLockVisible {
@@ -410,12 +410,6 @@ struct ChatView: View {
         Task { @MainActor in
             await model.submit(appState: appState)
         }
-    }
-
-    private func currentInjectFileContents() -> String? {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".merlin/inject.txt")
-        return try? String(contentsOf: url, encoding: .utf8)
     }
 
     private func handleSlashCommandIfNeeded(_ message: String) -> Bool {
@@ -678,6 +672,7 @@ final class ChatViewModel: ObservableObject {
         let resolved = ContextInjector.resolveAtMentions(in: message, projectPath: appState.projectPath)
         var turnFailed = false
         appendUser(resolved)
+        persistTranscript(appState: appState)
 
         await appState.awaitRuntimePluginsReady()
 
@@ -725,6 +720,7 @@ final class ChatViewModel: ObservableObject {
         for (slot, state) in appState.slotRuntimeStates where state == .busy {
             await appState.publishSlotRuntimeState(finalSlotState, for: slot)
         }
+        persistTranscript(appState: appState)
     }
 
     func clear() {
@@ -762,7 +758,9 @@ final class ChatViewModel: ObservableObject {
         for message in messages {
             switch message.role {
             case .system:
-                break
+                let text = message.content.plainText
+                guard !text.isEmpty else { continue }
+                items.append(ChatEntry(role: .system, text: text))
 
             case .user:
                 // Flush any orphaned tool calls before the next user turn
@@ -804,6 +802,81 @@ final class ChatViewModel: ObservableObject {
         // Flush any remaining tool calls if the conversation ended mid-loop
         flushOrphanedTools()
         bumpRevision()
+    }
+
+    private func persistTranscript(appState: AppState) {
+        guard let store = appState.sessionStore,
+              let sessionID = appState.engine.sessionID ?? store.activeSessionID
+        else { return }
+
+        let existing = store.sessions.first(where: { $0.id == sessionID })
+        var updated = existing ?? Session(
+            id: sessionID,
+            title: "New Session",
+            messages: [],
+            activeDomainIDs: appState.engine.activeDomainIDs
+        )
+        let messages = messagesForPersistence()
+        updated.messages = messages
+        updated.title = Session.generateTitle(from: messages)
+        updated.updatedAt = Date()
+        updated.activeDomainIDs = appState.engine.activeDomainIDs
+        try? store.save(updated)
+    }
+
+    private func messagesForPersistence() -> [Message] {
+        var messages: [Message] = []
+        for item in items {
+            switch item.role {
+            case .user:
+                messages.append(Message(
+                    role: .user,
+                    content: .text(item.text),
+                    timestamp: Date()
+                ))
+            case .assistant:
+                let toolCalls = item.toolCalls.map { toolCall in
+                    ToolCall(
+                        id: toolCall.id,
+                        type: "function",
+                        function: FunctionCall(name: toolCall.name, arguments: toolCall.arguments)
+                    )
+                }
+                if !item.text.isEmpty || !item.thinkingText.isEmpty || !toolCalls.isEmpty {
+                    messages.append(Message(
+                        role: .assistant,
+                        content: .text(item.text),
+                        toolCalls: toolCalls.isEmpty ? nil : toolCalls,
+                        thinkingContent: item.thinkingText.isEmpty ? nil : item.thinkingText,
+                        timestamp: Date()
+                    ))
+                }
+                for toolCall in item.toolCalls {
+                    guard let result = toolCall.result else { continue }
+                    messages.append(Message(
+                        role: .tool,
+                        content: .text(result),
+                        toolCallId: toolCall.id,
+                        timestamp: Date()
+                    ))
+                }
+            case .system:
+                guard !item.text.isEmpty else { continue }
+                messages.append(Message(
+                    role: .system,
+                    content: .text(item.text),
+                    timestamp: Date()
+                ))
+            case .error:
+                guard !item.text.isEmpty else { continue }
+                messages.append(Message(
+                    role: .system,
+                    content: .text("[error] \(item.text)"),
+                    timestamp: Date()
+                ))
+            }
+        }
+        return messages
     }
 
     func toggleThinkingExpansion(at index: Int) {

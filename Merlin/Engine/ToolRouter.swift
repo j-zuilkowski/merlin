@@ -262,9 +262,34 @@ class ToolRouter {
         switch response.status {
         case .ok:
             return ToolResult(toolCallId: toolCallID, content: response.payload?.stringValue() ?? "", isError: false)
-        case .blocked, .failed, .cancelled, .timedOut, .unauthorized:
+        case .blocked:
             let diagnosticText = response.diagnostics.map { "\($0.code): \($0.message)" }.joined(separator: "\n")
-            return ToolResult(toolCallId: toolCallID, content: diagnosticText.isEmpty ? response.status.rawValue : diagnosticText, isError: true)
+            let payloadText = response.payload?.stringValue() ?? ""
+            let artifactText = response.artifacts.map { "\($0.kind): \($0.url.path)" }.joined(separator: "\n")
+            let content = [
+                payloadText.isEmpty ? nil : payloadText,
+                diagnosticText.isEmpty ? nil : diagnosticText,
+                artifactText.isEmpty ? nil : "artifacts:\n\(artifactText)",
+            ].compactMap { $0 }.joined(separator: "\n")
+            return ToolResult(
+                toolCallId: toolCallID,
+                content: content.isEmpty ? response.status.rawValue : content,
+                isError: false
+            )
+        case .failed, .cancelled, .timedOut, .unauthorized:
+            let diagnosticText = response.diagnostics.map { "\($0.code): \($0.message)" }.joined(separator: "\n")
+            let payloadText = response.payload?.stringValue() ?? ""
+            let artifactText = response.artifacts.map { "\($0.kind): \($0.url.path)" }.joined(separator: "\n")
+            let content = [
+                payloadText.isEmpty ? nil : payloadText,
+                diagnosticText.isEmpty ? nil : diagnosticText,
+                artifactText.isEmpty ? nil : "artifacts:\n\(artifactText)",
+            ].compactMap { $0 }.joined(separator: "\n")
+            return ToolResult(
+                toolCallId: toolCallID,
+                content: content.isEmpty ? response.status.rawValue : content,
+                isError: true
+            )
         }
     }
 
@@ -422,7 +447,36 @@ class ToolRouter {
         if toolName.hasPrefix("xcode_") {
             return .seconds(600)
         }
+        if longRunningElectronicsTools.contains(toolName) {
+            return .seconds(420)
+        }
+        switch toolName {
+        case "read_file", "list_directory", "search_files":
+            return .seconds(120)
+        default:
+            break
+        }
         return .seconds(120)
+    }
+
+    private var longRunningElectronicsTools: Set<String> {
+        [
+            "workflow.requirements_to_pcb",
+            "workflow.schematic_to_pcb",
+            "kicad_select_components",
+            "kicad_prepare_libraries",
+            "kicad_assign_footprints",
+            "kicad_compile_project",
+            "kicad_place_components",
+            "kicad_run_erc",
+            "kicad_route_pass",
+            "kicad_run_drc",
+            "kicad_generate_spice_scenario",
+            "kicad_run_spice",
+            "kicad_export_fab",
+            "kicad_prepare_vendor_order",
+            "kicad_package_release",
+        ]
     }
 
     private static func dictionary(from json: String) -> [String: Any] {

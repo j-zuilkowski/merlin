@@ -18,6 +18,7 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
     var stubbedErrors: [Error?] = []
     private var errorIndex = 0
     private(set) var callCount: Int = 0
+    private(set) var requests: [CompletionRequest] = []
     private let firstCallError: ProviderError?
     private let allCallsError: ProviderError?
 
@@ -63,6 +64,7 @@ final class MockProvider: LLMProvider, @unchecked Sendable {
 
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         callCount += 1
+        requests.append(request)
         if let error = allCallsError { throw error }
         if callCount == 1, let error = firstCallError { throw error }
         if errorIndex < stubbedErrors.count {

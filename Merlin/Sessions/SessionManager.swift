@@ -29,9 +29,12 @@ final class SessionManager: ObservableObject {
     }
 
     @discardableResult
-    func newSession(mode: PermissionMode = AppSettings.shared.defaultPermissionMode) async -> LiveSession {
+    func newSession(
+        mode: PermissionMode = AppSettings.shared.defaultPermissionMode,
+        explicitDomainIDs: [String]? = nil
+    ) async -> LiveSession {
         let configuredDomainIDs = AppSettings.shared.activeDomainIDs
-        let requestedDomainIDs = inferredSessionDomainIDs(defaults: configuredDomainIDs)
+        let requestedDomainIDs = explicitDomainIDs ?? inferredSessionDomainIDs(defaults: configuredDomainIDs)
         let activeDomainIDs = await DomainRegistry.shared.normalizedActiveDomainIDs(
             ids: requestedDomainIDs
         )
@@ -39,7 +42,8 @@ final class SessionManager: ObservableObject {
             projectRef: projectRef,
             sessionStore: sessionStore,
             workspaceRuntime: workspaceRuntime,
-            activeDomainIDs: activeDomainIDs
+            activeDomainIDs: activeDomainIDs,
+            inferProjectDomains: explicitDomainIDs == nil
         )
         session.permissionMode = mode
         session.appState.engine.sessionID = session.id

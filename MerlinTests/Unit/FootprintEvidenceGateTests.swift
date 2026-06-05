@@ -86,6 +86,36 @@ final class FootprintEvidenceGateTests: XCTestCase {
         XCTAssertEqual(report.assignments.first?.pinPadMap["E"], "3")
     }
 
+    func testMatrixComponentPinEvidenceDrivesFootprintAssignments() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(requiredPins: [], root: root)
+        let matrixURL = try writeMatrix(
+            [decision(refdes: "QOUT1", candidate: validCandidate(footprints: [validFootprint()]))],
+            components: [
+                ComponentIntent(
+                    refdes: "QOUT1",
+                    role: "single-ended Class-A output transistor",
+                    constraints: ["required_pins": "B,C,E"]
+                ),
+            ],
+            root: root
+        )
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(matrixURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "footprint_assignment" })
+        let report = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: artifact.url))
+        XCTAssertEqual(report.assignments.map(\.refdes), ["QOUT1"])
+        XCTAssertEqual(report.assignments.first?.pinPadMap["B"], "1")
+        XCTAssertEqual(report.assignments.first?.pinPadMap["E"], "3")
+    }
+
     func testAssignmentArtifactPreservesFootprintSourceProvenance() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -208,13 +238,18 @@ final class FootprintEvidenceGateTests: XCTestCase {
         try writeMatrix([decision(refdes: "QOUT1", candidate: candidate)], root: root)
     }
 
-    private func writeMatrix(_ decisions: [PartSelectionDecision], root: URL) throws -> URL {
+    private func writeMatrix(
+        _ decisions: [PartSelectionDecision],
+        components: [ComponentIntent] = [],
+        root: URL
+    ) throws -> URL {
         let matrix = ComponentMatrix(
             designId: "amp-low-voltage",
             decisions: decisions,
             warnings: [],
             providers: ["fixture"],
-            cacheMetadata: [:]
+            cacheMetadata: [:],
+            components: components
         )
         let url = root.appendingPathComponent("component-matrix.json")
         let encoder = JSONEncoder()

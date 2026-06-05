@@ -1,0 +1,18 @@
+(kicad_sch
+  (version 20250114)
+  (generator "Merlin")
+  (generator_version "1.0")
+  (uuid "558ea80a-5026-4270-95b9-a798da6b4df2")
+  (paper "A4")
+  (lib_symbols)
+  (text "555 astable LED blinker job_id=555_blinker_design: U1 NE555, R1 10k, R2 47k, C1 10uF, C2 10nF, R3 330, D1 LED, VCC 5V"
+    (exclude_from_sim no)
+    (at 25.4 25.4 0)
+    (effects (font (size 1.27 1.27)) (justify left bottom))
+    (uuid "7642068b-8242-4c86-90f8-63a49415396f")
+  )
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+  (embedded_fonts no)
+)

@@ -384,6 +384,127 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(pro.wasUsed)
     }
 
+    func testHighStakesTurnRunsFromExecuteNotReason() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .highStakes,
+                reason: "safety-critical electronics task"
+            )
+        )
+
+        var finalText = ""
+        var busySlots: [AgentSlot] = []
+        for await event in engine.send(userMessage: "Design a 25W Class A guitar amplifier") {
+            switch event {
+            case .text(let text):
+                finalText += text
+            case .slotRuntimeState(let slot, .busy):
+                busySlots.append(slot)
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(execute.callCount, 1)
+        XCTAssertTrue(
+            reason.requests.allSatisfy { ($0.tools ?? []).isEmpty },
+            "reason slot may advise/critique, but must not receive executable tools"
+        )
+        XCTAssertEqual(busySlots, [.execute])
+        XCTAssertTrue(finalText.contains("execute handled"), finalText)
+        XCTAssertFalse(finalText.contains("reason handled"), finalText)
+    }
+
+    func testReasonAnnotationRunsExecutableTurnFromExecuteProvider() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .standard,
+                reason: "explicit reason annotation"
+            )
+        )
+
+        var finalText = ""
+        var busySlots: [AgentSlot] = []
+        for await event in engine.send(userMessage: "@reason review this migration for correctness") {
+            switch event {
+            case .text(let text):
+                finalText += text
+            case .slotRuntimeState(let slot, .busy):
+                busySlots.append(slot)
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(execute.callCount, 1)
+        XCTAssertTrue(
+            reason.requests.allSatisfy { ($0.tools ?? []).isEmpty },
+            "@reason may request advisory reasoning, but must not give reason executable tools"
+        )
+        XCTAssertEqual(busySlots, [.execute])
+        XCTAssertTrue(finalText.contains("execute handled"), finalText)
+        XCTAssertFalse(finalText.contains("reason handled"), finalText)
+    }
+
+    func testElectronicsIntentPromotesDomainBeforeOfferingTools() async throws {
+        let execute = MockProvider(responses: [.text("ready for kicad")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("advisory only")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .highStakes,
+                reason: "electronics workflow"
+            )
+        )
+
+        for await _ in engine.send(userMessage: """
+        Using the electronics domain, read spec.md and generate the KiCad schematic, PCB, SPICE simulation, Gerbers, and BOM.
+        """) {}
+
+        XCTAssertEqual(engine.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        let offered = Set(try XCTUnwrap(execute.requests.first?.tools?.map(\.function.name)))
+        XCTAssertTrue(offered.contains("kicad_build_intent_model"), offered.description)
+        XCTAssertTrue(offered.contains("kicad_compile_project"), offered.description)
+        XCTAssertFalse(offered.contains("run_shell"), offered.description)
+        XCTAssertFalse(offered.contains("bash"), offered.description)
+        XCTAssertFalse(offered.contains("tool_discover"), offered.description)
+    }
+
+    func testForcedElectronicsLockSurvivesDomainOverwrite() async throws {
+        let engine = makeEngine(provider: MockProvider(responses: [.text("ready")]))
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        await engine.promoteElectronicsDomainForTesting(message: """
+        Using the electronics domain, generate the KiCad schematic, PCB, SPICE simulation, Gerbers, and BOM.
+        """)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+
+        let offered = Set(engine.offeredToolNamesForTesting())
+        XCTAssertTrue(offered.contains("kicad_build_intent_model"), offered.description)
+        XCTAssertTrue(offered.contains("kicad_compile_project"), offered.description)
+        XCTAssertFalse(offered.contains("app_launch"), offered.description)
+        XCTAssertFalse(offered.contains("run_shell"), offered.description)
+        XCTAssertFalse(offered.contains("tool_discover"), offered.description)
+    }
+
     func testContextCompactionNoteAppears() async throws {
         let provider = MockProvider(responses: [
             MockLLMResponse.toolCall(id: "tc1", name: "inflate_tool", args: #"{"value":"go"}"#),
@@ -411,5 +532,21 @@ final class AgenticEngineTests: XCTestCase {
             if case .systemNote(let note) = $0 { return note.contains("compacted") }
             return false
         })
+    }
+}
+
+private final class FixedPlannerForAgenticEngineTests: PlannerEngineProtocol, @unchecked Sendable {
+    let classification: ClassifierResult
+
+    init(classification: ClassifierResult) {
+        self.classification = classification
+    }
+
+    func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
+        classification
+    }
+
+    func decompose(task: String, context: [Message]) async -> [PlanStep] {
+        []
     }
 }

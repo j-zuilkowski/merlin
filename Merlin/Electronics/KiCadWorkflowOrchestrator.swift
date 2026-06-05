@@ -49,6 +49,7 @@ enum KiCadWorkflowStep: String, Codable, Sendable, Equatable, Hashable {
         case "kicad_place_components": self = .placement
         case "kicad_route_pass": self = .route
         case "kicad_run_drc": self = .checks
+        case "kicad_generate_spice_scenario": self = .simulation
         case "kicad_run_spice": self = .simulation
         case "kicad_visual_inspect": self = .visualQA
         case "kicad_export_fab": self = .fab
@@ -136,12 +137,22 @@ enum KiCadRuntimeEvidencePipeline {
             return KiCadWorkflowStep.componentSelection.toolName
         case "assign_footprints":
             return KiCadWorkflowStep.footprints.toolName
+        case "repair_erc_from_diagnostics":
+            return "kicad_repair_erc_from_diagnostics"
         case "apply_erc_repair_patch":
             return "kicad_apply_erc_repair_patch"
+        case "repair_drc_from_diagnostics":
+            return "kicad_repair_drc_from_diagnostics"
         case "apply_drc_repair_patch":
             return "kicad_apply_drc_repair_patch"
+        case "repair_spice_from_diagnostics":
+            return "kicad_repair_spice_from_diagnostics"
         case "apply_spice_repair_patch":
             return "kicad_apply_spice_repair_patch"
+        case "generate_spice_scenario":
+            return "kicad_generate_spice_scenario"
+        case "run_spice":
+            return "kicad_run_spice"
         case "rerun_erc":
             return "kicad_run_erc"
         case "rerun_drc":

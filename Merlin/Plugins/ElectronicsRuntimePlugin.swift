@@ -724,6 +724,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 outputKind: "parity_report",
                 outputBody: #"{"status":"pass","schematic_pcb_parity":"matched"}"#
             )
+        case "kicad_generate_spice_scenario":
+            return handleSPICEScenarioGeneration(request, context: context)
         case "kicad_run_spice":
             return simulatorBackedReport(request, context: context)
         case "kicad_repair_spice_from_diagnostics":
@@ -1085,7 +1087,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext
     ) async -> WorkspaceMessageResponse {
-        let object = request.payload.jsonObject() ?? [:]
+        let object = componentSelectionObject(from: request.payload.jsonObject() ?? [:])
         guard let designIntentPath = object["design_intent_path"] as? String,
               FileManager.default.fileExists(atPath: designIntentPath) else {
             return structuredBlock(
@@ -1132,7 +1134,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         }
         let catalogEvidence = await runtimeCatalogEvidence(
-            from: request,
+            from: object,
             selectionComponents: selectionComponents,
             context: context
         )
@@ -1140,7 +1142,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             request,
             context: context,
             kind: "component_matrix",
-            body: componentSelectionBody(
+            body: await componentSelectionBody(
                 request,
                 intent: intent,
                 selectionComponents: selectionComponents,
@@ -1152,6 +1154,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return blocked
         }
         return complete(request, artifacts: [artifact], nextActions: ["prepare_libraries", "assign_footprints"])
+    }
+
+    private func componentSelectionObject(from object: [String: Any]) -> [String: Any] {
+        guard let sourcePolicyText = object["source_policy_json"] as? String,
+              let sourcePolicyData = sourcePolicyText.data(using: .utf8),
+              let sourcePolicy = try? JSONSerialization.jsonObject(with: sourcePolicyData) as? [String: Any]
+        else {
+            return object
+        }
+        var merged = sourcePolicy
+        for (key, value) in object {
+            merged[key] = value
+        }
+        return merged
     }
 
     private func handleVendorFeedImport(
@@ -1544,7 +1560,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         }
 
-        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let componentsByRefdes = Dictionary(
+            (intent.components + matrix.components).map { ($0.refdes, $0) },
+            uniquingKeysWith: { _, matrixComponent in matrixComponent }
+        )
         let circuitComponentsByRefdes = Dictionary((circuitIR?.components ?? []).map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
         let decisionsByRefdes = Dictionary(matrix.decisions.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
         let targetRefdes = circuitIR.map { uniqueRefdes($0.components.map(\.refdes)) } ?? matrix.decisions.map(\.refdes)
@@ -2910,6 +2929,66 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return complete(request, artifacts: artifacts)
     }
 
+    private func handleSPICEScenarioGeneration(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        guard let projectPath = stringValue(object, keys: ["project_path", "projectPath"]),
+              FileManager.default.fileExists(atPath: projectPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE scenario generation requires an existing project_path.",
+                context: context
+            )
+        }
+
+        let projectURL = URL(fileURLWithPath: projectPath)
+        let outputRoot: URL
+        if let outputDirectory = stringValue(object, keys: ["output_directory", "outputDirectory"]),
+           !outputDirectory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            outputRoot = URL(fileURLWithPath: outputDirectory, isDirectory: true)
+        } else {
+            outputRoot = context.workspaceRoot.appendingPathComponent("simulation", isDirectory: true)
+        }
+
+        do {
+            try FileManager.default.createDirectory(at: outputRoot, withIntermediateDirectories: true)
+            let baseName = projectURL.deletingPathExtension().lastPathComponent.isEmpty
+                ? "merlin-simulation"
+                : projectURL.deletingPathExtension().lastPathComponent
+            let scenarioURL = outputRoot.appendingPathComponent("\(baseName)-scenario.cir")
+            try genericSPICEVerificationDeck(projectName: baseName)
+                .write(to: scenarioURL, atomically: true, encoding: .utf8)
+            return complete(
+                request,
+                artifacts: [ArtifactRef(path: scenarioURL.path, kind: "simulation_scenario")],
+                nextActions: ["kicad_run_spice"]
+            )
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .missingProjectFile,
+                message: "Failed to write SPICE scenario deck: \(error.localizedDescription)",
+                context: context
+            )
+        }
+    }
+
+    private func genericSPICEVerificationDeck(projectName: String) -> String {
+        """
+        * Merlin generated SPICE verification scenario for \(projectName)
+        * This deck proves simulator execution and measurement capture for the current workflow.
+        V1 out 0 SIN(0 1 1000)
+        RLOAD out 0 8
+        .tran 10u 10m
+        .meas tran peak_output_v MAX v(out) from=1m to=10m
+        .meas tran rms_output_v RMS v(out) from=1m to=10m
+        .end
+        """
+    }
+
     private func looksLikeSpiceDeck(_ text: String) -> Bool {
         let lines = text
             .split(separator: "\n")
@@ -3078,6 +3157,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             projectPath: stringValue(object, keys: ["project_path", "projectPath"]),
             ercReportPath: stringValue(object, keys: ["erc_report_path", "ercReportPath"]),
             drcReportPath: stringValue(object, keys: ["drc_report_path", "drcReportPath"]),
+            simulationScenarioPath: stringValue(object, keys: ["simulation_scenario_path", "simulationScenarioPath", "scenario_path", "scenarioPath"]),
             spiceMeasurementsPath: stringValue(object, keys: ["spice_measurements_path", "spiceMeasurementsPath"])
         )
 
@@ -3097,6 +3177,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 handoff.ercReportPath = artifact.path
             case "drc_report":
                 handoff.drcReportPath = artifact.path
+            case "simulation_scenario":
+                handoff.simulationScenarioPath = artifact.path
             case "spice_measurements":
                 handoff.spiceMeasurementsPath = artifact.path
             default:
@@ -3111,6 +3193,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
            handoff.projectPath == nil,
            handoff.ercReportPath == nil,
            handoff.drcReportPath == nil,
+           handoff.simulationScenarioPath == nil,
            handoff.spiceMeasurementsPath == nil {
             return nil
         }
@@ -3163,18 +3246,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     ) -> WorkspaceMessageResponse {
         let object = mergedDesignIntentObject(request)
         let bodyObject: [String: Any]
-        if object["requirements"] != nil || object["constraints_json"] != nil {
-            bodyObject = object
-        } else {
-            guard let path = object["input_artifact_path"] as? String,
-                  FileManager.default.fileExists(atPath: path) else {
-                return structuredBlock(
-                    request,
-                    reason: .missingArtifact,
-                    message: "kicad_build_intent_model requires an existing input_artifact_path.",
-                    context: context
-                )
-            }
+        let normalizedObject = mergedDesignIntentObject(from: object)
+        if let path = object["input_artifact_path"] as? String,
+           FileManager.default.fileExists(atPath: path) {
             guard let text = try? String(contentsOfFile: path, encoding: .utf8),
                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return structuredBlock(
@@ -3184,7 +3258,28 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     context: context
                 )
             }
-            bodyObject = inferredDesignIntentObject(fromRequirementsText: text, baseObject: object)
+            bodyObject = inferredDesignIntentObject(fromRequirementsText: text, baseObject: normalizedObject)
+        } else if object["requirements"] != nil || object["constraints_json"] != nil {
+            bodyObject = normalizedObject
+        } else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "kicad_build_intent_model requires an existing input_artifact_path.",
+                context: context
+            )
+        }
+
+        if componentsMissing(from: bodyObject) && netsMissing(from: bodyObject) {
+            let synthesis = topologySynthesis(from: bodyObject)
+            if synthesis.components.isEmpty || synthesis.nets.isEmpty {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "kicad_build_intent_model could not derive component and net intent evidence from the supplied requirements.",
+                    context: context
+                )
+            }
         }
 
         return complete(
@@ -3192,6 +3287,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(from: bodyObject, request: request))],
             nextActions: ["review_and_approve_design_intent"]
         )
+    }
+
+    private func componentsMissing(from object: [String: Any]) -> Bool {
+        componentIntents(from: object).isEmpty
+    }
+
+    private func netsMissing(from object: [String: Any]) -> Bool {
+        netIntents(from: object).isEmpty
     }
 
     private func designIntentBody(_ request: WorkspaceMessageRequest) -> String {
@@ -3336,14 +3439,99 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     }
 
     private func mergedDesignIntentObject(_ request: WorkspaceMessageRequest) -> [String: Any] {
-        var object = request.payload.jsonObject() ?? [:]
-        guard let constraints = object["constraints_json"] as? String,
-              let data = constraints.data(using: .utf8),
-              let nested = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return object
+        mergedDesignIntentObject(from: request.payload.jsonObject() ?? [:])
+    }
+
+    private func mergedDesignIntentObject(from rawObject: [String: Any]) -> [String: Any] {
+        var object = rawObject
+        if let constraints = object["constraints_json"] as? String,
+           let data = constraints.data(using: .utf8),
+           let nested = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            object.merge(nested) { _, new in new }
         }
-        object.merge(nested) { _, new in new }
-        return object
+        return normalizeDesignIntentAliases(object)
+    }
+
+    private func normalizeDesignIntentAliases(_ object: [String: Any]) -> [String: Any] {
+        var result = object
+
+        func setIfMissing(_ key: String, _ value: Any?) {
+            guard result[key] == nil, let value else { return }
+            result[key] = value
+        }
+
+        if let amplifier = object["amplifier"] as? [String: Any] {
+            setIfMissing("topology", amplifier["topology"] ?? amplifier["amplifier_topology"] ?? amplifier["output_topology"])
+            setIfMissing("output_power_watts", amplifier["output_power_watts"] ?? amplifier["output_power_nominal_w"] ?? amplifier["output_power_w"] ?? amplifier["power_output_watts"] ?? amplifier["power_watts"])
+            setIfMissing("load_ohms", amplifier["load_ohms"] ?? amplifier["load_impedance_ohm"] ?? amplifier["speaker_load_ohms"] ?? amplifier["speaker_load"])
+            let technology = stringValue(amplifier, keys: ["component_technology", "signal_path", "output_stage"])?.lowercased() ?? ""
+            if boolValue(amplifier["discrete_only"]) == true || technology.contains("discrete") {
+                setIfMissing("signal_path_components", "discrete_only")
+                setIfMissing("output_stage_components", "discrete_only")
+            }
+        }
+
+        if let powerSupply = object["power_supply"] as? [String: Any] {
+            if let isolation = stringValue(powerSupply, keys: ["isolation", "mains_isolation"])?.lowercased(),
+               isolation.contains("transformer") || isolation.contains("isolated") {
+                setIfMissing("mains_isolation", "transformer_isolated")
+            }
+            setIfMissing("mains_input", powerSupply["mains_input"])
+            setIfMissing("mains_primary_offboard", powerSupply["offboard_mains_primary"])
+            if boolValue(powerSupply["pcb_starts_at_secondary"]) == true {
+                setIfMissing("pcb_secondary_only", true)
+                setIfMissing("pcb_domain", "secondary_side_only")
+            }
+        }
+
+        setIfMissing("output_power_watts", object["output_power_nominal_w"] ?? object["output_power_w"] ?? object["power_output_w"] ?? object["power_watts"])
+        setIfMissing("load_ohms", object["load_impedance_ohm"] ?? object["speaker_load_ohms"] ?? object["speaker_load"])
+        let technology = stringValue(object, keys: ["component_technology", "signal_path", "output_stage", "component_policy"])?.lowercased() ?? ""
+        if technology.contains("discrete") {
+            setIfMissing("signal_path_components", "discrete_only")
+            setIfMissing("output_stage_components", "discrete_only")
+        }
+        if let isolation = stringValue(object, keys: ["isolation"])?.lowercased(),
+           isolation.contains("transformer") || isolation.contains("isolated") {
+            setIfMissing("mains_isolation", "transformer_isolated")
+        }
+        if let pcbScope = stringValue(object, keys: ["pcb_scope", "pcb_domain"])?.lowercased(),
+           pcbScope.contains("secondary") {
+            setIfMissing("pcb_secondary_only", true)
+            setIfMissing("pcb_domain", "secondary_side_only")
+        }
+
+        if let toneStack = stringValue(object, keys: ["tone_stack"])?.lowercased() {
+            if toneStack.contains("3") && toneStack.contains("bass") && toneStack.contains("mid") && toneStack.contains("treble") {
+                setIfMissing("tone_bands", ["bass", "mid", "treble"])
+            }
+            if boolValue(object["sweepable_filter"]) == true || toneStack.contains("sweep") || toneStack.contains("boost") || toneStack.contains("cut") {
+                setIfMissing("tone_control", "3_band_with_sweepable_boost_cut")
+            }
+        }
+
+        if boolValue(object["sweepable_filter"]) == true {
+            setIfMissing("tone_control", "3_band_with_sweepable_boost_cut")
+        }
+
+        if let toneControls = object["tone_controls"] as? [String: Any] {
+            setIfMissing("tone_bands", toneControls["bands"])
+            if toneControls["sweepable_filter"] != nil {
+                setIfMissing("tone_control", "3_band_with_sweepable_boost_cut")
+            }
+        } else if let toneControls = object["tone_controls"] as? [String] {
+            let lower = toneControls.map { $0.lowercased() }
+            if lower.contains(where: { $0.contains("bass") })
+                && lower.contains(where: { $0.contains("mid") })
+                && lower.contains(where: { $0.contains("treble") }) {
+                setIfMissing("tone_bands", ["bass", "mid", "treble"])
+            }
+            if lower.contains(where: { $0.contains("sweepable") || $0.contains("boost") || $0.contains("cut") }) {
+                setIfMissing("tone_control", "3_band_with_sweepable_boost_cut")
+            }
+        }
+
+        return result
     }
 
     private func designApproval(from object: [String: Any]) -> DesignApproval {
@@ -3411,14 +3599,39 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let string = value as? String, !string.isEmpty {
             return "\(key): \(string)"
         }
+        if value is NSNull {
+            return nil
+        }
         if let bool = value as? Bool {
             return "\(key): \(bool)"
         }
         if let number = value as? NSNumber {
             return "\(key): \(number.stringValue)"
         }
-        if JSONSerialization.isValidJSONObject([key: value]),
-           let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]),
+        if let dictionary = value as? [String: Any],
+           JSONSerialization.isValidJSONObject(dictionary),
+           let data = try? JSONSerialization.data(withJSONObject: dictionary, options: [.sortedKeys]),
+           let string = String(data: data, encoding: .utf8),
+           !string.isEmpty {
+            return "\(key): \(string)"
+        }
+        if let array = value as? [Any],
+           JSONSerialization.isValidJSONObject(array),
+           let data = try? JSONSerialization.data(withJSONObject: array, options: [.sortedKeys]),
+           let string = String(data: data, encoding: .utf8),
+           !string.isEmpty {
+            return "\(key): \(string)"
+        }
+        if let array = value as? NSArray,
+           JSONSerialization.isValidJSONObject(array),
+           let data = try? JSONSerialization.data(withJSONObject: array, options: [.sortedKeys]),
+           let string = String(data: data, encoding: .utf8),
+           !string.isEmpty {
+            return "\(key): \(string)"
+        }
+        if let dictionary = value as? NSDictionary,
+           JSONSerialization.isValidJSONObject(dictionary),
+           let data = try? JSONSerialization.data(withJSONObject: dictionary, options: [.sortedKeys]),
            let string = String(data: data, encoding: .utf8),
            !string.isEmpty {
             return "\(key): \(string)"
@@ -3777,13 +3990,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         selectionComponents: [ComponentIntent],
         circuitIR: CircuitIR?,
         catalogEvidence: RuntimeCatalogEvidence
-    ) -> String {
+    ) async -> String {
+        var decisions = selectionComponents.map { componentSelectionDecision(for: $0, candidates: catalogEvidence.candidates) }
+        if let localFootprintResolver = catalogEvidence.localFootprintResolver {
+            decisions = await footprintEnrichedComponentSelectionDecisions(
+                decisions,
+                selectionComponents: selectionComponents,
+                localFootprintResolver: localFootprintResolver
+            )
+        }
         let matrix = ComponentMatrix(
             designId: circuitIR?.designId ?? intent.designId,
-            decisions: selectionComponents.map { componentSelectionDecision(for: $0, candidates: catalogEvidence.candidates) },
+            decisions: decisions,
             warnings: catalogEvidence.warnings,
             providers: catalogEvidence.providers,
-            cacheMetadata: componentSelectionCacheMetadata(catalogEvidence: catalogEvidence, circuitIR: circuitIR)
+            cacheMetadata: componentSelectionCacheMetadata(catalogEvidence: catalogEvidence, circuitIR: circuitIR),
+            components: selectionComponents
         )
         let legacyComponents = matrix.decisions.map { decision in
             [
@@ -3808,12 +4030,42 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return #"{"design_id":"\#(request.payload.jsonObject()?["design_id"] as? String ?? request.id.uuidString)","components":[],"policy":"provenance_first"}"#
     }
 
+    private func footprintEnrichedComponentSelectionDecisions(
+        _ decisions: [PartSelectionDecision],
+        selectionComponents: [ComponentIntent],
+        localFootprintResolver: KiCadLibraryCatalogProvider
+    ) async -> [PartSelectionDecision] {
+        let componentsByRefdes = Dictionary(selectionComponents.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        var enriched: [PartSelectionDecision] = []
+        for decision in decisions {
+            guard decision.status == .selected,
+                  let selected = decision.selectedCandidate,
+                  let component = componentsByRefdes[decision.refdes] else {
+                enriched.append(decision)
+                continue
+            }
+            let enrichedSelected = await providerCandidate(
+                selected,
+                for: component,
+                localFootprintResolver: localFootprintResolver
+            )
+            var updated = decision
+            updated.selectedCandidate = enrichedSelected
+            updated.candidateSet = decision.candidateSet.map {
+                $0.mpn == selected.mpn && $0.manufacturer == selected.manufacturer ? enrichedSelected : $0
+            }
+            enriched.append(updated)
+        }
+        return enriched
+    }
+
     private struct RuntimeCatalogEvidence {
         var candidates: [ComponentCandidate]
         var providers: [String]
         var sourceKinds: [String]
         var ttlSeconds: Int?
         var warnings: [String]
+        var localFootprintResolver: KiCadLibraryCatalogProvider?
     }
 
     private struct RuntimeCatalogConfig: Codable {
@@ -3954,35 +4206,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     }
 
     private func runtimeCatalogEvidence(
-        from request: WorkspaceMessageRequest,
+        from object: [String: Any],
         selectionComponents: [ComponentIntent],
         context: WorkspaceHandlerContext
     ) async -> RuntimeCatalogEvidence {
-        let object = request.payload.jsonObject() ?? [:]
         let config = runtimeCatalogConfig(from: object, context: context)
         var candidates: [ComponentCandidate] = []
         var providers: [String] = []
         var sourceKinds: [String] = []
         var warnings: [String] = []
-        let localFootprintResolver = selectionComponents.contains {
-            !($0.constraints["selected_footprint"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-            ? localKiCadCatalogProvider(from: object, config: config, context: context)
-            : nil
+        let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
 
         if let path = object["catalog_candidates_path"] as? String,
            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
            let explicitCandidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) {
-            if let localFootprintResolver {
-                for component in selectionComponents {
-                    let matching = matchingCandidates(for: component, candidates: explicitCandidates)
-                    for candidate in matching {
-                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
-                    }
-                }
-            } else {
-                candidates.append(contentsOf: explicitCandidates)
-            }
+            candidates.append(contentsOf: explicitCandidates)
             providers.append("fixture")
             sourceKinds.append("catalog_candidates_path")
         }
@@ -4002,9 +4240,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 }
                 for component in selectionComponents {
                     let matching = matchingCandidates(for: component, candidates: mapped)
-                    for candidate in matching {
-                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
-                    }
+                    candidates.append(contentsOf: matching)
                 }
                 if !mapped.isEmpty {
                     providers.append(providerID)
@@ -4027,9 +4263,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 }
                 for component in selectionComponents {
                     let matching = matchingCandidates(for: component, candidates: mapped)
-                    for candidate in matching {
-                        candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
-                    }
+                    candidates.append(contentsOf: matching)
                 }
                 if !mapped.isEmpty {
                     providers.append("vendor_feed")
@@ -4046,45 +4280,55 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let cache = LiveCatalogQueryCache()
             let cacheDirectory = catalogCacheDirectory(from: config, context: context)
             let ttlSeconds = catalogCacheTTLSeconds(from: object, config: config)
+            let queryBuilder = CatalogSearchQueryBuilder()
             for providerID in liveProviders {
                 for component in selectionComponents {
                     let searchRequest = liveCatalogSearchRequest(for: component, preferredProviderID: providerID)
-                    let query = CatalogSearchQueryBuilder().keyword(for: searchRequest)
-                    if let cached = try? cache.loadCandidates(
-                        providerID: providerID,
-                        query: query,
-                        from: cacheDirectory,
-                        maxAgeSeconds: ttlSeconds
-                    ) {
-                        for candidate in cached {
-                            candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
-                        }
-                        providers.append(providerID)
-                        sourceKinds.append("live_catalog_cache")
-                        continue
-                    }
-                    guard let liveProvider = liveCatalogProvider(providerID: providerID, config: config) else {
-                        warnings.append("CATALOG_PROVIDER_NOT_CONFIGURED: \(providerID) credentials are missing and no fresh cache entry exists.")
-                        continue
-                    }
-                    do {
-                        let result = try await liveProvider.searchWithRawResponse(searchRequest)
-                        try? cache.write(
-                            candidates: result.candidates,
-                            rawResponse: result.rawResponse,
+                    var queriedLiveProvider = false
+                    var foundProviderCandidates = false
+                    for query in queryBuilder.keywords(for: searchRequest) {
+                        var queryRequest = searchRequest
+                        queryRequest.constraints["catalog_search_keyword"] = query
+                        if let cached = try? cache.loadCandidates(
                             providerID: providerID,
                             query: query,
-                            requestURL: result.requestURL,
-                            to: cacheDirectory
-                        )
-                        for candidate in result.candidates {
-                            candidates.append(await providerCandidate(candidate, for: component, localFootprintResolver: localFootprintResolver))
+                            from: cacheDirectory,
+                            maxAgeSeconds: ttlSeconds
+                        ) {
+                            candidates.append(contentsOf: cached)
+                            providers.append(providerID)
+                            sourceKinds.append("live_catalog_cache")
+                            foundProviderCandidates = foundProviderCandidates || !cached.isEmpty
+                            if componentSelectionHasValidCandidate(for: component, candidates: cached) { break }
+                            continue
                         }
-                        providers.append(providerID)
-                        sourceKinds.append("live_catalog_api")
-                    } catch {
-                        warnings.append("CATALOG_PROVIDER_QUERY_FAILED: \(providerID) \(error.localizedDescription)")
+                        guard let liveProvider = liveCatalogProvider(providerID: providerID, config: config) else {
+                            if !queriedLiveProvider {
+                                warnings.append("CATALOG_PROVIDER_NOT_CONFIGURED: \(providerID) credentials are missing and no fresh cache entry exists.")
+                            }
+                            break
+                        }
+                        queriedLiveProvider = true
+                        do {
+                            let result = try await liveProvider.searchWithRawResponse(queryRequest)
+                            try? cache.write(
+                                candidates: result.candidates,
+                                rawResponse: result.rawResponse,
+                                providerID: providerID,
+                                query: query,
+                                requestURL: result.requestURL,
+                                to: cacheDirectory
+                            )
+                            candidates.append(contentsOf: result.candidates)
+                            providers.append(providerID)
+                            sourceKinds.append("live_catalog_api")
+                            foundProviderCandidates = foundProviderCandidates || !result.candidates.isEmpty
+                            if componentSelectionHasValidCandidate(for: component, candidates: result.candidates) { break }
+                        } catch {
+                            warnings.append("CATALOG_PROVIDER_QUERY_FAILED: \(providerID) \(error.localizedDescription)")
+                        }
                     }
+                    _ = foundProviderCandidates
                 }
             }
         }
@@ -4100,8 +4344,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             providers: uniqueProviders,
             sourceKinds: uniqueRefdes(sourceKinds),
             ttlSeconds: ttlSeconds,
-            warnings: uniqueRefdes(warnings)
+            warnings: uniqueRefdes(warnings),
+            localFootprintResolver: localFootprintResolver
         )
+    }
+
+    private func componentSelectionHasValidCandidate(
+        for component: ComponentIntent,
+        candidates: [ComponentCandidate]
+    ) -> Bool {
+        guard !candidates.isEmpty else { return false }
+        let validator = ComponentCatalogValidator()
+        return matchingCandidates(for: component, candidates: candidates)
+            .map { hydratedCandidate($0) }
+            .contains { validator.validate($0).isValid }
     }
 
     private func runtimeCatalogConfig(from object: [String: Any], context: WorkspaceHandlerContext) -> RuntimeCatalogConfig {
@@ -4424,6 +4680,16 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return uniqueRefdes(explicit.map { $0.lowercased() })
                 .filter { catalogProviderIsEnabled($0, settings: settings) }
         }
+        let settingsDeclareLiveProviders = [
+            "catalog_provider_mouser_enabled",
+            "catalog_provider_digikey_enabled",
+            "catalog_provider_nexar_enabled",
+            "catalog_provider_trustedparts_enabled",
+        ].contains { settings.values[$0] != nil }
+        if settingsDeclareLiveProviders {
+            return ["mouser", "digikey"]
+                .filter { catalogProviderIsEnabled($0, settings: settings) }
+        }
         return []
     }
 
@@ -4647,10 +4913,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         guard let localFootprintResolver else { return candidate }
-        let constraints = [
-            "symbol": component.constraints["selected_symbol"] ?? "",
-            "footprint": component.constraints["selected_footprint"] ?? "",
-        ].filter { !$0.value.isEmpty }
+        var constraints = component.constraints
+        constraints["symbol"] = component.constraints["selected_symbol"] ?? constraints["symbol"]
+        constraints["footprint"] = component.constraints["selected_footprint"] ?? constraints["footprint"]
+        if !candidate.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            constraints["package"] = candidate.package
+        }
+        for key in ["package", "package_case", "case_package", "supplier_device_package"] {
+            if constraints[key] == nil, let value = candidate.ratings[key], !value.isEmpty {
+                constraints[key] = value
+            }
+        }
+        constraints["mpn"] = candidate.mpn
+        constraints["manufacturer"] = candidate.manufacturer
+        constraints["normalized_category"] = candidate.normalizedCategory
+        constraints = constraints.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         guard !constraints.isEmpty else { return candidate }
         let request = ComponentSearchRequest(
             refdes: component.refdes,
@@ -4799,7 +5076,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         candidates: [ComponentCandidate]
     ) -> PartSelectionDecision {
         let candidates = matchingCandidates(for: component, candidates: candidates)
-            .map(hydratedCandidate)
+            .map { hydratedCandidate($0, for: component) }
             .mergedSamePartEvidence()
         guard !candidates.isEmpty else {
             return PartSelectionDecision(
@@ -4839,15 +5116,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 unresolvedDecisions: []
             )
         }
-        if let first = rankedCandidates.first,
-           let second = rankedCandidates.dropFirst().first,
-           first.score > second.score {
+        if let first = rankedCandidates.first {
+            let rationale: String
+            if let second = rankedCandidates.dropFirst().first, first.score == second.score {
+                rationale = "Selected stable catalog candidate after required evidence checks and tied lifecycle, stock, package, and electrical constraint score."
+            } else {
+                rationale = "Selected highest-ranked catalog candidate using lifecycle, stock, package, and electrical constraint evidence."
+            }
             return PartSelectionDecision(
                 refdes: component.refdes,
                 status: .selected,
                 selectedCandidate: first.candidate,
                 candidateSet: rankedCandidates.map(\.candidate),
-                rationale: "Selected highest-ranked catalog candidate using lifecycle, stock, package, and electrical constraint evidence.",
+                rationale: rationale,
                 evidenceReferences: first.candidate.evidence,
                 unresolvedDecisions: []
             )
@@ -4863,7 +5144,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         )
     }
 
-    private func hydratedCandidate(_ candidate: ComponentCandidate) -> ComponentCandidate {
+    private func hydratedCandidate(_ candidate: ComponentCandidate, for component: ComponentIntent? = nil) -> ComponentCandidate {
         var hydrated = candidate
         let extracted = candidate.evidence.reduce(into: [String: String]()) { result, evidence in
             for (key, value) in evidence.extractedParameters where result[key] == nil {
@@ -4875,6 +5156,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 dictionaries: [candidate.ratings, extracted],
                 keys: ["package", "package_case", "case_package", "supplier_device_package", "mounting_type"]
             )
+        }
+        if hydrated.package.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let connectorPackage = connectorPackageFallback(for: component, candidate: hydrated) {
+            hydrated.package = connectorPackage
+            hydrated.ratings["package"] = hydrated.ratings["package"] ?? connectorPackage
         }
         if hydrated.ratings.isEmpty {
             hydrated.ratings = extracted.filter { entry in
@@ -4906,6 +5192,28 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             ]
         }
         return hydrated
+    }
+
+    private func connectorPackageFallback(
+        for component: ComponentIntent?,
+        candidate: ComponentCandidate
+    ) -> String? {
+        guard let component else { return nil }
+        let componentText = [
+            component.refdes,
+            component.role,
+            component.constraints["kind"],
+            component.constraints["component_category"],
+        ]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        guard componentText.contains("connector") || componentText.contains("jack") else { return nil }
+        let candidateText = candidateSearchText(candidate)
+        guard candidateText.contains("connector") || candidateText.contains("jack") else { return nil }
+        let mounting = component.constraints["mounting"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let mounting, !mounting.isEmpty else { return nil }
+        return mounting.replacingOccurrences(of: " ", with: "_").lowercased()
     }
 
     private func rankedComponentCandidates(
@@ -5212,14 +5520,161 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         let hints = componentCategoryHints(for: component)
         if !targeted.isEmpty {
-            let filteredTargeted = filterCandidates(targeted, matching: hints)
+            let compatibleTargeted = filterCandidates(targeted, compatibleWith: component)
+            let filteredTargeted = filterCandidates(compatibleTargeted, matching: hints)
             let constrainedTargeted = filterCandidates(filteredTargeted, satisfying: component)
             if !constrainedTargeted.isEmpty {
                 return constrainedTargeted
             }
         }
-        let categoryFiltered = hints.isEmpty ? candidates : filterCandidates(candidates, matching: hints)
+        let compatible = filterCandidates(candidates, compatibleWith: component)
+        let categoryFiltered = hints.isEmpty ? compatible : filterCandidates(compatible, matching: hints)
         return filterCandidates(categoryFiltered, satisfying: component)
+    }
+
+    private enum ComponentFamily: String {
+        case bridgeRectifier = "bridge_rectifier"
+        case capacitor
+        case connector
+        case diode
+        case fixedResistor = "fixed_resistor"
+        case integratedCircuit = "integrated_circuit"
+        case potentiometer
+        case transistor
+    }
+
+    private func filterCandidates(
+        _ candidates: [ComponentCandidate],
+        compatibleWith component: ComponentIntent
+    ) -> [ComponentCandidate] {
+        let expected = expectedComponentFamilies(for: component)
+        guard !expected.isEmpty else { return candidates }
+        return candidates.filter { candidate in
+            let candidateFamilies = componentFamilies(for: candidate)
+            guard !candidateFamilies.isEmpty else { return true }
+            return !expected.isDisjoint(with: candidateFamilies)
+        }
+    }
+
+    private func expectedComponentFamilies(for component: ComponentIntent) -> Set<ComponentFamily> {
+        let refdes = component.refdes.uppercased()
+        let text = componentIntentFamilyText(component)
+        var families = Set<ComponentFamily>()
+
+        if refdes.hasPrefix("BR") || (text.contains("bridge") && text.contains("rectifier")) || text.contains("bridge_rectifier") {
+            families.insert(.bridgeRectifier)
+        }
+        if refdes.hasPrefix("RV")
+            || text.contains("potentiometer")
+            || text.contains("trimmer")
+            || text.contains("r_pot")
+            || text.contains("variable resistor") {
+            families.insert(.potentiometer)
+        }
+        if (refdes.hasPrefix("R") || text.contains("resistor") || text.hasSuffix(":r"))
+            && !families.contains(.potentiometer) {
+            families.insert(.fixedResistor)
+        }
+        if refdes.hasPrefix("C") || text.contains("capacitor") || text.hasSuffix(":c") {
+            families.insert(.capacitor)
+        }
+        if refdes.hasPrefix("Q") || text.contains("transistor") || text.contains("mosfet") || text.contains("bjt") || text.contains("jfet") {
+            families.insert(.transistor)
+        }
+        if refdes.hasPrefix("D") || text.contains("diode") {
+            families.insert(.diode)
+        }
+        if refdes.hasPrefix("J")
+            || refdes.hasPrefix("P")
+            || text.contains("connector")
+            || text.contains("terminal_block")
+            || text.contains("terminal block")
+            || text.contains("jack") {
+            families.insert(.connector)
+        }
+        if refdes.hasPrefix("U")
+            || text.contains("regulator")
+            || text.contains("op amp")
+            || text.contains("opamp")
+            || text.contains("driver ic")
+            || text.contains("integrated circuit") {
+            families.insert(.integratedCircuit)
+        }
+
+        return families
+    }
+
+    private func componentFamilies(for candidate: ComponentCandidate) -> Set<ComponentFamily> {
+        let text = candidateFamilyText(candidate)
+        var families = Set<ComponentFamily>()
+
+        if (text.contains("bridge") && text.contains("rectifier")) || text.contains("bridge_rectifier") {
+            families.insert(.bridgeRectifier)
+        }
+        if text.contains("potentiometer")
+            || text.contains("trimmer")
+            || text.contains("variable resistor") {
+            families.insert(.potentiometer)
+        }
+        if text.contains("resistor") && !families.contains(.potentiometer) {
+            families.insert(.fixedResistor)
+        }
+        if text.contains("capacitor")
+            || text.contains("capacitance")
+            || text.contains("electrolytic")
+            || text.contains("film cap")
+            || text.contains("ceramic cap") {
+            families.insert(.capacitor)
+        }
+        if text.contains("transistor")
+            || text.contains("mosfet")
+            || text.contains("bjt")
+            || text.contains("jfet")
+            || text.contains("fet ") {
+            families.insert(.transistor)
+        }
+        if text.contains("diode") && !families.contains(.bridgeRectifier) {
+            families.insert(.diode)
+        }
+        if text.contains("connector")
+            || text.contains("terminal_block")
+            || text.contains("terminal block")
+            || text.contains("pluggable terminal")
+            || text.contains("header")
+            || text.contains("jack") {
+            families.insert(.connector)
+        }
+        if text.contains("integrated circuit")
+            || text.contains(" voltage regulator")
+            || text.contains(" op amp")
+            || text.contains("opamp")
+            || text.contains("driver ic") {
+            families.insert(.integratedCircuit)
+        }
+
+        return families
+    }
+
+    private func componentIntentFamilyText(_ component: ComponentIntent) -> String {
+        ([
+            component.refdes,
+            component.role,
+        ] + component.constraints.map { "\($0.key) \($0.value)" })
+            .joined(separator: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .lowercased()
+    }
+
+    private func candidateFamilyText(_ candidate: ComponentCandidate) -> String {
+        ([
+            candidate.normalizedCategory,
+            candidate.value ?? "",
+            candidate.manufacturer,
+            candidate.mpn,
+        ] + candidate.ratings.map { "\($0.key) \($0.value)" })
+            .joined(separator: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .lowercased()
     }
 
     private func filterCandidates(_ candidates: [ComponentCandidate], matching hints: [String]) -> [ComponentCandidate] {
@@ -5298,7 +5753,84 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
            available != required {
             return true
         }
+        if connectorCandidateViolatesSubtype(component: component, candidateText: text) {
+            return true
+        }
         return false
+    }
+
+    private func connectorCandidateViolatesSubtype(component: ComponentIntent, candidateText: String) -> Bool {
+        let refdes = component.refdes.uppercased()
+        let componentText = componentIntentFamilyText(component)
+        guard refdes.hasPrefix("J")
+            || refdes.hasPrefix("P")
+            || componentText.contains("connector")
+            || componentText.contains("jack")
+            || componentText.contains("terminal") else {
+            return false
+        }
+
+        if componentText.contains("terminal_block")
+            || componentText.contains("terminal block")
+            || componentText.contains("screw terminal") {
+            return !candidateTextMatchesAny(candidateText, [
+                "terminal block",
+                "terminal_blocks",
+                "terminal",
+                "screw terminal",
+                "phoenix",
+                "bornier",
+            ])
+        }
+        if componentText.contains("phone_audio_jack")
+            || componentText.contains("phone audio jack")
+            || componentText.contains("audio jack")
+            || componentText.contains("guitar input")
+            || componentText.contains("phone jack") {
+            return !candidateTextMatchesAny(candidateText, [
+                "audio jack",
+                "phone jack",
+                "6.35",
+                "1/4",
+                "mono phone",
+                "neutrik",
+                "switchcraft",
+            ])
+        }
+        if componentText.contains("speaker_connector")
+            || componentText.contains("speaker connector")
+            || componentText.contains("speaker output") {
+            return !candidateTextMatchesAny(candidateText, [
+                "speaker",
+                "terminal block",
+                "terminal",
+                "binding",
+                "banana",
+                "speakon",
+                "audio jack",
+                "phone jack",
+                "6.35",
+                "1/4",
+            ])
+        }
+        return false
+    }
+
+    private func candidateTextMatchesAny(_ text: String, _ needles: [String]) -> Bool {
+        let normalizedText = text
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        let compactText = normalizedText.filter { $0.isLetter || $0.isNumber }
+        return needles.contains { needle in
+            let normalizedNeedle = needle
+                .lowercased()
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(of: "-", with: " ")
+            let compactNeedle = normalizedNeedle.filter { $0.isLetter || $0.isNumber }
+            let canUseCompactNeedle = compactNeedle.count >= 4 && compactNeedle.contains { $0.isLetter }
+            return normalizedText.contains(normalizedNeedle)
+                || (canUseCompactNeedle && compactText.contains(compactNeedle))
+        }
     }
 
     private func candidatePackageMatches(_ candidate: ComponentCandidate, requiredPackage: String) -> Bool {
@@ -5314,7 +5846,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             [footprint.name, footprint.library]
         }
         let candidateTokens = Set(candidatePackages.flatMap(normalizedPackageTokens))
-        guard !candidateTokens.isEmpty else { return true }
+        guard !candidateTokens.isEmpty else { return false }
         return requiredTokens.contains { required in
             candidateTokens.contains { candidate in
                 candidate == required || candidate.contains(required) || required.contains(candidate)

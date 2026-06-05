@@ -155,6 +155,37 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertTrue(log.contains("pcb drc"))
     }
 
+    func testSPICEScenarioGenerationProducesRunnableDeckArtifact() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeFixtureFile(name: "scenario-source.kicad_pro", text: #"{"meta":{"version":1}}"#)
+
+        let scenario = await sendElectronics(
+            runtime,
+            capability: "kicad_generate_spice_scenario",
+            payload: #"{"project_path":"\#(project.path)"}"#
+        )
+
+        XCTAssertEqual(scenario.status, .ok)
+        let scenarioResult = try XCTUnwrap(scenario.payload?.decodeJSON(KiCadToolResult.self))
+        let scenarioPath = try XCTUnwrap(scenarioResult.artifacts.first { $0.kind == "simulation_scenario" }?.path)
+        XCTAssertEqual(scenarioResult.handoff?.simulationScenarioPath, scenarioPath)
+        XCTAssertTrue(scenarioResult.nextActions.contains("kicad_run_spice"))
+        let deck = try String(contentsOfFile: scenarioPath, encoding: .utf8)
+        XCTAssertTrue(deck.contains(".tran"), deck)
+        XCTAssertTrue(deck.contains(".end"), deck)
+
+        let ngspice = try writeFakeNgspice(exitCode: 0, logText: "peak_output_v = 1.0\\nrms_output_v = 0.707\\n")
+        let spice = await sendElectronics(
+            runtime,
+            capability: "kicad_run_spice",
+            payload: #"{"project_path":"\#(project.path)","scenario_path":"\#(scenarioPath)","ngspice_path":"\#(ngspice.path)"}"#
+        )
+        XCTAssertEqual(spice.status, .ok)
+        let spiceResult = try XCTUnwrap(spice.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(spiceResult.artifacts.contains { $0.kind == "spice_measurements" && FileManager.default.fileExists(atPath: $0.path) })
+    }
+
     func testCompiledBoardOutlinePassesRealKiCadDRCWhenAvailable() async throws {
         let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
         guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {

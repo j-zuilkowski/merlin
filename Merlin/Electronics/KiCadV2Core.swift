@@ -46,6 +46,7 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
     var projectPath: String?
     var ercReportPath: String?
     var drcReportPath: String?
+    var simulationScenarioPath: String?
     var spiceMeasurementsPath: String?
 
     init(designIntentPath: String? = nil,
@@ -55,6 +56,7 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
          projectPath: String? = nil,
          ercReportPath: String? = nil,
          drcReportPath: String? = nil,
+         simulationScenarioPath: String? = nil,
          spiceMeasurementsPath: String? = nil) {
         self.designIntentPath = designIntentPath
         self.circuitIRPath = circuitIRPath
@@ -63,6 +65,7 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
         self.projectPath = projectPath
         self.ercReportPath = ercReportPath
         self.drcReportPath = drcReportPath
+        self.simulationScenarioPath = simulationScenarioPath
         self.spiceMeasurementsPath = spiceMeasurementsPath
     }
 
@@ -75,6 +78,7 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
         projectPath = Self.string(in: container, for: ["projectPath", "project_path"])
         ercReportPath = Self.string(in: container, for: ["ercReportPath", "erc_report_path"])
         drcReportPath = Self.string(in: container, for: ["drcReportPath", "drc_report_path"])
+        simulationScenarioPath = Self.string(in: container, for: ["simulationScenarioPath", "simulation_scenario_path", "scenarioPath", "scenario_path"])
         spiceMeasurementsPath = Self.string(in: container, for: ["spiceMeasurementsPath", "spice_measurements_path"])
     }
 
@@ -87,6 +91,7 @@ struct KiCadWorkflowHandoff: Codable, Sendable, Equatable {
         try container.encodeIfPresent(projectPath, forKey: FlexibleCodingKey("projectPath"))
         try container.encodeIfPresent(ercReportPath, forKey: FlexibleCodingKey("ercReportPath"))
         try container.encodeIfPresent(drcReportPath, forKey: FlexibleCodingKey("drcReportPath"))
+        try container.encodeIfPresent(simulationScenarioPath, forKey: FlexibleCodingKey("simulationScenarioPath"))
         try container.encodeIfPresent(spiceMeasurementsPath, forKey: FlexibleCodingKey("spiceMeasurementsPath"))
     }
 

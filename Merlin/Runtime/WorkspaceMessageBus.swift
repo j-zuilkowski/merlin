@@ -136,26 +136,25 @@ actor WorkspaceMessageBus {
             return await handler.handle(request, context: context)
         }
 
-        return await withTaskGroup(of: WorkspaceMessageResponse.self) { group in
-            group.addTask {
-                await handler.handle(request, context: context)
+        return await withCheckedContinuation { continuation in
+            let latch = WorkspaceMessageResponseLatch(continuation)
+            let handlerTask = Task {
+                let response = await handler.handle(request, context: context)
+                _ = latch.resume(response)
             }
-            group.addTask {
+            Task {
                 do {
                     try await Task.sleep(for: timeout)
                 } catch {
-                    return .cancelled(requestID: request.id)
+                    if latch.resume(.cancelled(requestID: request.id)) {
+                        handlerTask.cancel()
+                    }
+                    return
                 }
-                return .timedOut(requestID: request.id)
+                if latch.resume(.timedOut(requestID: request.id)) {
+                    handlerTask.cancel()
+                }
             }
-
-            let first = await group.next() ?? .failed(
-                requestID: request.id,
-                code: "REQUEST_FAILED",
-                message: "Workspace message request produced no response."
-            )
-            group.cancelAll()
-            return first
         }
     }
 
@@ -204,6 +203,25 @@ actor WorkspaceMessageBus {
     private func trimEventBuffer() {
         guard eventBuffer.count > eventCapacity else { return }
         eventBuffer.removeFirst(eventBuffer.count - eventCapacity)
+    }
+}
+
+private final class WorkspaceMessageResponseLatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+    private let continuation: CheckedContinuation<WorkspaceMessageResponse, Never>
+
+    init(_ continuation: CheckedContinuation<WorkspaceMessageResponse, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume(_ response: WorkspaceMessageResponse) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard didResume == false else { return false }
+        didResume = true
+        continuation.resume(returning: response)
+        return true
     }
 }
 

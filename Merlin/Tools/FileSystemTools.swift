@@ -1,8 +1,10 @@
 import Foundation
+import Darwin
 
 enum FileSystemTools {
     private static let imageExtensions: Set<String> =
         ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp", "heic"]
+    private static let maxReadFileBytes = 2_000_000
 
     static func readFile(path: String) async throws -> String {
         let url = URL(fileURLWithPath: path)
@@ -13,10 +15,51 @@ enum FileSystemTools {
                 + "image content. Use the vision_query tool with "
                 + "image_id=\"\(path)\" and a prompt describing what to extract.]"
         }
-        let data = try Data(contentsOf: url)
-        let text = String(decoding: data, as: UTF8.self)
-        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
-        return lines.enumerated().map { "\($0.offset + 1)\t\($0.element)" }.joined(separator: "\n")
+        let file = try readRegularFileData(path: url.path, maxBytes: maxReadFileBytes)
+        let text = String(decoding: file.data, as: UTF8.self)
+        var lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .enumerated()
+            .map { "\($0.offset + 1)\t\($0.element)" }
+        if file.truncated {
+            lines.append("… (truncated after \(maxReadFileBytes) bytes)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func readRegularFileData(path: String, maxBytes: Int) throws -> (data: Data, truncated: Bool) {
+        let fd = open(path, O_RDONLY)
+        guard fd >= 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        defer { close(fd) }
+
+        var metadata = stat()
+        guard fstat(fd, &metadata) == 0 else {
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        guard (metadata.st_mode & S_IFMT) == S_IFREG else {
+            throw POSIXError(.EISDIR)
+        }
+
+        var data = Data()
+        data.reserveCapacity(min(maxBytes, max(0, Int(metadata.st_size))))
+        var remaining = maxBytes
+        var buffer = [UInt8](repeating: 0, count: 64 * 1024)
+        while remaining > 0 {
+            let requested = min(buffer.count, remaining)
+            let count = buffer.withUnsafeMutableBytes { pointer in
+                read(fd, pointer.baseAddress, requested)
+            }
+            if count < 0 {
+                if errno == EINTR { continue }
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
+            if count == 0 { break }
+            data.append(buffer, count: count)
+            remaining -= count
+        }
+
+        return (data, Int64(metadata.st_size) > Int64(maxBytes))
     }
 
     static func writeFile(path: String, content: String) async throws {

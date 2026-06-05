@@ -146,6 +146,7 @@ struct PartSelectionDecision: Codable, Sendable, Equatable {
 
 struct ComponentMatrix: Codable, Sendable, Equatable {
     var designId: String
+    var components: [ComponentIntent]
     var decisions: [PartSelectionDecision]
     var warnings: [String]
     var providers: [String]
@@ -153,10 +154,37 @@ struct ComponentMatrix: Codable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case designId = "design_id"
+        case components
         case decisions
         case warnings
         case providers
         case cacheMetadata = "cache_metadata"
+    }
+
+    init(
+        designId: String,
+        decisions: [PartSelectionDecision],
+        warnings: [String],
+        providers: [String],
+        cacheMetadata: [String: String],
+        components: [ComponentIntent] = []
+    ) {
+        self.designId = designId
+        self.components = components
+        self.decisions = decisions
+        self.warnings = warnings
+        self.providers = providers
+        self.cacheMetadata = cacheMetadata
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        designId = try container.decode(String.self, forKey: .designId)
+        components = try container.decodeIfPresent([ComponentIntent].self, forKey: .components) ?? []
+        decisions = try container.decode([PartSelectionDecision].self, forKey: .decisions)
+        warnings = try container.decodeIfPresent([String].self, forKey: .warnings) ?? []
+        providers = try container.decodeIfPresent([String].self, forKey: .providers) ?? []
+        cacheMetadata = try container.decodeIfPresent([String: String].self, forKey: .cacheMetadata) ?? [:]
     }
 }
 
@@ -248,8 +276,18 @@ enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
 }
 
 struct CatalogSearchQueryBuilder: Sendable {
+    func keywords(for request: ComponentSearchRequest) -> [String] {
+        uniqueTerms([keyword(for: request)] + fallbackKeywords(for: request))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
     func keyword(for request: ComponentSearchRequest) -> String {
         let constraints = request.constraints
+        if let value = constraints["catalog_search_keyword"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !value.isEmpty {
+            return value
+        }
         for key in ["manufacturer_part_number", "mpn"] {
             if let value = constraints[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
                !value.isEmpty {
@@ -263,13 +301,18 @@ struct CatalogSearchQueryBuilder: Sendable {
             terms.append(family.keyword)
         }
         terms.append(contentsOf: valueTerms(from: constraints))
+        if let package = constraints["package"] {
+            terms.append(contentsOf: packageTerms(from: package))
+        }
         if let footprint = constraints["selected_footprint"] {
             terms.append(contentsOf: footprintTerms(from: footprint))
         }
         if let family {
             terms.append(contentsOf: family.defaultTerms)
         }
-        terms.append(contentsOf: roleTerms(from: request.role, excluding: family?.excludedRoleTokens ?? []))
+        if family.map(shouldIncludeRoleTerms(for:)) ?? true {
+            terms.append(contentsOf: roleTerms(from: request.role, excluding: family?.excludedRoleTokens ?? []))
+        }
 
         let query = uniqueTerms(terms)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -288,6 +331,17 @@ struct CatalogSearchQueryBuilder: Sendable {
         var keyword: String
         var defaultTerms: [String]
         var excludedRoleTokens: Set<String>
+    }
+
+    private func shouldIncludeRoleTerms(for family: ComponentFamily) -> Bool {
+        let keyword = family.keyword.lowercased()
+        return !(keyword == "resistor"
+            || keyword == "capacitor"
+            || keyword == "potentiometer"
+            || keyword.contains("position connector")
+            || keyword.contains("terminal block")
+            || keyword.contains("bridge rectifier")
+            || keyword.contains("transistor"))
     }
 
     private func componentFamily(for request: ComponentSearchRequest) -> ComponentFamily? {
@@ -333,8 +387,15 @@ struct CatalogSearchQueryBuilder: Sendable {
         }
         if refdes.hasPrefix("Q") || combined.contains("transistor") || combined.contains("mosfet") || combined.contains("bjt") {
             let keyword = combined.contains("pnp") ? "PNP transistor" : "NPN transistor"
+            let powerPrefix = combined.contains("power transistor")
+                || combined.contains("power_transistor")
+                || combined.contains("output transistor")
+                || combined.contains("driver transistor")
+                || combined.contains("driver_transistor")
+                ? "power "
+                : ""
             return ComponentFamily(
-                keyword: keyword,
+                keyword: keyword.replacingOccurrences(of: "transistor", with: "\(powerPrefix)transistor"),
                 defaultTerms: [],
                 excludedRoleTokens: ["transistor", "stage"]
             )
@@ -364,6 +425,150 @@ struct CatalogSearchQueryBuilder: Sendable {
             )
         }
         return nil
+    }
+
+    private func fallbackKeywords(for request: ComponentSearchRequest) -> [String] {
+        let refdes = request.refdes.uppercased()
+        let constraints = request.constraints
+        let category = [
+            constraints["component_category"],
+            constraints["category"],
+            constraints["kind"],
+            request.role,
+        ]
+            .compactMap { $0?.lowercased() }
+            .joined(separator: " ")
+        var queries: [String] = []
+        let packageTerms = packageTerms(from: constraints["package"] ?? "")
+        let mounting = constraints["mounting"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let voltage = constraints["voltage_rating"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let current = constraints["current_rating"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let power = constraints["power_rating"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resistance = constraints["resistance"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let capacitance = constraints["capacitance"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let tolerance = constraints["tolerance"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let positions = constraints["positions"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if refdes.hasPrefix("BR") || category.contains("bridge") || category.contains("rectifier") {
+            queries.append("bridge rectifier")
+            if let current, !current.isEmpty {
+                queries.append("bridge rectifier \(current)")
+            }
+            if let voltage, !voltage.isEmpty {
+                queries.append("bridge rectifier \(voltage)")
+            }
+            if let current, let voltage, !current.isEmpty, !voltage.isEmpty {
+                queries.append("bridge rectifier \(current) \(voltage)")
+            }
+            queries.append("GBU bridge rectifier")
+            queries.append("KBPC bridge rectifier")
+            return uniqueTerms(queries)
+        }
+
+        if refdes.hasPrefix("RV") || category.contains("potentiometer") || category.contains("pot") {
+            queries.append("potentiometer")
+            if let resistance, !resistance.isEmpty {
+                queries.append("potentiometer \(resistance)")
+                queries.append("linear potentiometer \(resistance)")
+                queries.append("through hole potentiometer \(resistance)")
+            }
+            return uniqueTerms(queries)
+        }
+
+        if refdes.hasPrefix("R") || category.contains("resistor") {
+            queries.append("resistor")
+            if let resistance, !resistance.isEmpty {
+                queries.append("resistor \(resistance)")
+                if let tolerance, !tolerance.isEmpty {
+                    queries.append("resistor \(resistance) \(tolerance)")
+                }
+                if let power, !power.isEmpty {
+                    queries.append("resistor \(resistance) \(power)")
+                }
+                if let mounting, !mounting.isEmpty {
+                    queries.append("resistor \(resistance) \(mounting.replacingOccurrences(of: "_", with: " "))")
+                }
+            }
+            return uniqueTerms(queries)
+        }
+
+        if refdes.hasPrefix("C") || category.contains("capacitor") {
+            queries.append("capacitor")
+            if let capacitance, !capacitance.isEmpty {
+                queries.append("capacitor \(capacitance)")
+                if let voltage, !voltage.isEmpty {
+                    queries.append("capacitor \(capacitance) \(voltage)")
+                }
+                if let mounting, !mounting.isEmpty {
+                    queries.append("capacitor \(capacitance) \(mounting.replacingOccurrences(of: "_", with: " "))")
+                }
+            }
+            return uniqueTerms(queries)
+        }
+
+        if refdes.hasPrefix("J") || refdes.hasPrefix("P") || category.contains("connector") || category.contains("terminal") || category.contains("jack") {
+            if let positions, !positions.isEmpty {
+                queries.append("\(positions) position connector")
+                queries.append("\(positions) position terminal block")
+            }
+            if let current, !current.isEmpty {
+                queries.append("connector \(current)")
+                queries.append("terminal block \(current)")
+            }
+            queries.append("terminal block")
+            queries.append("connector")
+            return uniqueTerms(queries)
+        }
+
+        guard refdes.hasPrefix("Q") || category.contains("transistor") || category.contains("bjt") else {
+            return []
+        }
+
+        let polarity = normalizedPolarity(from: constraints)
+        let packageQueries = packageTerms
+            .filter { $0.lowercased().hasPrefix("to") || $0.lowercased().hasPrefix("sot") }
+            .map { "\(polarity) transistor \($0)" }
+        queries.append(contentsOf: packageQueries)
+
+        if category.contains("power_transistor") || category.contains("power transistor")
+            || category.contains("output transistor") {
+            queries.append("\(polarity) power transistor")
+            if let power, !power.isEmpty {
+                queries.append("\(polarity) power transistor \(power)")
+            }
+            if let current, !current.isEmpty {
+                queries.append("\(polarity) power transistor \(current)")
+            }
+            for package in packageTerms where package.lowercased().hasPrefix("to") {
+                queries.append("\(polarity) power transistor \(package)")
+            }
+        } else if category.contains("driver_transistor") || category.contains("driver transistor")
+            || category.contains("driver stage") {
+            queries.append("\(polarity) medium power transistor")
+            if let voltage, let current, !voltage.isEmpty, !current.isEmpty {
+                queries.append("\(polarity) transistor \(voltage) \(current)")
+            }
+            for package in packageTerms where package.lowercased().hasPrefix("to") {
+                queries.append("\(polarity) medium power transistor \(package)")
+            }
+        } else if category.contains("low_noise") || category.contains("low noise")
+            || category.contains("preamp") {
+            queries.append("\(polarity) low noise transistor")
+            for package in packageTerms where package.lowercased().hasPrefix("to") {
+                queries.append("\(polarity) low noise transistor \(package)")
+            }
+            queries.append("JFET low noise transistor")
+        }
+
+        return uniqueTerms(queries)
+    }
+
+    private func normalizedPolarity(from constraints: [String: String]) -> String {
+        let polarity = (constraints["polarity"] ?? "").lowercased()
+        if polarity.contains("pnp") || polarity.contains("p channel") {
+            return "PNP"
+        }
+        return "NPN"
     }
 
     private func valueTerms(from constraints: [String: String]) -> [String] {
@@ -401,6 +606,19 @@ struct CatalogSearchQueryBuilder: Sendable {
             .lowercased()
         let knownPackages = ["01005", "0201", "0402", "0603", "0805", "1206", "1210", "1812", "sot23", "sot 23", "to 92", "to 220", "to 247", "to 3"]
         return knownPackages.filter { normalized.contains($0) }
+    }
+
+    private func packageTerms(from package: String) -> [String] {
+        package
+            .replacingOccurrences(of: "_or_", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .flatMap { token -> [String] in
+                let normalized = token.replacingOccurrences(of: "-", with: " ")
+                return normalized == token ? [token] : [token, normalized]
+            }
     }
 
     private func roleTerms(from role: String, excluding excluded: Set<String>) -> [String] {
@@ -577,10 +795,25 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
 
     private let symbolsByName: [String: KiCadSymbolDefinition]
     private let footprintsByName: [String: KiCadFootprintDefinition]
+    private let footprintSearchEntries: [FootprintSearchEntry]
+
+    private struct FootprintSearchEntry {
+        var footprint: KiCadFootprintDefinition
+        var text: String
+        var compactText: String
+    }
 
     init(symbols: [KiCadSymbolDefinition], footprints: [KiCadFootprintDefinition]) {
         self.symbolsByName = Dictionary(symbols.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
         self.footprintsByName = Dictionary(footprints.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        self.footprintSearchEntries = footprints.map {
+            let text = $0.name.lowercased()
+            return FootprintSearchEntry(
+                footprint: $0,
+                text: text,
+                compactText: text.filter { $0.isLetter || $0.isNumber }
+            )
+        }
     }
 
     func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
@@ -608,7 +841,8 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
                 )
             },
             footprintMatches.first.map {
-                ComponentEvidence(
+                let pinPadMap = pinPadMap(for: $0, request: request)
+                return ComponentEvidence(
                     providerID: providerID,
                     sourceURL: nil,
                     localPath: $0.name,
@@ -617,7 +851,7 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
                     sha256: nil,
                     extractedParameters: [
                         "footprint": $0.name,
-                        "pad_count": "\($0.pads.count)",
+                        "pad_count": "\(pinPadMap.values.count)",
                     ],
                     confidence: 1.0,
                     warnings: []
@@ -629,12 +863,7 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
                 library: libraryName(from: footprint.name),
                 name: footprintNameOnly(from: footprint.name),
                 packageCompatibilityEvidence: packageCompatibilityEvidence(for: footprint, request: request),
-                pinPadMap: Dictionary(uniqueKeysWithValues: footprint.pads.compactMap { pad in
-                    let name = pad.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    let key = name.isEmpty ? pad.number : name
-                    guard !key.isEmpty, !pad.number.isEmpty else { return nil }
-                    return (key, pad.number)
-                }),
+                pinPadMap: pinPadMap(for: footprint, request: request),
                 sourceProviderID: providerID,
                 sourcePath: footprint.name,
                 threeDModel: nil
@@ -684,24 +913,57 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
             .joined(separator: " ")
             .lowercased()
         let tokens = Set(packageValues.flatMap(packageTokens))
-        let scored = footprintsByName.values.compactMap { footprint -> (KiCadFootprintDefinition, Int)? in
-            let text = footprint.name.lowercased()
-            let compactText = text.filter { $0.isLetter || $0.isNumber }
+        let category = footprintCategory(for: queryText)
+        let requiredPins = requiredPins(from: request.constraints["required_pins"])
+        let scored = footprintSearchEntries.compactMap { entry -> (KiCadFootprintDefinition, Int)? in
+            let text = entry.text
+            let compactText = entry.compactText
             var score = 0
             if !tokens.isEmpty {
                 let matched = tokens.filter { text.contains($0) || compactText.contains($0) }
                 score += matched.count * 10
             }
-            if queryText.contains("resistor"), text.contains("resistor") { score += 8 }
-            if queryText.contains("capacitor"), text.contains("capacitor") { score += 8 }
-            if queryText.contains("terminal"), text.contains("terminal") { score += 8 }
-            if queryText.contains("connector"), text.contains("connector") { score += 6 }
-            if queryText.contains("jack"), text.contains("jack") || text.contains("audio") { score += 8 }
-            if queryText.contains("transistor"), text.contains("package_to") || text.contains("to-") { score += 6 }
-            if queryText.contains("bridge"), text.contains("diode") || text.contains("bridge") || text.contains("gbu") { score += 8 }
-            if queryText.contains("potentiometer"), text.contains("potentiometer") || text.contains("pot") { score += 8 }
+            switch category {
+            case .resistor:
+                guard text.contains("resistor") else { return nil }
+                score += 30
+            case .capacitor:
+                guard text.contains("capacitor") else { return nil }
+                score += 30
+            case .connector:
+                let connectorScore = connectorFootprintScore(
+                    text: text,
+                    compactText: compactText,
+                    queryText: queryText,
+                    packageTokens: tokens
+                )
+                guard connectorScore > 0 else { return nil }
+                score += 30 + connectorScore
+            case .transistor:
+                guard text.contains("package_to") || text.contains("to-") || text.contains("sot") else { return nil }
+                score += 25
+            case .bridge:
+                guard text.contains("diode") || text.contains("bridge") || text.contains("gbu") else { return nil }
+                score += 30
+            case .potentiometer:
+                guard text.contains("potentiometer") || text.contains("pot") else { return nil }
+                score += 30
+            case .diode:
+                guard text.contains("diode") else { return nil }
+                score += 25
+            case .none:
+                break
+            }
+            if !requiredPins.isEmpty {
+                let pinMap = pinPadMap(for: entry.footprint, request: request)
+                if requiredPins.allSatisfy({ pinMap[$0]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false }) {
+                    score += 120
+                } else if category == .connector {
+                    score -= 40
+                }
+            }
             guard score > 0 else { return nil }
-            return (footprint, score)
+            return (entry.footprint, score)
         }
         return scored.sorted { lhs, rhs in
             if lhs.1 != rhs.1 { return lhs.1 > rhs.1 }
@@ -710,7 +972,7 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
     }
 
     private func packageTokens(from value: String) -> [String] {
-        let ignored: Set<String> = ["package", "case", "pkg", "through", "hole", "tht", "smd", "smt", "lead", "leaded", "to"]
+        let ignored: Set<String> = ["package", "case", "pkg", "through", "hole", "tht", "smd", "smt", "lead", "leaded", "to", "free", "hanging", "line", "inline", "mount", "mounted", "panel"]
         var tokens = value
             .lowercased()
             .split { !$0.isLetter && !$0.isNumber }
@@ -721,6 +983,177 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
             tokens.append(compact)
         }
         return tokens
+    }
+
+    private func connectorFootprintScore(
+        text: String,
+        compactText: String,
+        queryText: String,
+        packageTokens: Set<String>
+    ) -> Int {
+        guard text.contains("connector") || text.contains("terminal") || text.contains("jack") || text.contains("header") else {
+            return 0
+        }
+        let query = queryText
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        let compactQuery = query.filter { $0.isLetter || $0.isNumber }
+
+        if query.contains("terminal block")
+            || compactQuery.contains("terminalblock")
+            || query.contains("screw terminal") {
+            return connectorTextMatchesAny(text, compactText, [
+                "terminal",
+                "phoenix",
+                "screw",
+                "bornier",
+            ]) ? 80 : 0
+        }
+        if query.contains("phone audio jack")
+            || query.contains("audio jack")
+            || query.contains("guitar input")
+            || query.contains("phone jack") {
+            var score = connectorTextMatchesAny(text, compactText, [
+                "connector_audio",
+                "audio",
+                "jack_6.35",
+                "jack635",
+                "neutrik",
+                "switchcraft",
+            ]) ? 80 : 0
+            if score > 0, query.contains("guitar"), compactText.contains("jack635") {
+                score += 30
+            }
+            if score > 0, query.contains("guitar"), compactText.contains("jack35") {
+                score -= 20
+            }
+            return score
+        }
+        if query.contains("speaker connector") || query.contains("speaker output") {
+            return connectorTextMatchesAny(text, compactText, [
+                "terminal",
+                "phoenix",
+                "screw",
+                "speaker",
+                "speakon",
+                "banana",
+                "binding",
+            ]) ? 70 : 0
+        }
+        if query.contains("barrel") || query.contains("dc power") {
+            return connectorTextMatchesAny(text, compactText, [
+                "barreljack",
+                "barrel",
+                "dcjack",
+                "dc",
+            ]) ? 70 : 0
+        }
+        if query.contains("coax") || query.contains("rf connector") || query.contains("sma") || query.contains("bnc") {
+            return connectorTextMatchesAny(text, compactText, [
+                "coaxial",
+                "sma",
+                "bnc",
+                "rf",
+            ]) ? 70 : 0
+        }
+        if query.contains("header") || query.contains("pin header") {
+            return connectorTextMatchesAny(text, compactText, [
+                "pinheader",
+                "header",
+                "connector_pin",
+            ]) ? 70 : 0
+        }
+
+        let matchedPackageTokens = packageTokens.filter { text.contains($0) || compactText.contains($0) }
+        return matchedPackageTokens.isEmpty ? 0 : matchedPackageTokens.count * 10
+    }
+
+    private func connectorTextMatchesAny(_ text: String, _ compactText: String, _ needles: [String]) -> Bool {
+        needles.contains { needle in
+            let compactNeedle = needle.filter { $0.isLetter || $0.isNumber }
+            return text.contains(needle) || (!compactNeedle.isEmpty && compactText.contains(compactNeedle))
+        }
+    }
+
+    private enum FootprintCategory {
+        case resistor
+        case capacitor
+        case connector
+        case transistor
+        case bridge
+        case potentiometer
+        case diode
+    }
+
+    private func footprintCategory(for queryText: String) -> FootprintCategory? {
+        if queryText.contains("bridge") || queryText.contains("rectifier") { return .bridge }
+        if queryText.contains("potentiometer") || queryText.contains("trimmer") { return .potentiometer }
+        if queryText.contains("resistor") { return .resistor }
+        if queryText.contains("capacitor") { return .capacitor }
+        if queryText.contains("connector") || queryText.contains("terminal") || queryText.contains("jack") || queryText.contains("header") {
+            return .connector
+        }
+        if queryText.contains("transistor") || queryText.contains("bjt") || queryText.contains("mosfet") || queryText.contains("jfet") {
+            return .transistor
+        }
+        if queryText.contains("diode") { return .diode }
+        return nil
+    }
+
+    private func pinPadMap(for footprint: KiCadFootprintDefinition, request: ComponentSearchRequest) -> [String: String] {
+        var map = pinPadMap(for: footprint)
+        let requiredPins = requiredPins(from: request.constraints["required_pins"])
+        guard requiredPins == ["1", "2"] else { return map }
+        let query = ([request.refdes, request.role] + Array(request.constraints.values))
+            .joined(separator: " ")
+            .lowercased()
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        let pads = Set(map.values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() })
+
+        if (query.contains("phone audio jack")
+            || query.contains("audio jack")
+            || query.contains("guitar input")
+            || query.contains("audio input"))
+            && pads.contains("T")
+            && pads.contains("S")
+            && !pads.contains("R") {
+            map["1"] = "T"
+            map["2"] = "S"
+        }
+
+        if (query.contains("speaker connector")
+            || query.contains("speaker output")
+            || query.contains("speakon"))
+            && pads.contains("1+")
+            && pads.contains("1-") {
+            map["1"] = "1+"
+            map["2"] = "1-"
+        }
+        return map
+    }
+
+    private func pinPadMap(for footprint: KiCadFootprintDefinition) -> [String: String] {
+        let entries = footprint.pads.flatMap { pad -> [(String, String)] in
+            let number = pad.number.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !number.isEmpty else { return [] }
+            let name = pad.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if name.isEmpty || name == number {
+                return [(number, number)]
+            }
+            return [
+                (name, number),
+                (number, number),
+            ]
+        }
+        return Dictionary(entries, uniquingKeysWith: { first, _ in first })
+    }
+
+    private func requiredPins(from value: String?) -> [String] {
+        value?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty } ?? []
     }
 
     private func packageCompatibilityEvidence(for footprint: KiCadFootprintDefinition, request: ComponentSearchRequest) -> String {
@@ -854,12 +1287,25 @@ struct MouserCatalogProviderAdapter: Sendable {
             )
             let description = CatalogFixtureJSON.string(part, "Description")
             let category = CatalogFixtureJSON.string(part, "Category")
+            let packageFields = [
+                "Package": CatalogFixtureJSON.string(part, "Package"),
+                "Package / Case": CatalogFixtureJSON.string(part, "PackageCase"),
+                "Package Type": CatalogFixtureJSON.string(part, "PackageType"),
+                "Supplier Device Package": CatalogFixtureJSON.string(part, "SupplierDevicePackage"),
+            ].filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            let evidenceAttributes = attributes.merging(packageFields) { current, _ in current }
             let package = CatalogFixtureJSON.packageEvidence(
-                attributes,
+                evidenceAttributes,
                 category: category,
                 description: description
             )
-            let ratings = CatalogFixtureJSON.normalizedWithDescription(attributes, description: description)
+            let ratings = CatalogFixtureJSON.normalizedWithDescription(evidenceAttributes, description: description)
+            let datasheetURL = CatalogFixtureJSON.firstNonEmpty([
+                CatalogFixtureJSON.string(part, "DataSheetUrl"),
+                CatalogFixtureJSON.string(part, "DatasheetUrl"),
+                CatalogFixtureJSON.string(part, "DatasheetURL"),
+                CatalogFixtureJSON.string(part, "DataSheetURL"),
+            ])
             return ComponentCandidate(
                 mpn: mpn,
                 manufacturer: manufacturer,
@@ -873,7 +1319,7 @@ struct MouserCatalogProviderAdapter: Sendable {
                     DatasheetEvidence(
                         manufacturer: manufacturer,
                         mpn: mpn,
-                        url: CatalogFixtureJSON.string(part, "DataSheetUrl"),
+                        url: datasheetURL,
                         localPath: nil,
                         sha256: nil,
                         providerID: providerID,

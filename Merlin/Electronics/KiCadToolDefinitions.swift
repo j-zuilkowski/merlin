@@ -22,6 +22,7 @@ enum KiCadToolDefinitions {
         "kicad_repair_drc_from_diagnostics",
         "kicad_apply_drc_repair_patch",
         "kicad_check_parity",
+        "kicad_generate_spice_scenario",
         "kicad_run_spice",
         "kicad_repair_spice_from_diagnostics",
         "kicad_apply_spice_repair_patch",
@@ -96,6 +97,9 @@ enum KiCadToolDefinitions {
             description: "Select components/modules from source corpus and vendor metadata",
             properties: [
                 "design_intent_path": .string("DesignIntent JSON path"),
+                "circuit_ir_path": .string("Generated Circuit IR JSON path"),
+                "live_catalog_providers": .stringArray("Live catalog providers to query, for example mouser or digikey"),
+                "live_catalog_result_limit": .integer("Maximum live catalog candidates per component"),
                 "source_policy_json": .string("JSON encoded source policy"),
             ],
             required: ["design_intent_path"]
@@ -228,11 +232,22 @@ enum KiCadToolDefinitions {
             required: ["project_path"]
         ),
         tool(
+            name: "kicad_generate_spice_scenario",
+            description: "Generate a runnable ngspice deck artifact from existing electronics project evidence",
+            properties: [
+                "project_path": .string("KiCad project path"),
+                "design_intent_path": .string("Optional DesignIntent JSON path"),
+                "circuit_ir_path": .string("Optional CircuitIR JSON path"),
+                "output_directory": .string("Optional directory for the generated .cir deck"),
+            ],
+            required: ["project_path"]
+        ),
+        tool(
             name: "kicad_run_spice",
             description: "Run KiCad/ngspice-compatible simulation scenarios",
             properties: [
                 "project_path": .string("KiCad project path"),
-                "scenario_path": .string("SimulationScenario JSON path"),
+                "scenario_path": .string("Runnable SPICE deck path (.cir or .sp)"),
             ],
             required: ["project_path", "scenario_path"]
         ),
@@ -337,5 +352,9 @@ private extension JSONSchema {
 
     static func boolean(_ description: String) -> JSONSchema {
         JSONSchema(type: "boolean", description: description)
+    }
+
+    static func stringArray(_ description: String) -> JSONSchema {
+        JSONSchema(type: "array", items: JSONSchema(type: "string"), description: description)
     }
 }

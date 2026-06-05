@@ -142,6 +142,7 @@ final class AppState: ObservableObject {
     private var githubTokenObserver: NSObjectProtocol?
     private var providerKeyObserver: NSObjectProtocol?
     private var selectProviderObserver: NSObjectProtocol?
+    private let enableStartupProjectScans: Bool
     private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
     private var cancellables: Set<AnyCancellable> = []
     private var disciplineEventPollTask: Task<Void, Never>?
@@ -152,15 +153,19 @@ final class AppState: ObservableObject {
     init(
         projectPath: String = "",
         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
-        workspaceRuntime: WorkspaceRuntime? = nil
+        workspaceRuntime: WorkspaceRuntime? = nil,
+        inferProjectDomains: Bool = true,
+        enableStartupProjectScans: Bool = true
     ) {
         self.projectPath = projectPath
+        self.enableStartupProjectScans = enableStartupProjectScans
         self.workspaceRuntime = workspaceRuntime ?? (try! WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: projectPath.isEmpty ? NSTemporaryDirectory() : projectPath)
         ))
         let resolvedActiveDomainIDs = Self.inferredActiveDomainIDs(
             requested: activeDomainIDs,
-            projectPath: projectPath
+            projectPath: projectPath,
+            inferProjectDomains: inferProjectDomains
         )
         self.initialActiveDomainIDs = resolvedActiveDomainIDs
         self.activeDomainIDs = self.initialActiveDomainIDs
@@ -348,25 +353,31 @@ final class AppState: ObservableObject {
                 self.toolActivityState = .idle
             }
             .store(in: &cancellables)
-        // After every turn, run a discipline scan and refresh the pending-attention
-        // chip. No-op for projects without a tasks/ or .merlin/ tree.
-        engine.$isRunning
-            .filter { !$0 }
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                guard let self, !self.projectPath.isEmpty else { return }
-                let path = self.projectPath
-                Task { [weak self] in
-                    guard let self else { return }
-                    _ = await self.disciplineEngine.scan(projectPath: path)
-                    await self.disciplineEngine.runWeeklyOverrideReview()
-                    await self.pendingAttention.refresh(projectPath: path)
+        if enableStartupProjectScans {
+            // After every turn, run a discipline scan and refresh the pending-attention
+            // chip. No-op for projects without a tasks/ or .merlin/ tree.
+            engine.$isRunning
+                .filter { !$0 }
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in
+                    guard let self, !self.projectPath.isEmpty else { return }
+                    let path = self.projectPath
+                    Task { [weak self] in
+                        guard let self else { return }
+                        _ = await self.disciplineEngine.scan(projectPath: path)
+                        await self.disciplineEngine.runWeeklyOverrideReview()
+                        await self.pendingAttention.refresh(projectPath: path)
+                    }
                 }
-            }
-            .store(in: &cancellables)
+                .store(in: &cancellables)
+        }
         // Prefer the open project's path; fall back to the global config.toml setting.
         let resolvedPath = projectPath.isEmpty ? AppSettings.shared.projectPath : projectPath
-        engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
+        if enableStartupProjectScans {
+            engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
+        } else {
+            engine.currentProjectPath = nil
+        }
         engine.ragRerank = AppSettings.shared.ragRerank
         engine.ragChunkLimit = AppSettings.shared.ragChunkLimit
         // contextWindowSize stays at the declaration default (200_000); AppSettings.maxTokens
@@ -806,9 +817,11 @@ final class AppState: ObservableObject {
 
     private static func inferredActiveDomainIDs(
         requested ids: [String],
-        projectPath: String
+        projectPath: String,
+        inferProjectDomains: Bool
     ) -> [String] {
         var resolved = ids.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : ids
+        guard inferProjectDomains else { return resolved }
         if ElectronicsDomain.projectLooksLikeElectronics(projectPath),
            !resolved.contains(ElectronicsDomain.defaultID) {
             resolved.append(ElectronicsDomain.defaultID)

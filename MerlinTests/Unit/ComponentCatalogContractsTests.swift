@@ -123,6 +123,73 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertTrue(candidate.evidence.contains { $0.extractedParameters["symbol"] == "Device:Q_NPN_BCE" })
     }
 
+    func testKiCadLibraryCatalogProviderRequiresConnectorSubtypeMatch() async throws {
+        let provider = KiCadLibraryCatalogProvider(
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Connector_Coaxial:BNC_PanelMountable_Vertical",
+                    pads: numberedPads(["1", "2"])
+                ),
+                KiCadFootprintDefinition(
+                    name: "Connector_DIN:DIN41612_B_1x32_Female_Vertical_THT",
+                    pads: numberedPads(["1", "2", "3", "4"])
+                ),
+            ]
+        )
+
+        let candidates = try await provider.search(ComponentSearchRequest(
+            refdes: "JIN",
+            role: "high impedance guitar input connector",
+            constraints: [
+                "component_category": "phone_audio_jack",
+                "package": "Free Hanging (In-Line)",
+                "positions": "2",
+            ],
+            requiredEvidenceTypes: ["footprint"],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "library_asset"
+        ))
+
+        XCTAssertTrue(candidates.flatMap(\.footprintCandidates).isEmpty)
+    }
+
+    func testKiCadLibraryCatalogProviderPrefersTerminalBlockSubtypeForSecondaryInput() async throws {
+        let provider = KiCadLibraryCatalogProvider(
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Connector_Coaxial:BNC_PanelMountable_Vertical",
+                    pads: numberedPads(["1", "2"])
+                ),
+                KiCadFootprintDefinition(
+                    name: "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_2-G_1x02_P7.50mm_Horizontal",
+                    pads: numberedPads(["1", "2"])
+                ),
+            ]
+        )
+
+        let candidates = try await provider.search(ComponentSearchRequest(
+            refdes: "JSEC",
+            role: "isolated transformer secondary input connector",
+            constraints: [
+                "component_category": "terminal_block",
+                "package": "Panel Mount, Through Hole",
+                "positions": "2",
+            ],
+            requiredEvidenceTypes: ["footprint"],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "library_asset"
+        ))
+
+        let footprints = candidates.flatMap(\.footprintCandidates)
+        XCTAssertEqual(footprints.map(\.sourcePath), [
+            "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_2-G_1x02_P7.50mm_Horizontal",
+        ])
+    }
+
     func testKiCadLibraryCatalogExtractorReadsLocalSymbolAndFootprintTrees() throws {
         let root = try temporaryDirectory()
         let symbolRoot = root.appendingPathComponent("symbols", isDirectory: true)
@@ -292,6 +359,10 @@ final class ComponentCatalogContractsTests: XCTestCase {
             sourcePath: "Package_TO_SOT_THT.pretty/TO-3P-3_Vertical.kicad_mod",
             threeDModel: nil
         )
+    }
+
+    private func numberedPads(_ numbers: [String]) -> [KiCadFootprintPad] {
+        numbers.map { KiCadFootprintPad(number: $0, name: $0) }
     }
 
     private func XCTAssertRoundTrips<T: Codable & Equatable>(

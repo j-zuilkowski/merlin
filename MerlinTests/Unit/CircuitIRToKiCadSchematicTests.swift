@@ -28,6 +28,7 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && $0.emitsKiCadConnectivity && $0.at != nil })
         XCTAssertTrue(parsed.labels.contains { $0.text == "GND" && $0.emitsKiCadConnectivity && $0.at != nil })
         XCTAssertTrue(parsed.symbols.contains { $0.property(named: "Reference") == "Q1" && $0.emitsKiCadSymbol })
+        XCTAssertFalse(parsed.wires.isEmpty, "Multi-endpoint CircuitIR nets must emit physical wires, not labels only")
         XCTAssertFalse(parsed.labels.isEmpty)
     }
 
@@ -71,7 +72,43 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         let parsed = try KiCadSchematicParser().parse(String(contentsOf: result.schematicURL, encoding: .utf8))
         XCTAssertEqual(parsed.symbols.count, 2)
         XCTAssertEqual(Set(parsed.labels.map(\.text)), ["DRV_OUT", "GND"])
-        XCTAssertEqual(parsed.wires.count, 0)
+        XCTAssertEqual(parsed.wires.count, 1)
+    }
+
+    func testMultiEndpointNetDoesNotPlaceConnectivityLabelOnStarJunction() throws {
+        let document = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: threeEndpointCircuitIR())
+        let serialized = try KiCadSchematicWriter().write(document)
+        let parsed = try KiCadSchematicParser().parse(serialized)
+
+        XCTAssertEqual(parsed.wires.count, 2)
+        XCTAssertFalse(
+            parsed.labels.contains {
+                $0.text == "DRV_OUT"
+                    && $0.at == KiCadSchematicDocument.Point(x: 20.32, y: 25.4)
+                    && $0.emitsKiCadConnectivity
+            },
+            "A KiCad label at a star-wire junction triggers label_multiple_wires ERC errors."
+        )
+        XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && $0.emitsKiCadConnectivity })
+    }
+
+    func testExplicitNoConnectRepairPatchEmitsRealKiCadNoConnectNode() throws {
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: validCircuitIR())
+        let updated = ERCRepairPatchApplier().apply([
+            ERCRepairPatch(
+                violationId: "erc-q1-c",
+                repairClass: .explicitNoConnect,
+                targetRef: "Symbol Q1 Pin 2 [C, Passive, Line]",
+                action: "add_no_connect",
+                details: "Pin not connected"
+            ),
+        ], to: schematic)
+
+        let serialized = try KiCadSchematicWriter().write(updated)
+
+        XCTAssertTrue(serialized.contains(#"(no_connect (at 27.94 20.32)"#), serialized)
+        XCTAssertFalse(serialized.contains(#"(merlin_erc_repair"#), serialized)
+        XCTAssertNoThrow(try KiCadSchematicParser().parse(serialized))
     }
 
     func testMaterializationBlocksWhenKiCadPinGeometryCannotBeResolved() throws {
@@ -194,6 +231,23 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
                 VerificationScenario(id: "erc", kind: "erc", expectation: "no blocking ERC errors"),
             ]
         )
+    }
+
+    private func threeEndpointCircuitIR() -> CircuitIR {
+        var ir = validCircuitIR()
+        ir.components.append(CircuitComponent(
+            refdes: "Q3",
+            role: "third transistor",
+            selectedSymbol: "Device:Q_NPN_BCE",
+            selectedFootprint: "Package_TO_SOT_THT:TO-92_Inline",
+            manufacturerPartNumber: "example-mpn-q3",
+            sourceEvidence: [SourceEvidence(kind: "datasheet", reference: "third datasheet")],
+            pins: [
+                CircuitPin(componentRefdes: "Q3", pinNumber: "1", canonicalName: "B", electricalType: "input", symbolPin: "B", footprintPad: "1"),
+            ]
+        ))
+        ir.nets[0].endpoints.append(CircuitNetEndpoint(componentRefdes: "Q3", pinNumber: "1"))
+        return ir
     }
 
     private func temporaryDirectory(_ name: String) -> URL {

@@ -182,6 +182,179 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(intent.verificationPlan.spiceRequired)
     }
 
+    func testNestedGUIConstraintPayloadBuildsApprovableClassAIntent() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = """
+        {
+          "amplifier": {
+            "topology": "single_ended_class_a",
+            "output_power_w": 25,
+            "load_impedance_ohm": 8,
+            "solid_state": true,
+            "discrete_only": true
+          },
+          "power_supply": {
+            "mains_input": "120VAC_60Hz_NorthAmerica",
+            "isolation": "transformer",
+            "offboard_mains_primary": true,
+            "pcb_starts_at_secondary": true,
+            "fuse": true,
+            "power_switch": true,
+            "protective_earth": true
+          },
+          "tone_controls": {
+            "bands": ["bass", "mid", "treble"],
+            "sweepable_filter": {
+              "boost_cut": true,
+              "adjustable_center_frequency": true
+            }
+          },
+          "safety": {
+            "creepage_clearance_review_required": true,
+            "enclosure_required": true,
+            "thermal_review_required": true,
+            "qualified_review_required": true
+          }
+        }
+        """
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["output_power_watts"], "25")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["load_ohms"], "8")
+        XCTAssertEqual(intent.boards.first?.safetyDomain, "isolated_secondary")
+        XCTAssertTrue(intent.safetyProfile.isolationRequired)
+        XCTAssertTrue(intent.verificationPlan.spiceRequired)
+
+        let approvalResponse = await send(
+            runtime,
+            capability: "kicad_approve_design_intent",
+            payload: #"{"design_intent_path":"\#(artifact.url.path)","approved":true,"approved_by":"jon"}"#
+        )
+        XCTAssertEqual(approvalResponse.status, .ok)
+        XCTAssertTrue(approvalResponse.artifacts.contains { $0.kind == "design_intent" })
+    }
+
+    func testFlatGUIAliasPayloadCarriesPowerIntoOutputStage() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"topology":"single_ended_class_a","output_power_w":25,"speaker_load_ohms":8,"mains_input":"120VAC_North_American","isolation":"transformer_isolated","tone_controls":["bass","mid","treble","sweepable_boost_cut"],"signal_path":"discrete","output_stage":"discrete_solid_state","class":"pure_class_a","pcb_scope":"isolated_secondary_side_only"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["output_power_watts"], "25")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["load_ohms"], "8")
+        XCTAssertEqual(intent.boards.first?.safetyDomain, "isolated_secondary")
+        XCTAssertTrue(intent.safetyProfile.isolationRequired)
+        XCTAssertEqual(componentsByRefdes["TONE1"]?.constraints["bands"], "bass,mid,treble")
+    }
+
+    func testSpecPathWithBoardOnlyConstraintsStillUsesRequirementTextForTopology() async throws {
+        let root = try temporaryDirectory()
+        let specURL = root.appendingPathComponent("spec.md")
+        try ampDemoSpecText.write(to: specURL, atomically: true, encoding: .utf8)
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"pcb_layers":2,"pcb_material":"FR4","copper_weight":"1oz","board_thickness":"1.6mm","mains_isolation":"off_board","pcb_domain":"isolated_secondary_only"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"input_artifact_path":"\#(specURL.path)","board_profile_id":"standard_2layer","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertEqual(intent.designId, "standard_2layer")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["output_power_watts"], "25")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["load_ohms"], "8")
+        XCTAssertEqual(componentsByRefdes["TONE1"]?.constraints["bands"], "bass,mid,treble")
+        XCTAssertTrue(intent.nets.contains { $0.name == "SPK_OUT" && $0.source == "QOUT1" && $0.destination == "JSPK" })
+        XCTAssertGreaterThanOrEqual(intent.components.count, 8)
+        XCTAssertGreaterThanOrEqual(intent.nets.count, 6)
+    }
+
+    func testGUIRunConstraintAliasesBuildNonEmptyApprovableClassAIntent() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"component_technology":"discrete_solid_state","isolation":"transformer","load_impedance_ohm":8,"mains_input":"120VAC_60Hz_NorthAmerica","output_power_nominal_w":25,"pcb_scope":"secondary_side_only","sweepable_filter":true,"tone_stack":"3band_bass_mid_treble","topology":"single_ended_class_a"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"standard_2layer_1p6mm","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let componentsByRefdes = Dictionary(intent.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        XCTAssertGreaterThanOrEqual(intent.components.count, 8)
+        XCTAssertGreaterThanOrEqual(intent.nets.count, 6)
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["output_power_watts"], "25")
+        XCTAssertEqual(componentsByRefdes["QOUT1"]?.constraints["load_ohms"], "8")
+        XCTAssertEqual(componentsByRefdes["JSEC"]?.constraints["mains_primary"], "off_board")
+        XCTAssertEqual(componentsByRefdes["TONE1"]?.constraints["bands"], "bass,mid,treble")
+        XCTAssertEqual(intent.boards.first?.safetyDomain, "isolated_secondary")
+        XCTAssertTrue(intent.safetyProfile.isolationRequired)
+
+        let approvalResponse = await send(
+            runtime,
+            capability: "kicad_approve_design_intent",
+            payload: #"{"design_intent_path":"\#(artifact.url.path)","approved":true,"approved_by":"jon"}"#
+        )
+        XCTAssertEqual(approvalResponse.status, .ok)
+        XCTAssertTrue(approvalResponse.artifacts.contains { $0.kind == "design_intent" })
+    }
+
+    func testGUIConstraintPayloadWithNestedValuesAndNullDoesNotCrashIntentBuild() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let constraints = #"{"topology":"single_ended_class_a","output_power_w":25,"speaker_load_ohms":8,"mains_input":"120VAC_North_American","isolation":"transformer_isolated","tone_controls":["bass","mid","treble","sweepable_boost_cut"],"safety":{"primary":"off_board","secondary":"isolated"},"optional_note":null,"signal_path":"discrete","output_stage":"discrete_solid_state","class":"pure_class_a","pcb_scope":"isolated_secondary_side_only"}"#
+        let constraintsLiteral = try jsonStringLiteral(constraints)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","constraints_json":\#(constraintsLiteral)}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        let requirementText = intent.requirements.map(\.text).joined(separator: " ")
+        XCTAssertTrue(requirementText.contains("tone_controls"), requirementText)
+        XCTAssertTrue(requirementText.contains("safety"), requirementText)
+        XCTAssertFalse(requirementText.contains("optional_note"), requirementText)
+    }
+
     func testComponentSelectionConsumesSynthesizedTopologyEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)

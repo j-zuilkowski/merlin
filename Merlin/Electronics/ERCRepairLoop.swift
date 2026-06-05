@@ -250,22 +250,73 @@ struct ERCRepairLoop: Sendable {
 }
 
 struct ERCRepairPatchApplier: Sendable {
+    private let pinGeometryResolver: KiCadSymbolGeometryResolver
+
+    init(pinGeometryResolver: KiCadSymbolGeometryResolver = KiCadSymbolGeometryResolver()) {
+        self.pinGeometryResolver = pinGeometryResolver
+    }
+
     func apply(_ patches: [ERCRepairPatch], to schematic: KiCadSchematicDocument) -> KiCadSchematicDocument {
         var updated = schematic
         for patch in patches {
-            updated.opaqueNodes.append(opaqueNode(for: patch))
+            if patch.repairClass == .explicitNoConnect,
+               let point = noConnectPoint(for: patch, in: schematic) {
+                updated.opaqueNodes.append(noConnectNode(at: point, patch: patch))
+            }
         }
         return updated
     }
 
-    private func opaqueNode(for patch: ERCRepairPatch) -> KiCadSExpression {
+    private func noConnectPoint(
+        for patch: ERCRepairPatch,
+        in schematic: KiCadSchematicDocument
+    ) -> KiCadSchematicDocument.Point? {
+        guard let target = parseSymbolPinReference(patch.targetRef),
+              let symbol = schematic.symbols.first(where: { $0.property(named: "Reference") == target.refdes }),
+              let origin = symbol.at,
+              let libraryID = symbol.property(named: "Symbol"),
+              let geometry = pinGeometryResolver.resolve(libraryID: libraryID),
+              let pin = geometry.pins.first(where: { $0.number == target.pinNumber || $0.name == target.pinNumber }) else {
+            return nil
+        }
+        return KiCadSchematicDocument.Point(x: origin.x + pin.at.x, y: origin.y - pin.at.y)
+    }
+
+    private func parseSymbolPinReference(_ text: String) -> (refdes: String, pinNumber: String)? {
+        let pattern = #"Symbol\s+([A-Za-z]+[A-Za-z0-9]*)\s+Pin\s+([A-Za-z0-9_+\-]+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+              match.numberOfRanges >= 3,
+              let refRange = Range(match.range(at: 1), in: text),
+              let pinRange = Range(match.range(at: 2), in: text) else {
+            return nil
+        }
+        return (String(text[refRange]), String(text[pinRange]))
+    }
+
+    private func noConnectNode(at point: KiCadSchematicDocument.Point, patch: ERCRepairPatch) -> KiCadSExpression {
         .list([
-            .atom("merlin_erc_repair"),
-            .list([.atom("violation"), .string(patch.violationId)]),
-            .list([.atom("class"), .string(patch.repairClass.rawValue)]),
-            .list([.atom("target"), .string(patch.targetRef)]),
-            .list([.atom("action"), .string(patch.action)]),
+            .atom("no_connect"),
+            .list([.atom("at"), .atom(numberString(point.x)), .atom(numberString(point.y))]),
+            .list([.atom("uuid"), .string(stableERCRepairUUID("no-connect", patch.violationId, patch.targetRef))]),
         ])
+    }
+
+    private func numberString(_ value: Double) -> String {
+        let rounded = (value * 1_000_000).rounded() / 1_000_000
+        if rounded == floor(rounded) { return String(Int(rounded)) }
+        var text = String(format: "%.6f", rounded)
+        while text.last == "0" { text.removeLast() }
+        if text.last == "." { text.removeLast() }
+        return text
+    }
+
+    private func stableERCRepairUUID(_ parts: String...) -> String {
+        let input = parts.joined(separator: "|")
+        let hash = input.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) { partial, scalar in
+            (partial ^ UInt64(scalar.value)) &* 1_099_511_628_211
+        }
+        return String(format: "%016llx", hash)
     }
 }
 

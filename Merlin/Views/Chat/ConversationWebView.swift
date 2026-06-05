@@ -68,6 +68,18 @@ struct ConversationWebView: NSViewRepresentable {
         let old = coord.renderedCount
         let new = entries.count
 
+        if old == 0, new > 0 {
+            let html = ConversationHTMLRenderer.render(entries)
+            webView.loadHTMLString(html,
+                                   baseURL: FileManager.default.homeDirectoryForCurrentUser)
+            coord.renderedCount = new
+            coord.renderedEntryHTML = Dictionary(
+                uniqueKeysWithValues: entries.map { entry in
+                    (entry.id, ConversationHTMLRenderer.messageHTML(for: entry))
+                })
+            return
+        }
+
         guard new >= old else {
             // Entries were cleared (new session) — full reload
             let html = ConversationHTMLRenderer.render(entries)

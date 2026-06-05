@@ -148,13 +148,28 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func wires(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Wire] {
-        []
+        var wires: [KiCadSchematicDocument.Wire] = []
+        var seen = Set<String>()
+        for net in circuitIR.nets {
+            let points = uniquePoints(net.endpoints.compactMap { endpoint in
+                pinPoint(for: endpoint, circuitIR: circuitIR)
+            })
+            guard let first = points.first, points.count > 1 else { continue }
+            for point in points.dropFirst() where first != point {
+                let key = wireKey(first, point)
+                guard seen.insert(key).inserted else { continue }
+                wires.append(KiCadSchematicDocument.Wire(start: first, end: point))
+            }
+        }
+        return wires
     }
 
     private func labels(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Label] {
-        circuitIR.nets.flatMap { net -> [KiCadSchematicDocument.Label] in
+        let pointDegrees = wireEndpointDegrees(for: circuitIR)
+        return circuitIR.nets.flatMap { net -> [KiCadSchematicDocument.Label] in
             let labels = net.endpoints.compactMap { endpoint -> KiCadSchematicDocument.Label? in
                 guard let at = pinPoint(for: endpoint, circuitIR: circuitIR) else { return nil }
+                guard (pointDegrees[pointKey(at)] ?? 0) <= 1 else { return nil }
                 return KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: true, at: at)
             }
             if labels.isEmpty {
@@ -198,7 +213,44 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func junctions(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Junction] {
-        []
+        circuitIR.nets.compactMap { net in
+            let points = uniquePoints(net.endpoints.compactMap { endpoint in
+                pinPoint(for: endpoint, circuitIR: circuitIR)
+            })
+            guard points.count > 2, let first = points.first else { return nil }
+            return KiCadSchematicDocument.Junction(at: first)
+        }
+    }
+
+    private func wireEndpointDegrees(for circuitIR: CircuitIR) -> [String: Int] {
+        var degrees: [String: Int] = [:]
+        for wire in wires(for: circuitIR) {
+            degrees[pointKey(wire.start), default: 0] += 1
+            degrees[pointKey(wire.end), default: 0] += 1
+        }
+        return degrees
+    }
+
+    private func uniquePoints(_ points: [KiCadSchematicDocument.Point]) -> [KiCadSchematicDocument.Point] {
+        var seen = Set<String>()
+        var result: [KiCadSchematicDocument.Point] = []
+        for point in points {
+            guard seen.insert(pointKey(point)).inserted else { continue }
+            result.append(point)
+        }
+        return result
+    }
+
+    private func wireKey(_ a: KiCadSchematicDocument.Point, _ b: KiCadSchematicDocument.Point) -> String {
+        [pointKey(a), pointKey(b)].sorted().joined(separator: "|")
+    }
+
+    private func pointKey(_ point: KiCadSchematicDocument.Point) -> String {
+        "\(roundedKey(point.x)),\(roundedKey(point.y))"
+    }
+
+    private func roundedKey(_ value: Double) -> String {
+        String(format: "%.4f", value)
     }
 
     private func sourceMap(for circuitIR: CircuitIR) -> [String: String] {

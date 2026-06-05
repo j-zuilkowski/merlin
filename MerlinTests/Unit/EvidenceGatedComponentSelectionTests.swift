@@ -39,7 +39,112 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.providers, ["fixture"])
     }
 
-    func testMultipleValidCandidatesAreAmbiguous() async throws {
+    func testConnectorSubtypeIncompatibleCandidatesBlockSelection() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "JIN",
+            role: "high impedance guitar input connector",
+            constraints: [
+                "component_category": "phone_audio_jack",
+                "kind": "connector",
+                "positions": "2",
+                "mounting": "panel_mount",
+            ]
+        ), root: root)
+        var freeHangingHousing = validCandidate(mpn: "1-2232892-2", category: "free_hanging_panel_mount")
+        freeHangingHousing.value = "2P MONOPLUG 2.5"
+        freeHangingHousing.package = "Free Hanging (In-Line)"
+        freeHangingHousing.ratings = ["positions": "2", "package": "Free Hanging (In-Line)"]
+        var dcPowerJack = validCandidate(mpn: "PJ-110AH", category: "dc_power_connectors")
+        dcPowerJack.value = "DC Power Connectors 2.0 x 6.0 mm vertical through hole DC Power Jack"
+        dcPowerJack.package = "through_hole"
+        dcPowerJack.ratings = ["positions": "2", "package": "through_hole"]
+        var terminalHeader = validCandidate(mpn: "31017102", category: "headers_plugs_and_sockets")
+        terminalHeader.value = "TERM BLOCK HDR 2POS 5MM"
+        terminalHeader.package = "Through Hole"
+        terminalHeader.ratings = ["positions": "2", "package": "Through Hole"]
+        terminalHeader.availabilitySummary = "14526 available"
+        let catalogURL = try writeCandidates([freeHangingHousing, dcPowerJack, terminalHeader], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+        XCTAssertNil(matrix.decisions.first?.selectedCandidate)
+    }
+
+    func testPanelMountAudioJackUsesConnectorMountingAsPackageEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "JIN",
+            role: "high impedance guitar input connector",
+            constraints: [
+                "component_category": "phone_audio_jack",
+                "kind": "connector",
+                "positions": "2",
+                "mounting": "panel_mount",
+            ]
+        ), root: root)
+        let switchcraft = ComponentCandidate(
+            mpn: "174S",
+            manufacturer: "Switchcraft",
+            normalizedCategory: "phone_connectors",
+            value: "Phone Connectors 2 COND 1/4\" SHIELDED",
+            package: "",
+            ratings: ["positions": "2", "standard_pack_qty": "100"],
+            lifecycleState: "active",
+            availabilitySummary: "38 In Stock",
+            datasheets: [
+                DatasheetEvidence(
+                    manufacturer: "Switchcraft",
+                    mpn: "174S",
+                    url: "https://www.mouser.com/datasheet/3/144/1/174S_CD.pdf",
+                    localPath: nil,
+                    sha256: nil,
+                    providerID: "mouser",
+                    retrievedAt: "2026-06-04T17:38:11Z",
+                    license: "live_api",
+                    citations: []
+                ),
+            ],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "mouser",
+                    sourceURL: "https://www.mouser.com/ProductDetail/Switchcraft/174S",
+                    localPath: nil,
+                    retrievedAt: "2026-06-04T17:38:11Z",
+                    cachePolicy: "live_api",
+                    sha256: nil,
+                    extractedParameters: ["positions": "2", "standard_pack_qty": "100"],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+        let catalogURL = try writeCandidates([switchcraft], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "174S")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.package, "panel_mount")
+    }
+
+    func testMultipleValidCandidatesSelectStableCandidateWhenScoresTie() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
         try await ElectronicsRuntimePlugin().register(into: runtime)
@@ -54,11 +159,12 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
         )
 
-        XCTAssertEqual(response.status, .blocked)
+        XCTAssertEqual(response.status, .ok)
         let matrix = try decodeMatrix(from: response)
-        XCTAssertEqual(matrix.decisions.map(\.status), [.ambiguous])
+        XCTAssertEqual(matrix.decisions.map(\.status), [.selected])
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "GBU806")
         XCTAssertEqual(matrix.decisions.first?.candidateSet.count, 2)
-        XCTAssertNil(matrix.decisions.first?.selectedCandidate)
+        XCTAssertTrue(matrix.decisions.first?.rationale.contains("stable catalog candidate") == true)
     }
 
     func testMultipleValidCandidatesSelectsUniqueBestRankedCandidate() async throws {
@@ -555,6 +661,24 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                     "polarity": "NPN",
                     "voltage_rating": "80V",
                     "current_rating": "1A",
+                    "package": "TO-126_or_TO-220",
+                    "selected_symbol": "Device:Q_NPN_BCE",
+                ],
+                requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+                preferredVendors: ["digikey", "mouser"],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_ltb"
+            ),
+            ComponentSearchRequest(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                constraints: [
+                    "component_category": "power_transistor",
+                    "polarity": "NPN",
+                    "voltage_rating": "80V",
+                    "current_rating": "8A",
+                    "power_rating": "100W",
+                    "package": "TO-3_or_TO-247",
                     "selected_symbol": "Device:Q_NPN_BCE",
                 ],
                 requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
@@ -603,17 +727,35 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(queries[1].contains("100nF"))
         XCTAssertTrue(queries[1].lowercased().contains("film"))
         XCTAssertFalse(queries[1].contains("Device:C"))
-        XCTAssertTrue(queries[2].lowercased().contains("npn transistor"))
+        XCTAssertTrue(queries[2].lowercased().contains("npn power transistor"))
         XCTAssertTrue(queries[2].contains("80V"))
         XCTAssertTrue(queries[2].contains("1A"))
+        XCTAssertTrue(queries[2].contains("TO-126"))
+        XCTAssertTrue(queries[2].contains("TO-220"))
         XCTAssertFalse(queries[2].contains("Device:Q_NPN_BCE"))
-        XCTAssertTrue(queries[3].lowercased().contains("2 position connector"))
-        XCTAssertTrue(queries[3].contains("10A"))
-        XCTAssertFalse(queries[3].contains("Connector_Generic"))
-        XCTAssertTrue(queries[4].lowercased().contains("potentiometer"))
-        XCTAssertTrue(queries[4].contains("100kOhm"))
-        XCTAssertTrue(queries[4].lowercased().contains("linear"))
-        XCTAssertFalse(queries[4].contains("Device:R_POT"))
+        XCTAssertTrue(queries[3].lowercased().contains("npn power transistor"))
+        XCTAssertTrue(queries[3].contains("100W"))
+        XCTAssertTrue(queries[3].contains("8A"))
+        XCTAssertTrue(queries[3].contains("TO-3"))
+        XCTAssertTrue(queries[3].contains("TO-247"))
+        XCTAssertFalse(queries[3].contains("Device:Q_NPN_BCE"))
+        XCTAssertTrue(queries[4].lowercased().contains("2 position connector"))
+        XCTAssertTrue(queries[4].contains("10A"))
+        XCTAssertFalse(queries[4].contains("Connector_Generic"))
+        XCTAssertTrue(queries[5].lowercased().contains("potentiometer"))
+        XCTAssertTrue(queries[5].contains("100kOhm"))
+        XCTAssertTrue(queries[5].lowercased().contains("linear"))
+        XCTAssertFalse(queries[5].contains("Device:R_POT"))
+
+        let driverFallbacks = builder.keywords(for: requests[2])
+        XCTAssertTrue(driverFallbacks.contains { $0 == "NPN medium power transistor" }, driverFallbacks.joined(separator: " | "))
+        XCTAssertTrue(driverFallbacks.contains { $0 == "NPN transistor 80V 1A" }, driverFallbacks.joined(separator: " | "))
+        XCTAssertTrue(driverFallbacks.contains { $0 == "NPN medium power transistor TO-220" }, driverFallbacks.joined(separator: " | "))
+
+        let outputFallbacks = builder.keywords(for: requests[3])
+        XCTAssertTrue(outputFallbacks.contains { $0 == "NPN power transistor" }, outputFallbacks.joined(separator: " | "))
+        XCTAssertTrue(outputFallbacks.contains { $0 == "NPN power transistor 100W" }, outputFallbacks.joined(separator: " | "))
+        XCTAssertTrue(outputFallbacks.contains { $0 == "NPN power transistor TO-247" }, outputFallbacks.joined(separator: " | "))
     }
 
     func testCapacitorSelectionUsesValueVoltageAndDielectricEvidence() async throws {
@@ -811,6 +953,48 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let matrix = try decodeMatrix(from: response)
         XCTAssertEqual(matrix.decisions.first?.status, .selected)
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "TBP06H-500-02BK")
+    }
+
+    func testCategoryIncompatibleTargetedCandidateBlocksConnectorSelection() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "JSEC", role: "secondary connector"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "JSEC",
+                role: "isolated transformer secondary connector",
+                selectedSymbol: "Connector_Generic:Conn_01x02",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "terminal_block",
+                    "positions": "2",
+                    "current_rating": "10A",
+                    "voltage_rating": "300V",
+                    "mounting": "through_hole",
+                ]
+            ),
+        ], root: root)
+        let screwTerminalCapacitor = catalogCandidate(
+            refdes: "JSEC",
+            mpn: "CGS801T450V4L",
+            manufacturer: "Knowles / Illinois Capacitor",
+            category: "aluminum_electrolytic_capacitors_screw_terminal",
+            value: "Aluminum Electrolytic Capacitors - Screw Terminal LYTIC 450V 800uF",
+            package: "screw_terminal",
+            ratings: ["capacitance": "800uF", "voltage_v": "450", "package": "screw_terminal"]
+        )
+        let catalogURL = try writeCandidates([screwTerminalCapacitor], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+        XCTAssertNil(matrix.decisions.first?.selectedCandidate)
     }
 
     func testPotentiometerSelectionUsesResistanceAndTaperEvidence() async throws {
@@ -1149,6 +1333,156 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
     }
 
+    func testRuntimeCatalogSelectionResolvesLocalFootprintsFromVendorCandidatePackage() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RFILT1",
+                role: "sweepable boost/cut resistor",
+                selectedSymbol: "Device:R",
+                pins: ["1", "2"]
+            ),
+        ], root: root)
+        var vendorCandidate = validCandidate(mpn: "RC0603FR-0710KL", category: "resistor")
+        vendorCandidate.package = "0603"
+        vendorCandidate.footprintCandidates = []
+        let catalogURL = try writeCandidates([vendorCandidate], root: root)
+        let footprintsURL = try writeFootprints(root: root)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(catalogURL.path)","kicad_footprint_catalog_path":"\#(footprintsURL.path)"}"#
+        )
+
+        XCTAssertEqual(selection.status, .ok)
+        let matrix = try decodeMatrix(from: selection)
+        let candidate = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        let footprint = try XCTUnwrap(candidate.footprintCandidates.first)
+        XCTAssertEqual(footprint.sourceProviderID, "kicad_local")
+        XCTAssertEqual(footprint.name, "R_0603_1608Metric")
+        XCTAssertEqual(footprint.pinPadMap["1"], "1")
+        XCTAssertEqual(footprint.pinPadMap["2"], "2")
+    }
+
+    func testLocalKiCadFootprintEvidenceToleratesDuplicatePadNames() async throws {
+        let provider = KiCadLibraryCatalogProvider(
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Package_TO_SOT_THT:TO-3",
+                    pads: [
+                        KiCadFootprintPad(number: "1", name: "B"),
+                        KiCadFootprintPad(number: "2", name: "C"),
+                        KiCadFootprintPad(number: "3", name: "C"),
+                    ]
+                ),
+            ]
+        )
+
+        let candidates = try await provider.search(
+            ComponentSearchRequest(
+                refdes: "QOUT1",
+                role: "power transistor",
+                constraints: ["footprint": "Package_TO_SOT_THT:TO-3"],
+                requiredEvidenceTypes: ["footprint"],
+                preferredVendors: [],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active_or_not_recommended_for_new_design"
+            )
+        )
+
+        let footprint = try XCTUnwrap(candidates.first?.footprintCandidates.first)
+        XCTAssertEqual(footprint.pinPadMap["B"], "1")
+        XCTAssertEqual(footprint.pinPadMap["C"], "2")
+        XCTAssertEqual(footprint.pinPadMap["3"], "3")
+    }
+
+    func testLocalKiCadFootprintRankingPrefersPinCompatibleSpeakerConnector() async throws {
+        let provider = KiCadLibraryCatalogProvider(
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Connector_Audio:Jack_3.5mm_CUI_SJ-3523-SMT_Horizontal",
+                    pads: numberedPads(["T", "R", "S"])
+                ),
+                KiCadFootprintDefinition(
+                    name: "TerminalBlock_CUI:TerminalBlock_CUI_TB007-508-02_1x02_P5.08mm_Horizontal",
+                    pads: numberedPads(["1", "2"])
+                ),
+                KiCadFootprintDefinition(
+                    name: "Connector_Audio:Jack_speakON_Neutrik_NL2MDXX-H-3_Horizontal",
+                    pads: numberedPads(["1+", "1-"])
+                ),
+            ]
+        )
+
+        let candidates = try await provider.search(
+            ComponentSearchRequest(
+                refdes: "JSPK",
+                role: "speaker output connector",
+                constraints: [
+                    "component_category": "speaker_connector",
+                    "positions": "2",
+                    "required_pins": "1,2",
+                    "package": "panel_mount",
+                ],
+                requiredEvidenceTypes: ["footprint"],
+                preferredVendors: [],
+                excludedManufacturers: [],
+                lifecyclePolicy: "library_asset"
+            )
+        )
+
+        let footprint = try XCTUnwrap(candidates.first?.footprintCandidates.first)
+        XCTAssertEqual(footprint.library, "Connector_Audio")
+        XCTAssertEqual(footprint.name, "Jack_speakON_Neutrik_NL2MDXX-H-3_Horizontal")
+        XCTAssertEqual(footprint.pinPadMap["1"], "1+")
+        XCTAssertEqual(footprint.pinPadMap["2"], "1-")
+    }
+
+    func testLocalKiCadFootprintRankingMapsMonoPhoneJackPadsToRequiredPins() async throws {
+        let provider = KiCadLibraryCatalogProvider(
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Connector_Audio:Jack_3.5mm_CUI_SJ-3523-SMT_Horizontal",
+                    pads: numberedPads(["T", "R", "S"])
+                ),
+                KiCadFootprintDefinition(
+                    name: "Connector_Audio:Jack_6.35mm_Neutrik_NJ2FD-V_Vertical",
+                    pads: numberedPads(["T", "S"])
+                ),
+            ]
+        )
+
+        let candidates = try await provider.search(
+            ComponentSearchRequest(
+                refdes: "JIN",
+                role: "high impedance guitar input connector",
+                constraints: [
+                    "component_category": "phone_audio_jack",
+                    "contact_form": "mono",
+                    "mounting": "panel_mount",
+                    "positions": "2",
+                    "required_pins": "1,2",
+                ],
+                requiredEvidenceTypes: ["footprint"],
+                preferredVendors: [],
+                excludedManufacturers: [],
+                lifecyclePolicy: "library_asset"
+            )
+        )
+
+        let footprint = try XCTUnwrap(candidates.first?.footprintCandidates.first)
+        XCTAssertEqual(footprint.library, "Connector_Audio")
+        XCTAssertEqual(footprint.name, "Jack_6.35mm_Neutrik_NJ2FD-V_Vertical")
+        XCTAssertEqual(footprint.pinPadMap["1"], "T")
+        XCTAssertEqual(footprint.pinPadMap["2"], "S")
+    }
+
     func testRuntimeCatalogSelectionExtractsAndCachesLocalKiCadLibraries() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1283,6 +1617,38 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
     }
 
+    func testPluginSettingsEnabledProvidersDefaultLiveCatalogProviderList() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: [
+                "catalog_provider_mouser_enabled": .boolean(true),
+                "catalog_provider_digikey_enabled": .boolean(true),
+                "catalog_provider_nexar_enabled": .boolean(false),
+                "catalog_provider_trustedparts_enabled": .boolean(false),
+            ]
+        ))
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","mouser_api_key_env":"MERLIN_TEST_MISSING_MOUSER_API_KEY","mouser_api_key_keychain_id":"merlin.test.missing.mouser.api_key","digikey_client_id_env":"MERLIN_TEST_MISSING_DIGIKEY_CLIENT_ID","digikey_client_id_keychain_id":"merlin.test.missing.digikey.client_id","digikey_client_secret_env":"MERLIN_TEST_MISSING_DIGIKEY_CLIENT_SECRET","digikey_client_secret_keychain_id":"merlin.test.missing.digikey.client_secret","digikey_access_token_env":"MERLIN_TEST_MISSING_DIGIKEY_ACCESS_TOKEN","digikey_access_token_keychain_id":"merlin.test.missing.digikey.access_token"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertTrue(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED: mouser") })
+        XCTAssertTrue(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED: digikey") })
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("nexar") })
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("trustedparts") })
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+    }
+
     func testLiveCatalogQueryUsesStructuredIntentInsteadOfKiCadSymbolName() throws {
         let request = ComponentSearchRequest(
             refdes: "RFILT1",
@@ -1378,6 +1744,52 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
     }
 
+    func testSourcePolicyJSONCanProvideLiveCatalogProvidersAndCircuitIRPath() async throws {
+        let root = try temporaryDirectory()
+        let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+        let cachedCandidate = validCandidate(mpn: "RC0603FR-0710KL", category: "resistor")
+        let query = CatalogSearchQueryBuilder().keyword(for: ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable boost/cut resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "source": "circuit_ir",
+                "required_pins": "1,2",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        ))
+        try LiveCatalogQueryCache().write(
+            candidates: [cachedCandidate],
+            rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
+            providerID: "mouser",
+            query: query,
+            requestURL: URL(string: "https://api.mouser.test/api/v2/search/keyword"),
+            to: cacheDirectory,
+            now: Date()
+        )
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        let sourcePolicy = #"{"circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"],"live_catalog_result_limit":3}"#
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","source_policy_json":"\#(sourcePolicy.replacingOccurrences(of: "\"", with: "\\\""))"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.cacheMetadata["source"], "live_catalog_cache")
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+    }
+
     func testDisabledPluginCatalogProviderIsNotQueriedEvenWhenRequested() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1434,7 +1846,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
     }
 
-    func testAmpDemoLiveCatalogSelectionBlocksTruthfullyWhenValuesAreMissing() async throws {
+    func testAmpDemoLiveCatalogSelectionSelectsWithLiveEvidence() async throws {
         let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-live-catalog-slice")
         guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_LIVE_CATALOG"] == "1"
             || FileManager.default.fileExists(atPath: runSentinel.path)
@@ -1446,8 +1858,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
         let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
         let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
-        let configURL = root.appendingPathComponent(".merlin/electronics-provider-config.json")
-        for url in [intentURL, circuitIRURL, configURL] {
+        for url in [intentURL, circuitIRURL] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "Missing \(url.path)")
         }
 
@@ -1465,10 +1876,10 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
 
         let response = await send(
             runtime,
-            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","electronics_provider_config_path":"\#(configURL.path)"}"#
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
         )
 
-        XCTAssertEqual(response.status, .blocked)
+        XCTAssertEqual(response.status, .ok)
         let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "component_matrix" })
         let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
         XCTAssertEqual(Set(matrix.providers), Set(["mouser", "digikey"]))
@@ -1479,9 +1890,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                 candidate.evidence.contains { ["mouser", "digikey"].contains($0.providerID) }
             }
         })
-        XCTAssertTrue(matrix.decisions.contains { $0.status != .selected })
-        XCTAssertTrue(matrix.decisions.contains { $0.status == .selected })
-        for decision in matrix.decisions where decision.status == .selected {
+        XCTAssertFalse(matrix.decisions.isEmpty)
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected })
+        for decision in matrix.decisions {
             let candidate = try XCTUnwrap(decision.selectedCandidate)
             XCTAssertFalse(candidate.evidence.isEmpty, "Selected \(decision.refdes) without provider evidence.")
             XCTAssertFalse(candidate.datasheets.isEmpty, "Selected \(decision.refdes) without datasheet evidence.")
@@ -1547,7 +1958,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo vendor-feed component matrix: \(artifact.url.path)")
     }
 
-    func testAmpDemoVendorFeedMatrixAssignsEvidenceBackedFootprints() async throws {
+    func testAmpDemoSelectedMatrixAssignsEvidenceBackedFootprints() async throws {
         let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-footprint-slice")
         guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_FOOTPRINT_SLICE"] == "1"
             || FileManager.default.fileExists(atPath: runSentinel.path)
@@ -1562,8 +1973,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
         let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
         let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: matrixURL))
-        XCTAssertEqual(matrix.providers, ["vendor_feed"], "AmpDemo footprint slice must use the vendor-feed component matrix.")
+        XCTAssertFalse(matrix.providers.isEmpty, "AmpDemo footprint slice requires catalog provider evidence.")
         XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected })
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.selectedCandidate?.evidence.isEmpty == false })
         let footprintCatalogURL = try writeAmpDemoFootprints(root: try temporaryDirectory())
 
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1617,8 +2029,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
         let matrix = try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: matrixURL))
         let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
-        XCTAssertEqual(matrix.providers, ["vendor_feed"], "AmpDemo schematic slice must use the vendor-feed component matrix.")
+        XCTAssertFalse(matrix.providers.isEmpty, "AmpDemo schematic slice requires catalog provider evidence.")
         XCTAssertTrue(matrix.decisions.allSatisfy { $0.status == .selected && $0.selectedCandidate != nil })
+        XCTAssertTrue(matrix.decisions.allSatisfy { $0.selectedCandidate?.evidence.isEmpty == false })
         XCTAssertEqual(footprints.assignments.count, circuitIR.components.count)
         XCTAssertEqual(footprints.unknownFootprints, 0)
 
