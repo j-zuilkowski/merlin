@@ -3251,22 +3251,18 @@ final class AgenticEngine {
             return pendingContinuationEvidence.contains { evidence in
                 guard evidence.toolName == "kicad_select_components" else { return false }
                 let text = evidenceText(evidence)
-                let rawText = rawEvidenceText(evidence)
                 return componentMatrixArtifactPath(from: evidence) != nil
                     || latestComponentMatrixArtifactPath() != nil
                     || text.contains("component_matrix")
                     || text.contains("componentmatrix")
-                    || hasExistingPathEvidence(in: rawText, extensions: ["json"])
             }
         case .footprintAssignment:
             return pendingContinuationEvidence.contains { evidence in
                 guard evidence.toolName == "kicad_assign_footprints" else { return false }
                 let text = evidenceText(evidence)
-                let rawText = rawEvidenceText(evidence)
                 return footprintAssignmentArtifactPath(from: evidence) != nil
                     || text.contains("footprint_assignment")
                     || text.contains("footprintassignment")
-                    || hasExistingPathEvidence(in: rawText, extensions: ["json"])
             }
         case .schematic:
             return pendingContinuationEvidence.contains { evidence in
@@ -3491,6 +3487,14 @@ final class AgenticEngine {
         return text.contains("blocked_verification_gate")
             || text.contains("\"status\":\"blocked\"")
             || text.contains("\"status\": \"blocked\"")
+            || text.contains("\"status\":\"blocked_")
+            || text.contains("\"status\": \"blocked_")
+            || text.contains("blocked_artifact")
+            || text.contains("blocked_footprints")
+            || text.contains("blocked_input_quality")
+            || text.contains("blocked_library")
+            || text.contains("blocked_project_file")
+            || text.contains("blocked_tooling")
             || text.contains("\"blockedreasons\":[\"")
             || text.contains("\"blockedreasons\": [\"")
             || text.contains("\"blocked_reasons\":[\"")
@@ -3671,7 +3675,8 @@ final class AgenticEngine {
                 directKeys: ["normalized_bom_path", "normalizedBOMPath", "bom_path", "bomPath"],
                 kindNeedles: ["normalized_bom", "bom"],
                 pathNeedles: ["bom"]
-            ) {
+            ),
+               pathContainsVendorBOMEvidence(path) {
                 return path
             }
         }
@@ -3976,7 +3981,8 @@ final class AgenticEngine {
     }
 
     private func pathContainsVendorBOMEvidence(_ path: String) -> Bool {
-        guard path.lowercased().contains("bom"),
+        let fileName = URL(fileURLWithPath: path).lastPathComponent.lowercased()
+        guard fileName.contains("bom"),
               let text = try? String(contentsOfFile: path, encoding: .utf8)
         else { return false }
         return textContainsVendorBOMEvidence(text.lowercased())

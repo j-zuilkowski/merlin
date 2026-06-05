@@ -2565,6 +2565,143 @@ final class LoopContinuationTests: XCTestCase {
         XCTAssertTrue(continuationText.contains(#""output_directory":"#), continuationText)
     }
 
+    func testVendorOrderHandoffIgnoresNonexistentBOMPathExtractedFromProse() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let projectRoot = temporaryDirectory("electronics-bogus-bom-handoff")
+        let artifactRoot = projectRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        let designIntentPath = try writeArtifact(
+            name: "amp-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "amp-circuit_ir.json",
+            contents: #"{"design_id":"AmpDemo","components":[],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let componentMatrixPath = artifactRoot.appendingPathComponent("amp-component_matrix.json")
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "components",
+                name: "kicad_select_components",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Select discrete components with catalog candidates",
+                    successCriteria: "Component matrix artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Produce BOM with Digi-Key and Mouser part numbers",
+                    successCriteria: "Vendor BOM artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        engine.registerTool("kicad_select_components") { _ in
+            try? #"{"components":[{"ref":"QOUT1","mpn":"MJL3281AG"}]}"#.write(
+                to: componentMatrixPath,
+                atomically: true,
+                encoding: .utf8
+            )
+            return #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath.path)"}],"notes":"Later verification folders are /DRC/SPICE/BOM. Do not treat this prose as a BOM artifact.","nextActions":["prepare_vendor_order"],"status":"COMPLETE"}"#
+        }
+
+        for await _ in engine.send(userMessage: """
+        Continue AmpDemo from component selection into BOM preparation only when real BOM evidence exists.
+        """) {}
+
+        guard FileManager.default.fileExists(atPath: injectURL.path) else { return }
+        let continuationText = try readInject()
+        XCTAssertFalse(continuationText.contains("Next required electronics handoff tool: `kicad_prepare_vendor_order`"), continuationText)
+        XCTAssertFalse(continuationText.contains(#""normalized_bom_path":"/DRC/SPICE/BOM""#), continuationText)
+    }
+
+    func testBlockedFootprintAssignmentClearsContinuationInsteadOfRepeatingHandoff() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let projectRoot = temporaryDirectory("electronics-blocked-footprint-handoff")
+        let artifactRoot = projectRoot
+            .appendingPathComponent(".merlin", isDirectory: true)
+            .appendingPathComponent("electronics-artifacts", isDirectory: true)
+        let designIntentPath = try writeArtifact(
+            name: "amp-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "amp-circuit_ir.json",
+            contents: #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let componentMatrixPath = try writeArtifact(
+            name: "amp-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"blocked"}]}"#,
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "footprints",
+                name: "kicad_assign_footprints",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","component_matrix_path":"\#(componentMatrixPath.path)"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 8
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Assign footprints for selected components",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Create KiCad schematic and PCB files",
+                    successCriteria: "KiCad schematic and PCB artifacts exist",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        engine.registerTool("kicad_assign_footprints") { _ in
+            #"{"status":"BLOCKED_LIBRARY","warnings":[{"code":"BLOCKED_FOOTPRINTS","message":"Footprint assignment is blocked until every selected component has compatible footprint evidence."}],"nextActions":["revise_footprint_selection"]}"#
+        }
+
+        for await _ in engine.send(userMessage: """
+        Continue AmpDemo through footprint assignment and stop if footprints are unresolved.
+        """) {}
+
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: injectURL.path),
+            "A blocked footprint assignment must stop instead of scheduling kicad_assign_footprints again"
+        )
+    }
+
     func testBlockedERCWithRepairNextActionSchedulesERCRepairHandoff() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
