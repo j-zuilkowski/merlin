@@ -24,6 +24,12 @@ final class ElectronicsPluginSchemaTests: XCTestCase {
         XCTAssertTrue(schema.fields.contains {
             $0.key == "catalog_provider_vendor_feed_enabled" && $0.defaultValue == .boolean(true)
         })
+        let datasheetPathField = schema.fields.first { $0.key == "datasheet_cache_directory" }
+        XCTAssertEqual(datasheetPathField?.kind, .path)
+        XCTAssertEqual(datasheetPathField?.defaultValue, .string(ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path))
+        let datasheetTTLField = schema.fields.first { $0.key == "datasheet_cache_revalidate_after_seconds" }
+        XCTAssertEqual(datasheetTTLField?.kind, .integer)
+        XCTAssertEqual(datasheetTTLField?.defaultValue, .integer(604_800))
     }
 
     func testDesignIntentAndCircuitIRRoundTrip() throws {

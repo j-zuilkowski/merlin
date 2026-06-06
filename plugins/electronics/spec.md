@@ -356,9 +356,16 @@ catalog, KiCad, ERC, DRC, SPICE, or safety gates.
 
 1. Catalog providers may cache normalized responses with provider-specific TTLs.
 2. Datasheet PDFs may be cached only when terms allow local storage.
-3. API keys and credentials belong in user configuration or keychain-backed
+3. The plugin owns a `datasheet_cache_directory` setting. The default location
+   is the user's Application Support path under
+   `Merlin/plugins/electronics/datasheets`, and users may override it in the
+   electronics plugin settings.
+4. The plugin owns a `datasheet_cache_revalidate_after_seconds` setting. Fresh
+   local PDFs SHALL be reused before any network request; stale entries may be
+   conditionally revalidated and replaced only when the source changes.
+5. API keys and credentials belong in user configuration or keychain-backed
    storage, not in plugin fixtures or committed files.
-4. Cached data must retain source provider, retrieval timestamp, and original
+6. Cached data must retain source provider, retrieval timestamp, and original
    query metadata.
 
 ### Workflow Gates

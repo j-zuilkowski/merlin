@@ -71,6 +71,22 @@
         "default_value": { "boolean": { "_0": false } },
         "is_secret": false,
         "help": "Allow the electronics plugin to query onsemi product pages as an exact-MPN fallback when sourcing providers do not resolve a part."
+      },
+      {
+        "key": "datasheet_cache_directory",
+        "label": "Datasheet cache directory",
+        "kind": "path",
+        "default_value": { "string": { "_0": "~/Library/Application Support/Merlin/plugins/electronics/datasheets" } },
+        "is_secret": false,
+        "help": "Directory where the electronics plugin saves datasheet PDFs and cache manifests before reusing them in future runs."
+      },
+      {
+        "key": "datasheet_cache_revalidate_after_seconds",
+        "label": "Datasheet cache revalidate interval",
+        "kind": "integer",
+        "default_value": { "integer": { "_0": 604800 } },
+        "is_secret": false,
+        "help": "Seconds before a saved datasheet PDF may be conditionally checked for updates. Set to 0 to only use the local copy once saved."
       }
     ]
   },

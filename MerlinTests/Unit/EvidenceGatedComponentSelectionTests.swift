@@ -2054,6 +2054,87 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: firstPath))
     }
 
+    func testPluginSettingsDatasheetCacheDirectoryFeedsComponentSelection() async throws {
+        let root = try temporaryDirectory()
+        let datasheetCacheDirectory = root.appendingPathComponent("saved-datasheets", isDirectory: true)
+        let datasheetURL = "https://example.invalid/RC0603FR-0710KL.pdf"
+        let datasheet = DatasheetEvidence(
+            manufacturer: "Yageo",
+            mpn: "RC0603FR-0710KL",
+            url: datasheetURL,
+            localPath: nil,
+            sha256: nil,
+            providerID: "mouser",
+            retrievedAt: "2026-06-06T16:00:00Z",
+            license: "live_api",
+            citations: []
+        )
+        let cached = try await DatasheetPDFCache().resolve(
+            datasheet,
+            in: datasheetCacheDirectory,
+            revalidateAfterSeconds: 604_800,
+            transport: ComponentSelectionDatasheetHTTPTransport(responses: [
+                .init(data: Data("%PDF-1.7 settings-selected resistor datasheet".utf8)),
+            ]),
+            now: Date()
+        )
+        let cachedCandidate = ComponentCandidate(
+            mpn: "RC0603FR-0710KL",
+            manufacturer: "Yageo",
+            normalizedCategory: "resistor",
+            value: "10 kOhms",
+            package: "0603",
+            ratings: ["resistance": "10 kOhms", "power_w": "0.1", "tolerance": "1%"],
+            lifecycleState: "active",
+            availabilitySummary: "Mouser: 9000",
+            datasheets: [datasheet],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "mouser",
+                    sourceURL: "https://www.mouser.test/ProductDetail/Yageo/RC0603FR-0710KL",
+                    localPath: nil,
+                    retrievedAt: "2026-06-06T16:00:00Z",
+                    cachePolicy: "live_api_cache",
+                    sha256: nil,
+                    extractedParameters: ["mpn": "RC0603FR-0710KL", "package": "0603"],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+        let candidatesURL = try writeCandidates([cachedCandidate], root: root)
+        let symbolRoot = root.appendingPathComponent("empty-symbols", isDirectory: true)
+        let footprintRoot = root.appendingPathComponent("empty-footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: symbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: footprintRoot, withIntermediateDirectories: true)
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: [
+                "datasheet_cache_directory": .string(datasheetCacheDirectory.path),
+                "datasheet_cache_revalidate_after_seconds": .integer(604_800),
+            ]
+        ))
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(candidatesURL.path)","kicad_symbol_library_root":"\#(symbolRoot.path)","kicad_footprint_library_root":"\#(footprintRoot.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.cacheMetadata["datasheet_cache_directory"], datasheetCacheDirectory.path)
+        let selected = try selectedDatasheet(from: response)
+        XCTAssertEqual(selected.localPath, cached.localPath)
+        XCTAssertEqual(selected.sha256, cached.sha256)
+    }
+
     func testSourcePolicyJSONCanProvideLiveCatalogProvidersAndCircuitIRPath() async throws {
         let root = try temporaryDirectory()
         let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)

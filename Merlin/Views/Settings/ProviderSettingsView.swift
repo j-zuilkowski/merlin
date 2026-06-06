@@ -13,6 +13,8 @@ struct ProviderSettingsView: View {
         namespace: ElectronicsRuntimePlugin.settingsNamespace,
         values: [:]
     )
+    @State private var datasheetCacheDirectoryDraft = ""
+    @State private var datasheetCacheRevalidateDraft = ""
 
     var body: some View {
         Form {
@@ -90,6 +92,44 @@ struct ProviderSettingsView: View {
                         )
                     }
                 }
+
+                if electronicsCatalogSchema.fields.contains(where: { $0.key == "datasheet_cache_directory" }) {
+                    Section("Electronics Datasheets") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Cache Directory")
+                                .fontWeight(.medium)
+                            TextField(ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path, text: $datasheetCacheDirectoryDraft)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Saved datasheet PDFs are reused from this directory before Merlin downloads or revalidates a copy.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Revalidate After Seconds")
+                                .fontWeight(.medium)
+                            TextField("\(ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds)", text: $datasheetCacheRevalidateDraft)
+                                .textFieldStyle(.roundedBorder)
+                            Text("Use 0 to keep saved datasheets local-only until this setting is changed.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack {
+                            Button("Reset Defaults") {
+                                datasheetCacheDirectoryDraft = ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path
+                                datasheetCacheRevalidateDraft = "\(ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds)"
+                                saveElectronicsDatasheetCacheSettings()
+                            }
+                            .buttonStyle(.borderless)
+                            Spacer()
+                            Button("Save Datasheet Settings") {
+                                saveElectronicsDatasheetCacheSettings()
+                            }
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                }
             }
         }
         .formStyle(.grouped)
@@ -151,6 +191,14 @@ struct ProviderSettingsView: View {
         electronicsSettings = (try? appState.workspaceRuntime.settingsStore.load(
             namespace: ElectronicsRuntimePlugin.settingsNamespace
         )) ?? WorkspaceSettingsNamespace(namespace: ElectronicsRuntimePlugin.settingsNamespace, values: [:])
+        datasheetCacheDirectoryDraft = electronicsSettingsString(
+            key: "datasheet_cache_directory",
+            defaultValue: ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path
+        )
+        datasheetCacheRevalidateDraft = String(electronicsSettingsInt(
+            key: "datasheet_cache_revalidate_after_seconds",
+            defaultValue: ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds
+        ))
     }
 
     private func electronicsCatalogProviderEnabled(_ definition: ElectronicsCatalogProviderSettingsDefinition) -> Bool {
@@ -229,6 +277,46 @@ struct ProviderSettingsView: View {
         for field in definition.credentialFields {
             try? KeychainManager.deleteAPIKey(for: field.keychainID)
         }
+    }
+
+    private func saveElectronicsDatasheetCacheSettings() {
+        Task { @MainActor in
+            var values = electronicsSettings.values
+            let path = datasheetCacheDirectoryDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+            values["datasheet_cache_directory"] = .string(path.isEmpty ? ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path : path)
+            let seconds = Int(datasheetCacheRevalidateDraft.trimmingCharacters(in: .whitespacesAndNewlines))
+                ?? ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds
+            values["datasheet_cache_revalidate_after_seconds"] = .integer(max(0, seconds))
+            let namespace = WorkspaceSettingsNamespace(
+                namespace: ElectronicsRuntimePlugin.settingsNamespace,
+                values: values
+            )
+            try? await appState.workspaceRuntime.settingsStore.save(namespace)
+            electronicsSettings = namespace
+            datasheetCacheDirectoryDraft = electronicsSettingsString(
+                key: "datasheet_cache_directory",
+                defaultValue: ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory.path
+            )
+            datasheetCacheRevalidateDraft = String(electronicsSettingsInt(
+                key: "datasheet_cache_revalidate_after_seconds",
+                defaultValue: ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds
+            ))
+        }
+    }
+
+    private func electronicsSettingsString(key: String, defaultValue: String) -> String {
+        if case .string(let value)? = electronicsSettings.values[key],
+           !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return value
+        }
+        return defaultValue
+    }
+
+    private func electronicsSettingsInt(key: String, defaultValue: Int) -> Int {
+        if case .integer(let value)? = electronicsSettings.values[key] {
+            return value
+        }
+        return defaultValue
     }
 }
 

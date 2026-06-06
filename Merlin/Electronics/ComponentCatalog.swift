@@ -1463,6 +1463,20 @@ struct DatasheetPDFCache: Sendable {
         return evidenceWithLocalPDF(evidence, entry: cached, directory: directory, cachePolicy: "datasheet_pdf_cache")
     }
 
+    func loadFreshLocal(
+        _ evidence: DatasheetEvidence,
+        from directory: URL,
+        revalidateAfterSeconds: Int,
+        now: Date = Date()
+    ) throws -> DatasheetEvidence? {
+        guard let cached = try loadEntry(for: evidence, from: directory),
+              FileManager.default.fileExists(atPath: pdfURL(for: cached, in: directory).path),
+              !shouldRevalidate(cached, now: now, revalidateAfterSeconds: revalidateAfterSeconds) else {
+            return nil
+        }
+        return evidenceWithLocalPDF(evidence, entry: cached, directory: directory, cachePolicy: "datasheet_pdf_cache")
+    }
+
     private func revalidatedEvidence(
         _ evidence: DatasheetEvidence,
         cached: Entry,

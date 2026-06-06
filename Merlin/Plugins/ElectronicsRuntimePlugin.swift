@@ -45,6 +45,12 @@ private func electronicsLiveCatalogQueryPriority(_ component: ComponentIntent) -
 
 struct ElectronicsRuntimePlugin {
     static let settingsNamespace = "plugin.electronics"
+    static let defaultDatasheetCacheRevalidateAfterSeconds = 604_800
+    static var defaultDatasheetCacheDirectory: URL {
+        FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Merlin/plugins/electronics/datasheets", isDirectory: true)
+    }
 
     static let settingsSchema = WorkspaceSettingsSchema(
         namespace: settingsNamespace,
@@ -129,6 +135,22 @@ struct ElectronicsRuntimePlugin {
                 defaultValue: .integer(2100),
                 isSecret: false,
                 help: "Minimum delay between uncached live catalog HTTP queries to the same provider."
+            ),
+            WorkspaceSettingsField(
+                key: "datasheet_cache_directory",
+                label: "Datasheet cache directory",
+                kind: .path,
+                defaultValue: .string(defaultDatasheetCacheDirectory.path),
+                isSecret: false,
+                help: "Directory where the electronics plugin saves datasheet PDFs and cache manifests before reusing them in future runs."
+            ),
+            WorkspaceSettingsField(
+                key: "datasheet_cache_revalidate_after_seconds",
+                label: "Datasheet cache revalidate interval",
+                kind: .integer,
+                defaultValue: .integer(defaultDatasheetCacheRevalidateAfterSeconds),
+                isSecret: false,
+                help: "Seconds before a saved datasheet PDF may be conditionally checked for updates. Set to 0 to only use the local copy once saved."
             ),
         ]
     )
@@ -4160,6 +4182,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var enrichedDatasheets: [DatasheetEvidence] = []
         var warnings: [String] = []
         for datasheet in candidate.datasheets {
+            if let freshLocal = try? cache.loadFreshLocal(
+                datasheet,
+                from: cacheDirectory,
+                revalidateAfterSeconds: revalidateAfterSeconds
+            ) {
+                enrichedDatasheets.append(freshLocal)
+                continue
+            }
             guard shouldResolveDatasheetPDF(datasheet) else {
                 enrichedDatasheets.append(datasheet)
                 continue
@@ -4582,6 +4612,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             try? JSONDecoder().decode(RuntimeCatalogConfig.self, from: $0)
         } ?? RuntimeCatalogConfig()
 
+        applyPluginSettings(to: &config, settings: context.settings)
+
         if let value = object["catalog_cache_directory"] as? String {
             config.catalogCacheDirectory = value
         }
@@ -4623,6 +4655,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         if let value = optionalIntValue(object, key: "live_catalog_min_query_interval_ms") {
             config.liveCatalogMinQueryIntervalMs = value
+        }
+        if let value = object["datasheet_cache_directory"] as? String {
+            config.datasheetCacheDirectory = value
+        }
+        if let value = optionalIntValue(object, key: "datasheet_cache_revalidate_after_seconds") {
+            config.datasheetCacheRevalidateAfterSeconds = value
         }
         if let value = object["mouser_api_key_env"] as? String {
             config.mouserAPIKeyEnv = value
@@ -4703,6 +4741,18 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             config.vendorFeedPaths = value
         }
         return config
+    }
+
+    private func applyPluginSettings(to config: inout RuntimeCatalogConfig, settings: WorkspaceSettingsNamespace) {
+        if config.datasheetCacheDirectory == nil,
+           case .string(let path)? = settings.values["datasheet_cache_directory"],
+           !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            config.datasheetCacheDirectory = path
+        }
+        if config.datasheetCacheRevalidateAfterSeconds == nil,
+           case .integer(let seconds)? = settings.values["datasheet_cache_revalidate_after_seconds"] {
+            config.datasheetCacheRevalidateAfterSeconds = seconds
+        }
     }
 
     private func catalogProviderFixturePaths(from object: [String: Any], config: RuntimeCatalogConfig) -> [String: String] {
@@ -4901,17 +4951,28 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
     private func datasheetCacheDirectory(from object: [String: Any], config: RuntimeCatalogConfig) -> URL {
         stringValue(object, keys: ["datasheet_cache_directory"])
-            .map(URL.init(fileURLWithPath:))
-            ?? config.datasheetCacheDirectory.map(URL.init(fileURLWithPath:))
-            ?? FileManager.default
-                .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("Merlin/plugins/electronics/datasheets", isDirectory: true)
+            .map(fileURLFromPathSetting)
+            ?? config.datasheetCacheDirectory.map(fileURLFromPathSetting)
+            ?? ElectronicsRuntimePlugin.defaultDatasheetCacheDirectory
     }
 
     private func datasheetCacheRevalidateAfterSeconds(from object: [String: Any], config: RuntimeCatalogConfig) -> Int {
         optionalIntValue(object, key: "datasheet_cache_revalidate_after_seconds")
             ?? config.datasheetCacheRevalidateAfterSeconds
-            ?? 604_800
+            ?? ElectronicsRuntimePlugin.defaultDatasheetCacheRevalidateAfterSeconds
+    }
+
+    private func fileURLFromPathSetting(_ path: String) -> URL {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed == "~" {
+            return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        }
+        if trimmed.hasPrefix("~/") {
+            let suffix = String(trimmed.dropFirst(2))
+            return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+                .appendingPathComponent(suffix, isDirectory: true)
+        }
+        return URL(fileURLWithPath: trimmed, isDirectory: true)
     }
 
     private func liveCatalogProviderIDs(
