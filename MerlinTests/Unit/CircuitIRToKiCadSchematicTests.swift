@@ -164,6 +164,53 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(result.contains(code: "SCHEMATIC_NET_MISSING"))
     }
 
+    func testSchematicRealismValidatorPassesMaterializedDiscreteCircuitIR() throws {
+        let ir = validCircuitIR()
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: ir)
+
+        let result = SchematicRealismValidator().validate(circuitIR: ir, schematic: schematic)
+
+        XCTAssertTrue(result.isValid, result.issues.map(\.message).joined(separator: "\n"))
+    }
+
+    func testSchematicRealismValidatorRejectsCompositeMetadataOnlyCaricature() throws {
+        let ir = validCircuitIR()
+        let schematic = KiCadSchematicDocument(
+            version: 20240101,
+            generator: "merlin-preview",
+            uuid: "composite",
+            symbols: [
+                KiCadSchematicDocument.Symbol(
+                    uuid: nil,
+                    properties: [
+                        "Reference": "AMP1",
+                        "Symbol": "Merlin:AmplifierBlock",
+                        "Role": "complete amplifier block",
+                        "Source": "narrative",
+                        "Pins": "1:IN:IN,2:OUT:OUT",
+                    ],
+                    emitsKiCadSymbol: false
+                ),
+            ],
+            wires: [],
+            junctions: [],
+            labels: ir.nets.map {
+                KiCadSchematicDocument.Label(kind: .local, text: $0.name, emitsKiCadConnectivity: false)
+            },
+            sheets: [],
+            opaqueNodes: []
+        )
+
+        let result = SchematicRealismValidator().validate(circuitIR: ir, schematic: schematic)
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.contains(code: "SCHEMATIC_KICAD_VERSION_STALE"))
+        XCTAssertTrue(result.contains(code: "SCHEMATIC_GENERATOR_MISMATCH"))
+        XCTAssertTrue(result.contains(code: "SCHEMATIC_COMPONENT_MISSING"))
+        XCTAssertTrue(result.contains(code: "SCHEMATIC_COMPOSITE_BLOCK"))
+        XCTAssertTrue(result.contains(code: "SCHEMATIC_NET_CONNECTIVITY_MISSING"))
+    }
+
     func testSchematicMaterializerContainsNoProductSpecificEmitterShortcuts() throws {
         let source = try repoText("Merlin/Electronics/CircuitIRKiCadSchematicMaterializer.swift")
 

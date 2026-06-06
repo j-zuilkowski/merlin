@@ -304,6 +304,22 @@ struct ElectronicsEndToEndHarness: Sendable {
             )
         }
 
+        let realism = SchematicRealismValidator().validate(circuitIR: circuitIR, schematic: schematic)
+        guard realism.isValid else {
+            return SchematicVerificationResult(
+                status: .blocked,
+                report: SchematicVerificationReport(
+                    status: .blocked,
+                    statusCode: SchematicVerificationStatus.blocked.rawValue,
+                    missingEvidence: [],
+                    blockingERCViolations: [],
+                    diagnostics: realism.issues
+                ),
+                missingEvidence: [],
+                diagnostics: realism.issues
+            )
+        }
+
         let ercLoop = ERCRepairLoop().run(
             initialSchematic: schematic,
             circuitIR: circuitIR,

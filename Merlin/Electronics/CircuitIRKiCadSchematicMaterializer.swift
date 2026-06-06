@@ -333,6 +333,155 @@ struct CircuitIRSchematicParityChecker: Sendable {
     }
 }
 
+struct SchematicRealismValidator: Sendable {
+    private let currentKiCadSchematicVersion = 20250114
+
+    func validate(
+        circuitIR: CircuitIR,
+        schematic: KiCadSchematicDocument
+    ) -> ElectronicsSchemaValidationResult {
+        var issues: [ElectronicsSchemaIssue] = []
+
+        if schematic.version < currentKiCadSchematicVersion {
+            issues.append(issue(
+                "SCHEMATIC_KICAD_VERSION_STALE",
+                "Schematic uses KiCad format \(schematic.version); expected \(currentKiCadSchematicVersion) or newer."
+            ))
+        }
+
+        if schematic.generator != "merlin-electronics" {
+            issues.append(issue(
+                "SCHEMATIC_GENERATOR_MISMATCH",
+                "Schematic generator must be merlin-electronics, got \(schematic.generator)."
+            ))
+        }
+
+        let emittedSymbols = schematic.symbols.filter(\.emitsKiCadSymbol)
+        let emittedSymbolsByReference = Dictionary(
+            emittedSymbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+                guard let reference = symbol.property(named: "Reference") else { return nil }
+                return (reference, symbol)
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        for symbol in schematic.symbols where !symbol.emitsKiCadSymbol || isCompositeSymbol(symbol) {
+            issues.append(issue(
+                "SCHEMATIC_COMPOSITE_BLOCK",
+                "Schematic contains non-emitted or composite block symbol \(symbol.property(named: "Reference") ?? "<unknown>")."
+            ))
+        }
+
+        for component in circuitIR.components {
+            if isCompositeComponent(component) {
+                issues.append(issue(
+                    "SCHEMATIC_COMPOSITE_BLOCK",
+                    "\(component.refdes) is a composite functional block, not a discrete schematic component."
+                ))
+            }
+
+            guard let symbol = emittedSymbolsByReference[component.refdes] else {
+                issues.append(issue(
+                    "SCHEMATIC_COMPONENT_MISSING",
+                    "Schematic is missing emitted KiCad symbol for \(component.refdes)."
+                ))
+                continue
+            }
+
+            if symbol.property(named: "Symbol") != component.selectedSymbol {
+                issues.append(issue(
+                    "SCHEMATIC_SYMBOL_MISMATCH",
+                    "Schematic symbol for \(component.refdes) does not match Circuit IR selected symbol."
+                ))
+            }
+
+            if let footprint = component.selectedFootprint,
+               !footprint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+               symbol.property(named: "Footprint") != footprint {
+                issues.append(issue(
+                    "SCHEMATIC_FOOTPRINT_MISMATCH",
+                    "Schematic footprint for \(component.refdes) does not match Circuit IR."
+                ))
+            }
+
+            if symbol.property(named: "Source") != "circuit-component:\(component.refdes)" {
+                issues.append(issue(
+                    "SCHEMATIC_SOURCE_MISSING",
+                    "Schematic symbol \(component.refdes) is not traceable to its Circuit IR component."
+                ))
+            }
+
+            if !component.sourceEvidence.isEmpty,
+               (symbol.property(named: "SourceEvidence")?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) {
+                issues.append(issue(
+                    "SCHEMATIC_SOURCE_EVIDENCE_MISSING",
+                    "Schematic symbol \(component.refdes) is missing source evidence."
+                ))
+            }
+
+            let emittedPinNumbers = pinNumbers(from: symbol)
+            for pin in component.pins where !emittedPinNumbers.contains(pin.pinNumber) {
+                issues.append(issue(
+                    "SCHEMATIC_PIN_MISSING",
+                    "Schematic symbol \(component.refdes) is missing pin \(pin.pinNumber)."
+                ))
+            }
+        }
+
+        let emittedConnectivityLabels = Set(schematic.labels.filter(\.emitsKiCadConnectivity).map(\.text))
+        for net in circuitIR.nets where !emittedConnectivityLabels.contains(net.name) {
+            issues.append(issue(
+                "SCHEMATIC_NET_CONNECTIVITY_MISSING",
+                "Schematic net \(net.name) is missing an emitted KiCad connectivity label."
+            ))
+        }
+
+        return ElectronicsSchemaValidationResult(issues: issues)
+    }
+
+    private func pinNumbers(from symbol: KiCadSchematicDocument.Symbol) -> Set<String> {
+        guard let pins = symbol.property(named: "Pins") else { return [] }
+        return Set(pins.split(separator: ",").compactMap { entry in
+            entry.split(separator: ":").first.map(String.init)
+        })
+    }
+
+    private func isCompositeComponent(_ component: CircuitComponent) -> Bool {
+        let haystack = [
+            component.refdes,
+            component.role,
+            component.selectedSymbol,
+            component.manufacturerPartNumber ?? "",
+        ].joined(separator: " ").lowercased()
+
+        return haystack.contains("functional block")
+            || haystack.contains("composite")
+            || haystack.contains("complete amplifier")
+            || haystack.contains("amplifier block")
+            || haystack.contains("placeholder")
+    }
+
+    private func isCompositeSymbol(_ symbol: KiCadSchematicDocument.Symbol) -> Bool {
+        let haystack = [
+            symbol.property(named: "Reference") ?? "",
+            symbol.property(named: "Symbol") ?? "",
+            symbol.property(named: "Role") ?? "",
+            symbol.property(named: "Source") ?? "",
+        ].joined(separator: " ").lowercased()
+
+        return haystack.contains("functional block")
+            || haystack.contains("composite")
+            || haystack.contains("complete amplifier")
+            || haystack.contains("amplifierblock")
+            || haystack.contains("amplifier block")
+            || haystack.contains("placeholder")
+    }
+
+    private func issue(_ code: String, _ message: String) -> ElectronicsSchemaIssue {
+        ElectronicsSchemaIssue(code: code, message: message)
+    }
+}
+
 private struct KiCadProjectManifest: Codable {
     var designId: String
     var boardId: String
