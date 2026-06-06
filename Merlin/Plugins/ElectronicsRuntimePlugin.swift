@@ -3276,6 +3276,23 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 )
             }
             let deckText = try String(contentsOf: circuitDeckURL, encoding: .utf8)
+            let deckValidation = SPICECircuitDeckValidator().validate(deckText: deckText, scenario: scenario)
+            guard deckValidation.isValid else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: deckValidation.issues.map(\.message).joined(separator: "; "),
+                    context: context,
+                    warnings: deckValidation.issues.map {
+                        KiCadWarning(
+                            code: $0.code,
+                            message: $0.message,
+                            affectedRefs: [scenario.circuitPath],
+                            suggestedAction: "Provide a valid SPICE deck with declared analyses and .meas entries for each required envelope."
+                        )
+                    }
+                )
+            }
             guard looksLikeSpiceDeck(deckText) else {
                 return structuredBlock(
                     request,

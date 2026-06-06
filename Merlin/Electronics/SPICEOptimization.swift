@@ -47,6 +47,57 @@ struct SPICEScenarioValidator: Sendable {
     }
 }
 
+struct SPICECircuitDeckValidator: Sendable {
+    func validate(deckText: String, scenario: SPICESimulationScenario) -> SPICEScenarioValidation {
+        let lines = normalizedLines(deckText)
+        var issues: [ElectronicsSchemaIssue] = []
+
+        let hasElement = lines.contains { line in
+            guard let first = line.first else { return false }
+            return "vriqxmcbdejlg".contains(first)
+        }
+        let hasEnd = lines.contains(".end")
+        let declaredAnalyses = Set(scenario.analyses.map { ".\($0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())" })
+        let presentAnalyses = Set(lines.compactMap { line -> String? in
+            guard line.hasPrefix(".") else { return nil }
+            return line.split(whereSeparator: \.isWhitespace).first.map(String.init)
+        })
+        let missingAnalyses = declaredAnalyses.subtracting(presentAnalyses)
+        let missingMeasurements = scenario.measurementEnvelopes.filter { envelope in
+            !lines.contains { line in
+                line.hasPrefix(".meas") && line.contains(envelope.name.lowercased())
+            }
+        }
+
+        if !hasElement || !hasEnd {
+            issues.append(ElectronicsSchemaIssue(
+                code: "SPICE_CIRCUIT_DECK_INVALID",
+                message: "\(scenario.scenarioId) circuit deck must contain circuit elements and .end."
+            ))
+        } else if !missingAnalyses.isEmpty || !missingMeasurements.isEmpty {
+            let missingMeasurementNames = missingMeasurements.map(\.name).joined(separator: ", ")
+            let missingAnalysisNames = missingAnalyses.sorted().joined(separator: ", ")
+            let details = [
+                missingAnalysisNames.isEmpty ? nil : "missing analyses \(missingAnalysisNames)",
+                missingMeasurementNames.isEmpty ? nil : "missing measurements \(missingMeasurementNames)",
+            ].compactMap { $0 }.joined(separator: "; ")
+            issues.append(ElectronicsSchemaIssue(
+                code: "SPICE_CIRCUIT_DECK_GENERIC_SMOKE",
+                message: "\(scenario.scenarioId) circuit deck looks like a generic smoke deck, not declared scenario evidence: \(details)."
+            ))
+        }
+
+        return SPICEScenarioValidation(isValid: issues.isEmpty, issues: issues)
+    }
+
+    private func normalizedLines(_ text: String) -> [String] {
+        text
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty && !$0.hasPrefix("*") }
+    }
+}
+
 struct SPICEModelRecord: Codable, Sendable, Equatable {
     var modelRef: String
     var legallyUsable: Bool

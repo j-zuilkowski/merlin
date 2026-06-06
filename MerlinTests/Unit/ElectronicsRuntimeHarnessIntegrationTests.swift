@@ -62,17 +62,7 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let outputDirectory = temporaryDirectory("runtime-artifact-harness")
         let artifactPaths = try writeCleanArtifactPaths(root: outputDirectory)
-        let artifactData = try WorkspaceJSON.encoder.encode(artifactPaths)
-        let artifactObject = try JSONSerialization.jsonObject(with: artifactData)
-        let object: [String: Any] = [
-            "job_id": "amp-low-voltage-artifacts",
-            "design_intent_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/design_intent.json").path,
-            "circuit_ir_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/circuit_ir.json").path,
-            "output_directory": outputDirectory.path,
-            "evidence_artifacts": artifactObject,
-        ]
-        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
-        let payload = String(data: data, encoding: .utf8) ?? "{}"
+        let payload = try harnessPayload(evidenceArtifacts: artifactPaths, outputDirectory: outputDirectory)
 
         let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
 
@@ -88,6 +78,134 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         XCTAssertEqual(result.missingEvidence, ["release_package", "release_approval"], "\(result)")
     }
 
+    func testRequirementsWorkflowBlocksNarrativeSPICELogFromArtifactPaths() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputDirectory = temporaryDirectory("runtime-narrative-spice")
+        var artifactPaths = try writeCleanArtifactPaths(root: outputDirectory)
+        artifactPaths.ngspiceOutputPath = try write(
+            "ngspice-narrative.log",
+            in: outputDirectory,
+            contents: "SPICE completed successfully for the amplifier output stage.\n"
+        ).path
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "workflow.requirements_to_pcb",
+            payload: try harnessPayload(evidenceArtifacts: artifactPaths, outputDirectory: outputDirectory)
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.spiceStatus, .blocked)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "SPICE_MEASUREMENT_PARSE_FAILED" }, "\(result)")
+        XCTAssertFalse(result.isComplete)
+    }
+
+    func testRequirementsWorkflowBlocksMissingSPICEModelRecordsArtifact() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputDirectory = temporaryDirectory("runtime-missing-spice-models")
+        var artifactPaths = try writeCleanArtifactPaths(root: outputDirectory)
+        artifactPaths.spiceModelRecordsPath = nil
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "workflow.requirements_to_pcb",
+            payload: try harnessPayload(evidenceArtifacts: artifactPaths, outputDirectory: outputDirectory)
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.spiceStatus, .blocked)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "SPICE_MODEL_RECORDS_REQUIRED" }, "\(result)")
+        XCTAssertFalse(result.isComplete)
+    }
+
+    func testRequirementsWorkflowBlocksSPICEScenarioMissingEnvelopesFromArtifactPaths() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputDirectory = temporaryDirectory("runtime-missing-spice-envelopes")
+        var artifactPaths = try writeCleanArtifactPaths(root: outputDirectory)
+        artifactPaths.spiceScenarioPath = try write(
+            "scenario-missing-envelopes.json",
+            in: outputDirectory,
+            contents: """
+            {
+              "scenario_id": "amp-low-voltage-output-stage",
+              "design_id": "amp_low_voltage_audio",
+              "circuit_path": "\(outputDirectory.appendingPathComponent("output-stage.cir").path)",
+              "analyses": ["tran", "ac"],
+              "required_model_refs": ["MJ15003G"],
+              "measurement_envelopes": []
+            }
+            """
+        ).path
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "workflow.requirements_to_pcb",
+            payload: try harnessPayload(evidenceArtifacts: artifactPaths, outputDirectory: outputDirectory)
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.spiceStatus, .blocked)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "SPICE_MEASUREMENT_ENVELOPE_REQUIRED" }, "\(result)")
+        XCTAssertFalse(result.isComplete)
+    }
+
+    func testRequirementsWorkflowBlocksGenericSmokeSPICEDeckFromArtifactPaths() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let outputDirectory = temporaryDirectory("runtime-generic-spice-deck")
+        var artifactPaths = try writeCleanArtifactPaths(root: outputDirectory)
+        let smokeDeck = try write(
+            "smoke.cir",
+            in: outputDirectory,
+            contents: """
+            * generic smoke deck
+            V1 in 0 DC 1
+            R1 in 0 1k
+            .op
+            .end
+            """
+        )
+        artifactPaths.spiceScenarioPath = try write(
+            "smoke-scenario.json",
+            in: outputDirectory,
+            contents: """
+            {
+              "scenario_id": "amp-low-voltage-output-stage",
+              "design_id": "amp_low_voltage_audio",
+              "circuit_path": "\(smokeDeck.path)",
+              "analyses": ["tran", "ac"],
+              "required_model_refs": ["MJ15003G"],
+              "measurement_envelopes": [
+                { "name": "output_power_w", "min": 24.0, "max": 28.0 },
+                { "name": "thd_percent", "max": 1.0 }
+              ]
+            }
+            """
+        ).path
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "workflow.requirements_to_pcb",
+            payload: try harnessPayload(evidenceArtifacts: artifactPaths, outputDirectory: outputDirectory)
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.spiceStatus, .blocked)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "SPICE_CIRCUIT_DECK_GENERIC_SMOKE" }, "\(result)")
+        XCTAssertFalse(result.isComplete)
+    }
+
     private func harnessPayload(evidence: ElectronicsEndToEndEvidence) throws -> String {
         let outputDirectory = temporaryDirectory("runtime-harness")
         let evidenceData = try WorkspaceJSON.encoder.encode(evidence)
@@ -98,6 +216,23 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
             "circuit_ir_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/circuit_ir.json").path,
             "output_directory": outputDirectory.path,
             "evidence": evidenceObject,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    private func harnessPayload(
+        evidenceArtifacts: ElectronicsEvidenceArtifactPaths,
+        outputDirectory: URL
+    ) throws -> String {
+        let artifactData = try WorkspaceJSON.encoder.encode(evidenceArtifacts)
+        let artifactObject = try JSONSerialization.jsonObject(with: artifactData)
+        let object: [String: Any] = [
+            "job_id": "amp-low-voltage-artifacts",
+            "design_intent_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/design_intent.json").path,
+            "circuit_ir_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/circuit_ir.json").path,
+            "output_directory": outputDirectory.path,
+            "evidence_artifacts": artifactObject,
         ]
         let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         return String(data: data, encoding: .utf8) ?? "{}"
@@ -123,7 +258,20 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
             }
             """
         )
-        _ = try write("output-stage.cir", in: root, contents: "* amp output stage\n")
+        _ = try write(
+            "output-stage.cir",
+            in: root,
+            contents: """
+            * amp output stage
+            V1 in 0 SIN(0 1 1000)
+            RLOAD out 0 8
+            .tran 10u 10m
+            .ac dec 10 20 20k
+            .meas tran output_power_w PARAM='25.1'
+            .meas tran thd_percent PARAM='0.72'
+            .end
+            """
+        )
         let models = try write(
             "models.json",
             in: root,

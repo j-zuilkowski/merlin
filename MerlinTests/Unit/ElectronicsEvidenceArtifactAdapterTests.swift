@@ -109,7 +109,20 @@ final class ElectronicsEvidenceArtifactAdapterTests: XCTestCase {
             }
             """
         )
-        _ = try write("output-stage.cir", in: root, contents: "* amp output stage\n")
+        _ = try write(
+            "output-stage.cir",
+            in: root,
+            contents: """
+            * amp output stage
+            V1 in 0 SIN(0 1 1000)
+            RLOAD out 0 8
+            .tran 10u 10m
+            .ac dec 10 20 20k
+            .meas tran output_power_w PARAM='25.1'
+            .meas tran thd_percent PARAM='0.72'
+            .end
+            """
+        )
         let models = try write(
             "models.json",
             in: root,

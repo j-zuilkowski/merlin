@@ -147,7 +147,9 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
             scenario: scenario,
             availableModels: models,
             ngspiceOutput: try String(contentsOf: URL(fileURLWithPath: outputPath), encoding: .utf8),
-            approvals: paths.evidenceApprovals
+            approvals: paths.evidenceApprovals,
+            modelRecordsProvided: paths.spiceModelRecordsPath != nil,
+            circuitDeckProvided: true
         )
     }
 }

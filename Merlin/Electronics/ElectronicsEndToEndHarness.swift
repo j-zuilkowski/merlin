@@ -20,6 +20,8 @@ struct ElectronicsEndToEndSPICEEvidence: Codable, Sendable, Equatable {
     var availableModels: [SPICEModelRecord]
     var ngspiceOutput: String
     var approvals: [ElectronicsApprovalKind]
+    var modelRecordsProvided: Bool?
+    var circuitDeckProvided: Bool?
 }
 
 struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
@@ -79,7 +81,9 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
             output_power_w = 25.1
             thd_percent = 0.72
             """,
-            approvals: []
+            approvals: [],
+            modelRecordsProvided: nil,
+            circuitDeckProvided: nil
         ),
         fabrication: .fabReadyFixture,
         approvals: [.highStakesSignoff]
@@ -350,24 +354,55 @@ struct ElectronicsEndToEndHarness: Sendable {
         let scenario = SPICEScenarioValidator().validate(evidence.scenario)
         diagnostics.append(contentsOf: scenario.issues)
 
-        let models = SPICEModelResolver().resolve(
-            requiredModels: evidence.scenario.requiredModelRefs,
-            availableModels: evidence.availableModels,
-            approvals: evidence.approvals
-        )
-        diagnostics.append(contentsOf: models.issues)
+        if evidence.circuitDeckProvided == true,
+           !evidence.scenario.circuitPath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let circuitURL = URL(fileURLWithPath: evidence.scenario.circuitPath)
+            if FileManager.default.fileExists(atPath: circuitURL.path) {
+                let deckText = try String(contentsOf: circuitURL, encoding: .utf8)
+                let deck = SPICECircuitDeckValidator().validate(deckText: deckText, scenario: evidence.scenario)
+                diagnostics.append(contentsOf: deck.issues)
+            } else {
+                diagnostics.append(ElectronicsSchemaIssue(
+                    code: "SPICE_CIRCUIT_DECK_REQUIRED",
+                    message: "\(evidence.scenario.scenarioId) references missing circuit deck \(evidence.scenario.circuitPath)."
+                ))
+            }
+        }
+
+        if evidence.modelRecordsProvided == false,
+           !evidence.scenario.requiredModelRefs.isEmpty {
+            diagnostics.append(ElectronicsSchemaIssue(
+                code: "SPICE_MODEL_RECORDS_REQUIRED",
+                message: "\(evidence.scenario.scenarioId) requires local SPICE model records for \(evidence.scenario.requiredModelRefs.joined(separator: ", "))."
+            ))
+        } else {
+            let models = SPICEModelResolver().resolve(
+                requiredModels: evidence.scenario.requiredModelRefs,
+                availableModels: evidence.availableModels,
+                approvals: evidence.approvals
+            )
+            diagnostics.append(contentsOf: models.issues)
+        }
 
         let report = try NgspiceMeasurementParser().parse(evidence.ngspiceOutput)
-        let measurements = SPICEMeasurementEnvelopeEvaluator().evaluate(
-            report: report,
-            envelopes: evidence.scenario.measurementEnvelopes
-        )
-        diagnostics.append(contentsOf: measurements.failures.map {
-            ElectronicsSchemaIssue(
-                code: "SPICE_MEASUREMENT_OUT_OF_RANGE",
-                message: "\($0.measurement) was \($0.actual), expected \($0.expected)."
+        if report.measurements.isEmpty,
+           !evidence.scenario.measurementEnvelopes.isEmpty {
+            diagnostics.append(ElectronicsSchemaIssue(
+                code: "SPICE_MEASUREMENT_PARSE_FAILED",
+                message: "\(evidence.scenario.scenarioId) ngspice output did not contain scalar measurements for declared envelopes."
+            ))
+        } else {
+            let measurements = SPICEMeasurementEnvelopeEvaluator().evaluate(
+                report: report,
+                envelopes: evidence.scenario.measurementEnvelopes
             )
-        })
+            diagnostics.append(contentsOf: measurements.failures.map {
+                ElectronicsSchemaIssue(
+                    code: "SPICE_MEASUREMENT_OUT_OF_RANGE",
+                    message: "\($0.measurement) was \($0.actual), expected \($0.expected)."
+                )
+            })
+        }
 
         return SPICEHarnessEvaluation(
             status: diagnostics.isEmpty ? .passed : .blocked,
