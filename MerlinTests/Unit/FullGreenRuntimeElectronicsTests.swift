@@ -292,6 +292,34 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertTrue(result.artifacts.contains { $0.kind == "spice_measurements" && FileManager.default.fileExists(atPath: $0.path) })
     }
 
+    func testSPICEGateBlocksOutOfEnvelopeMeasurementsAndKeepsLog() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeKiCadProjectFixture(name: "spice-envelope-block")
+        let scenario = try writeFixtureFile(name: "amp.cir", text: """
+        * passing simulator run with failing measurement envelope
+        V1 out 0 SIN(0 1 1000)
+        RLOAD out 0 8
+        .tran 10u 10m
+        .meas tran output_power_w PARAM='1.5'
+        .end
+        """)
+        let tool = try writeFakeNgspice(exitCode: 0, logText: "output_power_w = 1.5\\n")
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_run_spice",
+            payload: #"{"project_path":"\#(project.path)","scenario_path":"\#(scenario.path)","ngspice_path":"\#(tool.path)","measurement_envelopes":[{"name":"output_power_w","min":24.0,"max":28.0}]}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blockedSimulation)
+        XCTAssertTrue(result.warnings.contains { $0.code == "SPICE_MEASUREMENT_OUT_OF_ENVELOPE" && $0.message.contains("output_power_w") })
+        XCTAssertTrue(result.nextActions.contains("repair_spice_from_diagnostics"))
+        XCTAssertTrue(result.artifacts.contains { $0.kind == "spice_measurements" && FileManager.default.fileExists(atPath: $0.path) })
+    }
+
     private func buildElectronicsDynamicLibrary(in directory: URL) throws -> URL {
         let sourceURL = repoURL("plugins/electronics/Sources/ElectronicsPluginEntrypoint.c")
         let libraryURL = directory.appendingPathComponent("libMerlinElectronicsPlugin.dylib")

@@ -3003,7 +3003,103 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             }
             return commandFailureBlock(request, context: context, code: "SPICE_EXECUTION_FAILED", run: run)
         }
+        if let envelopeResponse = spiceMeasurementEnvelopeBlockIfNeeded(
+            request,
+            context: context,
+            object: object,
+            outputURL: outputURL,
+            artifacts: artifacts
+        ) {
+            return envelopeResponse
+        }
         return complete(request, artifacts: artifacts)
+    }
+
+    private func spiceMeasurementEnvelopeBlockIfNeeded(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        object: [String: Any],
+        outputURL: URL,
+        artifacts: [ArtifactRef]
+    ) -> WorkspaceMessageResponse? {
+        let envelopes = spiceMeasurementEnvelopes(from: object)
+        guard !envelopes.isEmpty else { return nil }
+
+        let output = (try? String(contentsOf: outputURL, encoding: .utf8)) ?? ""
+        let report: SPICEMeasurementReport
+        do {
+            report = try NgspiceMeasurementParser().parse(output)
+        } catch {
+            return spiceMeasurementEnvelopeFailureBlock(
+                request,
+                context: context,
+                message: "SPICE measurement parsing failed: \(error.localizedDescription)",
+                artifacts: artifacts,
+                affectedRefs: [outputURL.path]
+            )
+        }
+
+        let evaluation = SPICEMeasurementEnvelopeEvaluator().evaluate(report: report, envelopes: envelopes)
+        guard !evaluation.passed else { return nil }
+
+        let failureDescriptions = evaluation.failures.map { failure in
+            let actual = failure.actual.isNaN ? "missing" : "\(failure.actual)"
+            return "\(failure.measurement)=\(actual), expected \(failure.expected)"
+        }
+        return spiceMeasurementEnvelopeFailureBlock(
+            request,
+            context: context,
+            message: "SPICE measurements are outside required envelopes: \(failureDescriptions.joined(separator: "; ")).",
+            artifacts: artifacts,
+            affectedRefs: [outputURL.path] + envelopes.map(\.name)
+        )
+    }
+
+    private func spiceMeasurementEnvelopeFailureBlock(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext,
+        message: String,
+        artifacts: [ArtifactRef],
+        affectedRefs: [String]
+    ) -> WorkspaceMessageResponse {
+        let warning = KiCadWarning(
+            code: "SPICE_MEASUREMENT_OUT_OF_ENVELOPE",
+            message: message,
+            affectedRefs: affectedRefs,
+            suggestedAction: "Repair the SPICE deck, model, or circuit parameters, then rerun kicad_run_spice."
+        )
+        Task {
+            await publishDiagnostic(reason: .failedGate, request: request, context: context, message: message)
+        }
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blockedSimulation,
+                artifacts: artifacts,
+                warnings: [warning],
+                nextActions: ["repair_spice_from_diagnostics", "rerun_spice"],
+                handoff: workflowHandoff(for: request, artifacts: artifacts)
+            )),
+            artifacts: workspaceArtifacts(from: artifacts, request: request),
+            diagnostics: [WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error")]
+        )
+    }
+
+    private func spiceMeasurementEnvelopes(from object: [String: Any]) -> [SPICEMeasurementEnvelope] {
+        let raw = object["measurement_envelopes"] ?? object["measurementEnvelopes"] ?? object["required_measurements"] ?? object["requiredMeasurements"]
+        guard let items = raw as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let name = stringValue(item, keys: ["name", "measurement"]),
+                  !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
+            }
+            return SPICEMeasurementEnvelope(
+                name: name,
+                min: doubleValue(item["min"] ?? item["minimum"]),
+                max: doubleValue(item["max"] ?? item["maximum"])
+            )
+        }
     }
 
     private func handleSPICEScenarioGeneration(

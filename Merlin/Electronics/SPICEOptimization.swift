@@ -105,7 +105,12 @@ struct NgspiceMeasurementParser: Sendable {
             let parts = line.split(separator: "=", maxSplits: 1).map {
                 $0.trimmingCharacters(in: .whitespacesAndNewlines)
             }
-            guard parts.count == 2, let value = Double(parts[1]) else { continue }
+            guard parts.count == 2 else { continue }
+            let scalar = parts[1]
+                .split(whereSeparator: \.isWhitespace)
+                .first
+                .map(String.init) ?? parts[1]
+            guard let value = Double(scalar) else { continue }
             measurements[parts[0]] = value
         }
         return SPICEMeasurementReport(measurements: measurements)

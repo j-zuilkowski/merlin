@@ -35,11 +35,13 @@ final class SPICEOptimizationTests: XCTestCase {
         let report = try NgspiceMeasurementParser().parse("""
         gain_db = 24.8
         output_power_w = 25.6
+        vout_rms = 3.49091e+00 from=  1.00000e-02 to=  2.00000e-02
         thd_percent = 0.72
         """)
 
         XCTAssertEqual(report.measurements["gain_db"] ?? .nan, 24.8, accuracy: 0.001)
         XCTAssertEqual(report.measurements["output_power_w"] ?? .nan, 25.6, accuracy: 0.001)
+        XCTAssertEqual(report.measurements["vout_rms"] ?? .nan, 3.49091, accuracy: 0.00001)
         XCTAssertEqual(report.measurements["thd_percent"] ?? .nan, 0.72, accuracy: 0.001)
     }
 

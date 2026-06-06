@@ -2863,6 +2863,68 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo DRC report: \(drcArtifact.url.path)")
     }
 
+    func testAmpDemoSPICESliceBlocksWhen25WEnvelopeFails() async throws {
+        let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-spice-slice")
+        guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_SPICE_SLICE"] == "1"
+            || FileManager.default.fileExists(atPath: runSentinel.path)
+        else {
+            throw XCTSkip("Set RUN_AMPDEMO_SPICE_SLICE=1 or create \(runSentinel.path) to run the AmpDemo SPICE slice.")
+        }
+
+        let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
+        let ngspice = "/opt/homebrew/bin/ngspice"
+        guard FileManager.default.isExecutableFile(atPath: ngspice) else {
+            throw XCTSkip("ngspice is not installed at \(ngspice)")
+        }
+        let projectURL = try newestRecursiveArtifact(
+            in: root.appendingPathComponent(".merlin/pcb-slice", isDirectory: true),
+            suffix: ".kicad_pro"
+        )
+        let outputURL = root
+            .appendingPathComponent(".merlin/spice-slice", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: outputURL, withIntermediateDirectories: true)
+        let deckURL = outputURL.appendingPathComponent("amp_low_voltage_audio_smoke.cir")
+        try """
+        * AmpDemo low-voltage audio path SPICE smoke test.
+        * This checks that the simulation toolchain runs and records measurements.
+        * It is not a certified 25W Class-A amplifier performance model.
+        Vsig in 0 SIN(0 0.1 1000)
+        Rin in pre 10k
+        Ccouple pre base 1u
+        Rb base 0 100k
+        Qdrv out base 0 MJE340_SMOKE
+        Rload out 0 8
+        Vrail vcc 0 DC 24
+        Rc vcc out 47
+        .model MJE340_SMOKE NPN(IS=1e-14 BF=60 VAF=80 CJE=25p CJC=10p TF=200n)
+        .tran 10u 20m
+        .meas tran vout_rms RMS v(out) FROM=10m TO=20m
+        .meas tran output_power_w PARAM='vout_rms*vout_rms/8'
+        .end
+        """.write(to: deckURL, atomically: true, encoding: .utf8)
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let response = await sendSPICE(
+            runtime,
+            payload: #"{"project_path":"\#(projectURL.path)","scenario_path":"\#(deckURL.path)","ngspice_path":"\#(ngspice)","measurement_envelopes":[{"name":"output_power_w","min":24.0,"max":28.0}]}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blockedSimulation)
+        XCTAssertTrue(result.warnings.contains { $0.code == "SPICE_MEASUREMENT_OUT_OF_ENVELOPE" && $0.message.contains("output_power_w") })
+        let logArtifact = try XCTUnwrap(result.artifacts.first { $0.kind == "spice_measurements" })
+        let logText = try String(contentsOfFile: logArtifact.path, encoding: .utf8)
+        let report = try NgspiceMeasurementParser().parse(logText)
+        let outputPower = try XCTUnwrap(report.measurements["output_power_w"])
+        XCTAssertLessThan(outputPower, 24.0)
+        print("AmpDemo SPICE deck: \(deckURL.path)")
+        print("AmpDemo SPICE log: \(logArtifact.path)")
+        print("AmpDemo SPICE output_power_w: \(outputPower)")
+    }
+
     private func newestApprovedDesignIntent(in directory: URL) throws -> URL {
         let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
             .filter { $0.lastPathComponent.hasSuffix("design_intent.json") }
@@ -2881,6 +2943,22 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
 
     private func newestArtifact(in directory: URL, suffix: String) throws -> URL {
         let candidates = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])
+            .filter { $0.lastPathComponent.hasSuffix(suffix) }
+        return try XCTUnwrap(
+            newestURL(candidates),
+            "Missing \(suffix) artifact in \(directory.path)"
+        )
+    }
+
+    private func newestRecursiveArtifact(in directory: URL, suffix: String) throws -> URL {
+        guard let enumerator = FileManager.default.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            throw XCTSkip("Missing artifact directory \(directory.path)")
+        }
+        let candidates = enumerator.compactMap { $0 as? URL }
             .filter { $0.lastPathComponent.hasSuffix(suffix) }
         return try XCTUnwrap(
             newestURL(candidates),
@@ -3691,6 +3769,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_drc"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendSPICE(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_spice"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,
