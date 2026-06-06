@@ -3116,6 +3116,36 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
+        guard let circuitIRPath = stringValue(object, keys: ["circuit_ir_path", "circuitIRPath", "circuitIrPath"]),
+              FileManager.default.fileExists(atPath: circuitIRPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE scenario generation requires an existing circuit_ir_path with a SPICE verification scenario.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "SPICE_CIRCUIT_IR_REQUIRED",
+                    message: "SPICE scenario generation requires CircuitIR evidence; Merlin will not generate a generic SPICE deck from project_path alone.",
+                    affectedRefs: affectedRefs(from: request),
+                    suggestedAction: "Pass circuit_ir_path and an explicit spice_scenario_path."
+                )]
+            )
+        }
+        guard let spiceScenarioPath = stringValue(object, keys: ["spice_scenario_path", "spiceScenarioPath", "simulation_scenario_path", "simulationScenarioPath"]),
+              FileManager.default.fileExists(atPath: spiceScenarioPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE scenario generation requires an existing spice_scenario_path JSON artifact.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "SPICE_SCENARIO_EVIDENCE_REQUIRED",
+                    message: "Merlin will not synthesize a SPICE scenario without explicit scenario evidence and measurement envelopes.",
+                    affectedRefs: affectedRefs(from: request),
+                    suggestedAction: "Create a SPICESimulationScenario JSON with circuit_path, analyses, required_model_refs, and measurement_envelopes."
+                )]
+            )
+        }
 
         let projectURL = URL(fileURLWithPath: projectPath)
         let outputRoot: URL
@@ -3127,16 +3157,81 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         do {
+            let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: URL(fileURLWithPath: circuitIRPath)))
+            guard circuitIR.verificationScenarios.contains(where: { $0.kind.lowercased() == "spice" }) else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "CircuitIR does not declare a SPICE verification scenario.",
+                    context: context,
+                    warnings: [KiCadWarning(
+                        code: "SPICE_VERIFICATION_SCENARIO_REQUIRED",
+                        message: "CircuitIR must include a verification_scenarios entry with kind=spice before Merlin can generate a runnable SPICE deck.",
+                        affectedRefs: [circuitIRPath],
+                        suggestedAction: "Add a SPICE verification scenario to CircuitIR or revise the design intent."
+                    )]
+                )
+            }
+            let scenarioDecoder = JSONDecoder()
+            scenarioDecoder.keyDecodingStrategy = .convertFromSnakeCase
+            let scenario = try scenarioDecoder.decode(SPICESimulationScenario.self, from: Data(contentsOf: URL(fileURLWithPath: spiceScenarioPath)))
+            let validation = SPICEScenarioValidator().validate(scenario)
+            guard validation.isValid else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: validation.issues.map(\.message).joined(separator: "; "),
+                    context: context,
+                    warnings: validation.issues.map {
+                        KiCadWarning(code: $0.code, message: $0.message, affectedRefs: [spiceScenarioPath], suggestedAction: "Repair the SPICE scenario JSON and rerun kicad_generate_spice_scenario.")
+                    }
+                )
+            }
+            let circuitDeckURL = URL(fileURLWithPath: scenario.circuitPath)
+            guard FileManager.default.fileExists(atPath: circuitDeckURL.path) else {
+                return structuredBlock(
+                    request,
+                    reason: .missingArtifact,
+                    message: "SPICE scenario references a missing circuit_path: \(scenario.circuitPath).",
+                    context: context,
+                    warnings: [KiCadWarning(
+                        code: "SPICE_CIRCUIT_DECK_REQUIRED",
+                        message: "The SPICE scenario must reference an existing runnable .cir/.sp deck.",
+                        affectedRefs: [spiceScenarioPath, scenario.circuitPath],
+                        suggestedAction: "Create the referenced SPICE circuit deck before generating the simulation scenario."
+                    )]
+                )
+            }
+            let deckText = try String(contentsOf: circuitDeckURL, encoding: .utf8)
+            guard looksLikeSpiceDeck(deckText) else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "SPICE scenario circuit_path is not a runnable SPICE deck.",
+                    context: context,
+                    warnings: [KiCadWarning(
+                        code: "SPICE_CIRCUIT_DECK_INVALID",
+                        message: "The referenced circuit_path must contain circuit elements, an analysis directive, and .end.",
+                        affectedRefs: [scenario.circuitPath],
+                        suggestedAction: "Provide a valid SPICE deck rather than a summary or placeholder file."
+                    )]
+                )
+            }
             try FileManager.default.createDirectory(at: outputRoot, withIntermediateDirectories: true)
             let baseName = projectURL.deletingPathExtension().lastPathComponent.isEmpty
                 ? "merlin-simulation"
                 : projectURL.deletingPathExtension().lastPathComponent
-            let scenarioURL = outputRoot.appendingPathComponent("\(baseName)-scenario.cir")
-            try genericSPICEVerificationDeck(projectName: baseName)
-                .write(to: scenarioURL, atomically: true, encoding: .utf8)
+            let scenarioURL = outputRoot.appendingPathComponent("\(baseName)-\(scenario.scenarioId)-scenario.cir")
+            if FileManager.default.fileExists(atPath: scenarioURL.path) {
+                try FileManager.default.removeItem(at: scenarioURL)
+            }
+            try FileManager.default.copyItem(at: circuitDeckURL, to: scenarioURL)
             return complete(
                 request,
-                artifacts: [ArtifactRef(path: scenarioURL.path, kind: "simulation_scenario")],
+                artifacts: [
+                    ArtifactRef(path: scenarioURL.path, kind: "simulation_scenario"),
+                    ArtifactRef(path: spiceScenarioPath, kind: "spice_scenario"),
+                ],
                 nextActions: ["kicad_run_spice"]
             )
         } catch {
@@ -3147,19 +3242,6 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context
             )
         }
-    }
-
-    private func genericSPICEVerificationDeck(projectName: String) -> String {
-        """
-        * Merlin generated SPICE verification scenario for \(projectName)
-        * This deck proves simulator execution and measurement capture for the current workflow.
-        V1 out 0 SIN(0 1 1000)
-        RLOAD out 0 8
-        .tran 10u 10m
-        .meas tran peak_output_v MAX v(out) from=1m to=10m
-        .meas tran rms_output_v RMS v(out) from=1m to=10m
-        .end
-        """
     }
 
     private func looksLikeSpiceDeck(_ text: String) -> Bool {

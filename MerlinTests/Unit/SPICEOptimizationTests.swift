@@ -8,7 +8,7 @@ final class SPICEOptimizationTests: XCTestCase {
             designId: "amp-low-voltage",
             circuitPath: "",
             analyses: [],
-            requiredModelRefs: ["MJ15003G.lib"],
+            requiredModelRefs: [],
             measurementEnvelopes: []
         )
 
@@ -17,6 +17,7 @@ final class SPICEOptimizationTests: XCTestCase {
         XCTAssertFalse(result.isValid)
         XCTAssertTrue(result.issues.contains { $0.code == "SPICE_CIRCUIT_PATH_REQUIRED" })
         XCTAssertTrue(result.issues.contains { $0.code == "SPICE_ANALYSIS_REQUIRED" })
+        XCTAssertTrue(result.issues.contains { $0.code == "SPICE_MODEL_REF_REQUIRED" })
         XCTAssertTrue(result.issues.contains { $0.code == "SPICE_MEASUREMENT_ENVELOPE_REQUIRED" })
     }
 

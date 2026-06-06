@@ -30,6 +30,12 @@ struct SPICEScenarioValidator: Sendable {
                 message: "\(scenario.scenarioId) requires at least one SPICE analysis."
             ))
         }
+        if scenario.requiredModelRefs.isEmpty {
+            issues.append(ElectronicsSchemaIssue(
+                code: "SPICE_MODEL_REF_REQUIRED",
+                message: "\(scenario.scenarioId) requires explicit SPICE model references."
+            ))
+        }
         if scenario.measurementEnvelopes.isEmpty {
             issues.append(ElectronicsSchemaIssue(
                 code: "SPICE_MEASUREMENT_ENVELOPE_REQUIRED",

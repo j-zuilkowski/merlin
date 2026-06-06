@@ -2880,6 +2880,8 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             in: root.appendingPathComponent(".merlin/pcb-slice", isDirectory: true),
             suffix: ".kicad_pro"
         )
+        let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
         let outputURL = root
             .appendingPathComponent(".merlin/spice-slice", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -2903,12 +2905,34 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         .meas tran output_power_w PARAM='vout_rms*vout_rms/8'
         .end
         """.write(to: deckURL, atomically: true, encoding: .utf8)
+        let scenarioJSON = outputURL.appendingPathComponent("amp_low_voltage_audio_spice_scenario.json")
+        try """
+        {
+          "scenario_id": "amp-output-power",
+          "design_id": "amp-low-voltage",
+          "circuit_path": "\(deckURL.path)",
+          "analyses": ["tran"],
+          "required_model_refs": ["MJE340_SMOKE"],
+          "measurement_envelopes": [
+            { "name": "output_power_w", "min": 24.0, "max": 28.0 }
+          ]
+        }
+        """.write(to: scenarioJSON, atomically: true, encoding: .utf8)
 
         let runtime = try WorkspaceRuntime(rootURL: root)
         try await ElectronicsRuntimePlugin().register(into: runtime)
+        let scenarioResponse = await sendSPICEScenarioGeneration(
+            runtime,
+            payload: #"{"project_path":"\#(projectURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","spice_scenario_path":"\#(scenarioJSON.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+        XCTAssertEqual(scenarioResponse.status, .ok, compileResponseDebug(scenarioResponse))
+        let scenarioResult = try XCTUnwrap(scenarioResponse.payload?.decodeJSON(KiCadToolResult.self))
+        let generatedDeck = try XCTUnwrap(scenarioResult.artifacts.first { $0.kind == "simulation_scenario" }?.path)
+        XCTAssertTrue(scenarioResult.artifacts.contains { $0.kind == "spice_scenario" && $0.path == scenarioJSON.path })
+
         let response = await sendSPICE(
             runtime,
-            payload: #"{"project_path":"\#(projectURL.path)","scenario_path":"\#(deckURL.path)","ngspice_path":"\#(ngspice)","measurement_envelopes":[{"name":"output_power_w","min":24.0,"max":28.0}]}"#
+            payload: #"{"project_path":"\#(projectURL.path)","scenario_path":"\#(generatedDeck)","ngspice_path":"\#(ngspice)","measurement_envelopes":[{"name":"output_power_w","min":24.0,"max":28.0}]}"#
         )
 
         XCTAssertEqual(response.status, .blocked)
@@ -2920,7 +2944,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let report = try NgspiceMeasurementParser().parse(logText)
         let outputPower = try XCTUnwrap(report.measurements["output_power_w"])
         XCTAssertLessThan(outputPower, 24.0)
-        print("AmpDemo SPICE deck: \(deckURL.path)")
+        print("AmpDemo SPICE source deck: \(deckURL.path)")
+        print("AmpDemo SPICE generated deck: \(generatedDeck)")
+        print("AmpDemo SPICE scenario: \(scenarioJSON.path)")
         print("AmpDemo SPICE log: \(logArtifact.path)")
         print("AmpDemo SPICE output_power_w: \(outputPower)")
     }
@@ -3784,6 +3810,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_run_spice"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendSPICEScenarioGeneration(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_generate_spice_scenario"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,
