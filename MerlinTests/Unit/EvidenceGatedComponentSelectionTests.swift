@@ -863,6 +863,40 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(outputFallbacks.contains { $0 == "NPN power transistor TO-247" }, outputFallbacks.joined(separator: " | "))
     }
 
+    func testLiveCatalogQueryOrderPrioritizesCriticalRatedPartsBeforePassiveNetworks() {
+        let ordered = electronicsLiveCatalogQueryOrderedComponents([
+            component(refdes: "RFILT1", role: "sweepable boost/cut resistor", constraints: [
+                "component_category": "resistor",
+                "resistance": "10kOhm",
+            ]),
+            component(refdes: "CBASS1", role: "bass tone capacitor", constraints: [
+                "component_category": "film_capacitor",
+                "capacitance": "100nF",
+            ]),
+            component(refdes: "QDRV1", role: "Class-A output driver transistor", constraints: [
+                "component_category": "driver_transistor",
+                "polarity": "NPN",
+                "voltage_rating": "80V",
+                "current_rating": "1A",
+            ]),
+            component(refdes: "JSPK", role: "speaker connector", constraints: [
+                "component_category": "speaker_connector",
+                "current_rating": "8A",
+            ]),
+            component(refdes: "QOUT1", role: "single-ended Class-A output transistor", constraints: [
+                "component_category": "power_transistor",
+                "polarity": "NPN",
+                "voltage_rating": "80V",
+                "current_rating": "8A",
+                "power_rating": "100W",
+            ]),
+        ]).map { $0.refdes }
+
+        XCTAssertEqual(Array(ordered.prefix(2)), ["QDRV1", "QOUT1"])
+        XCTAssertTrue((ordered.firstIndex(of: "JSPK") ?? 0) < (ordered.firstIndex(of: "RFILT1") ?? 0))
+        XCTAssertTrue((ordered.firstIndex(of: "RFILT1") ?? 0) < (ordered.firstIndex(of: "CBASS1") ?? 0))
+    }
+
     func testCapacitorSelectionUsesValueVoltageAndDielectricEvidence() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)

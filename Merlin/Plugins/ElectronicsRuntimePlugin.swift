@@ -1,5 +1,48 @@
 import Foundation
 
+func electronicsLiveCatalogQueryOrderedComponents(_ components: [ComponentIntent]) -> [ComponentIntent] {
+    components.enumerated()
+        .sorted { lhs, rhs in
+            let left = electronicsLiveCatalogQueryPriority(lhs.element)
+            let right = electronicsLiveCatalogQueryPriority(rhs.element)
+            if left != right { return left < right }
+            return lhs.offset < rhs.offset
+        }
+        .map(\.element)
+}
+
+private func electronicsLiveCatalogQueryPriority(_ component: ComponentIntent) -> Int {
+    let category = (component.constraints["component_category"] ?? component.constraints["kind"] ?? "").lowercased()
+    let role = component.role.lowercased()
+    let combined = ([category, role] + component.constraints.values.map { $0.lowercased() }).joined(separator: " ")
+    if combined.contains("power_transistor")
+        || combined.contains("driver_transistor")
+        || combined.contains("output transistor")
+        || combined.contains("mosfet")
+        || combined.contains("bjt")
+        || combined.contains("rectifier")
+        || combined.contains("regulator")
+        || combined.contains("power supply") {
+        return 0
+    }
+    if component.constraints.keys.contains(where: { key in
+        ["voltage_rating", "current_rating", "power_rating", "power_w", "current_a", "voltage_v"].contains(key)
+    }) {
+        return 1
+    }
+    if combined.contains("connector") || combined.contains("jack") || combined.contains("potentiometer") {
+        return 2
+    }
+    if category.contains("resistor")
+        || category.contains("capacitor")
+        || combined.contains("resistor_network")
+        || combined.contains("tone control")
+        || combined.contains("filter") {
+        return 4
+    }
+    return 3
+}
+
 struct ElectronicsRuntimePlugin {
     static let settingsNamespace = "plugin.electronics"
 
@@ -4423,8 +4466,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let ttlSeconds = catalogCacheTTLSeconds(from: object, config: config)
             let queryBuilder = CatalogSearchQueryBuilder()
             var termsGate = liveCatalogTermsGate(from: object, config: config, settings: context.settings)
+            let liveQueryComponents = electronicsLiveCatalogQueryOrderedComponents(selectionComponents)
             for providerID in liveProviders {
-                for component in selectionComponents {
+                for component in liveQueryComponents {
                     if componentSelectionHasValidCandidate(for: component, candidates: candidates) {
                         continue
                     }
