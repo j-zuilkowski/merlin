@@ -77,6 +77,218 @@ enum CircuitIRKiCadBoardMaterializerError: Error, Equatable {
     case invalidBoardEvidence([ElectronicsSchemaIssue])
 }
 
+struct KiCadBoardEvidenceChecker: Sendable {
+    func warnings(
+        circuitIR: CircuitIR,
+        boardText: String,
+        boardPath: String
+    ) -> [KiCadWarning] {
+        var warnings: [KiCadWarning] = []
+        if !boardText.contains(#"(gr_rect"#) || !boardText.contains(#""Edge.Cuts""#) {
+            warnings.append(boardWarning("PCB_OUTLINE_REQUIRED", "PCB has no Edge.Cuts board outline.", [boardPath]))
+        }
+
+        let blocks = footprintBlocks(in: boardText)
+        if blocks.count != circuitIR.components.count {
+            warnings.append(boardWarning(
+                "PCB_FOOTPRINT_COUNT_MISMATCH",
+                "PCB contains \(blocks.count) placed footprints but Circuit IR requires \(circuitIR.components.count).",
+                [boardPath]
+            ))
+        }
+
+        var placements: [BoardPoint] = []
+        for component in circuitIR.components {
+            let matchingBlocks = blocks.filter { $0.reference == component.refdes }
+            guard matchingBlocks.count == 1, let block = matchingBlocks.first else {
+                let code = matchingBlocks.isEmpty ? "PCB_FOOTPRINT_REFERENCE_REQUIRED" : "PCB_DUPLICATE_FOOTPRINT_REFERENCE"
+                warnings.append(boardWarning(
+                    code,
+                    "\(component.refdes) must appear as exactly one placed footprint reference.",
+                    [component.refdes, boardPath]
+                ))
+                continue
+            }
+            if let footprint = component.selectedFootprint,
+               block.footprintName != footprint {
+                warnings.append(boardWarning(
+                    "PCB_FOOTPRINT_REQUIRED",
+                    "\(component.refdes) footprint \(footprint) is missing from its placed footprint block.",
+                    [component.refdes, footprint, boardPath]
+                ))
+            }
+            for pin in component.pins {
+                guard let pad = pin.footprintPad,
+                      containsPad(pad, in: block.text) else {
+                    warnings.append(boardWarning(
+                        "PCB_PAD_REQUIRED",
+                        "\(component.refdes).\(pin.pinNumber) pad evidence is missing from the component's placed footprint.",
+                        [component.refdes, boardPath]
+                    ))
+                    continue
+                }
+            }
+            if let at = block.at {
+                placements.append(at)
+            } else {
+                warnings.append(boardWarning(
+                    "PCB_PLACEMENT_REQUIRED",
+                    "\(component.refdes) footprint has no placement coordinate.",
+                    [component.refdes, boardPath]
+                ))
+            }
+        }
+
+        if circuitIR.components.count > 1,
+           placements.count == circuitIR.components.count {
+            let uniquePlacements = Set(placements.map { "\(number($0.x))|\(number($0.y))" })
+            let xs = placements.map(\.x)
+            let ys = placements.map(\.y)
+            let spread = (xs.max() ?? 0) - (xs.min() ?? 0) + (ys.max() ?? 0) - (ys.min() ?? 0)
+            if uniquePlacements.count < circuitIR.components.count || spread < 10.0 {
+                warnings.append(boardWarning(
+                    "PCB_PLACEMENT_SPREAD_REQUIRED",
+                    "PCB placement must distribute footprints across distinct coordinates instead of stacking or collapsing them.",
+                    [boardPath]
+                ))
+            }
+        }
+
+        for net in circuitIR.nets where !net.endpoints.isEmpty && !boardText.contains(#""\#(escaped(net.name))""#) {
+            warnings.append(boardWarning("PCB_NET_REQUIRED", "\(net.name) is missing from the board net table or pads.", [net.name, boardPath]))
+        }
+        return warnings
+    }
+
+    private struct FootprintBlock {
+        var text: String
+        var footprintName: String?
+        var reference: String?
+        var at: BoardPoint?
+    }
+
+    private struct BoardPoint: Hashable {
+        var x: Double
+        var y: Double
+    }
+
+    private func footprintBlocks(in text: String) -> [FootprintBlock] {
+        var blocks: [FootprintBlock] = []
+        var searchIndex = text.startIndex
+        while let start = text[searchIndex...].range(of: "(footprint ")?.lowerBound,
+              let end = balancedNodeEnd(in: text, start: start) {
+            let blockText = String(text[start..<end])
+            blocks.append(FootprintBlock(
+                text: blockText,
+                footprintName: firstQuotedValue(in: blockText),
+                reference: footprintReference(in: blockText),
+                at: firstPoint(pattern: #"\(at\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"#, in: blockText)
+            ))
+            searchIndex = end
+        }
+        return blocks
+    }
+
+    private func footprintReference(in text: String) -> String? {
+        firstCapture(pattern: #"\(property\s+"Reference"\s+"((?:[^"\\]|\\.)*)""#, in: text)
+            ?? firstCapture(pattern: #"\(fp_text\s+reference\s+"((?:[^"\\]|\\.)*)""#, in: text)
+    }
+
+    private func firstCapture(pattern: String, in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+              match.numberOfRanges > 1,
+              let range = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        return String(text[range])
+    }
+
+    private func firstPoint(pattern: String, in text: String) -> BoardPoint? {
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)),
+              match.numberOfRanges == 3,
+              let xRange = Range(match.range(at: 1), in: text),
+              let yRange = Range(match.range(at: 2), in: text),
+              let x = Double(text[xRange]),
+              let y = Double(text[yRange]) else {
+            return nil
+        }
+        return BoardPoint(x: x, y: y)
+    }
+
+    private func balancedNodeEnd(in text: String, start: String.Index) -> String.Index? {
+        var depth = 0
+        var inString = false
+        var escapedCharacter = false
+        var index = start
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escapedCharacter {
+                    escapedCharacter = false
+                } else if character == "\\" {
+                    escapedCharacter = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return text.index(after: index)
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+
+    private func firstQuotedValue(in text: String) -> String? {
+        guard let firstQuote = text.firstIndex(of: "\""),
+              let secondQuote = text[text.index(after: firstQuote)...].firstIndex(of: "\"") else {
+            return nil
+        }
+        return String(text[text.index(after: firstQuote)..<secondQuote])
+    }
+
+    private func containsPad(_ pad: String, in text: String) -> Bool {
+        let escapedPad = NSRegularExpression.escapedPattern(for: pad)
+        guard let regex = try? NSRegularExpression(pattern: #"\(pad\s+(?:"\#(escapedPad)"|\#(escapedPad)(?:\s|\)))"#) else {
+            return false
+        }
+        return regex.firstMatch(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)) != nil
+            || text.range(of: #"(pad "\#(escaped(pad))""#) != nil
+    }
+
+    private func boardWarning(_ code: String, _ message: String, _ affectedRefs: [String]) -> KiCadWarning {
+        KiCadWarning(
+            code: code,
+            message: message,
+            affectedRefs: affectedRefs,
+            suggestedAction: "Regenerate PCB placement from verified Circuit IR, schematic, and footprint assignment evidence."
+        )
+    }
+
+    private func escaped(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private func number(_ value: Double) -> String {
+        let rounded = (value * 1000).rounded() / 1000
+        if rounded == floor(rounded) {
+            return String(Int(rounded))
+        }
+        return String(format: "%.3f", rounded).replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+    }
+}
+
 struct CircuitIRKiCadBoardMaterializer: Sendable {
     var footprintRoot: URL?
 
@@ -129,13 +341,13 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
 
     private func boardText(circuitIR: CircuitIR) -> String {
         let layout = placementLayout(for: circuitIR)
-        let routeCorridorWidth = max(
-            24.0,
-            Double(circuitIR.nets.filter { $0.endpoints.count > 1 }.count) * 2.0 + 16.0
+        let routeCorridorHeight = max(
+            32.0,
+            Double(circuitIR.nets.filter { $0.endpoints.count > 1 }.count) * 6.0 + 20.0
         )
         let outline = BoardOutline(
-            widthMm: layout.outline.widthMm + routeCorridorWidth,
-            heightMm: layout.outline.heightMm
+            widthMm: layout.outline.widthMm,
+            heightMm: layout.outline.heightMm + routeCorridorHeight
         )
         let netIDs = netIDsByName(circuitIR: circuitIR)
         let pinNetNames = netNamesByEndpoint(circuitIR: circuitIR)
@@ -143,6 +355,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             .sorted { $0.value < $1.value }
             .map { #"  (net \#($0.value) "\#(escaped($0.key))")"# }
             .joined(separator: "\n")
+        let netClass = netClassNode(netIDs: netIDs)
         let footprints = layout.placements.map { placed in
             footprintNode(
                 component: placed.component,
@@ -189,12 +402,14 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             (49 "F.Fab" user)
           )
           (setup
+            (trace_clearance 0.15)
             (pad_to_mask_clearance 0)
             (allow_soldermask_bridges_in_footprints no)
             (pcbplotparams)
           )
           (net 0 "")
         \(nets)
+        \(netClass)
           (gr_rect
             (start 0 0)
             (end \(number(outline.widthMm)) \(number(outline.heightMm)))
@@ -206,6 +421,22 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         \(footprints)
         \(routes)
         )
+        """
+    }
+
+    private func netClassNode(netIDs: [String: Int]) -> String {
+        let addedNets = netIDs.keys.sorted().map {
+            #"    (add_net "\#(escaped($0))")"#
+        }
+            .joined(separator: "\n")
+        return """
+          (net_class Default "Default rules for generated evidence-backed PCB slices."
+            (clearance 0.15)
+            (trace_width 0.25)
+            (via_dia 0.8)
+            (via_drill 0.4)
+        \(addedNets)
+          )
         """
     }
 
@@ -370,29 +601,29 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         let components = connectivityOrderedComponents(circuitIR: circuitIR)
         let geometries = components.map(footprintGeometry(for:))
         let margin = 12.0
-        let spacingX = 18.0
-        let spacingY = 36.0
-        let targetWidth = max(180.0, min(380.0, sqrt(geometries.reduce(0.0) { $0 + $1.bounds.width * $1.bounds.height }) * 2.2))
+        let spacingX = 44.0
 
         var placements: [PlacedFootprint] = []
-        var cursorY = margin
+        var cursorX = margin
         var usedWidth = 0.0
+        var usedHeight = 0.0
 
         for (component, geometry) in zip(components, geometries) {
             let bounds = geometry.bounds
             let at = KiCadSchematicDocument.Point(
-                x: margin - bounds.minX,
-                y: cursorY - bounds.minY
+                x: cursorX - bounds.minX,
+                y: margin - bounds.minY
             )
             placements.append(PlacedFootprint(component: component, at: at, geometry: geometry))
-            usedWidth = max(usedWidth, margin + bounds.width + spacingX)
-            cursorY += bounds.height + spacingY
+            usedWidth = max(usedWidth, cursorX + bounds.width)
+            usedHeight = max(usedHeight, margin + bounds.height)
+            cursorX += bounds.width + spacingX
         }
 
         return FootprintPlacementLayout(
             outline: BoardOutline(
-                widthMm: max(targetWidth, usedWidth + margin),
-                heightMm: max(80, cursorY + margin)
+                widthMm: max(180, usedWidth + margin),
+                heightMm: max(80, usedHeight + margin)
             ),
             placements: placements
         )
@@ -509,7 +740,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         while let padStart = text[searchIndex...].range(of: "(pad ")?.lowerBound,
               let padEnd = balancedNodeEnd(in: text, start: padStart) {
             let padBlock = String(text[padStart..<padEnd])
-            let padName = firstQuotedValue(in: padBlock)
+            let padName = firstPadName(in: padBlock)
             if let at = firstPair(pattern: #"\(at\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"#, in: padBlock),
                 let size = firstPair(pattern: #"\(size\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"#, in: padBlock) {
                 if let padName {
@@ -576,7 +807,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
                 ))
             }
         }
-        return segments.filter { !$0.isEmpty }
+        return orderedUniqueNodes(segments.filter { !$0.isEmpty })
     }
 
     private func connectionSegments(
@@ -588,64 +819,48 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         pointIndex: Int,
         outline: BoardOutline
     ) -> [String] {
-        let layer = netID.isMultiple(of: 2) ? "F.Cu" : "B.Cu"
-        if source.point.x == destination.point.x || source.point.y == destination.point.y {
-            return [
-                segmentNode(
-                    start: source.point,
-                    end: destination.point,
-                    netID: netID,
-                    layer: layer,
-                    discriminator: "\(netName)-\(pointIndex)-direct"
-                ),
-            ]
-        }
-
-        let laneY = routingLaneY(
-            from: source.bounds,
-            to: destination.bounds,
-            routeIndex: routeIndex,
-            outline: outline
-        )
+        let laneY = outline.heightMm - 10.0 - Double(routeIndex) * 6.0
         let sourceEscape = endpointEscapePoint(for: source, laneY: laneY, outline: outline)
         let destinationEscape = endpointEscapePoint(for: destination, laneY: laneY, outline: outline)
-        let sourceCorner = KiCadSchematicDocument.Point(x: sourceEscape.x, y: laneY)
-        let destinationCorner = KiCadSchematicDocument.Point(x: destinationEscape.x, y: laneY)
+        let sourceLane = KiCadSchematicDocument.Point(x: sourceEscape.x, y: laneY)
+        let destinationLane = KiCadSchematicDocument.Point(x: destinationEscape.x, y: laneY)
         return [
             segmentNode(
                 start: source.point,
                 end: sourceEscape,
                 netID: netID,
-                layer: layer,
-                discriminator: "\(netName)-\(pointIndex)-source-footprint-escape"
+                layer: "F.Cu",
+                discriminator: "\(netName)-\(pointIndex)-source-escape"
             ),
             segmentNode(
                 start: sourceEscape,
-                end: sourceCorner,
+                end: sourceLane,
                 netID: netID,
-                layer: layer,
-                discriminator: "\(netName)-\(pointIndex)-source-lane-escape"
+                layer: "F.Cu",
+                discriminator: "\(netName)-\(pointIndex)-source-drop"
             ),
+            viaNode(at: sourceLane, netID: netID, discriminator: "\(netName)-\(pointIndex)-source-lane-via"),
             segmentNode(
-                start: sourceCorner,
-                end: destinationCorner,
+                start: sourceLane,
+                end: destinationLane,
                 netID: netID,
-                layer: layer,
-                discriminator: "\(netName)-\(pointIndex)-lane"
+                layer: "B.Cu",
+                discriminator: "\(netName)-\(pointIndex)-bus"
             ),
+            viaNode(at: destinationLane, netID: netID, discriminator: "\(netName)-\(pointIndex)-destination-lane-via"),
             segmentNode(
-                start: destinationCorner,
+                start: destinationLane,
                 end: destinationEscape,
                 netID: netID,
-                layer: layer,
-                discriminator: "\(netName)-\(pointIndex)-destination-lane-escape"
+                layer: "F.Cu",
+                discriminator: "\(netName)-\(pointIndex)-destination-drop"
             ),
             segmentNode(
                 start: destinationEscape,
                 end: destination.point,
                 netID: netID,
-                layer: layer,
-                discriminator: "\(netName)-\(pointIndex)-destination-footprint-escape"
+                layer: "F.Cu",
+                discriminator: "\(netName)-\(pointIndex)-destination-escape"
             ),
         ]
     }
@@ -657,22 +872,52 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
     ) -> KiCadSchematicDocument.Point {
         let columnPads = routedPoint.componentPadCenters.filter { abs($0.x - routedPoint.point.x) < 0.25 }
         let rowPads = routedPoint.componentPadCenters.filter { abs($0.y - routedPoint.point.y) < 0.25 }
-        if columnPads.count > rowPads.count {
+        if rowPads.count == 2 {
+            let ordered = rowPads.sorted { lhs, rhs in
+                if lhs.x == rhs.x { return lhs.y < rhs.y }
+                return lhs.x < rhs.x
+            }
+            let rank = ordered.firstIndex { samePoint($0, routedPoint.point) } ?? 0
+            let escapingLeft = rank == 0
             return KiCadSchematicDocument.Point(
-                x: escapeX(for: routedPoint.point, bounds: routedPoint.bounds),
+                x: escapingLeft
+                    ? routedPoint.bounds.minX - 2.0
+                    : routedPoint.bounds.maxX + 2.0,
                 y: routedPoint.point.y
             )
         }
-        return KiCadSchematicDocument.Point(
-            x: routedPoint.point.x,
-            y: escapeY(
-                for: routedPoint.point,
-                bounds: routedPoint.bounds,
-                componentPadCenters: routedPoint.componentPadCenters,
-                laneOffset: min(max(abs(laneY - routedPoint.point.y), 2.0), 8.0),
-                outline: outline
+        if rowPads.count >= columnPads.count {
+            let ordered = rowPads.sorted { lhs, rhs in
+                if lhs.x == rhs.x { return lhs.y < rhs.y }
+                return lhs.x < rhs.x
+            }
+            let rank = ordered.firstIndex { samePoint($0, routedPoint.point) } ?? 0
+            let escapeOffset = 2.0 + Double(rank) * 1.2
+            return KiCadSchematicDocument.Point(
+                x: routedPoint.point.x,
+                y: min(routedPoint.bounds.maxY + escapeOffset, outline.heightMm - 2.0)
             )
+        }
+
+        let escapingLeft = routedPoint.point.x <= routedPoint.bounds.midX
+        let sameSidePads = routedPoint.componentPadCenters
+            .filter { escapingLeft ? $0.x <= routedPoint.bounds.midX : $0.x > routedPoint.bounds.midX }
+            .sorted { lhs, rhs in
+                if lhs.y == rhs.y { return lhs.x < rhs.x }
+                return lhs.y > rhs.y
+            }
+        let rank = sameSidePads.firstIndex { samePoint($0, routedPoint.point) } ?? 0
+        let escapeOffset = 2.0 + Double(rank) * 1.2
+        return KiCadSchematicDocument.Point(
+            x: escapingLeft
+                ? routedPoint.bounds.minX - escapeOffset
+                : routedPoint.bounds.maxX + escapeOffset,
+            y: routedPoint.point.y
         )
+    }
+
+    private func samePoint(_ lhs: KiCadSchematicDocument.Point, _ rhs: KiCadSchematicDocument.Point) -> Bool {
+        abs(lhs.x - rhs.x) < 0.001 && abs(lhs.y - rhs.y) < 0.001
     }
 
     private func escapeX(for point: KiCadSchematicDocument.Point, bounds: FootprintBounds) -> Double {
@@ -735,8 +980,9 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
     private func absoluteComponentPadCenters(layout: FootprintPlacementLayout) -> [String: [KiCadSchematicDocument.Point]] {
         var result: [String: [KiCadSchematicDocument.Point]] = [:]
         for placed in layout.placements {
-            let centers = placed.geometry.padCenters.values.flatMap { localCenters in
-                localCenters.map { local in
+            let centers = placed.component.pins.flatMap { pin -> [KiCadSchematicDocument.Point] in
+                let pad = pin.footprintPad ?? pin.pinNumber
+                return (placed.geometry.padCenters[pad] ?? []).map { local in
                     KiCadSchematicDocument.Point(
                         x: placed.at.x + local.x,
                         y: placed.at.y + local.y
@@ -793,7 +1039,24 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         netID: Int,
         discriminator: String
     ) -> String {
-        #"  (via (at \#(number(at.x)) \#(number(at.y))) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (net \#(netID)) (uuid "\#(stableUUID("via", discriminator))"))"#
+        let stablePoint = "\(number(at.x)),\(number(at.y))"
+        return #"  (via (at \#(number(at.x)) \#(number(at.y))) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (net \#(netID)) (uuid "\#(stableUUID("via", "\(netID)", stablePoint, discriminator))"))"#
+    }
+
+    private func orderedUniqueNodes(_ nodes: [String]) -> [String] {
+        var seen: Set<String> = []
+        var result: [String] = []
+        for node in nodes {
+            let key = node.replacingOccurrences(
+                of: #"\(uuid\s+"[^"]+"\)"#,
+                with: "(uuid)",
+                options: .regularExpression
+            )
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(node)
+        }
+        return result
     }
 
     private func firstPair(pattern: String, in text: String) -> (x: Double, y: Double)? {
@@ -866,7 +1129,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         while let padStart = result[searchIndex...].range(of: "(pad ")?.lowerBound,
               let padEnd = balancedNodeEnd(in: result, start: padStart) {
             let originalBlock = String(result[padStart..<padEnd])
-            let padName = firstQuotedValue(in: originalBlock)
+            let padName = firstPadName(in: originalBlock)
             let netName = padName.flatMap { pad in
                 component.pins.first(where: { ($0.footprintPad ?? $0.pinNumber) == pad })
                     .flatMap { pinNetNames["\(component.refdes)|\($0.pinNumber)"] }
@@ -963,6 +1226,19 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             return nil
         }
         return String(text[text.index(after: firstQuote)..<secondQuote])
+    }
+
+    private func firstPadName(in padBlock: String) -> String? {
+        let pattern = #"\(pad\s+(?:"((?:[^"\\]|\\.)*)"|([^\s\)]+))"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: padBlock, range: NSRange(padBlock.startIndex..<padBlock.endIndex, in: padBlock)) else {
+            return nil
+        }
+        for index in 1..<match.numberOfRanges {
+            guard let range = Range(match.range(at: index), in: padBlock) else { continue }
+            return String(padBlock[range])
+        }
+        return nil
     }
 
     private func replaceFirstMatching(_ text: String, pattern: String, replacement: String) -> String {

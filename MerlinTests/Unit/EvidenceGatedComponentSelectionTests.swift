@@ -2350,19 +2350,15 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let root = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo", isDirectory: true)
         let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
         let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
+        let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
         let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
         let footprintURL = try newestArtifact(in: artifactsURL, suffix: "footprint_assignment.json")
 
         let runtime = try WorkspaceRuntime(rootURL: root)
         try await ElectronicsRuntimePlugin().register(into: runtime)
-        let circuitIRResponse = await sendCircuitIR(
-            runtime,
-            payload: #"{"design_intent_path":"\#(intentURL.path)"}"#
-        )
-        XCTAssertEqual(circuitIRResponse.status, .ok)
-        let circuitIRURL = try XCTUnwrap(circuitIRResponse.artifacts.first { $0.kind == "circuit_ir" }).url
-        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let baseCircuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
         let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
+        let circuitIR = circuitIRForPCBAssertions(baseCircuitIR, footprints: footprints)
 
         let outputURL = root
             .appendingPathComponent(".merlin/pcb-slice", isDirectory: true)
@@ -2391,6 +2387,12 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         for net in circuitIR.nets where !net.endpoints.isEmpty {
             XCTAssertTrue(boardText.contains(#""\#(net.name)""#), "Missing PCB net \(net.name)")
         }
+        let boardWarnings = KiCadBoardEvidenceChecker().warnings(
+            circuitIR: circuitIR,
+            boardText: boardText,
+            boardPath: boardArtifact.url.path
+        )
+        XCTAssertEqual(boardWarnings, [], "PCB evidence gate warnings: \(boardWarnings)")
 
         let kicadCLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
         guard FileManager.default.isExecutableFile(atPath: kicadCLI) else {
@@ -2463,6 +2465,25 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             let rhsDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return lhsDate < rhsDate
         }
+    }
+
+    private func circuitIRForPCBAssertions(_ circuitIR: CircuitIR, footprints: FootprintAssignmentReport) -> CircuitIR {
+        let assignments = Dictionary(footprints.assignments.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        var enriched = circuitIR
+        enriched.components = circuitIR.components.map { component in
+            guard let assignment = assignments[component.refdes] else {
+                return component
+            }
+            var component = component
+            component.selectedFootprint = assignment.footprint
+            component.pins = component.pins.map { pin in
+                var pin = pin
+                pin.footprintPad = assignment.pinPadMap[pin.pinNumber] ?? assignment.pinPadMap[pin.symbolPin] ?? pin.footprintPad
+                return pin
+            }
+            return component
+        }
+        return enriched
     }
 
     func testWorkflowHandoffCarriesArtifactPathsAcrossEvidencePipeline() async throws {
@@ -2602,6 +2623,83 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertTrue(boardText.contains(#"(net 1 "VIN")"#))
         XCTAssertTrue(boardText.contains(#"(net 2 "VOUT")"#))
         XCTAssertFalse(boardText.contains(#"(pad "1" thru_hole circle"#))
+    }
+
+    func testBoardEvidenceCheckerRequiresPadsInsideMatchingFootprintBlock() throws {
+        let circuitIR = CircuitIR(
+            designId: "pad-locality-test",
+            boardId: "pad-locality-test",
+            components: [
+                CircuitComponent(
+                    refdes: "R1",
+                    role: "input resistor",
+                    selectedSymbol: "Device:R",
+                    selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                    manufacturerPartNumber: "RC0603FR-0710KL",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "R1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    ]
+                ),
+                CircuitComponent(
+                    refdes: "R2",
+                    role: "output resistor",
+                    selectedSymbol: "Device:R",
+                    selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                    manufacturerPartNumber: "RC0603FR-0710KL",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "R2", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    ]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "VIN",
+                    role: "input",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "R1", pinNumber: "1"),
+                        CircuitNetEndpoint(componentRefdes: "R2", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+        let boardText = """
+        (kicad_pcb
+          (version 20250114)
+          (layers (44 "Edge.Cuts" user))
+          (net 0 "")
+          (net 1 "VIN")
+          (gr_rect (start 0 0) (end 60 60) (stroke (width 0.1) (type default)) (fill no) (layer "Edge.Cuts"))
+          (footprint "Resistor_SMD:R_0603_1608Metric"
+            (layer "F.Cu")
+            (at 10 10 0)
+            (property "Reference" "R1")
+            (pad "2" smd roundrect (at 0 0) (size 1 1) (layers "F.Cu"))
+          )
+          (footprint "Resistor_SMD:R_0603_1608Metric"
+            (layer "F.Cu")
+            (at 10 40 0)
+            (property "Reference" "R2")
+            (pad "1" smd roundrect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "VIN"))
+          )
+        )
+        """
+
+        let warnings = KiCadBoardEvidenceChecker().warnings(
+            circuitIR: circuitIR,
+            boardText: boardText,
+            boardPath: "/tmp/pad-locality-test.kicad_pcb"
+        )
+
+        XCTAssertTrue(
+            warnings.contains { $0.code == "PCB_PAD_REQUIRED" && $0.affectedRefs.contains("R1") },
+            "Pad evidence on another footprint must not satisfy R1: \(warnings)"
+        )
     }
 
     func testBoardMaterializerRejectsEndpointAssignedToMultipleNets() throws {
