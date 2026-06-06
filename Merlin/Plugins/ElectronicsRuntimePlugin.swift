@@ -2745,6 +2745,16 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 report: report,
                 envelopes: scenario.measurementEnvelopes
             )
+            guard !envelope.passed else {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: "SPICE_REPAIR_NOT_REQUIRED",
+                    message: "SPICE measurements already satisfy the declared envelopes; no repair plan is required.",
+                    affectedRefs: [measurementsPath, scenarioPath],
+                    nextActions: ["continue_validation"]
+                )
+            }
             let topologyID = stringValue(object, keys: ["topology"]) ?? SPICETopology.singleEndedClassA.rawValue
             let topology = SPICETopology(rawValue: topologyID) ?? .singleEndedClassA
             let plan = SPICESimulationRepairPlanner().plan(failures: envelope.failures, topology: topology)
@@ -2756,6 +2766,19 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     message: plan.issues.map(\.message).joined(separator: "; "),
                     affectedRefs: [measurementsPath, scenarioPath],
                     nextActions: ["request_engineering_review", "rerun_spice"]
+                )
+            }
+            let declaredParameters = spiceRepairParameters(from: object)
+            let declaredNames = Set(declaredParameters.map(\.name))
+            let missingBounds = plan.patches.compactMap(\.parameterName).filter { !declaredNames.contains($0) }
+            guard missingBounds.isEmpty else {
+                return repairPlanBlock(
+                    request,
+                    context: context,
+                    code: "SPICE_REPAIR_PARAMETER_BOUNDS_REQUIRED",
+                    message: "SPICE repair requires declared min/max bounds for: \(missingBounds.joined(separator: ", ")).",
+                    affectedRefs: [measurementsPath, scenarioPath],
+                    nextActions: ["declare_repair_parameter_bounds", "request_engineering_review"]
                 )
             }
             let artifact = writeArtifact(
@@ -2773,6 +2796,22 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 context: context,
                 nextActions: ["regenerate_spice_measurements", "regenerate_simulation_scenario"]
             )
+        }
+    }
+
+    private func spiceRepairParameters(from object: [String: Any]) -> [SPICEParameter] {
+        let raw = object["repair_parameters"] ?? object["repairParameters"] ?? object["spice_parameters"] ?? object["spiceParameters"]
+        guard let items = raw as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let name = stringValue(item, keys: ["name"]),
+                  let value = doubleValue(item["value"]),
+                  let min = doubleValue(item["min"] ?? item["minimum"]),
+                  let max = doubleValue(item["max"] ?? item["maximum"]),
+                  min <= value,
+                  value <= max else {
+                return nil
+            }
+            return SPICEParameter(name: name, value: value, min: min, max: max)
         }
     }
 
@@ -3146,6 +3185,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 )]
             )
         }
+        guard let spiceModelRecordsPath = stringValue(object, keys: ["spice_model_records_path", "spiceModelRecordsPath", "model_records_path", "modelRecordsPath"]),
+              FileManager.default.fileExists(atPath: spiceModelRecordsPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "SPICE scenario generation requires an existing spice_model_records_path artifact.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "SPICE_MODEL_RECORDS_REQUIRED",
+                    message: "SPICE model references must be backed by local model records; Merlin will not assume required models are available.",
+                    affectedRefs: affectedRefs(from: request),
+                    suggestedAction: "Provide SPICEModelRecord JSON evidence for every required model reference."
+                )]
+            )
+        }
 
         let projectURL = URL(fileURLWithPath: projectPath)
         let outputRoot: URL
@@ -3184,6 +3238,25 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     context: context,
                     warnings: validation.issues.map {
                         KiCadWarning(code: $0.code, message: $0.message, affectedRefs: [spiceScenarioPath], suggestedAction: "Repair the SPICE scenario JSON and rerun kicad_generate_spice_scenario.")
+                    }
+                )
+            }
+            let modelDecoder = JSONDecoder()
+            modelDecoder.keyDecodingStrategy = .convertFromSnakeCase
+            let modelRecords = try modelDecoder.decode([SPICEModelRecord].self, from: Data(contentsOf: URL(fileURLWithPath: spiceModelRecordsPath)))
+            let modelResolution = SPICEModelResolver().resolve(
+                requiredModels: scenario.requiredModelRefs,
+                availableModels: modelRecords,
+                approvals: []
+            )
+            guard modelResolution.canSimulate else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: modelResolution.issues.map(\.message).joined(separator: "; "),
+                    context: context,
+                    warnings: modelResolution.issues.map {
+                        KiCadWarning(code: $0.code, message: $0.message, affectedRefs: [spiceScenarioPath, spiceModelRecordsPath], suggestedAction: "Provide a legally usable exact SPICE model or explicitly approved substitute before generating the scenario.")
                     }
                 )
             }
@@ -3231,6 +3304,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 artifacts: [
                     ArtifactRef(path: scenarioURL.path, kind: "simulation_scenario"),
                     ArtifactRef(path: spiceScenarioPath, kind: "spice_scenario"),
+                    ArtifactRef(path: spiceModelRecordsPath, kind: "spice_model_records"),
                 ],
                 nextActions: ["kicad_run_spice"]
             )

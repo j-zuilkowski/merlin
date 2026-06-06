@@ -157,10 +157,20 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
             in: root
         )
 
-        let response = await sendElectronics(
+        let missingBounds = await sendElectronics(
             runtime,
             capability: "kicad_repair_spice_from_diagnostics",
             payload: #"{"spice_measurements_path":"\#(measurements.path)","scenario_path":"\#(scenario.path)"}"#
+        )
+
+        XCTAssertEqual(missingBounds.status, .blocked)
+        let missingBoundsResult = try XCTUnwrap(missingBounds.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(missingBoundsResult.warnings.contains { $0.code == "SPICE_REPAIR_PARAMETER_BOUNDS_REQUIRED" })
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_repair_spice_from_diagnostics",
+            payload: #"{"spice_measurements_path":"\#(measurements.path)","scenario_path":"\#(scenario.path)","repair_parameters":[{"name":"bias_current","value":2.8,"min":2.0,"max":3.5}]}"#
         )
 
         XCTAssertEqual(response.status, .ok)

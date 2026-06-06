@@ -204,11 +204,12 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
           "measurement_envelopes": []
         }
         """)
+        let modelRecords = try writeFixtureFile(name: "models.json", text: #"[{"model_ref":"GENERIC_RESISTIVE_LOAD","legally_usable":true,"is_generic":false}]"#)
 
         let response = await sendElectronics(
             runtime,
             capability: "kicad_generate_spice_scenario",
-            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)"}"#
+            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)","spice_model_records_path":"\#(modelRecords.path)"}"#
         )
 
         XCTAssertEqual(response.status, .blocked)
@@ -216,6 +217,63 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertTrue(result.warnings.contains { $0.code == "SPICE_MODEL_REF_REQUIRED" })
         XCTAssertTrue(result.warnings.contains { $0.code == "SPICE_MEASUREMENT_ENVELOPE_REQUIRED" })
         XCTAssertFalse(result.artifacts.contains { $0.kind == "simulation_scenario" })
+    }
+
+    func testSPICEScenarioGenerationBlocksMissingOrUnusableModelEvidence() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin(tooling: .available, routeBackend: RecordingElectronicsRouteBackend(result: KiCadToolResult(status: .complete))).register(into: runtime)
+        let project = try writeFixtureFile(name: "scenario-source.kicad_pro", text: #"{"meta":{"version":1}}"#)
+        let circuitIR = try writeFixtureFile(name: "circuit-ir.json", text: """
+        {
+          "design_id": "amp",
+          "board_id": "amp",
+          "components": [],
+          "nets": [],
+          "constraints": [],
+          "verification_scenarios": [{ "id": "spice", "kind": "spice", "expectation": "output power envelope" }]
+        }
+        """)
+        let deck = try writeFixtureFile(name: "amp.cir", text: """
+        * explicit amp deck
+        V1 out 0 SIN(0 1 1000)
+        RLOAD out 0 8
+        .tran 10u 10m
+        .meas tran output_power_w PARAM='25.0'
+        .end
+        """)
+        let scenarioJSON = try writeFixtureFile(name: "scenario.json", text: """
+        {
+          "scenario_id": "amp-output",
+          "design_id": "amp",
+          "circuit_path": "\(deck.path)",
+          "analyses": ["tran"],
+          "required_model_refs": ["MJ15003G"],
+          "measurement_envelopes": [
+            { "name": "output_power_w", "min": 24.0, "max": 28.0 }
+          ]
+        }
+        """)
+
+        let missingModels = await sendElectronics(
+            runtime,
+            capability: "kicad_generate_spice_scenario",
+            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)"}"#
+        )
+
+        XCTAssertEqual(missingModels.status, .blocked)
+        let missingResult = try XCTUnwrap(missingModels.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(missingResult.warnings.contains { $0.code == "SPICE_MODEL_RECORDS_REQUIRED" })
+
+        let unusableModels = try writeFixtureFile(name: "models.json", text: #"[{"model_ref":"MJ15003G","legally_usable":false,"is_generic":false}]"#)
+        let unusable = await sendElectronics(
+            runtime,
+            capability: "kicad_generate_spice_scenario",
+            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)","spice_model_records_path":"\#(unusableModels.path)"}"#
+        )
+
+        XCTAssertEqual(unusable.status, .blocked)
+        let unusableResult = try XCTUnwrap(unusable.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(unusableResult.warnings.contains { $0.code == "SPICE_MODEL_REQUIRED" })
     }
 
     func testSPICEScenarioGenerationProducesExplicitRunnableDeckArtifact() async throws {
@@ -252,17 +310,19 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
           ]
         }
         """)
+        let modelRecords = try writeFixtureFile(name: "models.json", text: #"[{"model_ref":"GENERIC_RESISTIVE_LOAD","legally_usable":true,"is_generic":false}]"#)
 
         let scenario = await sendElectronics(
             runtime,
             capability: "kicad_generate_spice_scenario",
-            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)"}"#
+            payload: #"{"project_path":"\#(project.path)","circuit_ir_path":"\#(circuitIR.path)","spice_scenario_path":"\#(scenarioJSON.path)","spice_model_records_path":"\#(modelRecords.path)"}"#
         )
 
         XCTAssertEqual(scenario.status, .ok, scenario.payload?.stringValue() ?? "\(scenario.diagnostics)")
         let scenarioResult = try XCTUnwrap(scenario.payload?.decodeJSON(KiCadToolResult.self))
         let scenarioPath = try XCTUnwrap(scenarioResult.artifacts.first { $0.kind == "simulation_scenario" }?.path)
         XCTAssertTrue(scenarioResult.artifacts.contains { $0.kind == "spice_scenario" && $0.path == scenarioJSON.path })
+        XCTAssertTrue(scenarioResult.artifacts.contains { $0.kind == "spice_model_records" && $0.path == modelRecords.path })
         XCTAssertEqual(scenarioResult.handoff?.simulationScenarioPath, scenarioPath)
         XCTAssertTrue(scenarioResult.nextActions.contains("kicad_run_spice"))
         let generatedDeck = try String(contentsOfFile: scenarioPath, encoding: .utf8)
