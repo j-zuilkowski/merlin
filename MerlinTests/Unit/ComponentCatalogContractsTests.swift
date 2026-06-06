@@ -63,6 +63,49 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertTrue(result.contains(code: "PROVENANCE_REQUIRED"))
     }
 
+    func testCommodityPassiveWithVendorProductEvidenceDoesNotRequireDatasheetURL() {
+        let candidate = ComponentCandidate(
+            mpn: "HVR3700001003JR500",
+            manufacturer: "Vishay / BC Components",
+            normalizedCategory: "metal_film_resistors_through_hole",
+            value: "Metal Film Resistors - Through Hole 1/2watt 100Kohms 5%",
+            package: "through_hole",
+            ratings: ["resistance": "100K", "power_w": "0.5", "package": "through_hole"],
+            lifecycleState: "active",
+            availabilitySummary: "5000 available",
+            datasheets: [],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "mouser",
+                    sourceURL: "https://www.mouser.com/ProductDetail/Vishay-BC-Components/HVR3700001003JR500",
+                    localPath: nil,
+                    retrievedAt: "2026-06-05T15:02:08Z",
+                    cachePolicy: "live_api",
+                    sha256: nil,
+                    extractedParameters: ["resistance": "100K", "power_w": "0.5", "package": "through_hole"],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+
+        let result = ComponentCatalogValidator().validate(candidate)
+
+        XCTAssertTrue(result.isValid)
+        XCTAssertFalse(result.contains(code: "DATASHEET_REQUIRED"))
+    }
+
+    func testActiveComponentStillRequiresDatasheetURL() {
+        var candidate = validCandidate()
+        candidate.datasheets = []
+
+        let result = ComponentCatalogValidator().validate(candidate)
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.contains(code: "DATASHEET_REQUIRED"))
+    }
+
     func testStaticFixtureCatalogProviderReturnsCandidatesOffline() async throws {
         let provider = StaticFixtureCatalogProvider(candidates: [validCandidate()])
 

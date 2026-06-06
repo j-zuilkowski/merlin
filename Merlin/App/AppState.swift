@@ -19,6 +19,10 @@ struct AuthRequest {
     var resolve: (AuthDecision) -> Void
 }
 
+struct ReasonOverrideApprovalRequest {
+    var request: ReasonExecutionOverrideRequest
+}
+
 struct ToolLogLine: Identifiable {
     enum Source {
         case stdout
@@ -74,6 +78,8 @@ final class AppState: ObservableObject {
 
     @Published var showAuthPopup: Bool = false
     @Published var pendingAuthRequest: AuthRequest? = nil
+    @Published var showReasonOverridePopup: Bool = false
+    @Published var pendingReasonOverrideRequest: ReasonOverrideApprovalRequest? = nil
 
     @Published var toolLogLines: [ToolLogLine] = []
 
@@ -144,6 +150,7 @@ final class AppState: ObservableObject {
     private var selectProviderObserver: NSObjectProtocol?
     private let enableStartupProjectScans: Bool
     private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
+    private var pendingReasonOverrideContinuation: CheckedContinuation<Bool, Never>?
     private var cancellables: Set<AnyCancellable> = []
     private var disciplineEventPollTask: Task<Void, Never>?
     private var calibrationCoordinatorCancellable: AnyCancellable?
@@ -397,6 +404,10 @@ final class AppState: ObservableObject {
         engine.onAdvisory = { [weak self] advisory in
             guard let self else { return }
             await self.handleAdvisory(advisory)
+        }
+        engine.onReasonOverrideRequest = { [weak self] request in
+            guard let self else { return false }
+            return await self.requestReasonOverride(request)
         }
         refreshLoRAProvider(
             enabled: AppSettings.shared.loraEnabled,
@@ -686,6 +697,8 @@ final class AppState: ObservableObject {
         }
         pendingAuthContinuation?.resume(returning: .deny)
         pendingAuthContinuation = nil
+        pendingReasonOverrideContinuation?.resume(returning: false)
+        pendingReasonOverrideContinuation = nil
     }
 
     func resolveAuth(_ decision: AuthDecision) {
@@ -696,8 +709,17 @@ final class AppState: ObservableObject {
         continuation?.resume(returning: decision)
     }
 
+    func resolveReasonOverride(_ approved: Bool) {
+        let continuation = pendingReasonOverrideContinuation
+        pendingReasonOverrideContinuation = nil
+        pendingReasonOverrideRequest = nil
+        showReasonOverridePopup = false
+        continuation?.resume(returning: approved)
+    }
+
     func newSession() {
         engine.cancel()
+        resolveReasonOverride(false)
         engine.contextManager.clear()
         // Reset the circuit breaker counter so a new session always starts clean.
         engine.consecutiveCriticFailures = 0
@@ -1163,6 +1185,23 @@ extension AppState: AuthPresenter {
         } onCancel: {
             Task { @MainActor [weak self] in
                 self?.resolveAuth(.deny)
+            }
+        }
+    }
+}
+
+extension AppState {
+    func requestReasonOverride(_ request: ReasonExecutionOverrideRequest) async -> Bool {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pendingReasonOverrideContinuation?.resume(returning: false)
+                pendingReasonOverrideContinuation = continuation
+                pendingReasonOverrideRequest = ReasonOverrideApprovalRequest(request: request)
+                showReasonOverridePopup = true
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.resolveReasonOverride(false)
             }
         }
     }

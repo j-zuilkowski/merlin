@@ -60,6 +60,14 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $appState.showReasonOverridePopup) {
+            if let pending = appState.pendingReasonOverrideRequest {
+                ReasonOverridePopupView(
+                    request: pending.request,
+                    onDecision: { appState.resolveReasonOverride($0) }
+                )
+            }
+        }
         .sheet(isPresented: $appState.showFirstLaunchSetup) {
             FirstLaunchSetupView()
                 .environmentObject(appState)

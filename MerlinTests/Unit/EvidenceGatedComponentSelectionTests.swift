@@ -39,6 +39,111 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.providers, ["fixture"])
     }
 
+    func testCommodityPassiveVendorProductEvidenceCanSelectWithoutDatasheetURL() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "RPRE1B",
+            role: "tone stack lower resistor",
+            constraints: [
+                "component_category": "resistor",
+                "resistance": "100kOhm",
+                "package": "through_hole",
+            ]
+        ), root: root)
+        let catalogURL = try writeCandidates([
+            ComponentCandidate(
+                mpn: "HVR3700001003JR500",
+                manufacturer: "Vishay / BC Components",
+                normalizedCategory: "metal_film_resistors_through_hole",
+                value: "Metal Film Resistors - Through Hole 1/2watt 100Kohms 5%",
+                package: "through_hole",
+                ratings: ["resistance": "100K", "power_w": "0.5", "package": "through_hole"],
+                lifecycleState: "active",
+                availabilitySummary: "5000 available",
+                datasheets: [],
+                evidence: [
+                    ComponentEvidence(
+                        providerID: "mouser",
+                        sourceURL: "https://www.mouser.com/ProductDetail/Vishay-BC-Components/HVR3700001003JR500",
+                        localPath: nil,
+                        retrievedAt: "2026-06-05T15:02:08Z",
+                        cachePolicy: "live_api",
+                        sha256: nil,
+                        extractedParameters: ["resistance": "100K", "power_w": "0.5", "package": "through_hole"],
+                        confidence: 1.0,
+                        warnings: []
+                    ),
+                ],
+                footprintCandidates: []
+            ),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "HVR3700001003JR500")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.datasheets, [])
+    }
+
+    func testPassiveCandidateWithoutRequiredValueEvidenceCannotSelect() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "RMID1",
+            role: "mid tone stack resistor",
+            constraints: [
+                "component_category": "resistor",
+                "resistance": "25kOhm",
+                "package": "through_hole",
+            ]
+        ), root: root)
+        let catalogURL = try writeCandidates([
+            ComponentCandidate(
+                mpn: "UXB0207ZFYYYYTCU95",
+                manufacturer: "Vishay",
+                normalizedCategory: "metal_film_resistors_through_hole",
+                value: "Metal Film Resistors - Through Hole",
+                package: "through_hole",
+                ratings: ["package": "through_hole"],
+                lifecycleState: "active",
+                availabilitySummary: "available",
+                datasheets: [],
+                evidence: [
+                    ComponentEvidence(
+                        providerID: "mouser",
+                        sourceURL: "https://www.mouser.com/ProductDetail/Vishay/UXB0207ZFYYYYTCU95",
+                        localPath: nil,
+                        retrievedAt: "2026-06-05T15:02:07Z",
+                        cachePolicy: "live_api",
+                        sha256: nil,
+                        extractedParameters: ["package": "through_hole"],
+                        confidence: 1.0,
+                        warnings: []
+                    ),
+                ],
+                footprintCandidates: []
+            ),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+        XCTAssertNil(matrix.decisions.first?.selectedCandidate)
+    }
+
     func testConnectorSubtypeIncompatibleCandidatesBlockSelection() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1696,6 +1801,57 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let matrix = try decodeMatrix(from: response)
         XCTAssertEqual(matrix.decisions.first?.status, .selected)
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+    }
+
+    func testFixedResistorSlotRejectsPotentiometerAndSelectsVendorBackedFixedResistor() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "TONE1", role: "3-band tone circuit"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "RMID1",
+                role: "mid tone resistor",
+                selectedSymbol: "Device:R",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "resistor",
+                    "resistance": "25kOhm",
+                    "power_rating": "0.25W",
+                    "tolerance": "1%",
+                    "package": "through_hole_axial",
+                ]
+            ),
+        ], root: root)
+        let potentiometer = catalogCandidate(
+            refdes: "RMID1",
+            mpn: "PT15LV18-253A2020-S",
+            manufacturer: "Amphenol Piher",
+            category: "potentiometers",
+            value: "Potentiometer 25 kOhms through hole",
+            package: "through_hole",
+            ratings: ["resistance": "25 kOhms", "power_w": "0.25", "tolerance": "20%"]
+        )
+        let fixedResistor = catalogCandidate(
+            refdes: "RMID1",
+            mpn: "MFR-25FBF52-25K",
+            manufacturer: "YAGEO",
+            category: "through_hole_resistors",
+            value: "Metal Film Resistors 25 kOhms 1% 1/4W Axial",
+            package: "Axial",
+            ratings: ["resistance": "25 kOhms", "power_w": "0.25", "tolerance": "1%"]
+        )
+        let candidatesURL = try writeCandidates([potentiometer, fixedResistor], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(candidatesURL.path)","live_catalog_providers":[]}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MFR-25FBF52-25K")
     }
 
     func testLiveCatalogCacheCanSelectWithoutCredentialsOnLaterRun() async throws {

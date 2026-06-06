@@ -309,7 +309,7 @@ struct ComponentCatalogValidator: Sendable {
         if candidate.ratings.isEmpty {
             issues.append(issue("RATINGS_REQUIRED", "Component candidate requires rating evidence."))
         }
-        if candidate.datasheets.isEmpty {
+        if candidate.datasheets.isEmpty && !hasCommodityPassiveProductEvidence(candidate) {
             issues.append(issue("DATASHEET_REQUIRED", "Component candidate requires datasheet evidence."))
         }
         if candidate.evidence.isEmpty || candidate.evidence.contains(where: { $0.providerID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
@@ -320,6 +320,77 @@ struct ComponentCatalogValidator: Sendable {
 
     private func issue(_ code: String, _ message: String) -> ComponentCatalogValidationIssue {
         ComponentCatalogValidationIssue(code: code, message: message)
+    }
+
+    private func hasCommodityPassiveProductEvidence(_ candidate: ComponentCandidate) -> Bool {
+        guard isCommodityPassive(candidate) else { return false }
+        guard hasMeaningfulPassiveRating(candidate) else { return false }
+        return candidate.evidence.contains { evidence in
+            evidence.providerID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                && evidence.sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                && !evidence.extractedParameters.isEmpty
+        }
+    }
+
+    private func isCommodityPassive(_ candidate: ComponentCandidate) -> Bool {
+        let text = ([
+            candidate.normalizedCategory,
+            candidate.value ?? "",
+            candidate.package,
+        ] + candidate.ratings.map { "\($0.key) \($0.value)" })
+            .joined(separator: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .lowercased()
+        let excluded = [
+            "transistor",
+            "mosfet",
+            "bjt",
+            "jfet",
+            "diode",
+            "bridge",
+            "rectifier",
+            "regulator",
+            "integrated circuit",
+            " ic ",
+            "connector",
+            "jack",
+            "switch",
+            "relay",
+            "fuse",
+            "transformer",
+            "inductor",
+            "potentiometer",
+            "trimmer",
+        ]
+        guard !excluded.contains(where: { text.contains($0) }) else { return false }
+        return text.contains("resistor")
+            || text.contains("resistance")
+            || text.contains("capacitor")
+            || text.contains("capacitance")
+    }
+
+    private func hasMeaningfulPassiveRating(_ candidate: ComponentCandidate) -> Bool {
+        let dictionaries = [candidate.ratings] + candidate.evidence.map(\.extractedParameters)
+        let keys = [
+            "resistance",
+            "resistance_ohms",
+            "capacitance",
+            "capacitance_f",
+            "capacitance_uf",
+            "voltage_v",
+            "voltage_rating",
+            "voltage_rating_dc",
+            "voltage_rating_ac",
+            "power_w",
+            "power_rating",
+            "tolerance",
+        ]
+        return dictionaries.contains { dictionary in
+            keys.contains { key in
+                dictionary[key]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+            }
+        }
     }
 }
 
@@ -348,6 +419,7 @@ enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
     case invalidEndpoint(String)
     case missingCredential(String)
     case httpStatus(Int)
+    case rateLimited(retryAfterSeconds: Int?)
     case missingAccessToken
 
     var errorDescription: String? {
@@ -358,6 +430,11 @@ enum LiveCatalogProviderError: Error, LocalizedError, Sendable, Equatable {
             return "Missing catalog provider credential: \(name)"
         case .httpStatus(let status):
             return "Catalog provider returned HTTP \(status)."
+        case .rateLimited(let retryAfterSeconds):
+            if let retryAfterSeconds {
+                return "Catalog provider rate limit reached; retry after \(retryAfterSeconds) seconds."
+            }
+            return "Catalog provider rate limit reached."
         case .missingAccessToken:
             return "Catalog provider token response did not include an access token."
         }
@@ -568,14 +645,31 @@ struct CatalogSearchQueryBuilder: Sendable {
             queries.append("resistor")
             if let resistance, !resistance.isEmpty {
                 queries.append("resistor \(resistance)")
+                queries.append("fixed resistor \(resistance)")
+                queries.append("metal film resistor \(resistance)")
                 if let tolerance, !tolerance.isEmpty {
                     queries.append("resistor \(resistance) \(tolerance)")
+                    queries.append("fixed resistor \(resistance) \(tolerance)")
+                    queries.append("metal film resistor \(resistance) \(tolerance)")
                 }
                 if let power, !power.isEmpty {
                     queries.append("resistor \(resistance) \(power)")
+                    queries.append("fixed resistor \(resistance) \(power)")
+                    queries.append("metal film resistor \(resistance) \(power)")
                 }
                 if let mounting, !mounting.isEmpty {
-                    queries.append("resistor \(resistance) \(mounting.replacingOccurrences(of: "_", with: " "))")
+                    let mountingText = mounting.replacingOccurrences(of: "_", with: " ")
+                    queries.append("resistor \(resistance) \(mountingText)")
+                    queries.append("fixed resistor \(resistance) \(mountingText)")
+                    queries.append("metal film resistor \(resistance) \(mountingText)")
+                    if mountingText.lowercased().contains("through") {
+                        queries.append("through hole fixed resistor \(resistance)")
+                        queries.append("axial resistor \(resistance)")
+                    }
+                }
+                if packageTerms.contains(where: { $0.lowercased().contains("axial") }) {
+                    queries.append("axial resistor \(resistance)")
+                    queries.append("axial metal film resistor \(resistance)")
                 }
             }
             return uniqueTerms(queries)
@@ -2338,6 +2432,9 @@ struct LiveMouserCatalogProvider: LiveCatalogProviderClient {
 
     private func validate(response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 429 {
+            throw LiveCatalogProviderError.rateLimited(retryAfterSeconds: retryAfterSeconds(from: http))
+        }
         guard (200...299).contains(http.statusCode) else {
             throw LiveCatalogProviderError.httpStatus(http.statusCode)
         }
@@ -2437,10 +2534,30 @@ struct LiveDigiKeyCatalogProvider: LiveCatalogProviderClient {
 
     private func validate(response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 429 {
+            throw LiveCatalogProviderError.rateLimited(retryAfterSeconds: retryAfterSeconds(from: http))
+        }
         guard (200...299).contains(http.statusCode) else {
             throw LiveCatalogProviderError.httpStatus(http.statusCode)
         }
     }
+}
+
+private func retryAfterSeconds(from response: HTTPURLResponse) -> Int? {
+    let value = response.value(forHTTPHeaderField: "Retry-After")?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let value, !value.isEmpty else { return nil }
+    if let seconds = Int(value) {
+        return seconds
+    }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "EEE',' dd MMM yyyy HH':'mm':'ss z"
+    if let date = formatter.date(from: value) {
+        return max(0, Int(date.timeIntervalSinceNow.rounded(.up)))
+    }
+    return nil
 }
 
 struct LiveNexarCatalogProvider: LiveCatalogProviderClient {
@@ -2570,6 +2687,9 @@ struct LiveNexarCatalogProvider: LiveCatalogProviderClient {
 
     private func validate(response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 429 {
+            throw LiveCatalogProviderError.rateLimited(retryAfterSeconds: retryAfterSeconds(from: http))
+        }
         guard (200...299).contains(http.statusCode) else {
             throw LiveCatalogProviderError.httpStatus(http.statusCode)
         }
@@ -2644,6 +2764,9 @@ struct LiveTrustedPartsCatalogProvider: LiveCatalogProviderClient {
 
     private func validate(response: URLResponse) throws {
         guard let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 429 {
+            throw LiveCatalogProviderError.rateLimited(retryAfterSeconds: retryAfterSeconds(from: http))
+        }
         guard (200...299).contains(http.statusCode) else {
             throw LiveCatalogProviderError.httpStatus(http.statusCode)
         }

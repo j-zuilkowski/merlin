@@ -3087,6 +3087,88 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testFocusedComponentSelectionSliceStopsAfterMatrixWhenRequested() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let projectRoot = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("ampdemo-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: projectRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: projectRoot) }
+
+        let artifactRoot = projectRoot.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
+        let designIntentPath = artifactRoot.appendingPathComponent("approved-design_intent.json").path
+        let circuitIRPath = artifactRoot.appendingPathComponent("circuit_ir.json").path
+        let componentMatrixPath = artifactRoot.appendingPathComponent("component_matrix.json").path
+        try FileManager.default.createDirectory(at: artifactRoot, withIntermediateDirectories: true)
+        try #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#.write(
+            toFile: designIntentPath,
+            atomically: true,
+            encoding: .utf8
+        )
+        try #"{"design_id":"AmpDemo","components":[{"refdes":"QOUT1"}],"nets":[]}"#.write(
+            toFile: circuitIRPath,
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "select-components",
+                name: "kicad_select_components",
+                args: #"{"design_intent_path":"\#(designIntentPath)","circuit_ir_path":"\#(circuitIRPath)","live_catalog_providers":["mouser","digikey"],"live_catalog_result_limit":3}"#
+            ),
+            .toolCall(
+                id: "footprints",
+                name: "kicad_assign_footprints",
+                args: #"{"design_intent_path":"\#(designIntentPath)","circuit_ir_path":"\#(circuitIRPath)","component_matrix_path":"\#(componentMatrixPath)"}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 5
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Invoke kicad_select_components with live catalog providers",
+                    successCriteria: "component matrix artifact exists",
+                    complexity: .highStakes
+                ),
+                PlanStep(
+                    description: "Verify component_matrix.json exists, then stop before footprints",
+                    successCriteria: "component matrix verified and no downstream KiCad tools executed",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        engine.registerTool("kicad_select_components") { _ in
+            try self.selectedComponentMatrixJSON().write(toFile: componentMatrixPath, atomically: true, encoding: .utf8)
+            return #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath)"}],"handoff":{"design_intent_path":"\#(designIntentPath)","circuit_ir_path":"\#(circuitIRPath)","component_matrix_path":"\#(componentMatrixPath)"},"nextActions":["assign_footprints"],"status":"COMPLETE"}"#
+        }
+
+        var didDispatchFootprints = false
+        engine.registerTool("kicad_assign_footprints") { _ in
+            didDispatchFootprints = true
+            return #"{"status":"COMPLETE"}"#
+        }
+
+        for await _ in engine.send(userMessage: """
+        Using the electronics domain, run only the focused component-selection verification slice for AmpDemo. Stop after the component matrix artifact exists. Do not generate footprints, schematic, PCB, SPICE, Gerbers, BOM, or report.
+        """) {}
+
+        XCTAssertFalse(didDispatchFootprints, "Focused component-selection slice must not advance to footprint assignment.")
+        if FileManager.default.fileExists(atPath: injectURL.path) {
+            let continuationText = try readInject()
+            XCTAssertFalse(continuationText.contains("kicad_assign_footprints"), continuationText)
+        }
+    }
+
     func testEvidenceGateStopsWhenRequirementsReadFails() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

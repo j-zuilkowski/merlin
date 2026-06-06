@@ -55,6 +55,30 @@ struct ElectronicsRuntimePlugin {
                 isSecret: false,
                 help: "Allow the electronics plugin to use local user-supplied CSV/JSON vendor feed files as catalog evidence."
             ),
+            WorkspaceSettingsField(
+                key: "live_catalog_terms_gate_enabled",
+                label: "Live catalog terms gate",
+                kind: .boolean,
+                defaultValue: .boolean(true),
+                isSecret: false,
+                help: "Throttle live catalog provider calls and stop live querying when provider rate limits are reported."
+            ),
+            WorkspaceSettingsField(
+                key: "live_catalog_max_queries_per_run",
+                label: "Live catalog max queries per run",
+                kind: .integer,
+                defaultValue: .integer(30),
+                isSecret: false,
+                help: "Maximum uncached live catalog HTTP queries per component-selection run."
+            ),
+            WorkspaceSettingsField(
+                key: "live_catalog_min_query_interval_ms",
+                label: "Live catalog query spacing",
+                kind: .integer,
+                defaultValue: .integer(2100),
+                isSecret: false,
+                help: "Minimum delay between uncached live catalog HTTP queries to the same provider."
+            ),
         ]
     )
 
@@ -4071,6 +4095,46 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var localFootprintResolver: KiCadLibraryCatalogProvider?
     }
 
+    private struct LiveCatalogTermsGate {
+        var enabled: Bool
+        var maxQueriesPerRun: Int
+        var minQueryIntervalMs: Int
+        var issuedQueryCount: Int = 0
+        var stoppedProviders: Set<String> = []
+        var lastQueryAtByProvider: [String: Date] = [:]
+
+        mutating func skipReason(providerID: String) -> String? {
+            guard enabled else { return nil }
+            let providerID = providerID.lowercased()
+            if stoppedProviders.contains(providerID) {
+                return "CATALOG_PROVIDER_TERMS_GATE_SKIPPED: \(providerID) live queries are stopped for this run after a provider limit or denial response."
+            }
+            if issuedQueryCount >= maxQueriesPerRun {
+                return "CATALOG_PROVIDER_TERMS_GATE_SKIPPED: live catalog query budget exhausted (\(maxQueriesPerRun) uncached queries per run)."
+            }
+            return nil
+        }
+
+        mutating func waitIfNeeded(providerID: String) async {
+            guard enabled, minQueryIntervalMs > 0 else { return }
+            let providerID = providerID.lowercased()
+            if let last = lastQueryAtByProvider[providerID] {
+                let elapsedMs = Date().timeIntervalSince(last) * 1000
+                let remainingMs = Double(minQueryIntervalMs) - elapsedMs
+                if remainingMs > 0 {
+                    try? await Task.sleep(nanoseconds: UInt64(remainingMs * 1_000_000))
+                }
+            }
+            issuedQueryCount += 1
+            lastQueryAtByProvider[providerID] = Date()
+        }
+
+        mutating func stopProvider(_ providerID: String) {
+            guard enabled else { return }
+            stoppedProviders.insert(providerID.lowercased())
+        }
+    }
+
     private struct RuntimeCatalogConfig: Codable {
         var catalogProviderFixturePaths: [String: String]? = nil
         var catalogCacheDirectory: String? = nil
@@ -4084,6 +4148,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var kicadCatalogCacheTTLSeconds: Int? = nil
         var liveCatalogProviders: [String]? = nil
         var liveCatalogResultLimit: Int? = nil
+        var liveCatalogTermsGateEnabled: Bool? = nil
+        var liveCatalogMaxQueriesPerRun: Int? = nil
+        var liveCatalogMinQueryIntervalMs: Int? = nil
         var mouserAPIKeyEnv: String? = nil
         var mouserAPIKeyKeychainID: String? = nil
         var mouserSearchEndpoint: String? = nil
@@ -4123,6 +4190,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case kicadCatalogCacheTTLSeconds = "kicad_catalog_cache_ttl_seconds"
             case liveCatalogProviders = "live_catalog_providers"
             case liveCatalogResultLimit = "live_catalog_result_limit"
+            case liveCatalogTermsGateEnabled = "live_catalog_terms_gate_enabled"
+            case liveCatalogMaxQueriesPerRun = "live_catalog_max_queries_per_run"
+            case liveCatalogMinQueryIntervalMs = "live_catalog_min_query_interval_ms"
             case mouserAPIKeyEnv = "mouser_api_key_env"
             case mouserAPIKeyKeychainID = "mouser_api_key_keychain_id"
             case mouserSearchEndpoint = "mouser_search_endpoint"
@@ -4284,8 +4354,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let cacheDirectory = catalogCacheDirectory(from: config, context: context)
             let ttlSeconds = catalogCacheTTLSeconds(from: object, config: config)
             let queryBuilder = CatalogSearchQueryBuilder()
+            var termsGate = liveCatalogTermsGate(from: object, config: config, settings: context.settings)
             for providerID in liveProviders {
                 for component in selectionComponents {
+                    if componentSelectionHasValidCandidate(for: component, candidates: candidates) {
+                        continue
+                    }
                     let searchRequest = liveCatalogSearchRequest(for: component, preferredProviderID: providerID)
                     var queriedLiveProvider = false
                     var foundProviderCandidates = false
@@ -4305,6 +4379,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                             if componentSelectionHasValidCandidate(for: component, candidates: cached) { break }
                             continue
                         }
+                        if let skipReason = termsGate.skipReason(providerID: providerID) {
+                            warnings.append(skipReason)
+                            break
+                        }
                         guard let liveProvider = liveCatalogProvider(providerID: providerID, config: config) else {
                             if !queriedLiveProvider {
                                 warnings.append("CATALOG_PROVIDER_NOT_CONFIGURED: \(providerID) credentials are missing and no fresh cache entry exists.")
@@ -4312,6 +4390,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                             break
                         }
                         queriedLiveProvider = true
+                        await termsGate.waitIfNeeded(providerID: providerID)
                         do {
                             let result = try await liveProvider.searchWithRawResponse(queryRequest)
                             try? cache.write(
@@ -4329,6 +4408,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                             if componentSelectionHasValidCandidate(for: component, candidates: result.candidates) { break }
                         } catch {
                             warnings.append("CATALOG_PROVIDER_QUERY_FAILED: \(providerID) \(error.localizedDescription)")
+                            if shouldStopLiveProviderAfterError(error) {
+                                termsGate.stopProvider(providerID)
+                                break
+                            }
                         }
                     }
                     _ = foundProviderCandidates
@@ -4406,6 +4489,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
         if let value = optionalIntValue(object, key: "live_catalog_result_limit") {
             config.liveCatalogResultLimit = value
+        }
+        if let value = optionalBoolValue(object, key: "live_catalog_terms_gate_enabled") {
+            config.liveCatalogTermsGateEnabled = value
+        }
+        if let value = optionalIntValue(object, key: "live_catalog_max_queries_per_run") {
+            config.liveCatalogMaxQueriesPerRun = value
+        }
+        if let value = optionalIntValue(object, key: "live_catalog_min_query_interval_ms") {
+            config.liveCatalogMinQueryIntervalMs = value
         }
         if let value = object["mouser_api_key_env"] as? String {
             config.mouserAPIKeyEnv = value
@@ -4721,6 +4813,53 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         guard let value = settings.values[key] else { return defaultValue }
         if case .boolean(let enabled) = value {
             return enabled
+        }
+        return defaultValue
+    }
+
+    private func liveCatalogTermsGate(
+        from object: [String: Any],
+        config: RuntimeCatalogConfig,
+        settings: WorkspaceSettingsNamespace
+    ) -> LiveCatalogTermsGate {
+        let enabled = optionalBoolValue(object, key: "live_catalog_terms_gate_enabled")
+            ?? config.liveCatalogTermsGateEnabled
+            ?? boolSetting("live_catalog_terms_gate_enabled", settings: settings, defaultValue: true)
+        let maxQueries = optionalIntValue(object, key: "live_catalog_max_queries_per_run")
+            ?? config.liveCatalogMaxQueriesPerRun
+            ?? intSetting("live_catalog_max_queries_per_run", settings: settings, defaultValue: 30)
+        let minIntervalMs = optionalIntValue(object, key: "live_catalog_min_query_interval_ms")
+            ?? config.liveCatalogMinQueryIntervalMs
+            ?? intSetting("live_catalog_min_query_interval_ms", settings: settings, defaultValue: 2_100)
+        return LiveCatalogTermsGate(
+            enabled: enabled,
+            maxQueriesPerRun: max(0, maxQueries),
+            minQueryIntervalMs: max(0, minIntervalMs)
+        )
+    }
+
+    private func shouldStopLiveProviderAfterError(_ error: Error) -> Bool {
+        if case LiveCatalogProviderError.rateLimited = error {
+            return true
+        }
+        if case LiveCatalogProviderError.httpStatus(let status) = error {
+            return status == 401 || status == 403
+        }
+        return false
+    }
+
+    private func boolSetting(_ key: String, settings: WorkspaceSettingsNamespace, defaultValue: Bool) -> Bool {
+        guard let value = settings.values[key] else { return defaultValue }
+        if case .boolean(let bool) = value {
+            return bool
+        }
+        return defaultValue
+    }
+
+    private func intSetting(_ key: String, settings: WorkspaceSettingsNamespace, defaultValue: Int) -> Int {
+        guard let value = settings.values[key] else { return defaultValue }
+        if case .integer(let int) = value {
+            return int
         }
         return defaultValue
     }
@@ -5057,6 +5196,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let number = object[key] as? NSNumber { return number.intValue }
         if let string = object[key] as? String, let int = Int(string) { return int }
         return nil
+    }
+
+    private func optionalBoolValue(_ object: [String: Any], key: String) -> Bool? {
+        if let bool = object[key] as? Bool { return bool }
+        if let number = object[key] as? NSNumber { return number.boolValue }
+        guard let string = object[key] as? String else { return nil }
+        switch string.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "true", "yes", "1":
+            return true
+        case "false", "no", "0":
+            return false
+        default:
+            return nil
+        }
     }
 
     private func stringArrayValue(_ object: [String: Any], key: String) -> [String]? {
@@ -5720,15 +5873,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
            text.contains("surface mount") || text.contains("smd") || text.contains("smt") || text.contains("0402") || text.contains("0603") || text.contains("0805") {
             return true
         }
-        if let required = normalizedCapacitanceUF(component.constraints["capacitance"]),
-           let available = normalizedCapacitanceUF(candidate.ratings["capacitance"]) ?? normalizedCapacitanceUF(candidate.value),
-           abs(available - required) / required > 0.10 {
-            return true
+        if let required = normalizedCapacitanceUF(component.constraints["capacitance"]) {
+            guard let available = normalizedCapacitanceUF(candidate.ratings["capacitance"]) ?? normalizedCapacitanceUF(candidate.value) else {
+                return true
+            }
+            if abs(available - required) / required > 0.10 {
+                return true
+            }
         }
-        if let required = normalizedResistanceOhms(component.constraints["resistance"]),
-           let available = normalizedResistanceOhms(candidate.ratings["resistance"]) ?? normalizedResistanceOhms(candidate.value) ?? normalizedResistanceOhms(candidate.mpn),
-           abs(available - required) / required > 0.05 {
-            return true
+        if let required = normalizedResistanceOhms(component.constraints["resistance"]) {
+            guard let available = normalizedResistanceOhms(candidate.ratings["resistance"]) ?? normalizedResistanceOhms(candidate.value) ?? normalizedResistanceOhms(candidate.mpn) else {
+                return true
+            }
+            if abs(available - required) / required > 0.05 {
+                return true
+            }
         }
         for (constraintKey, ratingKeys) in [
             ("voltage_rating", ["voltage_v", "voltage_rated", "voltage", "voltage_rating_ac", "voltage_rating_dc", "vce", "collector_emitter_breakdown_voltage"]),

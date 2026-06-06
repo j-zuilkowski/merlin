@@ -458,6 +458,75 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertFalse(finalText.contains("reason handled"), finalText)
     }
 
+    func testReasonOverrideDeniedLeavesEscalationAsCleanStop() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        let handler = EscalationHandler(
+            planner: PlannerEngine(orchestrateProvider: MockPlannerProvider(response: "[]")),
+            maxRefinementsPerTurn: 0
+        )
+        var overrideRequest: ReasonExecutionOverrideRequest?
+        engine.onReasonOverrideRequest = { request in
+            overrideRequest = request
+            return false
+        }
+
+        let (decision, events) = await engine.handleEscalationForTesting(
+            currentStep: stuckReasonOverrideStep(),
+            reason: .repetitionStall(repeats: 3, lastObservation: "same output"),
+            escalation: handler
+        )
+
+        guard case .stop = decision else {
+            return XCTFail("Denied reason override must preserve the clean stop, got \(decision)")
+        }
+        XCTAssertEqual(overrideRequest?.providerID, "reason-advisory")
+        XCTAssertTrue(events.contains {
+            if case .cleanStop = $0 { return true }
+            return false
+        })
+        XCTAssertFalse(reason.wasUsed, "Reason must not execute when the override is denied")
+    }
+
+    func testReasonOverrideApprovedRoutesStuckHandoffToReasonOnce() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        let handler = EscalationHandler(
+            planner: PlannerEngine(orchestrateProvider: MockPlannerProvider(response: "[]")),
+            maxRefinementsPerTurn: 0
+        )
+        var overrideRequest: ReasonExecutionOverrideRequest?
+        engine.onReasonOverrideRequest = { request in
+            overrideRequest = request
+            return true
+        }
+
+        let (decision, events) = await engine.handleEscalationForTesting(
+            currentStep: stuckReasonOverrideStep(),
+            reason: .repetitionStall(repeats: 3, lastObservation: "same output"),
+            escalation: handler
+        )
+
+        guard case .routeToProvider(let providerID, _) = decision else {
+            return XCTFail("Approved reason override must route the stuck handoff, got \(decision)")
+        }
+        XCTAssertEqual(providerID, "reason-advisory")
+        XCTAssertEqual(overrideRequest?.providerID, "reason-advisory")
+        XCTAssertEqual(engine.slotAssignments[.execute], "reason-advisory")
+        XCTAssertTrue(events.contains {
+            if case .systemNote(let note) = $0 {
+                return note.contains("Reason override approved")
+            }
+            return false
+        })
+    }
+
     func testElectronicsIntentPromotesDomainBeforeOfferingTools() async throws {
         let execute = MockProvider(responses: [.text("ready for kicad")])
         execute.id_ = "execute-local"
@@ -549,4 +618,16 @@ private final class FixedPlannerForAgenticEngineTests: PlannerEngineProtocol, @u
     func decompose(task: String, context: [Message]) async -> [PlanStep] {
         []
     }
+}
+
+private func stuckReasonOverrideStep() -> PlanStep {
+    PlanStep(
+        description: "Finish the stuck task",
+        successCriteria: [.prose("complete")],
+        complexity: .standard,
+        parallelSafe: false,
+        tokenBudget: 12_000,
+        requiresCritic: .optional,
+        minContextRequired: 12_000
+    )
 }

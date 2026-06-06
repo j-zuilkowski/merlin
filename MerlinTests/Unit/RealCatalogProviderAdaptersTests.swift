@@ -87,8 +87,14 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertTrue(queries.contains("resistor 250kOhm 0.25W 1% through hole"))
         XCTAssertFalse(queries.first?.contains("treble") ?? true)
         XCTAssertTrue(queries.contains("resistor 250kOhm"))
+        XCTAssertTrue(queries.contains("fixed resistor 250kOhm"))
+        XCTAssertTrue(queries.contains("metal film resistor 250kOhm"))
         XCTAssertTrue(queries.contains("resistor 250kOhm 1%"))
+        XCTAssertTrue(queries.contains("fixed resistor 250kOhm 1%"))
         XCTAssertTrue(queries.contains("resistor 250kOhm 0.25W"))
+        XCTAssertTrue(queries.contains("fixed resistor 250kOhm 0.25W"))
+        XCTAssertTrue(queries.contains("through hole fixed resistor 250kOhm"))
+        XCTAssertTrue(queries.contains("axial resistor 250kOhm"))
     }
 
     func testCatalogQueryBuilderAddsBroadFallbacksForPowerTransistorsAndConnectors() throws {
@@ -294,6 +300,55 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(result.rawResponse, response)
     }
 
+    func testLiveMouserProviderSurfacesRateLimitWithRetryAfter() async throws {
+        let transport = MockCatalogHTTPTransport(responses: [
+            .init(data: Data(#"{"error":"rate limited"}"#.utf8), statusCode: 429, headers: ["Retry-After": "42"]),
+        ])
+        let provider = LiveMouserCatalogProvider(
+            apiKey: "test-key",
+            endpoint: URL(string: "https://api.mouser.test/api/v2/search/keyword")!,
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.searchWithRawResponse(ComponentSearchRequest(
+                refdes: "R1",
+                role: "bias resistor",
+                constraints: ["component_category": "resistor", "resistance": "10kOhm"],
+                requiredEvidenceTypes: [],
+                preferredVendors: [],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active"
+            ))
+            XCTFail("Expected rate limit error.")
+        } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
+            XCTAssertEqual(retryAfterSeconds, 42)
+        } catch {
+            XCTFail("Expected rate limit error, got \(error).")
+        }
+    }
+
+    func testLiveDigiKeyProviderSurfacesRateLimitWithRetryAfter() async throws {
+        let transport = MockCatalogHTTPTransport(responses: [
+            .init(data: Data(#"{"error":"rate limited"}"#.utf8), statusCode: 429, headers: ["Retry-After": "17"]),
+        ])
+        let provider = LiveDigiKeyCatalogProvider(
+            clientID: "client-id",
+            accessToken: "token",
+            searchEndpoint: URL(string: "https://api.digikey.test/products/v4/search/keyword")!,
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.searchWithRawResponse(rateLimitSearchRequest())
+            XCTFail("Expected rate limit error.")
+        } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
+            XCTAssertEqual(retryAfterSeconds, 17)
+        } catch {
+            XCTFail("Expected rate limit error, got \(error).")
+        }
+    }
+
     func testLiveDigiKeyProviderUsesClientCredentialsThenKeywordSearch() async throws {
         let token = Data(#"{"access_token":"token-123","expires_in":1800}"#.utf8)
         let search = Data("""
@@ -374,6 +429,27 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(result.rawResponse, search)
     }
 
+    func testLiveNexarProviderSurfacesRateLimitWithRetryAfter() async throws {
+        let transport = MockCatalogHTTPTransport(responses: [
+            .init(data: Data(#"{"error":"rate limited"}"#.utf8), statusCode: 429, headers: ["Retry-After": "23"]),
+        ])
+        let provider = LiveNexarCatalogProvider(
+            clientID: "client-id",
+            accessToken: "token",
+            graphqlEndpoint: URL(string: "https://api.nexar.test/graphql/")!,
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.searchWithRawResponse(rateLimitSearchRequest())
+            XCTFail("Expected rate limit error.")
+        } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
+            XCTAssertEqual(retryAfterSeconds, 23)
+        } catch {
+            XCTFail("Expected rate limit error, got \(error).")
+        }
+    }
+
     func testLiveTrustedPartsProviderBuildsConservativeInventoryRequest() async throws {
         let search = Data("""
         {"Results":[{"SearchToken":"MJ15003G","Parts":[{"Manufacturer":"onsemi","ManufacturerPartNumber":"MJ15003G","Description":"NPN Bipolar Transistor 140V 20A 250W TO-3","Category":"Bipolar Transistors","DatasheetUrl":"https://example.invalid/mj15003g.pdf","ProductUrl":"https://trustedparts.example/MJ15003G","LifecycleStatus":"Active","Package":"TO-3","Parameters":[{"Name":"Package / Case","Value":"TO-3"},{"Name":"Power - Max","Value":"250 W"}],"Offers":[{"Distributor":"Digi-Key","QuantityAvailable":50}]}]}]}
@@ -416,6 +492,27 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(result.candidates.first?.mpn, "MJ15003G")
         XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_api")
         XCTAssertEqual(result.rawResponse, search)
+    }
+
+    func testLiveTrustedPartsProviderSurfacesRateLimitWithRetryAfter() async throws {
+        let transport = MockCatalogHTTPTransport(responses: [
+            .init(data: Data(#"{"error":"rate limited"}"#.utf8), statusCode: 429, headers: ["Retry-After": "31"]),
+        ])
+        let provider = LiveTrustedPartsCatalogProvider(
+            companyID: "company-id",
+            apiKey: "api-key",
+            endpoint: URL(string: "https://api.trustedparts.test/v2/search")!,
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.searchWithRawResponse(rateLimitSearchRequest())
+            XCTFail("Expected rate limit error.")
+        } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
+            XCTAssertEqual(retryAfterSeconds, 31)
+        } catch {
+            XCTFail("Expected rate limit error, got \(error).")
+        }
     }
 
     func testLiveCatalogQueryCachePersistsNormalizedAndRawProviderResponses() throws {
@@ -472,24 +569,52 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
     }
 }
 
+private func rateLimitSearchRequest() -> ComponentSearchRequest {
+    ComponentSearchRequest(
+        refdes: "R1",
+        role: "bias resistor",
+        constraints: ["component_category": "resistor", "resistance": "10kOhm"],
+        requiredEvidenceTypes: [],
+        preferredVendors: [],
+        excludedManufacturers: [],
+        lifecyclePolicy: "active"
+    )
+}
+
 private final class MockCatalogHTTPTransport: CatalogHTTPTransport, @unchecked Sendable {
+    struct Response: Sendable {
+        var data: Data
+        var statusCode: Int
+        var headers: [String: String]
+
+        init(data: Data, statusCode: Int = 200, headers: [String: String] = [:]) {
+            self.data = data
+            self.statusCode = statusCode
+            self.headers = headers
+        }
+    }
+
     private(set) var requests: [URLRequest] = []
-    private var responses: [Data]
+    private var responses: [Response]
 
     init(responses: [Data]) {
+        self.responses = responses.map { Response(data: $0) }
+    }
+
+    init(responses: [Response]) {
         self.responses = responses
     }
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         requests.append(request)
-        let data = responses.isEmpty ? Data() : responses.removeFirst()
+        let next = responses.isEmpty ? Response(data: Data()) : responses.removeFirst()
         let response = HTTPURLResponse(
             url: request.url ?? URL(string: "https://example.invalid")!,
-            statusCode: 200,
+            statusCode: next.statusCode,
             httpVersion: nil,
-            headerFields: nil
+            headerFields: next.headers
         )!
-        return (data, response)
+        return (next.data, response)
     }
 }
 

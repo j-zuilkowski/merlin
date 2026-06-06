@@ -19,14 +19,20 @@ final class AgenticEngineV5Tests: XCTestCase {
         XCTAssertTrue(criticSpy.wasEvaluated, "Standard tasks should run the critic")
     }
 
-    func testHighStakesUsesReasonSlot() async {
-        let providerSpy = ProviderCallSpy()
+    func testHighStakesUsesExecuteSlotAndReasonOnlyAsCritic() async {
+        let executeSpy = ProviderCallSpy(id: "execute")
+        let reasonSpy = ProviderCallSpy(id: "reason")
         let engine = makeV5Engine(
-            executeProvider: ScriptedProvider(id: "execute", response: "done"),
-            reasonProvider: providerSpy
+            executeProvider: executeSpy,
+            reasonProvider: reasonSpy
         )
         _ = await collectEvents(engine.send(userMessage: "#high-stakes migrate users table"))
-        XCTAssertTrue(providerSpy.wasCalled, "High-stakes tasks should invoke the reason slot provider")
+        XCTAssertTrue(executeSpy.wasCalled, "High-stakes executable turns must stay on execute")
+        XCTAssertTrue(reasonSpy.wasCalled, "High-stakes work should still use reason for advisory validation")
+        XCTAssertTrue(
+            reasonSpy.requests.allSatisfy { ($0.tools ?? []).isEmpty },
+            "Reason may validate, but must not receive executable tools"
+        )
     }
 
     // MARK: - RAG source parameter
@@ -141,11 +147,16 @@ private final class ScriptedProvider: LLMProvider {
 
 @MainActor
 private final class ProviderCallSpy: LLMProvider {
-    let id = "spy-reason"
+    let id: String
     var wasCalled = false
+    var requests: [CompletionRequest] = []
     let baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
+    init(id: String = "spy-reason") {
+        self.id = id
+    }
     func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
         wasCalled = true
+        requests.append(request)
         return AsyncThrowingStream { c in
             c.yield(CompletionChunk(delta: ChunkDelta(content: "done", toolCalls: nil, thinkingContent: nil), finishReason: "stop"))
             c.finish()

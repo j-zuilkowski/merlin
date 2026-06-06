@@ -28,6 +28,31 @@ enum AgentEvent {
     case error(Error)
 }
 
+struct ReasonExecutionOverrideRequest: Identifiable, Equatable, Sendable {
+    let id: UUID
+    var providerID: String
+    var reason: String
+    var suggestion: String
+    var progressSummary: String
+    var originalTask: String
+
+    init(
+        id: UUID = UUID(),
+        providerID: String,
+        reason: String,
+        suggestion: String,
+        progressSummary: String,
+        originalTask: String
+    ) {
+        self.id = id
+        self.providerID = providerID
+        self.reason = reason
+        self.suggestion = suggestion
+        self.progressSummary = progressSummary
+        self.originalTask = originalTask
+    }
+}
+
 extension CompletionChunk {
     static func assistant(_ text: String) -> CompletionChunk {
         CompletionChunk(delta: .init(content: text), finishReason: "stop")
@@ -43,6 +68,18 @@ private actor CancellationState {
         }
         finished = true
         return true
+    }
+}
+
+private actor EscalationDecisionCapture {
+    private var decision: EscalationDecision?
+
+    func set(_ decision: EscalationDecision) {
+        self.decision = decision
+    }
+
+    func get() -> EscalationDecision? {
+        decision
     }
 }
 
@@ -112,6 +149,9 @@ final class AgenticEngine {
     /// Set by AppState so advisory routing can pause the run loop while a local model reload is in flight.
     /// The handler clears `isReloadingModel` after the reload/restart attempt finishes.
     var onAdvisory: (@Sendable (ParameterAdvisory) async -> Void)?
+    /// Presents a one-shot user override when an executable provider is stuck.
+    /// Reason remains advisory unless this closure returns true for the current stop.
+    var onReasonOverrideRequest: ((ReasonExecutionOverrideRequest) async -> Bool)?
     /// Stores the most recent critic verdict from runLoop for test inspection and memory-write gating.
     /// Reset to nil at the start of every runLoop invocation.
     /// When .fail, the backend memory write is suppressed at the end of the turn.
@@ -454,6 +494,37 @@ final class AgenticEngine {
         requestedStopBoundary(in: task, matchesToolNamed: toolName)
     }
 
+    func handleEscalationForTesting(
+        currentStep: PlanStep,
+        reason: EscalationReason,
+        escalation: EscalationHandler,
+        workingSlot: AgentSlot = .execute,
+        originalTask: String = "test task"
+    ) async -> (EscalationDecision, [AgentEvent]) {
+        var captured: [AgentEvent] = []
+        let decisionCapture = EscalationDecisionCapture()
+        let stream = AsyncStream<AgentEvent> { continuation in
+            Task { @MainActor in
+                let decision = await self.handleEscalation(
+                    currentStep: currentStep,
+                    reason: reason,
+                    escalation: escalation,
+                    workingSlot: workingSlot,
+                    context: self.contextManager,
+                    continuation: continuation,
+                    originalTask: originalTask
+                )
+                await decisionCapture.set(decision)
+                continuation.finish()
+            }
+        }
+        for await event in stream {
+            captured.append(event)
+        }
+        let decision = await decisionCapture.get() ?? .stop(message: "test escalation did not return")
+        return (decision, captured)
+    }
+
     var currentModelID: String {
         modelID(for: resolvedProvider(for: .execute))
     }
@@ -524,6 +595,16 @@ final class AgenticEngine {
         case .execute, .vision:
             return requestedSlot
         }
+    }
+
+    private func reasonOverrideProviderID() -> String? {
+        if let assigned = slotAssignments[.reason], assigned.isEmpty == false {
+            return assigned
+        }
+        guard let provider = provider(for: .reason), !(provider is NullProvider) else {
+            return nil
+        }
+        return provider.id
     }
 
     private func promoteElectronicsDomainIfIntentDetected(in message: String) async {
@@ -2451,6 +2532,16 @@ final class AgenticEngine {
               let nextTool = nextFocusedElectronicsHandoffToolName(),
               nextTool != "kicad_build_intent_model"
         else { return false }
+        guard !focusedElectronicsStopBoundaryReached(before: nextTool) else {
+            pendingContinuationSteps.removeAll()
+            pendingContinuationAllSteps.removeAll()
+            try? FileManager.default.removeItem(at: continuationInjectURL)
+            TelemetryEmitter.shared.emit("engine.continuation.focused_handoff_suppressed", data: [
+                "tool_name": nextTool,
+                "reason": "explicit_stop_boundary",
+            ])
+            return false
+        }
 
         let taskDescription: String
         let handoffInstruction: String
@@ -2605,6 +2696,38 @@ final class AgenticEngine {
         try? message.write(to: continuationInjectURL, atomically: true, encoding: .utf8)
         TelemetryEmitter.shared.emit("engine.continuation.focused_handoff_scheduled", data: telemetry)
         return true
+    }
+
+    private func focusedElectronicsStopBoundaryReached(before nextTool: String) -> Bool {
+        let text = pendingContinuationOriginalTask.lowercased()
+        guard text.contains("stop") || text.contains("only") || text.contains("do not generate") else {
+            return false
+        }
+        switch nextTool {
+        case "kicad_assign_footprints":
+            return (text.contains("component matrix") || text.contains("component_matrix"))
+                && (text.contains("stop after") || text.contains("stop once") || text.contains("stop when"))
+                || text.contains("do not generate footprints")
+                || text.contains("do not assign footprints")
+        case "kicad_compile_project":
+            return (text.contains("footprint") || text.contains("footprint_assignment"))
+                && (text.contains("stop after") || text.contains("stop once") || text.contains("stop when"))
+                || text.contains("do not generate schematic")
+                || text.contains("do not generate pcb")
+        case "kicad_run_erc", "kicad_apply_board_profile", "kicad_generate_net_classes", "kicad_place_components", "kicad_route_pass":
+            return text.contains("do not generate pcb")
+                || text.contains("do not run erc")
+                || text.contains("stop after schematic")
+                || text.contains("stop after project")
+        case "kicad_run_drc", "kicad_generate_spice_scenario", "kicad_run_spice", "kicad_export_fab", "kicad_prepare_vendor_order":
+            return text.contains("do not generate gerbers")
+                || text.contains("do not generate bom")
+                || text.contains("do not run spice")
+                || text.contains("stop after drc")
+                || text.contains("stop after simulation")
+        default:
+            return false
+        }
     }
 
     private func scheduleRepairableElectronicsVerificationContinuationIfNeeded() -> Bool {
@@ -5140,6 +5263,41 @@ final class AgenticEngine {
         case .stop(let message):
             let label = escalationReasonLabel(reason)
             let progress = progressSummary(for: context.messages)
+            if let providerID = reasonOverrideProviderID(),
+               let requestOverride = onReasonOverrideRequest {
+                let request = ReasonExecutionOverrideRequest(
+                    providerID: providerID,
+                    reason: label,
+                    suggestion: message,
+                    progressSummary: progress,
+                    originalTask: originalTask
+                )
+                let requestedTelemetry: [String: TelemetryValue] = [
+                    "provider_id": .string(providerID),
+                    "reason": .string(label)
+                ]
+                TelemetryEmitter.shared.emit("engine.reason_override.requested", data: requestedTelemetry)
+                if await requestOverride(request) {
+                    slotAssignments[workingSlot] = providerID
+                    let approvedTelemetry: [String: TelemetryValue] = [
+                        "provider_id": .string(providerID),
+                        "working_slot": .string(workingSlot.rawValue)
+                    ]
+                    TelemetryEmitter.shared.emit("engine.reason_override.approved", data: approvedTelemetry)
+                    continuation.yield(.systemNote(
+                        "[Reason override approved — using \(providerID) once for the stuck handoff]"
+                    ))
+                    return .routeToProvider(
+                        providerID: providerID,
+                        reason: "user approved one-shot reason override after: \(label)"
+                    )
+                }
+                let deniedTelemetry: [String: TelemetryValue] = [
+                    "provider_id": .string(providerID),
+                    "reason": .string(label)
+                ]
+                TelemetryEmitter.shared.emit("engine.reason_override.denied", data: deniedTelemetry)
+            }
             continuation.yield(.cleanStop(reason: label, summary: message))
             continuation.yield(.systemNote(
                 buildCleanStopNote(reason: label, suggestion: message, progressSummary: progress)
