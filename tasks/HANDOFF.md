@@ -186,8 +186,12 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Split the 25 W amp into two designs: low-voltage amplifier board and separate
-   mains/transformer board.
+1. Implement generic multi-board design decomposition so Merlin derives board
+   boundaries, safety domains, isolation barriers, inter-board connectors, and
+   verification plans from any electronics `DesignIntent`. AmpDemo is only a
+   regression fixture: the expected behavior is that Merlin independently
+   separates mains/transformer and low-voltage amplifier domains when the
+   request implies that split, not that Codex manually splits the sample design.
 2. Continue generic topology/materialization from structured `DesignIntent`
    instead of AmpDemo-specific shortcuts.
 3. Run full ERC repair loops: parse failures, apply bounded repairs, rerun until
