@@ -1378,6 +1378,239 @@ struct DatasheetEvidenceBuilder: Sendable {
     }
 }
 
+struct DatasheetPDFCache: Sendable {
+    struct Entry: Codable, Sendable, Equatable {
+        static let currentSchemaVersion = 1
+
+        var schemaVersion: Int
+        var manufacturer: String
+        var mpn: String
+        var url: String
+        var providerID: String
+        var fileName: String
+        var sha256: String
+        var byteCount: Int
+        var fetchedAt: Date
+        var etag: String?
+        var lastModified: String?
+
+        enum CodingKeys: String, CodingKey {
+            case schemaVersion = "schema_version"
+            case manufacturer
+            case mpn
+            case url
+            case providerID = "provider_id"
+            case fileName = "file_name"
+            case sha256
+            case byteCount = "byte_count"
+            case fetchedAt = "fetched_at"
+            case etag
+            case lastModified = "last_modified"
+        }
+    }
+
+    func resolve(
+        _ evidence: DatasheetEvidence,
+        in directory: URL,
+        revalidateAfterSeconds: Int,
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: Date = Date()
+    ) async throws -> DatasheetEvidence {
+        guard let url = URL(string: evidence.url), !evidence.url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return evidence
+        }
+        try FileManager.default.createDirectory(at: pdfDirectory(in: directory), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: manifestDirectory(in: directory), withIntermediateDirectories: true)
+
+        if let cached = try loadEntry(for: evidence, from: directory),
+           FileManager.default.fileExists(atPath: pdfURL(for: cached, in: directory).path) {
+            let cachedEvidence = evidenceWithLocalPDF(evidence, entry: cached, directory: directory, cachePolicy: "datasheet_pdf_cache")
+            guard shouldRevalidate(cached, now: now, revalidateAfterSeconds: revalidateAfterSeconds) else {
+                return cachedEvidence
+            }
+            if let refreshed = try await revalidatedEvidence(
+                evidence,
+                cached: cached,
+                url: url,
+                directory: directory,
+                transport: transport,
+                now: now
+            ) {
+                return refreshed
+            }
+            return cachedEvidence
+        }
+
+        let request = URLRequest(url: url, timeoutInterval: 30)
+        let (data, response) = try await transport.data(for: request)
+        return try writeDownloadedEvidence(
+            evidence,
+            data: data,
+            response: response,
+            directory: directory,
+            now: now
+        )
+    }
+
+    func loadLocal(
+        _ evidence: DatasheetEvidence,
+        from directory: URL
+    ) throws -> DatasheetEvidence? {
+        guard let cached = try loadEntry(for: evidence, from: directory),
+              FileManager.default.fileExists(atPath: pdfURL(for: cached, in: directory).path) else {
+            return nil
+        }
+        return evidenceWithLocalPDF(evidence, entry: cached, directory: directory, cachePolicy: "datasheet_pdf_cache")
+    }
+
+    private func revalidatedEvidence(
+        _ evidence: DatasheetEvidence,
+        cached: Entry,
+        url: URL,
+        directory: URL,
+        transport: any CatalogHTTPTransport,
+        now: Date
+    ) async throws -> DatasheetEvidence? {
+        var request = URLRequest(url: url, timeoutInterval: 30)
+        if let etag = cached.etag, !etag.isEmpty {
+            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
+        if let lastModified = cached.lastModified, !lastModified.isEmpty {
+            request.setValue(lastModified, forHTTPHeaderField: "If-Modified-Since")
+        }
+        let (data, response) = try await transport.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode == 304 {
+            var updated = cached
+            updated.fetchedAt = now
+            try writeEntry(updated, to: directory)
+            return evidenceWithLocalPDF(evidence, entry: updated, directory: directory, cachePolicy: "datasheet_pdf_cache")
+        }
+        return try writeDownloadedEvidence(
+            evidence,
+            data: data,
+            response: response,
+            directory: directory,
+            now: now,
+            existingFileName: cached.fileName
+        )
+    }
+
+    private func writeDownloadedEvidence(
+        _ evidence: DatasheetEvidence,
+        data: Data,
+        response: URLResponse,
+        directory: URL,
+        now: Date,
+        existingFileName: String? = nil
+    ) throws -> DatasheetEvidence {
+        if let http = response as? HTTPURLResponse {
+            guard (200...299).contains(http.statusCode) else {
+                throw LiveCatalogProviderError.httpStatus(http.statusCode)
+            }
+        }
+        let fileName = existingFileName ?? "\(key(for: evidence)).pdf"
+        let fileURL = pdfDirectory(in: directory).appendingPathComponent(fileName)
+        try data.write(to: fileURL, options: .atomic)
+        let entry = Entry(
+            schemaVersion: Entry.currentSchemaVersion,
+            manufacturer: evidence.manufacturer,
+            mpn: evidence.mpn,
+            url: evidence.url,
+            providerID: evidence.providerID,
+            fileName: fileName,
+            sha256: sha256(data),
+            byteCount: data.count,
+            fetchedAt: now,
+            etag: header("ETag", from: response),
+            lastModified: header("Last-Modified", from: response)
+        )
+        try writeEntry(entry, to: directory)
+        return evidenceWithLocalPDF(evidence, entry: entry, directory: directory, cachePolicy: "datasheet_pdf_cache")
+    }
+
+    private func shouldRevalidate(_ entry: Entry, now: Date, revalidateAfterSeconds: Int) -> Bool {
+        guard revalidateAfterSeconds > 0 else { return false }
+        return now.timeIntervalSince(entry.fetchedAt) >= Double(revalidateAfterSeconds)
+    }
+
+    private func loadEntry(for evidence: DatasheetEvidence, from directory: URL) throws -> Entry? {
+        let url = manifestURL(for: evidence, in: directory)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let entry = try JSONDecoder().decode(Entry.self, from: Data(contentsOf: url))
+        guard entry.schemaVersion == Entry.currentSchemaVersion else { return nil }
+        return entry
+    }
+
+    private func writeEntry(_ entry: Entry, to directory: URL) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(entry).write(to: manifestURL(forKey: key(providerID: entry.providerID, manufacturer: entry.manufacturer, mpn: entry.mpn, url: entry.url), in: directory))
+    }
+
+    private func evidenceWithLocalPDF(
+        _ evidence: DatasheetEvidence,
+        entry: Entry,
+        directory: URL,
+        cachePolicy: String
+    ) -> DatasheetEvidence {
+        var evidence = evidence
+        evidence.localPath = pdfURL(for: entry, in: directory).path
+        evidence.sha256 = entry.sha256
+        evidence.license = [evidence.license, cachePolicy]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: ";")
+        return evidence
+    }
+
+    private func manifestURL(for evidence: DatasheetEvidence, in directory: URL) -> URL {
+        manifestURL(forKey: key(for: evidence), in: directory)
+    }
+
+    private func manifestURL(forKey key: String, in directory: URL) -> URL {
+        manifestDirectory(in: directory).appendingPathComponent("\(key).json")
+    }
+
+    private func pdfURL(for entry: Entry, in directory: URL) -> URL {
+        pdfDirectory(in: directory).appendingPathComponent(entry.fileName)
+    }
+
+    private func manifestDirectory(in directory: URL) -> URL {
+        directory.appendingPathComponent("manifest", isDirectory: true)
+    }
+
+    private func pdfDirectory(in directory: URL) -> URL {
+        directory.appendingPathComponent("pdf", isDirectory: true)
+    }
+
+    private func key(for evidence: DatasheetEvidence) -> String {
+        key(providerID: evidence.providerID, manufacturer: evidence.manufacturer, mpn: evidence.mpn, url: evidence.url)
+    }
+
+    private func key(providerID: String, manufacturer: String, mpn: String, url: String) -> String {
+        let input = [providerID, manufacturer, mpn, url]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .joined(separator: "\n")
+        return sha256(Data(input.utf8))
+    }
+
+    private func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
+    }
+
+    private func header(_ name: String, from response: URLResponse) -> String? {
+        guard let http = response as? HTTPURLResponse else { return nil }
+        let target = name.lowercased()
+        for (key, value) in http.allHeaderFields {
+            guard String(describing: key).lowercased() == target else { continue }
+            let string = String(describing: value).trimmingCharacters(in: .whitespacesAndNewlines)
+            return string.isEmpty ? nil : string
+        }
+        return nil
+    }
+}
+
 struct DigiKeyCatalogProviderAdapter: Sendable {
     let providerID = "digikey"
 

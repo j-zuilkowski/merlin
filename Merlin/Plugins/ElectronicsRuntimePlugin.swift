@@ -3995,6 +3995,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         catalogEvidence: RuntimeCatalogEvidence
     ) async -> String {
         var decisions = selectionComponents.map { componentSelectionDecision(for: $0, candidates: catalogEvidence.candidates) }
+        let datasheetResult = await datasheetPDFEnrichedComponentSelectionDecisions(
+            decisions,
+            cacheDirectory: catalogEvidence.datasheetCacheDirectory,
+            revalidateAfterSeconds: catalogEvidence.datasheetRevalidateAfterSeconds
+        )
+        decisions = datasheetResult.decisions
         if let localFootprintResolver = catalogEvidence.localFootprintResolver {
             decisions = await footprintEnrichedComponentSelectionDecisions(
                 decisions,
@@ -4005,7 +4011,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let matrix = ComponentMatrix(
             designId: circuitIR?.designId ?? intent.designId,
             decisions: decisions,
-            warnings: catalogEvidence.warnings,
+            warnings: uniqueRefdes(catalogEvidence.warnings + datasheetResult.warnings),
             providers: catalogEvidence.providers,
             cacheMetadata: componentSelectionCacheMetadata(catalogEvidence: catalogEvidence, circuitIR: circuitIR),
             components: selectionComponents
@@ -4062,6 +4068,82 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return enriched
     }
 
+    private func datasheetPDFEnrichedComponentSelectionDecisions(
+        _ decisions: [PartSelectionDecision],
+        cacheDirectory: URL,
+        revalidateAfterSeconds: Int
+    ) async -> (decisions: [PartSelectionDecision], warnings: [String]) {
+        var enriched: [PartSelectionDecision] = []
+        var warnings: [String] = []
+        for decision in decisions {
+            guard decision.status == .selected,
+                  let selected = decision.selectedCandidate else {
+                enriched.append(decision)
+                continue
+            }
+            let result = await datasheetPDFEnrichedCandidate(
+                selected,
+                cacheDirectory: cacheDirectory,
+                revalidateAfterSeconds: revalidateAfterSeconds
+            )
+            warnings.append(contentsOf: result.warnings.map { "DATASHEET_CACHE_WARNING: \(decision.refdes) \($0)" })
+            var updated = decision
+            updated.selectedCandidate = result.candidate
+            updated.candidateSet = decision.candidateSet.map { candidate in
+                sameCatalogPart(candidate, result.candidate) ? result.candidate : candidate
+            }
+            enriched.append(updated)
+        }
+        return (enriched, uniqueRefdes(warnings))
+    }
+
+    private func datasheetPDFEnrichedCandidate(
+        _ candidate: ComponentCandidate,
+        cacheDirectory: URL,
+        revalidateAfterSeconds: Int
+    ) async -> (candidate: ComponentCandidate, warnings: [String]) {
+        guard !candidate.datasheets.isEmpty else { return (candidate, []) }
+        let cache = DatasheetPDFCache()
+        var candidate = candidate
+        var enrichedDatasheets: [DatasheetEvidence] = []
+        var warnings: [String] = []
+        for datasheet in candidate.datasheets {
+            guard shouldResolveDatasheetPDF(datasheet) else {
+                enrichedDatasheets.append(datasheet)
+                continue
+            }
+            do {
+                enrichedDatasheets.append(try await cache.resolve(
+                    datasheet,
+                    in: cacheDirectory,
+                    revalidateAfterSeconds: revalidateAfterSeconds
+                ))
+            } catch {
+                warnings.append("\(datasheet.url) \(error.localizedDescription)")
+                enrichedDatasheets.append(datasheet)
+            }
+        }
+        candidate.datasheets = enrichedDatasheets
+        return (candidate, warnings)
+    }
+
+    private func shouldResolveDatasheetPDF(_ datasheet: DatasheetEvidence) -> Bool {
+        guard let url = URL(string: datasheet.url),
+              ["http", "https"].contains((url.scheme ?? "").lowercased()) else {
+            return false
+        }
+        let host = (url.host ?? "").lowercased()
+        guard !host.hasSuffix(".invalid") else { return false }
+        let license = datasheet.license.lowercased()
+        guard !license.contains("fixture"), !license.contains("test") else { return false }
+        return true
+    }
+
+    private func sameCatalogPart(_ lhs: ComponentCandidate, _ rhs: ComponentCandidate) -> Bool {
+        lhs.mpn.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(rhs.mpn.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+            && lhs.manufacturer.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(rhs.manufacturer.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+    }
+
     private struct RuntimeCatalogEvidence {
         var candidates: [ComponentCandidate]
         var providers: [String]
@@ -4069,6 +4151,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var ttlSeconds: Int?
         var warnings: [String]
         var localFootprintResolver: KiCadLibraryCatalogProvider?
+        var datasheetCacheDirectory: URL
+        var datasheetRevalidateAfterSeconds: Int
     }
 
     private struct LiveCatalogTermsGate {
@@ -4127,6 +4211,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var liveCatalogTermsGateEnabled: Bool? = nil
         var liveCatalogMaxQueriesPerRun: Int? = nil
         var liveCatalogMinQueryIntervalMs: Int? = nil
+        var datasheetCacheDirectory: String? = nil
+        var datasheetCacheRevalidateAfterSeconds: Int? = nil
         var mouserAPIKeyEnv: String? = nil
         var mouserAPIKeyKeychainID: String? = nil
         var mouserSearchEndpoint: String? = nil
@@ -4169,6 +4255,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case liveCatalogTermsGateEnabled = "live_catalog_terms_gate_enabled"
             case liveCatalogMaxQueriesPerRun = "live_catalog_max_queries_per_run"
             case liveCatalogMinQueryIntervalMs = "live_catalog_min_query_interval_ms"
+            case datasheetCacheDirectory = "datasheet_cache_directory"
+            case datasheetCacheRevalidateAfterSeconds = "datasheet_cache_revalidate_after_seconds"
             case mouserAPIKeyEnv = "mouser_api_key_env"
             case mouserAPIKeyKeychainID = "mouser_api_key_keychain_id"
             case mouserSearchEndpoint = "mouser_search_endpoint"
@@ -4212,6 +4300,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if !catalogEvidence.providers.isEmpty {
             metadata["providers"] = catalogEvidence.providers.joined(separator: ",")
         }
+        metadata["datasheet_cache_directory"] = catalogEvidence.datasheetCacheDirectory.path
+        metadata["datasheet_cache_revalidate_after_seconds"] = "\(catalogEvidence.datasheetRevalidateAfterSeconds)"
         if circuitIR != nil {
             metadata["component_source"] = "circuit_ir"
         }
@@ -4265,6 +4355,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var sourceKinds: [String] = []
         var warnings: [String] = []
         let localFootprintResolver = localKiCadCatalogProvider(from: object, config: config, context: context)
+        let datasheetDirectory = datasheetCacheDirectory(from: object, config: config)
+        let datasheetRevalidateAfterSeconds = datasheetCacheRevalidateAfterSeconds(from: object, config: config)
 
         if let path = object["catalog_candidates_path"] as? String,
            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
@@ -4407,7 +4499,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             sourceKinds: uniqueRefdes(sourceKinds),
             ttlSeconds: ttlSeconds,
             warnings: uniqueRefdes(warnings),
-            localFootprintResolver: localFootprintResolver
+            localFootprintResolver: localFootprintResolver,
+            datasheetCacheDirectory: datasheetDirectory,
+            datasheetRevalidateAfterSeconds: datasheetRevalidateAfterSeconds
         )
     }
 
@@ -4739,6 +4833,21 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     private func catalogCacheDirectory(from config: RuntimeCatalogConfig, context: WorkspaceHandlerContext) -> URL {
         config.catalogCacheDirectory.map(URL.init(fileURLWithPath:))
             ?? context.workspaceRoot.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+    }
+
+    private func datasheetCacheDirectory(from object: [String: Any], config: RuntimeCatalogConfig) -> URL {
+        stringValue(object, keys: ["datasheet_cache_directory"])
+            .map(URL.init(fileURLWithPath:))
+            ?? config.datasheetCacheDirectory.map(URL.init(fileURLWithPath:))
+            ?? FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                .appendingPathComponent("Merlin/plugins/electronics/datasheets", isDirectory: true)
+    }
+
+    private func datasheetCacheRevalidateAfterSeconds(from object: [String: Any], config: RuntimeCatalogConfig) -> Int {
+        optionalIntValue(object, key: "datasheet_cache_revalidate_after_seconds")
+            ?? config.datasheetCacheRevalidateAfterSeconds
+            ?? 604_800
     }
 
     private func liveCatalogProviderIDs(
