@@ -91,6 +91,14 @@ struct ElectronicsRuntimePlugin {
                 help: "Allow the electronics plugin to query TrustedParts for authorized distributor catalog evidence."
             ),
             WorkspaceSettingsField(
+                key: "catalog_provider_onsemi_enabled",
+                label: "onsemi manufacturer fallback",
+                kind: .boolean,
+                defaultValue: .boolean(false),
+                isSecret: false,
+                help: "Allow the electronics plugin to query onsemi product pages as an exact-MPN fallback when sourcing providers do not resolve a part."
+            ),
+            WorkspaceSettingsField(
                 key: "catalog_provider_vendor_feed_enabled",
                 label: "Vendor feed catalog provider",
                 kind: .boolean,
@@ -2036,6 +2044,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
     ) -> [KiCadWarning] {
         var warnings: [KiCadWarning] = []
         let symbolsByRefdes = Dictionary(schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+            guard symbol.emitsKiCadSymbol else { return nil }
             guard let refdes = symbol.property(named: "Reference") else { return nil }
             return (refdes, symbol)
         }, uniquingKeysWith: { first, _ in first })
@@ -4280,6 +4289,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var trustedPartsAPIKeyEnv: String? = nil
         var trustedPartsAPIKeyKeychainID: String? = nil
         var trustedPartsSearchEndpoint: String? = nil
+        var onsemiProductURLTemplate: String? = nil
         var vendorFeedPaths: [String]? = nil
 
         enum CodingKeys: String, CodingKey {
@@ -4324,6 +4334,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             case trustedPartsAPIKeyEnv = "trustedparts_api_key_env"
             case trustedPartsAPIKeyKeychainID = "trustedparts_api_key_keychain_id"
             case trustedPartsSearchEndpoint = "trustedparts_search_endpoint"
+            case onsemiProductURLTemplate = "onsemi_product_url_template"
             case vendorFeedPaths = "vendor_feed_paths"
         }
     }
@@ -4685,6 +4696,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let value = object["trustedparts_search_endpoint"] as? String {
             config.trustedPartsSearchEndpoint = value
         }
+        if let value = object["onsemi_product_url_template"] as? String {
+            config.onsemiProductURLTemplate = value
+        }
         if let value = stringArrayValue(object, key: "vendor_feed_paths") {
             config.vendorFeedPaths = value
         }
@@ -4770,6 +4784,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return try NexarCatalogProviderAdapter().mapRecordedResponse(data)
         case "trustedparts", "trusted-parts", "trusted_parts":
             return try TrustedPartsCatalogProviderAdapter().mapRecordedResponse(data)
+        case "onsemi", "on-semiconductor", "on_semiconductor":
+            return try OnsemiCatalogProviderAdapter().mapProductPage(
+                data,
+                sourceURL: URL(string: "https://www.onsemi.com/products")!,
+                requestedMPN: "MJ15003G"
+            )
         case "vendor_feed", "vendor-feed", "vendorfeed":
             return try VendorFeedCatalogProviderAdapter().mapRecordedResponse(data)
         case "octopart", "aggregator":
@@ -4909,9 +4929,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             "catalog_provider_digikey_enabled",
             "catalog_provider_nexar_enabled",
             "catalog_provider_trustedparts_enabled",
+            "catalog_provider_onsemi_enabled",
         ].contains { settings.values[$0] != nil }
         if settingsDeclareLiveProviders {
-            return ["mouser", "digikey"]
+            return ["mouser", "digikey", "onsemi"]
                 .filter { catalogProviderIsEnabled($0, settings: settings) }
         }
         return []
@@ -4932,6 +4953,9 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             defaultValue = false
         case "trustedparts", "trusted-parts", "trusted_parts":
             key = "catalog_provider_trustedparts_enabled"
+            defaultValue = false
+        case "onsemi", "on-semiconductor", "on_semiconductor":
+            key = "catalog_provider_onsemi_enabled"
             defaultValue = false
         case "vendor_feed", "vendor-feed", "vendorfeed":
             key = "catalog_provider_vendor_feed_enabled"
@@ -5100,6 +5124,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 apiKey: apiKey,
                 endpoint: endpoint,
                 resultLimit: limit
+            )
+        case "onsemi", "on-semiconductor", "on_semiconductor":
+            return LiveOnsemiCatalogProvider(
+                productURLTemplate: config.onsemiProductURLTemplate
+                    ?? "https://www.onsemi.com/products/discrete-power-modules/audio-transistors/{base_mpn}"
             )
         default:
             return nil
@@ -5993,6 +6022,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
     private func candidateViolatesRequiredConstraints(_ candidate: ComponentCandidate, component: ComponentIntent) -> Bool {
         let text = candidateSearchText(candidate)
+        if let requiredMPN = nonEmpty(component.constraints["manufacturer_part_number"] ?? component.constraints["mpn"]),
+           normalizedMPN(candidate.mpn) != normalizedMPN(requiredMPN) {
+            return true
+        }
         if let requiredPackage = component.constraints["package"],
            !requiredPackage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
            !candidatePackageMatches(candidate, requiredPackage: requiredPackage) {
@@ -6048,6 +6081,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return true
         }
         return false
+    }
+
+    private func normalizedMPN(_ value: String) -> String {
+        value.lowercased().filter { $0.isLetter || $0.isNumber }
     }
 
     private func connectorCandidateViolatesSubtype(component: ComponentIntent, candidateText: String) -> Bool {

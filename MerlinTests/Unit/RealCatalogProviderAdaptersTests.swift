@@ -204,6 +204,41 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
         XCTAssertEqual(candidate.evidence.first?.sourceURL, "https://trustedparts.example/MJ15003G")
     }
 
+    func testOnsemiAdapterMapsProductPageIntoManufacturerFallbackEvidence() throws {
+        let data = Data("""
+        <html><body>
+        <h1>Audio Transistors | MJ15003</h1>
+        <h2>Bipolar Transistor, NPN, 140 V, 20 A</h2>
+        <a href="/download/data-sheet/pdf/mj15003-d.pdf">Datasheet</a>
+        <table>
+        <tr><th>Product</th><th>Status</th><th>Package Type</th><th>Polarity</th><th>I_C Continuous (A)</th><th>V CEO(sus) Min (V)</th><th>P_TM Max (W)</th></tr>
+        <tr><td>MJ15003G</td><td>Active</td><td>TO-204-2</td><td>NPN</td><td>20</td><td>140</td><td>250</td></tr>
+        </table>
+        </body></html>
+        """.utf8)
+
+        let candidates = try OnsemiCatalogProviderAdapter().mapProductPage(
+            data,
+            sourceURL: URL(string: "https://www.onsemi.com/products/discrete-power-modules/audio-transistors/mj15003")!,
+            requestedMPN: "MJ15003G"
+        )
+
+        let candidate = try XCTUnwrap(candidates.first)
+        XCTAssertEqual(candidate.manufacturer, "onsemi")
+        XCTAssertEqual(candidate.mpn, "MJ15003G")
+        XCTAssertEqual(candidate.normalizedCategory, "audio_transistors")
+        XCTAssertEqual(candidate.package, "TO-204-2")
+        XCTAssertEqual(candidate.ratings["voltage_v"], "140 V")
+        XCTAssertEqual(candidate.ratings["current_a"], "20 A")
+        XCTAssertEqual(candidate.ratings["power_w"], "250 W")
+        XCTAssertEqual(candidate.lifecycleState, "Active")
+        XCTAssertEqual(candidate.availabilitySummary, "manufacturer evidence only")
+        XCTAssertEqual(candidate.datasheets.first?.providerID, "onsemi")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://www.onsemi.com/download/data-sheet/pdf/mj15003-d.pdf")
+        XCTAssertEqual(candidate.evidence.first?.providerID, "onsemi")
+        XCTAssertEqual(candidate.evidence.first?.warnings, ["manufacturer_fallback_no_stock_pricing"])
+    }
+
     func testVendorFeedAdapterMapsCSVExportIntoStrictEvidence() throws {
         let data = Data("""
         Manufacturer,MPN,Description,Category,Package,Voltage,Current,Power,Datasheet URL,Product URL,Availability,Distributor,MOQ,Packaging,Lead Time,Lifecycle
@@ -510,6 +545,69 @@ final class RealCatalogProviderAdaptersTests: XCTestCase {
             XCTFail("Expected rate limit error.")
         } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
             XCTAssertEqual(retryAfterSeconds, 31)
+        } catch {
+            XCTFail("Expected rate limit error, got \(error).")
+        }
+    }
+
+    func testLiveOnsemiProviderFetchesSingleExactMPNProductPage() async throws {
+        let productPage = Data("""
+        <html><body>
+        <h1>Audio Transistors | MJ15003</h1>
+        <h2>Bipolar Transistor, NPN, 140 V, 20 A</h2>
+        <a href="/download/data-sheet/pdf/mj15003-d.pdf">Datasheet</a>
+        <table><tr><td>MJ15003G</td><td>Active</td><td>TO-204-2</td><td>NPN</td><td>20</td><td>140</td><td>250</td></tr></table>
+        </body></html>
+        """.utf8)
+        let transport = MockCatalogHTTPTransport(responses: [productPage])
+        let provider = LiveOnsemiCatalogProvider(
+            productURLTemplate: "https://www.onsemi.test/products/{base_mpn}",
+            transport: transport,
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = try await provider.searchWithRawResponse(ComponentSearchRequest(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: ["manufacturer_part_number": "MJ15003G"],
+            requiredEvidenceTypes: [],
+            preferredVendors: [],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active"
+        ))
+
+        let request = try XCTUnwrap(transport.requests.first)
+        XCTAssertEqual(transport.requests.count, 1)
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertEqual(request.url?.absoluteString, "https://www.onsemi.test/products/mj15003")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "text/html,application/xhtml+xml")
+        XCTAssertEqual(result.candidates.first?.mpn, "MJ15003G")
+        XCTAssertEqual(result.candidates.first?.evidence.first?.cachePolicy, "live_manufacturer_fallback")
+        XCTAssertEqual(result.rawResponse, productPage)
+    }
+
+    func testLiveOnsemiProviderSurfacesRateLimitWithRetryAfter() async throws {
+        let transport = MockCatalogHTTPTransport(responses: [
+            .init(data: Data("rate limited".utf8), statusCode: 429, headers: ["Retry-After": "47"]),
+        ])
+        let provider = LiveOnsemiCatalogProvider(
+            productURLTemplate: "https://www.onsemi.test/products/{base_mpn}",
+            transport: transport
+        )
+
+        do {
+            _ = try await provider.searchWithRawResponse(ComponentSearchRequest(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                constraints: ["manufacturer_part_number": "MJ15003G"],
+                requiredEvidenceTypes: [],
+                preferredVendors: [],
+                excludedManufacturers: [],
+                lifecyclePolicy: "active"
+            ))
+            XCTFail("Expected rate limit error.")
+        } catch LiveCatalogProviderError.rateLimited(let retryAfterSeconds) {
+            XCTAssertEqual(retryAfterSeconds, 47)
         } catch {
             XCTFail("Expected rate limit error, got \(error).")
         }

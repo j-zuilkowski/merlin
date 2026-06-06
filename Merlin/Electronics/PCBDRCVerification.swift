@@ -600,8 +600,8 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
     private func placementLayout(for circuitIR: CircuitIR) -> FootprintPlacementLayout {
         let components = connectivityOrderedComponents(circuitIR: circuitIR)
         let geometries = components.map(footprintGeometry(for:))
-        let margin = 12.0
-        let spacingX = 44.0
+        let margin = 24.0
+        let spacingX = 56.0
 
         var placements: [PlacedFootprint] = []
         var cursorX = margin
@@ -623,16 +623,22 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         return FootprintPlacementLayout(
             outline: BoardOutline(
                 widthMm: max(180, usedWidth + margin),
-                heightMm: max(80, usedHeight + margin)
+                heightMm: max(80, usedHeight + margin + routingLaneHeight(for: circuitIR))
             ),
             placements: placements
         )
     }
 
+    private func routingLaneHeight(for circuitIR: CircuitIR) -> Double {
+        let routableNetCount = circuitIR.nets.filter { $0.endpoints.count > 1 }.count
+        guard routableNetCount > 0 else { return 0 }
+        return 24.0 + Double(routableNetCount) * 7.0
+    }
+
     private func connectivityOrderedComponents(circuitIR: CircuitIR) -> [CircuitComponent] {
-        let originalIndex = Dictionary(uniqueKeysWithValues: circuitIR.components.enumerated().map { ($0.element.refdes, $0.offset) })
-        let componentsByRefdes = Dictionary(uniqueKeysWithValues: circuitIR.components.map { ($0.refdes, $0) })
-        var neighbors: [String: Set<String>] = Dictionary(uniqueKeysWithValues: circuitIR.components.map { ($0.refdes, []) })
+        let originalIndex = Dictionary(circuitIR.components.enumerated().map { ($0.element.refdes, $0.offset) }, uniquingKeysWith: { first, _ in first })
+        let componentsByRefdes = Dictionary(circuitIR.components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        var neighbors: [String: Set<String>] = Dictionary(circuitIR.components.map { ($0.refdes, []) }, uniquingKeysWith: { first, _ in first })
         for net in circuitIR.nets {
             let refdes = Array(Set(net.endpoints.map(\.componentRefdes))).sorted { (originalIndex[$0] ?? .max) < (originalIndex[$1] ?? .max) }
             guard refdes.count > 1 else { continue }
@@ -691,7 +697,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             let next = (neighbors[refdes] ?? [])
                 .filter { groupSet.contains($0) && !visited.contains($0) }
                 .sorted { (originalIndex[$0] ?? .max) < (originalIndex[$1] ?? .max) }
-            for neighbor in next {
+            for neighbor in next where !visited.contains(neighbor) {
                 walk(neighbor)
             }
         }
@@ -765,21 +771,23 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         let padCenters = absolutePadCenters(layout: layout)
         let footprintBounds = absoluteFootprintBounds(layout: layout)
         let componentPadCenters = absoluteComponentPadCenters(layout: layout)
-        var segments: [String] = []
         let routedNets = circuitIR.nets.filter { net in
             net.endpoints.flatMap { endpoint in
                 padCenters["\(endpoint.componentRefdes)|\(endpoint.pinNumber)"] ?? []
             }.count > 1
         }
+        let componentMaxY = layout.placements
+            .map { $0.geometry.bounds.translated(by: $0.at).maxY }
+            .max() ?? 0
+        var segments: [String] = []
 
         for (routeIndex, net) in routedNets.enumerated() {
             guard let netID = netIDs[net.name], netID > 0 else { continue }
-            let points = uniqueRoutedPoints(net.endpoints.flatMap { endpoint -> [RoutedBoardPoint] in
+            let laneY = min(componentMaxY + 12.0 + Double(routeIndex) * 7.0, outline.heightMm - 5.0)
+            let routedPoints = uniqueRoutedPoints(net.endpoints.flatMap { endpoint -> [RoutedBoardPoint] in
                 let key = "\(endpoint.componentRefdes)|\(endpoint.pinNumber)"
                 guard let centers = padCenters[key],
-                      let bounds = footprintBounds[endpoint.componentRefdes] else {
-                    return []
-                }
+                      let bounds = footprintBounds[endpoint.componentRefdes] else { return [] }
                 return centers.map {
                     RoutedBoardPoint(
                         componentRefdes: endpoint.componentRefdes,
@@ -790,20 +798,39 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
                 }
             })
                 .sorted { lhs, rhs in
-                    if lhs.point.y == rhs.point.y { return lhs.point.x < rhs.point.x }
-                    return lhs.point.y < rhs.point.y
+                    if lhs.point.x == rhs.point.x { return lhs.point.y < rhs.point.y }
+                    return lhs.point.x < rhs.point.x
                 }
-            guard points.count > 1 else { continue }
+            guard routedPoints.count > 1 else { continue }
 
-            for (pointIndex, pair) in zip(points, points.dropFirst()).enumerated() {
-                segments.append(contentsOf: connectionSegments(
-                    from: pair.0,
-                    to: pair.1,
+            let lanePoints = routedPoints.enumerated().map { pointIndex, routedPoint in
+                let escapePoint = endpointEscapePoint(for: routedPoint, laneY: laneY, outline: outline)
+                let lanePoint = KiCadSchematicDocument.Point(x: escapePoint.x, y: laneY)
+                segments.append(segmentNode(
+                    start: routedPoint.point,
+                    end: escapePoint,
                     netID: netID,
-                    netName: net.name,
-                    routeIndex: routeIndex,
-                    pointIndex: pointIndex,
-                    outline: outline
+                    layer: "F.Cu",
+                    discriminator: "\(net.name)-\(pointIndex)-escape"
+                ))
+                segments.append(segmentNode(
+                    start: escapePoint,
+                    end: lanePoint,
+                    netID: netID,
+                    layer: "F.Cu",
+                    discriminator: "\(net.name)-\(pointIndex)-drop"
+                ))
+                segments.append(viaNode(at: lanePoint, netID: netID, discriminator: "\(net.name)-\(pointIndex)-lane-via"))
+                return lanePoint
+            }
+
+            for (pointIndex, pair) in zip(lanePoints, lanePoints.dropFirst()).enumerated() {
+                segments.append(segmentNode(
+                    start: pair.0,
+                    end: pair.1,
+                    netID: netID,
+                    layer: "B.Cu",
+                    discriminator: "\(net.name)-\(pointIndex)-lane"
                 ))
             }
         }
@@ -870,48 +897,43 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         laneY: Double,
         outline: BoardOutline
     ) -> KiCadSchematicDocument.Point {
-        let columnPads = routedPoint.componentPadCenters.filter { abs($0.x - routedPoint.point.x) < 0.25 }
-        let rowPads = routedPoint.componentPadCenters.filter { abs($0.y - routedPoint.point.y) < 0.25 }
-        if rowPads.count == 2 {
-            let ordered = rowPads.sorted { lhs, rhs in
-                if lhs.x == rhs.x { return lhs.y < rhs.y }
-                return lhs.x < rhs.x
-            }
-            let rank = ordered.firstIndex { samePoint($0, routedPoint.point) } ?? 0
-            let escapingLeft = rank == 0
-            return KiCadSchematicDocument.Point(
-                x: escapingLeft
-                    ? routedPoint.bounds.minX - 2.0
-                    : routedPoint.bounds.maxX + 2.0,
-                y: routedPoint.point.y
-            )
+        let columnPadsBelow = routedPoint.componentPadCenters.filter {
+            abs($0.x - routedPoint.point.x) < 0.25 && $0.y > routedPoint.point.y + 0.25
         }
-        if rowPads.count >= columnPads.count {
-            let ordered = rowPads.sorted { lhs, rhs in
-                if lhs.x == rhs.x { return lhs.y < rhs.y }
-                return lhs.x < rhs.x
-            }
-            let rank = ordered.firstIndex { samePoint($0, routedPoint.point) } ?? 0
-            let escapeOffset = 2.0 + Double(rank) * 1.2
+        if columnPadsBelow.isEmpty {
+            let sameColumnPads = routedPoint.componentPadCenters
+                .filter { abs($0.x - routedPoint.point.x) < 0.25 }
+                .sorted { $0.y < $1.y }
+            let rank = sameColumnPads.firstIndex { samePoint($0, routedPoint.point) } ?? 0
+            let escapeOffset = 3.0 + Double(rank) * 1.5
             return KiCadSchematicDocument.Point(
                 x: routedPoint.point.x,
-                y: min(routedPoint.bounds.maxY + escapeOffset, outline.heightMm - 2.0)
+                y: min(routedPoint.bounds.maxY + escapeOffset, min(laneY - 1.0, outline.heightMm - 2.0))
             )
         }
 
-        let escapingLeft = routedPoint.point.x <= routedPoint.bounds.midX
+        let sameColumnPads = routedPoint.componentPadCenters
+            .filter { abs($0.x - routedPoint.point.x) < 0.25 }
+            .sorted { $0.y < $1.y }
+        let columnRank = sameColumnPads.firstIndex { samePoint($0, routedPoint.point) } ?? 0
+        let shouldAlternateColumnSides = sameColumnPads.count == 3 && routedPoint.componentPadCenters.count <= 5
+        let escapingLeft = shouldAlternateColumnSides
+            ? columnRank.isMultiple(of: 2)
+            : routedPoint.point.x <= routedPoint.bounds.midX
         let sameSidePads = routedPoint.componentPadCenters
             .filter { escapingLeft ? $0.x <= routedPoint.bounds.midX : $0.x > routedPoint.bounds.midX }
             .sorted { lhs, rhs in
                 if lhs.y == rhs.y { return lhs.x < rhs.x }
-                return lhs.y > rhs.y
+                return lhs.y < rhs.y
             }
         let rank = sameSidePads.firstIndex { samePoint($0, routedPoint.point) } ?? 0
-        let escapeOffset = 2.0 + Double(rank) * 1.2
+        let escapeOffset = 3.0 + Double(rank) * 1.5
+        let rawX = escapingLeft
+            ? routedPoint.bounds.minX - escapeOffset
+            : routedPoint.bounds.maxX + escapeOffset
+        let clampedX = min(max(rawX, 2.0), outline.widthMm - 2.0)
         return KiCadSchematicDocument.Point(
-            x: escapingLeft
-                ? routedPoint.bounds.minX - escapeOffset
-                : routedPoint.bounds.maxX + escapeOffset,
+            x: clampedX,
             y: routedPoint.point.y
         )
     }
@@ -980,9 +1002,8 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
     private func absoluteComponentPadCenters(layout: FootprintPlacementLayout) -> [String: [KiCadSchematicDocument.Point]] {
         var result: [String: [KiCadSchematicDocument.Point]] = [:]
         for placed in layout.placements {
-            let centers = placed.component.pins.flatMap { pin -> [KiCadSchematicDocument.Point] in
-                let pad = pin.footprintPad ?? pin.pinNumber
-                return (placed.geometry.padCenters[pad] ?? []).map { local in
+            let centers = placed.geometry.padCenters.values.flatMap { localCenters in
+                localCenters.map { local in
                     KiCadSchematicDocument.Point(
                         x: placed.at.x + local.x,
                         y: placed.at.y + local.y
@@ -995,9 +1016,9 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
     }
 
     private func absoluteFootprintBounds(layout: FootprintPlacementLayout) -> [String: FootprintBounds] {
-        Dictionary(uniqueKeysWithValues: layout.placements.map { placed in
+        Dictionary(layout.placements.map { placed in
             (placed.component.refdes, placed.geometry.bounds.translated(by: placed.at))
-        })
+        }, uniquingKeysWith: { first, _ in first })
     }
 
     private func escapeY(
@@ -1329,7 +1350,7 @@ struct FootprintAssignmentVerifier: Sendable {
         resolutions: [KiCadLibraryPinResolution]
     ) -> ElectronicsSchemaValidationResult {
         var issues: [ElectronicsSchemaIssue] = []
-        let byRef = Dictionary(uniqueKeysWithValues: resolutions.map { ($0.componentRefdes, $0) })
+        let byRef = Dictionary(resolutions.map { ($0.componentRefdes, $0) }, uniquingKeysWith: { first, _ in first })
 
         for component in circuitIR.components {
             guard let resolution = byRef[component.refdes],

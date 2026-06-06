@@ -55,6 +55,22 @@
         "default_value": { "boolean": { "_0": false } },
         "is_secret": false,
         "help": "Allow the electronics plugin to query Nexar/Octopart for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_trustedparts_enabled",
+        "label": "TrustedParts catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query TrustedParts for authorized distributor catalog evidence."
+      },
+      {
+        "key": "catalog_provider_onsemi_enabled",
+        "label": "onsemi manufacturer fallback",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query onsemi product pages as an exact-MPN fallback when sourcing providers do not resolve a part."
       }
     ]
   },

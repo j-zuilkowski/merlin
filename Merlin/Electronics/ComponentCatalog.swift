@@ -3006,6 +3006,278 @@ struct LiveTrustedPartsCatalogProvider: LiveCatalogProviderClient {
     }
 }
 
+struct OnsemiCatalogProviderAdapter: Sendable {
+    let providerID = "onsemi"
+
+    func mapProductPage(
+        _ data: Data,
+        sourceURL: URL,
+        requestedMPN: String,
+        retrievedAt: String = "recorded_fixture",
+        cachePolicy: String = "recorded_fixture"
+    ) throws -> [ComponentCandidate] {
+        let raw = String(data: data, encoding: .utf8) ?? ""
+        let text = normalizedHTMLText(raw)
+        let requested = requestedMPN.trimmingCharacters(in: .whitespacesAndNewlines)
+        let orderableMPN = firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b(\#(NSRegularExpression.escapedPattern(for: requested)))\b"#
+        ) ?? requested
+        guard !orderableMPN.isEmpty,
+              text.range(of: orderableMPN, options: [.caseInsensitive]) != nil else {
+            return []
+        }
+
+        let category = firstRegexCapture(in: text, pattern: #"(?i)#\s*([^|#]+?)\s*\|\s*[A-Z0-9\-]+"#)
+            ?? firstRegexCapture(in: text, pattern: #"(?i)\b([A-Za-z ]*Transistors?)\s*\|"#)
+            ?? "onsemi product"
+        let headline = firstRegexCapture(
+            in: text,
+            pattern: #"(?i)##\s*([^\n]+?)(?:\s+Active|\s+Similar Products|\n)"#
+        ) ?? firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b(Bipolar Transistor[^\n]+)"#
+        ) ?? "\(orderableMPN) onsemi product"
+        let escapedMPN = NSRegularExpression.escapedPattern(for: orderableMPN)
+        let package = normalizedOnsemiPackage(firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b\#(escapedMPN)\b\s+Active\s+(TO[- ]?\d+(?:-\d+)?)\b"#
+        ) ?? firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b(TO[- ]?\d+(?:-\d+)?)\b"#
+        ))
+        let rowCurrent = firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b\#(escapedMPN)\b\s+Active\s+TO[- ]?\d+(?:-\d+)?\s+(?:NPN|PNP)\s+(\d+(?:\.\d+)?)\b"#
+        )
+        let rowVoltage = firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b\#(escapedMPN)\b\s+Active\s+TO[- ]?\d+(?:-\d+)?\s+(?:NPN|PNP)\s+\d+(?:\.\d+)?\s+(\d+(?:\.\d+)?)\b"#
+        )
+        let rowPower = firstRegexCapture(
+            in: text,
+            pattern: #"(?i)\b\#(escapedMPN)\b\s+Active\s+TO[- ]?\d+(?:-\d+)?\s+(?:NPN|PNP)\s+\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s+(\d+(?:\.\d+)?)\b"#
+        )
+        let parameterPairs: [(String, String?)] = [
+            ("Package / Case", package),
+            ("Voltage - Collector Emitter Breakdown (Max)", valueWithUnit(rowVoltage, unit: "V")
+                ?? firstRegexCapture(in: text, pattern: #"(?i)V\s*CEO[^\n]*?(\d+(?:\.\d+)?\s*V)\b"#)
+                ?? firstRegexCapture(in: headline, pattern: #"(?i)\b(\d+(?:\.\d+)?\s*V)\b"#)),
+            ("Current - Collector (Ic) (Max)", valueWithUnit(rowCurrent, unit: "A")
+                ?? firstRegexCapture(in: text, pattern: #"(?i)I_\{?C\}?[^\n]*?(\d+(?:\.\d+)?\s*A)\b"#)
+                ?? firstRegexCapture(in: headline, pattern: #"(?i)\b(\d+(?:\.\d+)?\s*A)\b"#)),
+            ("Power - Max", valueWithUnit(rowPower, unit: "W")
+                ?? firstRegexCapture(in: text, pattern: #"(?i)P_\{?TM\}?[^\n]*?(\d+(?:\.\d+)?\s*W)\b"#)
+                ?? firstRegexCapture(in: text, pattern: #"(?i)\b(\d+(?:\.\d+)?\s*W)\b"#)),
+            ("Transistor Polarity", firstRegexCapture(in: text, pattern: #"(?i)\b(NPN|PNP)\b"#)),
+        ]
+        let parameters: [String: String] = Dictionary(uniqueKeysWithValues: parameterPairs.compactMap { key, optionalValue -> (String, String)? in
+            guard let value = optionalValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty else {
+                return nil
+            }
+            return (key, value)
+        })
+        var ratings = CatalogFixtureJSON.normalizedWithDescription(parameters, description: headline)
+        if let voltage = canonicalValue(parameters["Voltage - Collector Emitter Breakdown (Max)"], unit: "V") {
+            ratings["voltage_v"] = voltage
+        }
+        if let current = canonicalValue(parameters["Current - Collector (Ic) (Max)"], unit: "A") {
+            ratings["current_a"] = current
+        }
+        if let power = canonicalValue(parameters["Power - Max"], unit: "W") {
+            ratings["power_w"] = power
+        }
+        let datasheetURL = firstRegexCapture(
+            in: raw,
+            pattern: #"(?i)href=["']([^"']*/(?:download/data-sheet/pdf|pdf/datasheet)/[^"']+\.pdf[^"']*)["']"#
+        ).map { absoluteOnsemiURL($0) } ?? firstRegexCapture(
+            in: raw,
+            pattern: #"(?i)(https://www\.onsemi\.com/(?:download/data-sheet/pdf|pdf/datasheet)/[^\s"'<>]+\.pdf)"#
+        )
+        let lifecycle = text.range(of: "Active", options: [.caseInsensitive]) == nil ? "unknown" : "Active"
+
+        return [
+            ComponentCandidate(
+                mpn: orderableMPN,
+                manufacturer: "onsemi",
+                normalizedCategory: CatalogFixtureJSON.normalizedKey(category),
+                value: headline,
+                package: package,
+                ratings: ratings,
+                lifecycleState: lifecycle,
+                availabilitySummary: "manufacturer evidence only",
+                datasheets: [
+                    DatasheetEvidence(
+                        manufacturer: "onsemi",
+                        mpn: orderableMPN,
+                        url: datasheetURL ?? "",
+                        localPath: nil,
+                        sha256: nil,
+                        providerID: providerID,
+                        retrievedAt: retrievedAt,
+                        license: cachePolicy,
+                        citations: [sourceURL.absoluteString]
+                    ),
+                ].filter { !$0.url.isEmpty },
+                evidence: [
+                    ComponentEvidence(
+                        providerID: providerID,
+                        sourceURL: sourceURL.absoluteString,
+                        localPath: nil,
+                        retrievedAt: retrievedAt,
+                        cachePolicy: cachePolicy,
+                        sha256: nil,
+                        extractedParameters: ratings.merging(["package": package]) { current, _ in current },
+                        confidence: 0.9,
+                        warnings: ["manufacturer_fallback_no_stock_pricing"]
+                    ),
+                ],
+                footprintCandidates: []
+            ),
+        ]
+    }
+
+    private func normalizedHTMLText(_ raw: String) -> String {
+        raw.replacingOccurrences(of: "<[^>]+>", with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&#x2010;", with: "-")
+            .replacingOccurrences(of: "&#x2011;", with: "-")
+            .replacingOccurrences(of: "&#x2012;", with: "-")
+            .replacingOccurrences(of: "&#x2013;", with: "-")
+            .replacingOccurrences(of: "&#x2014;", with: "-")
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+    }
+
+    private func normalizedOnsemiPackage(_ value: String?) -> String {
+        guard let value else { return "" }
+        return value
+            .replacingOccurrences(of: " ", with: "-")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func valueWithUnit(_ value: String?, unit: String) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        if value.range(of: unit, options: [.caseInsensitive]) != nil {
+            return value
+        }
+        return "\(value) \(unit)"
+    }
+
+    private func canonicalValue(_ value: String?, unit: String) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        if let numeric = firstRegexCapture(in: value, pattern: #"(?i)\b(\d+(?:\.\d+)?)\b"#) {
+            return "\(numeric) \(unit)"
+        }
+        return value
+    }
+
+    private func firstRegexCapture(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              match.numberOfRanges > 1,
+              let captureRange = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        let value = String(text[captureRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private func absoluteOnsemiURL(_ value: String) -> String {
+        if value.lowercased().hasPrefix("http") { return value }
+        if value.hasPrefix("/") { return "https://www.onsemi.com\(value)" }
+        return "https://www.onsemi.com/\(value)"
+    }
+}
+
+struct LiveOnsemiCatalogProvider: LiveCatalogProviderClient {
+    let providerID = "onsemi"
+    var productURLTemplate: String
+    var transport: any CatalogHTTPTransport
+    var now: @Sendable () -> Date
+
+    init(
+        productURLTemplate: String = "https://www.onsemi.com/products/discrete-power-modules/audio-transistors/{base_mpn}",
+        transport: any CatalogHTTPTransport = URLSession.shared,
+        now: @escaping @Sendable () -> Date = { Date() }
+    ) {
+        self.productURLTemplate = productURLTemplate
+        self.transport = transport
+        self.now = now
+    }
+
+    func search(_ request: ComponentSearchRequest) async throws -> [ComponentCandidate] {
+        try await searchWithRawResponse(request).candidates
+    }
+
+    func searchWithRawResponse(_ request: ComponentSearchRequest) async throws -> LiveCatalogSearchResult {
+        let mpn = exactMPN(from: request)
+        guard !mpn.isEmpty else {
+            throw LiveCatalogProviderError.invalidEndpoint("onsemi fallback requires exact manufacturer_part_number or mpn")
+        }
+        let url = productURL(for: mpn, request: request)
+        var urlRequest = URLRequest(url: url, timeoutInterval: 20)
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("text/html,application/xhtml+xml", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("Merlin electronics plugin manufacturer fallback", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await transport.data(for: urlRequest)
+        try validate(response: response)
+        let retrievedAt = ISO8601DateFormatter().string(from: now())
+        let candidates = try OnsemiCatalogProviderAdapter()
+            .mapProductPage(data, sourceURL: url, requestedMPN: mpn, retrievedAt: retrievedAt, cachePolicy: "live_manufacturer_fallback")
+            .map { liveAnnotated($0, retrievedAt: retrievedAt, cachePolicy: "live_manufacturer_fallback") }
+        return LiveCatalogSearchResult(candidates: candidates, rawResponse: data, requestURL: url)
+    }
+
+    private func exactMPN(from request: ComponentSearchRequest) -> String {
+        [
+            request.constraints["manufacturer_part_number"],
+            request.constraints["mpn"],
+            request.constraints["catalog_search_keyword"],
+        ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty && !$0.contains(" ") } ?? ""
+    }
+
+    private func productURL(for mpn: String, request: ComponentSearchRequest) -> URL {
+        if let explicit = request.constraints["onsemi_product_url"],
+           let url = URL(string: explicit.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return url
+        }
+        let base = onsemiBaseMPN(mpn)
+        let text = productURLTemplate
+            .replacingOccurrences(of: "{mpn}", with: mpn.lowercased())
+            .replacingOccurrences(of: "{base_mpn}", with: base.lowercased())
+        return URL(string: text) ?? URL(string: "https://www.onsemi.com/products/\(base.lowercased())")!
+    }
+
+    private func onsemiBaseMPN(_ mpn: String) -> String {
+        let trimmed = mpn.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasSuffix("G"), trimmed.count > 1 {
+            return String(trimmed.dropLast())
+        }
+        return trimmed
+    }
+
+    private func validate(response: URLResponse) throws {
+        guard let http = response as? HTTPURLResponse else { return }
+        if http.statusCode == 429 {
+            throw LiveCatalogProviderError.rateLimited(retryAfterSeconds: retryAfterSeconds(from: http))
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw LiveCatalogProviderError.httpStatus(http.statusCode)
+        }
+    }
+}
+
 private func liveAnnotated(_ candidate: ComponentCandidate, retrievedAt: String, cachePolicy: String) -> ComponentCandidate {
     var candidate = candidate
     candidate.evidence = candidate.evidence.map { evidence in

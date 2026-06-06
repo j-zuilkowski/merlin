@@ -280,10 +280,12 @@ struct CircuitIRSchematicParityChecker: Sendable {
     ) -> ElectronicsSchemaValidationResult {
         var issues: [ElectronicsSchemaIssue] = []
         let symbolsByReference = Dictionary(
-            uniqueKeysWithValues: schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+            schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+                guard symbol.emitsKiCadSymbol else { return nil }
                 guard let reference = symbol.property(named: "Reference") else { return nil }
                 return (reference, symbol)
-            }
+            },
+            uniquingKeysWith: { first, _ in first }
         )
         let labels = Set(schematic.labels.map(\.text))
 

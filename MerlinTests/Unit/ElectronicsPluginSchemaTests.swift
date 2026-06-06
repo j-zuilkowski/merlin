@@ -19,6 +19,9 @@ final class ElectronicsPluginSchemaTests: XCTestCase {
             $0.key == "catalog_provider_trustedparts_enabled" && $0.defaultValue == .boolean(false)
         })
         XCTAssertTrue(schema.fields.contains {
+            $0.key == "catalog_provider_onsemi_enabled" && $0.defaultValue == .boolean(false)
+        })
+        XCTAssertTrue(schema.fields.contains {
             $0.key == "catalog_provider_vendor_feed_enabled" && $0.defaultValue == .boolean(true)
         })
     }

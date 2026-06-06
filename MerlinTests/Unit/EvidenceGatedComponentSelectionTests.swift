@@ -39,6 +39,32 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.providers, ["fixture"])
     }
 
+    func testExactManufacturerPartNumberConstraintRejectsCompatibleWrongTransistor() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: ["manufacturer_part_number": "MJ15003G"]
+        ), root: root)
+        let catalogURL = try writeCandidates([
+            validCandidate(mpn: "J113", category: "transistor"),
+            validCandidate(mpn: "MJ15003G", category: "transistor"),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+        XCTAssertFalse(matrix.decisions.first?.candidateSet.contains { $0.mpn == "J113" } ?? true)
+    }
+
     func testCommodityPassiveVendorProductEvidenceCanSelectWithoutDatasheetURL() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -1466,7 +1492,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(artifact.url.path)","output_directory":"\#(outputURL.path)"}"#
         )
 
-        XCTAssertEqual(compileResponse.status, .ok)
+        XCTAssertEqual(compileResponse.status, .ok, compileResponseDebug(compileResponse))
         XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.kicadProject.rawValue })
         XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
         XCTAssertTrue(compileResponse.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
@@ -2130,6 +2156,123 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
     }
 
+    func testOnsemiFallbackCacheSelectsWhenSourcingProviderIsUnavailable() async throws {
+        let root = try temporaryDirectory()
+        let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+        let cachedCandidate = ComponentCandidate(
+            mpn: "MJ15003G",
+            manufacturer: "onsemi",
+            normalizedCategory: "bipolar_transistors",
+            value: "Bipolar Transistor, NPN, 140 V, 20 A",
+            package: "TO-204-2",
+            ratings: ["voltage_v": "140 V", "current_a": "20 A", "power_w": "250 W", "polarity": "NPN"],
+            lifecycleState: "Active",
+            availabilitySummary: "manufacturer evidence only",
+            datasheets: [
+                DatasheetEvidence(
+                    manufacturer: "onsemi",
+                    mpn: "MJ15003G",
+                    url: "https://www.onsemi.com/download/data-sheet/pdf/mj15003-d.pdf",
+                    localPath: nil,
+                    sha256: nil,
+                    providerID: "onsemi",
+                    retrievedAt: "2026-06-06T18:00:00Z",
+                    license: "live_manufacturer_fallback",
+                    citations: ["https://www.onsemi.com/products/discrete-power-modules/audio-transistors/mj15003"]
+                ),
+            ],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "onsemi",
+                    sourceURL: "https://www.onsemi.com/products/discrete-power-modules/audio-transistors/mj15003",
+                    localPath: nil,
+                    retrievedAt: "2026-06-06T18:00:00Z",
+                    cachePolicy: "live_manufacturer_fallback",
+                    sha256: nil,
+                    extractedParameters: ["mpn": "MJ15003G", "package": "TO-204-2"],
+                    confidence: 0.9,
+                    warnings: ["manufacturer_fallback_no_stock_pricing"]
+                ),
+            ],
+            footprintCandidates: [
+                FootprintCandidate(
+                    library: "Package_TO_SOT_THT",
+                    name: "TO-3",
+                    packageCompatibilityEvidence: "manufacturer package is compatible with TO-3 footprint",
+                    pinPadMap: ["B": "1", "C": "2", "E": "3"],
+                    sourceProviderID: "onsemi",
+                    sourcePath: nil,
+                    threeDModel: nil
+                ),
+            ]
+        )
+        let query = CatalogSearchQueryBuilder().keyword(for: ComponentSearchRequest(
+            refdes: "QOUT1",
+            role: "single-ended Class-A output transistor",
+            constraints: [
+                "component_category": "power_transistor",
+                "manufacturer_part_number": "MJ15003G",
+                "package": "TO-3",
+                "polarity": "NPN",
+                "selected_symbol": "Transistor_BJT:MJ15003G",
+                "source": "circuit_ir",
+                "required_pins": "B,C,E",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["onsemi"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        ))
+        try LiveCatalogQueryCache().write(
+            candidates: [cachedCandidate],
+            rawResponse: Data("<html>cached onsemi product page</html>".utf8),
+            providerID: "onsemi",
+            query: query,
+            requestURL: URL(string: "https://www.onsemi.com/products/discrete-power-modules/audio-transistors/mj15003"),
+            to: cacheDirectory,
+            now: Date()
+        )
+
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(
+            namespace: ElectronicsRuntimePlugin.settingsNamespace,
+            values: [
+                "catalog_provider_mouser_enabled": .boolean(true),
+                "catalog_provider_onsemi_enabled": .boolean(true),
+            ]
+        ))
+        let intentURL = try writeIntent(component(refdes: "QOUT1", role: "single-ended Class-A output transistor"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "QOUT1",
+                role: "single-ended Class-A output transistor",
+                selectedSymbol: "Transistor_BJT:MJ15003G",
+                selectedFootprint: "Package_TO_SOT_THT:TO-3",
+                pins: ["B", "C", "E"],
+                constraints: [
+                    "component_category": "power_transistor",
+                    "manufacturer_part_number": "MJ15003G",
+                    "package": "TO-3",
+                    "polarity": "NPN",
+                ]
+            ),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser","onsemi"],"mouser_api_key_env":"MERLIN_TEST_MISSING_MOUSER_API_KEY","mouser_api_key_keychain_id":"merlin.test.missing.mouser.api_key"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.evidence.first?.providerID, "onsemi")
+        XCTAssertTrue(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED: mouser") })
+        XCTAssertTrue(matrix.cacheMetadata["source"]?.contains("live_catalog_cache") ?? false)
+    }
+
     func testAmpDemoLiveCatalogSelectionSelectsWithLiveEvidence() async throws {
         let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-live-catalog-slice")
         guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_LIVE_CATALOG"] == "1"
@@ -2329,19 +2472,19 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(footprintURL.path)","output_directory":"\#(outputURL.path)"}"#
         )
 
-        XCTAssertEqual(compileResponse.status, .ok)
+        XCTAssertEqual(compileResponse.status, .ok, compileResponseDebug(compileResponse))
         let schematicArtifact = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.schematic.rawValue })
         let schematicText = try String(contentsOf: schematicArtifact.url, encoding: .utf8)
         let schematic = try KiCadSchematicParser().parse(schematicText)
-        XCTAssertEqual(schematic.symbols.count, circuitIR.components.count)
-        XCTAssertFalse(schematic.symbols.contains { $0.emitsKiCadSymbol == false })
+        let emittedSymbols = schematic.symbols.filter(\.emitsKiCadSymbol)
+        XCTAssertEqual(emittedSymbols.count, circuitIR.components.count)
 
-        let symbolsByRefdes = Dictionary(uniqueKeysWithValues: schematic.symbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
+        let symbolsByRefdes = Dictionary(emittedSymbols.compactMap { symbol -> (String, KiCadSchematicDocument.Symbol)? in
             guard let refdes = symbol.property(named: "Reference") else { return nil }
             return (refdes, symbol)
-        })
-        let decisionsByRefdes = Dictionary(uniqueKeysWithValues: matrix.decisions.map { ($0.refdes, $0) })
-        let footprintsByRefdes = Dictionary(uniqueKeysWithValues: footprints.assignments.map { ($0.refdes, $0) })
+        }, uniquingKeysWith: { first, _ in first })
+        let decisionsByRefdes = Dictionary(matrix.decisions.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
+        let footprintsByRefdes = Dictionary(footprints.assignments.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
         for component in circuitIR.components {
             let symbol = try XCTUnwrap(symbolsByRefdes[component.refdes], "Missing real schematic symbol for \(component.refdes)")
             let candidate = try XCTUnwrap(decisionsByRefdes[component.refdes]?.selectedCandidate)
@@ -3359,6 +3502,16 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: .jsonString(payload),
             cancellationGroup: nil
         ))
+    }
+
+    private func compileResponseDebug(_ response: WorkspaceMessageResponse) -> String {
+        let diagnostics = response.diagnostics
+            .map { "\($0.severity): \($0.code): \($0.message)" }
+            .joined(separator: "\n")
+        let payloadText = response.payload?.stringValue() ?? ""
+        return [payloadText, diagnostics]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n")
     }
 
     private func sendERC(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
