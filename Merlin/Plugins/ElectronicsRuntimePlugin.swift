@@ -2016,6 +2016,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             if component.sourceEvidence.isEmpty {
                 warnings.append(compileWarning("SCHEMATIC_SOURCE_EVIDENCE_REQUIRED", "\(component.refdes) has no source evidence.", [component.refdes, schematicPath]))
             }
+            if !component.sourceEvidence.contains(where: { evidence in
+                evidence.kind.hasPrefix("catalog:") || evidence.kind.hasPrefix("datasheet:")
+            }) {
+                warnings.append(compileWarning("SCHEMATIC_CATALOG_EVIDENCE_REQUIRED", "\(component.refdes) has no catalog or datasheet evidence.", [component.refdes, schematicPath]))
+            }
+            if !component.sourceEvidence.contains(where: { $0.kind.hasPrefix("footprint:") }) {
+                warnings.append(compileWarning("SCHEMATIC_FOOTPRINT_EVIDENCE_REQUIRED", "\(component.refdes) has no footprint source evidence.", [component.refdes, schematicPath]))
+            }
             if (symbol.property(named: "Value") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || symbol.property(named: "Value") == component.role {
                 warnings.append(compileWarning("SCHEMATIC_VALUE_REQUIRED", "\(component.refdes) has no concrete value or selected part value.", [component.refdes, schematicPath]))

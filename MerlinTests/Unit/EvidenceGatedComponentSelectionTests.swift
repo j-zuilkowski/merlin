@@ -2248,6 +2248,97 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         print("AmpDemo ERC report: \(ercArtifact.url.path)")
     }
 
+    func testSchematicCompileBlocksSelectedPartWithoutCatalogEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let componentIntent = component(
+            refdes: "R1",
+            role: "bias resistor",
+            constraints: [
+                "component_category": "resistor",
+                "resistance": "10kOhm",
+                "package": "0603",
+            ]
+        )
+        let intentURL = try writeIntent(componentIntent, root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(
+                refdes: "R1",
+                role: "bias resistor",
+                selectedSymbol: "Device:R",
+                pins: ["1", "2"],
+                constraints: [
+                    "component_category": "resistor",
+                    "resistance": "10kOhm",
+                    "value": "10kOhm",
+                ]
+            ),
+        ], root: root)
+        let unevidencedCandidate = ComponentCandidate(
+            mpn: "RC0603FR-0710KL",
+            manufacturer: "Yageo",
+            normalizedCategory: "resistors",
+            value: "10kOhm",
+            package: "0603",
+            ratings: ["resistance": "10kOhm"],
+            lifecycleState: "active",
+            availabilitySummary: "fixture available",
+            datasheets: [],
+            evidence: [],
+            footprintCandidates: []
+        )
+        let matrix = ComponentMatrix(
+            designId: "amp-low-voltage",
+            decisions: [
+                PartSelectionDecision(
+                    refdes: "R1",
+                    status: .selected,
+                    selectedCandidate: unevidencedCandidate,
+                    candidateSet: [unevidencedCandidate],
+                    rationale: "selected fixture candidate without source evidence",
+                    evidenceReferences: [],
+                    unresolvedDecisions: []
+                ),
+            ],
+            warnings: [],
+            providers: ["fixture"],
+            cacheMetadata: [:],
+            components: [componentIntent]
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let matrixURL = root.appendingPathComponent("component-matrix.json")
+        try encoder.encode(matrix).write(to: matrixURL)
+        let footprints = FootprintAssignmentReport(
+            assignments: [
+                FootprintAssignment(
+                    refdes: "R1",
+                    footprint: "Resistor_SMD:R_0603_1608Metric",
+                    source: .exactMPN,
+                    pinPadMap: ["1": "1", "2": "2"],
+                    sourceProviderID: "kicad_local",
+                    sourcePath: "Resistor_SMD:R_0603_1608Metric",
+                    packageCompatibilityEvidence: "fixture footprint evidence"
+                ),
+            ],
+            unknownFootprints: 0
+        )
+        let footprintURL = root.appendingPathComponent("footprints.json")
+        try encoder.encode(footprints).write(to: footprintURL)
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+
+        let response = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(footprintURL.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(result.warnings.contains { $0.code == "SCHEMATIC_CATALOG_EVIDENCE_REQUIRED" })
+        XCTAssertFalse(response.artifacts.contains { $0.kind == ElectronicsArtifactKind.board.rawValue })
+    }
+
     func testAmpDemoEvidenceBackedPCBCompilePlacesAllFootprintsAndRunsDRC() async throws {
         let runSentinel = URL(fileURLWithPath: "/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-pcb-slice")
         guard ProcessInfo.processInfo.environment["RUN_AMPDEMO_PCB_SLICE"] == "1"
