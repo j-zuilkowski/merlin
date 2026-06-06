@@ -1900,6 +1900,100 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
     }
 
+    func testComponentSelectionReusesSavedDatasheetPDFEvidence() async throws {
+        let root = try temporaryDirectory()
+        let catalogCacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+        let datasheetCacheDirectory = root.appendingPathComponent(".merlin/electronics-datasheet-cache", isDirectory: true)
+        let datasheetURL = "http://127.0.0.1:9/RC0603FR-0710KL.pdf"
+        let datasheet = DatasheetEvidence(
+            manufacturer: "Yageo",
+            mpn: "RC0603FR-0710KL",
+            url: datasheetURL,
+            localPath: nil,
+            sha256: nil,
+            providerID: "mouser",
+            retrievedAt: "2026-06-06T16:00:00Z",
+            license: "live_api",
+            citations: []
+        )
+        _ = try await DatasheetPDFCache().resolve(
+            datasheet,
+            in: datasheetCacheDirectory,
+            revalidateAfterSeconds: 86_400,
+            transport: ComponentSelectionDatasheetHTTPTransport(responses: [
+                .init(data: Data("%PDF-1.7 selected resistor datasheet".utf8)),
+            ]),
+            now: Date()
+        )
+        let cachedCandidate = ComponentCandidate(
+            mpn: "RC0603FR-0710KL",
+            manufacturer: "Yageo",
+            normalizedCategory: "resistor",
+            value: "10 kOhms",
+            package: "0603",
+            ratings: ["resistance": "10 kOhms", "power_w": "0.1", "tolerance": "1%"],
+            lifecycleState: "active",
+            availabilitySummary: "Mouser: 9000",
+            datasheets: [datasheet],
+            evidence: [
+                ComponentEvidence(
+                    providerID: "mouser",
+                    sourceURL: "https://www.mouser.test/ProductDetail/Yageo/RC0603FR-0710KL",
+                    localPath: nil,
+                    retrievedAt: "2026-06-06T16:00:00Z",
+                    cachePolicy: "live_api_cache",
+                    sha256: nil,
+                    extractedParameters: ["mpn": "RC0603FR-0710KL", "package": "0603"],
+                    confidence: 1.0,
+                    warnings: []
+                ),
+            ],
+            footprintCandidates: []
+        )
+        let query = CatalogSearchQueryBuilder().keyword(for: ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable boost/cut resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "source": "circuit_ir",
+                "required_pins": "1,2",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        ))
+        try LiveCatalogQueryCache().write(
+            candidates: [cachedCandidate],
+            rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
+            providerID: "mouser",
+            query: query,
+            requestURL: URL(string: "https://api.mouser.test/api/v2/search/keyword"),
+            to: catalogCacheDirectory,
+            now: Date()
+        )
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+        let payload = #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"],"datasheet_cache_directory":"\#(datasheetCacheDirectory.path)"}"#
+
+        let firstResponse = await send(runtime, payload: payload)
+        XCTAssertEqual(firstResponse.status, .ok)
+        let firstDatasheet = try selectedDatasheet(from: firstResponse)
+        let firstPath = try XCTUnwrap(firstDatasheet.localPath)
+        let firstSHA = try XCTUnwrap(firstDatasheet.sha256)
+
+        let secondResponse = await send(runtime, payload: payload)
+        XCTAssertEqual(secondResponse.status, .ok)
+        let secondDatasheet = try selectedDatasheet(from: secondResponse)
+        XCTAssertEqual(secondDatasheet.localPath, firstPath)
+        XCTAssertEqual(secondDatasheet.sha256, firstSHA)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: firstPath))
+    }
+
     func testSourcePolicyJSONCanProvideLiveCatalogProvidersAndCircuitIRPath() async throws {
         let root = try temporaryDirectory()
         let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
@@ -2773,6 +2867,12 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         return try JSONDecoder().decode(ComponentMatrix.self, from: Data(contentsOf: artifact.url))
     }
 
+    private func selectedDatasheet(from response: WorkspaceMessageResponse) throws -> DatasheetEvidence {
+        let matrix = try decodeMatrix(from: response)
+        let candidate = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        return try XCTUnwrap(candidate.datasheets.first)
+    }
+
     private func component(refdes: String, role: String, constraints: [String: String] = [:]) -> ComponentIntent {
         ComponentIntent(
             refdes: refdes,
@@ -3269,5 +3369,36 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+    }
+}
+
+private final class ComponentSelectionDatasheetHTTPTransport: CatalogHTTPTransport, @unchecked Sendable {
+    struct Response: Sendable {
+        var data: Data
+        var statusCode: Int
+        var headers: [String: String]
+
+        init(data: Data, statusCode: Int = 200, headers: [String: String] = [:]) {
+            self.data = data
+            self.statusCode = statusCode
+            self.headers = headers
+        }
+    }
+
+    private var responses: [Response]
+
+    init(responses: [Response]) {
+        self.responses = responses
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        let next = responses.isEmpty ? Response(data: Data(), statusCode: 500) : responses.removeFirst()
+        let response = HTTPURLResponse(
+            url: request.url ?? URL(string: "http://127.0.0.1:9")!,
+            statusCode: next.statusCode,
+            httpVersion: nil,
+            headerFields: next.headers
+        )!
+        return (next.data, response)
     }
 }
