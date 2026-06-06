@@ -118,6 +118,35 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         XCTAssertTrue(result.diagnostics.contains { $0.code == "HIGH_STAKES_REVIEW_REQUIRED" })
     }
 
+    func testWorkflowBlocksMergedHighStakesDomainsBeforeSchematicPCBOrFabAdvance() throws {
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: mixedDomainMergedBoardIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "single_board"),
+            outputDirectory: temporaryDirectory("merged-domain-workflow"),
+            evidence: .ampLowVoltageVerified,
+            approvals: [.highStakesSignoff]
+        ))
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertNotEqual(result.schematicStatus, .schematicVerified)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "MULTIBOARD_DECOMPOSITION_REQUIRED" }, "\(result)")
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "INTERBOARD_CONNECTOR_REQUIRED" }, "\(result)")
+    }
+
+    func testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff() throws {
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
+            outputDirectory: temporaryDirectory("separated-domain-workflow"),
+            evidence: .ampLowVoltageVerified,
+            approvals: [.highStakesSignoff]
+        ))
+
+        XCTAssertEqual(result.status, .fabReady, "\(result)")
+        XCTAssertEqual(result.schematicStatus, .schematicVerified, "\(result)")
+        XCTAssertTrue(result.diagnostics.isEmpty, "\(result)")
+    }
+
     private func loadFixture<T: Decodable>(_ relativePath: String) throws -> T {
         let url = repoRoot()
             .appendingPathComponent("plugins/electronics/fixtures")
@@ -166,6 +195,87 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
                 VerificationScenario(id: "spice", kind: "spice", expectation: "output power envelope"),
             ]
         )
+    }
+
+    private func mixedDomainMergedBoardIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_power_controller",
+            title: "Generic mixed mains and low-voltage controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Design a board with mains input, transformer primary, isolated low-voltage controller, and signal output.", priority: "must"),
+            ],
+            assumptions: [],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(id: "single_board", title: "Merged power and control board", safetyDomain: "mains_and_low_voltage"),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains input and isolated low-voltage control are both required."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false)
+        )
+    }
+
+    private func separatedDomainIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_power_controller",
+            title: "Generic mixed mains and low-voltage controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Design a mains transformer supply and isolated low-voltage controller as separate safety domains.", priority: "must"),
+            ],
+            assumptions: [
+                Assumption(id: "assume-1", text: "Hazardous mains and isolated low-voltage circuitry are separate board domains.", rationale: "Isolation boundary and review requirements differ."),
+            ],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(
+                    id: "mains_power",
+                    title: "Mains transformer board",
+                    safetyDomain: "mains_primary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JSEC", targetBoardId: "low_voltage_control", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+                BoardIntent(
+                    id: "low_voltage_control",
+                    title: "Low voltage control board",
+                    safetyDomain: "isolated_secondary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JPRI", targetBoardId: "mains_power", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains and isolated secondary domains are separated."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        )
+    }
+
+    private func mixedDomainCircuitIR(boardId: String) -> CircuitIR {
+        var ir = compositeCircuitIR()
+        ir.designId = "generic_mixed_power_controller"
+        ir.boardId = boardId
+        ir.components[0].refdes = "Q1"
+        ir.components[0].role = "low-voltage control transistor"
+        ir.components[0].manufacturerPartNumber = "2N3904"
+        ir.components[0].sourceEvidence = [SourceEvidence(kind: "datasheet", reference: "2N3904 datasheet")]
+        ir.components[0].pins = [
+            CircuitPin(componentRefdes: "Q1", pinNumber: "1", canonicalName: "B", electricalType: "input", symbolPin: "1", footprintPad: "1"),
+            CircuitPin(componentRefdes: "Q1", pinNumber: "2", canonicalName: "C", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+        ]
+        ir.nets = [
+            CircuitNet(
+                name: "CTRL_IN",
+                role: "control input",
+                endpoints: [CircuitNetEndpoint(componentRefdes: "Q1", pinNumber: "1")],
+                netClass: "signal",
+                safetyDomain: "isolated_secondary"
+            ),
+        ]
+        return ir
     }
 
     private func temporaryDirectory(_ name: String) -> URL {

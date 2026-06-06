@@ -30,3 +30,31 @@ structured requirements for any electronics request.
 Focused tests fail because Merlin does not yet have a generic design
 decomposition gate that enforces board/domain boundaries before downstream
 electronics workflow advancement.
+
+## Fail-First Evidence
+
+Command:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionBlocksMergedMainsAndLowVoltageDomains \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionPassesSeparatedDomainEvidence \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testCircuitIRBoardIDMustReferenceDesignIntentBoard \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowBlocksMergedHighStakesDomainsBeforeSchematicPCBOrFabAdvance \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff
+```
+
+Result: `TEST FAILED` before implementation. The build failed because
+`InterBoardConnectorIntent` did not exist and `BoardIntent` did not accept
+per-board `verificationPlan` or `interBoardConnectors` evidence.
+
+## Tests Added
+
+- `ElectronicsPluginSchemaTests` now proves merged mains plus isolated
+  low-voltage domains are blocked with `MULTIBOARD_DECOMPOSITION_REQUIRED`,
+  `INTERBOARD_CONNECTOR_REQUIRED`, and `BOARD_VERIFICATION_PLAN_REQUIRED`.
+- `ElectronicsPluginSchemaTests` proves separated board/domain evidence passes
+  and that Circuit IR `board_id` must reference a declared `DesignIntent` board.
+- `ElectronicsEndToEndHarnessTests` proves the full workflow cannot advance
+  schematic/PCB/fabrication status from a merged high-stakes domain, while the
+  same workflow can carry separated board/domain evidence through the handoff.

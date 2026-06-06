@@ -124,6 +124,37 @@ final class ElectronicsPluginSchemaTests: XCTestCase {
         XCTAssertTrue(result.blocksKiCadMutation)
     }
 
+    func testGenericMultiboardDecompositionBlocksMergedMainsAndLowVoltageDomains() {
+        let result = ElectronicsSchemaValidator.validateReadyForKiCadMutation(
+            designIntent: mixedDomainMergedBoardIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "single_board")
+        )
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.contains(code: "MULTIBOARD_DECOMPOSITION_REQUIRED"))
+        XCTAssertTrue(result.contains(code: "INTERBOARD_CONNECTOR_REQUIRED"))
+        XCTAssertTrue(result.contains(code: "BOARD_VERIFICATION_PLAN_REQUIRED"))
+    }
+
+    func testGenericMultiboardDecompositionPassesSeparatedDomainEvidence() {
+        let result = ElectronicsSchemaValidator.validateReadyForKiCadMutation(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control")
+        )
+
+        XCTAssertTrue(result.isValid, result.issues.map(\.message).joined(separator: "\n"))
+    }
+
+    func testCircuitIRBoardIDMustReferenceDesignIntentBoard() {
+        let result = ElectronicsSchemaValidator.validateReadyForKiCadMutation(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "unknown_board")
+        )
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.contains(code: "CIRCUIT_IR_BOARD_UNKNOWN"))
+    }
+
     private func validApprovedIntent() -> DesignIntent {
         DesignIntent(
             designId: "amp-low-voltage",
@@ -185,6 +216,71 @@ final class ElectronicsPluginSchemaTests: XCTestCase {
                 VerificationScenario(id: "erc-basic", kind: "erc", expectation: "No blocking ERC errors"),
             ]
         )
+    }
+
+    private func mixedDomainMergedBoardIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_power_controller",
+            title: "Generic mixed mains and low-voltage controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Design a board with mains input, transformer primary, isolated low-voltage controller, and signal output.", priority: "must"),
+            ],
+            assumptions: [],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(id: "single_board", title: "Merged power and control board", safetyDomain: "mains_and_low_voltage"),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains input and isolated low-voltage control are both required."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false)
+        )
+    }
+
+    private func separatedDomainIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_power_controller",
+            title: "Generic mixed mains and low-voltage controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Design a mains transformer supply and isolated low-voltage controller as separate safety domains.", priority: "must"),
+            ],
+            assumptions: [
+                Assumption(id: "assume-1", text: "Hazardous mains and isolated low-voltage circuitry are separate board domains.", rationale: "Isolation boundary and review requirements differ."),
+            ],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(
+                    id: "mains_power",
+                    title: "Mains transformer board",
+                    safetyDomain: "mains_primary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JSEC", targetBoardId: "low_voltage_control", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+                BoardIntent(
+                    id: "low_voltage_control",
+                    title: "Low voltage control board",
+                    safetyDomain: "isolated_secondary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JPRI", targetBoardId: "mains_power", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains and isolated secondary domains are separated."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        )
+    }
+
+    private func mixedDomainCircuitIR(boardId: String) -> CircuitIR {
+        var ir = validCircuitIR()
+        ir.designId = "generic_mixed_power_controller"
+        ir.boardId = boardId
+        ir.nets[0].safetyDomain = "isolated_secondary"
+        return ir
     }
 
     private func XCTAssertRoundTrips<T: Codable & Equatable>(

@@ -4019,9 +4019,33 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 BoardIntent(
                     id: value["id"] as? String ?? "board-\(index + 1)",
                     title: value["title"] as? String ?? "Board \(index + 1)",
-                    safetyDomain: value["safety_domain"] as? String ?? value["safetyDomain"] as? String ?? "unspecified"
+                    safetyDomain: value["safety_domain"] as? String ?? value["safetyDomain"] as? String ?? "unspecified",
+                    verificationPlan: value["verification_plan"] == nil ? nil : verificationPlan(from: value),
+                    interBoardConnectors: interBoardConnectors(from: value)
                 )
             }
+        }
+        if requiresMixedDomainBoardDecomposition(from: object) {
+            return [
+                BoardIntent(
+                    id: "isolated_secondary",
+                    title: "Isolated Low-Voltage Board",
+                    safetyDomain: "isolated_secondary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JPRI", targetBoardId: "mains_power", signalRole: "isolated power handoff"),
+                    ]
+                ),
+                BoardIntent(
+                    id: "mains_power",
+                    title: "Mains Primary and Transformer Board",
+                    safetyDomain: "mains_primary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JSEC", targetBoardId: "isolated_secondary", signalRole: "isolated power handoff"),
+                    ]
+                ),
+            ]
         }
         if object["pcb_secondary_only"] as? Bool == true || object["mains_on_pcb"] as? Bool == false {
             return [BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary")]
@@ -4033,6 +4057,53 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return [BoardIntent(id: "isolated_secondary", title: "Isolated Low-Voltage Secondary PCB", safetyDomain: "isolated_secondary")]
         }
         return []
+    }
+
+    private func interBoardConnectors(from object: [String: Any]) -> [InterBoardConnectorIntent] {
+        guard let values = object["inter_board_connectors"] as? [[String: Any]]
+            ?? object["interBoardConnectors"] as? [[String: Any]] else {
+            return []
+        }
+        return values.enumerated().map { index, value in
+            InterBoardConnectorIntent(
+                id: value["id"] as? String ?? "J\(index + 1)",
+                targetBoardId: value["target_board_id"] as? String ?? value["targetBoardId"] as? String ?? "",
+                signalRole: value["signal_role"] as? String ?? value["signalRole"] as? String ?? "unspecified inter-board handoff"
+            )
+        }
+    }
+
+    private func requiresMixedDomainBoardDecomposition(from object: [String: Any]) -> Bool {
+        let text = (
+            requirements(from: object).map(\.text)
+            + assumptions(from: object).map(\.text)
+            + stringArray(object["safety_notes"])
+            + [
+                object["mains_isolation"] as? String,
+                object["pcb_domain"] as? String,
+                object["power_domain"] as? String,
+            ].compactMap { $0 }
+        )
+        .joined(separator: " ")
+        .lowercased()
+
+        let hasHazardousPower = text.contains("mains")
+            || text.contains("line voltage")
+            || text.contains("hazardous")
+            || text.contains("transformer primary")
+            || text.contains("primary side")
+            || text.contains("mains_primary")
+            || object["mains_primary_offboard"] as? Bool == true
+            || object["mains_on_pcb"] as? Bool == true
+
+        let hasLowVoltageDomain = text.contains("low-voltage")
+            || text.contains("low voltage")
+            || text.contains("isolated")
+            || text.contains("secondary")
+            || text.contains("control")
+            || object["pcb_secondary_only"] as? Bool == true
+
+        return hasHazardousPower && hasLowVoltageDomain
     }
 
     private func safetyProfile(from object: [String: Any]) -> SafetyProfile {

@@ -120,11 +120,61 @@ struct BoardIntent: Codable, Sendable, Equatable {
     var id: String
     var title: String
     var safetyDomain: String
+    var verificationPlan: VerificationPlan?
+    var interBoardConnectors: [InterBoardConnectorIntent]
+
+    init(
+        id: String,
+        title: String,
+        safetyDomain: String,
+        verificationPlan: VerificationPlan? = nil,
+        interBoardConnectors: [InterBoardConnectorIntent] = []
+    ) {
+        self.id = id
+        self.title = title
+        self.safetyDomain = safetyDomain
+        self.verificationPlan = verificationPlan
+        self.interBoardConnectors = interBoardConnectors
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
         case title
         case safetyDomain = "safety_domain"
+        case verificationPlan = "verification_plan"
+        case interBoardConnectors = "inter_board_connectors"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        title = try container.decode(String.self, forKey: .title)
+        safetyDomain = try container.decode(String.self, forKey: .safetyDomain)
+        verificationPlan = try container.decodeIfPresent(VerificationPlan.self, forKey: .verificationPlan)
+        interBoardConnectors = try container.decodeIfPresent([InterBoardConnectorIntent].self, forKey: .interBoardConnectors) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(safetyDomain, forKey: .safetyDomain)
+        try container.encodeIfPresent(verificationPlan, forKey: .verificationPlan)
+        if !interBoardConnectors.isEmpty {
+            try container.encode(interBoardConnectors, forKey: .interBoardConnectors)
+        }
+    }
+}
+
+struct InterBoardConnectorIntent: Codable, Sendable, Equatable {
+    var id: String
+    var targetBoardId: String
+    var signalRole: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case targetBoardId = "target_board_id"
+        case signalRole = "signal_role"
     }
 }
 
@@ -581,6 +631,18 @@ enum ElectronicsSchemaValidator {
             ))
         }
 
+        if !designIntent.boards.isEmpty {
+            let boardIDs = Set(designIntent.boards.map(\.id))
+            if !boardIDs.contains(circuitIR.boardId) {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "CIRCUIT_IR_BOARD_UNKNOWN",
+                    message: "Circuit IR board_id \(circuitIR.boardId) does not match a board declared by DesignIntent."
+                ))
+            }
+        }
+
+        issues.append(contentsOf: validateMultiBoardDecomposition(designIntent))
+
         if circuitIR.components.isEmpty {
             issues.append(ElectronicsSchemaIssue(
                 code: "COMPONENTS_MISSING",
@@ -624,5 +686,88 @@ enum ElectronicsSchemaValidator {
         }
 
         return ElectronicsSchemaValidationResult(issues: issues)
+    }
+
+    private static func validateMultiBoardDecomposition(_ intent: DesignIntent) -> [ElectronicsSchemaIssue] {
+        guard requiresHazardousLowVoltageDecomposition(intent) else { return [] }
+
+        let boardIDs = Set(intent.boards.map(\.id))
+        let connectors = intent.boards.flatMap(\.interBoardConnectors)
+        var issues: [ElectronicsSchemaIssue] = []
+
+        if intent.boards.count < 2 || intent.boards.contains(where: { isMergedHazardousLowVoltageDomain($0.safetyDomain) }) {
+            issues.append(ElectronicsSchemaIssue(
+                code: "MULTIBOARD_DECOMPOSITION_REQUIRED",
+                message: "DesignIntent mixes hazardous and isolated low-voltage domains without separate board intent evidence."
+            ))
+        }
+
+        if intent.boards.contains(where: { $0.verificationPlan == nil }) {
+            issues.append(ElectronicsSchemaIssue(
+                code: "BOARD_VERIFICATION_PLAN_REQUIRED",
+                message: "Each board in a mixed-domain design must declare its own ERC/DRC/SPICE verification plan."
+            ))
+        }
+
+        let hasCrossBoardConnector = intent.boards.contains { board in
+            board.interBoardConnectors.contains { connector in
+                connector.targetBoardId != board.id && boardIDs.contains(connector.targetBoardId)
+            }
+        }
+        if !hasCrossBoardConnector {
+            issues.append(ElectronicsSchemaIssue(
+                code: "INTERBOARD_CONNECTOR_REQUIRED",
+                message: "Mixed-domain decomposition must declare connector evidence across the isolated board boundary."
+            ))
+        }
+
+        for connector in connectors where !boardIDs.contains(connector.targetBoardId) {
+            issues.append(ElectronicsSchemaIssue(
+                code: "INTERBOARD_CONNECTOR_TARGET_UNKNOWN",
+                message: "Inter-board connector \(connector.id) targets unknown board \(connector.targetBoardId)."
+            ))
+        }
+
+        return issues
+    }
+
+    private static func requiresHazardousLowVoltageDecomposition(_ intent: DesignIntent) -> Bool {
+        guard intent.safetyProfile.isolationRequired else { return false }
+        let evidenceText = (
+            intent.requirements.map(\.text)
+            + intent.assumptions.map(\.text)
+            + intent.components.map(\.role)
+            + intent.nets.flatMap { [$0.role, $0.source, $0.destination] }
+            + intent.boards.flatMap { [$0.title, $0.safetyDomain] }
+        )
+        .joined(separator: " ")
+        .lowercased()
+
+        return containsHazardousPowerTerm(evidenceText)
+            && containsIsolatedLowVoltageTerm(evidenceText)
+    }
+
+    private static func isMergedHazardousLowVoltageDomain(_ domain: String) -> Bool {
+        let lowered = domain.lowercased()
+        return containsHazardousPowerTerm(lowered)
+            && containsIsolatedLowVoltageTerm(lowered)
+    }
+
+    private static func containsHazardousPowerTerm(_ text: String) -> Bool {
+        text.contains("mains")
+            || text.contains("line voltage")
+            || text.contains("hazardous")
+            || text.contains("transformer primary")
+            || text.contains("primary side")
+            || text.contains("mains_primary")
+            || text.contains("protective earth")
+    }
+
+    private static func containsIsolatedLowVoltageTerm(_ text: String) -> Bool {
+        text.contains("low-voltage")
+            || text.contains("low voltage")
+            || text.contains("isolated")
+            || text.contains("secondary")
+            || text.contains("control")
     }
 }

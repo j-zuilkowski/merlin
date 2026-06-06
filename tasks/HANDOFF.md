@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 467.
+workflows. Latest completed task is Task 468.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 468 — generic multi-board decomposition gates
 - Task 467 — gate schematic realism before workflow verification
 - Task 466 — wire full workflow SPICE evidence gates
 - `97491b9` — Task 465: gate SPICE models and repair bounds
@@ -72,8 +73,8 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 466 was committed. Task 467 completed the
-schematic realism gate and focused schematic/harness tests below.
+The repo was clean after Task 467 was committed. Task 468 completed the generic
+multi-board decomposition gate and focused schema/workflow/runtime tests below.
 
 ## Current Electronics Plugin State
 
@@ -103,6 +104,12 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   `merlin-electronics` generator provenance, emitted KiCad symbols for Circuit
   IR components, matching selected symbols/footprints/source/pins, emitted
   connectivity labels, and no metadata-only/composite block caricatures.
+- DesignIntent board evidence now carries per-board verification plans and
+  inter-board connector records. Mixed hazardous mains/primary plus isolated
+  low-voltage requests must decompose into separate board domains before
+  schematic, PCB, SPICE, BOM, or fabrication workflow advancement.
+- Circuit IR `board_id` must reference a declared DesignIntent board before
+  KiCad mutation can proceed.
 - ERC warnings and DRC violations block progress until parsed repair evidence
   is generated and rerun.
 - SPICE now requires:
@@ -118,6 +125,28 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
     measurement envelopes, not a generic smoke deck;
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
+
+Task 468 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionBlocksMergedMainsAndLowVoltageDomains \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionPassesSeparatedDomainEvidence \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testCircuitIRBoardIDMustReferenceDesignIntentBoard \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowBlocksMergedHighStakesDomainsBeforeSchematicPCBOrFabAdvance \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff
+```
+
+Result: `TEST SUCCEEDED`, 5 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testAmpDemoSpecFileBuildsMeaningfulDesignIntent \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testStructuredConstraintsPopulateDesignIntentInsteadOfEmptyDraft \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testConstraintOnlyPayloadSynthesizesReusableClassATopologyEvidence
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
 
 Task 467 focused test command passed:
 
@@ -186,25 +215,19 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Implement generic multi-board design decomposition so Merlin derives board
-   boundaries, safety domains, isolation barriers, inter-board connectors, and
-   verification plans from any electronics `DesignIntent`. AmpDemo is only a
-   regression fixture: the expected behavior is that Merlin independently
-   separates mains/transformer and low-voltage amplifier domains when the
-   request implies that split, not that Codex manually splits the sample design.
-2. Continue generic topology/materialization from structured `DesignIntent`
+1. Continue generic topology/materialization from structured `DesignIntent`
    instead of AmpDemo-specific shortcuts.
-3. Run full ERC repair loops: parse failures, apply bounded repairs, rerun until
+2. Run full ERC repair loops: parse failures, apply bounded repairs, rerun until
    pass or explicitly blocked.
-4. Run full DRC/layout repair loops: placement, routing, DRC, repair, rerun
+3. Run full DRC/layout repair loops: placement, routing, DRC, repair, rerun
    until pass or explicitly blocked.
-5. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
+4. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
    datasheets, stock/price evidence, and real BOM artifact.
-6. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
+5. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
    pick-and-place, drawings, and consolidated verification report.
-7. Verify GUI job state consistency: slot status, electronics job list, and live
+6. Verify GUI job state consistency: slot status, electronics job list, and live
    leaderboard must agree about running/blocked/complete jobs.
-8. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
+7. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
    pass with app-only screenshots captured while the app is working.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
