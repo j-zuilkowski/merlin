@@ -1,3 +1,5 @@
+Status: complete
+
 # Task 440b - Runtime ERC Repair Action
 
 Date: 2026-05-30
