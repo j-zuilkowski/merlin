@@ -55,6 +55,8 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(reportText.contains(#""violations""#), reportText)
         XCTAssertFalse(reportText.contains(#""wire_dangling""#), reportText)
         XCTAssertFalse(reportText.contains(#""label_dangling""#), reportText)
+        XCTAssertFalse(reportText.contains(#""label_multiple_wires""#), reportText)
+        XCTAssertFalse(reportText.contains(#""multiple_net_names""#), reportText)
         XCTAssertTrue(reportText.contains(#""pin_not_connected""#) || reportText.contains(#""pin_not_driven""#), reportText)
     }
 
@@ -72,7 +74,7 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         let parsed = try KiCadSchematicParser().parse(String(contentsOf: result.schematicURL, encoding: .utf8))
         XCTAssertEqual(parsed.symbols.count, 2)
         XCTAssertEqual(Set(parsed.labels.map(\.text)), ["DRV_OUT", "GND"])
-        XCTAssertEqual(parsed.wires.count, 1)
+        XCTAssertEqual(parsed.wires.count, 3)
     }
 
     func testMultiEndpointNetDoesNotPlaceConnectivityLabelOnStarJunction() throws {
@@ -80,7 +82,7 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         let serialized = try KiCadSchematicWriter().write(document)
         let parsed = try KiCadSchematicParser().parse(serialized)
 
-        XCTAssertEqual(parsed.wires.count, 2)
+        XCTAssertEqual(parsed.wires.count, 4)
         XCTAssertFalse(
             parsed.labels.contains {
                 $0.text == "DRV_OUT"

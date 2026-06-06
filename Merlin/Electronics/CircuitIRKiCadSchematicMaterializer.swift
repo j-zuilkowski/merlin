@@ -151,26 +151,21 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
         var wires: [KiCadSchematicDocument.Wire] = []
         var seen = Set<String>()
         for net in circuitIR.nets {
-            let points = uniquePoints(net.endpoints.compactMap { endpoint in
-                pinPoint(for: endpoint, circuitIR: circuitIR)
-            })
-            guard let first = points.first, points.count > 1 else { continue }
-            for point in points.dropFirst() where first != point {
-                let key = wireKey(first, point)
+            for endpoint in net.endpoints {
+                guard let stub = endpointStub(for: endpoint, circuitIR: circuitIR) else { continue }
+                let key = wireKey(stub.pinPoint, stub.labelPoint)
                 guard seen.insert(key).inserted else { continue }
-                wires.append(KiCadSchematicDocument.Wire(start: first, end: point))
+                wires.append(KiCadSchematicDocument.Wire(start: stub.pinPoint, end: stub.labelPoint))
             }
         }
         return wires
     }
 
     private func labels(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Label] {
-        let pointDegrees = wireEndpointDegrees(for: circuitIR)
         return circuitIR.nets.flatMap { net -> [KiCadSchematicDocument.Label] in
             let labels = net.endpoints.compactMap { endpoint -> KiCadSchematicDocument.Label? in
-                guard let at = pinPoint(for: endpoint, circuitIR: circuitIR) else { return nil }
-                guard (pointDegrees[pointKey(at)] ?? 0) <= 1 else { return nil }
-                return KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: true, at: at)
+                guard let stub = endpointStub(for: endpoint, circuitIR: circuitIR) else { return nil }
+                return KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: true, at: stub.labelPoint)
             }
             if labels.isEmpty {
                 return [KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: false)]
@@ -213,22 +208,33 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func junctions(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Junction] {
-        circuitIR.nets.compactMap { net in
-            let points = uniquePoints(net.endpoints.compactMap { endpoint in
-                pinPoint(for: endpoint, circuitIR: circuitIR)
-            })
-            guard points.count > 2, let first = points.first else { return nil }
-            return KiCadSchematicDocument.Junction(at: first)
-        }
+        []
     }
 
-    private func wireEndpointDegrees(for circuitIR: CircuitIR) -> [String: Int] {
-        var degrees: [String: Int] = [:]
-        for wire in wires(for: circuitIR) {
-            degrees[pointKey(wire.start), default: 0] += 1
-            degrees[pointKey(wire.end), default: 0] += 1
+    private struct EndpointStub {
+        var pinPoint: KiCadSchematicDocument.Point
+        var labelPoint: KiCadSchematicDocument.Point
+    }
+
+    private func endpointStub(
+        for endpoint: CircuitNetEndpoint,
+        circuitIR: CircuitIR
+    ) -> EndpointStub? {
+        guard let index = circuitIR.components.firstIndex(where: { $0.refdes == endpoint.componentRefdes }) else {
+            return nil
         }
-        return degrees
+        let component = circuitIR.components[index]
+        guard let pin = component.pins.first(where: { $0.pinNumber == endpoint.pinNumber }),
+              let offset = pinOffset(component: component, pin: pin),
+              let pinPoint = pinPoint(for: endpoint, circuitIR: circuitIR) else {
+            return nil
+        }
+        let horizontalDirection = offset.x < 0 ? -1.0 : 1.0
+        let labelPoint = KiCadSchematicDocument.Point(
+            x: pinPoint.x + horizontalDirection * 5.08,
+            y: pinPoint.y
+        )
+        return EndpointStub(pinPoint: pinPoint, labelPoint: labelPoint)
     }
 
     private func uniquePoints(_ points: [KiCadSchematicDocument.Point]) -> [KiCadSchematicDocument.Point] {

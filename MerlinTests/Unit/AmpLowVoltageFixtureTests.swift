@@ -127,10 +127,10 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
             kicadSchematicPath: materialized.schematicURL.path,
             ercReportPath: reportURL.path,
             hasSchematicVerificationReport: true,
-            blockingERCViolations: report.blockingViolations,
+            blockingERCViolations: report.schematicVerificationBlockingViolations,
             repairLoopStatus: repairResult.status
         ))
-        if report.blockingViolations.isEmpty {
+        if report.schematicVerificationBlockingViolations.isEmpty {
             XCTAssertEqual(verification.status, .schematicVerified)
         } else {
             XCTAssertEqual(verification.status, .blocked)

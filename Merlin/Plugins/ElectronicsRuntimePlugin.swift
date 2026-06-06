@@ -2437,7 +2437,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         switch outputKind {
         case "erc_report":
             guard let report = try? KiCadERCParser().parse(jsonData: data) else { return nil }
-            let blocking = report.blockingViolations
+            let blocking = report.schematicVerificationBlockingViolations
             guard !blocking.isEmpty else { return nil }
             return validationDiagnosticBlock(
                 request,

@@ -26,6 +26,24 @@ final class SchematicVerifiedStatusTests: XCTestCase {
         XCTAssertEqual(result.diagnostics.map(\.code), ["BLOCKING_ERC_VIOLATION"])
     }
 
+    func testSchematicVerifiedBlocksOnVerificationBlockingERCWarnings() {
+        var evidence = SchematicVerificationEvidence.complete
+        evidence.blockingERCViolations = [
+            KiCadERCViolation(
+                id: "erc-warning-1",
+                code: "multiple_net_names",
+                severity: .warning,
+                message: "Two labels are attached to the same schematic item.",
+                refs: ["PRE_OUT", "TONE_OUT"]
+            ),
+        ]
+
+        let result = SchematicVerificationGate().evaluate(evidence)
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.diagnostics.map(\.code), ["BLOCKING_ERC_VIOLATION"])
+    }
+
     func testSchematicVerifiedStatusRequiresVerifiedRepairLoopResult() {
         var evidence = SchematicVerificationEvidence.complete
         evidence.repairLoopStatus = .blocked

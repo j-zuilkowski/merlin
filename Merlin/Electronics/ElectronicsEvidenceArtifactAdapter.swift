@@ -87,7 +87,7 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
             pcb: pcbEvidence(from: drcReport, drcReportPath: paths.drcReportPath),
             spice: try spiceEvidence(from: paths),
             fabrication: FabricationReleaseEvidence(
-                schematicVerified: ercReports.last?.blockingViolations.isEmpty ?? false,
+                schematicVerified: ercReports.last?.schematicVerificationBlockingViolations.isEmpty ?? false,
                 pcbVerified: drcReport?.blockingViolations.isEmpty ?? false,
                 ercReportPath: paths.ercReportPaths.last,
                 drcReportPath: paths.drcReportPath,

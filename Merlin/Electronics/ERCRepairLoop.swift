@@ -16,6 +16,15 @@ struct KiCadERCViolation: Codable, Sendable, Equatable {
     var severity: KiCadERCSeverity
     var message: String
     var refs: [String]
+
+    var blocksSchematicVerification: Bool {
+        severity.isBlocking || Self.schematicQualityBlockingCodes.contains(code)
+    }
+
+    private static let schematicQualityBlockingCodes: Set<String> = [
+        "label_multiple_wires",
+        "multiple_net_names",
+    ]
 }
 
 struct KiCadERCReport: Codable, Sendable, Equatable {
@@ -23,6 +32,10 @@ struct KiCadERCReport: Codable, Sendable, Equatable {
 
     var blockingViolations: [KiCadERCViolation] {
         violations.filter { $0.severity.isBlocking }
+    }
+
+    var schematicVerificationBlockingViolations: [KiCadERCViolation] {
+        violations.filter(\.blocksSchematicVerification)
     }
 }
 
@@ -73,7 +86,7 @@ struct ERCRepairPlanner: Sendable {
         var patches: [ERCRepairPatch] = []
         var unsupported: [KiCadERCViolation] = []
 
-        for violation in report.blockingViolations {
+        for violation in report.schematicVerificationBlockingViolations {
             guard let repairClass = classify(violation, circuitIR: circuitIR, resolverEvidence: resolverEvidence) else {
                 unsupported.append(violation)
                 continue
@@ -96,6 +109,10 @@ struct ERCRepairPlanner: Sendable {
         resolverEvidence: [KiCadLibraryPinResolution]
     ) -> ERCRepairClass? {
         switch violation.code {
+        case "label_multiple_wires":
+            return .generatedArtifactBug
+        case "multiple_net_names":
+            return .netLabelMismatch
         case "wire_dangling", "label_dangling", "unconnected_wire_endpoint":
             return .generatedArtifactBug
         case "pin_not_driven", "input_pin_not_driven":
@@ -184,7 +201,7 @@ struct ERCRepairLoop: Sendable {
         let reports = ercReports.isEmpty ? [KiCadERCReport(violations: [])] : ercReports
 
         for report in reports {
-            if report.blockingViolations.isEmpty {
+            if report.schematicVerificationBlockingViolations.isEmpty {
                 return ERCRepairLoopResult(
                     status: .verified,
                     attempts: attempts,

@@ -50,6 +50,46 @@ final class ERCRepairLoopTests: XCTestCase {
         XCTAssertEqual(report.blockingViolations.map(\.code), ["pin_not_connected"])
     }
 
+    func testERCWarningsCanBlockSchematicVerificationWithoutHardErrors() throws {
+        let data = Data("""
+        {
+          "sheets": [
+            {
+              "path": "/",
+              "violations": [
+                {
+                  "type": "label_multiple_wires",
+                  "severity": "warning",
+                  "description": "Label connects more than one wire",
+                  "items": [
+                    { "description": "Label 'DRV_OUT'" }
+                  ]
+                },
+                {
+                  "type": "multiple_net_names",
+                  "severity": "warning",
+                  "description": "Both PRE_OUT and TONE_OUT are attached to the same items",
+                  "items": [
+                    { "description": "Label 'PRE_OUT'" },
+                    { "description": "Label 'TONE_OUT'" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+        """.utf8)
+
+        let report = try KiCadERCParser().parse(jsonData: data)
+
+        XCTAssertEqual(report.blockingViolations, [])
+        XCTAssertEqual(report.schematicVerificationBlockingViolations.map(\.code), [
+            "label_multiple_wires",
+            "multiple_net_names",
+        ])
+        XCTAssertTrue(report.schematicVerificationBlockingViolations.allSatisfy(\.blocksSchematicVerification))
+    }
+
     func testPlannerSupportsAllowedFirstMilestoneRepairClasses() throws {
         let report = try KiCadERCParser().parse(jsonData: ercJSON([
             ercViolation(id: "nc", code: "no_connect", severity: "error", message: "Add explicit no-connect", refs: ["J1.2"]),
@@ -101,6 +141,23 @@ final class ERCRepairLoopTests: XCTestCase {
         XCTAssertTrue(plan.isRepairable)
         XCTAssertEqual(plan.patches.map(\.repairClass), [.generatedArtifactBug, .incompleteCircuit])
         XCTAssertEqual(plan.patches.map(\.action), ["regenerate_schematic_from_pin_geometry", "complete_or_correct_circuit_ir"])
+    }
+
+    func testPlannerClassifiesSchematicQualityWarningsForRepair() throws {
+        let report = try KiCadERCParser().parse(jsonData: ercJSON([
+            ercViolation(id: "label", code: "label_multiple_wires", severity: "warning", message: "Label connects more than one wire", refs: ["DRV_OUT"]),
+            ercViolation(id: "names", code: "multiple_net_names", severity: "warning", message: "Two net names share one item", refs: ["PRE_OUT", "TONE_OUT"]),
+        ]))
+
+        let plan = ERCRepairPlanner().planRepairs(
+            report: report,
+            circuitIR: validCircuitIR(),
+            resolverEvidence: []
+        )
+
+        XCTAssertTrue(plan.isRepairable)
+        XCTAssertEqual(plan.patches.map(\.repairClass), [.generatedArtifactBug, .netLabelMismatch])
+        XCTAssertEqual(plan.patches.map(\.action), ["regenerate_schematic_from_pin_geometry", "correct_net_label"])
     }
 
 

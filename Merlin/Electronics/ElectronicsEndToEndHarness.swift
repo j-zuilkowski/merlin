@@ -314,7 +314,7 @@ struct ElectronicsEndToEndHarness: Sendable {
             kicadSchematicPath: materialized.schematicURL.path,
             ercReportPath: outputDirectory.appendingPathComponent("erc-report.json").path,
             hasSchematicVerificationReport: true,
-            blockingERCViolations: (ercReports.last ?? KiCadERCReport(violations: [])).blockingViolations,
+            blockingERCViolations: (ercReports.last ?? KiCadERCReport(violations: [])).schematicVerificationBlockingViolations,
             repairLoopStatus: ercLoop.status
         ))
     }
