@@ -1960,6 +1960,83 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
     }
 
+    func testLiveCatalogCacheCanSelectWhenLiveQueryBudgetIsZero() async throws {
+        let root = try temporaryDirectory()
+        let cacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
+        let emptySymbolRoot = root.appendingPathComponent("empty-symbols", isDirectory: true)
+        let emptyFootprintRoot = root.appendingPathComponent("empty-footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: emptySymbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: emptyFootprintRoot, withIntermediateDirectories: true)
+        let cachedCandidate = validCandidate(mpn: "RC0603FR-0710KL", category: "resistor")
+        let query = CatalogSearchQueryBuilder().keyword(for: ComponentSearchRequest(
+            refdes: "RFILT1",
+            role: "sweepable boost/cut resistor",
+            constraints: [
+                "selected_symbol": "Device:R",
+                "source": "circuit_ir",
+                "required_pins": "1,2",
+            ],
+            requiredEvidenceTypes: ["datasheet", "package", "ratings", "provenance"],
+            preferredVendors: ["mouser"],
+            excludedManufacturers: [],
+            lifecyclePolicy: "active_or_ltb"
+        ))
+        try LiveCatalogQueryCache().write(
+            candidates: [cachedCandidate],
+            rawResponse: Data(#"{"SearchResults":{"Parts":[]}}"#.utf8),
+            providerID: "mouser",
+            query: query,
+            requestURL: URL(string: "https://api.mouser.test/api/v2/search/keyword"),
+            to: cacheDirectory,
+            now: Date()
+        )
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"],"live_catalog_max_queries_per_run":0,"kicad_symbol_library_root":"\#(emptySymbolRoot.path)","kicad_footprint_library_root":"\#(emptyFootprintRoot.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertEqual(matrix.cacheMetadata["source"], "live_catalog_cache")
+        XCTAssertEqual(matrix.decisions.first?.status, .selected)
+        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.mpn, "RC0603FR-0710KL")
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_TERMS_GATE_SKIPPED") })
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED") })
+    }
+
+    func testLiveCatalogQueryBudgetZeroBlocksBeforeCredentialResolution() async throws {
+        let root = try temporaryDirectory()
+        let emptySymbolRoot = root.appendingPathComponent("empty-symbols", isDirectory: true)
+        let emptyFootprintRoot = root.appendingPathComponent("empty-footprints", isDirectory: true)
+        try FileManager.default.createDirectory(at: emptySymbolRoot, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: emptyFootprintRoot, withIntermediateDirectories: true)
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "FILTER1", role: "sweepable boost/cut filter"), root: root)
+        let circuitIRURL = try writeCircuitIR([
+            circuitComponent(refdes: "RFILT1", role: "sweepable boost/cut resistor", selectedSymbol: "Device:R", pins: ["1", "2"]),
+        ], root: root)
+
+        let response = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","live_catalog_providers":["mouser"],"live_catalog_max_queries_per_run":0,"mouser_api_key_env":"MERLIN_TEST_MISSING_MOUSER_API_KEY","mouser_api_key_keychain_id":"merlin.test.missing.mouser.api_key","kicad_symbol_library_root":"\#(emptySymbolRoot.path)","kicad_footprint_library_root":"\#(emptyFootprintRoot.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let matrix = try decodeMatrix(from: response)
+        XCTAssertTrue(matrix.providers.isEmpty)
+        XCTAssertEqual(matrix.decisions.first?.status, .requiresVendorResolution)
+        XCTAssertTrue(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_TERMS_GATE_SKIPPED") })
+        XCTAssertFalse(matrix.warnings.contains { $0.contains("CATALOG_PROVIDER_NOT_CONFIGURED") })
+    }
+
     func testComponentSelectionReusesSavedDatasheetPDFEvidence() async throws {
         let root = try temporaryDirectory()
         let catalogCacheDirectory = root.appendingPathComponent(".merlin/electronics-catalog-cache", isDirectory: true)
