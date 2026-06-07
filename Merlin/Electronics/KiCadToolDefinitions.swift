@@ -218,7 +218,7 @@ enum KiCadToolDefinitions {
         ),
         tool(
             name: "kicad_apply_drc_repair_patch",
-            description: "Record a DRC repair plan application and require DRC rerun",
+            description: "Record a DRC repair plan application, require concrete PCB/layout mutation evidence, and require DRC rerun",
             properties: [
                 "drc_repair_plan_path": .string("DRC repair plan artifact path"),
                 "project_path": .string("KiCad project path"),

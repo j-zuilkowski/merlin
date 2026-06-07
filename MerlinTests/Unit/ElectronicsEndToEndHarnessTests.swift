@@ -78,6 +78,26 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         XCTAssertTrue(result.diagnostics.contains { $0.code == "ERC_RERUN_REPORT_REQUIRED" }, "\(result)")
     }
 
+    func testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB() throws {
+        var evidence = ElectronicsEndToEndEvidence.ampLowVoltageVerified
+        evidence.pcb?.requiresLayoutMutationEvidence = true
+        evidence.pcb?.layoutMutationEvidencePath = nil
+
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
+            outputDirectory: temporaryDirectory("amp-missing-drc-layout-mutation"),
+            evidence: evidence,
+            approvals: [.highStakesSignoff]
+        ))
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertNotEqual(result.pcbStatus, .pcbVerified)
+        XCTAssertNotEqual(result.fabricationStatus, .fabReady)
+        XCTAssertTrue(result.missingEvidence.contains("layout_mutation_evidence"), "\(result)")
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "DRC_LAYOUT_MUTATION_REQUIRED" }, "\(result)")
+    }
+
     func testCompositeCircuitIRSchematicCannotReachSchematicVerified() throws {
         let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
         let circuitIR = compositeCircuitIR()

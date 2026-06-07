@@ -113,6 +113,14 @@ final class PCBDRCFollowOnTests: XCTestCase {
         XCTAssertTrue(exhausted.diagnostics.contains { $0.code == "DRC_REPAIR_ATTEMPTS_EXHAUSTED" })
     }
 
+    func testDRCRepairLoopRequiresExplicitRerunReport() throws {
+        let result = PCBDRCRepairLoop().run(drcReports: [])
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.attempts, 0)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "DRC_RERUN_REPORT_REQUIRED" })
+    }
+
     func testUnsupportedDRCRepairBlocksWhenApprovalWouldBeRequired() throws {
         let report = try KiCadDRCParser().parse(jsonData: drcJSON([
             drcViolation(id: "layer", code: "layer_count_change_required", severity: "error", message: "Needs more layers", refs: ["board"]),
@@ -134,6 +142,18 @@ final class PCBDRCFollowOnTests: XCTestCase {
         XCTAssertEqual(complete.status, .pcbVerified)
         XCTAssertEqual(complete.report.statusCode, "PCB_VERIFIED")
         XCTAssertFalse(complete.report.fabricationComplete)
+    }
+
+    func testPCBVerificationBlocksRepairPlanWithoutLayoutMutationEvidence() {
+        var evidence = PCBVerificationEvidence.complete
+        evidence.requiresLayoutMutationEvidence = true
+        evidence.layoutMutationEvidencePath = nil
+
+        let result = PCBVerificationGate().evaluate(evidence)
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertTrue(result.missingEvidence.contains(.layoutMutationEvidence))
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "DRC_LAYOUT_MUTATION_REQUIRED" })
     }
 
     private func fixtureCircuitIR() -> CircuitIR {

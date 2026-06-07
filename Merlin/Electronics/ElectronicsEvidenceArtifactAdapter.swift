@@ -3,6 +3,7 @@ import Foundation
 struct ElectronicsEvidenceArtifactPaths: Codable, Sendable, Equatable {
     var ercReportPaths: [String]
     var drcReportPath: String?
+    var layoutMutationEvidencePath: String? = nil
     var spiceScenarioPath: String?
     var spiceModelRecordsPath: String?
     var ngspiceOutputPath: String?
@@ -17,6 +18,7 @@ struct ElectronicsEvidenceArtifactPaths: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case ercReportPaths
         case drcReportPath
+        case layoutMutationEvidencePath
         case spiceScenarioPath
         case spiceModelRecordsPath
         case ngspiceOutputPath
@@ -84,7 +86,11 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
 
         return ElectronicsEndToEndEvidence(
             ercReports: ercReports,
-            pcb: pcbEvidence(from: drcReport, drcReportPath: paths.drcReportPath),
+            pcb: pcbEvidence(
+                from: drcReport,
+                drcReportPath: paths.drcReportPath,
+                layoutMutationEvidencePath: paths.layoutMutationEvidencePath
+            ),
             spice: try spiceEvidence(from: paths),
             fabrication: FabricationReleaseEvidence(
                 schematicVerified: ercReports.last?.schematicVerificationBlockingViolations.isEmpty ?? false,
@@ -105,7 +111,8 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
 
     private func pcbEvidence(
         from report: KiCadDRCReport?,
-        drcReportPath: String?
+        drcReportPath: String?,
+        layoutMutationEvidencePath: String?
     ) -> PCBVerificationEvidence? {
         guard let report else { return nil }
         let blocking = report.blockingViolations
@@ -118,6 +125,8 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
             hasNetClasses: true,
             hasPlacement: true,
             routingPassedOrExplicitlyDiagnosed: blocking.isEmpty,
+            layoutMutationEvidencePath: layoutMutationEvidencePath,
+            requiresLayoutMutationEvidence: false,
             drcReportPath: drcReportPath,
             hasPCBVerificationReport: true,
             blockingDRCViolations: blocking,

@@ -178,6 +178,39 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertTrue(blockedResult.warnings.contains { $0.code == "DRC_REPAIR_REQUIRES_APPROVAL" })
     }
 
+    func testDRCRepairPatchApplicationRecordsUnverifiedLayoutMutationRequirement() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("drc-repair-application")
+        let project = try writeKiCadProjectFixture()
+        let drcPlan = try writeFixtureFile(
+            name: "drc-plan.json",
+            text: #"{"status":"repair_planned","patches":[{"violationId":"drc-1","repairClass":"clearance","targetRefs":["R1","C1"],"action":"adjust_clearance_rule"}],"diagnostics":[]}"#,
+            in: root
+        )
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_drc_repair_patch",
+            payload: #"{"drc_repair_plan_path":"\#(drcPlan.path)","project_path":"\#(project.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        let applicationPath = try XCTUnwrap(result.artifacts.first { $0.kind == "drc_repair_application" }?.path)
+        let application = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(contentsOf: URL(fileURLWithPath: applicationPath))
+        ) as? [String: Any])
+        XCTAssertEqual(application["status"] as? String, "patch_recorded_requires_layout_mutation")
+        XCTAssertEqual(application["verified"] as? Bool, false)
+        XCTAssertEqual(application["requires_rerun_tool"] as? String, "kicad_run_drc")
+        XCTAssertEqual(application["requires_layout_mutation"] as? Bool, true)
+        XCTAssertNil(application["layout_mutation_evidence_path"])
+        XCTAssertNil(result.handoff?.drcReportPath)
+        XCTAssertTrue(result.nextActions.contains("apply_pcb_layout_mutation"))
+        XCTAssertTrue(result.nextActions.contains("kicad_run_drc"))
+    }
+
     func testSPICERepairActionPlansMeasurementRepairAndBlocksUnsupportedLog() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
@@ -304,7 +337,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let drcApplyResult = try XCTUnwrap(drcApply.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(drcApplyResult.artifacts.contains { $0.kind == "drc_repair_application" })
         XCTAssertFalse(drcApplyResult.artifacts.contains { $0.kind == "drc_report" })
-        XCTAssertEqual(drcApplyResult.nextActions, ["kicad_run_drc"])
+        XCTAssertEqual(drcApplyResult.nextActions, ["apply_pcb_layout_mutation", "kicad_run_drc"])
         XCTAssertNil(drcApplyResult.handoff?.drcReportPath)
         XCTAssertTrue(drcApplyResult.warnings.contains { $0.code == "DRC_PATCH_REQUIRES_BOARD_MUTATOR" })
 

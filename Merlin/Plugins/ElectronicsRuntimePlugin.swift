@@ -2691,13 +2691,15 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         do {
             let plan = try JSONDecoder().decode(DRCRepairPlanArtifact.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
             let report = RepairApplicationArtifact(
-                status: "patch_application_recorded",
+                status: "patch_recorded_requires_layout_mutation",
                 sourcePlanPath: planPath,
                 targetPath: projectPath,
                 patchCount: plan.patches.count,
                 mutatedTarget: false,
                 verified: false,
-                requiresRerunTool: "kicad_run_drc"
+                requiresRerunTool: "kicad_run_drc",
+                requiresLayoutMutation: true,
+                layoutMutationEvidencePath: nil
             )
             let artifact = writeArtifact(
                 request,
@@ -2714,7 +2716,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     affectedRefs: [planPath, projectPath],
                     suggestedAction: "Apply the PCB placement/routing/rule change through a concrete PCB mutator before rerunning DRC."
                 )],
-                nextActions: ["kicad_run_drc"]
+                nextActions: ["apply_pcb_layout_mutation", "kicad_run_drc"]
             )
         } catch {
             return structuredBlock(
@@ -7684,6 +7686,8 @@ private struct RepairApplicationArtifact: Codable, Sendable, Equatable {
     var mutatedTarget: Bool
     var verified: Bool
     var requiresRerunTool: String
+    var requiresLayoutMutation: Bool? = nil
+    var layoutMutationEvidencePath: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case status
@@ -7693,6 +7697,8 @@ private struct RepairApplicationArtifact: Codable, Sendable, Equatable {
         case mutatedTarget = "mutated_target"
         case verified
         case requiresRerunTool = "requires_rerun_tool"
+        case requiresLayoutMutation = "requires_layout_mutation"
+        case layoutMutationEvidencePath = "layout_mutation_evidence_path"
     }
 }
 

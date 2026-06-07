@@ -1475,9 +1475,16 @@ struct PCBDRCRepairLoop: Sendable {
     func run(drcReports: [KiCadDRCReport]) -> PCBDRCRepairLoopResult {
         var attempts = 0
         var applied: [PCBDRCRepairPatch] = []
-        let reports = drcReports.isEmpty ? [KiCadDRCReport(violations: [])] : drcReports
+        guard !drcReports.isEmpty else {
+            return blocked(
+                attempts: attempts,
+                applied: applied,
+                code: "DRC_RERUN_REPORT_REQUIRED",
+                message: "DRC repair loop requires an explicit KiCad DRC report or rerun report before PCB verification."
+            )
+        }
 
-        for report in reports {
+        for report in drcReports {
             if report.blockingViolations.isEmpty {
                 return PCBDRCRepairLoopResult(status: .verified, attempts: attempts, appliedPatches: applied, diagnostics: [])
             }
@@ -1589,6 +1596,7 @@ enum PCBVerificationEvidenceKey: String, Codable, Sendable, Equatable {
     case netClasses = "net_classes"
     case placement = "placement"
     case routing = "routing"
+    case layoutMutationEvidence = "layout_mutation_evidence"
     case drcReport = "drc_report"
     case pcbVerificationReport = "pcb_verification_report"
 }
@@ -1607,6 +1615,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
     var hasNetClasses: Bool
     var hasPlacement: Bool
     var routingPassedOrExplicitlyDiagnosed: Bool
+    var layoutMutationEvidencePath: String?
+    var requiresLayoutMutationEvidence: Bool
     var drcReportPath: String?
     var hasPCBVerificationReport: Bool
     var blockingDRCViolations: [KiCadDRCViolation]
@@ -1621,6 +1631,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         case hasNetClasses
         case hasPlacement
         case routingPassedOrExplicitlyDiagnosed
+        case layoutMutationEvidencePath
+        case requiresLayoutMutationEvidence
         case drcReportPath
         case hasPCBVerificationReport
         case blockingDRCViolations
@@ -1636,6 +1648,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         hasNetClasses: Bool,
         hasPlacement: Bool,
         routingPassedOrExplicitlyDiagnosed: Bool,
+        layoutMutationEvidencePath: String? = nil,
+        requiresLayoutMutationEvidence: Bool = false,
         drcReportPath: String?,
         hasPCBVerificationReport: Bool,
         blockingDRCViolations: [KiCadDRCViolation],
@@ -1649,6 +1663,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         self.hasNetClasses = hasNetClasses
         self.hasPlacement = hasPlacement
         self.routingPassedOrExplicitlyDiagnosed = routingPassedOrExplicitlyDiagnosed
+        self.layoutMutationEvidencePath = layoutMutationEvidencePath
+        self.requiresLayoutMutationEvidence = requiresLayoutMutationEvidence
         self.drcReportPath = drcReportPath
         self.hasPCBVerificationReport = hasPCBVerificationReport
         self.blockingDRCViolations = blockingDRCViolations
@@ -1667,6 +1683,14 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         routingPassedOrExplicitlyDiagnosed = try container.decodeBool(
             keys: ["routingPassedOrExplicitlyDiagnosed", "routing_passed_or_explicitly_diagnosed"]
         )
+        layoutMutationEvidencePath = try container.decodeStringIfPresent(keys: [
+            "layoutMutationEvidencePath",
+            "layout_mutation_evidence_path",
+        ])
+        requiresLayoutMutationEvidence = try container.decodeBoolIfPresent(keys: [
+            "requiresLayoutMutationEvidence",
+            "requires_layout_mutation_evidence",
+        ]) ?? false
         drcReportPath = try container.decodeStringIfPresent(keys: ["drcReportPath", "drc_report_path"])
         hasPCBVerificationReport = try container.decodeBool(keys: [
             "hasPCBVerificationReport",
@@ -1689,6 +1713,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         hasNetClasses: false,
         hasPlacement: false,
         routingPassedOrExplicitlyDiagnosed: false,
+        layoutMutationEvidencePath: nil,
+        requiresLayoutMutationEvidence: false,
         drcReportPath: nil,
         hasPCBVerificationReport: false,
         blockingDRCViolations: [],
@@ -1704,6 +1730,8 @@ struct PCBVerificationEvidence: Codable, Sendable, Equatable {
         hasNetClasses: true,
         hasPlacement: true,
         routingPassedOrExplicitlyDiagnosed: true,
+        layoutMutationEvidencePath: nil,
+        requiresLayoutMutationEvidence: false,
         drcReportPath: "/tmp/drc.json",
         hasPCBVerificationReport: true,
         blockingDRCViolations: [],
@@ -1743,6 +1771,15 @@ private extension KeyedDecodingContainer where Key == PCBVerificationFlexibleCod
             guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
                   contains(codingKey) else { continue }
             return try decodeIfPresent(String.self, forKey: codingKey)
+        }
+        return nil
+    }
+
+    func decodeBoolIfPresent(keys: [String]) throws -> Bool? {
+        for key in keys {
+            guard let codingKey = PCBVerificationFlexibleCodingKey(stringValue: key),
+                  contains(codingKey) else { continue }
+            return try decodeIfPresent(Bool.self, forKey: codingKey)
         }
         return nil
     }
@@ -1797,6 +1834,14 @@ struct PCBVerificationGate: Sendable {
         if !evidence.hasNetClasses { missing.append(.netClasses) }
         if !evidence.hasPlacement { missing.append(.placement) }
         if !evidence.routingPassedOrExplicitlyDiagnosed { missing.append(.routing) }
+        if evidence.requiresLayoutMutationEvidence,
+           !hasConcreteLayoutMutationEvidence(evidence.layoutMutationEvidencePath) {
+            missing.append(.layoutMutationEvidence)
+            diagnostics.append(ElectronicsSchemaIssue(
+                code: "DRC_LAYOUT_MUTATION_REQUIRED",
+                message: "DRC repair plans require concrete PCB/layout mutation evidence before a DRC rerun can verify the board."
+            ))
+        }
         if evidence.drcReportPath?.isEmpty ?? true { missing.append(.drcReport) }
         if !evidence.hasPCBVerificationReport { missing.append(.pcbVerificationReport) }
 
@@ -1820,6 +1865,11 @@ struct PCBVerificationGate: Sendable {
         )
 
         return PCBVerificationResult(status: status, report: report, missingEvidence: missing, diagnostics: diagnostics)
+    }
+
+    private func hasConcreteLayoutMutationEvidence(_ path: String?) -> Bool {
+        guard let path, !path.isEmpty else { return false }
+        return FileManager.default.fileExists(atPath: path)
     }
 }
 
