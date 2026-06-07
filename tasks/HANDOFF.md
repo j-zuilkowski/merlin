@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 479.
+workflows. Latest completed task is Task 480.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 480 — recover component revision from structured resolver answers
 - Task 479 — surface component revision questions in workflow and GUI state
 - Task 478 — generic component-selection revision workflow
 - Task 477 — record AmpDemo GUI component-selection gate
@@ -193,6 +194,52 @@ Result: selected tests passed, 9 tests, 0 failures.
 
 `git diff --check` passed. The full AmpDemo GUI demo was not run.
 
+Task 480 wired structured resolver answers into the generic component-selection
+revision path. `kicad_revise_component_selection` now accepts
+`component_resolution_answers`, `component_resolution_answers_json`, and
+`component_resolution_answers_path`. Those answers are converted into ordinary
+catalog `ComponentCandidate` evidence with `target_refdes` provenance,
+manufacturer/MPN/package/ratings/datasheet/source evidence, and optional
+footprint pin-map candidates. The existing catalog validator/ranker remains the
+authority: complete answers can advance the matrix to selected parts, while
+partial answers keep unanswered components blocked and do not offer footprint
+continuation.
+
+Task 480 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task480 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Red result: `TEST FAILED`, 2 tests, 4 failures. Structured resolver answers
+were ignored, leaving QOUT1 unresolved and the complete-answer revision blocked.
+
+Task 480 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task480 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionResolvesBlockedMatrixWithCatalogEvidence \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBlocksWithSpecificQuestionsWhenEvidenceIsStillMissing \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+The full AmpDemo GUI demo was not run.
+
 ## Current Electronics Plugin State
 
 The electronics plugin is no longer allowed to advance major workflow gates from
@@ -225,6 +272,11 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   question prompts, required evidence categories, original blocked matrix path,
   and revised matrix path so the next turn can recover from structured evidence
   instead of manual sample-project decisions.
+- Component-selection revision now ingests structured resolver answers as
+  generic catalog candidates. Answers must carry manufacturer, MPN, package,
+  ratings, datasheet, and provenance evidence to satisfy the existing catalog
+  validator; partial answers keep unanswered components blocked and cannot
+  advance to footprints.
 - Footprint assignment, schematic synthesis, PCB placement, ERC, DRC, SPICE,
   BOM/vendor, and fabrication paths have focused evidence gates.
 - Schematic verification now requires current KiCad schematic format,
@@ -580,18 +632,18 @@ Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-The immediate remaining work is the next generic resolver-recovery group:
+The immediate remaining work is the next generic workflow handoff group:
 
-1. Add fail-first tests proving structured answers or provider evidence for
-   resolver questions are ingested generically and converted into catalog
-   candidate evidence, not AmpDemo-specific manual part choices.
-2. Wire the next-turn recovery path so a blocked
-   `kicad_revise_component_selection` question set can be answered with
-   manufacturer/MPN/package/ratings/datasheet/footprint-pin evidence and rerun
-   the resolver against the original/revised matrix paths.
-3. Prove that, after all required component evidence is supplied, the workflow
-   advances only to a complete component matrix and still refuses footprints if
-   any resolver question remains unanswered.
+1. Add fail-first tests proving the focused GUI/workflow continuation path can
+   accept user/provider answers to blocked resolver questions and pass them to
+   `kicad_revise_component_selection` as `component_resolution_answers` without
+   hand-designing sample-project parts.
+2. Wire continuation state so original blocked matrix paths, revised matrix
+   paths, question IDs, and answer evidence are carried into the next tool call
+   instead of being dropped or converted into narrative claims.
+3. Prove that a complete next-turn answer advances only to a complete component
+   matrix handoff, while incomplete answers remain blocked with the same
+   unanswered resolver questions and no footprint/library continuation.
 4. Run focused tests only. Do not run the full AmpDemo GUI demo and do not
    hand-design AmpDemo parts.
 

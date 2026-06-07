@@ -5226,6 +5226,13 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let datasheetDirectory = datasheetCacheDirectory(from: object, config: config)
         let datasheetRevalidateAfterSeconds = datasheetCacheRevalidateAfterSeconds(from: object, config: config)
 
+        let answerCandidates = componentResolutionAnswerCandidates(from: object)
+        if !answerCandidates.isEmpty {
+            candidates.append(contentsOf: answerCandidates)
+            providers.append("component_resolution_answer")
+            sourceKinds.append("component_resolution_answers")
+        }
+
         if let path = object["catalog_candidates_path"] as? String,
            let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
            let explicitCandidates = try? JSONDecoder().decode([ComponentCandidate].self, from: data) {
@@ -5372,6 +5379,262 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             datasheetCacheDirectory: datasheetDirectory,
             datasheetRevalidateAfterSeconds: datasheetRevalidateAfterSeconds
         )
+    }
+
+    private func componentResolutionAnswerCandidates(from object: [String: Any]) -> [ComponentCandidate] {
+        let payloads = componentResolutionAnswerPayloads(from: object)
+        return payloads
+            .flatMap { componentResolutionAnswerObjects(from: $0) }
+            .compactMap(componentResolutionAnswerCandidate(from:))
+    }
+
+    private func componentResolutionAnswerPayloads(from object: [String: Any]) -> [Any] {
+        var payloads: [Any] = []
+        for key in ["component_resolution_answers", "componentResolutionAnswers"] {
+            if let payload = object[key] {
+                payloads.append(payload)
+            }
+        }
+        for key in ["component_resolution_answers_json", "componentResolutionAnswersJSON"] {
+            guard let json = stringValue(object, keys: [key]),
+                  let payload = jsonPayload(from: json) else { continue }
+            payloads.append(payload)
+        }
+        for key in ["component_resolution_answers_path", "componentResolutionAnswersPath"] {
+            guard let path = stringValue(object, keys: [key]),
+                  let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+                  let payload = try? JSONSerialization.jsonObject(with: data) else { continue }
+            payloads.append(payload)
+        }
+        return payloads
+    }
+
+    private func jsonPayload(from string: String) -> Any? {
+        guard let data = string.data(using: .utf8) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data)
+    }
+
+    private func componentResolutionAnswerObjects(from payload: Any) -> [[String: Any]] {
+        if let array = payload as? [[String: Any]] {
+            return array
+        }
+        if let dictionary = payload as? [String: Any] {
+            if let nested = dictionary["answers"] ?? dictionary["component_resolution_answers"] ?? dictionary["components"] {
+                return componentResolutionAnswerObjects(from: nested)
+            }
+            if dictionaryContainsComponentAnswerFields(dictionary) {
+                return [dictionary]
+            }
+            let refdesObjects = dictionary.compactMap { key, value -> [String: Any]? in
+                guard var answer = value as? [String: Any] else { return nil }
+                if stringValue(answer, keys: ["refdes", "reference", "reference_designator"]) == nil {
+                    answer["refdes"] = key
+                }
+                return answer
+            }
+            return refdesObjects
+        }
+        if let array = payload as? [Any] {
+            return array.flatMap(componentResolutionAnswerObjects(from:))
+        }
+        return []
+    }
+
+    private func dictionaryContainsComponentAnswerFields(_ dictionary: [String: Any]) -> Bool {
+        [
+            "refdes",
+            "reference",
+            "reference_designator",
+            "mpn",
+            "manufacturer_part_number",
+            "manufacturer",
+            "mfr",
+            "ratings",
+            "datasheet_url",
+            "source_url",
+            "footprint",
+        ].contains { dictionary[$0] != nil }
+    }
+
+    private func componentResolutionAnswerCandidate(from answer: [String: Any]) -> ComponentCandidate? {
+        guard let refdes = stringValue(answer, keys: ["refdes", "reference", "reference_designator"]) else {
+            return nil
+        }
+
+        let manufacturer = stringValue(answer, keys: ["manufacturer", "mfr", "maker"]) ?? ""
+        let mpn = stringValue(answer, keys: ["mpn", "manufacturer_part_number", "manufacturerPartNumber", "part_number", "partNumber"]) ?? ""
+        let package = stringValue(answer, keys: [
+            "package",
+            "package_case",
+            "packageCase",
+            "case_package",
+            "casePackage",
+            "supplier_device_package",
+            "supplierDevicePackage",
+        ]) ?? ""
+        var ratings = stringDictionaryValue(answer["ratings"])
+        for key in [
+            "voltage_v",
+            "voltage_rating",
+            "current_a",
+            "current_rating",
+            "power_w",
+            "power_rating",
+            "resistance",
+            "capacitance",
+            "tolerance",
+            "polarity",
+            "gain",
+            "frequency",
+        ] {
+            if ratings[key] == nil, let value = stringValue(answer, keys: [key]) {
+                ratings[key] = value
+            }
+        }
+        if ratings["package"] == nil, !package.isEmpty {
+            ratings["package"] = package
+        }
+
+        let retrievedAt = stringValue(answer, keys: ["retrieved_at", "retrievedAt"])
+            ?? ISO8601DateFormatter().string(from: Date())
+        let providerID = stringValue(answer, keys: ["provider_id", "providerID", "source_provider_id", "sourceProviderID"])
+            ?? "component_resolution_answer"
+        let datasheetURL = stringValue(answer, keys: ["datasheet_url", "datasheetURL", "datasheet", "data_sheet_url"])
+        let sourceURL = stringValue(answer, keys: ["source_url", "sourceURL", "product_url", "productURL", "url"])
+        let sourcePath = stringValue(answer, keys: ["source_path", "sourcePath", "local_path", "localPath"])
+
+        var extracted = ratings
+        extracted["target_refdes"] = refdes
+        extracted["manufacturer"] = manufacturer
+        extracted["mpn"] = mpn
+        extracted["package"] = package
+        if let datasheetURL {
+            extracted["datasheet_url"] = datasheetURL
+        }
+        if let sourceURL {
+            extracted["source_url"] = sourceURL
+        }
+
+        return ComponentCandidate(
+            mpn: mpn,
+            manufacturer: manufacturer,
+            normalizedCategory: stringValue(answer, keys: ["normalized_category", "normalizedCategory", "component_category", "category"])
+                ?? "component_resolution_answer",
+            value: stringValue(answer, keys: ["value"]),
+            package: package,
+            ratings: ratings,
+            lifecycleState: stringValue(answer, keys: ["lifecycle_state", "lifecycleState", "lifecycle"])
+                ?? "provided",
+            availabilitySummary: stringValue(answer, keys: ["availability_summary", "availabilitySummary", "availability", "stock"])
+                ?? "provided by component resolution answer",
+            datasheets: datasheetURL.map {
+                [DatasheetEvidence(
+                    manufacturer: manufacturer,
+                    mpn: mpn,
+                    url: $0,
+                    localPath: stringValue(answer, keys: ["datasheet_local_path", "datasheetLocalPath"]),
+                    sha256: stringValue(answer, keys: ["datasheet_sha256", "datasheetSHA256"]),
+                    providerID: providerID,
+                    retrievedAt: retrievedAt,
+                    license: stringValue(answer, keys: ["datasheet_license", "license"]) ?? "user_supplied",
+                    citations: stringArrayValue(answer["citations"])
+                )]
+            } ?? [],
+            evidence: [
+                ComponentEvidence(
+                    providerID: providerID,
+                    sourceURL: sourceURL,
+                    localPath: sourcePath,
+                    retrievedAt: retrievedAt,
+                    cachePolicy: stringValue(answer, keys: ["cache_policy", "cachePolicy"])
+                        ?? "structured_component_resolution_answer",
+                    sha256: stringValue(answer, keys: ["sha256", "source_sha256", "sourceSHA256"]),
+                    extractedParameters: extracted,
+                    confidence: doubleValue(answer, keys: ["confidence"]) ?? 1.0,
+                    warnings: stringArrayValue(answer["warnings"])
+                ),
+            ],
+            footprintCandidates: componentResolutionFootprintCandidates(from: answer, defaultProviderID: providerID)
+        )
+    }
+
+    private func componentResolutionFootprintCandidates(
+        from answer: [String: Any],
+        defaultProviderID: String
+    ) -> [FootprintCandidate] {
+        if let footprint = answer["footprint"] as? [String: Any] {
+            return componentResolutionFootprintCandidate(from: footprint, defaultProviderID: defaultProviderID).map { [$0] } ?? []
+        }
+        if answer["footprint_name"] != nil || answer["footprintName"] != nil || answer["pin_pad_map"] != nil || answer["pinPadMap"] != nil {
+            return componentResolutionFootprintCandidate(from: answer, defaultProviderID: defaultProviderID).map { [$0] } ?? []
+        }
+        return []
+    }
+
+    private func componentResolutionFootprintCandidate(
+        from object: [String: Any],
+        defaultProviderID: String
+    ) -> FootprintCandidate? {
+        let footprintName = stringValue(object, keys: ["name", "footprint_name", "footprintName", "footprint"])
+        guard let footprintName else { return nil }
+        return FootprintCandidate(
+            library: stringValue(object, keys: ["library", "footprint_library", "footprintLibrary"]) ?? "",
+            name: footprintName,
+            packageCompatibilityEvidence: stringValue(object, keys: [
+                "package_compatibility_evidence",
+                "packageCompatibilityEvidence",
+                "compatibility_evidence",
+                "compatibilityEvidence",
+            ]) ?? "Structured component resolution answer supplied footprint/package compatibility.",
+            pinPadMap: stringDictionaryValue(object["pin_pad_map"] ?? object["pinPadMap"]),
+            sourceProviderID: stringValue(object, keys: ["source_provider_id", "sourceProviderID", "provider_id", "providerID"])
+                ?? defaultProviderID,
+            sourcePath: stringValue(object, keys: ["source_path", "sourcePath"]),
+            threeDModel: stringValue(object, keys: ["three_d_model", "threeDModel"])
+        )
+    }
+
+    private func stringDictionaryValue(_ value: Any?) -> [String: String] {
+        guard let dictionary = value as? [String: Any] else { return [:] }
+        return dictionary.reduce(into: [String: String]()) { result, entry in
+            if let value = entry.value as? String, !value.isEmpty {
+                result[entry.key] = value
+            } else if let value = entry.value as? NSNumber {
+                result[entry.key] = value.stringValue
+            }
+        }
+    }
+
+    private func stringArrayValue(_ value: Any?) -> [String] {
+        if let values = value as? [String] {
+            return values
+        }
+        if let values = value as? [Any] {
+            return values.compactMap { value in
+                if let string = value as? String, !string.isEmpty { return string }
+                if let number = value as? NSNumber { return number.stringValue }
+                return nil
+            }
+        }
+        if let value = value as? String, !value.isEmpty {
+            return [value]
+        }
+        return []
+    }
+
+    private func doubleValue(_ object: [String: Any], keys: [String]) -> Double? {
+        for key in keys {
+            if let value = object[key] as? Double {
+                return value
+            }
+            if let value = object[key] as? NSNumber {
+                return value.doubleValue
+            }
+            if let value = object[key] as? String, let parsed = Double(value) {
+                return parsed
+            }
+        }
+        return nil
     }
 
     private func componentSelectionHasValidCandidate(

@@ -92,6 +92,128 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         }, "Revision must emit actionable missing-evidence questions: \(result.questions)")
     }
 
+    func testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "QOUT1", role: "single-ended Class-A output transistor"), root: root)
+
+        let blocked = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)"}"#
+        )
+        let blockedMatrixURL = try XCTUnwrap(blocked.artifacts.first { $0.kind == "component_matrix" }?.url)
+
+        let revised = await sendRevision(
+            runtime,
+            payload: """
+            {
+              "design_id": "amp-low-voltage",
+              "design_intent_path": "\(intentURL.path)",
+              "component_matrix_path": "\(blockedMatrixURL.path)",
+              "component_resolution_answers": [
+                {
+                  "refdes": "QOUT1",
+                  "manufacturer": "onsemi",
+                  "mpn": "MJ15003G",
+                  "normalized_category": "power_transistor",
+                  "package": "TO-3",
+                  "ratings": {"voltage_v":"140","current_a":"20","power_w":"250"},
+                  "datasheet_url": "https://example.invalid/MJ15003G.pdf",
+                  "source_url": "https://provider.example/MJ15003G",
+                  "availability_summary": "100 In Stock",
+                  "lifecycle_state": "Active",
+                  "footprint": {
+                    "library": "Package_TO_SOT_THT",
+                    "name": "TO-3",
+                    "package_compatibility_evidence": "TO-3 package and pinout supplied by resolver answer",
+                    "pin_pad_map": {"B":"1","C":"2"},
+                    "source_provider_id": "component_resolution_answer",
+                    "source_path": "Package_TO_SOT_THT.pretty/TO-3.kicad_mod"
+                  }
+                }
+              ]
+            }
+            """
+        )
+
+        XCTAssertEqual(revised.status, .ok)
+        let matrix = try decodeMatrix(from: revised)
+        let decision = try XCTUnwrap(matrix.decisions.first)
+        XCTAssertEqual(decision.status, .selected)
+        let candidate = try XCTUnwrap(decision.selectedCandidate)
+        XCTAssertEqual(candidate.mpn, "MJ15003G")
+        XCTAssertEqual(candidate.manufacturer, "onsemi")
+        XCTAssertEqual(candidate.evidence.first?.providerID, "component_resolution_answer")
+        XCTAssertEqual(candidate.evidence.first?.extractedParameters["target_refdes"], "QOUT1")
+        XCTAssertEqual(candidate.datasheets.first?.url, "https://example.invalid/MJ15003G.pdf")
+        XCTAssertEqual(candidate.footprintCandidates.first?.pinPadMap["B"], "1")
+        XCTAssertEqual(candidate.footprintCandidates.first?.pinPadMap["C"], "2")
+    }
+
+    func testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent([
+            component(refdes: "QOUT1", role: "single-ended Class-A output transistor"),
+            component(refdes: "RBIAS1", role: "bias resistor", constraints: [
+                "component_category": "resistor",
+                "resistance": "10kOhm",
+            ]),
+        ], root: root)
+
+        let blocked = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)"}"#
+        )
+        let blockedMatrixURL = try XCTUnwrap(blocked.artifacts.first { $0.kind == "component_matrix" }?.url)
+
+        let revised = await sendRevision(
+            runtime,
+            payload: """
+            {
+              "design_id": "amp-low-voltage",
+              "design_intent_path": "\(intentURL.path)",
+              "component_matrix_path": "\(blockedMatrixURL.path)",
+              "component_resolution_answers": [
+                {
+                  "refdes": "QOUT1",
+                  "manufacturer": "onsemi",
+                  "mpn": "MJ15003G",
+                  "normalized_category": "power_transistor",
+                  "package": "TO-3",
+                  "ratings": {"voltage_v":"140","current_a":"20","power_w":"250"},
+                  "datasheet_url": "https://example.invalid/MJ15003G.pdf",
+                  "source_url": "https://provider.example/MJ15003G",
+                  "availability_summary": "100 In Stock",
+                  "lifecycle_state": "Active",
+                  "footprint": {
+                    "library": "Package_TO_SOT_THT",
+                    "name": "TO-3",
+                    "package_compatibility_evidence": "TO-3 package and pinout supplied by resolver answer",
+                    "pin_pad_map": {"B":"1","C":"2"},
+                    "source_provider_id": "component_resolution_answer"
+                  }
+                }
+              ]
+            }
+            """
+        )
+
+        XCTAssertEqual(revised.status, .blocked)
+        let result = try XCTUnwrap(revised.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(result.warnings.contains { $0.code == "COMPONENT_SELECTION_REVISION_BLOCKED" })
+        XCTAssertTrue(result.questions.contains { $0.prompt.contains("RBIAS1") }, "Unanswered component must remain recoverable: \(result.questions)")
+        XCTAssertFalse(result.nextActions.contains("assign_footprints"))
+        XCTAssertFalse(result.nextActions.contains("prepare_libraries"))
+
+        let matrix = try decodeMatrix(from: revised)
+        let decisions = Dictionary(uniqueKeysWithValues: matrix.decisions.map { ($0.refdes, $0) })
+        XCTAssertEqual(decisions["QOUT1"]?.status, .selected)
+        XCTAssertEqual(decisions["RBIAS1"]?.status, .requiresVendorResolution)
+    }
+
     func testExactManufacturerPartNumberConstraintRejectsCompatibleWrongTransistor() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -3381,6 +3503,10 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
     }
 
     private func writeIntent(_ component: ComponentIntent, root: URL) throws -> URL {
+        try writeIntent([component], root: root)
+    }
+
+    private func writeIntent(_ components: [ComponentIntent], root: URL) throws -> URL {
         let intent = DesignIntent(
             designId: "amp-low-voltage",
             title: "Amp Low Voltage Audio Board",
@@ -3390,7 +3516,7 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
                 Requirement(id: "req-1", text: "Evidence-gated component selection", priority: "must"),
             ],
             assumptions: [],
-            components: [component],
+            components: components,
             nets: [],
             unresolvedDecisions: [],
             boards: [
