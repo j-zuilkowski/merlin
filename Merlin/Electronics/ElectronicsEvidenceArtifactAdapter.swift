@@ -121,7 +121,8 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
                 releasePackagePath: paths.releasePackagePath,
                 approvals: paths.approvals
             ),
-            approvals: paths.evidenceApprovals
+            approvals: paths.evidenceApprovals,
+            artifactChainRecords: nil
         )
     }
 

@@ -30,6 +30,7 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
     var spice: ElectronicsEndToEndSPICEEvidence?
     var fabrication: FabricationReleaseEvidence
     var approvals: [ElectronicsApprovalKind]
+    var artifactChainRecords: [ElectronicsArtifactChainRecord]?
 
     static let none = ElectronicsEndToEndEvidence(
         ercReports: [],
@@ -63,7 +64,8 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
             releasePackagePath: nil,
             approvals: []
         ),
-        approvals: []
+        approvals: [],
+        artifactChainRecords: nil
     )
 
     static let ampLowVoltageVerified = ElectronicsEndToEndEvidence(
@@ -93,7 +95,8 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
             circuitDeckProvided: nil
         ),
         fabrication: .fabReadyFixture,
-        approvals: [.highStakesSignoff]
+        approvals: [.highStakesSignoff],
+        artifactChainRecords: nil
     )
 
     static let mainsPowerCADVerified = ElectronicsEndToEndEvidence(
@@ -101,7 +104,8 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
         pcb: .complete,
         spice: nil,
         fabrication: .fabReadyFixture,
-        approvals: [.highStakesSignoff]
+        approvals: [.highStakesSignoff],
+        artifactChainRecords: nil
     )
 }
 
@@ -180,6 +184,11 @@ struct ElectronicsEndToEndHarness: Sendable {
             circuitIR: circuitIR
         )
         diagnostics.append(contentsOf: schema.issues)
+        if let artifactChainRecords = input.evidence.artifactChainRecords {
+            let artifactChain = ElectronicsArtifactChainGate().evaluate(records: artifactChainRecords)
+            diagnostics.append(contentsOf: artifactChain.diagnostics)
+            missing.append(contentsOf: artifactChain.missingStages.map { "artifact_chain:\($0.rawValue)" })
+        }
 
         let resolver = resolver(for: circuitIR)
         let resolutions = circuitIR.components.map { resolver.resolve(component: $0, pcbBound: true) }

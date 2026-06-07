@@ -472,6 +472,30 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             component: component,
             y: 6.1
         )
+        let manufacturerPartNumberProperty = optionalFootprintProperty(
+            name: "ManufacturerPartNumber",
+            value: component.manufacturerPartNumber,
+            component: component,
+            y: 7.4
+        )
+        let sourceEvidenceProperty = optionalFootprintProperty(
+            name: "SourceEvidence",
+            value: sourceEvidenceSummary(for: component),
+            component: component,
+            y: 8.7
+        )
+        let pinPadMapProperty = optionalFootprintProperty(
+            name: "PinPadMap",
+            value: pinPadMapSummary(for: component),
+            component: component,
+            y: 10.0
+        )
+        let footprintPinCompatibilityProperty = optionalFootprintProperty(
+            name: "FootprintPinCompatibility",
+            value: component.constraints["footprint_pin_compatibility"],
+            component: component,
+            y: 11.3
+        )
         let pads = component.pins.enumerated().map { padIndex, pin in
             padNode(
                 component: component,
@@ -496,6 +520,10 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
               (effects (font (size 1 1) (thickness 0.15))))
         \(boardProperty)
         \(safetyDomainProperty)
+        \(manufacturerPartNumberProperty)
+        \(sourceEvidenceProperty)
+        \(pinPadMapProperty)
+        \(footprintPinCompatibilityProperty)
             (fp_text reference "\(escaped(component.refdes))" (at 0 -2 0) (layer "F.SilkS")
               (effects (font (size 1 1) (thickness 0.15))))
             (fp_text value "\(value)" (at 0 2 0) (layer "F.Fab")
@@ -504,6 +532,22 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         \(pads)
           )
         """
+    }
+
+    private func sourceEvidenceSummary(for component: CircuitComponent) -> String? {
+        guard !component.sourceEvidence.isEmpty else { return nil }
+        return component.sourceEvidence
+            .map { "\($0.kind):\($0.reference)" }
+            .joined(separator: "; ")
+    }
+
+    private func pinPadMapSummary(for component: CircuitComponent) -> String? {
+        let pairs = component.pins.compactMap { pin -> String? in
+            guard let pad = pin.footprintPad?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !pad.isEmpty else { return nil }
+            return "\(pin.symbolPin)->\(pad)"
+        }
+        return pairs.isEmpty ? nil : pairs.joined(separator: ",")
     }
 
     private func optionalFootprintProperty(

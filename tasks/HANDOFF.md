@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 483.
+workflows. Latest completed task is Task 484.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 484 — prove generic realism and artifact chain gates
 - Task 483 — add GUI resolver answer entry
 - Task 482 — define electronics domain finish checklist
 - Task 481 — carry component revision answer handoff state
@@ -324,6 +325,45 @@ rm -rf /tmp/merlin-derived-task483 && xcodebuild test -project Merlin.xcodeproj 
 ```
 
 Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+Task 484 closed generic finish criteria F2 and F3. PCB materialization now emits
+manufacturer part number, source evidence, pin-pad map, and footprint pin
+compatibility in generated board footprints. Focused tests cover two materially
+different non-AmpDemo fixtures and assert real KiCad schematic symbols,
+connectivity, PCB edge/routing artifacts, board/safety-domain propagation, and
+no AmpDemo-specific emitter shortcuts. `ElectronicsArtifactChainGate` now
+requires artifact-backed records for each major electronics workflow gate and
+requires repair mutation plus rerun evidence for repair/rerun stages; the
+end-to-end harness enforces those records when supplied.
+
+Task 484 fail-first evidence:
+
+```bash
+xcodegen generate
+rm -rf /tmp/merlin-derived-task484-red && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task484-red -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Red result: `TEST FAILED`, build failed because
+`ElectronicsArtifactChainRecord` was not implemented.
+
+Task 484 green evidence:
+
+```bash
+xcodegen generate
+rm -rf /tmp/merlin-derived-task484 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task484 -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
+
+```bash
+rm -rf /tmp/merlin-derived-task483-484 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483-484 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff \
+  -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Result: `TEST SUCCEEDED`, 7 tests, 0 failures.
 
 `git diff --check` passed. The full AmpDemo GUI demo was not run.
 
@@ -739,14 +779,14 @@ evidence check.
   advance only to the completed component matrix handoff; incomplete answers
   remain blocked with unanswered questions and no footprint/library
   continuation.
-- [ ] **F2: Generic schematic and PCB realism proof.** Focused tests and
+- [x] **F2: Generic schematic and PCB realism proof.** Focused tests and
   artifacts prove generic, non-AmpDemo-specific schematic and PCB generation for
   at least two materially different request fixtures. Proof must include real
   KiCad schematic symbols/connectivity, selected footprint/source/pin
   provenance, board/safety-domain propagation, plausible PCB placement/routing
   artifacts, ERC/DRC gate behavior, and no product-specific emitter shortcuts or
   metadata-only/composite-block caricatures.
-- [ ] **F3: Full generic artifact-chain proof.** A focused runtime/harness path
+- [x] **F3: Full generic artifact-chain proof.** A focused runtime/harness path
   proves the full electronics workflow cannot skip or narrate any major gate:
   requirements inspection, DesignIntent approval, board decomposition, Circuit
   IR, component selection/revision, footprint assignment, schematic, PCB, ERC,
