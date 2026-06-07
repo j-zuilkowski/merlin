@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 481.
+workflows. Latest completed task is Task 482.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 482 — define electronics domain finish checklist
 - Task 481 — carry component revision answer handoff state
 - Task 480 — recover component revision from structured resolver answers
 - Task 479 — surface component revision questions in workflow and GUI state
@@ -679,31 +680,53 @@ Class-A output-stage gate only. It does not prove the full amplifier, mains
 board, thermal design, complete schematic, PCB, BOM, ERC, DRC, CAM, or release
 package is complete.
 
-## Remaining Electronics Work
+## Electronics Domain Finish Criteria
+
+This is the fixed finish line. Do not replace it with a rolling "next group"
+section. Future electronics tasks must close one unchecked criterion below. New
+finish criteria may be added only when a focused test, full-workflow artifact,
+or GUI run proves a real blocker that is not covered here; document that blocker
+in a numbered task file before adding it.
 
 Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-The immediate remaining work is the next generic GUI/workflow answer-entry
-group:
-
-1. Add fail-first tests proving electronics GUI/job state can present blocked
-   resolver questions as actionable answer requirements and can carry submitted
-   answer evidence into the focused continuation path, not just display the
-   blocked questions.
-2. Wire the electronics job/session state so submitted resolver answers,
-   evidence paths, and question IDs become structured
-   `component_resolution_answers` for `kicad_revise_component_selection`.
-3. Prove GUI-originated complete answers advance only to the completed component
-   matrix handoff, while incomplete GUI-originated answers remain blocked with
-   unanswered questions and no footprint/library continuation.
-4. Run focused GUI/job-state and engine tests only. Do not run the full AmpDemo
-   GUI demo and do not hand-design AmpDemo parts.
-
-The biggest open risk is still schematic/PCB realism. SPICE gating is now much
-stronger, but it does not by itself make Merlin capable of arbitrary reliable
-electronics synthesis.
+- [ ] **F1: GUI resolver answer entry.** Electronics GUI/job state presents
+  blocked resolver questions as actionable answer requirements, accepts
+  submitted resolver answer evidence, and carries question IDs/evidence paths
+  into focused continuation as structured `component_resolution_answers` for
+  `kicad_revise_component_selection`. Complete GUI-originated answers may
+  advance only to the completed component matrix handoff; incomplete answers
+  remain blocked with unanswered questions and no footprint/library
+  continuation.
+- [ ] **F2: Generic schematic and PCB realism proof.** Focused tests and
+  artifacts prove generic, non-AmpDemo-specific schematic and PCB generation for
+  at least two materially different request fixtures. Proof must include real
+  KiCad schematic symbols/connectivity, selected footprint/source/pin
+  provenance, board/safety-domain propagation, plausible PCB placement/routing
+  artifacts, ERC/DRC gate behavior, and no product-specific emitter shortcuts or
+  metadata-only/composite-block caricatures.
+- [ ] **F3: Full generic artifact-chain proof.** A focused runtime/harness path
+  proves the full electronics workflow cannot skip or narrate any major gate:
+  requirements inspection, DesignIntent approval, board decomposition, Circuit
+  IR, component selection/revision, footprint assignment, schematic, PCB, ERC,
+  DRC, SPICE scenario/run, BOM/vendor package, and fabrication/CAM output. Each
+  gate must require artifact-backed evidence, and repair loops must require
+  concrete mutation plus explicit rerun evidence before advancement.
+- [ ] **F4: Fresh full GUI workflow completion evidence.** After F1-F3 are
+  green, run a fresh full GUI workflow from a clean project request. AmpDemo may
+  be used only as an evidence check, not as hand-designed input. The run must
+  reach honest workflow completion/FAB_READY through Merlin-generated artifacts
+  or stop at a documented external blocker with actionable missing evidence; it
+  must not advance from unresolved components, schematic/PCB placeholders,
+  missing SPICE models/envelopes, placeholder BOM/vendor data, or declared-only
+  fabrication paths.
+- [ ] **F5: Completion contract and status cleanup.** Update task files,
+  `HANDOFF.md`, and any electronics status docs to mark the electronics domain
+  complete only after F1-F4 have commands, artifacts, screenshots/logs where
+  applicable, and commits. Remove stale "representative slice only" caveats only
+  when the corresponding full-workflow evidence exists.
 
 ## Key Architecture Decisions (V3+)
 - **AppSettings**: `@MainActor ObservableObject` singleton. Single source of truth for all persisted config. Backing stores: `~/.merlin/config.toml` (feature flags, hooks, memories, toolbar, reasoning), Keychain (API keys), UserDefaults (UI-only). Features never read backing stores directly — they read `AppSettings`.
