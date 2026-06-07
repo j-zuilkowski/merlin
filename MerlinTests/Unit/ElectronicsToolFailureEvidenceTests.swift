@@ -178,14 +178,47 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertTrue(blockedResult.warnings.contains { $0.code == "DRC_REPAIR_REQUIRES_APPROVAL" })
     }
 
-    func testDRCRepairPatchApplicationRecordsUnverifiedLayoutMutationRequirement() async throws {
+    func testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let root = temporaryDirectory("drc-repair-application")
-        let project = try writeKiCadProjectFixture()
+        let project = try writeMutableKiCadProjectFixture()
+        let board = project.deletingPathExtension().appendingPathExtension("kicad_pcb")
+        let originalBoard = try String(contentsOf: board, encoding: .utf8)
         let drcPlan = try writeFixtureFile(
             name: "drc-plan.json",
-            text: #"{"status":"repair_planned","patches":[{"violationId":"drc-1","repairClass":"clearance","targetRefs":["R1","C1"],"action":"adjust_clearance_rule"}],"diagnostics":[]}"#,
+            text: """
+            {
+              "status": "repair_planned",
+              "patches": [
+                {
+                  "violationId": "drc-place",
+                  "repairClass": "placement",
+                  "targetRefs": ["R1", "C1"],
+                  "action": "adjust_placement"
+                },
+                {
+                  "violationId": "drc-clearance",
+                  "repairClass": "clearance",
+                  "targetRefs": ["Net-(R1-Pad1)"],
+                  "action": "adjust_clearance_rule"
+                },
+                {
+                  "violationId": "drc-net-class",
+                  "repairClass": "net_class",
+                  "targetRefs": ["Net-(R1-Pad1)"],
+                  "action": "adjust_net_class"
+                },
+                {
+                  "violationId": "drc-route",
+                  "repairClass": "routing",
+                  "targetRefs": ["Net-(R1-Pad1)"],
+                  "action": "reroute_or_report_unrouted"
+                }
+              ],
+              "diagnostics": []
+            }
+            """,
             in: root
         )
 
@@ -198,17 +231,34 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertEqual(response.status, .ok)
         let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
         let applicationPath = try XCTUnwrap(result.artifacts.first { $0.kind == "drc_repair_application" }?.path)
+        let mutationPath = try XCTUnwrap(result.artifacts.first { $0.kind == "layout_mutation_evidence" }?.path)
         let application = try XCTUnwrap(JSONSerialization.jsonObject(
             with: Data(contentsOf: URL(fileURLWithPath: applicationPath))
         ) as? [String: Any])
-        XCTAssertEqual(application["status"] as? String, "patch_recorded_requires_layout_mutation")
+        let mutation = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(contentsOf: URL(fileURLWithPath: mutationPath))
+        ) as? [String: Any])
+        let updatedBoard = try String(contentsOf: board, encoding: .utf8)
+
+        XCTAssertNotEqual(updatedBoard, originalBoard)
+        XCTAssertTrue(updatedBoard.contains(#"(at 17 "#), updatedBoard)
+        XCTAssertTrue(updatedBoard.contains(#"(clearance 0.2)"#), updatedBoard)
+        XCTAssertTrue(updatedBoard.contains(#"(trace_width 0.3)"#), updatedBoard)
+        XCTAssertTrue(updatedBoard.contains("Merlin reroute required"), updatedBoard)
+        XCTAssertEqual(application["status"] as? String, "patch_applied_requires_drc_rerun")
         XCTAssertEqual(application["verified"] as? Bool, false)
         XCTAssertEqual(application["requires_rerun_tool"] as? String, "kicad_run_drc")
-        XCTAssertEqual(application["requires_layout_mutation"] as? Bool, true)
-        XCTAssertNil(application["layout_mutation_evidence_path"])
+        XCTAssertEqual(application["requires_layout_mutation"] as? Bool, false)
+        XCTAssertEqual(application["layout_mutation_evidence_path"] as? String, mutationPath)
+        XCTAssertEqual(mutation["status"] as? String, "layout_mutated_requires_drc_rerun")
+        XCTAssertEqual(mutation["board_path"] as? String, board.path)
+        XCTAssertNotEqual(mutation["before_hash"] as? String, mutation["after_hash"] as? String)
+        XCTAssertEqual(mutation["verified"] as? Bool, false)
+        XCTAssertEqual(mutation["requires_rerun_tool"] as? String, "kicad_run_drc")
+        XCTAssertEqual(mutation["patch_ids"] as? [String], ["drc-place", "drc-clearance", "drc-net-class", "drc-route"])
+        XCTAssertGreaterThanOrEqual((mutation["changed_objects"] as? [[String: Any]])?.count ?? 0, 4)
         XCTAssertNil(result.handoff?.drcReportPath)
-        XCTAssertTrue(result.nextActions.contains("apply_pcb_layout_mutation"))
-        XCTAssertTrue(result.nextActions.contains("kicad_run_drc"))
+        XCTAssertEqual(result.nextActions, ["kicad_run_drc"])
     }
 
     func testSPICERepairActionPlansMeasurementRepairAndBlocksUnsupportedLog() async throws {
@@ -289,7 +339,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let root = temporaryDirectory("repair-apply-runtime")
-        let project = try writeKiCadProjectFixture()
+        let project = try writeMutableKiCadProjectFixture()
         let schematic = project.deletingPathExtension().appendingPathExtension("kicad_sch")
 
         let ercPlan = ERCRepairPlan(
@@ -337,9 +387,10 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let drcApplyResult = try XCTUnwrap(drcApply.payload?.decodeJSON(KiCadToolResult.self))
         XCTAssertTrue(drcApplyResult.artifacts.contains { $0.kind == "drc_repair_application" })
         XCTAssertFalse(drcApplyResult.artifacts.contains { $0.kind == "drc_report" })
-        XCTAssertEqual(drcApplyResult.nextActions, ["apply_pcb_layout_mutation", "kicad_run_drc"])
+        XCTAssertEqual(drcApplyResult.nextActions, ["kicad_run_drc"])
         XCTAssertNil(drcApplyResult.handoff?.drcReportPath)
-        XCTAssertTrue(drcApplyResult.warnings.contains { $0.code == "DRC_PATCH_REQUIRES_BOARD_MUTATOR" })
+        XCTAssertTrue(drcApplyResult.artifacts.contains { $0.kind == "layout_mutation_evidence" })
+        XCTAssertTrue(drcApplyResult.warnings.contains { $0.code == "DRC_PATCH_REQUIRES_RERUN" })
 
         let scenario = try writeFixtureFile(
             name: "scenario.json",
@@ -385,6 +436,43 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         try #"{"meta":{"version":1}}"#.write(to: project, atomically: true, encoding: .utf8)
         try "(kicad_sch (version 20250114) (generator Merlin))\n".write(to: schematic, atomically: true, encoding: .utf8)
         try "(kicad_pcb (version 20250114) (generator Merlin))\n".write(to: board, atomically: true, encoding: .utf8)
+        return project
+    }
+
+    private func writeMutableKiCadProjectFixture() throws -> URL {
+        let directory = temporaryDirectory("tool-failure-mutable-kicad")
+        let project = directory.appendingPathComponent("fixture.kicad_pro")
+        let schematic = directory.appendingPathComponent("fixture.kicad_sch")
+        let board = directory.appendingPathComponent("fixture.kicad_pcb")
+        try #"{"meta":{"version":1}}"#.write(to: project, atomically: true, encoding: .utf8)
+        try "(kicad_sch (version 20250114) (generator Merlin))\n".write(to: schematic, atomically: true, encoding: .utf8)
+        try """
+        (kicad_pcb
+          (version 20250114)
+          (generator "merlin-electronics")
+          (setup
+            (trace_clearance 0.15)
+          )
+          (net 1 "Net-(R1-Pad1)")
+          (net_class Default "fixture"
+            (clearance 0.15)
+            (trace_width 0.25)
+            (add_net "Net-(R1-Pad1)")
+          )
+          (footprint "Resistor_SMD:R_0805"
+            (layer "F.Cu")
+            (uuid "r1")
+            (at 10 10 0)
+            (property "Reference" "R1" (at 0 0 0) (layer "F.SilkS"))
+          )
+          (footprint "Capacitor_SMD:C_0805"
+            (layer "F.Cu")
+            (uuid "c1")
+            (at 10 10 0)
+            (property "Reference" "C1" (at 0 0 0) (layer "F.SilkS"))
+          )
+        )
+        """.write(to: board, atomically: true, encoding: .utf8)
         return project
     }
 

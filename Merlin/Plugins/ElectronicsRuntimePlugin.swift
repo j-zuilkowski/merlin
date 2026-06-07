@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 func electronicsLiveCatalogQueryOrderedComponents(_ components: [ComponentIntent]) -> [ComponentIntent] {
@@ -1071,6 +1072,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(value)
         return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    private func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 
     private func handleCompileProject(
@@ -2690,16 +2697,61 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         do {
             let plan = try JSONDecoder().decode(DRCRepairPlanArtifact.self, from: Data(contentsOf: URL(fileURLWithPath: planPath)))
-            let report = RepairApplicationArtifact(
-                status: "patch_recorded_requires_layout_mutation",
+            let boardPath = URL(fileURLWithPath: projectPath)
+                .deletingPathExtension()
+                .appendingPathExtension("kicad_pcb")
+                .path
+            guard FileManager.default.fileExists(atPath: boardPath) else {
+                return structuredBlock(
+                    request,
+                    reason: .missingProjectFile,
+                    message: "DRC patch application requires an existing KiCad PCB file next to the project.",
+                    context: context,
+                    nextActions: ["compile_kicad_project"]
+                )
+            }
+            let beforeText = try String(contentsOfFile: boardPath, encoding: .utf8)
+            let mutation = PCBLayoutRepairMutator().apply(plan.patches, to: beforeText)
+            guard !mutation.changedObjects.isEmpty, mutation.updatedText != beforeText else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "DRC patch application could not map the repair plan to concrete PCB/layout changes.",
+                    context: context,
+                    nextActions: ["regenerate_drc_repair_plan"]
+                )
+            }
+            try mutation.updatedText.write(toFile: boardPath, atomically: true, encoding: .utf8)
+            let beforeHash = sha256Hex(Data(beforeText.utf8))
+            let afterHash = sha256Hex(Data(mutation.updatedText.utf8))
+            let mutationEvidence = PCBLayoutMutationEvidence(
+                status: "layout_mutated_requires_drc_rerun",
                 sourcePlanPath: planPath,
-                targetPath: projectPath,
+                projectPath: projectPath,
+                boardPath: boardPath,
+                beforeHash: beforeHash,
+                afterHash: afterHash,
+                patchIds: plan.patches.map(\.violationId),
+                changedObjects: mutation.changedObjects,
+                verified: false,
+                requiresRerunTool: "kicad_run_drc"
+            )
+            let mutationArtifact = writeArtifact(
+                request,
+                context: context,
+                kind: "layout_mutation_evidence",
+                body: try canonicalJSON(mutationEvidence)
+            )
+            let report = RepairApplicationArtifact(
+                status: "patch_applied_requires_drc_rerun",
+                sourcePlanPath: planPath,
+                targetPath: boardPath,
                 patchCount: plan.patches.count,
-                mutatedTarget: false,
+                mutatedTarget: true,
                 verified: false,
                 requiresRerunTool: "kicad_run_drc",
-                requiresLayoutMutation: true,
-                layoutMutationEvidencePath: nil
+                requiresLayoutMutation: false,
+                layoutMutationEvidencePath: mutationArtifact.path
             )
             let artifact = writeArtifact(
                 request,
@@ -2709,14 +2761,14 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
             return complete(
                 request,
-                artifacts: [artifact],
+                artifacts: [artifact, mutationArtifact],
                 warnings: [KiCadWarning(
-                    code: "DRC_PATCH_REQUIRES_BOARD_MUTATOR",
-                    message: "DRC repair plan was recorded, but no generic PCB mutator is available yet; rerun DRC only after the board change is applied.",
-                    affectedRefs: [planPath, projectPath],
-                    suggestedAction: "Apply the PCB placement/routing/rule change through a concrete PCB mutator before rerunning DRC."
+                    code: "DRC_PATCH_REQUIRES_RERUN",
+                    message: "DRC repair patch mutated the PCB; rerun kicad_run_drc before accepting PCB verification.",
+                    affectedRefs: [planPath, boardPath, mutationArtifact.path],
+                    suggestedAction: "Run kicad_run_drc and attach the clean DRC report together with the layout mutation evidence."
                 )],
-                nextActions: ["apply_pcb_layout_mutation", "kicad_run_drc"]
+                nextActions: ["kicad_run_drc"]
             )
         } catch {
             return structuredBlock(
@@ -7676,6 +7728,256 @@ private struct DRCRepairPlanArtifact: Codable, Sendable, Equatable {
     var status: String
     var patches: [PCBDRCRepairPatch]
     var diagnostics: [ElectronicsSchemaIssue]
+}
+
+private struct PCBLayoutMutationEvidence: Codable, Sendable, Equatable {
+    var status: String
+    var sourcePlanPath: String
+    var projectPath: String
+    var boardPath: String
+    var beforeHash: String
+    var afterHash: String
+    var patchIds: [String]
+    var changedObjects: [PCBLayoutChangedObject]
+    var verified: Bool
+    var requiresRerunTool: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case sourcePlanPath = "source_plan_path"
+        case projectPath = "project_path"
+        case boardPath = "board_path"
+        case beforeHash = "before_hash"
+        case afterHash = "after_hash"
+        case patchIds = "patch_ids"
+        case changedObjects = "changed_objects"
+        case verified
+        case requiresRerunTool = "requires_rerun_tool"
+    }
+}
+
+private struct PCBLayoutChangedObject: Codable, Sendable, Equatable {
+    var patchId: String
+    var kind: String
+    var reference: String
+    var action: String
+    var before: String
+    var after: String
+
+    enum CodingKeys: String, CodingKey {
+        case patchId = "patch_id"
+        case kind
+        case reference
+        case action
+        case before
+        case after
+    }
+}
+
+private struct PCBLayoutRepairMutation: Sendable, Equatable {
+    var updatedText: String
+    var changedObjects: [PCBLayoutChangedObject]
+}
+
+private struct PCBLayoutRepairMutator: Sendable {
+    func apply(_ patches: [PCBDRCRepairPatch], to boardText: String) -> PCBLayoutRepairMutation {
+        var text = boardText
+        var changes: [PCBLayoutChangedObject] = []
+
+        for (patchIndex, patch) in patches.enumerated() {
+            switch patch.repairClass {
+            case .placement:
+                for (targetIndex, ref) in patch.targetRefs.enumerated() {
+                    guard let result = moveFootprint(ref: ref, in: text, patchIndex: patchIndex, targetIndex: targetIndex) else {
+                        continue
+                    }
+                    text = result.text
+                    changes.append(PCBLayoutChangedObject(
+                        patchId: patch.violationId,
+                        kind: "footprint_placement",
+                        reference: ref,
+                        action: patch.action,
+                        before: result.before,
+                        after: result.after
+                    ))
+                }
+            case .clearance:
+                let result = updateNumericRules(
+                    in: text,
+                    ruleNames: ["trace_clearance", "clearance"],
+                    minimumValue: 0.2,
+                    patch: patch,
+                    kind: "clearance_rule"
+                )
+                text = result.text
+                changes.append(contentsOf: result.changes)
+            case .netClass:
+                let result = updateNumericRules(
+                    in: text,
+                    ruleNames: ["trace_width"],
+                    minimumValue: 0.3,
+                    patch: patch,
+                    kind: "net_class_rule"
+                )
+                text = result.text
+                changes.append(contentsOf: result.changes)
+            case .routing:
+                guard let result = insertRerouteMarker(patch: patch, in: text, patchIndex: patchIndex) else {
+                    continue
+                }
+                text = result.text
+                changes.append(PCBLayoutChangedObject(
+                    patchId: patch.violationId,
+                    kind: "routing_marker",
+                    reference: patch.targetRefs.joined(separator: ","),
+                    action: patch.action,
+                    before: "",
+                    after: result.marker
+                ))
+            }
+        }
+
+        return PCBLayoutRepairMutation(updatedText: text, changedObjects: changes)
+    }
+
+    private func moveFootprint(
+        ref: String,
+        in text: String,
+        patchIndex: Int,
+        targetIndex: Int
+    ) -> (text: String, before: String, after: String)? {
+        guard let footprintRange = footprintRange(for: ref, in: text) else { return nil }
+        let footprintText = String(text[footprintRange])
+        guard let atRange = firstMatch(pattern: #"\(at\s+([-0-9.]+)\s+([-0-9.]+)([^)]*)\)"#, in: footprintText),
+              let xRange = Range(atRange.match.range(at: 1), in: footprintText),
+              let yRange = Range(atRange.match.range(at: 2), in: footprintText),
+              let fullRange = Range(atRange.match.range(at: 0), in: footprintText),
+              let x = Double(footprintText[xRange]),
+              let y = Double(footprintText[yRange]) else {
+            return nil
+        }
+        let suffixRange = Range(atRange.match.range(at: 3), in: footprintText)
+        let suffix = suffixRange.map { String(footprintText[$0]) } ?? ""
+        let offset = 7.0 + Double(patchIndex + targetIndex) * 3.0
+        let replacement = "(at \(number(x + offset)) \(number(y + offset))\(suffix))"
+        var updatedFootprint = footprintText
+        let before = String(updatedFootprint[fullRange])
+        updatedFootprint.replaceSubrange(fullRange, with: replacement)
+        var updatedText = text
+        updatedText.replaceSubrange(footprintRange, with: updatedFootprint)
+        return (updatedText, before, replacement)
+    }
+
+    private func updateNumericRules(
+        in text: String,
+        ruleNames: [String],
+        minimumValue: Double,
+        patch: PCBDRCRepairPatch,
+        kind: String
+    ) -> (text: String, changes: [PCBLayoutChangedObject]) {
+        var updated = text
+        var changes: [PCBLayoutChangedObject] = []
+        for ruleName in ruleNames {
+            let pattern = #"\(\#(ruleName)\s+([-0-9.]+)\)"#
+            if let found = firstMatch(pattern: pattern, in: updated),
+               let fullRange = Range(found.match.range(at: 0), in: updated),
+               let valueRange = Range(found.match.range(at: 1), in: updated),
+               let value = Double(updated[valueRange]) {
+                let next = max(value + 0.05, minimumValue)
+                let replacement = "(\(ruleName) \(number(next)))"
+                let before = String(updated[fullRange])
+                if before != replacement {
+                    updated.replaceSubrange(fullRange, with: replacement)
+                    changes.append(PCBLayoutChangedObject(
+                        patchId: patch.violationId,
+                        kind: kind,
+                        reference: patch.targetRefs.joined(separator: ","),
+                        action: patch.action,
+                        before: before,
+                        after: replacement
+                    ))
+                }
+            }
+        }
+        return (updated, changes)
+    }
+
+    private func insertRerouteMarker(
+        patch: PCBDRCRepairPatch,
+        in text: String,
+        patchIndex: Int
+    ) -> (text: String, marker: String)? {
+        guard let insertion = text.lastIndex(of: ")") else { return nil }
+        let target = patch.targetRefs.joined(separator: ", ")
+        let marker = """
+          (gr_text "Merlin reroute required: \(escaped(target))" (at 5 \(number(5.0 + Double(patchIndex) * 2.0)) 0) (layer "Cmts.User")
+            (effects (font (size 1 1) (thickness 0.15)))
+            (uuid "\(UUID().uuidString.lowercased())")
+          )
+        """
+        var updated = text
+        updated.insert(contentsOf: "\n\(marker)\n", at: insertion)
+        return (updated, marker)
+    }
+
+    private func footprintRange(for ref: String, in text: String) -> Range<String.Index>? {
+        var searchStart = text.startIndex
+        while let startRange = text.range(of: "(footprint", range: searchStart..<text.endIndex),
+              let end = matchingParenthesisEnd(start: startRange.lowerBound, in: text) {
+            let nodeRange = startRange.lowerBound..<end
+            let node = text[nodeRange]
+            if node.contains(#""Reference" "\#(ref)""#) || node.contains(#"reference "\#(ref)""#) {
+                return nodeRange
+            }
+            searchStart = end
+        }
+        return nil
+    }
+
+    private func matchingParenthesisEnd(start: String.Index, in text: String) -> String.Index? {
+        var depth = 0
+        var isQuoted = false
+        var index = start
+        while index < text.endIndex {
+            let character = text[index]
+            if character == "\"" {
+                isQuoted.toggle()
+            } else if !isQuoted {
+                if character == "(" {
+                    depth += 1
+                } else if character == ")" {
+                    depth -= 1
+                    if depth == 0 {
+                        return text.index(after: index)
+                    }
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+
+    private func firstMatch(pattern: String, in text: String) -> (regex: NSRegularExpression, match: NSTextCheckingResult)? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, range: range) else { return nil }
+        return (regex, match)
+    }
+
+    private func number(_ value: Double) -> String {
+        let rounded = (value * 1_000).rounded() / 1_000
+        if rounded == rounded.rounded() {
+            return String(Int(rounded))
+        }
+        return String(format: "%.3f", rounded)
+            .replacingOccurrences(of: #"0+$"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
+    }
+
+    private func escaped(_ value: String) -> String {
+        value.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+    }
 }
 
 private struct RepairApplicationArtifact: Codable, Sendable, Equatable {

@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 471.
+workflows. Latest completed task is Task 472.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 472 — mutate PCB DRC repair plans
 - Task 471 — gate DRC layout rerun evidence
 - Task 470 — require explicit ERC rerun evidence
 - Task 469 — generic topology and materialization realism
@@ -76,9 +77,9 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 470 was committed. Task 471 completed DRC/layout
-rerun evidence gates for the repair loop, PCB verification gate, workflow
-harness, and runtime patch application artifacts.
+The repo was clean after Task 471 was committed. Task 472 completed bounded
+generic PCB/layout mutations for DRC repair patch application and emits
+artifact-backed layout mutation evidence before requiring a DRC rerun.
 
 ## Current Electronics Plugin State
 
@@ -124,11 +125,14 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   `patch_applied_requires_rerun` artifact and requires `kicad_run_erc` before
   schematic verification can advance.
 - DRC repair loops now require an explicit DRC report or rerun report. DRC
-  repair patch application records
-  `patch_recorded_requires_layout_mutation`, `verified: false`, and
-  `requires_layout_mutation: true`; PCB verification blocks repaired DRC paths
-  until an existing PCB/layout mutation evidence file is provided before the
-  clean rerun report is accepted as workflow evidence.
+  repair patch application maps supported generic repair classes to concrete
+  PCB/layout mutations: footprint placement offsets, clearance and trace-width
+  rule changes, and a routing reroute marker when a native route edit is not
+  yet available. It writes the mutated board, emits `layout_mutation_evidence`
+  with before/after SHA-256 hashes, patch IDs, and changed objects, records
+  `patch_applied_requires_drc_rerun`, and requires `kicad_run_drc` before PCB
+  verification can advance. PCB verification still blocks repaired DRC paths
+  when required layout mutation evidence is missing.
 - SPICE now requires:
   - explicit `SPICESimulationScenario` JSON;
   - a real circuit deck path;
@@ -143,6 +147,29 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
 
+Task 472 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowAcceptsCleanDRCRerunAfterConcreteLayoutMutationEvidence
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
+  -only-testing:MerlinTests/PCBDRCFollowOnTests/testPCBVerificationBlocksRepairPlanWithoutLayoutMutationEvidence \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowAcceptsCleanDRCRerunAfterConcreteLayoutMutationEvidence
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
 Task 471 focused test commands passed:
 
 ```bash
@@ -150,7 +177,7 @@ xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'plat
   -only-testing:MerlinTests/PCBDRCFollowOnTests/testDRCRepairLoopRequiresExplicitRerunReport \
   -only-testing:MerlinTests/PCBDRCFollowOnTests/testPCBVerificationBlocksRepairPlanWithoutLayoutMutationEvidence \
   -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
-  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationRecordsUnverifiedLayoutMutationRequirement
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence
 ```
 
 Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
@@ -160,7 +187,7 @@ xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'plat
   -only-testing:MerlinTests/PCBDRCFollowOnTests \
   -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics \
   -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
-  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationRecordsUnverifiedLayoutMutationRequirement \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
   -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
   -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff \
   -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testBlockingDRCViolationBlocksPCBAndHarness
@@ -298,15 +325,15 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Implement concrete generic PCB/layout mutators for placement, routing, net
-   class, and clearance repair plans so DRC repairs can modify board artifacts
-   before rerun instead of only recording required mutation evidence.
-2. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
+1. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
    datasheets, stock/price evidence, and real BOM artifact.
-3. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
+2. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
    pick-and-place, drawings, and consolidated verification report.
-4. Verify GUI job state consistency: slot status, electronics job list, and live
+3. Verify GUI job state consistency: slot status, electronics job list, and live
    leaderboard must agree about running/blocked/complete jobs.
+4. Replace the current routing repair marker with KiCad-native segment/via
+   edits or an autorouter-backed mutation once repair plans carry enough route
+   geometry to do that honestly.
 5. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
    pass with app-only screenshots captured while the app is working.
 
