@@ -179,6 +179,19 @@ final class ERCRepairLoopTests: XCTestCase {
         XCTAssertTrue(result.diagnostics.contains { $0.code == "ERC_REPAIR_ATTEMPTS_EXHAUSTED" })
     }
 
+    func testRepairLoopRequiresExplicitERCRerunReport() throws {
+        let result = ERCRepairLoop().run(
+            initialSchematic: schematic(),
+            circuitIR: validCircuitIR(),
+            ercReports: [],
+            resolverEvidence: []
+        )
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertEqual(result.attempts, 0)
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "ERC_RERUN_REPORT_REQUIRED" })
+    }
+
     func testRepairLoopPassesWhenRerunReportHasNoBlockingViolations() throws {
         let failing = try KiCadERCParser().parse(jsonData: ercJSON([
             ercViolation(id: "nc", code: "no_connect", severity: "error", message: "Add explicit no-connect", refs: ["J1.2"]),

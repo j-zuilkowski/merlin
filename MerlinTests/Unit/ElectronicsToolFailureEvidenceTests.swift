@@ -95,6 +95,49 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertTrue(result.nextActions.contains("kicad_run_erc"))
     }
 
+    func testERCRepairPatchApplicationRecordsUnverifiedRerunRequirement() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("erc-repair-application")
+        let circuitIR: CircuitIR = try loadFixture("amp_low_voltage_audio/circuit_ir.json")
+        let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: root
+        )
+        let plan = ERCRepairPlan(
+            patches: [
+                ERCRepairPatch(
+                    violationId: "erc-nc-1",
+                    repairClass: .explicitNoConnect,
+                    targetRef: "Symbol QOUT1 Pin 2 [C, Passive, Line]",
+                    action: "add_no_connect",
+                    details: "unused output transistor pin requires explicit no-connect"
+                ),
+            ],
+            unsupportedViolations: []
+        )
+        let planPath = root.appendingPathComponent("erc-repair-plan.json")
+        try JSONEncoder().encode(plan).write(to: planPath)
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_erc_repair_patch",
+            payload: #"{"erc_repair_plan_path":"\#(planPath.path)","schematic_path":"\#(materialized.schematicURL.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        let applicationPath = try XCTUnwrap(result.artifacts.first { $0.kind == "erc_repair_application" }?.path)
+        let application = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(contentsOf: URL(fileURLWithPath: applicationPath))
+        ) as? [String: Any])
+        XCTAssertEqual(application["status"] as? String, "patch_applied_requires_rerun")
+        XCTAssertEqual(application["requires_rerun_tool"] as? String, "kicad_run_erc")
+        XCTAssertEqual(application["verified"] as? Bool, false)
+        XCTAssertNil(result.handoff?.ercReportPath)
+        XCTAssertTrue(result.nextActions.contains("kicad_run_erc"))
+    }
+
     func testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)

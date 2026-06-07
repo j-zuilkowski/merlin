@@ -60,6 +60,24 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         XCTAssertNotEqual(result.status, .complete)
     }
 
+    func testWorkflowRequiresExplicitERCRerunReportBeforeSchematicVerified() throws {
+        var evidence = ElectronicsEndToEndEvidence.ampLowVoltageVerified
+        evidence.ercReports = []
+
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
+            outputDirectory: temporaryDirectory("amp-missing-erc-rerun"),
+            evidence: evidence,
+            approvals: [.highStakesSignoff]
+        ))
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertNotEqual(result.schematicStatus, .schematicVerified)
+        XCTAssertTrue(result.missingEvidence.contains("erc_report"), "\(result)")
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "ERC_RERUN_REPORT_REQUIRED" }, "\(result)")
+    }
+
     func testCompositeCircuitIRSchematicCannotReachSchematicVerified() throws {
         let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
         let circuitIR = compositeCircuitIR()

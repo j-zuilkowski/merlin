@@ -2644,11 +2644,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             let rendered = try KiCadSchematicWriter().write(updated)
             try rendered.write(toFile: schematicPath, atomically: true, encoding: .utf8)
             let report = RepairApplicationArtifact(
-                status: "patch_applied",
+                status: "patch_applied_requires_rerun",
                 sourcePlanPath: planPath,
                 targetPath: schematicPath,
                 patchCount: plan.patches.count,
                 mutatedTarget: true,
+                verified: false,
                 requiresRerunTool: "kicad_run_erc"
             )
             let artifact = writeArtifact(
@@ -2695,6 +2696,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 targetPath: projectPath,
                 patchCount: plan.patches.count,
                 mutatedTarget: false,
+                verified: false,
                 requiresRerunTool: "kicad_run_drc"
             )
             let artifact = writeArtifact(
@@ -2863,6 +2865,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 targetPath: scenario.circuitPath,
                 patchCount: plan.patches.count,
                 mutatedTarget: false,
+                verified: false,
                 requiresRerunTool: "kicad_run_spice"
             )
             let artifact = writeArtifact(
@@ -7679,7 +7682,18 @@ private struct RepairApplicationArtifact: Codable, Sendable, Equatable {
     var targetPath: String
     var patchCount: Int
     var mutatedTarget: Bool
+    var verified: Bool
     var requiresRerunTool: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case sourcePlanPath = "source_plan_path"
+        case targetPath = "target_path"
+        case patchCount = "patch_count"
+        case mutatedTarget = "mutated_target"
+        case verified
+        case requiresRerunTool = "requires_rerun_tool"
+    }
 }
 
 private struct FlexibleCodingKey: CodingKey {

@@ -323,20 +323,23 @@ struct ElectronicsEndToEndHarness: Sendable {
         let ercLoop = ERCRepairLoop().run(
             initialSchematic: schematic,
             circuitIR: circuitIR,
-            ercReports: ercReports.isEmpty ? [KiCadERCReport(violations: [])] : ercReports,
+            ercReports: ercReports,
             resolverEvidence: resolverEvidence
         )
 
-        return SchematicVerificationGate().evaluate(SchematicVerificationEvidence(
+        var result = SchematicVerificationGate().evaluate(SchematicVerificationEvidence(
             approvedDesignIntent: true,
             circuitIRValidationPassed: true,
             kicadProjectPath: materialized.projectURL.path,
             kicadSchematicPath: materialized.schematicURL.path,
-            ercReportPath: outputDirectory.appendingPathComponent("erc-report.json").path,
+            ercReportPath: ercReports.isEmpty ? nil : outputDirectory.appendingPathComponent("erc-report.json").path,
             hasSchematicVerificationReport: true,
             blockingERCViolations: (ercReports.last ?? KiCadERCReport(violations: [])).schematicVerificationBlockingViolations,
             repairLoopStatus: ercLoop.status
         ))
+        result.diagnostics.append(contentsOf: ercLoop.diagnostics)
+        result.report.diagnostics.append(contentsOf: ercLoop.diagnostics)
+        return result
     }
 
     private func pcbVerification(

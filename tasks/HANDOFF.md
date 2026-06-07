@@ -56,12 +56,13 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 469.
+workflows. Latest completed task is Task 470.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
-- Task 468 — generic multi-board decomposition gates
+- Task 470 — require explicit ERC rerun evidence
 - Task 469 — generic topology and materialization realism
+- Task 468 — generic multi-board decomposition gates
 - Task 467 — gate schematic realism before workflow verification
 - Task 466 — wire full workflow SPICE evidence gates
 - `97491b9` — Task 465: gate SPICE models and repair bounds
@@ -74,9 +75,9 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 468 was committed. Task 469 completed generic
-board-scoped Circuit IR generation and schematic/PCB provenance materialization
-tests below.
+The repo was clean after Task 469 was committed. Task 470 completed ERC rerun
+evidence gates for the repair loop, workflow harness, and runtime patch
+application artifacts.
 
 ## Current Electronics Plugin State
 
@@ -117,7 +118,10 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   `board_id`. Schematic symbols and generated PCB footprints carry explicit
   `BoardID` and `SafetyDomain` properties.
 - ERC warnings and DRC violations block progress until parsed repair evidence
-  is generated and rerun.
+  is generated and rerun. ERC repair loops now require an explicit ERC report
+  or rerun report; applying an ERC repair patch records an unverified
+  `patch_applied_requires_rerun` artifact and requires `kicad_run_erc` before
+  schematic verification can advance.
 - SPICE now requires:
   - explicit `SPICESimulationScenario` JSON;
   - a real circuit deck path;
@@ -131,6 +135,26 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
     measurement envelopes, not a generic smoke deck;
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
+
+Task 470 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ERCRepairLoopTests/testRepairLoopRequiresExplicitERCRerunReport \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresExplicitERCRerunReportBeforeSchematicVerified \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testERCRepairPatchApplicationRecordsUnverifiedRerunRequirement
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ERCRepairLoopTests \
+  -only-testing:MerlinTests/SchematicVerifiedStatusTests \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testERCRepairActionPlansSupportedDiagnosticsAndPreservesPatchArtifact
+```
+
+Result: `TEST SUCCEEDED`, 16 tests, 0 failures.
 
 Task 469 focused test commands passed:
 
@@ -242,17 +266,15 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Run full ERC repair loops: parse failures, apply bounded repairs, rerun until
-   pass or explicitly blocked.
-2. Run full DRC/layout repair loops: placement, routing, DRC, repair, rerun
+1. Run full DRC/layout repair loops: placement, routing, DRC, repair, rerun
    until pass or explicitly blocked.
-3. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
+2. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
    datasheets, stock/price evidence, and real BOM artifact.
-4. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
+3. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
    pick-and-place, drawings, and consolidated verification report.
-5. Verify GUI job state consistency: slot status, electronics job list, and live
+4. Verify GUI job state consistency: slot status, electronics job list, and live
    leaderboard must agree about running/blocked/complete jobs.
-6. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
+5. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
    pass with app-only screenshots captured while the app is working.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much

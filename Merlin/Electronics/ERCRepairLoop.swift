@@ -198,9 +198,17 @@ struct ERCRepairLoop: Sendable {
         var schematic = initialSchematic
         var attempts = 0
         var appliedPatches: [ERCRepairPatch] = []
-        let reports = ercReports.isEmpty ? [KiCadERCReport(violations: [])] : ercReports
+        guard !ercReports.isEmpty else {
+            return blocked(
+                attempts: attempts,
+                schematic: schematic,
+                appliedPatches: appliedPatches,
+                code: "ERC_RERUN_REPORT_REQUIRED",
+                message: "ERC repair loop requires an explicit KiCad ERC report or rerun report before schematic verification."
+            )
+        }
 
-        for report in reports {
+        for report in ercReports {
             if report.schematicVerificationBlockingViolations.isEmpty {
                 return ERCRepairLoopResult(
                     status: .verified,
