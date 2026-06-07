@@ -448,6 +448,32 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertTrue(validation.isValid, validation.issues.map(\.code).joined(separator: ","))
     }
 
+    func testCircuitIRGenerationHonorsGenericBoardScopeAndSafetyDomains() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(genericMixedDomainControllerIntent(), root: root)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_generate_circuit_ir",
+            payload: #"{"design_intent_path":"\#(intentURL.path)","board_id":"low_voltage_control"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "circuit_ir" })
+        let circuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: artifact.url))
+        XCTAssertEqual(circuitIR.boardId, "low_voltage_control")
+        XCTAssertEqual(Set(circuitIR.components.map(\.refdes)), ["QCTRL", "RPU"])
+        XCTAssertEqual(Set(circuitIR.nets.map(\.name)), ["CTRL_BIAS"])
+        XCTAssertTrue(circuitIR.components.allSatisfy { $0.constraints["board_id"] == "low_voltage_control" })
+        XCTAssertTrue(circuitIR.components.allSatisfy { $0.constraints["safety_domain"] == "isolated_secondary" })
+        XCTAssertTrue(circuitIR.nets.allSatisfy { $0.safetyDomain == "isolated_secondary" })
+        XCTAssertTrue(circuitIR.constraints.contains {
+            $0.kind == "board_id" && $0.target == "low_voltage_control"
+        })
+    }
+
     func testApprovalContinuationRequiresExplicitApproval() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -753,6 +779,78 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
     private func jsonObject(from payload: WorkspaceMessagePayload?) throws -> [String: Any]? {
         guard let payload else { return nil }
         return try JSONSerialization.jsonObject(with: payload.data) as? [String: Any]
+    }
+
+    private func genericMixedDomainControllerIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_domain_controller",
+            title: "Generic mixed-domain controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Separate mains power entry from isolated low-voltage transistor control circuitry.", priority: "must"),
+            ],
+            assumptions: [
+                Assumption(id: "assume-1", text: "Mains primary and isolated secondary circuitry use separate boards.", rationale: "Safety domains differ."),
+            ],
+            components: [
+                ComponentIntent(
+                    refdes: "JMAINS",
+                    role: "mains input terminal",
+                    constraints: [
+                        "board_id": "mains_power",
+                        "safety_domain": "mains_primary",
+                        "component_category": "terminal_block",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "QCTRL",
+                    role: "low-voltage control transistor",
+                    constraints: [
+                        "board_id": "low_voltage_control",
+                        "safety_domain": "isolated_secondary",
+                        "component_category": "low_noise_transistor",
+                    ]
+                ),
+                ComponentIntent(
+                    refdes: "RPU",
+                    role: "control pull-up resistor",
+                    constraints: [
+                        "board_id": "low_voltage_control",
+                        "safety_domain": "isolated_secondary",
+                        "component_category": "resistor",
+                        "resistance": "10kOhm",
+                    ]
+                ),
+            ],
+            nets: [
+                NetIntent(name: "LINE_IN", role: "mains input", source: "JMAINS", destination: "JMAINS"),
+                NetIntent(name: "CTRL_BIAS", role: "isolated low-voltage bias", source: "RPU", destination: "QCTRL"),
+            ],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(
+                    id: "mains_power",
+                    title: "Mains power board",
+                    safetyDomain: "mains_primary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JSEC", targetBoardId: "low_voltage_control", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+                BoardIntent(
+                    id: "low_voltage_control",
+                    title: "Low-voltage control board",
+                    safetyDomain: "isolated_secondary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JPRI", targetBoardId: "mains_power", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains and isolated low-voltage domains are separated."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        )
     }
 
     private func temporaryDirectory() throws -> URL {

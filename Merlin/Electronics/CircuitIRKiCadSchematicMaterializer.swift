@@ -116,6 +116,14 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
            !manufacturerPartNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             properties["ManufacturerPartNumber"] = manufacturerPartNumber
         }
+        if let boardID = component.constraints["board_id"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !boardID.isEmpty {
+            properties["BoardID"] = boardID
+        }
+        if let safetyDomain = component.constraints["safety_domain"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !safetyDomain.isEmpty {
+            properties["SafetyDomain"] = safetyDomain
+        }
         if !component.sourceEvidence.isEmpty {
             properties["SourceEvidence"] = component.sourceEvidence
                 .map { "\($0.kind):\($0.reference)" }

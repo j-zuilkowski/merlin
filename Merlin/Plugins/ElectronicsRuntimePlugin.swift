@@ -1424,7 +1424,26 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             )
         }
 
-        let circuitIR = synthesizeCircuitIR(from: intent)
+        let requestedBoardID = stringValue(object, keys: ["board_id", "boardId"])
+        if let requestedBoardID,
+           !intent.boards.isEmpty,
+           !intent.boards.contains(where: { $0.id == requestedBoardID }) {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Circuit IR generation requested an unknown DesignIntent board.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "CIRCUIT_IR_BOARD_UNKNOWN",
+                    message: "Requested board_id \(requestedBoardID) is not declared by the DesignIntent.",
+                    affectedRefs: [designIntentPath],
+                    suggestedAction: "Use a board_id declared in DesignIntent.boards before generating Circuit IR."
+                )],
+                nextActions: ["revise_design_intent"]
+            )
+        }
+
+        let circuitIR = synthesizeCircuitIR(from: intent, boardId: requestedBoardID)
         let validation = ElectronicsSchemaValidator.validateReadyForKiCadMutation(designIntent: intent, circuitIR: circuitIR)
         guard validation.isValid else {
             return structuredBlock(
@@ -6711,13 +6730,17 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return result
     }
 
-    private func synthesizeCircuitIR(from intent: DesignIntent) -> CircuitIR {
+    private func synthesizeCircuitIR(from intent: DesignIntent, boardId requestedBoardID: String? = nil) -> CircuitIR {
+        let selectedBoard = selectedBoard(for: intent, requestedBoardID: requestedBoardID)
+        let selectedBoardID = selectedBoard?.id ?? "\(intent.designId)_board"
+        let safetyDomain = selectedBoard?.safetyDomain.isEmpty == false ? selectedBoard?.safetyDomain ?? "unspecified" : "unspecified"
+        let scopedComponentIntents = componentIntents(intent.components, scopedTo: selectedBoardID)
         var expansions: [String: [String]] = [:]
         var components: [CircuitComponent] = []
         var seen = Set<String>()
 
-        for component in intent.components {
-            let expanded = expandedCircuitComponents(from: component)
+        for component in scopedComponentIntents {
+            let expanded = expandedCircuitComponents(from: component, boardId: selectedBoardID, safetyDomain: safetyDomain)
             expansions[component.refdes] = expanded.map(\.refdes)
             for circuitComponent in expanded where !seen.contains(circuitComponent.refdes) {
                 seen.insert(circuitComponent.refdes)
@@ -6726,72 +6749,98 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
 
         let componentsByRefdes = Dictionary(components.map { ($0.refdes, $0) }, uniquingKeysWith: { first, _ in first })
-        let safetyDomain = intent.boards.first?.safetyDomain.isEmpty == false ? intent.boards[0].safetyDomain : "unspecified"
         let nets = synthesizedNets(
-            from: intent.nets,
+            from: netIntents(intent.nets, scopedTo: scopedComponentIntents.map(\.refdes)),
             expansions: expansions,
             componentsByRefdes: componentsByRefdes,
             safetyDomain: safetyDomain
         )
-        let constraints = intent.safetyProfile.isolationRequired
-            ? [CircuitConstraint(kind: "safety_domain", target: safetyDomain, value: "isolated_low_voltage")]
-            : []
+        var constraints = [
+            CircuitConstraint(kind: "board_id", target: selectedBoardID, value: selectedBoardID),
+        ]
+        if intent.safetyProfile.isolationRequired {
+            constraints.append(CircuitConstraint(kind: "safety_domain", target: selectedBoardID, value: safetyDomain))
+        }
 
         return CircuitIR(
             designId: intent.designId,
-            boardId: intent.boards.first?.id ?? "\(intent.designId)_board",
+            boardId: selectedBoardID,
             components: components,
             nets: nets,
             constraints: constraints,
-            verificationScenarios: verificationScenarios(from: intent.verificationPlan)
+            verificationScenarios: verificationScenarios(from: selectedBoard?.verificationPlan ?? intent.verificationPlan)
         )
     }
 
-    private func expandedCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+    private func selectedBoard(for intent: DesignIntent, requestedBoardID: String?) -> BoardIntent? {
+        if let requestedBoardID {
+            return intent.boards.first { $0.id == requestedBoardID }
+        }
+        return intent.boards.first
+    }
+
+    private func componentIntents(_ components: [ComponentIntent], scopedTo boardID: String) -> [ComponentIntent] {
+        let scoped = components.filter { component in
+            let componentBoardID = component.constraints["board_id"] ?? component.constraints["boardId"]
+            return componentBoardID == boardID
+        }
+        return scoped.isEmpty ? components : scoped
+    }
+
+    private func netIntents(_ nets: [NetIntent], scopedTo componentRefdes: [String]) -> [NetIntent] {
+        let scopedRefdes = Set(componentRefdes)
+        guard !scopedRefdes.isEmpty else { return nets }
+        let scoped = nets.filter {
+            scopedRefdes.contains($0.source) && scopedRefdes.contains($0.destination)
+        }
+        return scoped.isEmpty ? nets : scoped
+    }
+
+    private func expandedCircuitComponents(from intent: ComponentIntent, boardId: String, safetyDomain: String) -> [CircuitComponent] {
         let role = intent.role.lowercased()
         let implementation = intent.constraints["implementation"]?.lowercased() ?? ""
         if role.contains("boost/cut") || role.contains("filter network") || role.contains("sweepable") {
-            return filterCircuitComponents(from: intent)
+            return filterCircuitComponents(from: intent, boardId: boardId, safetyDomain: safetyDomain)
         }
         if implementation.contains("discrete_rc") || role.contains("tone control") || role.contains("tone stack") {
-            return toneCircuitComponents(from: intent)
+            return toneCircuitComponents(from: intent, boardId: boardId, safetyDomain: safetyDomain)
         }
         if intent.constraints["kind"] == "resistor_network" {
-            return resistorNetworkComponents(from: intent)
+            return resistorNetworkComponents(from: intent, boardId: boardId, safetyDomain: safetyDomain)
         }
-        return [circuitComponent(refdes: intent.refdes, role: intent.role, sourceIntent: intent)]
+        return [circuitComponent(refdes: intent.refdes, role: intent.role, sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain)]
     }
 
-    private func toneCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+    private func toneCircuitComponents(from intent: ComponentIntent, boardId: String, safetyDomain: String) -> [CircuitComponent] {
         let bands = (intent.constraints["bands"] ?? "bass,mid,treble")
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
             .filter { !$0.isEmpty }
         return bands.flatMap { band in
             [
-                circuitComponent(refdes: "R\(band)1", role: "\(band.lowercased()) tone resistor", sourceIntent: intent),
-                circuitComponent(refdes: "C\(band)1", role: "\(band.lowercased()) tone capacitor", sourceIntent: intent),
+                circuitComponent(refdes: "R\(band)1", role: "\(band.lowercased()) tone resistor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
+                circuitComponent(refdes: "C\(band)1", role: "\(band.lowercased()) tone capacitor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
             ]
         }
     }
 
-    private func filterCircuitComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+    private func filterCircuitComponents(from intent: ComponentIntent, boardId: String, safetyDomain: String) -> [CircuitComponent] {
         [
-            circuitComponent(refdes: "RFILT1", role: "sweepable filter resistor", sourceIntent: intent),
-            circuitComponent(refdes: "CFILT1", role: "sweepable filter capacitor", sourceIntent: intent),
-            circuitComponent(refdes: "RVFILT1", role: "sweepable filter frequency control potentiometer", sourceIntent: intent),
+            circuitComponent(refdes: "RFILT1", role: "sweepable filter resistor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
+            circuitComponent(refdes: "CFILT1", role: "sweepable filter capacitor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
+            circuitComponent(refdes: "RVFILT1", role: "sweepable filter frequency control potentiometer", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
         ]
     }
 
-    private func resistorNetworkComponents(from intent: ComponentIntent) -> [CircuitComponent] {
+    private func resistorNetworkComponents(from intent: ComponentIntent, boardId: String, safetyDomain: String) -> [CircuitComponent] {
         let base = intent.refdes
         return [
-            circuitComponent(refdes: "\(base)A", role: "\(intent.role) upper resistor", sourceIntent: intent),
-            circuitComponent(refdes: "\(base)B", role: "\(intent.role) lower resistor", sourceIntent: intent),
+            circuitComponent(refdes: "\(base)A", role: "\(intent.role) upper resistor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
+            circuitComponent(refdes: "\(base)B", role: "\(intent.role) lower resistor", sourceIntent: intent, boardId: boardId, safetyDomain: safetyDomain),
         ]
     }
 
-    private func circuitComponent(refdes: String, role: String, sourceIntent: ComponentIntent) -> CircuitComponent {
+    private func circuitComponent(refdes: String, role: String, sourceIntent: ComponentIntent, boardId: String, safetyDomain: String) -> CircuitComponent {
         let symbol = circuitSymbol(for: refdes, role: role)
         return CircuitComponent(
             refdes: refdes,
@@ -6801,11 +6850,11 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             manufacturerPartNumber: nil,
             sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: sourceIntent.refdes)],
             pins: circuitPins(refdes: refdes, symbol: symbol),
-            constraints: circuitConstraints(refdes: refdes, role: role, sourceIntent: sourceIntent)
+            constraints: circuitConstraints(refdes: refdes, role: role, sourceIntent: sourceIntent, boardId: boardId, safetyDomain: safetyDomain)
         )
     }
 
-    private func circuitConstraints(refdes: String, role: String, sourceIntent: ComponentIntent) -> [String: String] {
+    private func circuitConstraints(refdes: String, role: String, sourceIntent: ComponentIntent, boardId: String, safetyDomain: String) -> [String: String] {
         let upperRefdes = refdes.uppercased()
         let lowerRole = role.lowercased()
         let sourceRefdes = sourceIntent.refdes.uppercased()
@@ -6816,6 +6865,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         var constraints = sourceIntent.constraints
         constraints["source_refdes"] = sourceIntent.refdes
         constraints["selection_basis"] = constraints["selection_basis"] ?? "derived_from_approved_design_intent"
+        constraints["board_id"] = constraints["board_id"] ?? boardId
+        constraints["safety_domain"] = constraints["safety_domain"] ?? safetyDomain
 
         var defaults: [String: String] = [:]
         if upperRefdes.hasPrefix("BR") || lowerRole.contains("rectifier") {

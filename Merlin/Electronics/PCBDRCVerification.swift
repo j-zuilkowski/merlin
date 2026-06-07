@@ -460,6 +460,18 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         }
 
         let escapedFootprint = escaped(footprint)
+        let boardProperty = optionalFootprintProperty(
+            name: "BoardID",
+            value: component.constraints["board_id"],
+            component: component,
+            y: 4.8
+        )
+        let safetyDomainProperty = optionalFootprintProperty(
+            name: "SafetyDomain",
+            value: component.constraints["safety_domain"],
+            component: component,
+            y: 6.1
+        )
         let pads = component.pins.enumerated().map { padIndex, pin in
             padNode(
                 component: component,
@@ -482,6 +494,8 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
               (effects (font (size 1 1) (thickness 0.15))))
             (property "Footprint" "\(escapedFootprint)" (at 0 3.5 0) (layer "F.Fab") hide (uuid "\(stableUUID("property", component.refdes, "footprint"))")
               (effects (font (size 1 1) (thickness 0.15))))
+        \(boardProperty)
+        \(safetyDomainProperty)
             (fp_text reference "\(escaped(component.refdes))" (at 0 -2 0) (layer "F.SilkS")
               (effects (font (size 1 1) (thickness 0.15))))
             (fp_text value "\(value)" (at 0 2 0) (layer "F.Fab")
@@ -489,6 +503,22 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             (attr through_hole)
         \(pads)
           )
+        """
+    }
+
+    private func optionalFootprintProperty(
+        name: String,
+        value: String?,
+        component: CircuitComponent,
+        y: Double
+    ) -> String {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else {
+            return ""
+        }
+        return """
+            (property "\(name)" "\(escaped(trimmed))" (at 0 \(number(y)) 0) (layer "F.Fab") hide (uuid "\(stableUUID("property", component.refdes, name))")
+              (effects (font (size 1 1) (thickness 0.15))))
         """
     }
 

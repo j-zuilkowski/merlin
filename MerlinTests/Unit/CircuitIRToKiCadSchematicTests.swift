@@ -222,6 +222,25 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         }
     }
 
+    func testMaterializersCarryGenericBoardAndSafetyDomainProvenance() throws {
+        let circuitIR = boardScopedCircuitIR()
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: circuitIR)
+        let serializedSchematic = try KiCadSchematicWriter().write(schematic)
+
+        XCTAssertTrue(serializedSchematic.contains(#""BoardID" "low_voltage_control""#), serializedSchematic)
+        XCTAssertTrue(serializedSchematic.contains(#""SafetyDomain" "isolated_secondary""#), serializedSchematic)
+
+        let outputDirectory = temporaryDirectory("board-domain-provenance")
+        let board = try CircuitIRKiCadBoardMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputDirectory
+        )
+        let boardText = try String(contentsOf: board.boardURL, encoding: .utf8)
+
+        XCTAssertTrue(boardText.contains(#"(property "BoardID" "low_voltage_control""#), boardText)
+        XCTAssertTrue(boardText.contains(#"(property "SafetyDomain" "isolated_secondary""#), boardText)
+    }
+
     private func validCircuitIR() -> CircuitIR {
         CircuitIR(
             designId: "generic-audio-board",
@@ -275,6 +294,50 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
             ],
             constraints: [
                 CircuitConstraint(kind: "placement", target: "Q1", value: "respect thermal clearance"),
+            ],
+            verificationScenarios: [
+                VerificationScenario(id: "erc", kind: "erc", expectation: "no blocking ERC errors"),
+            ]
+        )
+    }
+
+    private func boardScopedCircuitIR() -> CircuitIR {
+        CircuitIR(
+            designId: "generic-controller",
+            boardId: "low_voltage_control",
+            components: [
+                CircuitComponent(
+                    refdes: "RPU",
+                    role: "control pull-up resistor",
+                    selectedSymbol: "Device:R",
+                    selectedFootprint: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+                    manufacturerPartNumber: "example-resistor",
+                    sourceEvidence: [SourceEvidence(kind: "design_intent_component", reference: "RPU")],
+                    pins: [
+                        CircuitPin(componentRefdes: "RPU", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "RPU", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ],
+                    constraints: [
+                        "board_id": "low_voltage_control",
+                        "safety_domain": "isolated_secondary",
+                        "resistance": "10kOhm",
+                    ]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "CTRL_BIAS",
+                    role: "isolated low-voltage bias",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "RPU", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "isolated_secondary"
+                ),
+            ],
+            constraints: [
+                CircuitConstraint(kind: "board_id", target: "low_voltage_control", value: "low_voltage_control"),
+                CircuitConstraint(kind: "safety_domain", target: "low_voltage_control", value: "isolated_secondary"),
             ],
             verificationScenarios: [
                 VerificationScenario(id: "erc", kind: "erc", expectation: "no blocking ERC errors"),
