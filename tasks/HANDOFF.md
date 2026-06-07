@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 475.
+workflows. Latest completed task is Task 476.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 476 — mutate DRC routing repairs with native segment/via edits
 - Task 475 — synchronize electronics GUI job state projections
 - Task 474 — gate fabrication output evidence
 - Task 473 — gate vendor BOM evidence
@@ -80,10 +81,12 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 474 was committed. Task 475 completed electronics
-GUI job-state consistency by routing the job list, running/blocked/fab-ready and
-complete groups, and live leaderboard through one shared display-state
-projection.
+Task 476 replaced the DRC routing repair marker with native KiCad route object
+mutation. Routing repair application now parses the target net and pad anchors
+from the board, inserts `(segment ...)` and `(via ...)` objects when at least two
+pad anchors exist, records `routing_segment` and `routing_via` changed objects,
+and blocks unchanged with `regenerate_drc_repair_plan` when pad-level routing
+geometry is missing.
 
 ## Current Electronics Plugin State
 
@@ -131,12 +134,14 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
 - DRC repair loops now require an explicit DRC report or rerun report. DRC
   repair patch application maps supported generic repair classes to concrete
   PCB/layout mutations: footprint placement offsets, clearance and trace-width
-  rule changes, and a routing reroute marker when a native route edit is not
-  yet available. It writes the mutated board, emits `layout_mutation_evidence`
-  with before/after SHA-256 hashes, patch IDs, and changed objects, records
-  `patch_applied_requires_drc_rerun`, and requires `kicad_run_drc` before PCB
-  verification can advance. PCB verification still blocks repaired DRC paths
-  when required layout mutation evidence is missing.
+  rule changes, and KiCad-native routing segment/via insertion when the board
+  carries target-net pad anchors. Routing-only repair plans without pad-level
+  route geometry now block without mutating the board instead of adding a
+  narrative marker. Successful mutation writes the board, emits
+  `layout_mutation_evidence` with before/after SHA-256 hashes, patch IDs, and
+  changed objects, records `patch_applied_requires_drc_rerun`, and requires
+  `kicad_run_drc` before PCB verification can advance. PCB verification still
+  blocks repaired DRC paths when required layout mutation evidence is missing.
 - Vendor/BOM workflow now requires explicit normalized BOM, vendor availability,
   cached datasheet evidence, and vendor order package paths before fabrication
   can reach `FAB_READY`. Vendor availability records must include stock and
@@ -169,6 +174,42 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
     measurement envelopes, not a generic smoke deck;
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
+
+Task 476 focused test commands passed:
+
+Fail-first command before implementation:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationBlocksRoutingWithoutPadGeometry
+```
+
+Result before implementation: `TEST FAILED`, 2 tests, 12 assertion failures.
+The board still contained `Merlin reroute required`, no `(segment ...)` or
+`(via ...)` objects were emitted, changed objects contained `routing_marker`, and
+the no-geometry routing-only plan incorrectly returned `ok`.
+
+Green command:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationBlocksRoutingWithoutPadGeometry
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+Broader focused command:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests
+```
+
+Result: `TEST SUCCEEDED`, 11 tests, 0 failures.
+
+Note: the full AmpDemo GUI demo was not run.
 
 Task 475 focused test commands passed:
 
@@ -423,11 +464,11 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Replace the current routing repair marker with KiCad-native segment/via
-   edits or an autorouter-backed mutation once repair plans carry enough route
-   geometry to do that honestly.
-2. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
-   pass with app-only screenshots captured while the app is working.
+1. Clean Merlin/AmpDemo generated state as needed for a fresh workflow attempt,
+   without manually hand-designing the sample project.
+2. Run a full GUI AmpDemo pass with app-only screenshots captured while Merlin
+   is working, and use the resulting artifacts to identify the next generic
+   workflow gate Merlin still needs.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
 stronger, but it does not by itself make Merlin capable of arbitrary reliable

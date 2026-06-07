@@ -182,7 +182,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let root = temporaryDirectory("drc-repair-application")
-        let project = try writeMutableKiCadProjectFixture()
+        let project = try writeRoutableKiCadProjectFixture()
         let board = project.deletingPathExtension().appendingPathExtension("kicad_pcb")
         let originalBoard = try String(contentsOf: board, encoding: .utf8)
         let drcPlan = try writeFixtureFile(
@@ -244,7 +244,9 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertTrue(updatedBoard.contains(#"(at 17 "#), updatedBoard)
         XCTAssertTrue(updatedBoard.contains(#"(clearance 0.2)"#), updatedBoard)
         XCTAssertTrue(updatedBoard.contains(#"(trace_width 0.3)"#), updatedBoard)
-        XCTAssertTrue(updatedBoard.contains("Merlin reroute required"), updatedBoard)
+        XCTAssertTrue(updatedBoard.contains(#"(segment "#), updatedBoard)
+        XCTAssertTrue(updatedBoard.contains(#"(via "#), updatedBoard)
+        XCTAssertFalse(updatedBoard.contains("Merlin reroute required"), updatedBoard)
         XCTAssertEqual(application["status"] as? String, "patch_applied_requires_drc_rerun")
         XCTAssertEqual(application["verified"] as? Bool, false)
         XCTAssertEqual(application["requires_rerun_tool"] as? String, "kicad_run_drc")
@@ -256,9 +258,55 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertEqual(mutation["verified"] as? Bool, false)
         XCTAssertEqual(mutation["requires_rerun_tool"] as? String, "kicad_run_drc")
         XCTAssertEqual(mutation["patch_ids"] as? [String], ["drc-place", "drc-clearance", "drc-net-class", "drc-route"])
-        XCTAssertGreaterThanOrEqual((mutation["changed_objects"] as? [[String: Any]])?.count ?? 0, 4)
+        let changedObjects = try XCTUnwrap(mutation["changed_objects"] as? [[String: Any]])
+        XCTAssertGreaterThanOrEqual(changedObjects.count, 4)
+        XCTAssertTrue(changedObjects.contains { $0["kind"] as? String == "routing_segment" }, "\(changedObjects)")
+        XCTAssertTrue(changedObjects.contains { $0["kind"] as? String == "routing_via" }, "\(changedObjects)")
+        XCTAssertFalse(changedObjects.contains { $0["kind"] as? String == "routing_marker" }, "\(changedObjects)")
         XCTAssertNil(result.handoff?.drcReportPath)
         XCTAssertEqual(result.nextActions, ["kicad_run_drc"])
+    }
+
+    func testDRCRepairPatchApplicationBlocksRoutingWithoutPadGeometry() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("drc-routing-repair-no-geometry")
+        let project = try writeMutableKiCadProjectFixture()
+        let board = project.deletingPathExtension().appendingPathExtension("kicad_pcb")
+        let originalBoard = try String(contentsOf: board, encoding: .utf8)
+        let drcPlan = try writeFixtureFile(
+            name: "drc-plan.json",
+            text: """
+            {
+              "status": "repair_planned",
+              "patches": [
+                {
+                  "violationId": "drc-route",
+                  "repairClass": "routing",
+                  "targetRefs": ["Net-(R1-Pad1)"],
+                  "action": "reroute_or_report_unrouted"
+                }
+              ],
+              "diagnostics": []
+            }
+            """,
+            in: root
+        )
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_apply_drc_repair_patch",
+            payload: #"{"drc_repair_plan_path":"\#(drcPlan.path)","project_path":"\#(project.path)"}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertNotEqual(result.status, .complete)
+        XCTAssertEqual(result.nextActions, ["regenerate_drc_repair_plan"])
+        XCTAssertTrue(result.warnings.contains { $0.message.contains("concrete PCB/layout changes") }, "\(result.warnings)")
+        let updatedBoard = try String(contentsOf: board, encoding: .utf8)
+        XCTAssertEqual(updatedBoard, originalBoard)
+        XCTAssertFalse(updatedBoard.contains("Merlin reroute required"), updatedBoard)
     }
 
     func testSPICERepairActionPlansMeasurementRepairAndBlocksUnsupportedLog() async throws {
@@ -604,6 +652,41 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
             (uuid "c1")
             (at 10 10 0)
             (property "Reference" "C1" (at 0 0 0) (layer "F.SilkS"))
+          )
+        )
+        """.write(to: board, atomically: true, encoding: .utf8)
+        return project
+    }
+
+    private func writeRoutableKiCadProjectFixture() throws -> URL {
+        let project = try writeMutableKiCadProjectFixture()
+        let board = project.deletingPathExtension().appendingPathExtension("kicad_pcb")
+        try """
+        (kicad_pcb
+          (version 20250114)
+          (generator "merlin-electronics")
+          (setup
+            (trace_clearance 0.15)
+          )
+          (net 1 "Net-(R1-Pad1)")
+          (net_class Default "fixture"
+            (clearance 0.15)
+            (trace_width 0.25)
+            (add_net "Net-(R1-Pad1)")
+          )
+          (footprint "Resistor_SMD:R_0805"
+            (layer "F.Cu")
+            (uuid "r1")
+            (at 10 10 0)
+            (property "Reference" "R1" (at 0 0 0) (layer "F.SilkS"))
+            (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu" "F.Mask") (net 1 "Net-(R1-Pad1)") (uuid "r1-pad1"))
+          )
+          (footprint "Capacitor_SMD:C_0805"
+            (layer "F.Cu")
+            (uuid "c1")
+            (at 30 10 0)
+            (property "Reference" "C1" (at 0 0 0) (layer "F.SilkS"))
+            (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu" "F.Mask") (net 1 "Net-(R1-Pad1)") (uuid "c1-pad1"))
           )
         )
         """.write(to: board, atomically: true, encoding: .utf8)

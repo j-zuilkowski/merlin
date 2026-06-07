@@ -8077,18 +8077,11 @@ private struct PCBLayoutRepairMutator: Sendable {
                 text = result.text
                 changes.append(contentsOf: result.changes)
             case .routing:
-                guard let result = insertRerouteMarker(patch: patch, in: text, patchIndex: patchIndex) else {
+                guard let result = insertRoutingMutation(patch: patch, in: text, patchIndex: patchIndex) else {
                     continue
                 }
                 text = result.text
-                changes.append(PCBLayoutChangedObject(
-                    patchId: patch.violationId,
-                    kind: "routing_marker",
-                    reference: patch.targetRefs.joined(separator: ","),
-                    action: patch.action,
-                    before: "",
-                    after: result.marker
-                ))
+                changes.append(contentsOf: result.changedObjects)
             }
         }
 
@@ -8157,22 +8150,159 @@ private struct PCBLayoutRepairMutator: Sendable {
         return (updated, changes)
     }
 
-    private func insertRerouteMarker(
+    private func insertRoutingMutation(
         patch: PCBDRCRepairPatch,
         in text: String,
         patchIndex: Int
-    ) -> (text: String, marker: String)? {
+    ) -> (text: String, changedObjects: [PCBLayoutChangedObject])? {
+        guard let targetNet = targetNet(for: patch, in: text) else { return nil }
+        let anchors = padAnchors(for: targetNet.id, in: text)
+        guard anchors.count >= 2 else { return nil }
         guard let insertion = text.lastIndex(of: ")") else { return nil }
-        let target = patch.targetRefs.joined(separator: ", ")
-        let marker = """
-          (gr_text "Merlin reroute required: \(escaped(target))" (at 5 \(number(5.0 + Double(patchIndex) * 2.0)) 0) (layer "Cmts.User")
-            (effects (font (size 1 1) (thickness 0.15)))
-            (uuid "\(UUID().uuidString.lowercased())")
-          )
-        """
+        let start = anchors[0]
+        let end = anchors[1]
+        let routeReference = routeReference(netName: targetNet.name, start: start, end: end)
+        let laneY = max(start.y, end.y) + 8.0 + Double(patchIndex) * 3.0
+        let midpoint = BoardRoutePoint(x: (start.x + end.x) / 2.0, y: laneY)
+        let sourceSegment = segmentNode(
+            start: start.point,
+            end: midpoint,
+            width: 0.3,
+            layer: "F.Cu",
+            netID: targetNet.id
+        )
+        let layerVia = viaNode(at: midpoint, netID: targetNet.id)
+        let destinationSegment = segmentNode(
+            start: midpoint,
+            end: end.point,
+            width: 0.3,
+            layer: "B.Cu",
+            netID: targetNet.id
+        )
+        let routeObjects = [sourceSegment, layerVia, destinationSegment]
+        guard routeObjects.allSatisfy({ !$0.isEmpty }) else { return nil }
         var updated = text
-        updated.insert(contentsOf: "\n\(marker)\n", at: insertion)
-        return (updated, marker)
+        updated.insert(contentsOf: "\n\(routeObjects.joined(separator: "\n"))\n", at: insertion)
+        return (updated, [
+            PCBLayoutChangedObject(
+                patchId: patch.violationId,
+                kind: "routing_segment",
+                reference: routeReference,
+                action: patch.action,
+                before: "",
+                after: [sourceSegment, destinationSegment].joined(separator: "\n")
+            ),
+            PCBLayoutChangedObject(
+                patchId: patch.violationId,
+                kind: "routing_via",
+                reference: routeReference,
+                action: patch.action,
+                before: "",
+                after: layerVia
+            ),
+        ])
+    }
+
+    private func routeReference(netName: String, start: BoardRouteAnchor, end: BoardRouteAnchor) -> String {
+        let endpoints = [start.reference, end.reference]
+            .filter { !$0.isEmpty }
+            .joined(separator: "->")
+        return endpoints.isEmpty ? netName : "\(netName):\(endpoints)"
+    }
+
+    private func targetNet(for patch: PCBDRCRepairPatch, in text: String) -> (id: Int, name: String)? {
+        for target in patch.targetRefs where !target.isEmpty {
+            let pattern = #"\(net\s+([0-9]+)\s+"\#(NSRegularExpression.escapedPattern(for: target))"\)"#
+            guard let found = firstMatch(pattern: pattern, in: text),
+                  let idRange = Range(found.match.range(at: 1), in: text),
+                  let id = Int(text[idRange]) else {
+                continue
+            }
+            return (id, target)
+        }
+        return nil
+    }
+
+    private func padAnchors(for netID: Int, in text: String) -> [BoardRouteAnchor] {
+        var anchors: [BoardRouteAnchor] = []
+        var searchStart = text.startIndex
+        while let footprintStart = text.range(of: "(footprint", range: searchStart..<text.endIndex),
+              let footprintEnd = matchingParenthesisEnd(start: footprintStart.lowerBound, in: text) {
+            let footprintRange = footprintStart.lowerBound..<footprintEnd
+            let footprintText = String(text[footprintRange])
+            if let footprintAt = routePoint(pattern: #"\(at\s+([-0-9.]+)\s+([-0-9.]+)"#, in: footprintText) {
+                let reference = referenceName(in: footprintText)
+                anchors.append(contentsOf: padAnchors(
+                    for: netID,
+                    inFootprint: footprintText,
+                    footprintAt: footprintAt,
+                    reference: reference
+                ))
+            }
+            searchStart = footprintEnd
+        }
+        return anchors
+    }
+
+    private func padAnchors(
+        for netID: Int,
+        inFootprint footprintText: String,
+        footprintAt: BoardRoutePoint,
+        reference: String?
+    ) -> [BoardRouteAnchor] {
+        var anchors: [BoardRouteAnchor] = []
+        var searchStart = footprintText.startIndex
+        while let padStart = footprintText.range(of: "(pad", range: searchStart..<footprintText.endIndex),
+              let padEnd = matchingParenthesisEnd(start: padStart.lowerBound, in: footprintText) {
+            let padText = String(footprintText[padStart.lowerBound..<padEnd])
+            if padText.contains(#"(net \#(netID) "#) || padText.contains(#"(net \#(netID))"#) {
+                guard let padAt = routePoint(pattern: #"\(at\s+([-0-9.]+)\s+([-0-9.]+)"#, in: padText) else {
+                    searchStart = padEnd
+                    continue
+                }
+                anchors.append(BoardRouteAnchor(
+                    x: footprintAt.x + padAt.x,
+                    y: footprintAt.y + padAt.y,
+                    reference: reference ?? ""
+                ))
+            }
+            searchStart = padEnd
+        }
+        return anchors
+    }
+
+    private func referenceName(in footprintText: String) -> String? {
+        guard let found = firstMatch(pattern: #"\(property\s+"Reference"\s+"([^"]+)""#, in: footprintText),
+              let range = Range(found.match.range(at: 1), in: footprintText) else {
+            return nil
+        }
+        return String(footprintText[range])
+    }
+
+    private func routePoint(pattern: String, in text: String) -> BoardRoutePoint? {
+        guard let found = firstMatch(pattern: pattern, in: text),
+              let xRange = Range(found.match.range(at: 1), in: text),
+              let yRange = Range(found.match.range(at: 2), in: text),
+              let x = Double(text[xRange]),
+              let y = Double(text[yRange]) else {
+            return nil
+        }
+        return BoardRoutePoint(x: x, y: y)
+    }
+
+    private func segmentNode(
+        start: BoardRoutePoint,
+        end: BoardRoutePoint,
+        width: Double,
+        layer: String,
+        netID: Int
+    ) -> String {
+        if start == end { return "" }
+        return #"  (segment (start \#(number(start.x)) \#(number(start.y))) (end \#(number(end.x)) \#(number(end.y))) (width \#(number(width))) (layer "\#(layer)") (net \#(netID)) (uuid "\#(UUID().uuidString.lowercased())"))"#
+    }
+
+    private func viaNode(at: BoardRoutePoint, netID: Int) -> String {
+        #"  (via (at \#(number(at.x)) \#(number(at.y))) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (net \#(netID)) (uuid "\#(UUID().uuidString.lowercased())"))"#
     }
 
     private func footprintRange(for ref: String, in text: String) -> Range<String.Index>? {
@@ -8229,9 +8359,19 @@ private struct PCBLayoutRepairMutator: Sendable {
             .replacingOccurrences(of: #"\.$"#, with: "", options: .regularExpression)
     }
 
-    private func escaped(_ value: String) -> String {
-        value.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+    private struct BoardRoutePoint: Sendable, Equatable {
+        var x: Double
+        var y: Double
+    }
+
+    private struct BoardRouteAnchor: Sendable, Equatable {
+        var x: Double
+        var y: Double
+        var reference: String
+
+        var point: BoardRoutePoint {
+            BoardRoutePoint(x: x, y: y)
+        }
     }
 }
 
