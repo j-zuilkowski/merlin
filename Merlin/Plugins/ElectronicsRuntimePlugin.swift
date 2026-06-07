@@ -747,6 +747,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return handleCircuitIRGeneration(request, context: context)
         case "kicad_select_components":
             return await handleComponentSelection(request, context: context)
+        case "kicad_revise_component_selection":
+            return await handleComponentSelectionRevision(request, context: context)
         case "kicad_prepare_libraries":
             return fileBackedTransform(
                 request,
@@ -1268,6 +1270,102 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return merged
     }
 
+    private func handleComponentSelectionRevision(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) async -> WorkspaceMessageResponse {
+        let object = componentSelectionObject(from: request.payload.jsonObject() ?? [:])
+        guard let matrixPath = object["component_matrix_path"] as? String,
+              FileManager.default.fileExists(atPath: matrixPath) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Component selection revision requires an existing component_matrix_path.",
+                context: context
+            )
+        }
+        guard let matrixData = try? Data(contentsOf: URL(fileURLWithPath: matrixPath)),
+              let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: matrixData) else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection revision requires a readable ComponentMatrix artifact.",
+                context: context
+            )
+        }
+        guard ComponentMatrixEvidence.selectionState(in: matrixData) != .complete else {
+            return complete(
+                request,
+                artifacts: [ArtifactRef(path: matrixPath, kind: "component_matrix")],
+                nextActions: ["prepare_libraries", "assign_footprints"]
+            )
+        }
+        guard let designIntentPath = object["design_intent_path"] as? String,
+              FileManager.default.fileExists(atPath: designIntentPath),
+              let intentData = try? Data(contentsOf: URL(fileURLWithPath: designIntentPath)),
+              let intent = try? JSONDecoder().decode(DesignIntent.self, from: intentData) else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Component selection revision requires a readable design_intent_path.",
+                context: context
+            )
+        }
+
+        let circuitIR: CircuitIR?
+        do {
+            circuitIR = try optionalCircuitIR(from: object)
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection revision requires a readable Circuit IR artifact when circuit_ir_path is supplied.",
+                context: context
+            )
+        }
+
+        let selectionComponents = componentSelectionRevisionComponents(matrix: matrix, intent: intent, circuitIR: circuitIR)
+        guard !selectionComponents.isEmpty else {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Component selection revision requires component intent evidence.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "COMPONENT_SELECTION_REVISION_COMPONENTS_REQUIRED",
+                    message: "Component selection revision requires component intent evidence.",
+                    affectedRefs: [matrixPath],
+                    suggestedAction: "Regenerate Circuit IR or component selection so the matrix records component refdes, roles, and constraints."
+                )],
+                nextActions: ["revise_design_intent"]
+            )
+        }
+
+        let catalogEvidence = await runtimeCatalogEvidence(from: object, selectionComponents: selectionComponents, context: context)
+        let artifact = writeArtifact(
+            request,
+            context: context,
+            kind: "component_matrix",
+            body: await componentSelectionBody(
+                request,
+                intent: intent,
+                selectionComponents: selectionComponents,
+                circuitIR: circuitIR,
+                catalogEvidence: catalogEvidence
+            )
+        )
+        guard ComponentMatrixEvidence.selectionState(atPath: artifact.path) != .complete else {
+            return complete(request, artifacts: [artifact], nextActions: ["prepare_libraries", "assign_footprints"])
+        }
+
+        return componentSelectionRevisionBlockedResponse(
+            request,
+            artifact: artifact,
+            originalMatrixPath: matrixPath,
+            context: context
+        )
+    }
+
     private func handleVendorFeedImport(
         _ request: WorkspaceMessageRequest,
         context: WorkspaceHandlerContext
@@ -1610,7 +1708,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                 status: .blockedInputQuality,
                 artifacts: [artifact],
                 warnings: [warning],
-                nextActions: ["revise_component_selection"]
+                nextActions: ["revise_component_selection"],
+                handoff: workflowHandoff(for: request, artifacts: [artifact])
             )),
             artifacts: [
                 WorkspaceArtifactRef(
@@ -1636,6 +1735,88 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         return warnings.contains { $0.hasPrefix("CATALOG_PROVIDER_NOT_CONFIGURED") }
             ? "CATALOG_PROVIDER_NOT_CONFIGURED"
             : "COMPONENT_SELECTION_BLOCKED"
+    }
+
+    private func componentSelectionRevisionComponents(
+        matrix: ComponentMatrix,
+        intent: DesignIntent,
+        circuitIR: CircuitIR?
+    ) -> [ComponentIntent] {
+        let componentSource = circuitIR.map(componentIntents(from:)) ?? matrix.components
+        guard !componentSource.isEmpty else {
+            return intent.components
+        }
+        let unresolvedRefdes = Set(matrix.decisions.filter {
+            $0.status != .selected || $0.selectedCandidate == nil
+        }.map(\.refdes))
+        guard !unresolvedRefdes.isEmpty else { return componentSource }
+        let filtered = componentSource.filter { unresolvedRefdes.contains($0.refdes) }
+        return filtered.isEmpty ? componentSource : filtered
+    }
+
+    private func componentSelectionRevisionBlockedResponse(
+        _ request: WorkspaceMessageRequest,
+        artifact: ArtifactRef,
+        originalMatrixPath: String,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let questions = componentSelectionRevisionQuestions(
+            revisedMatrixPath: artifact.path,
+            originalMatrixPath: originalMatrixPath
+        )
+        let warning = KiCadWarning(
+            code: "COMPONENT_SELECTION_REVISION_BLOCKED",
+            message: "Component selection revision still has unresolved decisions that require catalog evidence, concrete part choices, or revised constraints.",
+            affectedRefs: [originalMatrixPath, artifact.path],
+            suggestedAction: "Answer the structured component questions or provide additional catalog/vendor evidence before assigning footprints."
+        )
+        return WorkspaceMessageResponse(
+            requestID: request.id,
+            status: .blocked,
+            payload: try? .encodeJSON(KiCadToolResult(
+                status: .blockedInputQuality,
+                artifacts: [artifact],
+                warnings: [warning],
+                questions: questions,
+                nextActions: ["answer_component_selection_questions"],
+                handoff: workflowHandoff(for: request, artifacts: [artifact])
+            )),
+            artifacts: [
+                WorkspaceArtifactRef(
+                    id: "\(request.id.uuidString)-\(artifact.kind)",
+                    kind: artifact.kind,
+                    url: URL(fileURLWithPath: artifact.path),
+                    displayName: artifact.kind,
+                    metadata: ["request_id": request.id.uuidString]
+                ),
+            ],
+            diagnostics: [
+                WorkspaceDiagnostic(code: warning.code, message: warning.message, severity: "error"),
+            ]
+        )
+    }
+
+    private func componentSelectionRevisionQuestions(
+        revisedMatrixPath: String,
+        originalMatrixPath: String
+    ) -> [ClarificationQuestion] {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: revisedMatrixPath)),
+              let matrix = try? JSONDecoder().decode(ComponentMatrix.self, from: data) else {
+            return [ClarificationQuestion(
+                id: "component-selection-matrix-unreadable",
+                prompt: "Provide a readable component matrix or rerun component selection with catalog evidence.",
+                affectedRefs: [originalMatrixPath, revisedMatrixPath]
+            )]
+        }
+        return matrix.decisions.filter {
+            $0.status != .selected || $0.selectedCandidate == nil
+        }.map { decision in
+            ClarificationQuestion(
+                id: "resolve-\(decision.refdes)",
+                prompt: "For \(decision.refdes), provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility, or revise the electrical constraints so catalog selection can complete.",
+                affectedRefs: [decision.refdes, originalMatrixPath, revisedMatrixPath]
+            )
+        }
     }
 
     private func handleFootprintAssignment(

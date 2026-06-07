@@ -310,6 +310,7 @@ final class AgenticEngine {
         "kicad_approve_design_intent",
         "kicad_generate_circuit_ir",
         "kicad_select_components",
+        "kicad_revise_component_selection",
         "kicad_prepare_libraries",
         "kicad_assign_footprints",
         "kicad_compile_project",
@@ -2564,6 +2565,23 @@ final class AgenticEngine {
             {"design_intent_path":"\(designIntentPath)","circuit_ir_path":"\(circuitIRPath)","live_catalog_providers":["mouser","digikey"],"live_catalog_result_limit":3}
             """
             telemetry["circuit_ir_path"] = circuitIRPath
+        case "kicad_revise_component_selection":
+            guard let componentMatrixPath = latestAnyComponentMatrixArtifactPath() else { return false }
+            let circuitIRPath = latestCircuitIRArtifactPath()
+            taskDescription = "Revise blocked component selection with catalog evidence"
+            if let circuitIRPath {
+                handoffInstruction = """
+                The next assistant tool call must be exactly `kicad_revise_component_selection` with this JSON shape:
+                {"design_intent_path":"\(designIntentPath)","circuit_ir_path":"\(circuitIRPath)","component_matrix_path":"\(componentMatrixPath)","live_catalog_providers":["mouser","digikey"],"live_catalog_result_limit":3}
+                """
+                telemetry["circuit_ir_path"] = circuitIRPath
+            } else {
+                handoffInstruction = """
+                The next assistant tool call must be exactly `kicad_revise_component_selection` with this JSON shape:
+                {"design_intent_path":"\(designIntentPath)","component_matrix_path":"\(componentMatrixPath)","live_catalog_providers":["mouser","digikey"],"live_catalog_result_limit":3}
+                """
+            }
+            telemetry["component_matrix_path"] = componentMatrixPath
         case "kicad_assign_footprints":
             guard let circuitIRPath = latestCircuitIRArtifactPath(),
                   let componentMatrixPath = latestComponentMatrixArtifactPath()
@@ -3615,7 +3633,14 @@ final class AgenticEngine {
                guard name.contains("component_matrix") || name.contains("componentmatrix") else { return false }
                return ComponentMatrixEvidence.selectionState(atPath: path) != .complete
            }) {
-            return true
+            let hasRevisionNextAction = electronicsNextActions(inJSONText: rawText).contains { action in
+                action == "revise_component_selection"
+                    || action == "component_selection_revision"
+                    || action == "kicad_revise_component_selection"
+            } || text.contains("revise_component_selection")
+                || text.contains("component_selection_revision")
+                || text.contains("kicad_revise_component_selection")
+            return !hasRevisionNextAction
         }
         return text.contains("blocked_verification_gate")
             || text.contains("\"status\":\"blocked\"")
@@ -3741,6 +3766,18 @@ final class AgenticEngine {
             return nil
         }
         return path
+    }
+
+    private func latestAnyComponentMatrixArtifactPath() -> String? {
+        for evidence in pendingContinuationEvidence.reversed() {
+            if let path = componentMatrixArtifactPath(from: evidence) {
+                return path
+            }
+        }
+        if let path = latestProjectElectronicsArtifactPath(kindNeedles: ["component_matrix", "componentmatrix"]) {
+            return path
+        }
+        return latestVerifiedComponentMatrixArtifactPath
     }
 
     private func latestFootprintAssignmentArtifactPath() -> String? {
@@ -4367,6 +4404,7 @@ final class AgenticEngine {
             "kicad_build_intent_model",
             "kicad_generate_circuit_ir",
             "kicad_select_components",
+            "kicad_revise_component_selection",
             "kicad_prepare_libraries",
             "kicad_assign_footprints",
             "kicad_compile_project",
@@ -4748,6 +4786,15 @@ final class AgenticEngine {
             argumentObject["live_catalog_providers"] = ["mouser", "digikey"]
             argumentObject["live_catalog_result_limit"] = 3
         }
+        if nextToolName == "kicad_revise_component_selection",
+           let componentMatrixPath = latestAnyComponentMatrixArtifactPath() {
+            argumentObject["component_matrix_path"] = componentMatrixPath
+            argumentObject["live_catalog_providers"] = ["mouser", "digikey"]
+            argumentObject["live_catalog_result_limit"] = 3
+            if let circuitIRPath = latestCircuitIRArtifactPath() {
+                argumentObject["circuit_ir_path"] = circuitIRPath
+            }
+        }
         if nextToolName == "kicad_compile_project",
            let circuitIRPath = latestCircuitIRArtifactPath(),
            let componentMatrixPath = latestComponentMatrixArtifactPath(),
@@ -4876,6 +4923,11 @@ final class AgenticEngine {
                complexity: .standard
            )) {
             return "kicad_generate_circuit_ir"
+        }
+
+        if latestAnyComponentMatrixArtifactPath() != nil,
+           pendingComponentSelectionRevisionNextAction() {
+            return "kicad_revise_component_selection"
         }
 
         if nextRequirement == .componentSelection,
@@ -5059,6 +5111,17 @@ final class AgenticEngine {
                 action == "assign_footprints"
                     || action == "footprint_assignment"
                     || action == "kicad_assign_footprints"
+            }
+        }
+    }
+
+    private func pendingComponentSelectionRevisionNextAction() -> Bool {
+        pendingContinuationEvidence.contains { evidence in
+            guard evidence.toolName == "kicad_select_components" else { return false }
+            return electronicsNextActions(inJSONText: evidence.output).contains { action in
+                action == "revise_component_selection"
+                    || action == "component_selection_revision"
+                    || action == "kicad_revise_component_selection"
             }
         }
     }

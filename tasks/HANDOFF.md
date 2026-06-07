@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 477.
+workflows. Latest completed task is Task 478.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 478 — generic component-selection revision workflow
 - Task 477 — record AmpDemo GUI component-selection gate
 - Task 476 — mutate DRC routing repairs with native segment/via edits
 - Task 475 — synchronize electronics GUI job state projections
@@ -115,6 +116,44 @@ Task 477 evidence paths:
 - Blocked component matrix:
   `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/03ECE826-D739-446D-A057-FEDDA41B16FB-component_matrix.json`
 
+Task 478 added a generic component-selection revision path. The electronics
+plugin now exposes `kicad_revise_component_selection`, which accepts a blocked
+component matrix plus design intent, optional Circuit IR, and catalog evidence.
+It reruns the evidence-backed selection machinery for unresolved components,
+completes only when the revised matrix has concrete manufacturer parts, and
+otherwise emits `COMPONENT_SELECTION_REVISION_BLOCKED` with targeted missing
+evidence questions. The focused GUI continuation path now treats
+`revise_component_selection` from a blocked component-selection result as a
+handoff to `kicad_revise_component_selection`, not as permission to assign
+footprints or repeat narrative initial selection.
+
+Task 478 focused test evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task478 && xcodebuild build-for-testing -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task478
+```
+
+Result: `TEST BUILD SUCCEEDED`.
+
+Before the direct XCTest run, the rebuilt `Merlin.debug.dylib` and
+`MerlinElectronicsPlugin.dylib` were copied into the test bundle's
+`Contents/Frameworks` directory because the Xcode test launcher had previously
+stalled before launching the test host in this environment.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionResolvesBlockedMatrixWithCatalogEvidence,MerlinTests.EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBlocksWithSpecificQuestionsWhenEvidenceIsStillMissing,MerlinTests.LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints' /tmp/merlin-derived-task478/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: selected tests passed, 3 tests, 0 failures.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.ElectronicsRealRegistrationTests/testAllRequiredElectronicsCapabilitiesUsePluginNamespace' /tmp/merlin-derived-task478/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: 1 test, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
 ## Current Electronics Plugin State
 
 The electronics plugin is no longer allowed to advance major workflow gates from
@@ -137,6 +176,11 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   Existing cached PDFs should only be replaced when the upstream file changes.
 - Component selection requires structured electrical intent and provider/catalog
   evidence, not symbol names alone.
+- Blocked component-selection matrices now have a generic revision route:
+  `kicad_revise_component_selection` reuses catalog evidence to resolve
+  concrete parts or emits structured missing-evidence questions. Full workflow
+  continuation must route `revise_component_selection` through that tool before
+  footprints, schematic, PCB, SPICE, BOM, or fabrication can advance.
 - Footprint assignment, schematic synthesis, PCB placement, ERC, DRC, SPICE,
   BOM/vendor, and fabrication paths have focused evidence gates.
 - Schematic verification now requires current KiCad schematic format,
@@ -492,20 +536,22 @@ Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-The immediate remaining work is:
+The immediate remaining work is the next generic GUI/workflow proof group:
 
-1. Add fail-first tests for a generic component-selection revision gate that
-   cannot advance footprints/schematic from a component matrix where required
-   components remain `requires_vendor_resolution`.
-2. Implement a generic revision/resolution path for blocked component matrices:
-   resolve concrete manufacturer parts, vendor evidence, datasheet evidence,
-   symbols, footprints, and pin compatibility, or emit structured missing
-   evidence questions specific enough to resolve.
-3. Wire the full GUI/electronics workflow continuation path so
-   `BLOCKED_INPUT_QUALITY` component-selection results schedule that generic
-   resolution path instead of relying on manual sample-project decisions.
-4. Run focused component-selection/workflow tests, then rerun a fresh app-only
-   AmpDemo GUI pass only after the generic component-selection gate is in place.
+1. Add fail-first tests proving the app/focused continuation path surfaces and
+   records `COMPONENT_SELECTION_REVISION_BLOCKED` questions from
+   `kicad_revise_component_selection`, instead of hiding them in generic
+   blocked output or continuing to footprints.
+2. Wire electronics GUI/job state and continuation evidence so resolver
+   questions, revised component matrix paths, original blocked matrix paths,
+   and required evidence categories are visible to the workflow and recoverable
+   on the next turn.
+3. Add a focused app-level or engine-level continuation fixture that starts from
+   the Task 477 style blocked matrix and proves Merlin schedules the resolver,
+   captures the revised blocked/complete result, and stops honestly if catalog
+   evidence is still missing.
+4. Run focused tests only. Do not run the full AmpDemo GUI demo and do not
+   hand-design AmpDemo parts.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
 stronger, but it does not by itself make Merlin capable of arbitrary reliable

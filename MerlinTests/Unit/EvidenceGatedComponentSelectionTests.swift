@@ -39,6 +39,59 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         XCTAssertEqual(matrix.providers, ["fixture"])
     }
 
+    func testComponentSelectionRevisionResolvesBlockedMatrixWithCatalogEvidence() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "QOUT1", role: "single-ended Class-A output transistor"), root: root)
+
+        let blocked = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)"}"#
+        )
+        XCTAssertEqual(blocked.status, .blocked)
+        let blockedMatrixURL = try XCTUnwrap(blocked.artifacts.first { $0.kind == "component_matrix" }?.url)
+        let catalogURL = try writeCandidates([validCandidate(mpn: "MJ15003G")], root: root)
+
+        let revised = await sendRevision(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(blockedMatrixURL.path)","catalog_candidates_path":"\#(catalogURL.path)"}"#
+        )
+
+        XCTAssertEqual(revised.status, .ok)
+        let revisedMatrix = try decodeMatrix(from: revised)
+        XCTAssertEqual(revisedMatrix.decisions.map(\.status), [.selected])
+        XCTAssertEqual(revisedMatrix.decisions.first?.selectedCandidate?.mpn, "MJ15003G")
+        XCTAssertEqual(revisedMatrix.decisions.first?.unresolvedDecisions, [])
+    }
+
+    func testComponentSelectionRevisionBlocksWithSpecificQuestionsWhenEvidenceIsStillMissing() async throws {
+        let root = try temporaryDirectory()
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let intentURL = try writeIntent(component(refdes: "QOUT1", role: "single-ended Class-A output transistor"), root: root)
+
+        let blocked = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)"}"#
+        )
+        let blockedMatrixURL = try XCTUnwrap(blocked.artifacts.first { $0.kind == "component_matrix" }?.url)
+
+        let revised = await sendRevision(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(blockedMatrixURL.path)"}"#
+        )
+
+        XCTAssertEqual(revised.status, .blocked)
+        let result = try XCTUnwrap(revised.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertTrue(result.warnings.contains { $0.code == "COMPONENT_SELECTION_REVISION_BLOCKED" })
+        XCTAssertTrue(result.questions.contains { question in
+            question.prompt.lowercased().contains("qout1")
+                && question.prompt.lowercased().contains("manufacturer")
+                && question.prompt.lowercased().contains("mpn")
+        }, "Revision must emit actionable missing-evidence questions: \(result.questions)")
+    }
+
     func testExactManufacturerPartNumberConstraintRejectsCompatibleWrongTransistor() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)
@@ -3702,6 +3755,21 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         await runtime.bus.send(WorkspaceMessageRequest(
             id: UUID(),
             address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_select_components"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: runtime.workspaceID,
+                sessionID: nil,
+                activeDomainIDs: [ElectronicsDomain.defaultID],
+                permissionScope: .externalSideEffect
+            ),
+            payload: .jsonString(payload),
+            cancellationGroup: nil
+        ))
+    }
+
+    private func sendRevision(_ runtime: WorkspaceRuntime, payload: String) async -> WorkspaceMessageResponse {
+        await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_revise_component_selection"),
             origin: WorkspaceMessageOrigin.parentSession(
                 workspaceID: runtime.workspaceID,
                 sessionID: nil,

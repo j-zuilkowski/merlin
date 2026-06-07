@@ -7,6 +7,7 @@ enum KiCadToolDefinitions {
         "kicad_approve_design_intent",
         "kicad_generate_circuit_ir",
         "kicad_select_components",
+        "kicad_revise_component_selection",
         "kicad_prepare_libraries",
         "kicad_assign_footprints",
         "kicad_compile_project",
@@ -103,6 +104,21 @@ enum KiCadToolDefinitions {
                 "source_policy_json": .string("JSON encoded source policy"),
             ],
             required: ["design_intent_path"]
+        ),
+        tool(
+            name: "kicad_revise_component_selection",
+            description: "Revise a blocked ComponentMatrix using additional catalog/vendor evidence or emit targeted missing-evidence questions",
+            properties: [
+                "design_intent_path": .string("DesignIntent JSON path"),
+                "circuit_ir_path": .string("Generated Circuit IR JSON path"),
+                "component_matrix_path": .string("Blocked ComponentMatrix artifact path"),
+                "catalog_candidates_path": .string("Local JSON component candidates evidence path"),
+                "catalog_provider_fixture_paths": .object("Provider fixture paths keyed by provider id"),
+                "live_catalog_providers": .stringArray("Live catalog providers to query, for example mouser or digikey"),
+                "live_catalog_result_limit": .integer("Maximum live catalog candidates per component"),
+                "source_policy_json": .string("JSON encoded source policy"),
+            ],
+            required: ["design_intent_path", "component_matrix_path"]
         ),
         tool(
             name: "kicad_prepare_libraries",
@@ -356,5 +372,9 @@ private extension JSONSchema {
 
     static func stringArray(_ description: String) -> JSONSchema {
         JSONSchema(type: "array", items: JSONSchema(type: "string"), description: description)
+    }
+
+    static func object(_ description: String) -> JSONSchema {
+        JSONSchema(type: "object", description: description)
     }
 }

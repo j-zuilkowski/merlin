@@ -127,6 +127,13 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_revise_component_selection",
+      "display_name": "kicad_revise_component_selection",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_revise_component_selection" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_prepare_libraries",
       "display_name": "kicad_prepare_libraries",
       "kind": "tool",

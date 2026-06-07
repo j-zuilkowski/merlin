@@ -457,12 +457,22 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
-    func testBlockedComponentMatrixClearsContinuationInsteadOfAssigningFootprints() async throws {
+    func testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false
         defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
 
         let artifactRoot = temporaryDirectory("electronics-blocked-component-matrix-evidence")
+        let designIntentPath = try writeArtifact(
+            name: "approved-design_intent.json",
+            contents: #"{"project":"AmpDemo","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "circuit_ir.json",
+            contents: #"{"design_id":"AmpDemo","components":[{"refdes":"RPRE1B"}],"nets":[]}"#,
+            in: artifactRoot
+        )
         let componentMatrixPath = try writeArtifact(
             name: "component_matrix.json",
             contents: """
@@ -501,7 +511,7 @@ final class LoopContinuationTests: XCTestCase {
             .toolCall(
                 id: "components",
                 name: "kicad_select_components",
-                args: #"{"circuit_ir_path":"/tmp/circuit_ir.json","live_catalog_providers":["mouser","digikey"]}"#
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","live_catalog_providers":["mouser","digikey"]}"#
             )
         ])
         let engine = makeEngine(provider: provider)
@@ -525,15 +535,16 @@ final class LoopContinuationTests: XCTestCase {
             ]
         )
         engine.registerTool("kicad_select_components") { _ in
-            #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath.path)"}],"nextActions":["assign_footprints"],"status":"COMPLETE"}"#
+            #"{"artifacts":[{"kind":"component_matrix","path":"\#(componentMatrixPath.path)"}],"handoff":{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","component_matrix_path":"\#(componentMatrixPath.path)"},"nextActions":["revise_component_selection"],"status":"BLOCKED_INPUT_QUALITY"}"#
         }
 
         for await _ in engine.send(userMessage: "Select AmpDemo parts from live component catalogs") {}
 
-        XCTAssertFalse(
-            FileManager.default.fileExists(atPath: injectURL.path),
-            "A blocked component matrix must stop instead of scheduling kicad_assign_footprints"
-        )
+        let continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_revise_component_selection`"), continuationText)
+        XCTAssertTrue(continuationText.contains(#""design_intent_path":"\#(designIntentPath.path)""#), continuationText)
+        XCTAssertTrue(continuationText.contains(#""component_matrix_path":"\#(componentMatrixPath.path)""#), continuationText)
+        XCTAssertFalse(continuationText.contains("kicad_assign_footprints"), continuationText)
     }
 
     func testComponentSelectionHandoffRecoversComponentMatrixFromProjectArtifacts() async throws {
