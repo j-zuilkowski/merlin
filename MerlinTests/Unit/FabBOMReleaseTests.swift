@@ -52,7 +52,30 @@ final class FabBOMReleaseTests: XCTestCase {
         XCTAssertFalse(result.isValid)
         XCTAssertTrue(result.missingKinds.contains(.excellonDrill))
         XCTAssertTrue(result.missingKinds.contains(.pickAndPlace))
+        XCTAssertTrue(result.missingKinds.contains(.assemblyDrawing))
         XCTAssertTrue(result.missingKinds.contains(.fabricationReport))
+    }
+
+    func testFabricationEvidenceRequiresExistingOutputsAndPassingCAMReport() throws {
+        let root = temporaryDirectory("fab-evidence-files")
+        let camReport = try write("cam-report.json", in: root, contents: #"{"status":"fail","checks":[{"name":"gerber_layer_count","status":"fail"}]}"#)
+        let evidence = FabricationOutputEvidence(
+            profileId: "jlcpcb_2_layer",
+            outputs: [
+                FabricationOutput(kind: .gerberArchive, path: root.appendingPathComponent("missing-gerbers").path),
+                FabricationOutput(kind: .excellonDrill, path: root.appendingPathComponent("missing.drl").path),
+                FabricationOutput(kind: .pickAndPlace, path: root.appendingPathComponent("missing-pnp.csv").path),
+                FabricationOutput(kind: .assemblyDrawing, path: root.appendingPathComponent("missing-drawings").path),
+                FabricationOutput(kind: .fabricationReport, path: camReport.path),
+            ],
+            camReportPath: camReport.path
+        )
+
+        let result = FabricationEvidenceValidator().validate(evidence, profile: .jlcPCBTwoLayer)
+
+        XCTAssertFalse(result.isValid)
+        XCTAssertTrue(result.issues.contains { $0.code == "FAB_OUTPUT_FILE_MISSING" }, "\(result)")
+        XCTAssertTrue(result.issues.contains { $0.code == "FAB_CAM_CHECK_FAILED" }, "\(result)")
     }
 
     func testFabricatorProfileValidationBlocksUnsupportedStackupAndRules() {
@@ -131,5 +154,21 @@ final class FabBOMReleaseTests: XCTestCase {
             ],
             substitutions: []
         )
+    }
+
+    private func temporaryDirectory(_ name: String) -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("MerlinTests")
+            .appendingPathComponent(name)
+            .appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
+    }
+
+    private func write(_ name: String, in root: URL, contents: String) throws -> URL {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent(name)
+        try contents.write(to: url, atomically: true, encoding: .utf8)
+        return url
     }
 }

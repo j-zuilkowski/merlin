@@ -217,6 +217,10 @@ struct FabricationOutputEvidence: Codable, Sendable, Equatable {
     var camReportPath: String?
 }
 
+struct FabricationCAMReport: Codable, Sendable, Equatable {
+    var status: String
+}
+
 struct FabricatorProfile: Codable, Sendable, Equatable {
     var id: String
     var maxLayerCount: Int
@@ -229,7 +233,7 @@ struct FabricatorProfile: Codable, Sendable, Equatable {
         maxLayerCount: 2,
         minTraceMm: 0.127,
         minClearanceMm: 0.127,
-        requiredOutputKinds: [.gerberArchive, .excellonDrill, .normalizedBOM, .pickAndPlace, .fabricationReport]
+        requiredOutputKinds: [.gerberArchive, .excellonDrill, .pickAndPlace, .assemblyDrawing, .fabricationReport]
     )
 }
 
@@ -256,6 +260,22 @@ struct FabricationEvidenceValidator: Sendable {
                 message: "Missing required fabrication output: \($0.rawValue)."
             )
         }
+        for output in evidence.outputs where profile.requiredOutputKinds.contains(output.kind) {
+            if !hasUsableFabricationOutput(atPath: output.path) {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "FAB_OUTPUT_FILE_MISSING",
+                    message: "\(output.kind.rawValue) evidence does not exist or is empty at \(output.path)."
+                ))
+            }
+        }
+        if let camReportPath = evidence.camReportPath, !camReportPath.isEmpty {
+            if !hasPassingCAMReport(atPath: camReportPath) {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "FAB_CAM_CHECK_FAILED",
+                    message: "CAM report must exist and declare pass/ok status."
+                ))
+            }
+        }
         if evidence.profileId != profile.id {
             issues.append(ElectronicsSchemaIssue(
                 code: "FAB_PROFILE_MISMATCH",
@@ -268,6 +288,42 @@ struct FabricationEvidenceValidator: Sendable {
             missingKinds: missing,
             issues: issues
         )
+    }
+
+    private func hasUsableFabricationOutput(atPath path: String) -> Bool {
+        guard !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return false
+        }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else {
+            return false
+        }
+        if isDirectory.boolValue {
+            guard let enumerator = FileManager.default.enumerator(atPath: path) else {
+                return false
+            }
+            for case let child as String in enumerator {
+                let childPath = URL(fileURLWithPath: path).appendingPathComponent(child).path
+                if hasUsableFabricationOutput(atPath: childPath) {
+                    return true
+                }
+            }
+            return false
+        }
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path),
+              let size = attributes[.size] as? NSNumber else {
+            return false
+        }
+        return size.intValue > 0
+    }
+
+    private func hasPassingCAMReport(atPath path: String) -> Bool {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let report = try? JSONDecoder().decode(FabricationCAMReport.self, from: data) else {
+            return false
+        }
+        let status = report.status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return status == "pass" || status == "ok"
     }
 }
 

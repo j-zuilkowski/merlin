@@ -752,6 +752,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         let gerbers = try writeFixtureFile(name: "gerbers.zip", text: "PK\u{03}\u{04}", in: root)
         let drill = try writeFixtureFile(name: "amp.drl", text: "M48\n", in: root)
         let pnp = try writeFixtureFile(name: "pnp.csv", text: "Designator,Mid X,Mid Y,Layer,Rotation\n", in: root)
+        let drawing = try writeFixtureFile(name: "assembly-drawing.svg", text: "<svg><text>Assembly</text></svg>", in: root)
         let fabReport = try writeFixtureFile(name: "fab-report.json", text: #"{"status":"ok"}"#, in: root)
         let verification = try writeFixtureFile(name: "verification.json", text: #"{"status":"FAB_READY"}"#, in: root)
         let fabrication = try writeFixtureFile(
@@ -764,6 +765,7 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
                 { "kind": "excellon_drill", "path": "\(drill.path)" },
                 { "kind": "normalized_bom", "path": "\(bom.path)" },
                 { "kind": "pick_and_place", "path": "\(pnp.path)" },
+                { "kind": "assembly_drawing", "path": "\(drawing.path)" },
                 { "kind": "fabrication_report", "path": "\(fabReport.path)" }
               ],
               "cam_report_path": "\(fabReport.path)"

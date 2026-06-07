@@ -94,6 +94,11 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         XCTAssertEqual(fabResult.status, .complete)
         XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "gerbers" && FileManager.default.fileExists(atPath: $0.path) })
         XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "drills" && FileManager.default.fileExists(atPath: $0.path) })
+        XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "pick_and_place" && FileManager.default.fileExists(atPath: $0.path) })
+        XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "assembly_drawing" && FileManager.default.fileExists(atPath: $0.path) })
+        XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "cam_report" && FileManager.default.fileExists(atPath: $0.path) })
+        XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "fabrication_evidence" && FileManager.default.fileExists(atPath: $0.path) })
+        XCTAssertTrue(fabResult.artifacts.contains { $0.kind == "verification_report" && FileManager.default.fileExists(atPath: $0.path) })
     }
 
     func testCleanBackendAmpValidationSliceCompilesAndRunsPassingERCSPICEDRC() async throws {
@@ -520,16 +525,41 @@ final class FullGreenRuntimeElectronicsTests: XCTestCase {
         case "$*" in
           *"--version"*) echo "KiCad Version: 10.0.0"; exit 0 ;;
         esac
+        args="$*"
+        output=""
         while [ "$#" -gt 0 ]; do
           if [ "$1" = "--output" ]; then
             shift
-            mkdir -p "$(dirname "$1")"
-            cat > "$1" <<'JSON'
-        \(reportJSON)
-        JSON
+            output="$1"
           fi
           shift
         done
+        if [ -n "$output" ]; then
+          case "$args" in
+            *"pcb export gerbers"*)
+              mkdir -p "$output"
+              printf 'G04 Gerber fixture\\n' > "$output/fixture-F_Cu.gbr"
+              ;;
+            *"pcb export drill"*)
+              mkdir -p "$output"
+              printf 'M48\\n' > "$output/fixture.drl"
+              ;;
+            *"pcb export pos"*)
+              mkdir -p "$(dirname "$output")"
+              printf 'Designator,Mid X,Mid Y,Layer,Rotation\\nR1,1,1,F.Cu,0\\n' > "$output"
+              ;;
+            *"pcb export svg"*)
+              mkdir -p "$output"
+              printf '<svg><text>Assembly</text></svg>\\n' > "$output/assembly.svg"
+              ;;
+            *)
+              mkdir -p "$(dirname "$output")"
+              cat > "$output" <<'JSON'
+        \(reportJSON)
+        JSON
+              ;;
+          esac
+        fi
         exit 0
         """
         try script.write(to: executable, atomically: true, encoding: .utf8)

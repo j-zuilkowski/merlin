@@ -349,6 +349,7 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         let gerbers = try write("gerbers.zip", in: root, contents: "PK\u{03}\u{04}")
         let drill = try write("amp.drl", in: root, contents: "M48\n")
         let pnp = try write("pnp.csv", in: root, contents: "Designator,Mid X,Mid Y,Layer,Rotation\n")
+        let drawing = try write("assembly-drawing.svg", in: root, contents: "<svg><text>Assembly</text></svg>")
         let fabReport = try write("fab-report.json", in: root, contents: #"{"status":"ok"}"#)
         let verification = try write("verification.json", in: root, contents: #"{"status":"FAB_READY"}"#)
         let fabrication = try write(
@@ -362,6 +363,7 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
                 { "kind": "excellon_drill", "path": "\(drill.path)" },
                 { "kind": "normalized_bom", "path": "\(bom.path)" },
                 { "kind": "pick_and_place", "path": "\(pnp.path)" },
+                { "kind": "assembly_drawing", "path": "\(drawing.path)" },
                 { "kind": "fabrication_report", "path": "\(fabReport.path)" }
               ],
               "cam_report_path": "\(fabReport.path)"

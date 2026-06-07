@@ -2299,8 +2299,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
             let gerberURL = directoryURL.appendingPathComponent("gerbers")
             let drillURL = directoryURL.appendingPathComponent("drills")
+            let drawingURL = directoryURL.appendingPathComponent("assembly-drawings")
             try FileManager.default.createDirectory(at: gerberURL, withIntermediateDirectories: true)
             try FileManager.default.createDirectory(at: drillURL, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: drawingURL, withIntermediateDirectories: true)
             let gerberRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "gerbers", "--output", gerberURL.path, projectPath])
             guard gerberRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_GERBER_EXPORT_FAILED", run: gerberRun)
@@ -2309,18 +2311,86 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             guard drillRun.exitCode == 0 else {
                 return commandFailureBlock(request, context: context, code: "KICAD_DRILL_EXPORT_FAILED", run: drillRun)
             }
-            let bomURL = directoryURL.appendingPathComponent("bom.csv")
             let pnpURL = directoryURL.appendingPathComponent("pick_place.csv")
+            let pnpRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "pos", "--output", pnpURL.path, projectPath])
+            guard pnpRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_PICK_PLACE_EXPORT_FAILED", run: pnpRun)
+            }
+            let drawingRun = runProcess(executablePath: cliPath, arguments: ["pcb", "export", "svg", "--output", drawingURL.path, projectPath])
+            guard drawingRun.exitCode == 0 else {
+                return commandFailureBlock(request, context: context, code: "KICAD_DRAWING_EXPORT_FAILED", run: drawingRun)
+            }
             let camURL = directoryURL.appendingPathComponent("cam_report.json")
-            try "RefDes,Value,MPN,Quantity\n".write(to: bomURL, atomically: true, encoding: .utf8)
-            try "Designator,Mid X,Mid Y,Layer,Rotation\n".write(to: pnpURL, atomically: true, encoding: .utf8)
-            try #"{"status":"pass","fabricator":"\#(object["fabricator_profile_id"] as? String ?? "custom")","gerber_command":"\#(jsonEscaped(gerberRun.output))","drill_command":"\#(jsonEscaped(drillRun.output))"}"#.write(to: camURL, atomically: true, encoding: .utf8)
+            let structuralChecks = [
+                FabricationExportCheck(name: "gerbers_present", status: directoryContainsUsableFiles(gerberURL) ? "pass" : "fail"),
+                FabricationExportCheck(name: "excellon_drills_present", status: directoryContainsUsableFiles(drillURL) ? "pass" : "fail"),
+                FabricationExportCheck(name: "pick_and_place_present", status: fileHasUsableBytes(pnpURL) ? "pass" : "fail"),
+                FabricationExportCheck(name: "assembly_drawings_present", status: directoryContainsUsableFiles(drawingURL) ? "pass" : "fail"),
+            ]
+            let camStatus = structuralChecks.allSatisfy { $0.status == "pass" } ? "pass" : "fail"
+            let report = FabricationExportReport(
+                status: camStatus,
+                fabricatorProfileID: object["fabricator_profile_id"] as? String ?? "custom",
+                projectPath: projectPath,
+                gerberPath: gerberURL.path,
+                drillPath: drillURL.path,
+                pickAndPlacePath: pnpURL.path,
+                assemblyDrawingPath: drawingURL.path,
+                checks: structuralChecks,
+                commands: [
+                    gerberRun.output,
+                    drillRun.output,
+                    pnpRun.output,
+                    drawingRun.output,
+                ].filter { !$0.isEmpty }
+            )
+            try canonicalJSON(report).write(to: camURL, atomically: true, encoding: .utf8)
+            guard camStatus == "pass" else {
+                return structuredBlock(
+                    request,
+                    reason: .failedGate,
+                    message: "Fabrication export did not produce all required Gerber, drill, pick-and-place, and drawing artifacts.",
+                    context: context,
+                    warnings: [KiCadWarning(
+                        code: "FAB_EXPORT_OUTPUTS_MISSING",
+                        message: structuralChecks.filter { $0.status != "pass" }.map(\.name).joined(separator: ", "),
+                        affectedRefs: [gerberURL.path, drillURL.path, pnpURL.path, drawingURL.path],
+                        suggestedAction: "Inspect KiCad export output and rerun fabrication export after fixing missing output artifacts."
+                    )],
+                    nextActions: ["repair_fabrication_export"]
+                )
+            }
+            let fabricationEvidenceURL = directoryURL.appendingPathComponent("fabrication-evidence.json")
+            let fabricationEvidence = FabricationOutputEvidence(
+                profileId: FabricatorProfile.jlcPCBTwoLayer.id,
+                outputs: [
+                    FabricationOutput(kind: .gerberArchive, path: gerberURL.path),
+                    FabricationOutput(kind: .excellonDrill, path: drillURL.path),
+                    FabricationOutput(kind: .pickAndPlace, path: pnpURL.path),
+                    FabricationOutput(kind: .assemblyDrawing, path: drawingURL.path),
+                    FabricationOutput(kind: .fabricationReport, path: camURL.path),
+                ],
+                camReportPath: camURL.path
+            )
+            try WorkspaceJSON.encoder.encode(fabricationEvidence).write(to: fabricationEvidenceURL)
+            let verificationURL = directoryURL.appendingPathComponent("fabrication-verification.json")
+            let verification = FabricationVerificationReportArtifact(
+                status: "FAB_READY",
+                projectPath: projectPath,
+                fabricationEvidencePath: fabricationEvidenceURL.path,
+                camReportPath: camURL.path,
+                requiredArtifacts: structuralChecks.map(\.name),
+                passedChecks: structuralChecks.filter { $0.status == "pass" }.map(\.name)
+            )
+            try canonicalJSON(verification).write(to: verificationURL, atomically: true, encoding: .utf8)
             let artifacts = [
                 ArtifactRef(path: gerberURL.path, kind: "gerbers"),
                 ArtifactRef(path: drillURL.path, kind: "drills"),
-                ArtifactRef(path: bomURL.path, kind: "bom"),
                 ArtifactRef(path: pnpURL.path, kind: "pick_and_place"),
+                ArtifactRef(path: drawingURL.path, kind: "assembly_drawing"),
                 ArtifactRef(path: camURL.path, kind: "cam_report"),
+                ArtifactRef(path: fabricationEvidenceURL.path, kind: "fabrication_evidence"),
+                ArtifactRef(path: verificationURL.path, kind: "verification_report"),
             ]
             return complete(request, artifacts: artifacts, nextActions: ["package_release"])
         } catch {
@@ -2428,6 +2498,27 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             return partial + unit * Double(line.quantity * max(quantity, 1))
         }
         return (total * 10_000).rounded() / 10_000
+    }
+
+    private func directoryContainsUsableFiles(_ url: URL) -> Bool {
+        guard let enumerator = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]) else {
+            return false
+        }
+        for case let fileURL as URL in enumerator {
+            if fileHasUsableBytes(fileURL) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func fileHasUsableBytes(_ url: URL) -> Bool {
+        guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+              values.isRegularFile == true,
+              (values.fileSize ?? 0) > 0 else {
+            return false
+        }
+        return true
     }
 
     private func handlePackageRelease(
@@ -7893,6 +7984,53 @@ private struct VendorOrderPackageArtifact: Codable, Sendable, Equatable {
         case lineCount = "line_count"
         case totalEstimateUSD = "total_estimate_usd"
         case submitted
+    }
+}
+
+private struct FabricationExportCheck: Codable, Sendable, Equatable {
+    var name: String
+    var status: String
+}
+
+private struct FabricationExportReport: Codable, Sendable, Equatable {
+    var status: String
+    var fabricatorProfileID: String
+    var projectPath: String
+    var gerberPath: String
+    var drillPath: String
+    var pickAndPlacePath: String
+    var assemblyDrawingPath: String
+    var checks: [FabricationExportCheck]
+    var commands: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case fabricatorProfileID = "fabricator_profile_id"
+        case projectPath = "project_path"
+        case gerberPath = "gerber_path"
+        case drillPath = "drill_path"
+        case pickAndPlacePath = "pick_and_place_path"
+        case assemblyDrawingPath = "assembly_drawing_path"
+        case checks
+        case commands
+    }
+}
+
+private struct FabricationVerificationReportArtifact: Codable, Sendable, Equatable {
+    var status: String
+    var projectPath: String
+    var fabricationEvidencePath: String
+    var camReportPath: String
+    var requiredArtifacts: [String]
+    var passedChecks: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case projectPath = "project_path"
+        case fabricationEvidencePath = "fabrication_evidence_path"
+        case camReportPath = "cam_report_path"
+        case requiredArtifacts = "required_artifacts"
+        case passedChecks = "passed_checks"
     }
 }
 

@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 473.
+workflows. Latest completed task is Task 474.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 474 — gate fabrication output evidence
 - Task 473 — gate vendor BOM evidence
 - Task 472 — mutate PCB DRC repair plans
 - Task 471 — gate DRC layout rerun evidence
@@ -78,9 +79,10 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 472 was committed. Task 473 completed
-artifact-backed vendor/BOM evidence gates and runtime vendor package generation
-from validated BOM, stock/price, and cached datasheet evidence.
+The repo was clean after Task 473 was committed. Task 474 completed
+artifact-backed fabrication output gates for Gerbers, Excellon drills, CAM,
+pick-and-place, assembly drawings, and consolidated verification report
+artifacts.
 
 ## Current Electronics Plugin State
 
@@ -140,6 +142,14 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   positive unit price evidence. `kicad_prepare_vendor_order` validates BOM,
   stock/price, and cached datasheet evidence before emitting a
   `vendor_order_package` artifact; a BOM path alone is blocked.
+- Fabrication output workflow now requires real output artifacts, not declared
+  paths alone. The generic `jlcPCBTwoLayer` profile requires Gerber, Excellon
+  drill, pick-and-place, assembly drawing, and fabrication/CAM report evidence.
+  `FabricationEvidenceValidator` checks that output files/directories exist and
+  are non-empty and that CAM report JSON declares `pass` or `ok`. `kicad_export_fab`
+  now exports Gerbers, drills, position/PnP data, and assembly drawings, blocks
+  if those outputs are missing, and emits `cam_report`, `fabrication_evidence`,
+  and consolidated `verification_report` artifacts.
 - SPICE now requires:
   - explicit `SPICESimulationScenario` JSON;
   - a real circuit deck path;
@@ -153,6 +163,33 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
     measurement envelopes, not a generic smoke deck;
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
+
+Task 474 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabricationEvidenceRequiresGerberDrillPlacementAndReport \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabricationEvidenceRequiresExistingOutputsAndPassingCAMReport \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingFabricationDrawingAndVerificationReportBlockFabReady \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testKiCadHandlersInvokeExecutableAndProduceEvidenceArtifacts
+```
+
+Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testCleanVerifierArtifactsReachFabReadyWithoutReleaseApproval \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingFabricationDrawingAndVerificationReportBlockFabReady \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testFailedDRCRunKeepsReportArtifactForHarnessRepairEvidence \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testKiCadHandlersInvokeExecutableAndProduceEvidenceArtifacts
+```
+
+Result: `TEST SUCCEEDED`, 12 tests, 0 failures.
+
+Note: the full AmpDemo GUI demo was not run. A broader artifact-path runtime
+test with the stale mixed-domain fixture still blocks upstream on design-intent
+and schematic verification gates; Task 474 did not weaken those gates.
 
 Task 473 focused test commands passed:
 
@@ -359,14 +396,12 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
-   pick-and-place, drawings, and consolidated verification report.
-2. Verify GUI job state consistency: slot status, electronics job list, and live
+1. Verify GUI job state consistency: slot status, electronics job list, and live
    leaderboard must agree about running/blocked/complete jobs.
-3. Replace the current routing repair marker with KiCad-native segment/via
+2. Replace the current routing repair marker with KiCad-native segment/via
    edits or an autorouter-backed mutation once repair plans carry enough route
    geometry to do that honestly.
-4. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
+3. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
    pass with app-only screenshots captured while the app is working.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
