@@ -102,6 +102,23 @@ final class FabBOMReleaseTests: XCTestCase {
         XCTAssertTrue(complete.isComplete)
     }
 
+    func testFabReadyRequiresArtifactBackedBOMVendorDatasheetAndOrderEvidence() {
+        var evidence = FabricationReleaseEvidence.fabReadyFixture
+        evidence.normalizedBOMPath = nil
+        evidence.vendorAvailabilityPath = nil
+        evidence.datasheetEvidencePath = nil
+        evidence.vendorOrderPackagePath = nil
+
+        let result = FabricationReleaseGate().evaluate(evidence)
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertFalse(result.canPackageRelease)
+        XCTAssertTrue(result.missingEvidence.contains("normalized_bom"))
+        XCTAssertTrue(result.missingEvidence.contains("vendor_availability"))
+        XCTAssertTrue(result.missingEvidence.contains("datasheet_evidence"))
+        XCTAssertTrue(result.missingEvidence.contains("vendor_order_package"))
+    }
+
     private var validBOM: NormalizedBOM {
         NormalizedBOM(
             designId: "amp-low-voltage",

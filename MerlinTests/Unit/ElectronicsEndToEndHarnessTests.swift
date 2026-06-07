@@ -123,6 +123,29 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         XCTAssertFalse(result.diagnostics.contains { $0.code == "DRC_LAYOUT_MUTATION_REQUIRED" }, "\(result)")
     }
 
+    func testWorkflowRequiresArtifactBackedBOMVendorEvidenceBeforeFabReady() throws {
+        var evidence = ElectronicsEndToEndEvidence.ampLowVoltageVerified
+        evidence.fabrication.normalizedBOMPath = nil
+        evidence.fabrication.vendorAvailabilityPath = nil
+        evidence.fabrication.datasheetEvidencePath = nil
+        evidence.fabrication.vendorOrderPackagePath = nil
+
+        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
+            outputDirectory: temporaryDirectory("amp-missing-bom-vendor-evidence"),
+            evidence: evidence,
+            approvals: [.highStakesSignoff]
+        ))
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertNotEqual(result.fabricationStatus, .fabReady)
+        XCTAssertTrue(result.missingEvidence.contains("normalized_bom"), "\(result)")
+        XCTAssertTrue(result.missingEvidence.contains("vendor_availability"), "\(result)")
+        XCTAssertTrue(result.missingEvidence.contains("datasheet_evidence"), "\(result)")
+        XCTAssertTrue(result.missingEvidence.contains("vendor_order_package"), "\(result)")
+    }
+
     func testCompositeCircuitIRSchematicCannotReachSchematicVerified() throws {
         let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
         let circuitIR = compositeCircuitIR()

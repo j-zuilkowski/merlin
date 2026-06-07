@@ -849,13 +849,7 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         case "kicad_export_fab":
             return handleFabExport(request, context: context)
         case "kicad_prepare_vendor_order":
-            return fileBackedTransform(
-                request,
-                context: context,
-                requiredPathKeys: ["normalized_bom_path"],
-                outputKind: "vendor_order_package",
-                outputBody: vendorOrderBody(request)
-            )
+            return handleVendorOrderPreparation(request, context: context)
         case "kicad_submit_vendor_order":
             return await blockForApproval(request, context: context)
         case "kicad_package_release":
@@ -2332,6 +2326,108 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         } catch {
             return structuredBlock(request, reason: .missingArtifact, message: "Failed to export fabrication artifacts: \(error.localizedDescription)", context: context)
         }
+    }
+
+    private func handleVendorOrderPreparation(
+        _ request: WorkspaceMessageRequest,
+        context: WorkspaceHandlerContext
+    ) -> WorkspaceMessageResponse {
+        let object = request.payload.jsonObject() ?? [:]
+        let requiredPathKeys = ["normalized_bom_path", "vendor_availability_path", "datasheet_evidence_path"]
+        let missingPathKeys = requiredPathKeys.filter { key in
+            guard let path = object[key] as? String else { return true }
+            return !FileManager.default.fileExists(atPath: path)
+        }
+        guard missingPathKeys.isEmpty,
+              let bomPath = object["normalized_bom_path"] as? String,
+              let availabilityPath = object["vendor_availability_path"] as? String,
+              let datasheetPath = object["datasheet_evidence_path"] as? String else {
+            return structuredBlock(
+                request,
+                reason: .missingArtifact,
+                message: "Vendor order preparation requires normalized BOM, vendor availability, and cached datasheet evidence artifacts.",
+                context: context,
+                warnings: [KiCadWarning(
+                    code: "BOM_VENDOR_EVIDENCE_REQUIRED",
+                    message: "Vendor order preparation requires artifact-backed BOM, stock/price, and cached datasheet evidence.",
+                    affectedRefs: affectedRefs(from: request),
+                    suggestedAction: "Attach normalized_bom_path, vendor_availability_path, and datasheet_evidence_path before preparing a vendor order package."
+                )],
+                nextActions: ["attach_vendor_availability", "attach_datasheet_evidence"]
+            )
+        }
+
+        do {
+            let bom = try JSONDecoder().decode(NormalizedBOM.self, from: Data(contentsOf: URL(fileURLWithPath: bomPath)))
+            let bomValidation = NormalizedBOMValidator().validate(bom)
+            let availability = try JSONDecoder().decode([VendorAvailability].self, from: Data(contentsOf: URL(fileURLWithPath: availabilityPath)))
+            let availabilityValidation = VendorAvailabilityChecker().evaluate(bom: bom, availability: availability)
+            let datasheets = try JSONDecoder().decode([DatasheetEvidence].self, from: Data(contentsOf: URL(fileURLWithPath: datasheetPath)))
+            let datasheetValidation = BOMDatasheetEvidenceValidator().validate(bom: bom, datasheets: datasheets)
+            let issues = bomValidation.issues + availabilityValidation.issues + datasheetValidation.issues
+            guard bomValidation.isValid, availabilityValidation.isOrderable, datasheetValidation.isValid else {
+                return structuredBlock(
+                    request,
+                    reason: .invalidInputQuality,
+                    message: "Vendor order preparation requires valid BOM lines, orderable stock/price evidence, and cached datasheet evidence.",
+                    context: context,
+                    warnings: [KiCadWarning(
+                        code: "BOM_VENDOR_EVIDENCE_INVALID",
+                        message: issues.map(\.code).joined(separator: ", "),
+                        affectedRefs: [bomPath, availabilityPath, datasheetPath],
+                        suggestedAction: "Regenerate or attach valid BOM/vendor/datasheet evidence before preparing a vendor order package."
+                    )],
+                    nextActions: ["repair_bom_vendor_evidence"]
+                )
+            }
+
+            let vendorID = object["vendor_id"] as? String ?? "Digi-Key"
+            let quantity = object["quantity"] as? Int ?? 1
+            let totalEstimate = totalVendorEstimateUSD(bom: bom, availability: availability, quantity: quantity)
+            let package = VendorOrderPackageArtifact(
+                status: "prepared",
+                validated: true,
+                vendorID: vendorID,
+                quantity: quantity,
+                normalizedBOMPath: bomPath,
+                vendorAvailabilityPath: availabilityPath,
+                datasheetEvidencePath: datasheetPath,
+                lineCount: bom.lines.count,
+                totalEstimateUSD: totalEstimate,
+                submitted: false
+            )
+            let artifact = writeArtifact(
+                request,
+                context: context,
+                kind: "vendor_order_package",
+                body: try canonicalJSON(package)
+            )
+            return complete(request, artifacts: [artifact], nextActions: ["review_vendor_order_package"])
+        } catch {
+            return structuredBlock(
+                request,
+                reason: .invalidInputQuality,
+                message: "Vendor order preparation could not decode BOM/vendor evidence: \(error.localizedDescription)",
+                context: context,
+                nextActions: ["repair_bom_vendor_evidence"]
+            )
+        }
+    }
+
+    private func totalVendorEstimateUSD(
+        bom: NormalizedBOM,
+        availability: [VendorAvailability],
+        quantity: Int
+    ) -> Double {
+        let recordsByLine = Dictionary(grouping: availability, by: \.lineId)
+        let total = bom.lines.reduce(0.0) { partial, line in
+            let unit = recordsByLine[line.lineId]?
+                .compactMap(\.unitPriceUSD)
+                .filter { $0 > 0 }
+                .min() ?? 0
+            return partial + unit * Double(line.quantity * max(quantity, 1))
+        }
+        return (total * 10_000).rounded() / 10_000
     }
 
     private func handlePackageRelease(
@@ -7285,11 +7381,6 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         }
     }
 
-    private func vendorOrderBody(_ request: WorkspaceMessageRequest) -> String {
-        let object = request.payload.jsonObject() ?? [:]
-        return #"{"vendor_id":"\#(object["vendor_id"] as? String ?? "unknown")","quantity":\#(object["quantity"] as? Int ?? 1),"status":"prepared"}"#
-    }
-
     private func artifactDirectory(context: WorkspaceHandlerContext) -> URL {
         let directoryURL = context.workspaceRoot
             .appendingPathComponent(".merlin", isDirectory: true)
@@ -7777,6 +7868,32 @@ private struct PCBLayoutChangedObject: Codable, Sendable, Equatable {
 private struct PCBLayoutRepairMutation: Sendable, Equatable {
     var updatedText: String
     var changedObjects: [PCBLayoutChangedObject]
+}
+
+private struct VendorOrderPackageArtifact: Codable, Sendable, Equatable {
+    var status: String
+    var validated: Bool
+    var vendorID: String
+    var quantity: Int
+    var normalizedBOMPath: String
+    var vendorAvailabilityPath: String
+    var datasheetEvidencePath: String
+    var lineCount: Int
+    var totalEstimateUSD: Double
+    var submitted: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case validated
+        case vendorID = "vendor_id"
+        case quantity
+        case normalizedBOMPath = "normalized_bom_path"
+        case vendorAvailabilityPath = "vendor_availability_path"
+        case datasheetEvidencePath = "datasheet_evidence_path"
+        case lineCount = "line_count"
+        case totalEstimateUSD = "total_estimate_usd"
+        case submitted
+    }
 }
 
 private struct PCBLayoutRepairMutator: Sendable {

@@ -5,6 +5,54 @@ struct NormalizedBOMValidation: Codable, Sendable, Equatable {
     var issues: [ElectronicsSchemaIssue]
 }
 
+struct BOMDatasheetEvidenceValidation: Codable, Sendable, Equatable {
+    var isValid: Bool
+    var issues: [ElectronicsSchemaIssue]
+}
+
+struct BOMDatasheetEvidenceValidator: Sendable {
+    func validate(
+        bom: NormalizedBOM?,
+        datasheets: [DatasheetEvidence]?
+    ) -> BOMDatasheetEvidenceValidation {
+        guard let bom else {
+            return BOMDatasheetEvidenceValidation(isValid: false, issues: [
+                ElectronicsSchemaIssue(code: "BOM_MISSING", message: "Normalized BOM evidence is missing."),
+            ])
+        }
+        guard let datasheets, !datasheets.isEmpty else {
+            return BOMDatasheetEvidenceValidation(isValid: false, issues: [
+                ElectronicsSchemaIssue(code: "BOM_DATASHEET_EVIDENCE_MISSING", message: "Cached datasheet evidence is missing."),
+            ])
+        }
+
+        var issues: [ElectronicsSchemaIssue] = []
+        let datasheetsByMPN = Dictionary(grouping: datasheets, by: \.mpn)
+        for line in bom.lines {
+            guard let records = datasheetsByMPN[line.mpn], !records.isEmpty else {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "BOM_DATASHEET_EVIDENCE_MISSING",
+                    message: "\(line.lineId) has no cached datasheet evidence for \(line.mpn)."
+                ))
+                continue
+            }
+            let hasCachedRecord = records.contains { record in
+                guard let path = record.localPath, !path.isEmpty else { return false }
+                return FileManager.default.fileExists(atPath: path)
+                    && !(record.sha256?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+            }
+            if !hasCachedRecord {
+                issues.append(ElectronicsSchemaIssue(
+                    code: "BOM_DATASHEET_CACHE_REQUIRED",
+                    message: "\(line.lineId) requires a locally cached datasheet with SHA-256 evidence."
+                ))
+            }
+        }
+
+        return BOMDatasheetEvidenceValidation(isValid: issues.isEmpty, issues: issues)
+    }
+}
+
 struct NormalizedBOMValidator: Sendable {
     func validate(_ bom: NormalizedBOM) -> NormalizedBOMValidation {
         var issues: [ElectronicsSchemaIssue] = []
@@ -73,6 +121,19 @@ struct VendorAvailability: Codable, Sendable, Equatable {
     var vendorPartNumber: String
     var lifecycle: VendorLifecycle
     var inStockQuantity: Int
+    var unitPriceUSD: Double? = nil
+    var sourceURL: String? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case lineId = "line_id"
+        case mpn
+        case vendorId = "vendor_id"
+        case vendorPartNumber = "vendor_part_number"
+        case lifecycle
+        case inStockQuantity = "in_stock_quantity"
+        case unitPriceUSD = "unit_price_usd"
+        case sourceURL = "source_url"
+    }
 }
 
 struct VendorAvailabilityDiagnostics: Codable, Sendable, Equatable {
@@ -121,6 +182,12 @@ struct VendorAvailabilityChecker: Sendable {
                     issues.append(ElectronicsSchemaIssue(
                         code: "BOM_VENDOR_LIFECYCLE_BLOCKED",
                         message: "\(line.lineId) uses \(record.lifecycle.rawValue) part \(record.mpn)."
+                    ))
+                }
+                if record.unitPriceUSD ?? 0 <= 0 {
+                    issues.append(ElectronicsSchemaIssue(
+                        code: "BOM_VENDOR_PRICE_REQUIRED",
+                        message: "\(line.lineId) requires vendor unit price evidence."
                     ))
                 }
             }
@@ -276,8 +343,13 @@ struct FabricationReleaseEvidence: Codable, Sendable, Equatable {
     var pcbVerified: Bool
     var ercReportPath: String?
     var drcReportPath: String?
+    var normalizedBOMPath: String?
+    var vendorAvailabilityPath: String?
+    var datasheetEvidencePath: String?
+    var vendorOrderPackagePath: String?
     var bomValidation: NormalizedBOMValidation
     var vendorAvailability: VendorAvailabilityDiagnostics
+    var datasheetValidation: BOMDatasheetEvidenceValidation
     var fabricationValidation: FabricationEvidenceValidation
     var profileValidation: FabricatorProfileValidation
     var verificationReportPath: String?
@@ -289,8 +361,13 @@ struct FabricationReleaseEvidence: Codable, Sendable, Equatable {
         pcbVerified: true,
         ercReportPath: "/tmp/amp/erc.json",
         drcReportPath: "/tmp/amp/drc.json",
+        normalizedBOMPath: "/tmp/amp/bom.json",
+        vendorAvailabilityPath: "/tmp/amp/vendor-availability.json",
+        datasheetEvidencePath: "/tmp/amp/datasheets.json",
+        vendorOrderPackagePath: "/tmp/amp/vendor-order.json",
         bomValidation: NormalizedBOMValidation(isValid: true, issues: []),
         vendorAvailability: VendorAvailabilityDiagnostics(isOrderable: true, issues: []),
+        datasheetValidation: BOMDatasheetEvidenceValidation(isValid: true, issues: []),
         fabricationValidation: FabricationEvidenceValidation(isValid: true, missingKinds: [], issues: []),
         profileValidation: FabricatorProfileValidation(isValid: true, issues: []),
         verificationReportPath: "/tmp/amp/verification.json",
@@ -316,8 +393,13 @@ struct FabricationReleaseGate: Sendable {
         if !evidence.pcbVerified { missing.append("PCB_VERIFIED") }
         if evidence.ercReportPath?.isEmpty ?? true { missing.append("erc_report") }
         if evidence.drcReportPath?.isEmpty ?? true { missing.append("drc_report") }
+        if evidence.normalizedBOMPath?.isEmpty ?? true { missing.append("normalized_bom") }
+        if evidence.vendorAvailabilityPath?.isEmpty ?? true { missing.append("vendor_availability") }
+        if evidence.datasheetEvidencePath?.isEmpty ?? true { missing.append("datasheet_evidence") }
+        if evidence.vendorOrderPackagePath?.isEmpty ?? true { missing.append("vendor_order_package") }
         if !evidence.bomValidation.isValid { diagnostics.append(contentsOf: evidence.bomValidation.issues) }
         if !evidence.vendorAvailability.isOrderable { diagnostics.append(contentsOf: evidence.vendorAvailability.issues) }
+        if !evidence.datasheetValidation.isValid { diagnostics.append(contentsOf: evidence.datasheetValidation.issues) }
         if !evidence.fabricationValidation.isValid { diagnostics.append(contentsOf: evidence.fabricationValidation.issues) }
         if !evidence.profileValidation.isValid { diagnostics.append(contentsOf: evidence.profileValidation.issues) }
         if evidence.verificationReportPath?.isEmpty ?? true { missing.append("verification_report") }

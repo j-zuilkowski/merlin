@@ -335,6 +335,140 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
         XCTAssertTrue(blockedResult.warnings.contains { $0.code == "SPICE_REPAIR_UNSUPPORTED" })
     }
 
+    func testVendorOrderPreparationRequiresRealBOMStockPriceAndDatasheetEvidence() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("vendor-order-missing-evidence")
+        let bom = try writeFixtureFile(
+            name: "bom.json",
+            text: """
+            {
+              "design_id": "amp_low_voltage_audio",
+              "lines": [
+                {
+                  "line_id": "line-1",
+                  "mpn": "RC0603FR-0710KL",
+                  "quantity": 2,
+                  "reference_designators": ["R1", "R2"]
+                }
+              ],
+              "vendor_mappings": [
+                {
+                  "vendor_id": "digikey",
+                  "line_id": "line-1",
+                  "vendor_part_number": "311-10.0KHRCT-ND"
+                }
+              ],
+              "substitutions": []
+            }
+            """,
+            in: root
+        )
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_prepare_vendor_order",
+            payload: #"{"normalized_bom_path":"\#(bom.path)","vendor_id":"Digi-Key","quantity":1}"#
+        )
+
+        XCTAssertEqual(response.status, .blocked)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        XCTAssertEqual(result.status, .blockedTooling)
+        XCTAssertTrue(result.warnings.contains { $0.code == "BOM_VENDOR_EVIDENCE_REQUIRED" }, "\(result)")
+        XCTAssertEqual(result.nextActions, ["attach_vendor_availability", "attach_datasheet_evidence"])
+    }
+
+    func testVendorOrderPreparationEmitsPackageFromValidatedBOMStockPriceAndCachedDatasheets() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let root = temporaryDirectory("vendor-order-validated-evidence")
+        let bom = try writeFixtureFile(
+            name: "bom.json",
+            text: """
+            {
+              "design_id": "amp_low_voltage_audio",
+              "lines": [
+                {
+                  "line_id": "line-1",
+                  "mpn": "RC0603FR-0710KL",
+                  "quantity": 2,
+                  "reference_designators": ["R1", "R2"]
+                }
+              ],
+              "vendor_mappings": [
+                {
+                  "vendor_id": "digikey",
+                  "line_id": "line-1",
+                  "vendor_part_number": "311-10.0KHRCT-ND"
+                }
+              ],
+              "substitutions": []
+            }
+            """,
+            in: root
+        )
+        let availability = try writeFixtureFile(
+            name: "availability.json",
+            text: """
+            [
+              {
+                "line_id": "line-1",
+                "mpn": "RC0603FR-0710KL",
+                "vendor_id": "digikey",
+                "vendor_part_number": "311-10.0KHRCT-ND",
+                "lifecycle": "active",
+                "in_stock_quantity": 100,
+                "unit_price_usd": 0.10,
+                "source_url": "https://digikey.example/RC0603FR-0710KL"
+              }
+            ]
+            """,
+            in: root
+        )
+        let datasheetPDF = try writeFixtureFile(name: "rc0603.pdf", text: "%PDF-1.4\n", in: root)
+        let datasheets = try writeFixtureFile(
+            name: "datasheets.json",
+            text: """
+            [
+              {
+                "manufacturer": "Yageo",
+                "mpn": "RC0603FR-0710KL",
+                "url": "https://example.invalid/rc0603.pdf",
+                "local_path": "\(datasheetPDF.path)",
+                "sha256": "88f529ef82511e7d4cda07fd509e778ceef0a689da081729ffbd794a1d688cce",
+                "provider_id": "digikey",
+                "retrieved_at": "2026-06-07T00:00:00Z",
+                "license": "cached-for-design-evidence",
+                "citations": []
+              }
+            ]
+            """,
+            in: root
+        )
+
+        let response = await sendElectronics(
+            runtime,
+            capability: "kicad_prepare_vendor_order",
+            payload: #"{"normalized_bom_path":"\#(bom.path)","vendor_availability_path":"\#(availability.path)","datasheet_evidence_path":"\#(datasheets.path)","vendor_id":"Digi-Key","quantity":1}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self))
+        let packagePath = try XCTUnwrap(result.artifacts.first { $0.kind == "vendor_order_package" }?.path)
+        let package = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: Data(contentsOf: URL(fileURLWithPath: packagePath))
+        ) as? [String: Any])
+        XCTAssertEqual(package["status"] as? String, "prepared")
+        XCTAssertEqual(package["validated"] as? Bool, true)
+        XCTAssertEqual(package["vendor_id"] as? String, "Digi-Key")
+        XCTAssertEqual(package["normalized_bom_path"] as? String, bom.path)
+        XCTAssertEqual(package["vendor_availability_path"] as? String, availability.path)
+        XCTAssertEqual(package["datasheet_evidence_path"] as? String, datasheets.path)
+        XCTAssertEqual(package["line_count"] as? Int, 1)
+        XCTAssertEqual(try XCTUnwrap(package["total_estimate_usd"] as? Double), 0.2, accuracy: 0.0001)
+        XCTAssertEqual(result.nextActions, ["review_vendor_order_package"])
+    }
+
     func testRepairPatchApplicationRequiresGateRerunBeforeAdvancement() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
@@ -582,10 +716,37 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
                 "vendor_id": "digikey",
                 "vendor_part_number": "311-10.0KHRCT-ND",
                 "lifecycle": "active",
-                "in_stock_quantity": 100
+                "in_stock_quantity": 100,
+                "unit_price_usd": 0.10,
+                "source_url": "https://digikey.example/RC0603FR-0710KL"
               }
             ]
             """,
+            in: root
+        )
+        let datasheetPDF = try writeFixtureFile(name: "rc0603.pdf", text: "%PDF-1.4\n", in: root)
+        let datasheets = try writeFixtureFile(
+            name: "datasheets.json",
+            text: """
+            [
+              {
+                "manufacturer": "Yageo",
+                "mpn": "RC0603FR-0710KL",
+                "url": "https://example.invalid/rc0603.pdf",
+                "local_path": "\(datasheetPDF.path)",
+                "sha256": "88f529ef82511e7d4cda07fd509e778ceef0a689da081729ffbd794a1d688cce",
+                "provider_id": "digikey",
+                "retrieved_at": "2026-06-07T00:00:00Z",
+                "license": "cached-for-design-evidence",
+                "citations": []
+              }
+            ]
+            """,
+            in: root
+        )
+        let vendorOrder = try writeFixtureFile(
+            name: "vendor-order.json",
+            text: #"{"status":"prepared","vendor_id":"Digi-Key","validated":true}"#,
             in: root
         )
         let gerbers = try writeFixtureFile(name: "gerbers.zip", text: "PK\u{03}\u{04}", in: root)
@@ -619,6 +780,8 @@ final class ElectronicsToolFailureEvidenceTests: XCTestCase {
             ngspiceOutputPath: spice.path,
             normalizedBOMPath: bom.path,
             vendorAvailabilityPath: availability.path,
+            datasheetEvidencePath: datasheets.path,
+            vendorOrderPackagePath: vendorOrder.path,
             fabricationEvidencePath: fabrication.path,
             verificationReportPath: verification.path,
             releasePackagePath: nil,

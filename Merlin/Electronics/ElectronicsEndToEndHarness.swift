@@ -40,11 +40,18 @@ struct ElectronicsEndToEndEvidence: Codable, Sendable, Equatable {
             pcbVerified: false,
             ercReportPath: nil,
             drcReportPath: nil,
+            normalizedBOMPath: nil,
+            vendorAvailabilityPath: nil,
+            datasheetEvidencePath: nil,
+            vendorOrderPackagePath: nil,
             bomValidation: NormalizedBOMValidation(isValid: false, issues: [
                 ElectronicsSchemaIssue(code: "BOM_MISSING", message: "Normalized BOM evidence is missing."),
             ]),
             vendorAvailability: VendorAvailabilityDiagnostics(isOrderable: false, issues: [
                 ElectronicsSchemaIssue(code: "BOM_VENDOR_AVAILABILITY_MISSING", message: "Vendor availability evidence is missing."),
+            ]),
+            datasheetValidation: BOMDatasheetEvidenceValidation(isValid: false, issues: [
+                ElectronicsSchemaIssue(code: "BOM_DATASHEET_EVIDENCE_MISSING", message: "Cached datasheet evidence is missing."),
             ]),
             fabricationValidation: FabricationEvidenceValidation(isValid: false, missingKinds: [], issues: [
                 ElectronicsSchemaIssue(code: "FAB_OUTPUTS_MISSING", message: "Fabrication output evidence is missing."),

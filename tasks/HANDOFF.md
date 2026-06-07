@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 472.
+workflows. Latest completed task is Task 473.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 473 — gate vendor BOM evidence
 - Task 472 — mutate PCB DRC repair plans
 - Task 471 — gate DRC layout rerun evidence
 - Task 470 — require explicit ERC rerun evidence
@@ -77,9 +78,9 @@ Recent commits on `codex/stabilize-merlin-e2e`:
 - `1189367` — Task 459b: datasheet cache settings
 - `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
 
-The repo was clean after Task 471 was committed. Task 472 completed bounded
-generic PCB/layout mutations for DRC repair patch application and emits
-artifact-backed layout mutation evidence before requiring a DRC rerun.
+The repo was clean after Task 472 was committed. Task 473 completed
+artifact-backed vendor/BOM evidence gates and runtime vendor package generation
+from validated BOM, stock/price, and cached datasheet evidence.
 
 ## Current Electronics Plugin State
 
@@ -133,6 +134,12 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   `patch_applied_requires_drc_rerun`, and requires `kicad_run_drc` before PCB
   verification can advance. PCB verification still blocks repaired DRC paths
   when required layout mutation evidence is missing.
+- Vendor/BOM workflow now requires explicit normalized BOM, vendor availability,
+  cached datasheet evidence, and vendor order package paths before fabrication
+  can reach `FAB_READY`. Vendor availability records must include stock and
+  positive unit price evidence. `kicad_prepare_vendor_order` validates BOM,
+  stock/price, and cached datasheet evidence before emitting a
+  `vendor_order_package` artifact; a BOM path alone is blocked.
 - SPICE now requires:
   - explicit `SPICESimulationScenario` JSON;
   - a real circuit deck path;
@@ -146,6 +153,33 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
     measurement envelopes, not a generic smoke deck;
   - measurement-envelope pass before completion;
   - bounded repair parameters before repair patches are proposed.
+
+Task 473 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabReadyRequiresArtifactBackedBOMVendorDatasheetAndOrderEvidence \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingDatasheetCacheEvidenceBlocksBOMVendorFabrication \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresArtifactBackedBOMVendorEvidenceBeforeFabReady \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationRequiresRealBOMStockPriceAndDatasheetEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationEmitsPackageFromValidatedBOMStockPriceAndCachedDatasheets
+```
+
+Result: `TEST SUCCEEDED`, 5 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testCleanVerifierArtifactsReachFabReadyWithoutReleaseApproval \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testInvalidBOMVendorEvidenceBlocksFabrication \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingDatasheetCacheEvidenceBlocksBOMVendorFabrication \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresArtifactBackedBOMVendorEvidenceBeforeFabReady \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationRequiresRealBOMStockPriceAndDatasheetEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationEmitsPackageFromValidatedBOMStockPriceAndCachedDatasheets
+```
+
+Result: `TEST SUCCEEDED`, 14 tests, 0 failures.
 
 Task 472 focused test commands passed:
 
@@ -325,16 +359,14 @@ package is complete.
 Do not run the full AmpDemo demo until the next integration gates are in place.
 The immediate remaining work is:
 
-1. Finish vendor/BOM flow with Digi-Key, Mouser, onsemi fallback, cached
-   datasheets, stock/price evidence, and real BOM artifact.
-2. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
+1. Finish fabrication flow: Gerbers, Excellon drills, CAM checks,
    pick-and-place, drawings, and consolidated verification report.
-3. Verify GUI job state consistency: slot status, electronics job list, and live
+2. Verify GUI job state consistency: slot status, electronics job list, and live
    leaderboard must agree about running/blocked/complete jobs.
-4. Replace the current routing repair marker with KiCad-native segment/via
+3. Replace the current routing repair marker with KiCad-native segment/via
    edits or an autorouter-backed mutation once repair plans carry enough route
    geometry to do that honestly.
-5. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
+4. Only after the above, clean Merlin and AmpDemo and run a full GUI AmpDemo
    pass with app-only screenshots captured while the app is working.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much

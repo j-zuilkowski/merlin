@@ -314,10 +314,37 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
                 "vendor_id": "digikey",
                 "vendor_part_number": "311-10.0KHRCT-ND",
                 "lifecycle": "active",
-                "in_stock_quantity": 100
+                "in_stock_quantity": 100,
+                "unit_price_usd": 0.10,
+                "source_url": "https://digikey.example/RC0603FR-0710KL"
               }
             ]
             """
+        )
+        let datasheetPDF = try write("rc0603.pdf", in: root, contents: "%PDF-1.4\n")
+        let datasheets = try write(
+            "datasheets.json",
+            in: root,
+            contents: """
+            [
+              {
+                "manufacturer": "Yageo",
+                "mpn": "RC0603FR-0710KL",
+                "url": "https://example.invalid/rc0603.pdf",
+                "local_path": "\(datasheetPDF.path)",
+                "sha256": "88f529ef82511e7d4cda07fd509e778ceef0a689da081729ffbd794a1d688cce",
+                "provider_id": "digikey",
+                "retrieved_at": "2026-06-07T00:00:00Z",
+                "license": "cached-for-design-evidence",
+                "citations": []
+              }
+            ]
+            """
+        )
+        let vendorOrder = try write(
+            "vendor-order.json",
+            in: root,
+            contents: #"{"status":"prepared","vendor_id":"Digi-Key","validated":true}"#
         )
         let gerbers = try write("gerbers.zip", in: root, contents: "PK\u{03}\u{04}")
         let drill = try write("amp.drl", in: root, contents: "M48\n")
@@ -350,6 +377,8 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
             ngspiceOutputPath: spice.path,
             normalizedBOMPath: bom.path,
             vendorAvailabilityPath: availability.path,
+            datasheetEvidencePath: datasheets.path,
+            vendorOrderPackagePath: vendorOrder.path,
             fabricationEvidencePath: fabrication.path,
             verificationReportPath: verification.path,
             releasePackagePath: nil,

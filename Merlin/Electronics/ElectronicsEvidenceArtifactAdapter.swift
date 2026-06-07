@@ -9,6 +9,8 @@ struct ElectronicsEvidenceArtifactPaths: Codable, Sendable, Equatable {
     var ngspiceOutputPath: String?
     var normalizedBOMPath: String?
     var vendorAvailabilityPath: String?
+    var datasheetEvidencePath: String?
+    var vendorOrderPackagePath: String?
     var fabricationEvidencePath: String?
     var verificationReportPath: String?
     var releasePackagePath: String?
@@ -24,6 +26,8 @@ struct ElectronicsEvidenceArtifactPaths: Codable, Sendable, Equatable {
         case ngspiceOutputPath
         case normalizedBOMPath = "normalizedBomPath"
         case vendorAvailabilityPath
+        case datasheetEvidencePath
+        case vendorOrderPackagePath
         case fabricationEvidencePath
         case verificationReportPath
         case releasePackagePath
@@ -44,7 +48,10 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
             try JSONDecoder().decode(NormalizedBOM.self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
         }
         let vendorAvailability = try paths.vendorAvailabilityPath.map {
-            try WorkspaceJSON.decoder.decode([VendorAvailability].self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
+            try JSONDecoder().decode([VendorAvailability].self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
+        }
+        let datasheetEvidence = try paths.datasheetEvidencePath.map {
+            try JSONDecoder().decode([DatasheetEvidence].self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
         }
         let fabricationEvidence = try paths.fabricationEvidencePath.map {
             try WorkspaceJSON.decoder.decode(FabricationOutputEvidence.self, from: Data(contentsOf: URL(fileURLWithPath: $0)))
@@ -68,6 +75,10 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
                 ),
             ])
         }
+        let datasheetValidation = BOMDatasheetEvidenceValidator().validate(
+            bom: bom,
+            datasheets: datasheetEvidence
+        )
 
         let fabricationValidation = fabricationEvidence.map {
             FabricationEvidenceValidator().validate($0, profile: .jlcPCBTwoLayer)
@@ -97,8 +108,13 @@ struct ElectronicsEvidenceArtifactAdapter: Sendable {
                 pcbVerified: drcReport?.blockingViolations.isEmpty ?? false,
                 ercReportPath: paths.ercReportPaths.last,
                 drcReportPath: paths.drcReportPath,
+                normalizedBOMPath: paths.normalizedBOMPath,
+                vendorAvailabilityPath: paths.vendorAvailabilityPath,
+                datasheetEvidencePath: paths.datasheetEvidencePath,
+                vendorOrderPackagePath: paths.vendorOrderPackagePath,
                 bomValidation: bomValidation,
                 vendorAvailability: availabilityDiagnostics,
+                datasheetValidation: datasheetValidation,
                 fabricationValidation: fabricationValidation,
                 profileValidation: profileValidation,
                 verificationReportPath: paths.verificationReportPath,

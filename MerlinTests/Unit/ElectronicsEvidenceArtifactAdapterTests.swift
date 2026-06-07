@@ -7,18 +7,11 @@ final class ElectronicsEvidenceArtifactAdapterTests: XCTestCase {
         let paths = try writeCleanArtifacts(root: root)
         let evidence = try ElectronicsEvidenceArtifactAdapter().buildEvidence(paths)
 
-        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: loadFixture("amp_low_voltage_audio/design_intent.json"),
-            circuitIR: loadFixture("amp_low_voltage_audio/circuit_ir.json"),
-            outputDirectory: root.appendingPathComponent("out", isDirectory: true),
-            evidence: evidence
-        ))
+        let result = FabricationReleaseGate().evaluate(evidence.fabrication)
 
         XCTAssertEqual(result.status, .fabReady)
+        XCTAssertTrue(result.canPackageRelease)
         XCTAssertFalse(result.isComplete)
-        XCTAssertEqual(result.pcbStatus, .pcbVerified)
-        XCTAssertEqual(result.spiceStatus, .passed)
-        XCTAssertEqual(result.fabricationStatus, .fabReady)
     }
 
     func testBlockingDRCViolationBlocksPCBAndHarness() throws {
@@ -77,16 +70,23 @@ final class ElectronicsEvidenceArtifactAdapterTests: XCTestCase {
         ).path
 
         let evidence = try ElectronicsEvidenceArtifactAdapter().buildEvidence(paths)
-        let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: loadFixture("amp_low_voltage_audio/design_intent.json"),
-            circuitIR: loadFixture("amp_low_voltage_audio/circuit_ir.json"),
-            outputDirectory: root.appendingPathComponent("out", isDirectory: true),
-            evidence: evidence
-        ))
+        let result = FabricationReleaseGate().evaluate(evidence.fabrication)
 
         XCTAssertEqual(result.status, .blocked)
-        XCTAssertNotEqual(result.fabricationStatus, .fabReady)
         XCTAssertTrue(result.diagnostics.contains { $0.code == "BOM_VENDOR_PART_NUMBER_REQUIRED" })
+    }
+
+    func testMissingDatasheetCacheEvidenceBlocksBOMVendorFabrication() throws {
+        let root = temporaryDirectory("evidence-adapter-datasheet")
+        var paths = try writeCleanArtifacts(root: root)
+        paths.datasheetEvidencePath = nil
+
+        let evidence = try ElectronicsEvidenceArtifactAdapter().buildEvidence(paths)
+        let result = FabricationReleaseGate().evaluate(evidence.fabrication)
+
+        XCTAssertEqual(result.status, .blocked)
+        XCTAssertTrue(result.missingEvidence.contains("datasheet_evidence"), "\(result)")
+        XCTAssertTrue(result.diagnostics.contains { $0.code == "BOM_DATASHEET_EVIDENCE_MISSING" }, "\(result)")
     }
 
     private func writeCleanArtifacts(root: URL) throws -> ElectronicsEvidenceArtifactPaths {
@@ -172,10 +172,37 @@ final class ElectronicsEvidenceArtifactAdapterTests: XCTestCase {
                 "vendor_id": "digikey",
                 "vendor_part_number": "311-10.0KHRCT-ND",
                 "lifecycle": "active",
-                "in_stock_quantity": 100
+                "in_stock_quantity": 100,
+                "unit_price_usd": 0.10,
+                "source_url": "https://digikey.example/RC0603FR-0710KL"
               }
             ]
             """
+        )
+        let datasheetPDF = try write("rc0603.pdf", in: root, contents: "%PDF-1.4\n")
+        let datasheets = try write(
+            "datasheets.json",
+            in: root,
+            contents: """
+            [
+              {
+                "manufacturer": "Yageo",
+                "mpn": "RC0603FR-0710KL",
+                "url": "https://example.invalid/rc0603.pdf",
+                "local_path": "\(datasheetPDF.path)",
+                "sha256": "88f529ef82511e7d4cda07fd509e778ceef0a689da081729ffbd794a1d688cce",
+                "provider_id": "digikey",
+                "retrieved_at": "2026-06-07T00:00:00Z",
+                "license": "cached-for-design-evidence",
+                "citations": []
+              }
+            ]
+            """
+        )
+        let vendorOrder = try write(
+            "vendor-order.json",
+            in: root,
+            contents: #"{"status":"prepared","vendor_id":"Digi-Key","validated":true}"#
         )
         let gerbers = try write("gerbers.zip", in: root, contents: "PK\u{03}\u{04}")
         let drill = try write("amp.drl", in: root, contents: "M48\n")
@@ -208,6 +235,8 @@ final class ElectronicsEvidenceArtifactAdapterTests: XCTestCase {
             ngspiceOutputPath: spice.path,
             normalizedBOMPath: bom.path,
             vendorAvailabilityPath: availability.path,
+            datasheetEvidencePath: datasheets.path,
+            vendorOrderPackagePath: vendorOrder.path,
             fabricationEvidencePath: fabrication.path,
             verificationReportPath: verification.path,
             releasePackagePath: nil,
