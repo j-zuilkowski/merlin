@@ -4,6 +4,23 @@ import Foundation
 struct ElectronicsJobDiagnostic: Codable, Sendable, Equatable {
     var code: String
     var message: String
+    var questions: [String]
+    var evidencePaths: [String]
+    var requiredEvidenceCategories: [String]
+
+    init(
+        code: String,
+        message: String,
+        questions: [String] = [],
+        evidencePaths: [String] = [],
+        requiredEvidenceCategories: [String] = []
+    ) {
+        self.code = code
+        self.message = message
+        self.questions = questions
+        self.evidencePaths = evidencePaths
+        self.requiredEvidenceCategories = requiredEvidenceCategories
+    }
 }
 
 struct ElectronicsJobApprovalRequest: Codable, Sendable, Equatable {
@@ -39,8 +56,29 @@ struct ElectronicsJobDisplayState: Codable, Sendable, Equatable, Identifiable {
     var statusLabel: String
     var message: String
     var bucket: ElectronicsJobDisplayBucket
+    var blockedQuestions: [String]
+    var evidencePaths: [String]
+    var requiredEvidenceCategories: [String]
 
     var id: String { jobID }
+
+    init(
+        jobID: String,
+        statusLabel: String,
+        message: String,
+        bucket: ElectronicsJobDisplayBucket,
+        blockedQuestions: [String] = [],
+        evidencePaths: [String] = [],
+        requiredEvidenceCategories: [String] = []
+    ) {
+        self.jobID = jobID
+        self.statusLabel = statusLabel
+        self.message = message
+        self.bucket = bucket
+        self.blockedQuestions = blockedQuestions
+        self.evidencePaths = evidencePaths
+        self.requiredEvidenceCategories = requiredEvidenceCategories
+    }
 }
 
 struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
@@ -72,6 +110,18 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
         progress.last?.message ?? status.rawValue
     }
 
+    var blockedQuestions: [String] {
+        diagnostics.flatMap(\.questions)
+    }
+
+    var diagnosticEvidencePaths: [String] {
+        diagnostics.flatMap(\.evidencePaths)
+    }
+
+    var requiredEvidenceCategories: [String] {
+        diagnostics.flatMap(\.requiredEvidenceCategories)
+    }
+
     var workflowStatusLabel: String {
         displayState.statusLabel
     }
@@ -86,14 +136,20 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
                 jobID: id,
                 statusLabel: endToEndResult.status.rawValue,
                 message: latestProgressMessage,
-                bucket: bucket(for: endToEndResult.status)
+                bucket: bucket(for: endToEndResult.status),
+                blockedQuestions: blockedQuestions,
+                evidencePaths: diagnosticEvidencePaths,
+                requiredEvidenceCategories: requiredEvidenceCategories
             )
         }
         return ElectronicsJobDisplayState(
             jobID: id,
             statusLabel: status.rawValue,
             message: latestProgressMessage,
-            bucket: bucket(for: status)
+            bucket: bucket(for: status),
+            blockedQuestions: blockedQuestions,
+            evidencePaths: diagnosticEvidencePaths,
+            requiredEvidenceCategories: requiredEvidenceCategories
         )
     }
 
@@ -268,7 +324,13 @@ final class ElectronicsJobStore: ObservableObject {
         } else {
             job.status = .blocked
         }
-        job.diagnostics.append(ElectronicsJobDiagnostic(code: code, message: message))
+        job.diagnostics.append(ElectronicsJobDiagnostic(
+            code: code,
+            message: message,
+            questions: diagnosticQuestions(from: object),
+            evidencePaths: diagnosticEvidencePaths(from: object),
+            requiredEvidenceCategories: diagnosticRequiredEvidenceCategories(from: object)
+        ))
         upsert(job)
     }
 
@@ -314,6 +376,64 @@ final class ElectronicsJobStore: ObservableObject {
         case .complete:
             return 3
         }
+    }
+
+    private func diagnosticQuestions(from object: [String: Any]) -> [String] {
+        guard let questions = object["questions"] as? [[String: Any]] else { return [] }
+        return questions.compactMap { $0["prompt"] as? String }
+    }
+
+    private func diagnosticEvidencePaths(from object: [String: Any]) -> [String] {
+        var paths = stringArray(in: object, keys: ["evidence_paths", "evidencePaths"])
+        if let artifacts = object["artifacts"] as? [[String: Any]] {
+            paths.append(contentsOf: artifacts.compactMap { $0["path"] as? String })
+        }
+        if let handoff = object["handoff"] as? [String: Any] {
+            for key in [
+                "original_component_matrix_path",
+                "component_matrix_path",
+                "design_intent_path",
+                "circuit_ir_path",
+            ] {
+                paths.append(contentsOf: stringArray(in: handoff, keys: [key]))
+            }
+        }
+        var seen: Set<String> = []
+        return paths.filter { seen.insert($0).inserted }
+    }
+
+    private func diagnosticRequiredEvidenceCategories(from object: [String: Any]) -> [String] {
+        let explicit = stringArray(in: object, keys: ["required_evidence_categories", "requiredEvidenceCategories"])
+        guard explicit.isEmpty else { return explicit }
+        let questionText = diagnosticQuestions(from: object).joined(separator: " ").lowercased()
+        let categories = [
+            ("manufacturer", "manufacturer"),
+            ("mpn", "mpn"),
+            ("package", "package"),
+            ("ratings", "ratings"),
+            ("datasheet", "datasheet"),
+            ("footprint_pin_compatibility", "footprint"),
+            ("footprint_pin_compatibility", "pin compatibility"),
+        ]
+        var values: [String] = []
+        for (category, needle) in categories where questionText.contains(needle) {
+            if !values.contains(category) {
+                values.append(category)
+            }
+        }
+        return values
+    }
+
+    private func stringArray(in object: [String: Any], keys: [String]) -> [String] {
+        for key in keys {
+            if let value = object[key] as? [String] {
+                return value
+            }
+            if let value = object[key] as? String {
+                return [value]
+            }
+        }
+        return []
     }
 }
 

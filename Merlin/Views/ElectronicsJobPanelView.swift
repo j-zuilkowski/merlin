@@ -94,6 +94,9 @@ struct ElectronicsJobPanelView: View {
                 rows(
                     store.jobs.flatMap { job in
                         job.missingEvidenceLabels.map { "\(job.workflowStatusLabel): missing \($0) (\(job.id))" }
+                            + job.requiredEvidenceCategories.map { "\(job.workflowStatusLabel): needs \($0) (\(job.id))" }
+                            + job.blockedQuestions.map { "Question: \($0) (\(job.id))" }
+                            + job.diagnosticEvidencePaths.map { "Evidence: \($0) (\(job.id))" }
                     },
                     empty: "No missing evidence"
                 )

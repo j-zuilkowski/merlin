@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 478.
+workflows. Latest completed task is Task 479.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 479 — surface component revision questions in workflow and GUI state
 - Task 478 — generic component-selection revision workflow
 - Task 477 — record AmpDemo GUI component-selection gate
 - Task 476 — mutate DRC routing repairs with native segment/via edits
@@ -154,6 +155,44 @@ Result: 1 test, 0 failures.
 
 `git diff --check` passed. The full AmpDemo GUI demo was not run.
 
+Task 479 surfaced blocked component-selection revision questions through the
+full focused workflow and electronics GUI/job state. `kicad_revise_component_selection`
+blocked results now stop with an explicit recovery summary containing
+`COMPONENT_SELECTION_REVISION_BLOCKED`, resolver question IDs/prompts, the
+original blocked matrix path, and the revised matrix path. Electronics job
+diagnostics/display rows now carry `blockedQuestions`, `evidencePaths`, and
+`requiredEvidenceCategories`; the Electronics Jobs panel includes those entries
+in Evidence Gates so resolver blockers are visible instead of being hidden in a
+generic diagnostic.
+
+Task 479 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task479 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task479 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedComponentSelectionRevisionQuestionsProjectIntoDisplayState \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence
+```
+
+Red result: `TEST FAILED` at compile time because
+`ElectronicsJobDisplayState` had no `blockedQuestions`, `evidencePaths`, or
+`requiredEvidenceCategories`.
+
+Task 479 green evidence:
+
+```bash
+xcodebuild build-for-testing -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task479
+```
+
+Result: `TEST BUILD SUCCEEDED`.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.ElectronicsJobStoreTests,MerlinTests.LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints,MerlinTests.LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence' /tmp/merlin-derived-task479/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: selected tests passed, 9 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
 ## Current Electronics Plugin State
 
 The electronics plugin is no longer allowed to advance major workflow gates from
@@ -181,6 +220,11 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   concrete parts or emits structured missing-evidence questions. Full workflow
   continuation must route `revise_component_selection` through that tool before
   footprints, schematic, PCB, SPICE, BOM, or fabrication can advance.
+- Blocked component-selection revision questions are now surfaced in focused
+  workflow stops and electronics GUI/job state. Resolver blockers must preserve
+  question prompts, required evidence categories, original blocked matrix path,
+  and revised matrix path so the next turn can recover from structured evidence
+  instead of manual sample-project decisions.
 - Footprint assignment, schematic synthesis, PCB placement, ERC, DRC, SPICE,
   BOM/vendor, and fabrication paths have focused evidence gates.
 - Schematic verification now requires current KiCad schematic format,
@@ -536,20 +580,18 @@ Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-The immediate remaining work is the next generic GUI/workflow proof group:
+The immediate remaining work is the next generic resolver-recovery group:
 
-1. Add fail-first tests proving the app/focused continuation path surfaces and
-   records `COMPONENT_SELECTION_REVISION_BLOCKED` questions from
-   `kicad_revise_component_selection`, instead of hiding them in generic
-   blocked output or continuing to footprints.
-2. Wire electronics GUI/job state and continuation evidence so resolver
-   questions, revised component matrix paths, original blocked matrix paths,
-   and required evidence categories are visible to the workflow and recoverable
-   on the next turn.
-3. Add a focused app-level or engine-level continuation fixture that starts from
-   the Task 477 style blocked matrix and proves Merlin schedules the resolver,
-   captures the revised blocked/complete result, and stops honestly if catalog
-   evidence is still missing.
+1. Add fail-first tests proving structured answers or provider evidence for
+   resolver questions are ingested generically and converted into catalog
+   candidate evidence, not AmpDemo-specific manual part choices.
+2. Wire the next-turn recovery path so a blocked
+   `kicad_revise_component_selection` question set can be answered with
+   manufacturer/MPN/package/ratings/datasheet/footprint-pin evidence and rerun
+   the resolver against the original/revised matrix paths.
+3. Prove that, after all required component evidence is supplied, the workflow
+   advances only to a complete component matrix and still refuses footprints if
+   any resolver question remains unanswered.
 4. Run focused tests only. Do not run the full AmpDemo GUI demo and do not
    hand-design AmpDemo parts.
 

@@ -3171,7 +3171,10 @@ final class AgenticEngine {
             }
             if pendingContinuationUsesEvidenceGate,
                electronicsToolResultBlocksContinuation(toolName: toolName, result: result, rawText: rawText) {
-                pendingContinuationBlockedReason = result.content
+                pendingContinuationBlockedReason = electronicsBlockedContinuationReason(
+                    toolName: toolName,
+                    content: result.content
+                )
                 pendingContinuationSteps.removeAll()
                 try? FileManager.default.removeItem(at: continuationInjectURL)
                 continue
@@ -3194,6 +3197,59 @@ final class AgenticEngine {
         if let footprintAssignmentPath = footprintAssignmentArtifactPath(from: evidence) {
             latestVerifiedFootprintAssignmentArtifactPath = footprintAssignmentPath
         }
+    }
+
+    private func electronicsBlockedContinuationReason(toolName: String, content: String) -> String {
+        guard toolName == "kicad_revise_component_selection",
+              let object = jsonObjectFromToolText(content) as? [String: Any] else {
+            return content
+        }
+        let warningCode = warningCode(in: object) ?? "COMPONENT_SELECTION_REVISION_BLOCKED"
+        let questionLines = clarificationQuestions(in: object).map { question in
+            "Question \(question.id): \(question.prompt)"
+        }
+        let evidenceLines = componentSelectionRevisionEvidenceLines(in: object)
+        guard !questionLines.isEmpty || !evidenceLines.isEmpty else { return content }
+        return ([warningCode] + questionLines + evidenceLines).joined(separator: "\n")
+    }
+
+    private struct ParsedClarificationQuestion {
+        var id: String
+        var prompt: String
+    }
+
+    private func clarificationQuestions(in object: [String: Any]) -> [ParsedClarificationQuestion] {
+        guard let questions = object["questions"] as? [[String: Any]] else { return [] }
+        return questions.compactMap { question in
+            guard let prompt = question["prompt"] as? String else { return nil }
+            let id = question["id"] as? String ?? "component-selection-question"
+            return ParsedClarificationQuestion(id: id, prompt: prompt)
+        }
+    }
+
+    private func warningCode(in object: [String: Any]) -> String? {
+        guard let warnings = object["warnings"] as? [[String: Any]] else { return nil }
+        return warnings.compactMap { $0["code"] as? String }.first
+    }
+
+    private func componentSelectionRevisionEvidenceLines(in object: [String: Any]) -> [String] {
+        var lines: [String] = []
+        if let handoff = object["handoff"] as? [String: Any] {
+            if let original = handoff["original_component_matrix_path"] as? String {
+                lines.append("Original blocked component matrix: \(original)")
+            }
+            if let revised = handoff["component_matrix_path"] as? String {
+                lines.append("Revised component matrix: \(revised)")
+            }
+        }
+        if !lines.contains(where: { $0.hasPrefix("Revised component matrix:") }),
+           let artifacts = object["artifacts"] as? [[String: Any]],
+           let revised = artifacts.first(where: { artifact in
+               (artifact["kind"] as? String)?.contains("component_matrix") ?? false
+           })?["path"] as? String {
+            lines.append("Revised component matrix: \(revised)")
+        }
+        return lines
     }
 
     private func recordInternalElectronicsContinuationEvidence(from message: String) {

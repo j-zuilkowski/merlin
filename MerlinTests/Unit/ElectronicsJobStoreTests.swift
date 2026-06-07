@@ -139,6 +139,62 @@ final class ElectronicsJobStoreTests: XCTestCase {
         )
     }
 
+    func testBlockedComponentSelectionRevisionQuestionsProjectIntoDisplayState() async throws {
+        let runtime = try makeRuntime()
+        await runtime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_revise_component_selection"),
+            origin: nil,
+            kind: .diagnostic,
+            payload: .jsonString("""
+            {
+              "job_id": "ampdemo",
+              "status": "BLOCKED_INPUT_QUALITY",
+              "code": "COMPONENT_SELECTION_REVISION_BLOCKED",
+              "message": "Component selection revision still has unresolved decisions.",
+              "questions": [
+                {
+                  "id": "resolve-RPRE1B",
+                  "prompt": "For RPRE1B, provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility.",
+                  "affectedRefs": ["RPRE1B"]
+                }
+              ],
+              "evidence_paths": [
+                "/tmp/original-component_matrix.json",
+                "/tmp/revised-component_matrix.json"
+              ],
+              "required_evidence_categories": [
+                "manufacturer",
+                "mpn",
+                "datasheet",
+                "footprint_pin_compatibility"
+              ]
+            }
+            """)
+        ))
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        let row = try XCTUnwrap(store.blockedRows.first)
+        XCTAssertEqual(row.jobID, "ampdemo")
+        XCTAssertEqual(row.statusLabel, "BLOCKED_INPUT_QUALITY")
+        XCTAssertEqual(row.blockedQuestions, [
+            "For RPRE1B, provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility."
+        ])
+        XCTAssertEqual(row.evidencePaths, [
+            "/tmp/original-component_matrix.json",
+            "/tmp/revised-component_matrix.json",
+        ])
+        XCTAssertEqual(row.requiredEvidenceCategories, [
+            "manufacturer",
+            "mpn",
+            "datasheet",
+            "footprint_pin_compatibility",
+        ])
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp/electronics-job-store"),
