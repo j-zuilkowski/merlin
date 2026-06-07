@@ -27,6 +27,22 @@ struct ElectronicsEndToEndJobProgress: Codable, Sendable, Equatable {
     }
 }
 
+enum ElectronicsJobDisplayBucket: String, Codable, Sendable, Equatable {
+    case running
+    case blocked
+    case fabReady
+    case complete
+}
+
+struct ElectronicsJobDisplayState: Codable, Sendable, Equatable, Identifiable {
+    var jobID: String
+    var statusLabel: String
+    var message: String
+    var bucket: ElectronicsJobDisplayBucket
+
+    var id: String { jobID }
+}
+
 struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
     var id: String
     var status: KiCadStatus
@@ -49,7 +65,7 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
     }
 
     var isRunning: Bool {
-        endToEndResult == nil && status == .inProgress
+        displayState.bucket == .running
     }
 
     var latestProgressMessage: String {
@@ -57,11 +73,52 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
     }
 
     var workflowStatusLabel: String {
-        endToEndResult?.status.rawValue ?? status.rawValue
+        displayState.statusLabel
     }
 
     var missingEvidenceLabels: [String] {
         endToEndResult?.missingEvidence ?? []
+    }
+
+    var displayState: ElectronicsJobDisplayState {
+        if let endToEndResult {
+            return ElectronicsJobDisplayState(
+                jobID: id,
+                statusLabel: endToEndResult.status.rawValue,
+                message: latestProgressMessage,
+                bucket: bucket(for: endToEndResult.status)
+            )
+        }
+        return ElectronicsJobDisplayState(
+            jobID: id,
+            statusLabel: status.rawValue,
+            message: latestProgressMessage,
+            bucket: bucket(for: status)
+        )
+    }
+
+    private func bucket(for status: ElectronicsEndToEndStatus) -> ElectronicsJobDisplayBucket {
+        switch status {
+        case .blocked:
+            return .blocked
+        case .complete:
+            return .complete
+        case .fabReady:
+            return .fabReady
+        case .schematicVerified, .pcbVerified:
+            return .running
+        }
+    }
+
+    private func bucket(for status: KiCadStatus) -> ElectronicsJobDisplayBucket {
+        switch status {
+        case .complete:
+            return .complete
+        case .inProgress:
+            return .running
+        default:
+            return .blocked
+        }
     }
 }
 
@@ -72,19 +129,47 @@ final class ElectronicsJobStore: ObservableObject {
 
     var leaderboardJobs: [ElectronicsJob] {
         jobs.sorted { lhs, rhs in
-            if lhs.isRunning != rhs.isRunning {
-                return lhs.isRunning && !rhs.isRunning
+            if sortRank(lhs.displayState.bucket) != sortRank(rhs.displayState.bucket) {
+                return sortRank(lhs.displayState.bucket) < sortRank(rhs.displayState.bucket)
             }
             return lhs.id < rhs.id
         }
     }
 
+    var leaderboardRows: [ElectronicsJobDisplayState] {
+        leaderboardJobs.map(\.displayState)
+    }
+
     var runningJobs: [ElectronicsJob] {
-        leaderboardJobs.filter(\.isRunning)
+        leaderboardJobs.filter { $0.displayState.bucket == .running }
+    }
+
+    var runningRows: [ElectronicsJobDisplayState] {
+        runningJobs.map(\.displayState)
+    }
+
+    var blockedJobs: [ElectronicsJob] {
+        leaderboardJobs.filter { $0.displayState.bucket == .blocked }
+    }
+
+    var blockedRows: [ElectronicsJobDisplayState] {
+        blockedJobs.map(\.displayState)
+    }
+
+    var fabReadyJobs: [ElectronicsJob] {
+        leaderboardJobs.filter { $0.displayState.bucket == .fabReady }
+    }
+
+    var fabReadyRows: [ElectronicsJobDisplayState] {
+        fabReadyJobs.map(\.displayState)
     }
 
     var completedJobs: [ElectronicsJob] {
-        leaderboardJobs.filter { !$0.isRunning }
+        leaderboardJobs.filter { $0.displayState.bucket == .complete }
+    }
+
+    var completedRows: [ElectronicsJobDisplayState] {
+        completedJobs.map(\.displayState)
     }
 
     deinit {
@@ -96,7 +181,7 @@ final class ElectronicsJobStore: ObservableObject {
         subscriptionTask = Task { [weak self] in
             let stream = await bus.subscribe(WorkspaceMessageEventFilter(namespacePrefix: "plugin.electronics"))
             for await event in stream {
-                await self?.apply(event)
+                self?.apply(event)
             }
         }
     }
@@ -215,6 +300,19 @@ final class ElectronicsJobStore: ObservableObject {
             return .complete
         case .schematicVerified, .pcbVerified, .fabReady:
             return .inProgress
+        }
+    }
+
+    private func sortRank(_ bucket: ElectronicsJobDisplayBucket) -> Int {
+        switch bucket {
+        case .running:
+            return 0
+        case .blocked:
+            return 1
+        case .fabReady:
+            return 2
+        case .complete:
+            return 3
         }
     }
 }

@@ -85,6 +85,60 @@ final class ElectronicsJobStoreTests: XCTestCase {
         XCTAssertFalse(store.jobs.first?.endToEndResult?.isComplete ?? true)
     }
 
+    func testGUIProjectionsUseSingleDisplayStateForFabReadyJobs() async throws {
+        let runtime = try makeRuntime()
+        try await publishHarnessProgress(
+            runtime,
+            jobID: "fab-ready-job",
+            result: e2eResult(status: .fabReady, fabricationStatus: .fabReady),
+            message: "Fabrication evidence passed"
+        )
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        XCTAssertEqual(store.jobs.first?.displayState.statusLabel, "FAB_READY")
+        XCTAssertEqual(store.leaderboardRows.map(\.statusLabel), ["FAB_READY"])
+        XCTAssertEqual(store.fabReadyRows.map(\.statusLabel), ["FAB_READY"])
+        XCTAssertEqual(store.runningRows.map(\.jobID), [])
+        XCTAssertEqual(store.completedRows.map(\.jobID), [])
+    }
+
+    func testGUIProjectionsSeparateRunningBlockedFabReadyAndCompleteStates() async throws {
+        let runtime = try makeRuntime()
+        await publishProgress(runtime, jobID: "running-job", status: .inProgress, message: "Routing PCB")
+        await publishDiagnostic(runtime, jobID: "blocked-job", reason: .unroutedNets)
+        try await publishHarnessProgress(
+            runtime,
+            jobID: "fab-ready-job",
+            result: e2eResult(status: .fabReady, fabricationStatus: .fabReady),
+            message: "Ready for release package"
+        )
+        try await publishHarnessProgress(
+            runtime,
+            jobID: "complete-job",
+            result: e2eResult(status: .complete, fabricationStatus: .complete, isComplete: true),
+            message: "Release complete"
+        )
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        XCTAssertEqual(store.runningRows.map(\.jobID), ["running-job"])
+        XCTAssertEqual(store.blockedRows.map(\.jobID), ["blocked-job"])
+        XCTAssertEqual(store.fabReadyRows.map(\.jobID), ["fab-ready-job"])
+        XCTAssertEqual(store.completedRows.map(\.jobID), ["complete-job"])
+        XCTAssertEqual(
+            store.leaderboardRows.map { "\($0.jobID):\($0.statusLabel)" },
+            [
+                "running-job:IN_PROGRESS",
+                "blocked-job:BLOCKED",
+                "fab-ready-job:FAB_READY",
+                "complete-job:COMPLETE",
+            ]
+        )
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp/electronics-job-store"),
@@ -145,5 +199,43 @@ final class ElectronicsJobStoreTests: XCTestCase {
             kind: .approvalRequired,
             payload: .jsonString(#"{"job_id":"\#(jobID)","kind":"\#(kind.rawValue)","summary":"Review release"}"#)
         ))
+    }
+
+    private func publishHarnessProgress(
+        _ runtime: WorkspaceRuntime,
+        jobID: String,
+        result: ElectronicsEndToEndResult,
+        message: String
+    ) async throws {
+        await runtime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "workflow.requirements_to_pcb"),
+            origin: nil,
+            kind: .progress,
+            payload: try .encodeJSON(ElectronicsEndToEndJobProgress(
+                jobID: jobID,
+                result: result,
+                message: message
+            ))
+        ))
+    }
+
+    private func e2eResult(
+        status: ElectronicsEndToEndStatus,
+        fabricationStatus: FabricationReleaseStatus,
+        isComplete: Bool = false
+    ) -> ElectronicsEndToEndResult {
+        ElectronicsEndToEndResult(
+            status: status,
+            isComplete: isComplete,
+            schematicStatus: .schematicVerified,
+            pcbStatus: .pcbVerified,
+            spiceStatus: .passed,
+            fabricationStatus: fabricationStatus,
+            missingEvidence: status == .fabReady ? ["release_package", "release_approval"] : [],
+            diagnostics: [],
+            certifiesSafety: false
+        )
     }
 }

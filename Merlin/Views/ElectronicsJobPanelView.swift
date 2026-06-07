@@ -4,6 +4,8 @@ struct ElectronicsJobPanelView: View {
     static let sectionLabels = [
         "Live Leaderboard",
         "Running Now",
+        "Blocked Jobs",
+        "Fab Ready",
         "Completed Jobs",
         "Progress History",
         "Evidence Gates",
@@ -59,22 +61,28 @@ struct ElectronicsJobPanelView: View {
     private var jobList: some View {
         List {
             Section("Live Leaderboard") {
-                ForEach(store.leaderboardJobs) { job in
-                    leaderboardRow(job)
+                ForEach(store.leaderboardRows) { row in
+                    leaderboardRow(row)
                 }
             }
             Section("Running Now") {
-                if store.runningJobs.isEmpty {
+                if store.runningRows.isEmpty {
                     Text("No running electronics jobs")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(store.runningJobs) { job in
-                        leaderboardRow(job)
+                    ForEach(store.runningRows) { row in
+                        leaderboardRow(row)
                     }
                 }
             }
+            Section("Blocked Jobs") {
+                displayRows(store.blockedRows, empty: "No blocked jobs")
+            }
+            Section("Fab Ready") {
+                displayRows(store.fabReadyRows, empty: "No fab-ready jobs")
+            }
             Section("Completed Jobs") {
-                rows(store.completedJobs.map { "\($0.id): \($0.status.rawValue)" }, empty: "No completed jobs")
+                displayRows(store.completedRows, empty: "No completed jobs")
             }
             Section("Progress History") {
                 rows(
@@ -118,20 +126,33 @@ struct ElectronicsJobPanelView: View {
         .listStyle(.sidebar)
     }
 
-    private func leaderboardRow(_ job: ElectronicsJob) -> some View {
+    private func leaderboardRow(_ row: ElectronicsJobDisplayState) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(job.id)
+                Text(row.jobID)
                     .font(.callout.weight(.medium))
-                Text(job.latestProgressMessage)
+                Text(row.message)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
             Spacer(minLength: 8)
-            Text(job.workflowStatusLabel)
+            Text(row.statusLabel)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(color(for: job.status))
+                .foregroundStyle(color(for: row.bucket))
+        }
+    }
+
+    private func displayRows(_ values: [ElectronicsJobDisplayState], empty: String) -> some View {
+        Group {
+            if values.isEmpty {
+                Text(empty)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(values) { value in
+                    leaderboardRow(value)
+                }
+            }
         }
     }
 
@@ -149,13 +170,15 @@ struct ElectronicsJobPanelView: View {
         }
     }
 
-    private func color(for status: KiCadStatus) -> Color {
-        switch status {
+    private func color(for bucket: ElectronicsJobDisplayBucket) -> Color {
+        switch bucket {
         case .complete:
             return .green
-        case .inProgress:
+        case .running:
             return .orange
-        default:
+        case .fabReady:
+            return .blue
+        case .blocked:
             return .red
         }
     }
