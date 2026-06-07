@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 476.
+workflows. Latest completed task is Task 477.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 477 — record AmpDemo GUI component-selection gate
 - Task 476 — mutate DRC routing repairs with native segment/via edits
 - Task 475 — synchronize electronics GUI job state projections
 - Task 474 — gate fabrication output evidence
@@ -87,6 +88,32 @@ from the board, inserts `(segment ...)` and `(via ...)` objects when at least tw
 pad anchors exist, records `routing_segment` and `routing_via` changed objects,
 and blocks unchanged with `regenerate_drc_repair_plan` when pad-level routing
 geometry is missing.
+
+Task 477 ran a fresh app-only AmpDemo GUI workflow attempt through
+`/Applications/Merlin.app` opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`. The run used Merlin's live-session `~/.merlin/inject.txt` path to
+submit the user prompt through the active GUI session, after direct keyboard
+focus and exploratory XCUITest automation were not reliable in this desktop
+environment. Merlin generated DesignIntent, approved DesignIntent, Circuit IR,
+and component matrix artifacts, then stopped truthfully at
+`COMPONENT_SELECTION_BLOCKED` / `BLOCKED_INPUT_QUALITY`. The component matrix
+contains 21 components and all 21 remain `requires_vendor_resolution`; no
+footprint, schematic, PCB, ERC, DRC, SPICE, BOM, or fabrication step advanced
+from unresolved component decisions.
+
+Task 477 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/01_clean_session_app_only.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/04_component_selection_blocked_app_only.png`
+- Approved DesignIntent:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/53FEDAD1-FEDF-4A53-9F2A-D721428B9614-design_intent.json`
+- Circuit IR:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/19397343-C00B-46CD-90C0-C93DA986AC6D-circuit_ir.json`
+- Blocked component matrix:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/03ECE826-D739-446D-A057-FEDDA41B16FB-component_matrix.json`
 
 ## Current Electronics Plugin State
 
@@ -461,14 +488,24 @@ package is complete.
 
 ## Remaining Electronics Work
 
-Do not run the full AmpDemo demo until the next integration gates are in place.
+Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
+that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
+evidence check.
+
 The immediate remaining work is:
 
-1. Clean Merlin/AmpDemo generated state as needed for a fresh workflow attempt,
-   without manually hand-designing the sample project.
-2. Run a full GUI AmpDemo pass with app-only screenshots captured while Merlin
-   is working, and use the resulting artifacts to identify the next generic
-   workflow gate Merlin still needs.
+1. Add fail-first tests for a generic component-selection revision gate that
+   cannot advance footprints/schematic from a component matrix where required
+   components remain `requires_vendor_resolution`.
+2. Implement a generic revision/resolution path for blocked component matrices:
+   resolve concrete manufacturer parts, vendor evidence, datasheet evidence,
+   symbols, footprints, and pin compatibility, or emit structured missing
+   evidence questions specific enough to resolve.
+3. Wire the full GUI/electronics workflow continuation path so
+   `BLOCKED_INPUT_QUALITY` component-selection results schedule that generic
+   resolution path instead of relying on manual sample-project decisions.
+4. Run focused component-selection/workflow tests, then rerun a fresh app-only
+   AmpDemo GUI pass only after the generic component-selection gate is in place.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
 stronger, but it does not by itself make Merlin capable of arbitrary reliable
