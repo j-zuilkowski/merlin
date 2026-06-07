@@ -3381,6 +3381,7 @@ final class AgenticEngine {
               message.hasPrefix("[CONTINUATION]"),
               message.contains("verified electronics artifact evidence")
                 || message.contains("verified tool/artifact evidence")
+                || message.contains("Electronics GUI resolver answers submitted")
         else { return }
 
         let evidence = ContinuationToolEvidence(
@@ -3408,6 +3409,11 @@ final class AgenticEngine {
         if let toolName = focusedElectronicsToolNameForContinuationTask(in: message)
             ?? explicitFocusedElectronicsToolName(in: message) {
             latestFocusedElectronicsHandoffToolName = toolName
+        }
+        if message.contains("Electronics GUI resolver answers submitted"),
+           message.contains("component_resolution_answers") {
+            pendingContinuationUsesEvidenceGate = true
+            pendingContinuationBlockedReason = nil
         }
     }
 
@@ -5323,7 +5329,9 @@ final class AgenticEngine {
 
     private func pendingComponentSelectionFootprintNextAction() -> Bool {
         pendingContinuationEvidence.contains { evidence in
-            guard evidence.toolName == "kicad_select_components" else { return false }
+            guard evidence.toolName == "kicad_select_components"
+                || evidence.toolName == "kicad_revise_component_selection"
+            else { return false }
             return electronicsNextActions(inJSONText: evidence.output).contains { action in
                 action == "assign_footprints"
                     || action == "footprint_assignment"

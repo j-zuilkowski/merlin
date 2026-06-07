@@ -195,6 +195,62 @@ final class ElectronicsJobStoreTests: XCTestCase {
         ])
     }
 
+    func testBlockedResolverQuestionsProjectActionableAnswerRequirements() async throws {
+        let runtime = try makeRuntime()
+        await publishBlockedResolverQuestion(runtime)
+
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+
+        let row = try XCTUnwrap(store.blockedRows.first)
+        let requirement = try XCTUnwrap(row.resolverAnswerRequirements.first)
+        XCTAssertEqual(requirement.questionID, "resolve-QOUT1")
+        XCTAssertEqual(requirement.refdes, "QOUT1")
+        XCTAssertEqual(requirement.prompt, "For QOUT1, provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility.")
+        XCTAssertEqual(requirement.requiredEvidenceCategories, [
+            "manufacturer",
+            "mpn",
+            "package",
+            "ratings",
+            "datasheet",
+            "footprint_pin_compatibility",
+        ])
+        XCTAssertEqual(requirement.evidencePaths, [
+            "/tmp/original-component_matrix.json",
+            "/tmp/revised-component_matrix.json",
+            "/tmp/design_intent.json",
+            "/tmp/circuit_ir.json",
+        ])
+    }
+
+    func testResolverAnswerSubmissionWritesStructuredContinuationMessage() async throws {
+        let runtime = try makeRuntime()
+        await publishBlockedResolverQuestion(runtime)
+        let store = ElectronicsJobStore()
+        await store.loadRecent(from: runtime.bus)
+        let injectURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("merlin-electronics-resolver-answer-\(UUID().uuidString).txt")
+
+        try store.writeResolverAnswerContinuation(
+            jobID: "ampdemo",
+            answers: [sampleResolverAnswer()],
+            to: injectURL
+        )
+
+        let message = try String(contentsOf: injectURL, encoding: .utf8)
+        XCTAssertTrue(message.hasPrefix("[CONTINUATION]"), message)
+        XCTAssertTrue(message.contains("kicad_revise_component_selection"), message)
+        XCTAssertTrue(message.contains(#""component_resolution_question_ids":["resolve-QOUT1"]"#), message)
+        XCTAssertTrue(message.contains(#""component_resolution_answers""#), message)
+        XCTAssertTrue(message.contains(#""refdes":"QOUT1""#), message)
+        XCTAssertTrue(message.contains(#""mpn":"MJ15003G""#), message)
+        XCTAssertTrue(message.contains(#""datasheet_url":"https://example.invalid/MJ15003G.pdf""#), message)
+        XCTAssertTrue(message.contains(#""component_matrix_path":"/tmp/revised-component_matrix.json""#), message)
+        XCTAssertTrue(message.contains(#""original_component_matrix_path":"/tmp/original-component_matrix.json""#), message)
+        XCTAssertTrue(message.contains(#""design_intent_path":"/tmp/design_intent.json""#), message)
+        XCTAssertTrue(message.contains(#""circuit_ir_path":"/tmp/circuit_ir.json""#), message)
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp/electronics-job-store"),
@@ -255,6 +311,67 @@ final class ElectronicsJobStoreTests: XCTestCase {
             kind: .approvalRequired,
             payload: .jsonString(#"{"job_id":"\#(jobID)","kind":"\#(kind.rawValue)","summary":"Review release"}"#)
         ))
+    }
+
+    private func publishBlockedResolverQuestion(_ runtime: WorkspaceRuntime) async {
+        await runtime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_revise_component_selection"),
+            origin: nil,
+            kind: .diagnostic,
+            payload: .jsonString("""
+            {
+              "job_id": "ampdemo",
+              "status": "BLOCKED_INPUT_QUALITY",
+              "code": "COMPONENT_SELECTION_REVISION_BLOCKED",
+              "message": "Component selection revision still has unresolved decisions.",
+              "questions": [
+                {
+                  "id": "resolve-QOUT1",
+                  "prompt": "For QOUT1, provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility.",
+                  "affectedRefs": ["QOUT1"]
+                }
+              ],
+              "required_evidence_categories": [
+                "manufacturer",
+                "mpn",
+                "package",
+                "ratings",
+                "datasheet",
+                "footprint_pin_compatibility"
+              ],
+              "handoff": {
+                "design_intent_path": "/tmp/design_intent.json",
+                "circuit_ir_path": "/tmp/circuit_ir.json",
+                "original_component_matrix_path": "/tmp/original-component_matrix.json",
+                "component_matrix_path": "/tmp/revised-component_matrix.json"
+              }
+            }
+            """)
+        ))
+    }
+
+    private func sampleResolverAnswer() -> ElectronicsComponentResolutionAnswer {
+        ElectronicsComponentResolutionAnswer(
+            refdes: "QOUT1",
+            manufacturer: "onsemi",
+            mpn: "MJ15003G",
+            normalizedCategory: "power_transistor",
+            package: "TO-3",
+            ratings: ["voltage_v": "140", "current_a": "20", "power_w": "250"],
+            datasheetURL: "https://example.invalid/MJ15003G.pdf",
+            sourceURL: "https://provider.example/MJ15003G",
+            availabilitySummary: "100 In Stock",
+            lifecycleState: "Active",
+            footprint: ElectronicsComponentResolutionFootprintAnswer(
+                library: "Package_TO_SOT_THT",
+                name: "TO-3",
+                packageCompatibilityEvidence: "TO-3 package and pinout supplied by resolver answer",
+                pinPadMap: ["B": "1", "C": "2"],
+                sourceProviderID: "component_resolution_answer"
+            )
+        )
     }
 
     private func publishHarnessProgress(

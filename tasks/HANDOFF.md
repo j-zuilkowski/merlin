@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 482.
+workflows. Latest completed task is Task 483.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 483 — add GUI resolver answer entry
 - Task 482 — define electronics domain finish checklist
 - Task 481 — carry component revision answer handoff state
 - Task 480 — recover component revision from structured resolver answers
@@ -285,6 +286,44 @@ xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'plat
 ```
 
 Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 483 added the GUI resolver answer entry path. Blocked
+component-selection revision diagnostics now project actionable
+`resolverAnswerRequirements` into electronics job display state. The job store
+can write a structured continuation message with `component_resolution_answers`,
+question IDs, DesignIntent/Circuit IR/component-matrix handoff paths, and live
+catalog settings for `kicad_revise_component_selection`. The focused
+continuation path treats those GUI resolver-answer messages as verified
+electronics evidence, clears stale blocked state for answer turns, and permits
+advancement only to the completed component matrix handoff before scheduling
+`kicad_assign_footprints`.
+
+Task 483 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task483 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff
+```
+
+Red result: `TEST FAILED`. The new answer types/display projection were absent
+at first; after partial wiring, the resolver-answer continuation was not treated
+as artifact-backed GUI evidence and stale blocked continuation state prevented
+revision handoff advancement.
+
+Task 483 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task483 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
 
 `git diff --check` passed. The full AmpDemo GUI demo was not run.
 
@@ -692,7 +731,7 @@ Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-- [ ] **F1: GUI resolver answer entry.** Electronics GUI/job state presents
+- [x] **F1: GUI resolver answer entry.** Electronics GUI/job state presents
   blocked resolver questions as actionable answer requirements, accepts
   submitted resolver answer evidence, and carries question IDs/evidence paths
   into focused continuation as structured `component_resolution_answers` for

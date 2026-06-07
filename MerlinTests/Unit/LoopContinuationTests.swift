@@ -833,6 +833,170 @@ final class LoopContinuationTests: XCTestCase {
         XCTAssertFalse(continuationText.contains("kicad_compile_project"), continuationText)
     }
 
+    func testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-gui-resolver-answer-turn")
+        let designIntentPath = try writeArtifact(
+            name: "approved-design_intent.json",
+            contents: #"{"project":"GenericAmp","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "circuit_ir.json",
+            contents: #"{"design_id":"GenericAmp","components":[{"refdes":"QOUT1"}],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let originalMatrixPath = try writeArtifact(
+            name: "original-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let blockedRevisionPath = try writeArtifact(
+            name: "blocked-revised-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let completeMatrixPath = try writeArtifact(
+            name: "complete-component_matrix.json",
+            contents: selectedComponentMatrixJSON(refdes: "QOUT1", mpn: "MJ15003G", manufacturer: "onsemi"),
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "initial-revision",
+                name: "kicad_revise_component_selection",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","component_matrix_path":"\#(originalMatrixPath.path)"}"#
+            ),
+            .toolCall(
+                id: "gui-answered-revision",
+                name: "kicad_revise_component_selection",
+                args: #"{"component_resolution_answers":[{"refdes":"QOUT1","manufacturer":"onsemi","mpn":"MJ15003G"}]}"#
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Revise blocked component selection with catalog evidence",
+                    successCriteria: "Resolved component matrix or structured missing evidence questions",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Assign KiCad footprints from selected component package constraints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        var revisionArguments: [String] = []
+        engine.registerTool("kicad_revise_component_selection") { args in
+            revisionArguments.append(args)
+            if args.contains("component_resolution_answers") {
+                return """
+                {
+                  "status": "COMPLETE",
+                  "artifacts": [
+                    {"kind": "component_matrix", "path": "\(completeMatrixPath.path)"}
+                  ],
+                  "handoff": {
+                    "design_intent_path": "\(designIntentPath.path)",
+                    "circuit_ir_path": "\(circuitIRPath.path)",
+                    "component_matrix_path": "\(completeMatrixPath.path)"
+                  },
+                  "nextActions": ["assign_footprints"]
+                }
+                """
+            }
+            return self.componentRevisionBlockedResultJSON(
+                designIntentPath: designIntentPath.path,
+                circuitIRPath: circuitIRPath.path,
+                originalMatrixPath: originalMatrixPath.path,
+                revisedMatrixPath: blockedRevisionPath.path,
+                unresolvedRefdes: "QOUT1"
+            )
+        }
+
+        for await _ in engine.send(userMessage: "Revise the blocked component matrix and stop for questions if evidence is missing.") {}
+
+        let store = ElectronicsJobStore()
+        store.apply(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "plugin.electronics", capability: "kicad_revise_component_selection"),
+            origin: nil,
+            kind: .diagnostic,
+            payload: .jsonString("""
+            {
+              "job_id": "ampdemo",
+              "status": "BLOCKED_INPUT_QUALITY",
+              "code": "COMPONENT_SELECTION_REVISION_BLOCKED",
+              "message": "Component selection revision still has unresolved decisions.",
+              "questions": [
+                {
+                  "id": "resolve-QOUT1",
+                  "prompt": "For QOUT1, provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility.",
+                  "affectedRefs": ["QOUT1"]
+                }
+              ],
+              "handoff": {
+                "design_intent_path": "\(designIntentPath.path)",
+                "circuit_ir_path": "\(circuitIRPath.path)",
+                "original_component_matrix_path": "\(originalMatrixPath.path)",
+                "component_matrix_path": "\(blockedRevisionPath.path)"
+              }
+            }
+            """)
+        ))
+        try store.writeResolverAnswerContinuation(
+            jobID: "ampdemo",
+            answers: [
+                ElectronicsComponentResolutionAnswer(
+                    refdes: "QOUT1",
+                    manufacturer: "onsemi",
+                    mpn: "MJ15003G",
+                    normalizedCategory: "power_transistor",
+                    package: "TO-3",
+                    ratings: ["voltage_v": "140", "current_a": "20", "power_w": "250"],
+                    datasheetURL: "https://example.invalid/MJ15003G.pdf",
+                    sourceURL: "https://provider.example/MJ15003G",
+                    availabilitySummary: "100 In Stock",
+                    lifecycleState: "Active",
+                    footprint: ElectronicsComponentResolutionFootprintAnswer(
+                        library: "Package_TO_SOT_THT",
+                        name: "TO-3",
+                        packageCompatibilityEvidence: "TO-3 package and pinout supplied by resolver answer",
+                        pinPadMap: ["B": "1", "C": "2"],
+                        sourceProviderID: "component_resolution_answer"
+                    )
+                )
+            ],
+            to: injectURL
+        )
+        let guiContinuationMessage = try readInject()
+        XCTAssertTrue(guiContinuationMessage.contains("component_resolution_answers"), guiContinuationMessage)
+
+        for await _ in engine.send(userMessage: guiContinuationMessage) {}
+
+        let answeredArgs = try XCTUnwrap(revisionArguments.last)
+        let answeredObject = try jsonObject(answeredArgs)
+        XCTAssertEqual(answeredObject["component_resolution_question_ids"] as? [String], ["resolve-QOUT1"])
+        XCTAssertEqual(answeredObject["component_matrix_path"] as? String, blockedRevisionPath.path)
+        XCTAssertNotNil(answeredObject["component_resolution_answers"] as? [[String: Any]])
+        let continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_assign_footprints`"), continuationText)
+        XCTAssertTrue(continuationText.contains(completeMatrixPath.path), continuationText)
+    }
+
     func testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

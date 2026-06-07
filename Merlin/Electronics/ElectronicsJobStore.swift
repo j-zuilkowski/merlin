@@ -5,6 +5,7 @@ struct ElectronicsJobDiagnostic: Codable, Sendable, Equatable {
     var code: String
     var message: String
     var questions: [String]
+    var resolverAnswerRequirements: [ElectronicsResolverAnswerRequirement]
     var evidencePaths: [String]
     var requiredEvidenceCategories: [String]
 
@@ -12,14 +13,71 @@ struct ElectronicsJobDiagnostic: Codable, Sendable, Equatable {
         code: String,
         message: String,
         questions: [String] = [],
+        resolverAnswerRequirements: [ElectronicsResolverAnswerRequirement] = [],
         evidencePaths: [String] = [],
         requiredEvidenceCategories: [String] = []
     ) {
         self.code = code
         self.message = message
         self.questions = questions
+        self.resolverAnswerRequirements = resolverAnswerRequirements
         self.evidencePaths = evidencePaths
         self.requiredEvidenceCategories = requiredEvidenceCategories
+    }
+}
+
+struct ElectronicsResolverAnswerRequirement: Codable, Sendable, Equatable, Identifiable {
+    var questionID: String
+    var prompt: String
+    var refdes: String?
+    var affectedRefs: [String]
+    var evidencePaths: [String]
+    var requiredEvidenceCategories: [String]
+
+    var id: String { questionID }
+}
+
+struct ElectronicsComponentResolutionFootprintAnswer: Codable, Sendable, Equatable {
+    var library: String
+    var name: String
+    var packageCompatibilityEvidence: String
+    var pinPadMap: [String: String]
+    var sourceProviderID: String
+
+    enum CodingKeys: String, CodingKey {
+        case library
+        case name
+        case packageCompatibilityEvidence = "package_compatibility_evidence"
+        case pinPadMap = "pin_pad_map"
+        case sourceProviderID = "source_provider_id"
+    }
+}
+
+struct ElectronicsComponentResolutionAnswer: Codable, Sendable, Equatable {
+    var refdes: String
+    var manufacturer: String
+    var mpn: String
+    var normalizedCategory: String
+    var package: String
+    var ratings: [String: String]
+    var datasheetURL: String
+    var sourceURL: String
+    var availabilitySummary: String
+    var lifecycleState: String
+    var footprint: ElectronicsComponentResolutionFootprintAnswer?
+
+    enum CodingKeys: String, CodingKey {
+        case refdes
+        case manufacturer
+        case mpn
+        case normalizedCategory = "normalized_category"
+        case package
+        case ratings
+        case datasheetURL = "datasheet_url"
+        case sourceURL = "source_url"
+        case availabilitySummary = "availability_summary"
+        case lifecycleState = "lifecycle_state"
+        case footprint
     }
 }
 
@@ -57,6 +115,7 @@ struct ElectronicsJobDisplayState: Codable, Sendable, Equatable, Identifiable {
     var message: String
     var bucket: ElectronicsJobDisplayBucket
     var blockedQuestions: [String]
+    var resolverAnswerRequirements: [ElectronicsResolverAnswerRequirement]
     var evidencePaths: [String]
     var requiredEvidenceCategories: [String]
 
@@ -68,6 +127,7 @@ struct ElectronicsJobDisplayState: Codable, Sendable, Equatable, Identifiable {
         message: String,
         bucket: ElectronicsJobDisplayBucket,
         blockedQuestions: [String] = [],
+        resolverAnswerRequirements: [ElectronicsResolverAnswerRequirement] = [],
         evidencePaths: [String] = [],
         requiredEvidenceCategories: [String] = []
     ) {
@@ -76,6 +136,7 @@ struct ElectronicsJobDisplayState: Codable, Sendable, Equatable, Identifiable {
         self.message = message
         self.bucket = bucket
         self.blockedQuestions = blockedQuestions
+        self.resolverAnswerRequirements = resolverAnswerRequirements
         self.evidencePaths = evidencePaths
         self.requiredEvidenceCategories = requiredEvidenceCategories
     }
@@ -114,6 +175,10 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
         diagnostics.flatMap(\.questions)
     }
 
+    var resolverAnswerRequirements: [ElectronicsResolverAnswerRequirement] {
+        diagnostics.flatMap(\.resolverAnswerRequirements)
+    }
+
     var diagnosticEvidencePaths: [String] {
         diagnostics.flatMap(\.evidencePaths)
     }
@@ -138,6 +203,7 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
                 message: latestProgressMessage,
                 bucket: bucket(for: endToEndResult.status),
                 blockedQuestions: blockedQuestions,
+                resolverAnswerRequirements: resolverAnswerRequirements,
                 evidencePaths: diagnosticEvidencePaths,
                 requiredEvidenceCategories: requiredEvidenceCategories
             )
@@ -148,6 +214,7 @@ struct ElectronicsJob: Codable, Sendable, Equatable, Identifiable {
             message: latestProgressMessage,
             bucket: bucket(for: status),
             blockedQuestions: blockedQuestions,
+            resolverAnswerRequirements: resolverAnswerRequirements,
             evidencePaths: diagnosticEvidencePaths,
             requiredEvidenceCategories: requiredEvidenceCategories
         )
@@ -249,6 +316,65 @@ final class ElectronicsJobStore: ObservableObject {
         }
     }
 
+    func writeResolverAnswerContinuation(
+        jobID: String,
+        answers: [ElectronicsComponentResolutionAnswer],
+        to url: URL
+    ) throws {
+        let message = try resolverAnswerContinuationMessage(jobID: jobID, answers: answers)
+        try message.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    func resolverAnswerContinuationMessage(
+        jobID: String,
+        answers: [ElectronicsComponentResolutionAnswer]
+    ) throws -> String {
+        guard let job = jobs.first(where: { $0.id == jobID }) else {
+            throw NSError(
+                domain: "ElectronicsJobStore",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No electronics job found for \(jobID)."]
+            )
+        }
+        let answerRefdes = Set(answers.map(\.refdes))
+        let requirements = job.resolverAnswerRequirements.filter { requirement in
+            guard let refdes = requirement.refdes else { return true }
+            return answerRefdes.contains(refdes)
+        }
+        let questionIDs = requirements.map(\.questionID)
+        let paths = requirements.flatMap(\.evidencePaths) + job.diagnosticEvidencePaths
+        var payload: [String: Any] = [
+            "component_resolution_answers": try jsonArray(from: answers),
+            "component_resolution_question_ids": questionIDs,
+            "live_catalog_providers": ["mouser", "digikey"],
+            "live_catalog_result_limit": 3,
+        ]
+        if let designIntentPath = firstPath(in: paths, containing: ["design_intent"])
+            ?? firstPath(in: paths, containing: ["designintent"]) {
+            payload["design_intent_path"] = designIntentPath
+        }
+        if let circuitIRPath = firstPath(in: paths, containing: ["circuit_ir"])
+            ?? firstPath(in: paths, containing: ["circuitir"]) {
+            payload["circuit_ir_path"] = circuitIRPath
+        }
+        if let originalMatrixPath = firstPath(in: paths, containing: ["original", "component_matrix"]) {
+            payload["original_component_matrix_path"] = originalMatrixPath
+        }
+        if let componentMatrixPath = firstPath(in: paths, containing: ["component_matrix"], excluding: ["original"]) {
+            payload["component_matrix_path"] = componentMatrixPath
+        }
+        let payloadJSON = try jsonString(from: payload)
+        return """
+        [CONTINUATION] Electronics GUI resolver answers submitted. Continue the focused electronics handoff with structured answer evidence.
+
+        Job ID: \(jobID)
+        Next required electronics handoff tool: `kicad_revise_component_selection`.
+        The next assistant tool call must be exactly `kicad_revise_component_selection` with this JSON shape:
+        \(payloadJSON)
+        After `kicad_revise_component_selection` returns a complete component matrix, advance only to the focused `kicad_assign_footprints` handoff. Do not call schematic, PCB, SPICE, BOM, fabrication, or workflow completion tools from this answer submission.
+        """
+    }
+
     func apply(_ event: WorkspaceMessageEvent) {
         switch event.kind {
         case .progress, .healthChanged:
@@ -324,12 +450,20 @@ final class ElectronicsJobStore: ObservableObject {
         } else {
             job.status = .blocked
         }
+        let questions = diagnosticQuestions(from: object)
+        let evidencePaths = diagnosticEvidencePaths(from: object)
+        let requiredEvidenceCategories = diagnosticRequiredEvidenceCategories(from: object)
         job.diagnostics.append(ElectronicsJobDiagnostic(
             code: code,
             message: message,
-            questions: diagnosticQuestions(from: object),
-            evidencePaths: diagnosticEvidencePaths(from: object),
-            requiredEvidenceCategories: diagnosticRequiredEvidenceCategories(from: object)
+            questions: questions,
+            resolverAnswerRequirements: diagnosticAnswerRequirements(
+                from: object,
+                evidencePaths: evidencePaths,
+                requiredEvidenceCategories: requiredEvidenceCategories
+            ),
+            evidencePaths: evidencePaths,
+            requiredEvidenceCategories: requiredEvidenceCategories
         ))
         upsert(job)
     }
@@ -383,6 +517,27 @@ final class ElectronicsJobStore: ObservableObject {
         return questions.compactMap { $0["prompt"] as? String }
     }
 
+    private func diagnosticAnswerRequirements(
+        from object: [String: Any],
+        evidencePaths: [String],
+        requiredEvidenceCategories: [String]
+    ) -> [ElectronicsResolverAnswerRequirement] {
+        guard let questions = object["questions"] as? [[String: Any]] else { return [] }
+        return questions.compactMap { question in
+            guard let prompt = question["prompt"] as? String else { return nil }
+            let affectedRefs = stringArray(in: question, keys: ["affectedRefs", "affected_refs"])
+            let refdes = affectedRefs.first { !$0.contains("/") && !$0.lowercased().contains(".json") }
+            return ElectronicsResolverAnswerRequirement(
+                questionID: question["id"] as? String ?? "component-selection-question",
+                prompt: prompt,
+                refdes: refdes,
+                affectedRefs: affectedRefs,
+                evidencePaths: evidencePaths,
+                requiredEvidenceCategories: requiredEvidenceCategories
+            )
+        }
+    }
+
     private func diagnosticEvidencePaths(from object: [String: Any]) -> [String] {
         var paths = stringArray(in: object, keys: ["evidence_paths", "evidencePaths"])
         if let artifacts = object["artifacts"] as? [[String: Any]] {
@@ -434,6 +589,28 @@ final class ElectronicsJobStore: ObservableObject {
             }
         }
         return []
+    }
+
+    private func firstPath(
+        in paths: [String],
+        containing needles: [String],
+        excluding excludedNeedles: [String] = []
+    ) -> String? {
+        paths.first { path in
+            let lower = path.lowercased()
+            return needles.allSatisfy { lower.contains($0) }
+                && excludedNeedles.allSatisfy { !lower.contains($0) }
+        }
+    }
+
+    private func jsonArray<T: Encodable>(from values: [T]) throws -> [[String: Any]] {
+        let data = try JSONEncoder().encode(values)
+        return try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+    }
+
+    private func jsonString(from object: [String: Any]) throws -> String {
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes])
+        return String(data: data, encoding: .utf8) ?? "{}"
     }
 }
 
