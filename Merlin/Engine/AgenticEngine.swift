@@ -211,6 +211,7 @@ final class AgenticEngine {
     private var latestVerifiedComponentMatrixArtifactPath: String?
     private var latestVerifiedFootprintAssignmentArtifactPath: String?
     private var pendingRepairableElectronicsHandoff: ElectronicsRepairHandoff?
+    private var latestBlockedComponentSelectionRevisionHandoff: ComponentSelectionRevisionAnswerHandoff?
     private var latestFocusedElectronicsHandoffToolName: String?
     private var continuationAborted: Bool = false
 
@@ -277,6 +278,14 @@ final class AgenticEngine {
         let toolName: String
         let message: String
         let telemetry: [String: Any]
+    }
+
+    private struct ComponentSelectionRevisionAnswerHandoff: Sendable {
+        let designIntentPath: String
+        let circuitIRPath: String?
+        let originalComponentMatrixPath: String?
+        let revisedComponentMatrixPath: String
+        let questionIDs: [String]
     }
 
     private enum ElectronicsContinuationRequirement: Equatable {
@@ -3162,6 +3171,10 @@ final class AgenticEngine {
                 arguments: call.function.arguments,
                 output: result.content
             )
+            if toolName == "kicad_revise_component_selection",
+               componentSelectionRevisionAnswerHandoff(from: evidence) != nil {
+                recordBlockedComponentSelectionRevisionHandoff(from: evidence)
+            }
             if pendingContinuationUsesEvidenceGate,
                let repairHandoff = repairableElectronicsVerificationHandoff(from: evidence) {
                 pendingContinuationEvidence.append(evidence)
@@ -3171,6 +3184,9 @@ final class AgenticEngine {
             }
             if pendingContinuationUsesEvidenceGate,
                electronicsToolResultBlocksContinuation(toolName: toolName, result: result, rawText: rawText) {
+                if toolName == "kicad_revise_component_selection" {
+                    recordBlockedComponentSelectionRevisionHandoff(from: evidence)
+                }
                 pendingContinuationBlockedReason = electronicsBlockedContinuationReason(
                     toolName: toolName,
                     content: result.content
@@ -3181,6 +3197,10 @@ final class AgenticEngine {
             }
             pendingContinuationEvidence.append(evidence)
             recordLatestElectronicsArtifactPaths(from: evidence)
+            if toolName == "kicad_revise_component_selection",
+               completeComponentMatrixArtifactPath(from: evidence) != nil {
+                latestBlockedComponentSelectionRevisionHandoff = nil
+            }
         }
     }
 
@@ -3204,6 +3224,11 @@ final class AgenticEngine {
               let object = jsonObjectFromToolText(content) as? [String: Any] else {
             return content
         }
+        recordBlockedComponentSelectionRevisionHandoff(
+            toolName: toolName,
+            arguments: "{}",
+            output: content
+        )
         let warningCode = warningCode(in: object) ?? "COMPONENT_SELECTION_REVISION_BLOCKED"
         let questionLines = clarificationQuestions(in: object).map { question in
             "Question \(question.id): \(question.prompt)"
@@ -3250,6 +3275,105 @@ final class AgenticEngine {
             lines.append("Revised component matrix: \(revised)")
         }
         return lines
+    }
+
+    private func recordBlockedComponentSelectionRevisionHandoff(from evidence: ContinuationToolEvidence) {
+        guard let handoff = componentSelectionRevisionAnswerHandoff(from: evidence) else { return }
+        latestBlockedComponentSelectionRevisionHandoff = handoff
+        latestVerifiedDesignIntentArtifactPath = handoff.designIntentPath
+        if let circuitIRPath = handoff.circuitIRPath {
+            latestVerifiedCircuitIRArtifactPath = circuitIRPath
+        }
+    }
+
+    private func recordBlockedComponentSelectionRevisionHandoff(
+        toolName: String,
+        arguments: String,
+        output: String
+    ) {
+        let evidence = ContinuationToolEvidence(
+            toolName: toolName,
+            arguments: arguments,
+            output: output
+        )
+        recordBlockedComponentSelectionRevisionHandoff(from: evidence)
+    }
+
+    private func componentSelectionRevisionAnswerHandoff(
+        from evidence: ContinuationToolEvidence
+    ) -> ComponentSelectionRevisionAnswerHandoff? {
+        guard evidence.toolName == "kicad_revise_component_selection" else {
+            return nil
+        }
+        let output = jsonObjectFromToolText(evidence.output) as? [String: Any]
+        let handoff = output?["handoff"] as? [String: Any]
+        let designIntentPath = stringField(in: handoff, keys: ["design_intent_path", "designIntentPath"])
+            ?? quotedJSONField(in: evidence.output, keys: ["design_intent_path", "designIntentPath"])
+            ?? artifactPath(
+                fromJSONText: evidence.arguments,
+                directKeys: ["design_intent_path", "designIntentPath"],
+                kindNeedles: ["design_intent", "designintent"]
+            )
+        guard let designIntentPath else { return nil }
+
+        let revisedMatrixPath = stringField(in: handoff, keys: ["component_matrix_path", "componentMatrixPath"])
+            ?? quotedJSONField(in: evidence.output, keys: ["component_matrix_path", "componentMatrixPath"])
+            ?? componentMatrixArtifactPath(from: evidence)
+        guard let revisedMatrixPath else { return nil }
+
+        let originalMatrixPath = stringField(in: handoff, keys: ["original_component_matrix_path", "originalComponentMatrixPath"])
+            ?? quotedJSONField(in: evidence.output, keys: ["original_component_matrix_path", "originalComponentMatrixPath"])
+            ?? artifactPath(
+                fromJSONText: evidence.arguments,
+                directKeys: ["component_matrix_path", "componentMatrixPath"],
+                kindNeedles: ["component_matrix", "componentmatrix"]
+            )
+        let circuitIRPath = stringField(in: handoff, keys: ["circuit_ir_path", "circuitIRPath"])
+            ?? quotedJSONField(in: evidence.output, keys: ["circuit_ir_path", "circuitIRPath"])
+            ?? artifactPath(
+                fromJSONText: evidence.arguments,
+                directKeys: ["circuit_ir_path", "circuitIRPath"],
+                kindNeedles: ["circuit_ir", "circuitir"]
+            )
+        return ComponentSelectionRevisionAnswerHandoff(
+            designIntentPath: designIntentPath,
+            circuitIRPath: circuitIRPath,
+            originalComponentMatrixPath: originalMatrixPath,
+            revisedComponentMatrixPath: revisedMatrixPath,
+            questionIDs: output.map { clarificationQuestions(in: $0).map(\.id) } ?? quotedQuestionIDs(in: evidence.output)
+        )
+    }
+
+    private func stringField(in object: [String: Any]?, keys: [String]) -> String? {
+        guard let object else { return nil }
+        for key in keys {
+            if let value = object[key] as? String,
+               value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                return value
+            }
+        }
+        return nil
+    }
+
+    private func quotedJSONField(in text: String, keys: [String]) -> String? {
+        quotedJSONFields(in: text, keys: keys).first
+    }
+
+    private func quotedQuestionIDs(in text: String) -> [String] {
+        quotedJSONFields(in: text, keys: ["id"])
+            .filter { $0.hasPrefix("resolve-") }
+    }
+
+    private func quotedJSONFields(in text: String, keys: [String]) -> [String] {
+        keys.flatMap { key -> [String] in
+            let pattern = #""# + NSRegularExpression.escapedPattern(for: key) + #""\s*:\s*"([^"]+)""#
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            return regex.matches(in: text, range: range).compactMap { match in
+                guard let matchRange = Range(match.range(at: 1), in: text) else { return nil }
+                return String(text[matchRange])
+            }
+        }
     }
 
     private func recordInternalElectronicsContinuationEvidence(from message: String) {
@@ -3446,7 +3570,8 @@ final class AgenticEngine {
             }
         case .componentSelection:
             return pendingContinuationEvidence.contains { evidence in
-                guard evidence.toolName == "kicad_select_components" else { return false }
+                guard evidence.toolName == "kicad_select_components"
+                    || evidence.toolName == "kicad_revise_component_selection" else { return false }
                 let text = evidenceText(evidence)
                 return completeComponentMatrixArtifactPath(from: evidence) != nil
                     || latestComponentMatrixArtifactPath() != nil
@@ -3754,6 +3879,13 @@ final class AgenticEngine {
                 result: result,
                 rawText: rawText
             ) else { continue }
+            if toolName == "kicad_revise_component_selection" {
+                recordBlockedComponentSelectionRevisionHandoff(
+                    toolName: toolName,
+                    arguments: call.function.arguments,
+                    output: result.content
+                )
+            }
             return (toolName, result.content)
         }
         return nil
@@ -4783,10 +4915,20 @@ final class AgenticEngine {
 
     private func normalizedFocusedElectronicsHandoffCall(for call: ToolCall) -> ToolCall? {
         guard electronicsWorkflowLockIsActive(),
-              let designIntentPath = latestDesignIntentArtifactPath(),
-              let nextToolName = expectedFocusedElectronicsHandoffToolName(),
-              call.function.name == nextToolName
+              let designIntentPath = latestDesignIntentArtifactPath()
+                ?? latestBlockedComponentSelectionRevisionHandoff?.designIntentPath,
+              let expectedToolName = expectedFocusedElectronicsHandoffToolName()
         else { return nil }
+        let nextToolName: String
+        if call.function.name == expectedToolName {
+            nextToolName = expectedToolName
+        } else if call.function.name == "kicad_revise_component_selection",
+                  call.function.arguments.contains("component_resolution_answers"),
+                  latestBlockedComponentSelectionRevisionHandoff != nil {
+            nextToolName = "kicad_revise_component_selection"
+        } else {
+            return nil
+        }
         if let requestedToolName = explicitFocusedElectronicsToolName(
             for: pendingContinuationOriginalTask,
             steps: pendingContinuationAllSteps.isEmpty ? pendingContinuationSteps : pendingContinuationAllSteps
@@ -4843,7 +4985,23 @@ final class AgenticEngine {
             argumentObject["live_catalog_result_limit"] = 3
         }
         if nextToolName == "kicad_revise_component_selection",
-           let componentMatrixPath = latestAnyComponentMatrixArtifactPath() {
+           let revisionHandoff = latestBlockedComponentSelectionRevisionHandoff {
+            argumentObject["design_intent_path"] = revisionHandoff.designIntentPath
+            argumentObject["component_matrix_path"] = revisionHandoff.revisedComponentMatrixPath
+            if let original = revisionHandoff.originalComponentMatrixPath {
+                argumentObject["original_component_matrix_path"] = original
+            }
+            if !revisionHandoff.questionIDs.isEmpty,
+               argumentObject["component_resolution_question_ids"] == nil {
+                argumentObject["component_resolution_question_ids"] = revisionHandoff.questionIDs
+            }
+            if let circuitIRPath = revisionHandoff.circuitIRPath {
+                argumentObject["circuit_ir_path"] = circuitIRPath
+            }
+            argumentObject["live_catalog_providers"] = argumentObject["live_catalog_providers"] ?? ["mouser", "digikey"]
+            argumentObject["live_catalog_result_limit"] = argumentObject["live_catalog_result_limit"] ?? 3
+        } else if nextToolName == "kicad_revise_component_selection",
+                  let componentMatrixPath = latestAnyComponentMatrixArtifactPath() {
             argumentObject["component_matrix_path"] = componentMatrixPath
             argumentObject["live_catalog_providers"] = ["mouser", "digikey"]
             argumentObject["live_catalog_result_limit"] = 3
@@ -4983,6 +5141,9 @@ final class AgenticEngine {
 
         if latestAnyComponentMatrixArtifactPath() != nil,
            pendingComponentSelectionRevisionNextAction() {
+            return "kicad_revise_component_selection"
+        }
+        if latestBlockedComponentSelectionRevisionHandoff != nil {
             return "kicad_revise_component_selection"
         }
 

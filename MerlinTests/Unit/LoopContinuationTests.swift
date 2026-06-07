@@ -117,6 +117,76 @@ final class LoopContinuationTests: XCTestCase {
         """
     }
 
+    private func componentResolutionAnswerArgumentsJSON(refdes: String) -> String {
+        """
+        {
+          "component_resolution_answers": [
+            {
+              "refdes": "\(refdes)",
+              "manufacturer": "onsemi",
+              "mpn": "MJ15003G",
+              "normalized_category": "power_transistor",
+              "package": "TO-3",
+              "ratings": {"voltage_v":"140","current_a":"20","power_w":"250"},
+              "datasheet_url": "https://example.invalid/MJ15003G.pdf",
+              "source_url": "https://provider.example/MJ15003G",
+              "availability_summary": "100 In Stock",
+              "lifecycle_state": "Active",
+              "footprint": {
+                "library": "Package_TO_SOT_THT",
+                "name": "TO-3",
+                "package_compatibility_evidence": "TO-3 package and pinout supplied by resolver answer",
+                "pin_pad_map": {"B":"1","C":"2"},
+                "source_provider_id": "component_resolution_answer"
+              }
+            }
+          ]
+        }
+        """
+    }
+
+    private func componentRevisionBlockedResultJSON(
+        designIntentPath: String,
+        circuitIRPath: String,
+        originalMatrixPath: String,
+        revisedMatrixPath: String,
+        unresolvedRefdes: String
+    ) -> String {
+        """
+        {
+          "status": "BLOCKED_INPUT_QUALITY",
+          "artifacts": [
+            {"kind": "component_matrix", "path": "\(revisedMatrixPath)"}
+          ],
+          "warnings": [
+            {
+              "code": "COMPONENT_SELECTION_REVISION_BLOCKED",
+              "message": "Component selection revision still has unresolved decisions."
+            }
+          ],
+          "questions": [
+            {
+              "id": "resolve-\(unresolvedRefdes)",
+              "prompt": "For \(unresolvedRefdes), provide manufacturer, MPN, package, ratings, datasheet/provenance evidence, and footprint/pin compatibility.",
+              "affectedRefs": ["\(unresolvedRefdes)", "\(originalMatrixPath)", "\(revisedMatrixPath)"]
+            }
+          ],
+          "handoff": {
+            "design_intent_path": "\(designIntentPath)",
+            "circuit_ir_path": "\(circuitIRPath)",
+            "original_component_matrix_path": "\(originalMatrixPath)",
+            "component_matrix_path": "\(revisedMatrixPath)"
+          },
+          "nextActions": ["answer_component_selection_questions"]
+        }
+        """
+    }
+
+    private func jsonObject(_ text: String) throws -> [String: Any] {
+        let data = try XCTUnwrap(text.data(using: .utf8))
+        return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
     // MARK: - Fix 1: Plan batching & continuation inject
 
     /// When the planner returns more steps than the per-turn budget (maxIterations / 4),
@@ -646,6 +716,232 @@ final class LoopContinuationTests: XCTestCase {
         XCTAssertTrue(stopText.contains("Original blocked component matrix: \(originalMatrixPath.path)"), stopText)
         XCTAssertTrue(stopText.contains("Revised component matrix: \(revisedMatrixPath.path)"), stopText)
         XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path), "Blocked resolver questions must stop, not schedule footprints")
+    }
+
+    func testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-component-revision-answer-turn")
+        let designIntentPath = try writeArtifact(
+            name: "approved-design_intent.json",
+            contents: #"{"project":"GenericAmp","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "circuit_ir.json",
+            contents: #"{"design_id":"GenericAmp","components":[{"refdes":"QOUT1"}],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let originalMatrixPath = try writeArtifact(
+            name: "original-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let blockedRevisionPath = try writeArtifact(
+            name: "blocked-revised-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let completeMatrixPath = try writeArtifact(
+            name: "complete-component_matrix.json",
+            contents: selectedComponentMatrixJSON(refdes: "QOUT1", mpn: "MJ15003G", manufacturer: "onsemi"),
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "initial-revision",
+                name: "kicad_revise_component_selection",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","component_matrix_path":"\#(originalMatrixPath.path)"}"#
+            ),
+            .toolCall(
+                id: "answered-revision",
+                name: "kicad_revise_component_selection",
+                args: componentResolutionAnswerArgumentsJSON(refdes: "QOUT1")
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Revise blocked component selection with catalog evidence",
+                    successCriteria: "Resolved component matrix or structured missing evidence questions",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Assign KiCad footprints from selected component package constraints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        var revisionArguments: [String] = []
+        engine.registerTool("kicad_revise_component_selection") { args in
+            revisionArguments.append(args)
+            if args.contains("component_resolution_answers") {
+                return """
+                {
+                  "status": "COMPLETE",
+                  "artifacts": [
+                    {"kind": "component_matrix", "path": "\(completeMatrixPath.path)"}
+                  ],
+                  "handoff": {
+                    "design_intent_path": "\(designIntentPath.path)",
+                    "circuit_ir_path": "\(circuitIRPath.path)",
+                    "component_matrix_path": "\(completeMatrixPath.path)"
+                  },
+                  "nextActions": ["assign_footprints"]
+                }
+                """
+            }
+            return self.componentRevisionBlockedResultJSON(
+                designIntentPath: designIntentPath.path,
+                circuitIRPath: circuitIRPath.path,
+                originalMatrixPath: originalMatrixPath.path,
+                revisedMatrixPath: blockedRevisionPath.path,
+                unresolvedRefdes: "QOUT1"
+            )
+        }
+
+        for await _ in engine.send(userMessage: "Revise the blocked component matrix and stop for questions if evidence is missing.") {}
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path), "Blocked revision questions must not auto-continue")
+
+        for await _ in engine.send(userMessage: "Use the supplied QOUT1 manufacturer, MPN, package, ratings, datasheet, and footprint pin evidence to continue.") {}
+
+        let answeredArgs = try XCTUnwrap(revisionArguments.last)
+        let answeredObject = try jsonObject(answeredArgs)
+        XCTAssertEqual(answeredObject["design_intent_path"] as? String, designIntentPath.path)
+        XCTAssertEqual(answeredObject["circuit_ir_path"] as? String, circuitIRPath.path)
+        XCTAssertEqual(answeredObject["original_component_matrix_path"] as? String, originalMatrixPath.path)
+        XCTAssertEqual(answeredObject["component_matrix_path"] as? String, blockedRevisionPath.path)
+        XCTAssertEqual(answeredObject["component_resolution_question_ids"] as? [String], ["resolve-QOUT1"])
+        let answers = try XCTUnwrap(answeredObject["component_resolution_answers"] as? [[String: Any]])
+        XCTAssertEqual(answers.first?["refdes"] as? String, "QOUT1")
+        XCTAssertEqual(answers.first?["mpn"] as? String, "MJ15003G")
+
+        let continuationText = try readInject()
+        XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_assign_footprints`"), continuationText)
+        XCTAssertTrue(continuationText.contains(completeMatrixPath.path), continuationText)
+        XCTAssertFalse(continuationText.contains("kicad_compile_project"), continuationText)
+    }
+
+    func testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let artifactRoot = temporaryDirectory("electronics-component-revision-partial-answer-turn")
+        let designIntentPath = try writeArtifact(
+            name: "approved-design_intent.json",
+            contents: #"{"project":"GenericAmp","topology":"single_ended_class_a"}"#,
+            in: artifactRoot
+        )
+        let circuitIRPath = try writeArtifact(
+            name: "circuit_ir.json",
+            contents: #"{"design_id":"GenericAmp","components":[{"refdes":"QOUT1"},{"refdes":"RBIAS1"}],"nets":[]}"#,
+            in: artifactRoot
+        )
+        let originalMatrixPath = try writeArtifact(
+            name: "original-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"},{"refdes":"RBIAS1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let firstBlockedRevisionPath = try writeArtifact(
+            name: "first-blocked-revised-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"requires_vendor_resolution"},{"refdes":"RBIAS1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+        let secondBlockedRevisionPath = try writeArtifact(
+            name: "second-blocked-revised-component_matrix.json",
+            contents: #"{"decisions":[{"refdes":"QOUT1","status":"selected"},{"refdes":"RBIAS1","status":"requires_vendor_resolution"}]}"#,
+            in: artifactRoot
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "initial-revision",
+                name: "kicad_revise_component_selection",
+                args: #"{"design_intent_path":"\#(designIntentPath.path)","circuit_ir_path":"\#(circuitIRPath.path)","component_matrix_path":"\#(originalMatrixPath.path)"}"#
+            ),
+            .toolCall(
+                id: "partial-answered-revision",
+                name: "kicad_revise_component_selection",
+                args: componentResolutionAnswerArgumentsJSON(refdes: "QOUT1")
+            ),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 4
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Revise blocked component selection with catalog evidence",
+                    successCriteria: "Resolved component matrix or structured missing evidence questions",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Assign KiCad footprints from selected component package constraints",
+                    successCriteria: "Footprint assignment artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+
+        var revisionArguments: [String] = []
+        engine.registerTool("kicad_revise_component_selection") { args in
+            revisionArguments.append(args)
+            if args.contains("component_resolution_answers") {
+                return self.componentRevisionBlockedResultJSON(
+                    designIntentPath: designIntentPath.path,
+                    circuitIRPath: circuitIRPath.path,
+                    originalMatrixPath: originalMatrixPath.path,
+                    revisedMatrixPath: secondBlockedRevisionPath.path,
+                    unresolvedRefdes: "RBIAS1"
+                )
+            }
+            return self.componentRevisionBlockedResultJSON(
+                designIntentPath: designIntentPath.path,
+                circuitIRPath: circuitIRPath.path,
+                originalMatrixPath: originalMatrixPath.path,
+                revisedMatrixPath: firstBlockedRevisionPath.path,
+                unresolvedRefdes: "QOUT1"
+            )
+        }
+
+        for await _ in engine.send(userMessage: "Revise the blocked component matrix and stop for questions if evidence is missing.") {}
+
+        var cleanStops: [String] = []
+        for await event in engine.send(userMessage: "Use the supplied QOUT1 evidence; RBIAS1 has not been resolved yet.") {
+            if case let .cleanStop(reason, summary) = event {
+                cleanStops.append("\(reason)\n\(summary)")
+            }
+        }
+
+        let answeredArgs = try XCTUnwrap(revisionArguments.last)
+        let answeredObject = try jsonObject(answeredArgs)
+        XCTAssertEqual(answeredObject["design_intent_path"] as? String, designIntentPath.path)
+        XCTAssertEqual(answeredObject["circuit_ir_path"] as? String, circuitIRPath.path)
+        XCTAssertEqual(answeredObject["original_component_matrix_path"] as? String, originalMatrixPath.path)
+        XCTAssertEqual(answeredObject["component_matrix_path"] as? String, firstBlockedRevisionPath.path)
+        XCTAssertEqual(answeredObject["component_resolution_question_ids"] as? [String], ["resolve-QOUT1"])
+        XCTAssertNotNil(answeredObject["component_resolution_answers"] as? [[String: Any]])
+
+        let stopText = try XCTUnwrap(cleanStops.last)
+        XCTAssertTrue(stopText.contains("Question resolve-RBIAS1"), stopText)
+        XCTAssertTrue(stopText.contains("Original blocked component matrix: \(originalMatrixPath.path)"), stopText)
+        XCTAssertTrue(stopText.contains("Revised component matrix: \(secondBlockedRevisionPath.path)"), stopText)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path), "Incomplete answers must not schedule footprints")
     }
 
     func testComponentSelectionHandoffRecoversComponentMatrixFromProjectArtifacts() async throws {

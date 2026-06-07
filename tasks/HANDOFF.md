@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 480.
+workflows. Latest completed task is Task 481.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 481 — carry component revision answer handoff state
 - Task 480 — recover component revision from structured resolver answers
 - Task 479 — surface component revision questions in workflow and GUI state
 - Task 478 — generic component-selection revision workflow
@@ -238,7 +239,53 @@ xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'plat
 
 Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
 
-The full AmpDemo GUI demo was not run.
+Task 481 wired the focused workflow answer-turn handoff for blocked
+component-selection revision. When `kicad_revise_component_selection` blocks
+with resolver questions, the engine now preserves DesignIntent path, Circuit IR
+path, original blocked component matrix path, revised component matrix path, and
+resolver question IDs. A next user/provider answer turn that calls
+`kicad_revise_component_selection` with `component_resolution_answers` is
+normalized with those paths and IDs. A completed revision matrix satisfies the
+generic component-selection workflow requirement and can advance only to the
+next legitimate handoff; partial answers remain blocked with the remaining
+questions and no footprint continuation.
+
+Task 481 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task481 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions
+```
+
+Red result: `TEST FAILED`, 2 tests, 12 failures. The answer evidence reached the
+provider call, but the workflow dropped handoff paths and question IDs, then
+scheduled fresh `kicad_select_components` after a complete answer instead of
+advancing from the completed revision matrix.
+
+Task 481 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task481 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
 
 ## Current Electronics Plugin State
 
@@ -277,6 +324,12 @@ plain narrative claims or placeholder artifacts. Recent hardening includes:
   ratings, datasheet, and provenance evidence to satisfy the existing catalog
   validator; partial answers keep unanswered components blocked and cannot
   advance to footprints.
+- Focused workflow answer turns now preserve blocked component-selection
+  revision handoff state. `component_resolution_answers` are carried into the
+  next `kicad_revise_component_selection` call together with DesignIntent,
+  Circuit IR, original/revised matrix paths, and resolver question IDs; a
+  completed revision matrix can advance only to the next generic workflow gate,
+  while partial answers stay blocked.
 - Footprint assignment, schematic synthesis, PCB placement, ERC, DRC, SPICE,
   BOM/vendor, and fabrication paths have focused evidence gates.
 - Schematic verification now requires current KiCad schematic format,
@@ -632,20 +685,21 @@ Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
 that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
 evidence check.
 
-The immediate remaining work is the next generic workflow handoff group:
+The immediate remaining work is the next generic GUI/workflow answer-entry
+group:
 
-1. Add fail-first tests proving the focused GUI/workflow continuation path can
-   accept user/provider answers to blocked resolver questions and pass them to
-   `kicad_revise_component_selection` as `component_resolution_answers` without
-   hand-designing sample-project parts.
-2. Wire continuation state so original blocked matrix paths, revised matrix
-   paths, question IDs, and answer evidence are carried into the next tool call
-   instead of being dropped or converted into narrative claims.
-3. Prove that a complete next-turn answer advances only to a complete component
-   matrix handoff, while incomplete answers remain blocked with the same
-   unanswered resolver questions and no footprint/library continuation.
-4. Run focused tests only. Do not run the full AmpDemo GUI demo and do not
-   hand-design AmpDemo parts.
+1. Add fail-first tests proving electronics GUI/job state can present blocked
+   resolver questions as actionable answer requirements and can carry submitted
+   answer evidence into the focused continuation path, not just display the
+   blocked questions.
+2. Wire the electronics job/session state so submitted resolver answers,
+   evidence paths, and question IDs become structured
+   `component_resolution_answers` for `kicad_revise_component_selection`.
+3. Prove GUI-originated complete answers advance only to the completed component
+   matrix handoff, while incomplete GUI-originated answers remain blocked with
+   unanswered questions and no footprint/library continuation.
+4. Run focused GUI/job-state and engine tests only. Do not run the full AmpDemo
+   GUI demo and do not hand-design AmpDemo parts.
 
 The biggest open risk is still schematic/PCB realism. SPICE gating is now much
 stronger, but it does not by itself make Merlin capable of arbitrary reliable
