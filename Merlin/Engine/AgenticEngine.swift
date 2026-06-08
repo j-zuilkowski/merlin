@@ -312,6 +312,7 @@ final class AgenticEngine {
     private static let electronicsReadOnlyInspectionToolNames: Set<String> = [
         "read_file", "list_directory", "search_files",
     ]
+    private static let electronicsArtifactContextReadMaxChars = 4_000
 
     private static let focusedElectronicsToolNames: [String] = [
         "kicad_ingest_schematic",
@@ -5661,6 +5662,44 @@ final class AgenticEngine {
         }
     }
 
+    private func contextToolResultContent(for result: ToolResult, call: ToolCall) -> String {
+        guard shouldCompactGeneratedElectronicsArtifactRead(result: result, call: call) else {
+            return result.content
+        }
+
+        let path = inputDictionary(from: call.function.arguments)["path"] ?? "<unknown>"
+        let compacted = ToolOutput.clamp(
+            result.content,
+            maxChars: Self.electronicsArtifactContextReadMaxChars
+        )
+        return """
+        [generated electronics artifact read compacted for context]
+        path: \(path)
+        original_bytes: \(result.content.utf8.count)
+        context_bytes: \(compacted.utf8.count)
+        The full tool result was emitted to the tool log; use the artifact path with the next electronics handoff tool instead of rereading the file.
+
+        \(compacted)
+        """
+    }
+
+    private func shouldCompactGeneratedElectronicsArtifactRead(result: ToolResult, call: ToolCall) -> Bool {
+        guard !result.isError,
+              call.function.name == "read_file",
+              electronicsWorkflowLockIsActive()
+        else { return false }
+
+        let path = inputDictionary(from: call.function.arguments)["path"]?.lowercased() ?? ""
+        guard path.contains("/.merlin/electronics-artifacts/")
+            || path.contains("-design_intent.json")
+            || path.contains("-circuit_ir.json")
+            || path.contains("-component_matrix.json")
+            || path.contains("-footprint_assignment.json")
+        else { return false }
+
+        return result.content.count > Self.electronicsArtifactContextReadMaxChars
+    }
+
     /// Dispatches all regular (non-spawn_agent) tool calls for one loop iteration.
     ///
     /// Three-task approach:
@@ -5768,9 +5807,10 @@ final class AgenticEngine {
             }
 
             continuation.yield(.toolCallResult(result))
+            let contextContent = contextToolResultContent(for: result, call: outcome.call)
             targetContext.append(Message(
                 role: .tool,
-                content: .text(result.content),
+                content: .text(contextContent),
                 toolCallId: result.toolCallId,
                 timestamp: Date()
             ))

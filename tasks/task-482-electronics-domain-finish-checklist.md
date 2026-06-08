@@ -22,6 +22,10 @@ may be added only when focused tests, full-workflow artifacts, or GUI evidence
 prove a real blocker not covered by the checklist, and that blocker must be
 documented in a numbered task file before changing the finish line.
 
+Task 486 fixed the generated electronics artifact context blocker discovered
+during F4 without adding a new finish criterion. F4 remains the required fresh
+GUI workflow evidence target.
+
 ## Verification
 
 Documentation-only update. `git diff --check` must pass.

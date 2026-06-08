@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 485.
+workflows. Latest completed task is Task 486.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 486 — cap generated electronics artifact reads in workflow context
 - Task 485 — record fresh GUI workflow context blocker
 - Task 484 — prove generic realism and artifact chain gates
 - Task 483 — add GUI resolver answer entry
@@ -385,6 +386,16 @@ DesignIntent/spec evidence, scheduled the same continuation, exceeded
 `qwen3-coder-next-local`'s 16,384-token context, forced compaction, and repeated
 without advancing. This is not an acceptable F4 external blocker, so F4 remains
 open until generic GUI continuation context handling is fixed and rerun.
+
+Task 486 fixed the generic context-handling side of that blocker. The engine now
+keeps full generated electronics artifact `read_file` results available to tool
+events/evidence, but stores only a compact context entry for large reads of
+`.merlin/electronics-artifacts/*-design_intent.json`, `*-circuit_ir.json`,
+`*-component_matrix.json`, and `*-footprint_assignment.json` while the
+electronics workflow lock is active. Focused tests also prove that the
+post-approval continuation schedules an exact `kicad_generate_circuit_ir`
+handoff rather than a broad reread continuation. F4 remains open because the
+fresh full GUI workflow has not yet been rerun with Task 486.
 
 Task 485 evidence paths:
 
@@ -834,7 +845,9 @@ evidence check.
   missing SPICE models/envelopes, placeholder BOM/vendor data, or declared-only
   fabrication paths. Task 485 attempted this run and left F4 open because the
   GUI continuation path hit an internal context/repeated-reread blocker before
-  Circuit IR.
+  Circuit IR. Task 486 fixed that generic artifact-context blocker with focused
+  tests; F4 still requires a fresh GUI rerun and artifact/screenshots/log
+  evidence.
 - [ ] **F5: Completion contract and status cleanup.** Update task files,
   `HANDOFF.md`, and any electronics status docs to mark the electronics domain
   complete only after F1-F4 have commands, artifacts, screenshots/logs where
