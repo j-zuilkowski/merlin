@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 494.
+Latest completed task is Task 495.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 495 — pass release live DeepSeek gate
 - Task 494 — pass release UI and visual gates
 - Task 493 — repair release battery continuation and window traceability
 - Task 491 — make KiCad gates deterministic and evidence-scoped
@@ -146,6 +147,26 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 495 repaired and passed release gate #4. The fail-first live run could
+not compile `MerlinTests-Live` because `CalibrationLiveTests` did not handle
+the `.llamaCppRuntimeUntuned` advisory case. The test harness now handles that
+case explicitly for the LM Studio calibration path. Gate #4 now passes:
+`xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests-Live
+-destination 'platform=macOS' -derivedDataPath
+/tmp/merlin-derived-v240-live-deepseek
+-only-testing:MerlinLiveTests/DeepSeekProviderLiveTests
+-only-testing:MerlinE2ETests/AgenticLoopE2ETests` passed
+`DeepSeekProviderLiveTests` with 3 tests and `AgenticLoopE2ETests` with 1 test,
+0 failures. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log`,
+fail-first log
+`docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.fail-first.log`,
+and
+`/tmp/merlin-derived-v240-live-deepseek/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-13-52--0400.xcresult`.
+The next release blocker is gate #5, the local-provider pairs
+smoke/load/shutdown proof. Gate #10, KiCad release screenshots, remains blocked
+until gates #1-#9 are green.
+
 Task 494 advanced the v2.4.0 release ledger through UI gates #2 and #3.
 Full `MerlinUITests` passed with 12 tests and 0 failures:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/02-MerlinUITests.log`,
@@ -153,9 +174,7 @@ Full `MerlinUITests` passed with 12 tests and 0 failures:
 The focused visual rerun also passed with 6 tests and 0 failures:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`,
 `/tmp/merlin-derived-v240-visual/Logs/Test/Test-MerlinUITests-2026.06.08_15-09-16--0400.xcresult`.
-The next release blocker is gate #4, the DeepSeek-backed live agent loop when
-the required key/environment is present. Gate #10, KiCad release screenshots,
-remains blocked until gates #1-#9 are green.
+Gate #4 is now green under Task 495.
 
 Task 493 repaired the v2.4.0 release gate #1 blocker and made the release
 battery continuation deterministic. Full `MerlinTests` had failed first on
@@ -175,7 +194,7 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gates #1-#3 are passed. Gate #4 is the next release blocker. Gate #10,
+push. Gates #1-#4 are passed. Gate #5 is the next release blocker. Gate #10,
 KiCad release screenshots, remains blocked until gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics

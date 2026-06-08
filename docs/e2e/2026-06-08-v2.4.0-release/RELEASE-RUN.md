@@ -21,7 +21,7 @@ runs, fails, is repaired, or passes.
 | 1 | Core test target: `xcodegen generate` then full `MerlinTests` | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/01-MerlinTests.log`; `/tmp/merlin-derived-v240-full-core/Logs/Test/Test-MerlinTests-2026.06.08_15-03-02--0400.xcresult`; full suite passed 2,571 tests, 55 skipped, 0 failures. Focused window proof `/tmp/merlin-derived-task493-window-green/Logs/Test/Test-MerlinTests-2026.06.08_15-02-01--0400.xcresult` passed 30 tests. | none |
 | 2 | GUI test target: full `MerlinUITests` | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/02-MerlinUITests.log`; `/tmp/merlin-derived-v240-ui/Logs/Test/Test-MerlinUITests-2026.06.08_15-06-46--0400.xcresult`; full UI suite passed 12 tests, 0 failures. | none |
 | 3 | Focused visual target: `MerlinUITests/VisualLayoutTests` | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`; `/tmp/merlin-derived-v240-visual/Logs/Test/Test-MerlinUITests-2026.06.08_15-09-16--0400.xcresult`; focused visual suite passed 6 tests, 0 failures. | none |
-| 4 | Live agent loop: DeepSeek-backed live tests when key is present | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log` | none yet |
+| 4 | Live agent loop: DeepSeek-backed live tests when key is present | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log`; fail-first compile evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.fail-first.log`; `/tmp/merlin-derived-v240-live-deepseek/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-13-52--0400.xcresult`; DeepSeek provider slice passed 3 tests, agent-loop slice passed 1 test, 0 failures. | none |
 | 5 | Local-provider pairs smoke/load/shutdown | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log` | none yet |
 | 6 | llama.cpp router explicit model ID smoke | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log` | none yet |
 | 7 | xcalibre RAG health/search/cleanup | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log` | none yet |
@@ -46,6 +46,6 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-The immediate blocker is gate #4, the DeepSeek-backed live agent loop. Gate
-#10, the KiCad release screenshot step, is not valid until gates #1-#9 are
-green.
+The immediate blocker is gate #5, the local-provider pairs smoke/load/shutdown
+proof. Gate #10, the KiCad release screenshot step, is not valid until gates
+#1-#9 are green.
