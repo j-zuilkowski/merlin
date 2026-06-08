@@ -1120,6 +1120,8 @@ Blocked statuses are first-class workflow outcomes. For example, the current ful
 
 Required completion artifacts include KiCad project files, DSN/SES routing interchange and result artifacts, Gerbers, Excellon drills, drill reports, BOM, pick-and-place/centroid files, drawings, approval records, and a consolidated verification report. Completion is evidence-gated: missing required artifacts or failed gates return a blocked status, and placeholder success responses are treated as defects rather than `COMPLETE`.
 
+Release screenshots are captured only after the full battery is green. The release operator must open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available. These screenshots supplement, but do not replace, deterministic ERC, DRC, parity, SPICE, BOM, and fabrication evidence.
+
 ### Electronics Job Panel
 
 `ElectronicsJobStore` consumes workspace bus events for the active workspace. `ElectronicsJobPanelView` shows backend health, jobs, progress, artifacts, diagnostics, approvals, and reports. Multiple sessions in the same workspace see the same electronics job state because they read from the same workspace bus event stream.

@@ -500,6 +500,8 @@ Completion is evidence-gated. Merlin does not accept placeholder success for ele
 
 Completion produces KiCad project files, DSN/SES route artifacts, Gerbers, Excellon drills, BOM, pick-and-place files, drawings, approvals, and a verification report. The electronics job panel shows backend health, progress, artifacts, diagnostics, approvals, and final reports for the active workspace.
 
+Release screenshots are captured only after the full battery is green. For electronics releases, open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available.
+
 ### High-Stakes Signoff
 
 Manufacturing actions (placing an order, uploading Gerbers to a board house) require your explicit approval. Merlin will always stop and ask before taking any irreversible action. This cannot be bypassed by permission mode settings — signoff is hardcoded for these operations.

@@ -632,7 +632,7 @@ The May 26-27, 2026 shell runner and its harness-specific unit tests are retired
 6. llama.cpp router: the smoke path must use explicit model IDs for the text and vision requests and must not silently select the router's `default` catalog entry for completion, streaming, tool-call, or image requests.
 7. xcalibre RAG: the live server health, configured Merlin base URL, authenticated search endpoint, and cleanup path are verified.
 8. Capability scenarios: S1 Swift GUI debug and S2 Rust debug must converge by applying fixes until the target verification commands pass.
-9. Electronics/KiCad: the active `plugins/electronics` runtime plugin, KiCad CLI generation, ERC/DRC fixture, and current documentation sweep pass. Archived `merlin-kicad-mcp` material is historical evidence only.
+9. Electronics/KiCad: the active `plugins/electronics` runtime plugin, KiCad CLI generation, ERC/DRC fixture, and current documentation sweep pass. After the full battery is green, the release operator must open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available. Archived `merlin-kicad-mcp` material is historical evidence only.
 
 ### Failure Semantics
 
@@ -640,6 +640,7 @@ The May 26-27, 2026 shell runner and its harness-specific unit tests are retired
 - If the GUI test runner cannot bootstrap under a chosen DerivedData/signing configuration, the verification process must reject that configuration before treating the result as product evidence.
 - S1/S2 live runs must not stop at natural-language diagnosis while verification still fails. Repetition, no-progress loops, or false environment claims are failures unless a documented bounded recovery policy captures the remaining failing command output.
 - Evidence directories must not retain screenshots intended for GitHub before the full battery is green, provider secret material, temporary xcalibre databases, config backups, or orphaned service processes.
+- Release screenshots are created only after the full battery is green, and KiCad screenshots must come from files opened in KiCad rather than from generated static images alone.
 - A passing report must list the exact command, provider, model ID, service port, and cleanup result for each surface above.
 
 ### Current Remediation Scope

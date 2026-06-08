@@ -16,6 +16,19 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertFalse(docs.contains("target server is `merlin-kicad-mcp`"))
     }
 
+    func testReleaseDocsRequireKiCadScreenshotsAfterGreenBattery() throws {
+        let docs = try [
+            "spec.md",
+            "Merlin/Docs/UserGuide.md",
+            "Merlin/Docs/DeveloperManual.md",
+        ].map { try repoText($0) }.joined(separator: "\n")
+
+        XCTAssertTrue(docs.contains("after the full battery is green"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("open the generated KiCad schematic"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("open the generated KiCad PCB"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("capture release screenshots"))
+    }
+
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
         let activeDocPaths = [
             "README.md",
