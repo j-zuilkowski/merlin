@@ -7,6 +7,15 @@ Date: 2026-05-30
 Add failing tests proving runtime component selection can use configured KiCad
 root discovery and cache discovered roots with a TTL.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN configured KiCad library root search paths are present THE electronics workflow SHALL cache fresh discovered symbol and footprint roots.
+
 ## Test Scope
 
 1. Read `kicad_library_root_search_paths` from electronics provider config.

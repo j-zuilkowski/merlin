@@ -5,6 +5,15 @@
 Add TrustedParts as an optional, plugin-scoped catalog/BOM evidence provider for
 authorized distributor data.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN TrustedParts provider support is enabled THE electronics plugin SHALL use approved API credentials and preserve authorized distributor evidence.
+
 ## Constraints
 
 1. Do not scrape TrustedParts pages.

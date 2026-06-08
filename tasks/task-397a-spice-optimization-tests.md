@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#research-derived-design-commitments
-- Roadmap reference: plugins/electronics/tasks.md#phase-10-simulation-and-optimization
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

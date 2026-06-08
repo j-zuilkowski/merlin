@@ -3477,10 +3477,30 @@ final class AgenticEngine {
     private func verifiedElectronicsCompletedPrefix(in steps: [PlanStep]) -> Int {
         var completed = 0
         for step in steps {
-            guard electronicsStepVerified(step) else { break }
+            guard electronicsStepVerified(step)
+                    || designIntentArtifactSupersedesPrerequisite(step)
+            else { break }
             completed += 1
         }
         return completed
+    }
+
+    private func designIntentArtifactSupersedesPrerequisite(_ step: PlanStep) -> Bool {
+        guard latestDesignIntentArtifactPath() != nil else { return false }
+        switch electronicsRequirement(for: step) {
+        case .requirementsInspection, .designIntent, .electronicsTool, .generic:
+            return true
+        case .schematic:
+            guard latestCircuitIRArtifactPath() == nil,
+                  latestAnyComponentMatrixArtifactPath() == nil,
+                  latestFootprintAssignmentArtifactPath() == nil
+            else { return false }
+            let text = "\(step.description) \(step.proseSummary)".lowercased()
+            return (text.contains("initialize") || text.contains("scaffold"))
+                && (text.contains("project") || text.contains("directory"))
+        default:
+            return false
+        }
     }
 
     private func shouldCompleteFocusedElectronicsHandoffSlice() -> Bool {
@@ -4798,18 +4818,13 @@ final class AgenticEngine {
               pendingContinuationBlockedReason == nil
         else { return nil }
 
-        guard hasVerifiedRequirementsInspectionEvidence() else { return nil }
+        let hasDesignIntentArtifact = latestDesignIntentArtifactPath() != nil
+        guard hasDesignIntentArtifact || hasVerifiedRequirementsInspectionEvidence() else { return nil }
 
-        let planSteps = pendingContinuationAllSteps.isEmpty
-            ? pendingContinuationSteps
-            : pendingContinuationAllSteps
-        let requirements = planSteps.map { electronicsRequirement(for: $0) }
-        let needsDesignIntent = requirements.contains { requirement in
-            if case .designIntent = requirement { return true }
-            return false
-        }
-        let needsDownstreamDesignArtifact = requirements.contains { requirement in
-            switch requirement {
+        let nextRequirement = firstUnverifiedElectronicsRequirement()
+        let currentStepNeedsDesignArtifact: Bool = {
+            guard let nextRequirement else { return false }
+            switch nextRequirement {
             case .designIntent, .designIntentApproval, .circuitIR, .componentSelection,
                  .footprintAssignment, .schematic, .boardProfile, .netClasses, .placement,
                  .routing, .erc, .drc, .simulation, .fabrication, .bom:
@@ -4817,17 +4832,18 @@ final class AgenticEngine {
             default:
                 return false
             }
-        }
+        }()
         let originalRequestsBuildIntent = explicitFocusedElectronicsToolName(
             for: pendingContinuationOriginalTask,
             steps: []
         ) == "kicad_build_intent_model"
-        if latestDesignIntentArtifactPath() == nil,
-           latestFocusedElectronicsHandoffToolName == "kicad_build_intent_model" {
+        if !hasDesignIntentArtifact,
+           latestFocusedElectronicsHandoffToolName == "kicad_build_intent_model",
+           currentStepNeedsDesignArtifact {
             return "kicad_build_intent_model"
         }
-        if latestDesignIntentArtifactPath() == nil,
-           needsDownstreamDesignArtifact || needsDesignIntent || originalRequestsBuildIntent {
+        if !hasDesignIntentArtifact,
+           currentStepNeedsDesignArtifact || originalRequestsBuildIntent {
             return "kicad_build_intent_model"
         }
 
@@ -4835,7 +4851,7 @@ final class AgenticEngine {
             return nextTool
         }
 
-        guard latestDesignIntentArtifactPath() == nil else { return nil }
+        guard !hasDesignIntentArtifact else { return nil }
 
         let requestedToolName = explicitFocusedElectronicsToolName(
             for: pendingContinuationOriginalTask,

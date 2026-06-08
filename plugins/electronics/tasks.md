@@ -10,7 +10,7 @@ generic KiCad-backed workflow described in `plugins/electronics/spec.md`.
 Execution uses the repo's normal numbered task files. Each `a` task adds the
 red tests; each matching `b` task implements the behavior.
 
-| Phase | Test task | Implementation task |
+| Stage | Test task | Implementation task |
 |---|---|---|
 | Safety and drift cleanup | `tasks/task-387a-electronics-no-hardcoded-generators-tests.md` | `tasks/task-387b-electronics-no-hardcoded-generators.md` |
 | Dynamic plugin roles | `tasks/task-388a-dynamic-plugin-roles-tests.md` | `tasks/task-388b-dynamic-plugin-roles.md` |
@@ -60,7 +60,7 @@ red tests; each matching `b` task implements the behavior.
 | KiCad-valid board outline | `tasks/task-447a-kicad-valid-board-outline-tests.md` | `tasks/task-447b-kicad-valid-board-outline.md` |
 | DesignIntent approval continuation | `tasks/task-448a-designintent-approval-continuation-tests.md` | `tasks/task-448b-designintent-approval-continuation.md` |
 
-## Phase 0: Safety And Drift Cleanup
+## Stage 0: Safety And Drift Cleanup
 
 Goal: remove false-success paths and lock the plugin boundary.
 
@@ -78,7 +78,7 @@ Exit criteria:
 - No AmpDemo/ESP32/555-specific generator path exists.
 - Plugin spec and research overview live under `plugins/electronics`.
 
-## Phase 1: Dynamic Plugin Roles
+## Stage 1: Dynamic Plugin Roles
 
 Goal: allow electronics-only model roles without hard-coding them in Merlin core.
 
@@ -99,7 +99,7 @@ Exit criteria:
 - Unloading electronics removes it.
 - Existing fixed-role behavior is preserved for non-plugin workflows.
 
-## Phase 2: Plugin-Owned Schemas
+## Stage 2: Plugin-Owned Schemas
 
 Goal: define the data contracts before artifact generation.
 
@@ -125,7 +125,7 @@ Exit criteria:
 - Valid fixture schemas round-trip.
 - Natural-language-originated `DesignIntent` starts in `draft`.
 
-## Phase 3: DesignIntent Draft And Approval Flow
+## Stage 3: DesignIntent Draft And Approval Flow
 
 Goal: let Merlin assist DesignIntent authoring without mutating KiCad.
 
@@ -143,7 +143,7 @@ Exit criteria:
 - Approved intent can proceed.
 - Unapproved intent cannot create verified KiCad artifacts.
 
-## Phase 4: KiCad Library And Pin Resolver
+## Stage 4: KiCad Library And Pin Resolver
 
 Goal: make components evidence-backed before schematic materialization.
 
@@ -159,10 +159,10 @@ Goal: make components evidence-backed before schematic materialization.
 Exit criteria:
 
 - Every Circuit IR component has symbol evidence.
-- PCB-bound components have footprint evidence before DRC/PCB phase.
+- PCB-bound components have footprint evidence before DRC/PCB stage.
 - Resolver failures block with actionable diagnostics.
 
-## Phase 5: Circuit IR To KiCad Schematic Materialization
+## Stage 5: Circuit IR To KiCad Schematic Materialization
 
 Goal: compile validated Circuit IR into a KiCad schematic without raw
 product-specific string generation.
@@ -181,7 +181,7 @@ Exit criteria:
 - No product-specific string emitter is used.
 - Parity check passes for fixture designs.
 
-## Phase 6: ERC Parser And Repair Loop
+## Stage 6: ERC Parser And Repair Loop
 
 Goal: produce `SCHEMATIC_VERIFIED` from KiCad evidence.
 
@@ -206,7 +206,7 @@ Exit criteria:
 - `SCHEMATIC_VERIFIED` requires approved intent, valid Circuit IR, KiCad project,
   schematic, ERC report, no blocking ERC errors, and verification report.
 
-## Phase 7: First Acceptance Fixture
+## Stage 7: First Acceptance Fixture
 
 Goal: prove the generic flow on the first real target without special-casing.
 
@@ -228,7 +228,7 @@ Exit criteria:
   unresolved design decisions.
 - No special-case code path exists for the amp.
 
-## Phase 8: DRC And PCB Follow-On
+## Stage 8: DRC And PCB Follow-On
 
 Goal: extend from verified schematic to PCB verification.
 
@@ -249,7 +249,7 @@ Exit criteria:
 - DRC failures are parsed and either repaired or blocked.
 - `PCB_VERIFIED` is distinct from full fabrication completion.
 
-## Phase 9: Fabrication, BOM, And Release
+## Stage 9: Fabrication, BOM, And Release
 
 Goal: define full completion beyond schematic and PCB verification.
 
@@ -266,7 +266,7 @@ Exit criteria:
 - Full completion requires schematic, PCB, ERC, DRC, BOM, fabrication outputs,
   verification reports, and required approvals.
 
-## Phase 10: Simulation And Optimization
+## Stage 10: Simulation And Optimization
 
 Goal: add AnalogCoder/AutoCkt-style simulator-driven repair and optimization.
 
@@ -284,7 +284,7 @@ Exit criteria:
 - Bounded optimization improves parameterized subcircuits without inventing
   unsupported topology changes.
 
-## Phase 11: Second Board Fixture
+## Stage 11: Second Board Fixture
 
 Goal: add the separate amplifier mains/power-supply board under high-stakes
 policy.
@@ -303,7 +303,7 @@ Exit criteria:
   high-stakes policy active.
 - Merlin never certifies it safe to build or use.
 
-## Phase 12: Training And Evaluation Corpus
+## Stage 12: Training And Evaluation Corpus
 
 Goal: collect data for better electronics-specific models.
 
@@ -324,7 +324,7 @@ Exit criteria:
 - Merlin has a verifier-grounded dataset suitable for fine-tuning or model
   selection.
 
-## Phase 13: End-To-End Backend Harness
+## Stage 13: End-To-End Backend Harness
 
 Goal: prove the generic plugin workflow with one focused backend harness before
 any GUI demo rerun.
@@ -349,10 +349,10 @@ Exit criteria:
 - The mains board blocks without high-stakes signoff and never certifies build
   or use safety.
 
-## Phase 14: Runtime Harness Integration
+## Stage 14: Runtime Harness Integration
 
 Goal: make the actual runtime workflow call the same evidence-gated backend
-harness proven by Phase 13.
+harness proven by Stage 13.
 
 1. Add a structured runtime request form with DesignIntent path, Circuit IR path,
    output directory, verifier evidence, and approvals.
@@ -370,7 +370,7 @@ Exit criteria:
 - Missing SPICE evidence blocks when SPICE is required.
 - Runtime returns `COMPLETE` only when the harness reports `COMPLETE`.
 
-## Phase 15: Real Verifier Artifact Adapters
+## Stage 15: Real Verifier Artifact Adapters
 
 Goal: let the generic backend harness consume concrete verifier artifacts from
 KiCad, ngspice, BOM/vendor checks, and fabrication export tools.
@@ -389,7 +389,7 @@ Exit criteria:
 - Blocking DRC prevents `PCB_VERIFIED`.
 - Invalid BOM/vendor evidence blocks fabrication.
 
-## Phase 16: GUI Evidence Status
+## Stage 16: GUI Evidence Status
 
 Goal: make the electronics job panel display the backend harness status and
 missing evidence directly.
@@ -406,7 +406,7 @@ Exit criteria:
 - The live leaderboard shows the harness status for structured workflow calls.
 - Missing release package/approval evidence is visible for `FAB_READY` jobs.
 
-## Phase 17: Runtime Artifact Evidence
+## Stage 17: Runtime Artifact Evidence
 
 Goal: make runtime structured workflow calls accept artifact paths from real
 tools rather than requiring callers to assemble internal evidence structs.
@@ -420,7 +420,7 @@ Exit criteria:
 
 - Runtime workflow calls can return `FAB_READY` from verifier artifact paths.
 
-## Phase 18: Tool Failure Evidence
+## Stage 18: Tool Failure Evidence
 
 Goal: preserve real KiCad/ngspice failure artifacts for evidence gates and repair
 loops.
@@ -437,7 +437,7 @@ Exit criteria:
 - Failed DRC report artifacts can still block `PCB_VERIFIED` through the harness.
 - Failed SPICE logs remain attached to the blocked tool result.
 
-## Phase 19: Focused Slice Drift Lock
+## Stage 19: Focused Slice Drift Lock
 
 Goal: keep focused electronics workflow slices on the plugin/KiCad runtime path.
 
@@ -453,7 +453,7 @@ Exit criteria:
 - A focused read-spec-then-first-KiCad slice cannot satisfy the KiCad step with
   `spawn_agent` or `xcode_open_file`.
 
-## Phase 20: Topology Synthesis Evidence
+## Stage 20: Topology Synthesis Evidence
 
 Goal: turn structured topology constraints into reusable component and net
 intent evidence without hard-coded project generators.
@@ -472,7 +472,7 @@ Exit criteria:
 - Component selection can consume synthesized component intents.
 - No KiCad files are created by intent synthesis.
 
-## Phase 21: Component Catalog Contracts
+## Stage 21: Component Catalog Contracts
 
 Goal: define the plugin-owned provider interfaces and schemas for evidence-backed
 component selection.
@@ -493,7 +493,7 @@ Exit criteria:
 - Invalid candidates without required provenance or ratings are rejected.
 - Tests run without network or API keys.
 
-## Phase 22: Evidence-Gated Component Selection
+## Stage 22: Evidence-Gated Component Selection
 
 Goal: make `kicad_select_components` return real evidence-backed decisions
 instead of role-only placeholders.
@@ -512,7 +512,7 @@ Exit criteria:
 - Fixture provider evidence can produce `selected`.
 - Missing providers produce `requires_vendor_resolution`, not fake selection.
 
-## Phase 23: Datasheet Evidence Capture
+## Stage 23: Datasheet Evidence Capture
 
 Goal: preserve datasheet and source metadata before RAG exists.
 
@@ -521,7 +521,7 @@ Goal: preserve datasheet and source metadata before RAG exists.
 2. Add cache policy metadata.
 3. Add tests proving downloaded or referenced datasheets are linked from
    `ComponentEvidence`.
-4. Do not require PDF indexing in this phase.
+4. Do not require PDF indexing in this stage.
 
 Exit criteria:
 
@@ -529,7 +529,7 @@ Exit criteria:
 - Local PDF hashes are recorded when PDFs are stored.
 - RAG fields are optional and absent by default.
 
-## Phase 24: Footprint Evidence Gate
+## Stage 24: Footprint Evidence Gate
 
 Goal: require symbol/footprint compatibility evidence before PCB-bound work.
 
@@ -545,7 +545,7 @@ Exit criteria:
 - Pin/pad mismatch blocks with affected refdes and candidate footprint.
 - Valid fixture assignments pass.
 
-## Phase 25: Compile Gate Evidence Tightening
+## Stage 25: Compile Gate Evidence Tightening
 
 Goal: prevent skeleton KiCad artifacts from being created from intent-only or
 role-only evidence.
@@ -565,7 +565,7 @@ Exit criteria:
 - Natural-language/electronics-generated designs cannot produce fake schematic
   or PCB files.
 
-## Phase 26: Real Catalog Provider Adapters
+## Stage 26: Real Catalog Provider Adapters
 
 Goal: add optional real online provider adapters after the offline contracts are
 green.
@@ -585,7 +585,7 @@ Exit criteria:
 - Recorded fixture tests pass offline.
 - Live API failures degrade to blocked provider diagnostics, not fake parts.
 
-## Phase 27: Runtime Evidence Pipeline
+## Stage 27: Runtime Evidence Pipeline
 
 Goal: make runtime continuation actions follow the first missing verified
 electronics artifact.
@@ -603,7 +603,7 @@ Exit criteria:
 - Missing or invalid footprint evidence returns `assign_footprints`.
 - Compile does not advance from a generic continuation action.
 
-## Phase 28: Evidence Action Orchestration
+## Stage 28: Evidence Action Orchestration
 
 Goal: ensure runtime evidence continuation actions map to real electronics tools
 and run in verified artifact order.
@@ -620,7 +620,7 @@ Exit criteria:
 - Requirements workflows cannot run component selection before DesignIntent.
 - Compile remains after footprint assignment.
 
-## Phase 29: Discrete Circuit IR Synthesis
+## Stage 29: Discrete Circuit IR Synthesis
 
 Goal: generate evidence-backed Circuit IR from approved DesignIntent without
 block-level placeholder components.
@@ -638,7 +638,7 @@ Exit criteria:
 - No `TONE1` or `FILTER1` block component appears in Circuit IR.
 - Generated nets validate against component pins.
 
-## Phase 30: Circuit IR Component Selection
+## Stage 30: Circuit IR Component Selection
 
 Goal: make component selection consume expanded Circuit IR parts instead of
 block-level DesignIntent placeholders.
@@ -655,7 +655,7 @@ Exit criteria:
   when Circuit IR exists.
 - Missing catalog evidence leaves expanded parts unresolved.
 
-## Phase 31: Circuit IR Footprint Coverage
+## Stage 31: Circuit IR Footprint Coverage
 
 Goal: make footprint assignment cover every PCB-bound Circuit IR component
 before compile can proceed.
@@ -671,7 +671,7 @@ Exit criteria:
 - Missing expanded component decisions block with affected refdes.
 - Compile footprint coverage can be satisfied by Circuit IR-derived reports.
 
-## Phase 32: Runtime Catalog Provider Selection
+## Stage 32: Runtime Catalog Provider Selection
 
 Goal: let `kicad_select_components` use configured provider evidence directly
 instead of requiring a prebuilt `catalog_candidates_path`.
@@ -688,7 +688,7 @@ Exit criteria:
 - Missing providers still leave components unresolved.
 - Provider provenance and cache metadata are visible in the matrix.
 
-## Phase 33: Runtime Footprint Provider Evidence
+## Stage 33: Runtime Footprint Provider Evidence
 
 Goal: carry local KiCad footprint evidence from runtime selection into
 footprint assignment.
@@ -706,7 +706,7 @@ Exit criteria:
 - Footprint assignment can consume provider-generated matrices.
 - Missing footprint evidence remains a blocker.
 
-## Phase 34: Local KiCad Catalog Extraction
+## Stage 34: Local KiCad Catalog Extraction
 
 Goal: extract local KiCad symbol and footprint evidence from installed or
 workspace-provided library roots.
@@ -722,7 +722,7 @@ Exit criteria:
 - Local footprint roots produce `KiCadFootprintDefinition` rows.
 - Runtime component selection can use extracted local library evidence.
 
-## Phase 35: Local KiCad Catalog Cache
+## Stage 35: Local KiCad Catalog Cache
 
 Goal: avoid re-extracting local KiCad libraries on every electronics tool call.
 
@@ -736,7 +736,7 @@ Exit criteria:
 - Stale cache is ignored.
 - Cache behavior is covered by focused tests.
 
-## Phase 36: Provider Config Cache
+## Stage 36: Provider Config Cache
 
 Goal: avoid repeating catalog provider setup and fixture mapping in every tool
 call.
@@ -754,7 +754,7 @@ Exit criteria:
 - Provider candidate cache can satisfy a later selection call.
 - Provider provenance remains visible in the component matrix.
 
-## Phase 37: Runtime KiCad Config
+## Stage 37: Runtime KiCad Config
 
 Goal: wire local KiCad library roots and cache controls into runtime component
 selection.
@@ -770,7 +770,7 @@ Exit criteria:
 - Local KiCad roots can replace hand-authored JSON catalog path inputs.
 - Runtime-selected parts can carry local KiCad footprint candidates.
 
-## Phase 38: Workflow Artifact Handoff
+## Stage 38: Workflow Artifact Handoff
 
 Goal: carry verified artifact paths through structured tool results instead of
 requiring narrative inference.
@@ -788,7 +788,7 @@ Exit criteria:
 - Footprint assignment returns handoff paths for prior evidence and the new
   footprint assignment artifact.
 
-## Phase 39: Focused Cache Handoff Slice
+## Stage 39: Focused Cache Handoff Slice
 
 Goal: prove the runtime cache/config/handoff path as one focused electronics
 slice.
@@ -803,7 +803,7 @@ Exit criteria:
 - Focused catalog extraction, provider cache, local KiCad cache, and handoff
   tests pass together.
 
-## Phase 40: Handoff Driven Orchestration
+## Stage 40: Handoff Driven Orchestration
 
 Goal: make KiCad workflow orchestration advance from structured handoff evidence.
 
@@ -816,7 +816,7 @@ Exit criteria:
 - Circuit IR, component selection, footprint assignment, and compile receive the
   expected prior artifact paths.
 
-## Phase 41: Missing Evidence Stops
+## Stage 41: Missing Evidence Stops
 
 Goal: prevent workflow steps from running when required handoff evidence is
 absent.
@@ -830,7 +830,7 @@ Exit criteria:
 - A missing DesignIntent path prevents Circuit IR execution.
 - Later KiCad steps cannot run without their required upstream artifacts.
 
-## Phase 42: KiCad Library Root Discovery
+## Stage 42: KiCad Library Root Discovery
 
 Goal: find local KiCad symbol and footprint roots without hand-authored JSON
 catalogs.
@@ -844,7 +844,7 @@ Exit criteria:
 - Configured KiCad install layouts resolve to concrete symbol and footprint
   roots.
 
-## Phase 43: KiCad Root Config Cache
+## Stage 43: KiCad Root Config Cache
 
 Goal: use provider config and TTL caching for KiCad library root discovery.
 
@@ -856,7 +856,7 @@ Exit criteria:
 
 - Runtime selection can discover KiCad roots from config and cache the result.
 
-## Phase 44: Focused Amp Backend Handoff
+## Stage 44: Focused Amp Backend Handoff
 
 Goal: prove the plugin-owned Amp fixture can move through selection and
 footprints by handoff evidence.
@@ -870,7 +870,7 @@ Exit criteria:
 - The Amp backend slice reaches footprint assignment without bypassing evidence
   gates.
 
-## Phase 45: Focused Amp Artifact Creation
+## Stage 45: Focused Amp Artifact Creation
 
 Goal: prove the focused Amp backend slice creates KiCad artifacts from verified
 handoff inputs.
@@ -878,14 +878,14 @@ handoff inputs.
 1. Compile from DesignIntent, Circuit IR, component matrix, and footprint
    assignment paths.
 2. Return project, schematic, and board artifacts.
-3. Keep full-demo ERC/DRC/SPICE gates for later phases.
+3. Keep full-demo ERC/DRC/SPICE gates for later stages.
 
 Exit criteria:
 
 - The focused Amp backend slice creates KiCad project, schematic, and board
   artifacts through the generic runtime path.
 
-## Phase 46: KiCad CLI Validation Gates
+## Stage 46: KiCad CLI Validation Gates
 
 Goal: use `kicad-cli` report contents as the ERC/DRC authority.
 
@@ -898,7 +898,7 @@ Exit criteria:
 
 - ERC and DRC reports with blocking diagnostics return blocked tool results.
 
-## Phase 47: Validation Handoff Evidence
+## Stage 47: Validation Handoff Evidence
 
 Goal: prevent downstream workflow steps from advancing without validation
 report evidence.
@@ -911,7 +911,7 @@ Exit criteria:
 
 - Workflow orchestration stops when validation report handoff is missing.
 
-## Phase 48: Diagnostic Repair Routing
+## Stage 48: Diagnostic Repair Routing
 
 Goal: route parsed ERC/DRC diagnostics into structured repair input.
 
@@ -923,7 +923,7 @@ Exit criteria:
 
 - ERC and DRC failures expose structured violations and repair next actions.
 
-## Phase 49: Diagnostic Artifact Preservation
+## Stage 49: Diagnostic Artifact Preservation
 
 Goal: retain validation artifacts even when validation fails.
 
@@ -935,7 +935,7 @@ Exit criteria:
 
 - Failed validation and simulation runs expose existing artifact paths.
 
-## Phase 50: SPICE Execution Gate
+## Stage 50: SPICE Execution Gate
 
 Goal: make ngspice execution failures block with actionable diagnostics.
 
@@ -948,7 +948,7 @@ Exit criteria:
 
 - SPICE execution errors cannot be marked complete and preserve repair logs.
 
-## Phase 51: Validation Repair Slice
+## Stage 51: Validation Repair Slice
 
 Goal: prove ERC, DRC, and SPICE failures are diagnostic-driven and cannot falsely
 advance.

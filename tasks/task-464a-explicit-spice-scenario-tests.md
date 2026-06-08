@@ -5,6 +5,15 @@
 Prevent Merlin from generating or advancing SPICE workflow evidence from a
 generic project-only smoke deck.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN SPICE scenario generation is requested THE electronics workflow SHALL require explicit scenario evidence, measurement envelopes, and model references.
+
 ## Requirements
 
 1. `kicad_generate_spice_scenario` must block when only `project_path` is
@@ -32,4 +41,3 @@ xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'plat
   -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testAmpDemoSPICESliceBlocksWhen25WEnvelopeFails
 rm -f /Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-spice-slice
 ```
-

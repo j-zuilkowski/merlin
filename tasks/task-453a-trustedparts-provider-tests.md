@@ -5,6 +5,15 @@
 Add regression coverage for TrustedParts as an optional electronics-plugin
 catalog provider without weakening Merlin's evidence gate.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN TrustedParts catalog lookup is configured THE electronics plugin SHALL require plugin-scoped settings and preserve authorized distributor evidence.
+
 ## Scope
 
 1. TrustedParts settings are plugin-scoped and disabled by default.

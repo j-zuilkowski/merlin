@@ -341,7 +341,7 @@
   "constraints": [
     { "kind": "thermal", "target": "QOUT1", "value": "external heatsink and SOA review required for Class A dissipation" },
     { "kind": "placement", "target": "JSEC", "value": "keep isolated secondary input away from audio input connector" },
-    { "kind": "net_class", "target": "SPK_OUT", "value": "speaker current path requires wider copper in PCB phase" }
+    { "kind": "net_class", "target": "SPK_OUT", "value": "speaker current path requires wider copper in PCB stage" }
   ],
   "verification_scenarios": [
     { "id": "erc-low-voltage", "kind": "erc", "expectation": "no blocking ERC errors after generic materialization" },

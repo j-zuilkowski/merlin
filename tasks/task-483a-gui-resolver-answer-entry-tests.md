@@ -6,6 +6,15 @@ Prove the electronics GUI/job-state path can turn blocked resolver questions
 into structured answer requirements and can submit GUI-originated resolver
 answers back into the focused component-selection revision workflow.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN GUI resolver answers are submitted THE electronics workflow SHALL convert them into structured continuation evidence before advancing component revision.
+
 ## Acceptance
 
 - Add fail-first focused tests proving:

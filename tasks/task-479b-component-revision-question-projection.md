@@ -5,6 +5,15 @@
 Wire blocked component-selection revision questions and evidence paths into the
 focused workflow stop summary and electronics GUI/job-state projection.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN component-selection revision questions are blocked THE electronics GUI SHALL project the resolver questions and evidence paths into job state.
+
 ## Implementation
 
 - Extended `ElectronicsJobDiagnostic` and `ElectronicsJobDisplayState` with:
@@ -45,4 +54,3 @@ Result: selected tests passed, 9 tests, 0 failures.
 `git diff --check` passed.
 
 The full AmpDemo GUI demo was not run.
-

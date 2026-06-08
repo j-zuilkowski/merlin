@@ -2,6 +2,15 @@
 
 Goal: map concrete verifier artifacts into `ElectronicsEndToEndEvidence`.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN real verifier artifact paths are supplied THE electronics evidence adapter SHALL map them into end-to-end verification evidence without demo-specific generation.
+
 Implementation requirements:
 
 1. Add a path-based artifact adapter for ERC, DRC, SPICE measurements,

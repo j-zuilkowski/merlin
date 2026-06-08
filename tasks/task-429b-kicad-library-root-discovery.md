@@ -7,6 +7,15 @@ Date: 2026-05-30
 Implement generic KiCad library root discovery for local symbol and footprint
 catalog extraction.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN KiCad library root discovery runs THE electronics catalog SHALL detect complete local symbol and footprint roots without inventing missing paths.
+
 ## Implementation Scope
 
 1. Search configured and common KiCad install roots.

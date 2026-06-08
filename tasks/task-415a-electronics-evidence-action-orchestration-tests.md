@@ -5,6 +5,15 @@
 Add focused tests proving runtime evidence continuation actions map to real
 electronics tools in the required order.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN runtime evidence continuation actions are emitted THE electronics workflow SHALL map them to the required KiCad tools in evidence order.
+
 ## Failing Tests
 
 Add focused tests proving:

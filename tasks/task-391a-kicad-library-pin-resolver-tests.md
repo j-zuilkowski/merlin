@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#circuit-ir
-- Roadmap reference: plugins/electronics/tasks.md#phase-4-kicad-library-and-pin-resolver
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#erc-repair-loop
-- Roadmap reference: plugins/electronics/tasks.md#phase-6-erc-parser-and-repair-loop
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

@@ -4,7 +4,7 @@
 
 - Plugin spec reference: plugins/electronics/spec.md#designintent
 - Plugin spec reference: plugins/electronics/spec.md#circuit-ir
-- Roadmap reference: plugins/electronics/tasks.md#phase-2-plugin-owned-schemas
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

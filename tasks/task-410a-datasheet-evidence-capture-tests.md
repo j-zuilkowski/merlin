@@ -5,6 +5,15 @@
 Preserve datasheet metadata as evidence artifacts before full PDF/RAG indexing
 exists.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN component datasheet evidence is captured THE electronics workflow SHALL preserve metadata artifacts before release-grade selected decisions advance.
+
 ## Failing Tests
 
 Add focused tests proving:

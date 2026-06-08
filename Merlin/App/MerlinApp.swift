@@ -58,7 +58,7 @@ final class WorkspaceWindowRecoveryManager {
         Self.present(window)
     }
 
-    static func hasUsableWorkspaceWindow(in windows: [NSWindow]) -> Bool {
+    static func hasUsableWorkspaceWindow<Window: WorkspaceWindowCandidate>(in windows: [Window]) -> Bool {
         windows.contains { window in
             window.isVisible
                 && !window.isMiniaturized
@@ -113,6 +113,16 @@ final class WorkspaceWindowRecoveryManager {
         return NSRect(origin: origin, size: size)
     }
 }
+
+protocol WorkspaceWindowCandidate {
+    var isVisible: Bool { get }
+    var isMiniaturized: Bool { get }
+    var canBecomeKey: Bool { get }
+    var styleMask: NSWindow.StyleMask { get }
+    var frame: NSRect { get }
+}
+
+extension NSWindow: WorkspaceWindowCandidate {}
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {

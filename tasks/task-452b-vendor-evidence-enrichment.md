@@ -6,6 +6,15 @@ Use vendor evidence more effectively while preserving truthfulness: combine
 same-part evidence across providers, normalize Nexar electrical fields, and
 resolve only deterministic candidate ties.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN vendor evidence is enriched THE electronics workflow SHALL preserve provenance and block unresolved or ambiguous candidate ties.
+
 ## Scope
 
 1. Merge same-MPN candidate evidence after category/constraint filtering and

@@ -1747,33 +1747,33 @@ final class LoopContinuationTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: injectURL)
         var notes: [String] = []
+        var toolResults: [ToolResult] = []
+        var cleanStops: [String] = []
         for await event in engine.send(userMessage: firstContinuation) {
             if case .systemNote(let note) = event {
                 notes.append(note)
             }
+            if case .toolCallResult(let result) = event {
+                toolResults.append(result)
+            }
+            if case .cleanStop(_, let summary) = event {
+                cleanStops.append(summary)
+            }
         }
 
-        XCTAssertEqual(listDirectoryCallCount, 1)
-        let retryContinuation = try readInject()
+        XCTAssertEqual(listDirectoryCallCount, 0)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: injectURL.path))
         XCTAssertTrue(
-            retryContinuation.contains("Steps 1-1 have verified tool/artifact evidence."),
-            retryContinuation
+            toolResults.contains { $0.content.contains("next verified handoff must be `kicad_build_intent_model`") },
+            toolResults.map(\.content).joined(separator: "\n")
         )
         XCTAssertTrue(
-            retryContinuation.contains("  2. Initialize a clean project directory structure"),
-            retryContinuation
-        )
-        XCTAssertFalse(
-            retryContinuation.contains("Steps 1-2 have verified tool/artifact evidence."),
-            "A read-only directory listing must not complete the electronics scaffolding/design step"
-        )
-        XCTAssertTrue(
-            retryContinuation.contains("read-only inspection tools and KiCad/version health checks do not satisfy"),
-            retryContinuation
-        )
-        XCTAssertTrue(
-            notes.contains { $0.contains("electronics evidence still missing for current step") },
+            notes.contains { $0.contains("wrong handoff tool") },
             notes.joined(separator: "\n")
+        )
+        XCTAssertTrue(
+            cleanStops.contains { $0.contains("repeatedly avoided the required handoff tool `kicad_build_intent_model`") },
+            cleanStops.joined(separator: "\n")
         )
     }
 
@@ -1882,11 +1882,29 @@ final class LoopContinuationTests: XCTestCase {
 
         XCTAssertEqual(readFileCallCount, 0, "Stale spec reread must be redirected before dispatch")
         XCTAssertEqual(approveCallCount, 1)
-        XCTAssertEqual(circuitIRCallCount, 1)
+        XCTAssertEqual(circuitIRCallCount, 0)
         XCTAssertTrue(approveArguments.contains("amp-design_intent.json"), approveArguments)
         XCTAssertTrue(startedToolNames.contains("kicad_approve_design_intent"), startedToolNames.joined(separator: ", "))
-        XCTAssertTrue(startedToolNames.contains("kicad_generate_circuit_ir"), startedToolNames.joined(separator: ", "))
+        XCTAssertFalse(startedToolNames.contains("kicad_generate_circuit_ir"), startedToolNames.joined(separator: ", "))
         XCTAssertFalse(toolResults.contains { $0.isError }, toolResults.map(\.content).joined(separator: "\n"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: injectURL.path))
+        let circuitIRContinuation = try readInject()
+        XCTAssertTrue(circuitIRContinuation.contains("Next required electronics handoff tool: `kicad_generate_circuit_ir`"), circuitIRContinuation)
+
+        for await event in engine.send(userMessage: circuitIRContinuation) {
+            if case .toolCallStarted(let call) = event {
+                startedToolNames.append(call.function.name)
+            }
+            if case .cleanStop(_, let summary) = event {
+                cleanStops.append(summary)
+            }
+            if case .toolCallResult(let result) = event {
+                toolResults.append(result)
+            }
+        }
+
+        XCTAssertEqual(circuitIRCallCount, 1)
+        XCTAssertTrue(startedToolNames.contains("kicad_generate_circuit_ir"), startedToolNames.joined(separator: ", "))
         XCTAssertTrue(
             cleanStops.contains { $0.contains("verified Circuit IR artifact evidence") },
             cleanStops.joined(separator: "\n")
@@ -2169,7 +2187,11 @@ final class LoopContinuationTests: XCTestCase {
             "Evidence-gated no-split turns must still schedule the first unverified continuation"
         )
         let continuationText = try readInject()
-        XCTAssertTrue(continuationText.contains("Steps 1-1 have verified tool/artifact evidence"), continuationText)
+        XCTAssertTrue(
+            continuationText.contains("Steps 1-1 have verified tool/artifact evidence")
+                || continuationText.contains("Verified electronics artifact evidence exists"),
+            continuationText
+        )
         XCTAssertTrue(continuationText.contains("Approve DesignIntent using the generated artifact path"), continuationText)
         XCTAssertTrue(continuationText.contains("Existing DesignIntent artifact: \(designIntentPath.path)"), continuationText)
         XCTAssertTrue(continuationText.contains("Next required electronics handoff tool: `kicad_approve_design_intent`"), continuationText)

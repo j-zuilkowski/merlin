@@ -18,7 +18,7 @@ runs, fails, is repaired, or passes.
 
 | # | Gate | State | Evidence | Next repair |
 |---|---|---|---|---|
-| 1 | Core test target: `xcodegen generate` then full `MerlinTests` | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/01-MerlinTests.log` contains the pre-Task-491 red run; rerun after Task 491 is required. | none yet |
+| 1 | Core test target: `xcodegen generate` then full `MerlinTests` | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/01-MerlinTests.log`; `/tmp/merlin-derived-v240-full-core/Logs/Test/Test-MerlinTests-2026.06.08_15-03-02--0400.xcresult`; full suite passed 2,571 tests, 55 skipped, 0 failures. Focused window proof `/tmp/merlin-derived-task493-window-green/Logs/Test/Test-MerlinTests-2026.06.08_15-02-01--0400.xcresult` passed 30 tests. | none |
 | 2 | GUI test target: full `MerlinUITests` | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/02-MerlinUITests.log` | none yet |
 | 3 | Focused visual target: `MerlinUITests/VisualLayoutTests` | failed | `docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`; failed `testAccessibilityAudit` with one contrast-nearly-passed issue at frame `(94,339,188x25)`. | fix visual contrast blocker, then rerun #3 |
 | 4 | Live agent loop: DeepSeek-backed live tests when key is present | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log` | none yet |
@@ -46,7 +46,7 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-The immediate blocker is gate #3, the focused visual target. It failed on
-June 8, 2026 with one accessibility contrast issue. Gate #10, the KiCad release
-screenshot step, is not valid until gates #1-#9 are green.
-
+The immediate blocker is gate #2, the full `MerlinUITests` target. Gate #3
+still has a known visual contrast failure from the prior run and remains failed
+until repaired/rerun. Gate #10, the KiCad release screenshot step, is not valid
+until gates #1-#9 are green.

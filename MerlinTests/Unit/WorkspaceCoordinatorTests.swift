@@ -1,3 +1,4 @@
+import AppKit
 import XCTest
 @testable import Merlin
 
@@ -158,27 +159,25 @@ final class WorkspaceCoordinatorTests: XCTestCase {
     }
 
     func test_fallbackWindowRecoveryRequiresUsableVisibleWorkspaceWindow() {
-        let smallWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 500),
+        let smallWindow = TestWorkspaceWindow(
+            isVisible: true,
+            isMiniaturized: false,
+            canBecomeKey: true,
             styleMask: [.titled, .resizable],
-            backing: .buffered,
-            defer: false
+            frame: NSRect(x: 0, y: 0, width: 500, height: 500)
         )
-        smallWindow.orderFront(nil)
-        defer { smallWindow.close() }
 
         XCTAssertFalse(WorkspaceWindowRecoveryManager.hasUsableWorkspaceWindow(
             in: [smallWindow]
         ))
 
-        let workspaceWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+        let workspaceWindow = TestWorkspaceWindow(
+            isVisible: true,
+            isMiniaturized: false,
+            canBecomeKey: true,
             styleMask: [.titled, .resizable],
-            backing: .buffered,
-            defer: false
+            frame: NSRect(x: 0, y: 0, width: 1200, height: 800)
         )
-        workspaceWindow.orderFront(nil)
-        defer { workspaceWindow.close() }
 
         XCTAssertTrue(WorkspaceWindowRecoveryManager.hasUsableWorkspaceWindow(
             in: [workspaceWindow]
@@ -304,4 +303,12 @@ final class WorkspaceCoordinatorTests: XCTestCase {
         coord.showingProjectPicker = true
         XCTAssertTrue(coord.showingProjectPicker)
     }
+}
+
+private struct TestWorkspaceWindow: WorkspaceWindowCandidate {
+    let isVisible: Bool
+    let isMiniaturized: Bool
+    let canBecomeKey: Bool
+    let styleMask: NSWindow.StyleMask
+    let frame: NSRect
 }

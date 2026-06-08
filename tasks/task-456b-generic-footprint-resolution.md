@@ -2,6 +2,15 @@
 
 Status: complete
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN generic footprint resolution runs THE electronics workflow SHALL use selected candidate and KiCad footprint evidence instead of AmpDemo-only hard-coding.
+
 Objective: Resolve footprints generically from selected catalog candidates and KiCad footprint evidence when the ComponentMatrix does not already include footprint candidates.
 
 Implementation constraints:

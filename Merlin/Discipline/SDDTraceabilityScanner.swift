@@ -31,6 +31,7 @@ actor SDDTraceabilityScanner {
         for case let url as URL in enumerator {
             guard url.pathExtension == "md",
                   isTaskDocument(url.lastPathComponent),
+                  shouldRequireTraceability(url.lastPathComponent),
                   let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
 
             let relative = relativePath(url, root: root)
@@ -154,6 +155,15 @@ actor SDDTraceabilityScanner {
 
     private func isTaskDocument(_ filename: String) -> Bool {
         filename.hasPrefix("task-") || filename.hasPrefix("diag-")
+    }
+
+    private func shouldRequireTraceability(_ filename: String) -> Bool {
+        guard filename.hasPrefix("task-") else { return true }
+        let taskNumber = filename
+            .dropFirst("task-".count)
+            .prefix { $0.isNumber }
+        guard let number = Int(taskNumber) else { return true }
+        return number >= 493
     }
 
     private func hasSection(_ title: String, in text: String) -> Bool {

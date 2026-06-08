@@ -3,6 +3,15 @@
 Goal: preserve real tool failure artifacts so workflow repair gates can inspect
 them instead of losing the evidence at the command boundary.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN KiCad or SPICE tools fail after producing diagnostic artifacts THE electronics workflow SHALL preserve those artifacts for repair gates.
+
 Implementation requirements:
 
 1. When KiCad ERC/DRC exits non-zero but writes the requested JSON report, return

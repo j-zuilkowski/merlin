@@ -5,13 +5,11 @@
 - Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
 - Merlin spec reference: spec.md#merlin-v20--electronicskicad-feature-set
 - Plugin spec reference: plugins/electronics/spec.md#non-negotiable-invariants
-- Roadmap reference: plugins/electronics/tasks.md#phase-0-safety-and-drift-cleanup
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 
-WHEN `workflow.requirements_to_pcb` receives only natural-language requirements
-THE electronics plugin SHALL block generically and SHALL NOT create KiCad, BOM,
-fabrication, SPICE, or report artifacts.
+WHEN `workflow.requirements_to_pcb` receives only natural-language requirements THE electronics plugin SHALL block generically and SHALL NOT create KiCad, BOM, fabrication, SPICE, or report artifacts.
 
 GIVEN a developer attempts to reintroduce a named demo generator,
 THEN focused tests SHALL fail on generator names, hard-coded project symbols, and

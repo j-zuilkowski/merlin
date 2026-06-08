@@ -6,6 +6,15 @@ Run the fresh full GUI workflow required by finish criterion F4 after F1-F3
 were green, using AmpDemo only as an evidence check and without manually
 hand-designing the sample project.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN the fresh GUI electronics workflow is run THE release evidence SHALL record whether Merlin advances from its own gated workflow evidence.
+
 ## Setup
 
 Verified the fixed checklist still had F1-F3 complete and F4/F5 open. Recreated

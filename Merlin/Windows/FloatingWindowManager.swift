@@ -67,10 +67,21 @@ final class FloatingWindowManager: ObservableObject {
         window.title = session.title
         window.isReleasedWhenClosed = false
         window.level = alwaysOnTop ? .floating : .normal
+        if runtimeMode == .testing {
+            window.animationBehavior = .none
+        }
     }
 
     private func closeOnMain(sessionID: UUID) {
-        windows[sessionID]?.close()
+        if let window = windows[sessionID], runtimeMode == .testing {
+            window.animationBehavior = .none
+            window.orderOut(nil)
+            window.contentView = nil
+            window.delegate = nil
+            window.close()
+        } else {
+            windows[sessionID]?.close()
+        }
         remove(sessionID: sessionID)
     }
 

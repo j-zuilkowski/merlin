@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#kicad-integration-strategy
-- Roadmap reference: plugins/electronics/tasks.md#phase-5-circuit-ir-to-kicad-schematic-materialization
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

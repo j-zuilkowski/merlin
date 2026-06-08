@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#first-acceptance-target-25w-class-a-guitar-amplifier
-- Roadmap reference: plugins/electronics/tasks.md#phase-7-first-acceptance-fixture
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

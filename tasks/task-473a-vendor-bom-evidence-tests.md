@@ -6,6 +6,17 @@ Add fail-first coverage proving BOM/vendor workflow advancement requires
 artifact-backed BOM, stock/price, cached datasheet, and vendor package evidence
 instead of placeholder BOMs or narrative supplier claims.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN BOM/vendor workflow gates are evaluated THE electronics workflow SHALL
+require artifact-backed BOM, stock/price, cached datasheet, and vendor package
+evidence before fabrication or release can advance.
+
 ## Tests Added
 
 - `FabBOMReleaseTests.testFabReadyRequiresArtifactBackedBOMVendorDatasheetAndOrderEvidence`

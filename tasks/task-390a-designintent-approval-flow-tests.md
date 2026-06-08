@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#designintent
-- Roadmap reference: plugins/electronics/tasks.md#phase-3-designintent-draft-and-approval-flow
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

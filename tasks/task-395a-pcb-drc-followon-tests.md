@@ -2,13 +2,13 @@
 
 ## Traceability
 
+- Vision reference: vision.md#spec-driven-development-alignment
 - Plugin spec reference: plugins/electronics/spec.md#drc-and-pcb-follow-on
-- Roadmap reference: plugins/electronics/tasks.md#phase-8-drc-and-pcb-follow-on
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 
-A verified schematic SHALL extend to PCB verification through footprint evidence,
-board profile, placement, routing, DRC parsing, and bounded DRC repair.
+WHEN a schematic is verified THE electronics workflow SHALL extend to PCB verification through footprint evidence, board profile, placement, routing, DRC parsing, and bounded DRC repair.
 
 ## Red Tests
 

@@ -13,7 +13,7 @@ selection decisions.
 3. Attach datasheet evidence references to `ComponentEvidence` and
    `PartSelectionDecision`.
 4. Keep PDF download optional and provider-policy controlled.
-5. Do not add RAG indexing in this phase.
+5. Do not add RAG indexing in this stage.
 
 ## Verify
 

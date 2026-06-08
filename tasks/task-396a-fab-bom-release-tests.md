@@ -3,7 +3,7 @@
 ## Traceability
 
 - Plugin spec reference: plugins/electronics/spec.md#status-model
-- Roadmap reference: plugins/electronics/tasks.md#phase-9-fabrication-bom-and-release
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

@@ -7,6 +7,15 @@ Date: 2026-05-30
 Add failing tests proving validation workflow steps cannot advance without
 report handoff evidence.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN validation workflow steps run THE electronics workflow SHALL require report handoff evidence before downstream simulation or visual QA.
+
 ## Test Scope
 
 1. DRC must produce a DRC report path before simulation runs.

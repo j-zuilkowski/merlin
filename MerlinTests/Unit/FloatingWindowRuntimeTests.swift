@@ -6,6 +6,15 @@ import XCTest
 @MainActor
 final class FloatingWindowRuntimeTests: XCTestCase {
 
+    private func closeTestWindow(_ window: NSWindow) {
+        window.animationBehavior = .none
+        window.orderOut(nil)
+        window.contentView = nil
+        window.delegate = nil
+        window.close()
+        RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+    }
+
     func test_testingRuntimeBuildsRealFloatingChatContainer() {
         var builtSession: Session?
         var builtManager: FloatingWindowManager?
@@ -32,6 +41,12 @@ final class FloatingWindowRuntimeTests: XCTestCase {
 
         let session = Session.stub(title: "Floating Runtime")
         manager.open(session: session, alwaysOnTop: false)
+        defer {
+            manager.close(sessionID: session.id)
+            if let capturedWindow {
+                closeTestWindow(capturedWindow)
+            }
+        }
 
         XCTAssertEqual(builtSession?.id, session.id)
         XCTAssertTrue(builtManager === manager)
@@ -63,6 +78,12 @@ final class FloatingWindowRuntimeTests: XCTestCase {
 
         let session = Session.stub(title: "Session Binding")
         manager.open(session: session, alwaysOnTop: false)
+        defer {
+            manager.close(sessionID: session.id)
+            if let capturedWindow {
+                closeTestWindow(capturedWindow)
+            }
+        }
 
         XCTAssertEqual(boundSession?.id, session.id)
         XCTAssertEqual(capturedWindow?.title, session.title)
@@ -73,6 +94,7 @@ final class FloatingWindowRuntimeTests: XCTestCase {
         let session = Session.stub(title: "Close Registry")
 
         manager.open(session: session, alwaysOnTop: false)
+        defer { manager.close(sessionID: session.id) }
         XCTAssertEqual(manager.openWindowCount, 1)
 
         manager.close(sessionID: session.id)
@@ -99,6 +121,12 @@ final class FloatingWindowRuntimeTests: XCTestCase {
 
         let session = Session.stub(title: "Always On Top")
         manager.open(session: session, alwaysOnTop: true)
+        defer {
+            manager.close(sessionID: session.id)
+            if let capturedWindow {
+                closeTestWindow(capturedWindow)
+            }
+        }
 
         XCTAssertEqual(capturedWindow?.level, .floating)
     }

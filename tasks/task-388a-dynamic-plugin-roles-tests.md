@@ -4,7 +4,7 @@
 
 - Vision reference: vision.md#runtime-plugin-architecture--the-electronics-plugin
 - Plugin spec reference: plugins/electronics/spec.md#dynamic-plugin-roles
-- Roadmap reference: plugins/electronics/tasks.md#phase-1-dynamic-plugin-roles
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

@@ -5,6 +5,15 @@
 Make footprint assignment evidence-backed and block incompatible or unresolved
 footprints.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN footprint assignment runs THE electronics workflow SHALL require compatible footprint and pin-pad evidence before emitting an assignment artifact.
+
 ## Implementation
 
 1. Read `ComponentMatrix`.

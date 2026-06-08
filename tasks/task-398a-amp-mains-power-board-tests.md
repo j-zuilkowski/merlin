@@ -4,7 +4,7 @@
 
 - Plugin spec reference: plugins/electronics/spec.md#first-acceptance-target-25w-class-a-guitar-amplifier
 - Plugin spec reference: plugins/electronics/spec.md#safety-policy
-- Roadmap reference: plugins/electronics/tasks.md#phase-11-second-board-fixture
+- Roadmap reference: plugins/electronics/tasks.md#numbered-tdd-task-map
 
 ## Behavior
 

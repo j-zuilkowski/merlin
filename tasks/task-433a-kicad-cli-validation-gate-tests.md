@@ -7,6 +7,15 @@ Date: 2026-05-30
 Add failing tests proving ERC and DRC are judged from real `kicad-cli` report
 contents, not just command execution.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN ERC or DRC validation runs THE electronics workflow SHALL judge advancement from real `kicad-cli` report contents.
+
 ## Test Scope
 
 1. `kicad_run_erc` invokes `kicad-cli sch erc`.
