@@ -39,6 +39,18 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(readme.localizedCaseInsensitiveContains("open the generated KiCad PCB"))
     }
 
+    func testDocsDefineGitHubScreenshotDestinations() throws {
+        let docs = try [
+            "README.md",
+            "spec.md",
+        ].map { try repoText($0) }.joined(separator: "\n")
+
+        XCTAssertTrue(docs.contains("docs/assets/screenshots/v2.4.0/"))
+        XCTAssertTrue(docs.contains("docs/e2e/<date>-v2.4.0-release/screenshots/"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("GitHub Release"))
+        XCTAssertTrue(docs.localizedCaseInsensitiveContains("release assets"))
+    }
+
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
         let activeDocPaths = [
             "README.md",

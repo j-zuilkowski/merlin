@@ -641,6 +641,7 @@ The May 26-27, 2026 shell runner and its harness-specific unit tests are retired
 - S1/S2 live runs must not stop at natural-language diagnosis while verification still fails. Repetition, no-progress loops, or false environment claims are failures unless a documented bounded recovery policy captures the remaining failing command output.
 - Evidence directories must not retain screenshots intended for GitHub before the full battery is green, provider secret material, temporary xcalibre databases, config backups, or orphaned service processes.
 - Release screenshots are created only after the full battery is green, and KiCad screenshots must come from files opened in KiCad rather than from generated static images alone.
+- Screenshot destinations are fixed: GitHub Release marketing and KiCad screenshots are uploaded to the `v2.4.0` GitHub Release as release assets; README-linked screenshots are committed under `docs/assets/screenshots/v2.4.0/`; evidence-only screenshots stay with the run report under `docs/e2e/<date>-v2.4.0-release/screenshots/`.
 - A passing report must list the exact command, provider, model ID, service port, and cleanup result for each surface above.
 
 ### Current Remediation Scope

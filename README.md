@@ -157,6 +157,12 @@ Merlin v2.4.0 is not considered release-push-ready from version metadata alone. 
 
 After the full battery is green, open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available. GitHub feature screenshots are captured at the same post-green stage.
 
+Screenshot destinations:
+
+- GitHub Release assets: upload release-marketing screenshots and KiCad screenshots to the `v2.4.0` GitHub Release as release assets.
+- README-linked screenshots: commit durable public images under `docs/assets/screenshots/v2.4.0/`.
+- Evidence-only screenshots: retain validation-only images under `docs/e2e/<date>-v2.4.0-release/screenshots/` with the E2E report.
+
 ---
 
 ## Packaging
