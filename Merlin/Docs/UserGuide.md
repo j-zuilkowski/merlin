@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 2.2.5**
+**Version 2.4.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -116,12 +116,10 @@ The AI has access to a large set of built-in tools:
 | Category | Tools |
 |---|---|
 | **File system** | read_file, write_file, create_file, delete_file, list_directory, move_file, search_files |
-| **Shell** | run_shell |
-| **Xcode** | xcode_build, xcode_test, xcode_clean, xcode_open_simulator |
-| **App control** | launch_app, quit_app, focus_app, list_running_apps |
-| **Accessibility** | ax_inspect (reads UI element hierarchy) |
-| **Screen** | capture_screen, vision_query |
-| **Input** | cg_event (synthesises keyboard/mouse events) |
+| **Shell** | run_shell, bash |
+| **Xcode** | xcode_build, xcode_test, xcode_clean, xcode_derived_data_clean, xcode_open_file, xcode_xcresult_parse, xcode_simulator_list, xcode_simulator_boot, xcode_simulator_screenshot, xcode_simulator_install, xcode_spm_resolve, xcode_spm_list |
+| **App control** | app_launch, app_list_running, app_quit, app_focus |
+| **UI automation** | ui_inspect, ui_find_element, ui_get_element_value, ui_click, ui_double_click, ui_right_click, ui_drag, ui_type, ui_key, ui_scroll, ui_screenshot |
 | **Search** | web_search |
 | **RAG** | rag_search, rag_list_books |
 | **Subagents** | spawn_agent |
