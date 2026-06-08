@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 484.
+workflows. Latest completed task is Task 485.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 485 — record fresh GUI workflow context blocker
 - Task 484 — prove generic realism and artifact chain gates
 - Task 483 — add GUI resolver answer entry
 - Task 482 — define electronics domain finish checklist
@@ -366,6 +367,37 @@ rm -rf /tmp/merlin-derived-task483-484 && xcodebuild test -project Merlin.xcodep
 Result: `TEST SUCCEEDED`, 7 tests, 0 failures.
 
 `git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 485 ran the fresh full GUI workflow evidence pass required by F4. The run
+used `/Applications/Merlin.app` opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`, with `~/.merlin/inject.txt` as the GUI live-session input path.
+The app generated draft and approved DesignIntent artifacts and correctly
+decomposed the high-voltage/low-voltage request into `mains_power` and
+`isolated_secondary` boards. It did not generate Circuit IR, component matrix,
+footprints, schematic, PCB, ERC, DRC, SPICE, BOM/vendor, fabrication/CAM,
+`FAB_READY`, or completion artifacts.
+
+Task 485 proved an internal GUI/workflow continuation blocker before Circuit
+IR. After `kicad_build_intent_model` and `kicad_approve_design_intent`
+completed, the continuation path repeatedly reread the 22,726-byte approved
+DesignIntent/spec evidence, scheduled the same continuation, exceeded
+`qwen3-coder-next-local`'s 16,384-token context, forced compaction, and repeated
+without advancing. This is not an acceptable F4 external blocker, so F4 remains
+open until generic GUI continuation context handling is fixed and rerun.
+
+Task 485 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/01_clean_session_task485.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/06_context_loop_blocker_task485.png`
+- Approved DesignIntent:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/5FACF97B-8360-4B6B-940A-A0F759F4AAF7-design_intent.json`
+- Telemetry summary:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/reports/task485-summary.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/reports/task485-telemetry-interesting.jsonl`
 
 ## Current Electronics Plugin State
 
@@ -800,7 +832,9 @@ evidence check.
   or stop at a documented external blocker with actionable missing evidence; it
   must not advance from unresolved components, schematic/PCB placeholders,
   missing SPICE models/envelopes, placeholder BOM/vendor data, or declared-only
-  fabrication paths.
+  fabrication paths. Task 485 attempted this run and left F4 open because the
+  GUI continuation path hit an internal context/repeated-reread blocker before
+  Circuit IR.
 - [ ] **F5: Completion contract and status cleanup.** Update task files,
   `HANDOFF.md`, and any electronics status docs to mark the electronics domain
   complete only after F1-F4 have commands, artifacts, screenshots/logs where
