@@ -1,0 +1,8 @@
+
+== preflight ==
+/Users/jonzuilkowski/.lmstudio/bin/lms
+port 1337 already occupied
+
+== cleanup ports ==
+port 1234: closed
+port 1337: closed

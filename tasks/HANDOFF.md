@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 495.
+Latest completed task is Task 496.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 496 — pass release local provider gate
 - Task 495 — pass release live DeepSeek gate
 - Task 494 — pass release UI and visual gates
 - Task 493 — repair release battery continuation and window traceability
@@ -147,6 +148,21 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 496 passed release gate #5, the local-provider pair smoke/load/shutdown
+proof. The fail-first shell wrapper attempt is preserved because it incorrectly
+treated an empty `lsof` result as an occupied Jan port. The green rerun started
+and loaded LM Studio with the text and vision models, passed text completion,
+streaming, tool-call, and explicit vision checks, then unloaded and stopped LM
+Studio with port 1234 closed. It then started Jan's text lifecycle, passed text
+completion, streaming, and tool-call checks, stopped Jan with port 1337 closed,
+started Jan's separate vision lifecycle, passed the image request smoke, and
+again closed port 1337. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log` and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`.
+The next release blocker is gate #6, the llama.cpp router explicit model ID
+smoke. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
+are green.
+
 Task 495 repaired and passed release gate #4. The fail-first live run could
 not compile `MerlinTests-Live` because `CalibrationLiveTests` did not handle
 the `.llamaCppRuntimeUntuned` advisory case. The test harness now handles that
@@ -163,9 +179,7 @@ fail-first log
 `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.fail-first.log`,
 and
 `/tmp/merlin-derived-v240-live-deepseek/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-13-52--0400.xcresult`.
-The next release blocker is gate #5, the local-provider pairs
-smoke/load/shutdown proof. Gate #10, KiCad release screenshots, remains blocked
-until gates #1-#9 are green.
+Gate #5 is now green under Task 496.
 
 Task 494 advanced the v2.4.0 release ledger through UI gates #2 and #3.
 Full `MerlinUITests` passed with 12 tests and 0 failures:
@@ -194,7 +208,7 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gates #1-#4 are passed. Gate #5 is the next release blocker. Gate #10,
+push. Gates #1-#5 are passed. Gate #6 is the next release blocker. Gate #10,
 KiCad release screenshots, remains blocked until gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics
