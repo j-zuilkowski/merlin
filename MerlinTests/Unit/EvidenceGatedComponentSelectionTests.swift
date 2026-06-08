@@ -3472,6 +3472,9 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_provider_fixture_paths":{"mouser":"\#(mouserURL.path)"}}"#
         )
         let matrixURL = try XCTUnwrap(selection.artifacts.first { $0.kind == "component_matrix" }).url
+        let matrix = try decodeMatrix(from: selection)
+        let candidate = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        XCTAssertTrue(candidate.footprintCandidates.isEmpty)
 
         let footprintResponse = await sendFootprints(
             runtime,

@@ -55,14 +55,16 @@ Merlin.xcodeproj
 - **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI ( tasks 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection ( tasks 60–98)
 
 ## Current Status
-Current active line: electronics plugin finish checklist complete.
-Electronics domain status: finished as evidence-gated workflow infrastructure.
+Current active line: v2.4.0 release blocker repair.
+Electronics domain status: finished as evidence-gated workflow infrastructure,
+with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 490.
+Latest completed task is Task 491.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 491 — make KiCad gates deterministic and evidence-scoped
 - Task 490 — repair release blocker workflow gates
 - Task 489 — synchronize Developer Manual with current source tree
 - Task 488 — finalize electronics completion contract status
@@ -130,6 +132,16 @@ Task 477 evidence paths:
   `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/19397343-C00B-46CD-90C0-C93DA986AC6D-circuit_ir.json`
 - Blocked component matrix:
   `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/03ECE826-D739-446D-A057-FEDDA41B16FB-component_matrix.json`
+
+Task 491 repaired the first v2.4.0 release-battery failure. Full
+`MerlinTests` had failed because `kicad_select_components` and
+`kicad_assign_footprints` could silently use machine-local KiCad library
+discovery when no workflow payload/config supplied footprint evidence. Runtime
+KiCad root discovery now requires explicit `kicad_library_root_search_paths`
+from the request or provider config; explicit catalog paths, explicit roots,
+and configured search paths still work. The no-footprint regression now proves
+selection leaves footprint candidates empty and assignment blocks with
+`FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
 Task 478 added a generic component-selection revision path. The electronics
 plugin now exposes `kicad_revise_component_selection`, which accepts a blocked

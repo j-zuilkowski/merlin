@@ -5980,9 +5980,12 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         if let cached = try? cache.load(from: cacheDirectory, maxAgeSeconds: ttlSeconds) {
             return cached
         }
-        let searchPaths = stringArrayValue(object, key: "kicad_library_root_search_paths")
-            ?? config.kicadLibraryRootSearchPaths
-        let searchRoots = searchPaths?.map(URL.init(fileURLWithPath:)) ?? KiCadLibraryRootDiscovery.defaultSearchRoots()
+        guard let searchPaths = stringArrayValue(object, key: "kicad_library_root_search_paths")
+            ?? config.kicadLibraryRootSearchPaths else {
+            return nil
+        }
+        let searchRoots = searchPaths.map(URL.init(fileURLWithPath:))
+        guard !searchRoots.isEmpty else { return nil }
         guard let discovered = KiCadLibraryRootDiscovery().discover(searchRoots: searchRoots) else {
             return nil
         }
