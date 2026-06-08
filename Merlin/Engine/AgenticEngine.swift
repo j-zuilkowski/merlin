@@ -3545,7 +3545,7 @@ final class AgenticEngine {
         switch requirement {
         case .requirementsInspection:
             return pendingContinuationEvidence.contains { evidence in
-                ["read_file", "list_directory", "search_files"].contains(evidence.toolName)
+                requirementsInspectionEvidenceVerified(evidence)
             }
         case .designIntent:
             return pendingContinuationEvidence.contains { evidence in
@@ -4853,7 +4853,25 @@ final class AgenticEngine {
 
     private func hasVerifiedRequirementsInspectionEvidence() -> Bool {
         pendingContinuationEvidence.contains { evidence in
-            Self.electronicsReadOnlyInspectionToolNames.contains(evidence.toolName)
+            requirementsInspectionEvidenceVerified(evidence)
+        }
+    }
+
+    private func requirementsInspectionEvidenceVerified(_ evidence: ContinuationToolEvidence) -> Bool {
+        let text = evidenceText(evidence)
+        let namesRequirementsArtifact = text.contains("spec.md")
+            || text.contains("requirements.md")
+            || text.contains("requirements.txt")
+            || text.contains("requirements")
+        guard namesRequirementsArtifact else { return false }
+
+        switch evidence.toolName {
+        case "read_file":
+            return evidence.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        case "search_files":
+            return evidence.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        default:
+            return false
         }
     }
 

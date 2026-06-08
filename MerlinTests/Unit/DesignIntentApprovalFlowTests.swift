@@ -39,6 +39,26 @@ final class DesignIntentApprovalFlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(intent.nets.count, 6)
     }
 
+    func testRelativeSpecArtifactPathResolvesAgainstWorkspaceRoot() async throws {
+        let root = try temporaryDirectory()
+        let specURL = root.appendingPathComponent("spec.md")
+        try ampDemoSpecText.write(to: specURL, atomically: true, encoding: .utf8)
+        let runtime = try WorkspaceRuntime(rootURL: root)
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+
+        let response = await send(
+            runtime,
+            capability: "kicad_build_intent_model",
+            payload: #"{"board_profile_id":"ampdemo_classa_25w","input_artifact_path":"./spec.md"}"#
+        )
+
+        XCTAssertEqual(response.status, .ok)
+        let artifact = try XCTUnwrap(response.artifacts.first { $0.kind == "design_intent" })
+        let intent = try JSONDecoder().decode(DesignIntent.self, from: Data(contentsOf: artifact.url))
+        XCTAssertTrue(intent.components.contains { $0.refdes == "QOUT1" && $0.role.contains("Class-A") })
+        XCTAssertTrue(intent.nets.contains { $0.name == "SPK_OUT" })
+    }
+
     func testRequirementsDraftDesignIntentWithoutCreatingKiCadFiles() async throws {
         let root = try temporaryDirectory()
         let runtime = try WorkspaceRuntime(rootURL: root)

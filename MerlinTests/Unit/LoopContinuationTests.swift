@@ -1179,6 +1179,52 @@ final class LoopContinuationTests: XCTestCase {
         )
     }
 
+    func testRequirementsInspectionIsNotSatisfiedByDirectoryListingAlone() async throws {
+        let projectRoot = temporaryDirectory("electronics-requirements-directory-listing")
+        let specPath = projectRoot.appendingPathComponent("spec.md")
+        try "25W pure Class A solid-state guitar amplifier requirements".write(
+            to: specPath,
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let provider = MockProvider(responses: [
+            .toolCall(id: "list", name: "list_directory", args: #"{"path":".","recursive":false}"#),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.currentProjectPath = projectRoot.path
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.maxIterationsOverride = 2
+        engine.continuationInjectURL = injectURL
+        engine.classifierOverride = StubPlanner(
+            classification: ClassifierResult(needsPlanning: true, complexity: .standard, reason: "electronics test"),
+            steps: [
+                PlanStep(
+                    description: "Inspect spec.md to extract requirements",
+                    successCriteria: "Spec requirements read",
+                    complexity: .standard
+                ),
+                PlanStep(
+                    description: "Build DesignIntent from the requirements",
+                    successCriteria: "DesignIntent artifact exists",
+                    complexity: .standard
+                ),
+            ]
+        )
+        engine.registerTool("list_directory") { _ in "spec.md" }
+
+        for await _ in engine.send(userMessage: "Using the electronics domain, inspect spec.md and build DesignIntent.") {}
+
+        let continuationText = try readInject()
+        XCTAssertTrue(
+            continuationText.contains("No planned electronics workflow steps have verified completion evidence yet."),
+            continuationText
+        )
+        XCTAssertTrue(continuationText.contains("1. Inspect spec.md to extract requirements"), continuationText)
+        XCTAssertFalse(continuationText.contains("Steps 1-1 have verified tool/artifact evidence"), continuationText)
+    }
+
     func testCircuitIRNetlistPlanStepWithSpiceTextAdvancesToFootprintHandoff() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

@@ -4037,8 +4037,16 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let object = mergedDesignIntentObject(request)
         let bodyObject: [String: Any]
         let normalizedObject = mergedDesignIntentObject(from: object)
-        if let path = object["input_artifact_path"] as? String,
-           FileManager.default.fileExists(atPath: path) {
+        if let rawPath = object["input_artifact_path"] as? String {
+            let path = workspaceResolvedPath(rawPath, context: context)
+            guard FileManager.default.fileExists(atPath: path) else {
+                return structuredBlock(
+                    request,
+                    reason: .missingArtifact,
+                    message: "kicad_build_intent_model requires an existing input_artifact_path.",
+                    context: context
+                )
+            }
             guard let text = try? String(contentsOfFile: path, encoding: .utf8),
                   !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return structuredBlock(
@@ -4077,6 +4085,18 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             artifacts: [writeArtifact(request, context: context, kind: "design_intent", body: designIntentBody(from: bodyObject, request: request))],
             nextActions: ["review_and_approve_design_intent"]
         )
+    }
+
+    private func workspaceResolvedPath(_ rawPath: String, context: WorkspaceHandlerContext) -> String {
+        let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+        if trimmed.hasPrefix("/") {
+            return URL(fileURLWithPath: trimmed).standardizedFileURL.path
+        }
+        return context.workspaceRoot
+            .appendingPathComponent(trimmed)
+            .standardizedFileURL
+            .path
     }
 
     private func componentsMissing(from object: [String: Any]) -> Bool {

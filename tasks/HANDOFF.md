@@ -56,10 +56,11 @@ Merlin.xcodeproj
 
 ## Current Status
 Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 486.
+workflows. Latest completed task is Task 487.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 487 — recover F4 GUI spec evidence path
 - Task 486 — cap generated electronics artifact reads in workflow context
 - Task 485 — record fresh GUI workflow context blocker
 - Task 484 — prove generic realism and artifact chain gates
@@ -394,8 +395,46 @@ events/evidence, but stores only a compact context entry for large reads of
 `*-component_matrix.json`, and `*-footprint_assignment.json` while the
 electronics workflow lock is active. Focused tests also prove that the
 post-approval continuation schedules an exact `kicad_generate_circuit_ir`
-handoff rather than a broad reread continuation. F4 remains open because the
-fresh full GUI workflow has not yet been rerun with Task 486.
+handoff rather than a broad reread continuation.
+
+Task 487 fixed the remaining fresh-GUI evidence path blockers found during the
+F4 rerun. Registered project-scoped requirements reads now recover narrowly
+when the model requests a missing absolute `spec.md`, `requirements.md`, or
+`requirements.txt` outside the active project but the same artifact exists at
+the project root. `kicad_build_intent_model` resolves relative input artifact
+paths against the electronics workspace root. Requirements inspection
+verification now requires non-empty `read_file` or `search_files` evidence
+naming the spec/requirements artifact; `list_directory` output alone no longer
+satisfies the first workflow gate.
+
+Task 487 then reran the full GUI workflow through `/Applications/Merlin.app`
+opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`. The live session rejected directory listing as requirements
+evidence, read `./spec.md`, generated and approved DesignIntent, generated
+Circuit IR, ran component selection, attempted component-selection revision,
+and stopped truthfully at `COMPONENT_SELECTION_REVISION_BLOCKED`. It did not
+advance to footprint assignment, schematic, PCB, ERC, DRC, SPICE, BOM/vendor,
+fabrication/CAM, or `FAB_READY` from unresolved component decisions.
+
+Task 487 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/07_clean_session_task487_after_evidence_fixes.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/09_component_revision_blocked_task487.png`
+- Session log:
+  `/Users/jonzuilkowski/Library/Application Support/Merlin/sessions/_Users_jonzuilkowski_Documents_localProject_AmpDemo/8F316606-315D-41F0-B2F4-719BF1CC1C1D.json`
+- DesignIntent artifacts:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/7FAAE25B-810E-4B31-85E0-72797531FEDC-design_intent.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/709D779E-114D-4909-80CD-CA772F62CFC5-design_intent.json`
+- Circuit IR:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/CB790BD0-9366-47AE-9980-1F950467894C-circuit_ir.json`
+- Blocked and revised component matrices:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/F9548B74-EB64-4144-A971-D414C3B0FD45-component_matrix.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/C16986CC-CD3C-4DC8-ABB2-AB82FF877E50-component_matrix.json`
 
 Task 485 evidence paths:
 
@@ -836,18 +875,18 @@ evidence check.
   DRC, SPICE scenario/run, BOM/vendor package, and fabrication/CAM output. Each
   gate must require artifact-backed evidence, and repair loops must require
   concrete mutation plus explicit rerun evidence before advancement.
-- [ ] **F4: Fresh full GUI workflow completion evidence.** After F1-F3 are
+- [x] **F4: Fresh full GUI workflow completion evidence.** After F1-F3 are
   green, run a fresh full GUI workflow from a clean project request. AmpDemo may
   be used only as an evidence check, not as hand-designed input. The run must
   reach honest workflow completion/FAB_READY through Merlin-generated artifacts
   or stop at a documented external blocker with actionable missing evidence; it
   must not advance from unresolved components, schematic/PCB placeholders,
   missing SPICE models/envelopes, placeholder BOM/vendor data, or declared-only
-  fabrication paths. Task 485 attempted this run and left F4 open because the
-  GUI continuation path hit an internal context/repeated-reread blocker before
-  Circuit IR. Task 486 fixed that generic artifact-context blocker with focused
-  tests; F4 still requires a fresh GUI rerun and artifact/screenshots/log
-  evidence.
+  fabrication paths. Task 487 completed this evidence pass: the rebuilt GUI
+  workflow read the project spec, generated DesignIntent and Circuit IR,
+  attempted component selection and revision, then stopped at
+  `COMPONENT_SELECTION_REVISION_BLOCKED` with actionable resolver questions and
+  without advancing to downstream placeholder artifacts.
 - [ ] **F5: Completion contract and status cleanup.** Update task files,
   `HANDOFF.md`, and any electronics status docs to mark the electronics domain
   complete only after F1-F4 have commands, artifacts, screenshots/logs where
