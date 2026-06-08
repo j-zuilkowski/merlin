@@ -4039,7 +4039,20 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
         let normalizedObject = mergedDesignIntentObject(from: object)
         if let rawPath = object["input_artifact_path"] as? String {
             let path = workspaceResolvedPath(rawPath, context: context)
-            guard FileManager.default.fileExists(atPath: path) else {
+            if FileManager.default.fileExists(atPath: path) {
+                guard let text = try? String(contentsOfFile: path, encoding: .utf8),
+                      !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    return structuredBlock(
+                        request,
+                        reason: .invalidInputQuality,
+                        message: "kicad_build_intent_model requires a readable non-empty requirements artifact.",
+                        context: context
+                    )
+                }
+                bodyObject = inferredDesignIntentObject(fromRequirementsText: text, baseObject: normalizedObject)
+            } else if object["requirements"] != nil || object["constraints_json"] != nil {
+                bodyObject = normalizedObject
+            } else {
                 return structuredBlock(
                     request,
                     reason: .missingArtifact,
@@ -4047,16 +4060,6 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
                     context: context
                 )
             }
-            guard let text = try? String(contentsOfFile: path, encoding: .utf8),
-                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return structuredBlock(
-                    request,
-                    reason: .invalidInputQuality,
-                    message: "kicad_build_intent_model requires a readable non-empty requirements artifact.",
-                    context: context
-                )
-            }
-            bodyObject = inferredDesignIntentObject(fromRequirementsText: text, baseObject: normalizedObject)
         } else if object["requirements"] != nil || object["constraints_json"] != nil {
             bodyObject = normalizedObject
         } else {
@@ -4070,7 +4073,8 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
 
         if componentsMissing(from: bodyObject) && netsMissing(from: bodyObject) {
             let synthesis = topologySynthesis(from: bodyObject)
-            if synthesis.components.isEmpty || synthesis.nets.isEmpty {
+            if (synthesis.components.isEmpty || synthesis.nets.isEmpty)
+                && requirements(from: bodyObject).isEmpty {
                 return structuredBlock(
                     request,
                     reason: .invalidInputQuality,

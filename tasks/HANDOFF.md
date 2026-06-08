@@ -59,10 +59,11 @@ Current active line: electronics plugin finish checklist complete.
 Electronics domain status: finished as evidence-gated workflow infrastructure.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 489.
+Latest completed task is Task 490.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 490 — repair release blocker workflow gates
 - Task 489 — synchronize Developer Manual with current source tree
 - Task 488 — finalize electronics completion contract status
 - Task 487 — recover F4 GUI spec evidence path

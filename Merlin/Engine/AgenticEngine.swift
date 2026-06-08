@@ -1932,6 +1932,19 @@ final class AgenticEngine {
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
                 recordContinuationEvidence(calls: regularCalls, results: regularResults)
+                if hasSatisfiedRequestedStopBoundary(
+                    originalTask: userMessage,
+                    calls: regularCalls,
+                    results: regularResults
+                ) {
+                    pendingContinuationSteps.removeAll()
+                    continuationAborted = true
+                    try? FileManager.default.removeItem(at: continuationInjectURL)
+                    continuation.yield(.systemNote(
+                        "[requested stop boundary satisfied after tool result - stopping]"
+                    ))
+                    break turnLoop
+                }
                 if scheduleRepairableElectronicsVerificationContinuationIfNeeded() {
                     continuation.yield(.systemNote(
                         "[electronics verification diagnostics received - scheduling repair handoff]"
@@ -2012,19 +2025,6 @@ final class AgenticEngine {
                     try? FileManager.default.removeItem(at: continuationInjectURL)
                     continuation.yield(.systemNote(
                         "[electronics workflow complete after verified workflow result - stopping]"
-                    ))
-                    break turnLoop
-                }
-                if hasSatisfiedRequestedStopBoundary(
-                    originalTask: userMessage,
-                    calls: regularCalls,
-                    results: regularResults
-                ) {
-                    pendingContinuationSteps.removeAll()
-                    continuationAborted = true
-                    try? FileManager.default.removeItem(at: continuationInjectURL)
-                    continuation.yield(.systemNote(
-                        "[requested stop boundary satisfied after tool result - stopping]"
                     ))
                     break turnLoop
                 }

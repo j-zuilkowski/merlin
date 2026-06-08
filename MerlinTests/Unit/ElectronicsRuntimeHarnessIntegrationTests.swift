@@ -11,10 +11,10 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         XCTAssertNoThrow(try WorkspaceMessagePayload.jsonString(payload).decodeJSON(ElectronicsEndToEndWorkflowRequest.self))
         let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .ok, response.payload?.stringValue() ?? "\(response.diagnostics)")
         let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
         XCTAssertEqual(result.diagnostics, [])
-        XCTAssertEqual(result.status, .fabReady)
+        XCTAssertEqual(result.status, .fabReady, "\(result)")
         XCTAssertFalse(result.isComplete)
         XCTAssertTrue(result.missingEvidence.contains("release_package"))
         XCTAssertTrue(result.missingEvidence.contains("release_approval"))
@@ -50,9 +50,9 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         let payload = try harnessPayload(evidence: evidence)
         let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
 
-        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.status, .ok, response.payload?.stringValue() ?? "\(response.diagnostics)")
         let result = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsEndToEndResult.self))
-        XCTAssertEqual(result.status, .complete)
+        XCTAssertEqual(result.status, .complete, "\(result)")
         XCTAssertTrue(result.isComplete)
         XCTAssertTrue(result.missingEvidence.isEmpty)
     }
@@ -208,12 +208,14 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
 
     private func harnessPayload(evidence: ElectronicsEndToEndEvidence) throws -> String {
         let outputDirectory = temporaryDirectory("runtime-harness")
+        let designIntentPath = try writeSeparatedDomainIntent(in: outputDirectory).path
+        let circuitIRPath = try writeSeparatedCircuitIR(in: outputDirectory).path
         let evidenceData = try WorkspaceJSON.encoder.encode(evidence)
         let evidenceObject = try JSONSerialization.jsonObject(with: evidenceData)
         let object: [String: Any] = [
             "job_id": "amp-low-voltage-runtime",
-            "design_intent_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/design_intent.json").path,
-            "circuit_ir_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/circuit_ir.json").path,
+            "design_intent_path": designIntentPath,
+            "circuit_ir_path": circuitIRPath,
             "output_directory": outputDirectory.path,
             "evidence": evidenceObject,
         ]
@@ -225,17 +227,108 @@ final class ElectronicsRuntimeHarnessIntegrationTests: XCTestCase {
         evidenceArtifacts: ElectronicsEvidenceArtifactPaths,
         outputDirectory: URL
     ) throws -> String {
+        let designIntentPath = try writeSeparatedDomainIntent(in: outputDirectory).path
+        let circuitIRPath = try writeSeparatedCircuitIR(in: outputDirectory).path
         let artifactData = try WorkspaceJSON.encoder.encode(evidenceArtifacts)
         let artifactObject = try JSONSerialization.jsonObject(with: artifactData)
         let object: [String: Any] = [
             "job_id": "amp-low-voltage-artifacts",
-            "design_intent_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/design_intent.json").path,
-            "circuit_ir_path": repoURL("plugins/electronics/fixtures/amp_low_voltage_audio/circuit_ir.json").path,
+            "design_intent_path": designIntentPath,
+            "circuit_ir_path": circuitIRPath,
             "output_directory": outputDirectory.path,
             "evidence_artifacts": artifactObject,
         ]
         let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
         return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    private func writeSeparatedDomainIntent(in root: URL) throws -> URL {
+        try writeJSON(separatedDomainIntent(), name: "separated-design-intent.json", in: root)
+    }
+
+    private func writeSeparatedCircuitIR(in root: URL) throws -> URL {
+        try writeJSON(lowVoltageControlCircuitIR(), name: "separated-circuit-ir.json", in: root)
+    }
+
+    private func separatedDomainIntent() -> DesignIntent {
+        DesignIntent(
+            designId: "generic_mixed_power_controller",
+            title: "Generic mixed mains and low-voltage controller",
+            origin: .naturalLanguage,
+            approval: DesignApproval(status: .approved, approvedBy: "test", approvedAt: "2026-06-06T00:00:00Z"),
+            requirements: [
+                Requirement(id: "req-1", text: "Design a mains transformer supply and isolated low-voltage controller as separate safety domains.", priority: "must"),
+            ],
+            assumptions: [
+                Assumption(id: "assume-1", text: "Hazardous mains and isolated low-voltage circuitry are separate board domains.", rationale: "Isolation boundary and review requirements differ."),
+            ],
+            unresolvedDecisions: [],
+            boards: [
+                BoardIntent(
+                    id: "mains_power",
+                    title: "Mains transformer board",
+                    safetyDomain: "mains_primary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: false),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JSEC", targetBoardId: "low_voltage_control", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+                BoardIntent(
+                    id: "low_voltage_control",
+                    title: "Low voltage control board",
+                    safetyDomain: "isolated_secondary",
+                    verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true),
+                    interBoardConnectors: [
+                        InterBoardConnectorIntent(id: "JPRI", targetBoardId: "mains_power", signalRole: "isolated secondary handoff"),
+                    ]
+                ),
+            ],
+            safetyProfile: SafetyProfile(isolationRequired: true, creepageMm: 6.4, notes: ["Mains and isolated secondary domains are separated."]),
+            verificationPlan: VerificationPlan(ercRequired: true, drcRequired: true, spiceRequired: true)
+        )
+    }
+
+    private func lowVoltageControlCircuitIR() -> CircuitIR {
+        CircuitIR(
+            designId: "generic_mixed_power_controller",
+            boardId: "low_voltage_control",
+            components: [
+                CircuitComponent(
+                    refdes: "Q1",
+                    role: "low-voltage control transistor",
+                    selectedSymbol: "Device:R",
+                    selectedFootprint: "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+                    manufacturerPartNumber: "2N3904",
+                    sourceEvidence: [SourceEvidence(kind: "datasheet", reference: "2N3904 datasheet")],
+                    pins: [
+                        CircuitPin(componentRefdes: "Q1", pinNumber: "1", canonicalName: "B", electricalType: "input", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "Q1", pinNumber: "2", canonicalName: "C", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "CTRL_IN",
+                    role: "control input",
+                    endpoints: [CircuitNetEndpoint(componentRefdes: "Q1", pinNumber: "1")],
+                    netClass: "signal",
+                    safetyDomain: "isolated_secondary"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: [
+                VerificationScenario(id: "erc", kind: "erc", expectation: "no blocking ERC errors"),
+                VerificationScenario(id: "spice", kind: "spice", expectation: "declared measurements pass envelopes"),
+            ]
+        )
+    }
+
+    private func writeJSON<T: Encodable>(_ value: T, name: String, in root: URL) throws -> URL {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let url = root.appendingPathComponent(name)
+        let data = try WorkspaceJSON.encoder.encode(value)
+        try data.write(to: url, options: .atomic)
+        return url
     }
 
     private func writeCleanArtifactPaths(root: URL) throws -> ElectronicsEvidenceArtifactPaths {

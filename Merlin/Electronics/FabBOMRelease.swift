@@ -412,6 +412,25 @@ struct FabricationReleaseEvidence: Codable, Sendable, Equatable {
     var releasePackagePath: String?
     var approvals: [ElectronicsApprovalRecord]
 
+    enum CodingKeys: String, CodingKey {
+        case schematicVerified
+        case pcbVerified
+        case ercReportPath
+        case drcReportPath
+        case normalizedBOMPath = "normalizedBomPath"
+        case vendorAvailabilityPath
+        case datasheetEvidencePath
+        case vendorOrderPackagePath
+        case bomValidation
+        case vendorAvailability
+        case datasheetValidation
+        case fabricationValidation
+        case profileValidation
+        case verificationReportPath
+        case releasePackagePath
+        case approvals
+    }
+
     static let fabReadyFixture = FabricationReleaseEvidence(
         schematicVerified: true,
         pcbVerified: true,

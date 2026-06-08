@@ -11,6 +11,8 @@ final class ElectronicsJobPanelTests: XCTestCase {
         XCTAssertEqual(ElectronicsJobPanelView.sectionLabels, [
             "Live Leaderboard",
             "Running Now",
+            "Blocked Jobs",
+            "Fab Ready",
             "Completed Jobs",
             "Progress History",
             "Evidence Gates",

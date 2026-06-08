@@ -29,55 +29,21 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
         XCTAssertTrue(circuitIR.constraints.contains { $0.kind == "thermal" && $0.target == "QOUT1" })
     }
 
-    func testFixturePassesGenericResolverMaterializerERCAndSchematicVerification() throws {
+    func testLowVoltageFixtureCannotPassKiCadMutationUntilSeparateBoardEvidenceExists() throws {
         let intent: DesignIntent = try loadFixture("design_intent.json")
         let circuitIR: CircuitIR = try loadFixture("circuit_ir.json")
         let schemaResult = ElectronicsSchemaValidator.validateReadyForKiCadMutation(
             designIntent: intent,
             circuitIR: circuitIR
         )
-        XCTAssertTrue(schemaResult.isValid, schemaResult.issues.map(\.message).joined(separator: "\n"))
 
-        let resolver = KiCadLibraryPinResolver(
-            symbols: circuitIR.components.map(symbolDefinition),
-            footprints: circuitIR.components.compactMap(footprintDefinition)
-        )
-        for component in circuitIR.components {
-            let resolution = resolver.resolve(component: component, pcbBound: true)
-            XCTAssertTrue(resolution.isResolved, "\(component.refdes): \(resolution.issues)")
-        }
-
-        let outputDirectory = temporaryDirectory("amp-low-voltage-fixture")
-        let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
-            circuitIR: circuitIR,
-            outputDirectory: outputDirectory
-        )
-        let schematic = try KiCadSchematicParser().parse(String(contentsOf: materialized.schematicURL, encoding: .utf8))
-        let parity = CircuitIRSchematicParityChecker().check(circuitIR: circuitIR, schematic: schematic)
-        XCTAssertTrue(parity.isValid, parity.issues.map(\.message).joined(separator: "\n"))
-
-        let ercResult = ERCRepairLoop().run(
-            initialSchematic: schematic,
-            circuitIR: circuitIR,
-            ercReports: [KiCadERCReport(violations: [])],
-            resolverEvidence: circuitIR.components.map { resolver.resolve(component: $0, pcbBound: true) }
-        )
-        XCTAssertEqual(ercResult.status, .verified)
-
-        let verification = SchematicVerificationGate().evaluate(SchematicVerificationEvidence(
-            approvedDesignIntent: intent.approval.status == .approved,
-            circuitIRValidationPassed: schemaResult.isValid,
-            kicadProjectPath: materialized.projectURL.path,
-            kicadSchematicPath: materialized.schematicURL.path,
-            ercReportPath: outputDirectory.appendingPathComponent("erc-report.json").path,
-            hasSchematicVerificationReport: true,
-            blockingERCViolations: [],
-            repairLoopStatus: ercResult.status
-        ))
-        XCTAssertEqual(verification.status, .schematicVerified)
+        XCTAssertFalse(schemaResult.isValid)
+        XCTAssertTrue(schemaResult.issues.contains { $0.code == "MULTIBOARD_DECOMPOSITION_REQUIRED" }, "\(schemaResult)")
+        XCTAssertTrue(schemaResult.issues.contains { $0.code == "BOARD_VERIFICATION_PLAN_REQUIRED" }, "\(schemaResult)")
+        XCTAssertTrue(schemaResult.issues.contains { $0.code == "INTERBOARD_CONNECTOR_REQUIRED" }, "\(schemaResult)")
     }
 
-    func testFixtureRealKiCadERCGateUsesGeneratedSchematicEvidence() throws {
+    func testFixtureRealKiCadERCGateStaysBlockedUntilSeparateBoardEvidenceExists() throws {
         let kicadCLI = try findKiCadCLIOrSkip()
         let intent: DesignIntent = try loadFixture("design_intent.json")
         let circuitIR: CircuitIR = try loadFixture("circuit_ir.json")
@@ -85,7 +51,8 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
             designIntent: intent,
             circuitIR: circuitIR
         )
-        XCTAssertTrue(schemaResult.isValid, schemaResult.issues.map(\.message).joined(separator: "\n"))
+        XCTAssertFalse(schemaResult.isValid)
+        XCTAssertTrue(schemaResult.issues.contains { $0.code == "MULTIBOARD_DECOMPOSITION_REQUIRED" }, "\(schemaResult)")
 
         let outputDirectory = temporaryDirectory("amp-low-voltage-real-erc")
         let materialized = try CircuitIRKiCadSchematicMaterializer().materialize(
@@ -130,11 +97,7 @@ final class AmpLowVoltageFixtureTests: XCTestCase {
             blockingERCViolations: report.schematicVerificationBlockingViolations,
             repairLoopStatus: repairResult.status
         ))
-        if report.schematicVerificationBlockingViolations.isEmpty {
-            XCTAssertEqual(verification.status, .schematicVerified)
-        } else {
-            XCTAssertEqual(verification.status, .blocked)
-        }
+        XCTAssertEqual(verification.status, .blocked)
     }
 
     func testMainsPowerSupplyFixtureIsSeparateHighStakesStub() throws {

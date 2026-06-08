@@ -120,6 +120,20 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_approve_design_intent",
+      "display_name": "kicad_approve_design_intent",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_approve_design_intent" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_generate_circuit_ir",
+      "display_name": "kicad_generate_circuit_ir",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_generate_circuit_ir" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_select_components",
       "display_name": "kicad_select_components",
       "kind": "tool",
@@ -236,6 +250,13 @@
       "display_name": "kicad_check_parity",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_check_parity" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_generate_spice_scenario",
+      "display_name": "kicad_generate_spice_scenario",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_generate_spice_scenario" },
       "required_permission_scope": "externalSideEffect"
     },
     {

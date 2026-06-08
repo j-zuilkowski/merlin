@@ -294,7 +294,7 @@ final class AgenticEngineTests: XCTestCase {
             .toolCall(
                 id: "workflow",
                 name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
-                args: #"{"requirements":"25W Class A guitar amplifier"}"#
+                args: #"{"design_intent_path":"/tmp/amp-design-intent.json","circuit_ir_path":"/tmp/amp-circuit-ir.json","output_directory":"/tmp/amp-out"}"#
             ),
             .text("should not summarize after terminal workflow result"),
         ])
@@ -333,7 +333,7 @@ final class AgenticEngineTests: XCTestCase {
             .toolCall(
                 id: "workflow",
                 name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
-                args: #"{"requirements":"25W Class A guitar amplifier"}"#
+                args: #"{"design_intent_path":"/tmp/amp-design-intent.json","circuit_ir_path":"/tmp/amp-circuit-ir.json","output_directory":"/tmp/amp-out"}"#
             ),
             .toolCall(
                 id: "read-after-block",

@@ -19,15 +19,13 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         XCTAssertNotEqual(result.status.rawValue, "COMPLETE")
     }
 
-    func testAmpLowVoltageFixtureReachesFabReadyNotCompleteWithoutReleaseApproval() throws {
-        let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
-        let circuitIR: CircuitIR = try loadFixture("amp_low_voltage_audio/circuit_ir.json")
-
+    func testSeparatedLowVoltageBoardEvidenceReachesFabReadyNotCompleteWithoutReleaseApproval() throws {
         let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: intent,
-            circuitIR: circuitIR,
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
             outputDirectory: temporaryDirectory("amp-fab-ready"),
-            evidence: .ampLowVoltageVerified
+            evidence: .ampLowVoltageVerified,
+            approvals: [.highStakesSignoff]
         ))
 
         XCTAssertEqual(result.schematicStatus, .schematicVerified)
@@ -41,16 +39,15 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
     }
 
     func testAmpLowVoltageFixtureRequiresSPICEEvidenceBeforeFabReadyOrComplete() throws {
-        let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
-        let circuitIR: CircuitIR = try loadFixture("amp_low_voltage_audio/circuit_ir.json")
         var evidence = ElectronicsEndToEndEvidence.ampLowVoltageVerified
         evidence.spice = nil
 
         let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: intent,
-            circuitIR: circuitIR,
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
             outputDirectory: temporaryDirectory("amp-missing-spice"),
-            evidence: evidence
+            evidence: evidence,
+            approvals: [.highStakesSignoff]
         ))
 
         XCTAssertEqual(result.status, .blocked)
@@ -147,14 +144,16 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
     }
 
     func testCompositeCircuitIRSchematicCannotReachSchematicVerified() throws {
-        let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
-        let circuitIR = compositeCircuitIR()
+        var circuitIR = compositeCircuitIR()
+        circuitIR.designId = "generic_mixed_power_controller"
+        circuitIR.boardId = "low_voltage_control"
 
         let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: intent,
+            designIntent: separatedDomainIntent(),
             circuitIR: circuitIR,
             outputDirectory: temporaryDirectory("amp-composite-circuit-ir"),
-            evidence: .ampLowVoltageVerified
+            evidence: .ampLowVoltageVerified,
+            approvals: [.highStakesSignoff]
         ))
 
         XCTAssertEqual(result.status, .blocked)
@@ -163,8 +162,6 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
     }
 
     func testCompleteRequiresReleasePackageAndApproval() throws {
-        let intent: DesignIntent = try loadFixture("amp_low_voltage_audio/design_intent.json")
-        let circuitIR: CircuitIR = try loadFixture("amp_low_voltage_audio/circuit_ir.json")
         var evidence = ElectronicsEndToEndEvidence.ampLowVoltageVerified
         evidence.fabrication.releasePackagePath = "/tmp/amp-low-voltage/release.zip"
         evidence.fabrication.approvals.append(ElectronicsApprovalRecord(
@@ -174,10 +171,11 @@ final class ElectronicsEndToEndHarnessTests: XCTestCase {
         ))
 
         let result = try ElectronicsEndToEndHarness().run(ElectronicsEndToEndInput(
-            designIntent: intent,
-            circuitIR: circuitIR,
+            designIntent: separatedDomainIntent(),
+            circuitIR: mixedDomainCircuitIR(boardId: "low_voltage_control"),
             outputDirectory: temporaryDirectory("amp-complete"),
-            evidence: evidence
+            evidence: evidence,
+            approvals: [.highStakesSignoff]
         ))
 
         XCTAssertEqual(result.status, .complete)
