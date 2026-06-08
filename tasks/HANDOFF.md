@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 496.
+Latest completed task is Task 497.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 497 — pass release llama.cpp router gate
 - Task 496 — pass release local provider gate
 - Task 495 — pass release live DeepSeek gate
 - Task 494 — pass release UI and visual gates
@@ -148,6 +149,18 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
+The gate started Homebrew `llama-server` 9290 on `127.0.0.1:8081` with
+`docs/e2e/2026-05-26-merlin-full-gui/llamacpp-router-models.ini`. The router
+catalog exposed `default` first, but the smoke selected explicit
+`qwen3-coder-local` and `qwen3-vl-local` IDs. Completion, streaming, tool-call,
+and vision checks passed, and cleanup closed port 8081. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log` and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`.
+The next release blocker is gate #7, the xcalibre RAG health/search/cleanup
+proof. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
+are green.
+
 Task 496 passed release gate #5, the local-provider pair smoke/load/shutdown
 proof. The fail-first shell wrapper attempt is preserved because it incorrectly
 treated an empty `lsof` result as an occupied Jan port. The green rerun started
@@ -159,9 +172,7 @@ started Jan's separate vision lifecycle, passed the image request smoke, and
 again closed port 1337. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log` and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`.
-The next release blocker is gate #6, the llama.cpp router explicit model ID
-smoke. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
-are green.
+Gate #6 is now green under Task 497.
 
 Task 495 repaired and passed release gate #4. The fail-first live run could
 not compile `MerlinTests-Live` because `CalibrationLiveTests` did not handle
@@ -208,7 +219,7 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gates #1-#5 are passed. Gate #6 is the next release blocker. Gate #10,
+push. Gates #1-#6 are passed. Gate #7 is the next release blocker. Gate #10,
 KiCad release screenshots, remains blocked until gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics

@@ -23,7 +23,7 @@ runs, fails, is repaired, or passes.
 | 3 | Focused visual target: `MerlinUITests/VisualLayoutTests` | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`; `/tmp/merlin-derived-v240-visual/Logs/Test/Test-MerlinUITests-2026.06.08_15-09-16--0400.xcresult`; focused visual suite passed 6 tests, 0 failures. | none |
 | 4 | Live agent loop: DeepSeek-backed live tests when key is present | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log`; fail-first compile evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.fail-first.log`; `/tmp/merlin-derived-v240-live-deepseek/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-13-52--0400.xcresult`; DeepSeek provider slice passed 3 tests, agent-loop slice passed 1 test, 0 failures. | none |
 | 5 | Local-provider pairs smoke/load/shutdown | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log`; fail-first wrapper evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`; LM Studio text/streaming/tool and explicit vision smokes passed; Jan text/streaming/tool smoke passed; Jan separate vision lifecycle smoke passed; ports 1234 and 1337 closed after cleanup. | none |
-| 6 | llama.cpp router explicit model ID smoke | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log` | none yet |
+| 6 | llama.cpp router explicit model ID smoke | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`; router catalog exposed `default` first but smoke selected explicit `qwen3-coder-local` and `qwen3-vl-local`; completion, streaming, tool-call, and vision checks passed; port 8081 closed after cleanup. | none |
 | 7 | xcalibre RAG health/search/cleanup | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log` | none yet |
 | 8 | Capability scenarios S1/S2 convergence | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.log` | none yet |
 | 9 | Electronics/KiCad deterministic checks | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log` | none yet |
@@ -46,6 +46,6 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-The immediate blocker is gate #6, the llama.cpp router explicit model ID smoke.
+The immediate blocker is gate #7, the xcalibre RAG health/search/cleanup proof.
 Gate #10, the KiCad release screenshot step, is not valid until gates #1-#9 are
 green.
