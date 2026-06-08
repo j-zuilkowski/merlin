@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 497.
+Latest completed task is Task 498.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 498 — pass release xcalibre RAG gate
 - Task 497 — pass release llama.cpp router gate
 - Task 496 — pass release local provider gate
 - Task 495 — pass release live DeepSeek gate
@@ -149,6 +150,22 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 498 passed release gate #7, the xcalibre RAG health/search/cleanup proof.
+The fail-first attempt is preserved because the isolated xcalibre config used a
+non-base64 `jwt_secret`, which the current backend rejects before health. The
+green rerun built the real sibling backend from
+`/Users/jonzuilkowski/Documents/localProject/xcalibre-server`, started it on
+`127.0.0.1:8083`, passed `/health` and OpenAPI readiness, registered/logged in
+without logging the JWT, inserted a sentinel Merlin memory chunk, retrieved
+`TANGERINE-498` through `/api/v1/search/chunks`, deleted the sentinel, verified
+it was absent after deletion, and closed port 8083. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`, and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`.
+The next release blocker is gate #8, the capability scenarios S1/S2 convergence
+proof. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
+are green.
+
 Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
 The gate started Homebrew `llama-server` 9290 on `127.0.0.1:8081` with
 `docs/e2e/2026-05-26-merlin-full-gui/llamacpp-router-models.ini`. The router
@@ -157,9 +174,7 @@ catalog exposed `default` first, but the smoke selected explicit
 and vision checks passed, and cleanup closed port 8081. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log` and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`.
-The next release blocker is gate #7, the xcalibre RAG health/search/cleanup
-proof. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
-are green.
+Gate #7 is now green under Task 498.
 
 Task 496 passed release gate #5, the local-provider pair smoke/load/shutdown
 proof. The fail-first shell wrapper attempt is preserved because it incorrectly
@@ -219,7 +234,7 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gates #1-#6 are passed. Gate #7 is the next release blocker. Gate #10,
+push. Gates #1-#7 are passed. Gate #8 is the next release blocker. Gate #10,
 KiCad release screenshots, remains blocked until gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics

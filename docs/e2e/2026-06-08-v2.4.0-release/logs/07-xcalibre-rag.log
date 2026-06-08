@@ -1,0 +1,38 @@
+
+== preflight ==
+Python 3.9.13
+cargo 1.94.0 (85eff7c80 2026-01-15)
+
+== build backend ==
+
+== write isolated config ==
+config: /tmp/merlin-release-xcalibre.QvOOvk/config.toml
+
+== start xcalibre-server ==
+{"status":"ok","version":"2.7.0","db":{"status":"ok"},"search":{"status":"disabled"}}openapi ok
+
+== authenticate ==
+register status: 201
+login status: 200
+token acquired: yes
+
+== insert sentinel memory chunk ==
+insert status: 201
+{"id":"a640630d-92ee-4c59-841c-f3ad31b51a60","created_at":1780946882}chunk id acquired: yes
+
+== search sentinel ==
+search status: 200
+{"query":"TANGERINE-498","chunks":[{"chunk_id":"a640630d-92ee-4c59-841c-f3ad31b51a60","source":"memory","book_id":null,"book_title":null,"heading_path":null,"chunk_type":"factual","text":"Merlin release gate 498 sentinel: slot status panel uses red orange green and grey dots; release search must return TANGERINE-498.","word_count":null,"bm25_score":-0.000002375,"cosine_score":null,"rrf_score":0.016393442,"rerank_score":null}],"total_searched":1,"retrieval_ms":0}sentinel search: PASS
+
+== delete sentinel ==
+delete status: 204
+
+== search after delete ==
+search after delete status: 200
+{"query":"TANGERINE-498","chunks":[],"total_searched":0,"retrieval_ms":0}sentinel delete: PASS
+
+== summary ==
+GATE 7 PASS: xcalibre health/auth/search/delete cleanup proof passed
+
+== cleanup port ==
+port 8083: closed

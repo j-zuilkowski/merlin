@@ -1,0 +1,2 @@
+{"timestamp":"2026-06-08T19:27:59.310942Z","level":"WARN","fields":{"message":"SECURITY: base_url is HTTP and https_only is false. Session cookies will not have the Secure flag. Set server.https_only = true or use an HTTPS base_url in production."},"target":"backend::config"}
+{"timestamp":"2026-06-08T19:28:02.013755Z","level":"WARN","fields":{"message":"refresh token cookie issued without Secure flag — do not use in production without HTTPS"},"target":"backend::api::auth"}
