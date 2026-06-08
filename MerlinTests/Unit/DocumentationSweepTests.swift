@@ -186,6 +186,74 @@ final class DocumentationSweepTests: XCTestCase {
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("blocked"))
     }
 
+    func testDeveloperManualMatchesCurrentEngineToolAndElectronicsSurfaces() throws {
+        let manual = try repoFile("Merlin/Docs/DeveloperManual.md")
+
+        for required in [
+            "slotAssignments",
+            "ProviderRegistry",
+            "provider(for:)",
+            "executable turn slot",
+            "Merlin/Discipline/DisciplineEngine.swift",
+            "Merlin/Runtime/",
+            "Merlin/Electronics/",
+            "Merlin/CAG/",
+            "Merlin/Plugins/",
+            "app_launch",
+            "app_list_running",
+            "ui_inspect",
+            "ui_screenshot",
+            "xcode_derived_data_clean",
+            "xcode_simulator_boot",
+            "tool_discover",
+            "generate_dev_guide",
+            "kicad_build_intent_model",
+            "kicad_generate_circuit_ir",
+            "kicad_select_components",
+            "kicad_revise_component_selection",
+            "kicad_compile_project",
+            "kicad_generate_spice_scenario",
+            "kicad_prepare_vendor_order",
+            "kicad_package_release",
+            "SCHEMATIC_VERIFIED",
+            "PCB_VERIFIED",
+            "BOM_READY",
+            "FAB_READY",
+            "COMPONENT_SELECTION_REVISION_BLOCKED",
+        ] {
+            XCTAssertTrue(manual.contains(required), "DeveloperManual.md missing current surface: \(required)")
+        }
+
+        for stale in [
+            "proProvider",
+            "flashProvider",
+            "visionProvider",
+            "proProvider.complete()",
+            "Merlin/Engine/DisciplineEngine.swift",
+            "xcode_open_simulator",
+            "launch_app",
+            "quit_app",
+            "focus_app",
+            "list_running_apps",
+            "ax_inspect",
+            "cg_event",
+            "capture_screen",
+            "kicad_create_project",
+            "kicad_write_schematic",
+            "kicad_set_board_constraints",
+            "kicad_set_netclasses",
+            "kicad_capture_schematic_png",
+            "kicad_capture_pcb_png",
+            "kicad_export_bom",
+            "kicad_query_vendor",
+            "kicad_run_cam_checks",
+            "kicad_submit_order_approval",
+            "kicad_release_approval",
+        ] {
+            XCTAssertFalse(manual.contains(stale), "DeveloperManual.md still contains stale surface: \(stale)")
+        }
+    }
+
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
         return try String(contentsOf: url, encoding: .utf8)

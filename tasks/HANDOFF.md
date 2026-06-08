@@ -59,10 +59,11 @@ Current active line: electronics plugin finish checklist complete.
 Electronics domain status: finished as evidence-gated workflow infrastructure.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 488.
+Latest completed task is Task 489.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 489 — synchronize Developer Manual with current source tree
 - Task 488 — finalize electronics completion contract status
 - Task 487 — recover F4 GUI spec evidence path
 - Task 486 — cap generated electronics artifact reads in workflow context
@@ -448,6 +449,39 @@ finished as evidence-gated workflow infrastructure, and the current GUI proof
 stops at `COMPONENT_SELECTION_REVISION_BLOCKED` until concrete component,
 catalog, datasheet, and footprint/pin evidence is supplied. This is not a claim
 that AmpDemo reached `FAB_READY`.
+
+Task 489 synchronized `Merlin/Docs/DeveloperManual.md` with the current source
+tree and updated stale source comments. The manual now documents the
+slot/provider-registry `AgenticEngine` model, current run-loop responsibilities,
+current `Merlin/Discipline`, `Merlin/Runtime`, `Merlin/Electronics`,
+`Merlin/Plugins`, and `Merlin/CAG` layout entries, current built-in tool names,
+and the current electronics `KiCadToolDefinitions` / evidence-gated completion
+contract. Code-map cross references were updated for discipline, runtime, and
+electronics source files.
+
+Task 489 fail-first evidence:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests/testDeveloperManualMatchesCurrentEngineToolAndElectronicsSurfaces -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result before implementation: selected documentation sweep failed with 47
+failures for missing current surfaces and stale manual surfaces.
+
+Task 489 focused verification:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests/testDeveloperManualMatchesCurrentEngineToolAndElectronicsSurfaces -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result after implementation: selected test passed, 1 test, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests -only-testing:MerlinTests/FinalElectronicsDocumentationSweepTests -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result after implementation: selected documentation sweeps passed, 16 tests, 0
+failures.
 
 Task 485 evidence paths:
 

@@ -64,15 +64,20 @@ merlin/
 │   ├── Automations/          # Legacy/internal ThreadAutomation types
 │   ├── Config/               # AppSettings, TOMLParser, HookConfig, AppearanceSettings
 │   ├── Connectors/           # GitHub, Linear, Slack connectors; PRMonitor
+│   ├── CAG/                  # Cache-augmented generation policy and metrics
+│   ├── Discipline/           # DisciplineEngine, scanners, release/manual gates
 │   ├── Docs/                 # Bundled UserGuide.md and DeveloperManual.md (this file)
 │   ├── Engine/               # AgenticEngine, ContextManager, ToolRouter, DiffEngine, etc.
+│   ├── Electronics/          # KiCad/electronics workflow models, gates, adapters
 │   ├── Hooks/                # HookEngine, HookDecision
 │   ├── Keychain/             # KeychainManager
 │   ├── MCP/                  # MCPBridge, MCPConfig, MCPToolDefinition
 │   ├── Memories/             # MemoryEngine, MemoryEntry
 │   ├── Notifications/        # NotificationEngine
+│   ├── Plugins/              # Runtime plugin implementations such as ElectronicsRuntimePlugin
 │   ├── Providers/            # LLMProvider protocol + all provider implementations
 │   ├── RAG/                  # XcalibreClient, RAGTools
+│   ├── Runtime/              # WorkspaceRuntime, WorkspaceMessageBus, artifact/settings stores
 │   ├── Scheduler/            # ScheduledTask, SchedulerEngine
 │   ├── Sessions/             # LiveSession, Session, SessionManager, SessionStore
 │   ├── Skills/               # Skill, SkillFrontmatter, SkillsRegistry
@@ -281,11 +286,12 @@ AgenticEngine.runLoop()       ← parse tool calls
 
 `AgenticEngine` is the central orchestrator. It is `@MainActor` and owns:
 
-- `proProvider` — the primary LLM (high-capability, used for reasoning)
-- `flashProvider` — the fast LLM (used for quick tasks and subagents)
-- `visionProvider` — the vision-capable LLM
+- `slotAssignments: [AgentSlot: String]` — maps execute/reason/orchestrate/vision slots to provider IDs
+- `registry: ProviderRegistry?` — resolves configured provider IDs into live `LLMProvider` instances
+- `loraProvider: (any LLMProvider)?` — optional execute-slot override when a local LoRA adapter is loaded
 - `contextManager: ContextManager` — message history
 - `toolRouter: ToolRouter` — tool dispatch
+- runtime collaborators such as `KAGEngine`, local memory backend, LoRA coordinator, and provider performance tracking
 
 ### Entry Points
 
@@ -298,14 +304,14 @@ AgenticEngine.runLoop()       ← parse tool calls
 
 ### The Run Loop (`runLoop`)
 
-`runLoop` is the recursive core. At each depth:
+`runLoop` is the core turn loop. At each depth:
 
-1. Builds a `CompletionRequest` from context, system prompt (constitution.md + memories), tools, and optional vision attachment
-2. Calls `proProvider.complete()` and streams events
-3. On `toolCallStarted` — fires `HookEngine.runPreToolUse()`, then dispatches via `ToolRouter`
-4. On `toolCallResult` — optionally runs `HookEngine.runPostToolUse()` to let hooks rewrite results
-5. After all tool results are appended to context — checks `HookEngine.runStop()` to determine whether to continue
-6. Recurses at `depth + 1` (max depth prevents infinite loops)
+1. Classifies the user message and maps it to an executable turn slot with `selectSlot(for:)` and `executableTurnSlot(for:)`.
+2. Resolves the provider through `provider(for:)` / `resolvedProvider(for:)`, using `slotAssignments`, `ProviderRegistry`, slot fallbacks, and the optional execute-slot LoRA override.
+3. Builds a `CompletionRequest` from context, system prompt (constitution.md + memories + domain addenda), offered tools, and optional vision attachment.
+4. Streams provider output, collects tool calls, and emits `AgentEvent` values.
+5. Applies pre-tool gates/hooks, dispatches through `ToolRouter`, appends tool results, and applies post-tool hooks.
+6. Runs continuation, critic, workflow-lock, and stop-hook decisions before either returning or re-entering at `depth + 1` under the configured loop ceilings.
 
 ### AgentEvent
 
@@ -315,6 +321,7 @@ All outputs are yielded as `AgentEvent` values:
 enum AgentEvent {
     case text(String)                   // streamed text delta
     case thinking(String)               // extended thinking block
+    case slotRuntimeState(AgentSlot, SlotRuntimeState)
     case toolCallStarted(ToolCall)
     case toolCallResult(ToolResult)
     case subagentStarted(id:agentName:)
@@ -322,6 +329,7 @@ enum AgentEvent {
     case ragSources([RAGChunk])         // emitted after RAG search; shown in Sources footer
     case groundingReport(GroundingReport) // emitted after RAG search every turn (v9)
     case systemNote(String)
+    case cleanStop(reason:summary:)
     case error(Error)
 }
 ```
@@ -459,7 +467,7 @@ Called from `AgenticEngine.runLoop()` after `performanceTracker.record()` when b
 
 ### loraProvider routing
 
-`AgenticEngine.loraProvider: (any LLMProvider)?` holds an `OpenAICompatibleProvider` pointing at `AppSettings.loraServerURL`. When set, `provider(for: .execute)` returns `loraProvider` instead of `proProvider`. The reason slot, critic slot, and orchestrate slot are never affected by the LoRA provider — they always use the unmodified base provider assignment.
+`AgenticEngine.loraProvider: (any LLMProvider)?` holds an `OpenAICompatibleProvider` pointing at `AppSettings.loraServerURL`. When set, `provider(for: .execute)` returns `loraProvider` instead of the execute slot's configured `ProviderRegistry` assignment. The reason, critic, and orchestrate paths are never affected by the LoRA provider; they continue to use their configured slot assignment and fallback rules.
 
 `AppState` wires `loraProvider` via Combine: subscribes to changes in `loraEnabled`, `loraAutoLoad`, `loraAdapterPath`, and `loraServerURL`. When all conditions are met (enabled + autoLoad + adapter file exists), it constructs the `loraProvider` and assigns it to `engine.loraProvider`.
 
@@ -473,7 +481,7 @@ Settings UI with: master toggle (`loraEnabled`), sub-group for auto-train option
 
 ## DisciplineEngine (v2.2)
 
-**Files:** `Merlin/Engine/DisciplineEngine.swift` and associated scanner actors in `Merlin/Engine/`.
+**Files:** `Merlin/Discipline/DisciplineEngine.swift` and associated scanner actors in `Merlin/Discipline/`.
 
 ### Overview
 
@@ -709,12 +717,11 @@ Called once at `AppState.init()`. Connects each tool name to its Swift handler f
 | File | Tools |
 |---|---|
 | `FileSystemTools.swift` | read_file, write_file, create_file, delete_file, list_directory, move_file, search_files |
-| `ShellTool.swift` | run_shell (streaming via `AsyncThrowingStream`) |
-| `XcodeTools.swift` | xcode_build, xcode_test, xcode_clean, xcode_open_simulator |
-| `AppControlTools.swift` | launch_app, quit_app, focus_app, list_running_apps |
-| `AXInspectorTool.swift` | ax_inspect |
-| `CGEventTool.swift` | cg_event |
-| `ScreenCaptureTool.swift` | capture_screen |
+| `ShellTool.swift` | run_shell (streaming via `AsyncThrowingStream`), bash |
+| `ToolDiscovery` / discipline generators | tool_discover, generate_api_docs, generate_dev_guide, write_vale_styles, scaffold_manual_coverage |
+| `XcodeTools.swift` | xcode_build, xcode_test, xcode_clean, xcode_derived_data_clean, xcode_open_file, xcode_xcresult_parse, xcode_simulator_list, xcode_simulator_boot, xcode_simulator_screenshot, xcode_simulator_install, xcode_spm_resolve, xcode_spm_list |
+| `AppControlTools.swift` | app_launch, app_list_running, app_quit, app_focus |
+| UI automation tools | ui_inspect, ui_find_element, ui_get_element_value, ui_click, ui_double_click, ui_right_click, ui_drag, ui_type, ui_key, ui_scroll, ui_screenshot |
 | `VisionQueryTool.swift` | vision_query |
 | `WebSearch/WebSearchTool.swift` | web_search |
 | `RAG/RAGTools.swift` | rag_search, rag_list_books |
@@ -1089,25 +1096,27 @@ The product workflow is workflow-first. `workflow.requirements_to_pcb` and `work
 
 | Stage | Tools |
 |---|---|
-| Ingestion | `kicad_ingest_schematic` |
-| Project generation | `kicad_create_project`, `kicad_write_schematic`, `kicad_assign_footprints` |
-| Board setup | `kicad_set_board_constraints`, `kicad_set_netclasses` |
-| Placement & routing | `kicad_place_components`, `kicad_route_pass` |
-| Verification | `kicad_run_erc`, `kicad_run_drc`, `kicad_check_parity`, `kicad_run_spice` |
-| Visual QA | `kicad_capture_schematic_png`, `kicad_capture_pcb_png` |
-| Output | `kicad_export_bom`, `kicad_query_vendor`, `kicad_export_fab`, `kicad_run_cam_checks`, `kicad_submit_order_approval`, `kicad_release_approval` |
+| Tooling and ingestion | `kicad_check_version`, `kicad_ingest_schematic`, `kicad_answer_clarification` |
+| Intent and circuit model | `kicad_build_intent_model`, `kicad_approve_design_intent`, `kicad_generate_circuit_ir` |
+| Component evidence | `kicad_select_components`, `kicad_revise_component_selection`, `kicad_prepare_libraries`, `kicad_assign_footprints` |
+| Project generation | `kicad_compile_project`, `kicad_apply_board_profile`, `kicad_generate_net_classes` |
+| Placement and routing | `kicad_place_components`, `kicad_route_pass`, `kicad_check_connectivity` |
+| ERC/DRC/parity repair loops | `kicad_run_erc`, `kicad_repair_erc_from_diagnostics`, `kicad_apply_erc_repair_patch`, `kicad_run_drc`, `kicad_repair_drc_from_diagnostics`, `kicad_apply_drc_repair_patch`, `kicad_check_parity` |
+| SPICE evidence | `kicad_generate_spice_scenario`, `kicad_run_spice`, `kicad_repair_spice_from_diagnostics`, `kicad_apply_spice_repair_patch`, `kicad_evaluate_simulation` |
+| Visual, fabrication, and release | `kicad_visual_inspect`, `kicad_export_fab`, `kicad_prepare_vendor_order`, `kicad_submit_vendor_order`, `kicad_package_release` |
 
 ### Hard Gates
 
 Verification results block forward progress until they return `PASS` or the operator explicitly approves a policy-permitted exception. High-stakes signoff cannot be bypassed by permission mode.
 
-1. `ERC_PASS` — no schematic errors
-2. `DRC_PASS` — no layout rule violations
-3. `PARITY_PASS` — netlist matches between schematic and layout
-4. `SPICE_PASS` — simulation converges with expected results
-5. `CAM_PASS` — Gerber/drill files are structurally valid
-6. `VENDOR_CONFIRMED` — BOM priced and in-stock from at least one vendor
-7. `RELEASE_APPROVED` — operator signoff before any manufacturing action
+1. `SCHEMATIC_VERIFIED` — approved design intent, valid Circuit IR, generated KiCad schematic/project artifacts, and passing ERC evidence.
+2. `PCB_VERIFIED` — selected concrete components, footprint/pin compatibility evidence, routed PCB artifacts, DRC evidence, and schematic/PCB parity.
+3. `SPICE_PASS` — a generated SPICE scenario deck backed by model records and envelopes, a real run artifact, and measurements inside the required envelope.
+4. `BOM_READY` — concrete manufacturer/vendor records, availability, lifecycle, pricing, and order-line evidence.
+5. `FAB_READY` — all upstream gates plus fabrication/CAM artifacts, drill reports, pick-and-place/centroid data, drawings, and consolidated verification evidence.
+6. `COMPLETE` — the requested scope is satisfied and all required release package/approval evidence exists.
+
+Blocked statuses are first-class workflow outcomes. For example, the current full-GUI proof stops truthfully at `COMPONENT_SELECTION_REVISION_BLOCKED` when concrete component, footprint, datasheet, or catalog evidence is missing; that status must not be mapped to `FAB_READY`.
 
 Required completion artifacts include KiCad project files, DSN/SES routing interchange and result artifacts, Gerbers, Excellon drills, drill reports, BOM, pick-and-place/centroid files, drawings, approval records, and a consolidated verification report. Completion is evidence-gated: missing required artifacts or failed gates return a blocked status, and placeholder success responses are treated as defects rather than `COMPLETE`.
 
@@ -1418,6 +1427,11 @@ Cross-reference between code comments and this manual:
 | `ToolRouter.dispatch()` | `Engine/ToolRouter.swift` | [Tool System → ToolRouter](#toolrouter) |
 | `ContextManager` | `Engine/ContextManager.swift` | [ContextManager](#contextmanager) |
 | `StagingBuffer` | `Engine/StagingBuffer.swift` | [Staging Buffer](#staging-buffer) |
+| `DisciplineEngine` | `Discipline/DisciplineEngine.swift` | [DisciplineEngine (v2.2)](#disciplineengine-v22) |
+| `WorkspaceRuntime` | `Runtime/WorkspaceRuntime.swift` | [WorkspaceRuntime](#workspaceruntime) |
+| `WorkspaceMessageBus` | `Runtime/WorkspaceMessageBus.swift` | [WorkspaceMessageBus](#workspacemessagebus) |
+| `KiCadToolDefinitions` | `Electronics/KiCadToolDefinitions.swift` | [Electronics / KiCad Domain → Tool Contract](#tool-contract) |
+| `ElectronicsRuntimePlugin` | `Plugins/ElectronicsRuntimePlugin.swift` | [Electronics / KiCad Domain](#electronics--kicad-domain-v20) |
 | `AppState` | `App/AppState.swift` | [Session & State Management → AppState](#appstate) |
 | `LiveSession` | `Sessions/LiveSession.swift` | [Session & State Management → LiveSession](#livesession) |
 | `HookEngine` | `Hooks/HookEngine.swift` | [Hook System](#hook-system) |

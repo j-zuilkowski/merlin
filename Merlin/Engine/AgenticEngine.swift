@@ -852,11 +852,12 @@ final class AgenticEngine {
 
     // MARK: - Core loop
 
-    // runLoop is the recursive heart of the engine.
-    // Each iteration: build request → stream provider → collect tool calls
-    // → run hooks → dispatch tools → append results → repeat.
-    // Exits when the provider produces no tool calls and no Stop hook requests continuation.
-    // contextOverride is used by fork-context skill invocations to avoid polluting main history.
+    // runLoop coordinates one model turn and any bounded follow-up turns. It
+    // resolves the executable slot/provider, builds the offered tool menu,
+    // streams provider output, dispatches accepted tool calls, records results,
+    // and then applies continuation, critic, and stop-hook decisions.
+    // contextOverride is used by fork-context skill invocations to avoid
+    // polluting main history.
     private func runLoop(
         userMessage: String,
         continuation: AsyncStream<AgentEvent>.Continuation,
