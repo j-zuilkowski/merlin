@@ -29,6 +29,16 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("capture release screenshots"))
     }
 
+    func testReadmeReflectsCurrentReleaseGateAndKiCadScreenshots() throws {
+        let readme = try repoText("README.md")
+
+        XCTAssertTrue(readme.contains("Version 2.4.0"))
+        XCTAssertTrue(readme.localizedCaseInsensitiveContains("full green E2E"))
+        XCTAssertTrue(readme.localizedCaseInsensitiveContains("after the full battery is green"))
+        XCTAssertTrue(readme.localizedCaseInsensitiveContains("open the generated KiCad schematic"))
+        XCTAssertTrue(readme.localizedCaseInsensitiveContains("open the generated KiCad PCB"))
+    }
+
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
         let activeDocPaths = [
             "README.md",
