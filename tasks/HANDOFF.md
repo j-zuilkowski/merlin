@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 493.
+Latest completed task is Task 494.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 494 — pass release UI and visual gates
 - Task 493 — repair release battery continuation and window traceability
 - Task 491 — make KiCad gates deterministic and evidence-scoped
 - Task 490 — repair release blocker workflow gates
@@ -145,6 +146,17 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 494 advanced the v2.4.0 release ledger through UI gates #2 and #3.
+Full `MerlinUITests` passed with 12 tests and 0 failures:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/02-MerlinUITests.log`,
+`/tmp/merlin-derived-v240-ui/Logs/Test/Test-MerlinUITests-2026.06.08_15-06-46--0400.xcresult`.
+The focused visual rerun also passed with 6 tests and 0 failures:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`,
+`/tmp/merlin-derived-v240-visual/Logs/Test/Test-MerlinUITests-2026.06.08_15-09-16--0400.xcresult`.
+The next release blocker is gate #4, the DeepSeek-backed live agent loop when
+the required key/environment is present. Gate #10, KiCad release screenshots,
+remains blocked until gates #1-#9 are green.
+
 Task 493 repaired the v2.4.0 release gate #1 blocker and made the release
 battery continuation deterministic. Full `MerlinTests` had failed first on
 continuation traceability, stale SDD task references, and AppKit window teardown
@@ -163,10 +175,8 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gate #1 is passed. Gate #2, the full `MerlinUITests` target, is the next
-release blocker to run. Gate #3 is currently failed on a
-`VisualLayoutTests.testAccessibilityAudit` contrast issue. Gate #10, KiCad
-release screenshots, remains blocked until gates #1-#9 are green.
+push. Gates #1-#3 are passed. Gate #4 is the next release blocker. Gate #10,
+KiCad release screenshots, remains blocked until gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics
 plugin now exposes `kicad_revise_component_selection`, which accepts a blocked
