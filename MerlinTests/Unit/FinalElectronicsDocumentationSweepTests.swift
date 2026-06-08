@@ -43,6 +43,31 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
             XCTAssertFalse(docs.contains(stalePhrase), stalePhrase)
         }
     }
+
+    func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
+        let handoff = try repoText("tasks/HANDOFF.md")
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 488"), handoff)
+        XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
+        XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure."), handoff)
+        XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
+
+        let pluginSpec = try repoText("plugins/electronics/spec.md")
+        XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)
+        XCTAssertTrue(pluginSpec.contains("FAB_READY"), pluginSpec)
+        XCTAssertTrue(pluginSpec.contains("COMPONENT_SELECTION_REVISION_BLOCKED"), pluginSpec)
+        XCTAssertTrue(pluginSpec.contains("requirements -> DesignIntent -> Circuit IR -> component selection/revision"), pluginSpec)
+
+        for stalePhrase in [
+            "Out Of Scope For First Milestone",
+            "Full PCB completion and fabrication release",
+            "Full autonomous natural-language-to-fabrication workflow",
+            "First milestone targets `amp_low_voltage_audio` schematic verification only.",
+            "The power-supply board is a second milestone.",
+            "Minimum First Implementation Tasks",
+        ] {
+            XCTAssertFalse(pluginSpec.contains(stalePhrase), stalePhrase)
+        }
+    }
 }
 
 @MainActor

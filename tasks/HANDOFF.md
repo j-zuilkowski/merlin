@@ -55,11 +55,15 @@ Merlin.xcodeproj
 - **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI ( tasks 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection ( tasks 60–98)
 
 ## Current Status
-Current active line: electronics plugin hardening for evidence-gated KiCad/SPICE
-workflows. Latest completed task is Task 487.
+Current active line: electronics plugin finish checklist complete.
+Electronics domain status: finished as evidence-gated workflow infrastructure.
+The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
+an honest evidence gate and not a `FAB_READY` fabrication claim.
+Latest completed task is Task 488.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 488 — finalize electronics completion contract status
 - Task 487 — recover F4 GUI spec evidence path
 - Task 486 — cap generated electronics artifact reads in workflow context
 - Task 485 — record fresh GUI workflow context blocker
@@ -435,6 +439,15 @@ Task 487 evidence paths:
   `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/F9548B74-EB64-4144-A971-D414C3B0FD45-component_matrix.json`
   and
   `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/C16986CC-CD3C-4DC8-ABB2-AB82FF877E50-component_matrix.json`
+
+Task 488 completed F5, the final status/documentation cleanup. The plugin spec
+no longer describes full PCB/fabrication workflow as outside the first
+milestone or describes AmpDemo as a schematic-only milestone. It now records the
+current completion contract: F1-F4 are complete, the electronics domain is
+finished as evidence-gated workflow infrastructure, and the current GUI proof
+stops at `COMPONENT_SELECTION_REVISION_BLOCKED` until concrete component,
+catalog, datasheet, and footprint/pin evidence is supplied. This is not a claim
+that AmpDemo reached `FAB_READY`.
 
 Task 485 evidence paths:
 
@@ -887,11 +900,14 @@ evidence check.
   attempted component selection and revision, then stopped at
   `COMPONENT_SELECTION_REVISION_BLOCKED` with actionable resolver questions and
   without advancing to downstream placeholder artifacts.
-- [ ] **F5: Completion contract and status cleanup.** Update task files,
+- [x] **F5: Completion contract and status cleanup.** Update task files,
   `HANDOFF.md`, and any electronics status docs to mark the electronics domain
   complete only after F1-F4 have commands, artifacts, screenshots/logs where
   applicable, and commits. Remove stale "representative slice only" caveats only
-  when the corresponding full-workflow evidence exists.
+  when the corresponding full-workflow evidence exists. Task 488 updated the
+  plugin spec, README, handoff status, and final documentation sweep test so the
+  finished status is bounded to evidence-gated workflow infrastructure and the
+  current GUI proof's component-evidence blocker.
 
 ## Key Architecture Decisions (V3+)
 - **AppSettings**: `@MainActor ObservableObject` singleton. Single source of truth for all persisted config. Backing stores: `~/.merlin/config.toml` (feature flags, hooks, memories, toolbar, reasoning), Keychain (API keys), UserDefaults (UI-only). Features never read backing stores directly — they read `AppSettings`.

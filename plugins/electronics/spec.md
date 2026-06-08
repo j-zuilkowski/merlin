@@ -14,19 +14,26 @@ workflow that converts approved structured design intent into verified KiCad
 artifacts. It SHALL never claim electronics completion from natural-language
 requirements, model narrative, screenshots, or unverified generated files.
 
-The first supported production path is:
+The supported production path is evidence-gated from requirements through
+release packaging:
 
 ```text
-natural language or source schematic
-  -> user-reviewed DesignIntent
-  -> Circuit IR
+requirements -> DesignIntent -> Circuit IR -> component selection/revision
+  -> footprint assignment
   -> KiCad project materialization
   -> ERC repair loop
-  -> SCHEMATIC_VERIFIED evidence package
+  -> PCB placement/routing and DRC repair loop
+  -> SPICE scenario generation and SPICE run
+  -> BOM/vendor package
+  -> fabrication/CAM package
+  -> FAB_READY or blocked evidence package
 ```
 
-PCB layout, DRC, fabrication exports, BOM/vendor ordering, SPICE optimization,
-and high-stakes signoff extend the same pipeline after schematic verification.
+The workflow may stop before `FAB_READY` when an evidence gate blocks. The
+current full-GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED` when
+component choices lack concrete manufacturer, MPN, package, ratings,
+datasheet/provenance, and footprint/pin compatibility evidence. That stop is
+successful gate behavior, not fabrication completion.
 
 ## Scope Boundary
 
@@ -36,20 +43,27 @@ and high-stakes signoff extend the same pipeline after schematic verification.
 2. Model-assisted drafting of `DesignIntent`.
 3. User approval before KiCad mutation when intent originated from natural
    language.
-4. KiCad-backed schematic materialization.
+4. Component selection and revision with catalog/datasheet evidence.
 5. KiCad library, symbol, footprint, pin, and field resolution.
-6. ERC execution, diagnostics parsing, and bounded schematic repair loop.
-7. Evidence-gated `SCHEMATIC_VERIFIED` status.
-8. Plugin-declared dynamic roles such as `electronics.analog_critic`.
-9. First acceptance fixture: 25W Class A solid-state guitar amplifier,
+6. KiCad-backed schematic and PCB materialization.
+7. ERC/DRC execution, diagnostics parsing, concrete repair mutation, and
+   explicit rerun evidence.
+8. SPICE scenario/model/envelope generation and SPICE execution gates.
+9. BOM/vendor package and fabrication/CAM evidence gates.
+10. Evidence-gated `SCHEMATIC_VERIFIED`, `PCB_VERIFIED`, `SPICE_PASS`,
+   `BOM_READY`, `FAB_READY`, and `COMPLETE` status handling.
+11. Plugin-declared dynamic roles such as `electronics.analog_critic`.
+12. First acceptance fixture: 25W Class A solid-state guitar amplifier,
    represented as generic design data, not hard-coded generator logic.
 
-### Out Of Scope For First Milestone
+### Non-Product Claims
 
-1. Full PCB completion and fabrication release.
-2. Full autonomous natural-language-to-fabrication workflow.
-3. SPICE-driven topology/value optimization.
-4. Vendor ordering submission.
+1. Fabrication, assembly, ordering, or safety certification.
+2. Model-certified engineering signoff.
+3. Silent substitution for qualified electrical, thermal, regulatory, medical,
+   automotive, or life-safety review.
+4. Irreversible vendor ordering or fabrication submission without explicit user
+   approval.
 5. Certification of mains, thermal, enclosure, regulatory, medical, automotive,
    or life-safety compliance.
 
@@ -96,8 +110,10 @@ issues or propose repairs only. It SHALL NOT pass verification gates.
 
 ### AutoCkt
 
-AutoCkt informs future simulator-driven optimization for bounded analog
-subcircuits after topology is fixed. It is not part of the first milestone.
+AutoCkt informs simulator-driven optimization for bounded analog subcircuits
+after topology is fixed. Optimization output still passes through the same
+SPICE model, scenario, envelope, and measurement gates before it can affect
+workflow status.
 
 ## Dynamic Plugin Roles
 
@@ -128,7 +144,8 @@ Role behavior:
 5. If a workflow marks a plugin role required, missing assignment SHALL block
    with `ROLE_UNASSIGNED`.
 
-For the first electronics milestone, `electronics.analog_critic` is optional.
+`electronics.analog_critic` is optional unless a workflow explicitly marks it
+required.
 
 ## DesignIntent
 
@@ -423,12 +440,9 @@ The design is split into separate boards:
    - must remain under high-stakes safety policy and cannot be certified by the
      model.
 
-First milestone targets `amp_low_voltage_audio` schematic verification only.
-The power-supply board is a second milestone.
-
 ## Status Model
 
-The first milestone introduces `SCHEMATIC_VERIFIED`.
+The electronics workflow uses explicit status labels for each verified stage.
 
 `SCHEMATIC_VERIFIED` requires:
 
@@ -444,9 +458,27 @@ The first milestone introduces `SCHEMATIC_VERIFIED`.
 `SCHEMATIC_VERIFIED` is not full product completion and SHALL NOT imply PCB,
 fabrication, SPICE, BOM, safety, or build approval.
 
-## ERC Repair Loop
+`PCB_VERIFIED` requires selected components, footprint/pin compatibility
+evidence, a KiCad board, placement/routing evidence, DRC report evidence, and
+explicit rerun evidence after any repair mutation.
 
-Initial repair loop scope is ERC.
+`SPICE_PASS` requires model records, simulation envelopes, non-generic scenario
+decks, an executed SPICE run, and measurement evidence tied back to the
+scenario.
+
+`BOM_READY` requires concrete manufacturer/vendor records, availability,
+lifecycle evidence, normalized BOM output, and any required user approval.
+
+`FAB_READY` requires all upstream gates plus fabrication/CAM artifacts, drill
+outputs, package manifests, verification reports, and approval records. It
+SHALL NOT be emitted from unresolved components, placeholder schematic/PCB
+files, generic smoke decks, missing SPICE evidence, placeholder BOM rows, or
+declared-only fabrication paths.
+
+`COMPLETE` may be used only when the workflow's requested scope is satisfied
+and the corresponding status evidence is present.
+
+## ERC Repair Loop
 
 Algorithm:
 
@@ -462,9 +494,10 @@ repeat up to cap
 block with diagnostics if unresolved
 ```
 
-Initial cap: 3 repair attempts per workflow.
+Default cap: 3 repair attempts per workflow unless a narrower workflow policy
+applies.
 
-Allowed first-milestone repair classes:
+Allowed repair classes include:
 
 1. Add explicit no-connect marker.
 2. Add or correct power flag.
@@ -475,7 +508,7 @@ Allowed first-milestone repair classes:
 The plugin SHALL NOT invent components, pinouts, or safety assumptions as an ERC
 repair shortcut.
 
-## DRC And PCB Follow-On
+## DRC And PCB Verification
 
 DRC is the second verification loop after schematic verification. The DRC loop
 requires:
@@ -514,16 +547,24 @@ The plugin SHALL NOT:
 
 The 25W amplifier power-supply board is high-stakes by default.
 
-## Minimum First Implementation Tasks
+## Current Completion Contract
 
-1. Move plugin schemas and docs under `plugins/electronics`.
-2. Add `SCHEMATIC_VERIFIED` status and evidence contract.
-3. Add `DesignIntent` approval state.
-4. Define Circuit IR schema and validator.
-5. Add KiCad symbol/pin resolver.
-6. Change schematic materialization to compile Circuit IR through structured
-   KiCad mutation.
-7. Add ERC parser and 3-attempt repair loop.
-8. Add the 25W amp low-voltage audio board as a data fixture.
-9. Add tests proving no hard-coded generator exists and fixture flow uses generic
-   schemas and verifiers.
+The electronics domain finish checklist is complete when Merlin has evidence
+for the generic workflow gates and the GUI path proves honest stop behavior.
+The current contract is:
+
+1. F1: GUI resolver answers can feed structured component-selection revision.
+2. F2: generic schematic and PCB realism is proven by materially different
+   non-AmpDemo fixtures.
+3. F3: the full artifact chain cannot skip or narrate requirements,
+   DesignIntent, Circuit IR, component selection/revision, footprint
+   assignment, schematic, PCB, ERC, DRC, SPICE, BOM/vendor, or fabrication/CAM
+   gates.
+4. F4: the rebuilt GUI workflow reads the active project spec, generates
+   DesignIntent and Circuit IR, then stops at
+   `COMPONENT_SELECTION_REVISION_BLOCKED` with actionable component evidence
+   questions instead of advancing to placeholders.
+5. F5: status documentation records that the electronics domain is finished as
+   evidence-gated workflow infrastructure. That is not a claim that AmpDemo or
+   every future design request reaches `FAB_READY` without user/vendor/catalog
+   evidence.
