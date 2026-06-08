@@ -51,6 +51,18 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(docs.localizedCaseInsensitiveContains("release assets"))
     }
 
+    func testReleaseRunLedgerIsResumableAndBlocksScreenshotsUntilGreen() throws {
+        let ledger = try repoText("docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md")
+
+        XCTAssertTrue(ledger.contains("Full Green E2E Battery"))
+        XCTAssertTrue(ledger.contains("| 1 | Core test target"))
+        XCTAssertTrue(ledger.contains("| 9 | Electronics/KiCad"))
+        XCTAssertTrue(ledger.contains("| 10 | KiCad release screenshots"))
+        XCTAssertTrue(ledger.contains("blocked"))
+        XCTAssertTrue(ledger.localizedCaseInsensitiveContains("after the full battery is green"))
+        XCTAssertTrue(ledger.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/"))
+    }
+
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
         let activeDocPaths = [
             "README.md",
@@ -81,11 +93,11 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 489"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 492"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
-        XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure."), handoff)
+        XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
-        XCTAssertTrue(handoff.contains("Task 488 completed F5"), handoff)
+        XCTAssertTrue(handoff.contains("Task 492 added"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

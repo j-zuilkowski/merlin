@@ -55,15 +55,16 @@ Merlin.xcodeproj
 - **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI ( tasks 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection ( tasks 60–98)
 
 ## Current Status
-Current active line: v2.4.0 release blocker repair.
+Current active line: v2.4.0 release battery rerun from fixed ledger.
 Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 491.
+Latest completed task is Task 492.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 492 — add resumable v2.4.0 release run ledger
 - Task 491 — make KiCad gates deterministic and evidence-scoped
 - Task 490 — repair release blocker workflow gates
 - Task 489 — synchronize Developer Manual with current source tree
@@ -142,6 +143,13 @@ from the request or provider config; explicit catalog paths, explicit roots,
 and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
+
+Task 492 added
+`docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
+release state ledger. Use that file as the only source of truth for the release
+push. Gate #3 is currently failed on a `VisualLayoutTests.testAccessibilityAudit`
+contrast issue. Gate #10, KiCad release screenshots, remains blocked until
+gates #1-#9 are green.
 
 Task 478 added a generic component-selection revision path. The electronics
 plugin now exposes `kicad_revise_component_selection`, which accepts a blocked
