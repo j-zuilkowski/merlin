@@ -38,18 +38,15 @@ Release screenshots are created only after the full battery is green.
 |---|---|---|---|---|
 | 10 | KiCad release screenshots: open generated schematic and generated PCB in KiCad; capture schematic editor, PCB editor, routed/layer, and 3D board screenshots when available | passed | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`; generated KiCad source copied under `screenshots/kicad/source/`; GUI screenshots `schematic-editor-screenshot.png`, `pcb-editor-screenshot.png`, and `board-3d-viewer-screenshot.png`; deterministic exports `schematic.pdf`, `schematic-svg/amp_low_voltage_audio.svg`, `layers/routed-composite.svg`, `layers/front-copper.svg`, `layers/back-copper.svg`, PNG layer previews, and `board-3d-render.png`; command log `docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`; focused doc sweep drift evidence `10-doc-sweep-post-task504.fail-first.log` and `10-doc-sweep-post-task504.focused-green.log`. The selected rich generated board reports 26 DRC violations, so this is visual/generated-file evidence only, not a FAB_READY claim. | none |
 | 11 | GitHub and README feature screenshots | passed | Public README/GitHub assets under `docs/assets/screenshots/v2.4.0/`: `merlin-workspace.png`, `merlin-settings-providers.png`, `merlin-settings-provider-slots.png`, `kicad-schematic-editor.png`, `kicad-pcb-editor.png`, `kicad-3d-viewer.png`, and `kicad-routed-composite.png`; evidence-only full-size Merlin captures under `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`; command/process cleanup log `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.focused-green.log`. | none |
-| 12 | Release evidence report | pending | `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md` | none yet |
-| 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | blocked | `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log` | wait for #1-#12 green |
+| 12 | Release evidence report | passed | `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log`. | none |
+| 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log` | none yet |
 | 14 | Tag `v2.4.0` | blocked | `git tag v2.4.0` | wait for #13 green |
 | 15 | Push branch and tag | blocked | remote branch and tag | wait for #14 green |
 | 16 | Publish GitHub Release `v2.4.0` with required release assets/screenshots | blocked | GitHub Release `v2.4.0` | wait for #15 green |
 
 ## Current Blocker
 
-Gates #1-#11 are passed. Gate #11 captured durable README/GitHub screenshot
-assets under `docs/assets/screenshots/v2.4.0/`, retained full-size evidence
-captures under
-`docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`, and linked the
-public assets from `README.md`. The immediate blocker is gate #12: write the
-release evidence report at
-`docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`.
+Gates #1-#12 are passed. Gate #12 wrote the release evidence report at
+`docs/e2e/2026-06-08-v2.4.0-release/REPORT.md` and added a focused doc guard
+that checks the report, ledger, cleanup statements, and electronics/KiCad
+boundary. The immediate blocker is gate #13: final safety check.

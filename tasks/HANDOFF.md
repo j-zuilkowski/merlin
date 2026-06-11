@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 506.
+Latest completed task is Task 507.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 507 — write release evidence report
 - Task 506 — capture README and GitHub feature screenshots
 - Task 505 — capture release KiCad screenshots
 - Task 504 — pass release electronics/KiCad deterministic gate
@@ -285,6 +286,15 @@ and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.focused-green.log`.
 Gates #1-#11 are green; gate #12 is next: write the release evidence report at
 `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`.
+
+Task 507 passed release gate #12 by writing the v2.4.0 release evidence report
+and adding a focused doc guard for the report, ledger, cleanup statements, and
+electronics/KiCad boundaries. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log`.
+Gates #1-#12 are green; gate #13 is next: final safety check.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
