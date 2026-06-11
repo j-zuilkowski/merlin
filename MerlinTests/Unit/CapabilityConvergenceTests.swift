@@ -67,4 +67,19 @@ final class CapabilityConvergenceTests: XCTestCase {
         }
         XCTAssertTrue(summary.localizedCaseInsensitiveContains("no progress"))
     }
+
+    func testEvalShellTimeoutIsRepairableVerificationFailure() {
+        let output = """
+        EvalShell timeout after 120s: /usr/bin/xcodebuild -scheme TaskBoard
+        """
+
+        let status = CapabilityConvergenceClassifier().classify(
+            verificationOutput: output,
+            assistantText: "I fixed the app.")
+
+        guard case .repairableFailure(let summary) = status else {
+            return XCTFail("Expected timeout to stay repairable, got \(status)")
+        }
+        XCTAssertTrue(summary.localizedCaseInsensitiveContains("timeout"))
+    }
 }

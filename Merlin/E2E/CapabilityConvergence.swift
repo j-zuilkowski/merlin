@@ -36,6 +36,11 @@ struct CapabilityConvergenceClassifier {
             return .missingPrerequisite(extractSummary(from: output, fallback: "missing prerequisite"))
         }
 
+        if lowerOutput.contains("evalshell timeout")
+            || lowerOutput.contains("timeout after") {
+            return .repairableFailure(extractSummary(from: output, fallback: "verification timed out"))
+        }
+
         if isRepairableVerificationFailure(lowerOutput) {
             return .repairableFailure(extractSummary(from: output, fallback: "verification failed"))
         }
@@ -78,6 +83,7 @@ struct CapabilityConvergenceClassifier {
                 return lower.contains("failed")
                     || lower.contains("test")
                     || lower.contains("overflow")
+                    || lower.contains("timeout")
                     || lower.contains("command not found")
                     || lower.contains("no such file")
             }

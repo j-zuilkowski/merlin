@@ -60,11 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 499.
+Latest completed task is Task 500.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
+- Task 500 — add deterministic release capability gate runner
 - Task 498 — pass release xcalibre RAG gate
 - Task 499 — close failed release capability gate attempts
 - Task 497 — pass release llama.cpp router gate
@@ -151,6 +152,32 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 500 added `scripts/release/run-capability-gate.sh`, the only valid runner
+for release gate #8 retries. The runner owns the temporary Merlin config,
+temporary provider registry, `llama.cpp` on `127.0.0.1:8081`, xcalibre on
+`127.0.0.1:8083`, focused S1/S2 xcodebuild execution, strict timeout, logs, and
+cleanup. Focused tests cover dry-run model IDs/endpoints, self-test invariants,
+config restore trap, timeout classification, port cleanup, and TaskBoard helper
+cleanup. The deterministic live run failed only on S1: S2 passed in 317.970s,
+while S1 recorded `reloadFailed("llama.cpp router endpoint rejected
+models/load for llamacpp")` and left TaskBoard verification red for
+`TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
+`TaskStoreTests.testSummaryCountsDoneOnly`. Cleanup verification after patching
+showed no listeners on `8081` or `8083`, no runner, no `llama-server`, no
+xcalibre backend, no TaskBoard helper process, and the user's config restored.
+Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.focused.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-llamacpp-router.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-llamacpp-models.json`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-build.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-health.json`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-server.log`,
+`merlin-eval/results/S1-harness-2026-06-11T13-04-11Z.md`, and
+`merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`. The next release
+blocker is targeted S1 repair, not runner or checklist work.
+
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
 release-runner failures: the first S1/S2 attempt had no gate-owned llama.cpp
@@ -184,8 +211,8 @@ it was absent after deletion, and closed port 8083. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`, and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`.
-The next release blocker is Task 500, the deterministic release capability gate
-runner for gate #8. Gate #10, KiCad release screenshots, remains blocked until
+The next release blocker is S1 Swift GUI convergence under the deterministic
+Task 500 runner. Gate #10, KiCad release screenshots, remains blocked until
 gates #1-#9 are green.
 
 Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
