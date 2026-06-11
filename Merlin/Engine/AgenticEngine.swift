@@ -1353,17 +1353,17 @@ final class AgenticEngine {
                     : slotID
                 if let manager = localModelManagers[baseProviderID] {
                     let bodyBytes = (try? encodeRequest(request, baseURL: provider.baseURL,
-                                                        model: provider.resolvedModelID))?.count ?? 0
+                                                        model: request.model))?.count ?? 0
                     // Conservative pre-flight estimate: 4.0 bytes/token (looser than
                     // ContextManager's 3.5 because this gates a context-length reload — over-reserve
                     // is cheap, under-reserve forces a re-load mid-turn), +20% headroom, +512-token floor.
                     let estimatedTokens = Int(Double(bodyBytes) / 4.0 * 1.2) + 512
                     let resizedModelID = (try? await manager.ensureContextLength(
-                        modelID: provider.resolvedModelID,
+                        modelID: request.model,
                         minimumTokens: estimatedTokens
-                    )) ?? provider.resolvedModelID
+                    )) ?? request.model
                     request.model = resizedModelID
-                    if resizedModelID != provider.resolvedModelID {
+                    if resizedModelID != requestModel {
                         registry?.updateModel(resizedModelID, for: baseProviderID)
                     }
                     if manager.capabilities.supportsRuntimeModelLoad {

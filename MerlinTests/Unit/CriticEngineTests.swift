@@ -35,6 +35,31 @@ final class CriticEngineTests: XCTestCase {
         }
     }
 
+    func testStage1FailureReasonPreservesNamedFailingXcodeTestsAfterVerboseBuildOutput() async {
+        let output = String(repeating: "MkDir /DerivedData/TaskBoard/Build/Products/Debug\n", count: 20)
+            + """
+            Failing tests:
+                TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex()
+                TaskStoreTests.testSummaryCountsDoneOnly()
+            ** TEST FAILED **
+            """
+        let backend = StubVerificationBackend(exitCode: 0)
+        let engine = CriticEngine(
+            verificationBackend: backend,
+            reasonProvider: nil,
+            shellRunner: StubShellRunner(exitCode: 1, output: output)
+        )
+
+        let result = await engine.evaluate(taskType: taskType, output: "done", context: [])
+
+        guard case .fail(let reason) = result else {
+            return XCTFail("Expected .fail, got \(result)")
+        }
+        XCTAssertTrue(reason.contains("testDeleteRemovesTheTaskAtThatIndex"), reason)
+        XCTAssertTrue(reason.contains("testSummaryCountsDoneOnly"), reason)
+        XCTAssertTrue(reason.contains("TEST FAILED"), reason)
+    }
+
     func testStage1SkippedWhenNullBackend() async {
         let engine = CriticEngine(
             verificationBackend: NullVerificationBackend(),

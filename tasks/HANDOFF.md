@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 500.
+Latest completed task is Task 501.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 501 — repair release capability model preflight path
 - Task 492 — add resumable v2.4.0 release run ledger
 - Task 500 — add deterministic release capability gate runner
 - Task 498 — pass release xcalibre RAG gate
@@ -158,8 +159,8 @@ temporary provider registry, `llama.cpp` on `127.0.0.1:8081`, xcalibre on
 `127.0.0.1:8083`, focused S1/S2 xcodebuild execution, strict timeout, logs, and
 cleanup. Focused tests cover dry-run model IDs/endpoints, self-test invariants,
 config restore trap, timeout classification, port cleanup, and TaskBoard helper
-cleanup. The deterministic live run failed only on S1: S2 passed in 317.970s,
-while S1 recorded `reloadFailed("llama.cpp router endpoint rejected
+cleanup. The first deterministic live run failed only on S1: S2 passed in
+317.970s, while S1 recorded `reloadFailed("llama.cpp router endpoint rejected
 models/load for llamacpp")` and left TaskBoard verification red for
 `TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
 `TaskStoreTests.testSummaryCountsDoneOnly`. Cleanup verification after patching
@@ -176,7 +177,28 @@ Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-server.log`,
 `merlin-eval/results/S1-harness-2026-06-11T13-04-11Z.md`, and
 `merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`. The next release
-blocker is targeted S1 repair, not runner or checklist work.
+blocker is targeted S1/S2 convergence repair, not runner or checklist work.
+
+Task 501 repaired the code-level local model preflight failures found while
+working gate #8. `AgenticEngine` now preflights local model manager operations
+with the already resolved request model so a base local provider ID such as
+`llamacpp` uses `ProviderConfig.model` (`qwen3-coder-local`) instead of the
+backend ID (`llamacpp`). `LlamaCppModelManager.ensureModelLoaded(modelID:)` now
+accepts a router-catalog model when `/models/load` rejects mutation but
+`/v1/models` proves the model is already exposed. `CriticEngine` now preserves
+named failing tests from verbose Xcode output. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.neighbor-green.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.modelid-green.log`.
+The latest deterministic live evidence is still red:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log` records S1
+timing out and S2 failing before this repair with
+`reloadFailed("llama.cpp router endpoint rejected models/load for llamacpp")`;
+`merlin-eval/results/S2-harness-2026-06-11T14-13-11Z.md` records S2 leaving
+`add_rejects_non_numeric_amount` red. Gate #8 must remain failed until a fresh
+`scripts/release/run-capability-gate.sh` run proves S1 and S2 green together.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate

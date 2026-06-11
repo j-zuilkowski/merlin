@@ -303,10 +303,39 @@ actor CriticEngine {
                 passed = predicate(output)
             }
             if !passed {
-                return .fail(reason: "\(cmd.label) failed\(output.isEmpty ? "" : ": \(output.prefix(200))")")
+                return .fail(reason: Self.verificationFailureReason(label: cmd.label, output: output))
             }
         }
         return .pass
+    }
+
+    static func verificationFailureReason(label: String, output: String) -> String {
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "\(label) failed" }
+        let lines = trimmed.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        var includeFollowingFailingTests = 0
+        let interesting = lines.filter { line in
+            let lower = line.lowercased()
+            if includeFollowingFailingTests > 0 {
+                includeFollowingFailingTests -= 1
+                return !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            if lower.contains("failing tests:") {
+                includeFollowingFailingTests = 8
+                return true
+            }
+            return lower.contains("teststoretests.")
+                || lower.contains("test case")
+                || lower.contains(" failed")
+                || lower.contains("** test failed **")
+                || lower.contains("error:")
+                || lower.contains("fatal:")
+                || lower.contains("panic")
+                || lower.contains("command not found")
+                || lower.contains("timeout")
+        }
+        let selected = interesting.isEmpty ? Array(lines.prefix(8)) : Array(interesting.prefix(12))
+        return "\(label) failed: \(selected.joined(separator: "\n").prefix(1200))"
     }
 
     /// True when `projectPath` holds a build/test system the critic can verify

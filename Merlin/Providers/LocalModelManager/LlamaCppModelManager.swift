@@ -68,7 +68,15 @@ final class LlamaCppModelManager: LocalModelManagerProtocol, @unchecked Sendable
             if routerEntries.contains(where: { $0.id == modelID && $0.isRuntimeLoaded }) {
                 return
             }
-            try await postRouterMutation(path: "models/load", modelID: modelID)
+            do {
+                try await postRouterMutation(path: "models/load", modelID: modelID)
+            } catch {
+                if let openAIEntries = try await fetchOpenAIModelList(),
+                   openAIEntries.contains(modelID) {
+                    return
+                }
+                throw error
+            }
             return
         }
 
