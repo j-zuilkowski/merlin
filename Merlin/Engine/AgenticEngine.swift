@@ -1177,6 +1177,36 @@ final class AgenticEngine {
         // to the turn before it. See the repetition-stall escalation below.
         var recentTurnFingerprints: [String] = []
         var didAttemptContextOverrunRecovery = false
+        var latestRepairableVerificationFailure: String?
+        let recordRepairableVerificationFailure: ([ToolResult]) -> Void = { results in
+            for result in results where result.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                let status = CapabilityConvergenceClassifier().classify(
+                    verificationOutput: result.content,
+                    assistantText: ""
+                )
+                if case .repairableFailure(let summary) = status {
+                    latestRepairableVerificationFailure = summary
+                }
+            }
+        }
+        let loopCeilingContinuationMessage: (Int) -> String = { remaining in
+            if let latestRepairableVerificationFailure {
+                return """
+                [CONTINUATION] The previous turn reached its loop iteration limit while verification was still failing.
+
+                Latest failing verification output:
+                \(latestRepairableVerificationFailure)
+
+                Fix the source defects named by that verification output, then rerun the same verification command until it passes. Do not restart setup or report done while these failures remain. (\(remaining) ceiling continuation(s) remain if needed.)
+                """
+            }
+            return """
+            [CONTINUATION] The previous turn reached its loop iteration limit mid-task. \
+            Resume from where you left off: run `git status` to check pending changes, \
+            review recent edits, then continue and complete any unfinished work. \
+            (\(remaining) ceiling continuation(s) remain if needed.)
+            """
+        }
         // Clean handoff when a `.routeToProvider` escalation hands the task to a
         // stronger provider. Two problems are fixed together:
         //  • Budget — escalation fires after a stall, so the routed-to provider
@@ -1206,13 +1236,11 @@ final class AgenticEngine {
                         continuation.yield(.systemNote(
                             "[Loop ceiling reached — scheduling continuation \(ceilingContinuationCount)/\(maxCeilingContinuations)]"
                         ))
-                        let resumeMsg = """
-                        [CONTINUATION] The previous turn reached its loop iteration limit mid-task. \
-                        Resume from where you left off: run `git status` to check pending changes, \
-                        review recent edits, then continue and complete any unfinished work. \
-                        (\(remaining) ceiling continuation(s) remain if needed.)
-                        """
-                        try? resumeMsg.write(to: continuationInjectURL, atomically: true, encoding: .utf8)
+                        try? loopCeilingContinuationMessage(remaining).write(
+                            to: continuationInjectURL,
+                            atomically: true,
+                            encoding: .utf8
+                        )
                     } else {
                         continuation.yield(.systemNote(
                             "[Loop ceiling reached — max continuations (\(maxCeilingContinuations)) exhausted, stopping]"
@@ -1931,6 +1959,7 @@ final class AgenticEngine {
                     context: context,
                     emitCompactionNoteIfNeeded: emitCompactionNoteIfNeeded
                 )
+                recordRepairableVerificationFailure(regularResults)
                 recordContinuationEvidence(calls: regularCalls, results: regularResults)
                 if hasSatisfiedRequestedStopBoundary(
                     originalTask: userMessage,

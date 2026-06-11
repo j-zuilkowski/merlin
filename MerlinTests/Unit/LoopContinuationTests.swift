@@ -301,6 +301,32 @@ final class LoopContinuationTests: XCTestCase {
                       "Expected an observable post-tool verification stop note")
     }
 
+    func testLoopCeilingContinuationCarriesFailingVerificationTests() async throws {
+        let provider = MockProvider(responses: [
+            MockLLMResponse.toolCall(id: "verify", name: "xcode_test", args: #"{"scheme":"TaskBoard"}"#),
+            MockLLMResponse.toolCall(id: "repeat", name: "xcode_test", args: #"{"scheme":"TaskBoard"}"#),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.maxIterationsOverride = 2
+        engine.continuationInjectURL = injectURL
+        engine.registerTool("xcode_test") { _ in
+            """
+            Test Case '-[TaskBoardTests.TaskStoreTests testDeleteRemovesTheTaskAtThatIndex]' failed
+            Test Case '-[TaskBoardTests.TaskStoreTests testSummaryCountsDoneOnly]' failed
+            ** TEST FAILED **
+            """
+        }
+
+        for await _ in engine.send(userMessage: "build, test, and fix the SwiftUI app until tests pass") {}
+
+        let contents = try readInject()
+        XCTAssertTrue(contents.hasPrefix("[CONTINUATION]"), contents)
+        XCTAssertTrue(contents.contains("testDeleteRemovesTheTaskAtThatIndex"), contents)
+        XCTAssertTrue(contents.contains("testSummaryCountsDoneOnly"), contents)
+        XCTAssertTrue(contents.contains("Fix the source defects named by that verification output"), contents)
+        XCTAssertFalse(contents.contains("run `git status`"), contents)
+    }
+
     func testRequestedStopBoundaryStopsAfterMatchingToolResult() async throws {
         let originalCriticEnabled = AppSettings.shared.criticEnabled
         AppSettings.shared.criticEnabled = false

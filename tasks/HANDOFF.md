@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 501.
+Latest completed task is Task 502.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 502 — repair S1 verification continuation loop
 - Task 501 — repair release capability model preflight path
 - Task 492 — add resumable v2.4.0 release run ledger
 - Task 500 — add deterministic release capability gate runner
@@ -199,6 +200,21 @@ timing out and S2 failing before this repair with
 `merlin-eval/results/S2-harness-2026-06-11T14-13-11Z.md` records S2 leaving
 `add_rejects_non_numeric_amount` red. Gate #8 must remain failed until a fresh
 `scripts/release/run-capability-gate.sh` run proves S1 and S2 green together.
+
+Task 502 repaired the S1 TaskBoard loop-continuation failure. When software
+verification returns repairable failing-test output and the agent loop hits its
+ceiling, `AgenticEngine` now writes that failure summary into the continuation
+inject instead of the generic `run git status` restart prompt. This keeps
+`TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
+`TaskStoreTests.testSummaryCountsDoneOnly` visible to the next turn. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.focused-green.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.neighbor-green.log`.
+Task #1 from the release blocker list is repaired at focused-test level. The
+next action is step #2: rerun gate #8 only through
+`scripts/release/run-capability-gate.sh` and require S1 plus S2 green evidence
+before moving to gate #9.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
