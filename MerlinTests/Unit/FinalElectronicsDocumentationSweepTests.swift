@@ -31,12 +31,25 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testReadmeReflectsCurrentReleaseGateAndKiCadScreenshots() throws {
         let readme = try repoText("README.md")
+        let screenshotPaths = [
+            "docs/assets/screenshots/v2.4.0/merlin-workspace.png",
+            "docs/assets/screenshots/v2.4.0/merlin-settings-providers.png",
+            "docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png",
+            "docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png",
+            "docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png",
+            "docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png",
+            "docs/assets/screenshots/v2.4.0/kicad-routed-composite.png",
+        ]
 
         XCTAssertTrue(readme.contains("Version 2.4.0"))
         XCTAssertTrue(readme.localizedCaseInsensitiveContains("full green E2E"))
         XCTAssertTrue(readme.localizedCaseInsensitiveContains("after the full battery is green"))
         XCTAssertTrue(readme.localizedCaseInsensitiveContains("open the generated KiCad schematic"))
         XCTAssertTrue(readme.localizedCaseInsensitiveContains("open the generated KiCad PCB"))
+        for screenshotPath in screenshotPaths {
+            XCTAssertTrue(readme.contains(screenshotPath), screenshotPath)
+            XCTAssertTrue(FileManager.default.fileExists(atPath: repoURL(screenshotPath).path), screenshotPath)
+        }
     }
 
     func testDocsDefineGitHubScreenshotDestinations() throws {
@@ -58,9 +71,11 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(ledger.contains("| 1 | Core test target"))
         XCTAssertTrue(ledger.contains("| 9 | Electronics/KiCad"))
         XCTAssertTrue(ledger.contains("| 10 | KiCad release screenshots"))
+        XCTAssertTrue(ledger.contains("| 11 | GitHub and README feature screenshots | passed |"))
         XCTAssertTrue(ledger.contains("blocked"))
         XCTAssertTrue(ledger.localizedCaseInsensitiveContains("after the full battery is green"))
         XCTAssertTrue(ledger.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/"))
+        XCTAssertTrue(ledger.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log"))
     }
 
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
@@ -93,7 +108,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 505"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 506"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
         XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
@@ -101,6 +116,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(handoff.contains("Task 503 passed release gate #8"), handoff)
         XCTAssertTrue(handoff.contains("Task 504 passed release gate #9"), handoff)
         XCTAssertTrue(handoff.contains("Task 505 passed release gate #10"), handoff)
+        XCTAssertTrue(handoff.contains("Task 506 passed release gate #11"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

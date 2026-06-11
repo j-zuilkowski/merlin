@@ -1,0 +1,58 @@
+Task 506 / Gate #11 README and GitHub feature screenshots
+UTC 2026-06-11T18:02:00Z
+
+Captured Merlin GUI evidence:
+total 25256
+drwxr-xr-x@ 5 jonzuilkowski  staff      160 Jun 11 14:01 .
+drwxr-xr-x@ 4 jonzuilkowski  staff      128 Jun 11 13:56 ..
+-rw-r--r--@ 1 jonzuilkowski  staff  4282303 Jun 11 14:01 merlin-settings-provider-slots-full.png
+-rw-r--r--@ 1 jonzuilkowski  staff  4325372 Jun 11 14:01 merlin-settings-providers-full.png
+-rw-r--r--@ 1 jonzuilkowski  staff  4318355 Jun 11 13:56 merlin-workspace-full.png
+
+Committed README/GitHub asset candidates:
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/kicad-routed-composite.png
+    pixelWidth: 1800
+    pixelHeight: 1800
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/merlin-settings-providers.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+  /Users/jonzuilkowski/Documents/localProject/merlin/docs/assets/screenshots/v2.4.0/merlin-workspace.png
+    pixelWidth: 1800
+    pixelHeight: 1012
+
+KiCad screenshot sources reused from gate #10:
+total 25624
+drwxr-xr-x@ 11 jonzuilkowski  staff      352 Jun 11 13:53 .
+drwxr-xr-x@  4 jonzuilkowski  staff      128 Jun 11 13:56 ..
+-rw-r--r--@  1 jonzuilkowski  staff     1191 Jun 11 13:53 README.md
+-rw-r--r--@  1 jonzuilkowski  staff    42265 Jun 11 13:49 board-3d-render.png
+-rw-r--r--@  1 jonzuilkowski  staff  4284948 Jun 11 13:51 board-3d-viewer-screenshot.png
+drwxr-xr-x@  8 jonzuilkowski  staff      256 Jun 11 13:50 layers
+-rw-r--r--@  1 jonzuilkowski  staff  4028155 Jun 11 13:50 pcb-editor-screenshot.png
+-rw-r--r--@  1 jonzuilkowski  staff  4641125 Jun 11 13:50 schematic-editor-screenshot.png
+drwxr-xr-x@  3 jonzuilkowski  staff       96 Jun 11 13:49 schematic-svg
+-rw-r--r--@  1 jonzuilkowski  staff   106479 Jun 11 13:49 schematic.pdf
+drwxr-xr-x@  8 jonzuilkowski  staff      256 Jun 11 13:52 source
+
+Merlin processes before cleanup:
+53151
+57446
+
+Merlin processes after cleanup:
+57446
+
+Strict process cleanup verification:
+No process named Merlin remains.
+No Merlin.app executable process remains.

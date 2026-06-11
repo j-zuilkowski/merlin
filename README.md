@@ -12,6 +12,24 @@ Current release gate: v2.4.0 is the full green E2E release gate. A release push 
 
 ## What it does
 
+## Screenshots
+
+![Merlin multi-project workspace with the electronics domain active](docs/assets/screenshots/v2.4.0/merlin-workspace.png)
+
+![Provider configuration in Merlin Settings](docs/assets/screenshots/v2.4.0/merlin-settings-providers.png)
+
+![Provider slot routing with the electronics domain selected](docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png)
+
+![Generated KiCad schematic opened in KiCad Schematic Editor](docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png)
+
+![Generated KiCad PCB opened in KiCad PCB Editor](docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png)
+
+![Generated KiCad board opened in KiCad 3D Viewer](docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png)
+
+![Generated routed board layer composite](docs/assets/screenshots/v2.4.0/kicad-routed-composite.png)
+
+## Capabilities
+
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
 
 **Multi-project workspace** — a single window holds multiple open projects simultaneously. Each project has its own session list in the sidebar; the content area shows whichever session is active. Workspace state (open projects, active session) persists across relaunches.
