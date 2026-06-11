@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 503.
+Latest completed task is Task 504.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 504 — pass release electronics/KiCad deterministic gate
 - Task 503 — pass release capability gate with deterministic stops
 - Task 502 — repair S1 verification continuation loop
 - Task 501 — repair release capability model preflight path
@@ -235,8 +236,21 @@ runner `tee` pipe open after green test output. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log`,
 `merlin-eval/results/S1-harness-2026-06-11T17-12-35Z.md`, and
 `merlin-eval/results/S2-harness-2026-06-11T17-16-40Z.md`. Gate #8 is passed.
-The next release action is gate #9:
-`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`.
+
+Task 504 passed release gate #9, the deterministic electronics/KiCad checks.
+The initial gate run failed only because
+`FinalElectronicsDocumentationSweepTests.testElectronicsFinishChecklistMatchesFinalEvidenceContract`
+still expected the handoff to say `Latest completed task is Task 492`; the test
+now asserts Task 504-era handoff state and Task 503 gate #8 completion. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.fail-first-summary.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-doc-sweep.focused-green.log`,
+and `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`.
+The final gate #9 run passed 340 focused electronics/KiCad tests with 6 skips
+and 0 failures, including the real KiCad DRC-backed board-outline check when
+KiCad is available. Gates #1-#9 in the release ledger are now green. The next
+release action is gate #10: open generated schematic and PCB files in KiCad and
+capture release screenshots under
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
@@ -271,9 +285,8 @@ it was absent after deletion, and closed port 8083. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`, and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`.
-The next release blocker is S1 Swift GUI convergence under the deterministic
-Task 500 runner. Gate #10, KiCad release screenshots, remains blocked until
-gates #1-#9 are green.
+This Task 498 blocker status is superseded by Tasks 503 and 504; gates #1-#9
+are green and gate #10 is now pending.
 
 Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
 The gate started Homebrew `llama-server` 9290 on `127.0.0.1:8081` with
@@ -343,8 +356,8 @@ tests, 55 skipped, 0 failures. Evidence:
 Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
-push. Gates #1-#7 are passed. Gate #8 is the next release blocker. Gate #10,
-KiCad release screenshots, remains blocked until gates #1-#9 are green.
+push. This Task 492 blocker summary is superseded by Tasks 503 and 504; gates
+#1-#9 are green and gate #10 is now pending.
 
 Task 478 added a generic component-selection revision path. The electronics
 plugin now exposes `kicad_revise_component_selection`, which accepts a blocked

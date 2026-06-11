@@ -26,7 +26,7 @@ runs, fails, is repaired, or passes.
 | 6 | llama.cpp router explicit model ID smoke | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`; router catalog exposed `default` first but smoke selected explicit `qwen3-coder-local` and `qwen3-vl-local`; completion, streaming, tool-call, and vision checks passed; port 8081 closed after cleanup. | none |
 | 7 | xcalibre RAG health/search/cleanup | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`; fail-first config evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`; server log `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`; real sibling backend built and started on 8083; health/openapi passed; authenticated memory sentinel insert/search/delete passed; port 8083 closed after cleanup. | none |
 | 8 | Capability scenarios S1/S2 convergence | passed | Deterministic runner: `scripts/release/run-capability-gate.sh`; live runner log `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log` records `testS1SwiftGUIDebugCycle` passing in 676.582s, `testS2RustDebugCycle` passing in 244.910s, and `** TEST SUCCEEDED **`; scenario artifacts `merlin-eval/results/S1-harness-2026-06-11T17-12-35Z.md` and `merlin-eval/results/S2-harness-2026-06-11T17-16-40Z.md`; cleanup evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log` records restored config/provider files, no release runner/services, and no 8081/8083 listeners; runner watchdog repair evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.fail-first.log`, `08-runner-watchdog.focused-green.log`, `08-runner-watchdog.bash-n.log`; Task 503 focused green `docs/e2e/2026-06-08-v2.4.0-release/logs/08-task503.focused-green.log`; prior Task 500-502 fail-first and repair artifacts remain preserved. | none |
-| 9 | Electronics/KiCad deterministic checks | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log` | none yet |
+| 9 | Electronics/KiCad deterministic checks | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.fail-first-summary.log` records the initial stale handoff assertion failure in `FinalElectronicsDocumentationSweepTests.testElectronicsFinishChecklistMatchesFinalEvidenceContract`; focused repair evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-doc-sweep.focused-green.log` passes the corrected doc sweep; final gate evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log` passes 340 focused electronics/KiCad tests with 6 skips and 0 failures, including real KiCad DRC when available. | none |
 
 ## Post-Green Release Screenshots
 
@@ -36,7 +36,7 @@ Release screenshots are created only after the full battery is green.
 
 | # | Gate | State | Evidence | Next repair |
 |---|---|---|---|---|
-| 10 | KiCad release screenshots: open generated schematic and generated PCB in KiCad; capture schematic editor, PCB editor, routed/layer, and 3D board screenshots when available | blocked | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/` | wait for #1-#9 green |
+| 10 | KiCad release screenshots: open generated schematic and generated PCB in KiCad; capture schematic editor, PCB editor, routed/layer, and 3D board screenshots when available | pending | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/` | none yet |
 | 11 | GitHub and README feature screenshots | blocked | `docs/assets/screenshots/v2.4.0/` and `docs/e2e/2026-06-08-v2.4.0-release/screenshots/` | wait for #1-#10 green |
 | 12 | Release evidence report | blocked | `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md` | wait for #1-#11 green |
 | 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | blocked | `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log` | wait for #1-#12 green |
@@ -46,11 +46,8 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-Gate #8 is passed with S1 and S2 green under
-`scripts/release/run-capability-gate.sh`. Task 503 also repaired the runner
-watchdog cleanup leak found after the green xcodebuild output, and
-`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log`
-proves the user config/provider files were restored and ports 8081 and 8083 are
-closed. The immediate blocker is gate #9: electronics/KiCad deterministic
-checks. Gate #10, the KiCad release screenshot step, is not valid until gates
-#1-#9 are green.
+Gates #1-#9 are passed. Gate #9's deterministic electronics/KiCad slice passed
+340 focused tests with 6 skips and 0 failures after updating the stale final
+documentation sweep assertion. The immediate blocker is gate #10: open generated
+schematic and PCB files in KiCad and capture release screenshots under
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
