@@ -1048,8 +1048,8 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
                 packageCompatibilityEvidence: packageCompatibilityEvidence(for: footprint, request: request),
                 pinPadMap: pinPadMap(for: footprint, request: request),
                 sourceProviderID: providerID,
-                sourcePath: footprint.name,
-                threeDModel: nil
+                sourcePath: footprint.sourcePath ?? footprint.name,
+                threeDModel: footprint.modelReferences.first
             )
         }
 
@@ -1286,13 +1286,23 @@ struct KiCadLibraryCatalogProvider: ComponentCatalogProvider {
     private func pinPadMap(for footprint: KiCadFootprintDefinition, request: ComponentSearchRequest) -> [String: String] {
         var map = pinPadMap(for: footprint)
         let requiredPins = requiredPins(from: request.constraints["required_pins"])
-        guard requiredPins == ["1", "2"] else { return map }
         let query = ([request.refdes, request.role] + Array(request.constraints.values))
             .joined(separator: " ")
             .lowercased()
             .replacingOccurrences(of: "_", with: " ")
             .replacingOccurrences(of: "-", with: " ")
         let pads = Set(map.values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() })
+
+        if Set(requiredPins) == Set(["AC1", "AC2", "PLUS", "MINUS"]),
+           (query.contains("bridge") || footprint.name.lowercased().contains("bridge")),
+           ["1", "2", "3", "4"].allSatisfy({ pads.contains($0) }) {
+            map["AC1"] = "1"
+            map["AC2"] = "2"
+            map["PLUS"] = "3"
+            map["MINUS"] = "4"
+        }
+
+        guard requiredPins == ["1", "2"] else { return map }
 
         if (query.contains("phone audio jack")
             || query.contains("audio jack")

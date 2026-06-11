@@ -1849,8 +1849,35 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
 
         XCTAssertEqual(selection.status, .ok)
         let matrix = try decodeMatrix(from: selection)
-        XCTAssertEqual(matrix.decisions.first?.selectedCandidate?.footprintCandidates.first?.sourceProviderID, "kicad_local")
+        let candidate = try XCTUnwrap(matrix.decisions.first?.selectedCandidate)
+        let footprintCandidate = try XCTUnwrap(candidate.footprintCandidates.first)
+        XCTAssertEqual(footprintCandidate.sourceProviderID, "kicad_local")
+        XCTAssertTrue(try XCTUnwrap(footprintCandidate.sourcePath).hasSuffix(".kicad_mod"))
+        XCTAssertEqual(footprintCandidate.threeDModel, #"${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"#)
         XCTAssertTrue(FileManager.default.fileExists(atPath: cacheURL.appendingPathComponent("kicad-library-catalog.json").path))
+
+        let matrixURL = try XCTUnwrap(selection.artifacts.first { $0.kind == "component_matrix" }).url
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(matrixURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
+        )
+        XCTAssertEqual(footprintResponse.status, .ok, compileResponseDebug(footprintResponse))
+        let assignmentURL = try XCTUnwrap(footprintResponse.artifacts.first { $0.kind == "footprint_assignment" }).url
+        let report = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: assignmentURL))
+        let assignment = try XCTUnwrap(report.assignments.first)
+        XCTAssertTrue(try XCTUnwrap(assignment.sourcePath).hasSuffix(".kicad_mod"))
+
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let compileResponse = await sendCompile(
+            runtime,
+            payload: #"{"design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","component_matrix_path":"\#(matrixURL.path)","footprint_assignment_path":"\#(assignmentURL.path)","output_directory":"\#(outputURL.path)"}"#
+        )
+        XCTAssertEqual(compileResponse.status, .ok, compileResponseDebug(compileResponse))
+        let boardURL = try XCTUnwrap(compileResponse.artifacts.first { $0.kind == ElectronicsArtifactKind.board.rawValue }).url
+        let boardText = try String(contentsOf: boardURL, encoding: .utf8)
+        XCTAssertTrue(boardText.contains(#"(fp_rect"#), "Compiled PCB must preserve the real KiCad footprint body, not only synthetic pads.")
+        XCTAssertTrue(boardText.contains(#"(model "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step""#), "Compiled PCB must carry the 3D model evidence from the local KiCad footprint.")
+        XCTAssertFalse(boardText.contains(#"(pad "1" thru_hole circle"#), "Compiled PCB must not fall back to synthetic through-hole pads when footprint source evidence is available.")
     }
 
     func testRuntimeCatalogSelectionDiscoversKiCadLibraryRootsFromConfig() async throws {
@@ -2955,12 +2982,30 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let artifactsURL = root.appendingPathComponent(".merlin/electronics-artifacts", isDirectory: true)
         let intentURL = try newestApprovedDesignIntent(in: artifactsURL)
         let circuitIRURL = try newestArtifact(in: artifactsURL, suffix: "circuit_ir.json")
-        let matrixURL = try newestArtifact(in: artifactsURL, suffix: "component_matrix.json")
-        let footprintURL = try newestArtifact(in: artifactsURL, suffix: "footprint_assignment.json")
 
         let runtime = try WorkspaceRuntime(rootURL: root)
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let baseCircuitIR = try JSONDecoder().decode(CircuitIR.self, from: Data(contentsOf: circuitIRURL))
+        let inputsURL = root.appendingPathComponent(".merlin/pcb-slice-inputs", isDirectory: true)
+        try FileManager.default.createDirectory(at: inputsURL, withIntermediateDirectories: true)
+        let candidatesURL = try writeAmpCandidates(from: baseCircuitIR, root: inputsURL)
+        let kicadSymbolRoot = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/symbols"
+        let kicadFootprintRoot = "/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints"
+        let catalogCacheURL = inputsURL.appendingPathComponent("kicad-catalog-cache-v2", isDirectory: true)
+
+        let selection = await send(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","circuit_ir_path":"\#(circuitIRURL.path)","catalog_candidates_path":"\#(candidatesURL.path)","kicad_symbol_library_root":"\#(kicadSymbolRoot)","kicad_footprint_library_root":"\#(kicadFootprintRoot)","kicad_catalog_cache_directory":"\#(catalogCacheURL.path)"}"#
+        )
+        XCTAssertEqual(selection.status, .ok, compileResponseDebug(selection))
+        let matrixURL = try XCTUnwrap(selection.artifacts.first { $0.kind == "component_matrix" }).url
+
+        let footprintResponse = await sendFootprints(
+            runtime,
+            payload: #"{"design_id":"amp-low-voltage","design_intent_path":"\#(intentURL.path)","component_matrix_path":"\#(matrixURL.path)","circuit_ir_path":"\#(circuitIRURL.path)"}"#
+        )
+        XCTAssertEqual(footprintResponse.status, .ok, compileResponseDebug(footprintResponse))
+        let footprintURL = try XCTUnwrap(footprintResponse.artifacts.first { $0.kind == "footprint_assignment" }).url
         let footprints = try JSONDecoder().decode(FootprintAssignmentReport.self, from: Data(contentsOf: footprintURL))
         let circuitIR = circuitIRForPCBAssertions(baseCircuitIR, footprints: footprints)
 
@@ -2978,10 +3023,19 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         let boardText = try String(contentsOf: boardArtifact.url, encoding: .utf8)
         XCTAssertTrue(boardText.contains(#""Edge.Cuts""#), "PCB must include a board outline.")
         XCTAssertEqual(boardText.components(separatedBy: #"(footprint ""#).count - 1, circuitIR.components.count)
-
+        XCTAssertEqual(
+            boardText.components(separatedBy: #"(model ""#).count - 1,
+            circuitIR.components.count,
+            "Every AmpDemo footprint must carry a KiCad 3D model so the 3D board view is populated."
+        )
         let assignmentsByRefdes = Dictionary(uniqueKeysWithValues: footprints.assignments.map { ($0.refdes, $0) })
         for component in circuitIR.components {
             let assignment = try XCTUnwrap(assignmentsByRefdes[component.refdes])
+            XCTAssertTrue(FileManager.default.fileExists(atPath: try XCTUnwrap(assignment.sourcePath)), "Missing footprint source path for \(component.refdes)")
+            XCTAssertTrue(
+                assignment.sourcePath?.hasSuffix(".kicad_mod") == true,
+                "AmpDemo footprint assignment for \(component.refdes) must point at a real KiCad footprint file."
+            )
             XCTAssertTrue(boardText.contains(#"(property "Reference" "\#(component.refdes)""#), "Missing placed reference for \(component.refdes)")
             XCTAssertTrue(boardText.contains(#"(footprint "\#(assignment.footprint)""#), "Missing assigned footprint \(assignment.footprint)")
             for pad in Set(assignment.pinPadMap.values) {
@@ -3549,13 +3603,25 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
 
     private func ampCandidate(for component: CircuitComponent) -> ComponentCandidate {
         let mpn = component.manufacturerPartNumber ?? "\(component.refdes)-MPN"
+        let ratings = component.constraints.merging([
+            "fixture_rating": "present",
+            "mpn": mpn,
+            "pin_count": "\(component.pins.count)",
+            "target_refdes": component.refdes,
+        ]) { existing, _ in existing }
+        let package = component.selectedFootprint
+            ?? component.constraints["package"]
+            ?? component.constraints["component_category"]
+            ?? component.role
         return ComponentCandidate(
             mpn: mpn,
             manufacturer: "fixture",
-            normalizedCategory: component.role.replacingOccurrences(of: " ", with: "_").lowercased(),
-            value: nil,
-            package: component.selectedFootprint ?? "library_package",
-            ratings: ["fixture_rating": "present"],
+            normalizedCategory: (component.constraints["component_category"] ?? component.role)
+                .replacingOccurrences(of: " ", with: "_")
+                .lowercased(),
+            value: component.constraints["resistance"] ?? component.constraints["capacitance"],
+            package: package,
+            ratings: ratings,
             lifecycleState: "active",
             availabilitySummary: "fixture_available",
             datasheets: [
@@ -3874,8 +3940,17 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         try FileManager.default.createDirectory(at: libraryRoot, withIntermediateDirectories: true)
         try """
         (footprint "R_0603_1608Metric"
+          (version 20260206)
+          (generator "kicad-footprint-generator")
+          (layer "F.Cu")
+          (fp_rect (start -1.48 -0.73) (end 1.48 0.73) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd"))
+          (fp_rect (start -0.8 -0.4125) (end 0.8 0.4125) (stroke (width 0.1) (type solid)) (fill no) (layer "F.Fab"))
           (pad "1" smd roundrect (at -0.8 0) (size 0.8 0.95) (layers "F.Cu"))
-          (pad "2" smd roundrect (at 0.8 0) (size 0.8 0.95) (layers "F.Cu")))
+          (pad "2" smd roundrect (at 0.8 0) (size 0.8 0.95) (layers "F.Cu"))
+          (model "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step"
+            (offset (xyz 0 0 0))
+            (scale (xyz 1 1 1))
+            (rotate (xyz 0 0 0))))
         """.write(to: libraryRoot.appendingPathComponent("R_0603_1608Metric.kicad_mod"), atomically: true, encoding: .utf8)
         return footprintRoot
     }

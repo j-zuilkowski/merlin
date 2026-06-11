@@ -2134,6 +2134,10 @@ private struct ElectronicsCapabilityHandler: WorkspaceMessageHandler {
             }
             if let assignment = footprintsByRefdes[component.refdes] {
                 component.selectedFootprint = nonEmpty(assignment.footprint) ?? component.selectedFootprint
+                if let sourcePath = nonEmpty(assignment.sourcePath),
+                   FileManager.default.fileExists(atPath: sourcePath) {
+                    component.constraints["footprint_source_path"] = sourcePath
+                }
                 component.sourceEvidence = mergedSourceEvidence(
                     component.sourceEvidence,
                     [SourceEvidence(

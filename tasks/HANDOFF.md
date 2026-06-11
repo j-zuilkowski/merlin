@@ -60,10 +60,12 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 508.
+Latest completed task is Task 510.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 510 — repair release electronics/KiCad gate board output
+- Task 509 — record invalid KiCad release evidence
 - Task 508 — pass final release safety check
 - Task 507 — write release evidence report
 - Task 506 — capture README and GitHub feature screenshots
@@ -249,11 +251,18 @@ now asserts Task 504-era handoff state and Task 503 gate #8 completion. Evidence
 `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.fail-first-summary.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-doc-sweep.focused-green.log`,
 and `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`.
-The final gate #9 run passed 340 focused electronics/KiCad tests with 6 skips
-and 0 failures, including the real KiCad DRC-backed board-outline check when
-KiCad is available. Gates #1-#9 in the release ledger are now green. The next
-release action is gate #10: open generated schematic and PCB files in KiCad and
-capture release screenshots under
+Task 510 repaired the gate #9 evidence after the old run skipped the real
+AmpDemo PCB slice. The refreshed gate #9 run now passes 343 focused
+electronics/KiCad tests with 5 skips and 0 failures, including
+`EvidenceGatedComponentSelectionTests.testAmpDemoEvidenceBackedPCBCompilePlacesAllFootprintsAndRunsDRC`.
+That test generated
+`/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/pcb-slice/54F5F058-4CE3-4A2E-853E-74980AA944E8/isolated_secondary.kicad_pcb`
+with 21 footprints, 21 3D model references, 62 pads, 90 routed segments, and
+36 vias. Its KiCad DRC report
+`/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/7FB63521-6C6F-44D4-8EE3-83E02F54C269-drc-report.json`
+has 0 violations and 0 unconnected items. Gates #1-#9 in the release ledger are
+green again. The next release action is gate #10: open generated schematic and
+PCB files in KiCad and capture release screenshots under
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
 
 Task 505 passed release gate #10 by opening generated KiCad files and capturing

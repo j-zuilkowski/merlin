@@ -30,9 +30,9 @@ release gate state instead of pinning the repository to Task 492.
   records the corrected documentation-sweep assertion passing.
 - Gate green:
   `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`
-  records the focused electronics/KiCad gate passing 340 tests with 6 skips and
-  0 failures. The run includes the real KiCad DRC-backed board-outline check
-  when KiCad is available on the machine.
+  records the focused electronics/KiCad gate passing 343 tests with 5 skips and
+  0 failures. The refreshed Task 510 run includes the AmpDemo PCB slice that
+  generates a populated board and clean KiCad DRC report.
 
 ## Result
 

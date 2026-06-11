@@ -287,6 +287,33 @@ final class ComponentCatalogContractsTests: XCTestCase {
         XCTAssertNil(stale)
     }
 
+    func testKiCadLibraryCatalogCacheRejectsOldExtractWithoutFootprintSourcePaths() throws {
+        let root = try temporaryDirectory()
+        let cacheURL = root.appendingPathComponent("catalog-cache", isDirectory: true)
+        let catalog = KiCadLocalLibraryCatalog(
+            generatedAt: Date(timeIntervalSince1970: 1_000),
+            symbols: [],
+            footprints: [
+                KiCadFootprintDefinition(
+                    name: "Resistor_SMD:R_0603_1608Metric",
+                    pads: [
+                        KiCadFootprintPad(number: "1", name: nil),
+                        KiCadFootprintPad(number: "2", name: nil),
+                    ]
+                ),
+            ]
+        )
+
+        try KiCadLibraryCatalogCache().write(catalog, to: cacheURL)
+
+        let loaded = try KiCadLibraryCatalogCache().load(
+            from: cacheURL,
+            maxAgeSeconds: 60,
+            now: Date(timeIntervalSince1970: 1_030)
+        )
+        XCTAssertNil(loaded)
+    }
+
     func testKiCadLibraryRootDiscoveryFindsConfiguredInstallLayout() throws {
         let root = try temporaryDirectory()
         let installRoot = root.appendingPathComponent("KiCad.app/Contents/SharedSupport/kicad", isDirectory: true)

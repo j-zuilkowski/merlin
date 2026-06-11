@@ -23,6 +23,35 @@ struct KiCadFootprintPad: Codable, Sendable, Equatable, Hashable {
 struct KiCadFootprintDefinition: Codable, Sendable, Equatable {
     var name: String
     var pads: [KiCadFootprintPad]
+    var sourcePath: String?
+    var modelReferences: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case pads
+        case sourcePath = "source_path"
+        case modelReferences = "model_references"
+    }
+
+    init(
+        name: String,
+        pads: [KiCadFootprintPad],
+        sourcePath: String? = nil,
+        modelReferences: [String] = []
+    ) {
+        self.name = name
+        self.pads = pads
+        self.sourcePath = sourcePath
+        self.modelReferences = modelReferences
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        name = try container.decode(String.self, forKey: .name)
+        pads = try container.decodeIfPresent([KiCadFootprintPad].self, forKey: .pads) ?? []
+        sourcePath = try container.decodeIfPresent(String.self, forKey: .sourcePath)
+        modelReferences = try container.decodeIfPresent([String].self, forKey: .modelReferences) ?? []
+    }
 
     var footprintName: String {
         name
@@ -118,6 +147,11 @@ struct KiCadLibraryCatalogCache: Sendable {
         guard maxAgeSeconds <= 0 || now.timeIntervalSince(catalog.generatedAt) <= Double(maxAgeSeconds) else {
             return nil
         }
+        if !catalog.footprints.isEmpty,
+           catalog.footprints.allSatisfy({ ($0.sourcePath ?? "").isEmpty }),
+           catalog.footprints.contains(where: { !$0.pads.isEmpty }) {
+            return nil
+        }
         return catalog
     }
 
@@ -161,7 +195,13 @@ struct KiCadLibraryCatalogExtractor: Sendable {
             let rawName = firstQuotedValue(after: "(footprint", in: text) ?? file.deletingPathExtension().lastPathComponent
             let name = libraryName.isEmpty || rawName.contains(":") ? rawName : "\(libraryName):\(rawName)"
             let pads = blocks(named: "pad", in: text).compactMap(parsePad)
-            return KiCadFootprintDefinition(name: name, pads: pads)
+            let models = blocks(named: "model", in: text).compactMap { firstQuotedValue(after: "(model", in: $0) }
+            return KiCadFootprintDefinition(
+                name: name,
+                pads: pads,
+                sourcePath: file.path,
+                modelReferences: models
+            )
         }
         .sorted { $0.name < $1.name }
     }

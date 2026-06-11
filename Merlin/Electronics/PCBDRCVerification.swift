@@ -433,8 +433,8 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
           (net_class Default "Default rules for generated evidence-backed PCB slices."
             (clearance 0.15)
             (trace_width 0.25)
-            (via_dia 0.8)
-            (via_drill 0.4)
+            (via_dia 0.6)
+            (via_drill 0.3)
         \(addedNets)
           )
         """
@@ -574,7 +574,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         netIDs: [String: Int],
         pinNetNames: [String: String]
     ) -> String? {
-        guard let sourceURL = footprintSourceURL(for: footprint),
+        guard let sourceURL = footprintSourceURL(for: footprint, component: component),
               var text = try? String(contentsOf: sourceURL, encoding: .utf8) else {
             return nil
         }
@@ -592,7 +592,13 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
             .joined(separator: "\n")
     }
 
-    private func footprintSourceURL(for footprint: String) -> URL? {
+    private func footprintSourceURL(for footprint: String, component: CircuitComponent? = nil) -> URL? {
+        if let path = component?.constraints["footprint_source_path"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !path.isEmpty,
+           path.hasSuffix(".kicad_mod"),
+           FileManager.default.fileExists(atPath: path) {
+            return URL(fileURLWithPath: path)
+        }
         guard let footprintRoot,
               let separator = footprint.firstIndex(of: ":") else {
             return nil
@@ -785,7 +791,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
 
     private func footprintGeometry(for component: CircuitComponent) -> FootprintGeometry {
         guard let footprint = component.selectedFootprint,
-              let sourceURL = footprintSourceURL(for: footprint),
+              let sourceURL = footprintSourceURL(for: footprint, component: component),
               let text = try? String(contentsOf: sourceURL, encoding: .utf8),
               let geometry = footprintGeometry(from: text) else {
             return FootprintGeometry(
@@ -1135,7 +1141,7 @@ struct CircuitIRKiCadBoardMaterializer: Sendable {
         discriminator: String
     ) -> String {
         let stablePoint = "\(number(at.x)),\(number(at.y))"
-        return #"  (via (at \#(number(at.x)) \#(number(at.y))) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (net \#(netID)) (uuid "\#(stableUUID("via", "\(netID)", stablePoint, discriminator))"))"#
+        return #"  (via (at \#(number(at.x)) \#(number(at.y))) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net \#(netID)) (uuid "\#(stableUUID("via", "\(netID)", stablePoint, discriminator))"))"#
     }
 
     private func orderedUniqueNodes(_ nodes: [String]) -> [String] {
