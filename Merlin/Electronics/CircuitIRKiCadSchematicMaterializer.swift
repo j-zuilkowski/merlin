@@ -170,16 +170,34 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func labels(for circuitIR: CircuitIR) -> [KiCadSchematicDocument.Label] {
-        return circuitIR.nets.flatMap { net -> [KiCadSchematicDocument.Label] in
+        return circuitIR.nets.enumerated().flatMap { netIndex, net -> [KiCadSchematicDocument.Label] in
+            let visibleName = visibleNetName(for: net.name, index: netIndex)
             let labels = net.endpoints.compactMap { endpoint -> KiCadSchematicDocument.Label? in
                 guard let stub = endpointStub(for: endpoint, circuitIR: circuitIR) else { return nil }
-                return KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: true, at: stub.labelPoint)
+                return KiCadSchematicDocument.Label(kind: .local, text: visibleName, emitsKiCadConnectivity: true, at: stub.labelPoint)
             }
+            let metadataLabels = netMetadataLabels(originalName: net.name, visibleName: visibleName)
             if labels.isEmpty {
-                return [KiCadSchematicDocument.Label(kind: .local, text: net.name, emitsKiCadConnectivity: false)]
+                return [KiCadSchematicDocument.Label(kind: .local, text: visibleName, emitsKiCadConnectivity: false)]
+                    + metadataLabels
             }
-            return labels
+            return labels + metadataLabels
         }
+    }
+
+    private func visibleNetName(for name: String, index: Int) -> String {
+        if name.count <= 24 {
+            return name
+        }
+        return "N\(index + 1)"
+    }
+
+    private func netMetadataLabels(originalName: String, visibleName: String) -> [KiCadSchematicDocument.Label] {
+        guard originalName != visibleName else { return [] }
+        return [
+            KiCadSchematicDocument.Label(kind: .local, text: originalName, emitsKiCadConnectivity: false),
+            KiCadSchematicDocument.Label(kind: .local, text: "NodeMap:\(originalName)=\(visibleName)", emitsKiCadConnectivity: false),
+        ]
     }
 
     private func pinPoint(
@@ -199,8 +217,8 @@ struct CircuitIRKiCadSchematicMaterializer: Sendable {
     }
 
     private func symbolPlacement(index: Int) -> KiCadSchematicDocument.Point {
-        let column = index % 4
-        let row = index / 4
+        let column = index % 6
+        let row = index / 6
         return KiCadSchematicDocument.Point(
             x: 25.4 + Double(column) * 50.8,
             y: 25.4 + Double(row) * 38.1
@@ -437,14 +455,29 @@ struct SchematicRealismValidator: Sendable {
         }
 
         let emittedConnectivityLabels = Set(schematic.labels.filter(\.emitsKiCadConnectivity).map(\.text))
-        for net in circuitIR.nets where !emittedConnectivityLabels.contains(net.name) {
-            issues.append(issue(
-                "SCHEMATIC_NET_CONNECTIVITY_MISSING",
-                "Schematic net \(net.name) is missing an emitted KiCad connectivity label."
-            ))
+        let metadataLabels = Set(schematic.labels.filter { !$0.emitsKiCadConnectivity }.map(\.text))
+        for (netIndex, net) in circuitIR.nets.enumerated() {
+            let visibleName = visibleNetName(for: net.name, index: netIndex)
+            let hasVisibleConnectivity = emittedConnectivityLabels.contains(net.name)
+                || emittedConnectivityLabels.contains(visibleName)
+            let hasOriginalEvidence = visibleName == net.name
+                || (metadataLabels.contains(net.name) && metadataLabels.contains("NodeMap:\(net.name)=\(visibleName)"))
+            if !hasVisibleConnectivity || !hasOriginalEvidence {
+                issues.append(issue(
+                    "SCHEMATIC_NET_CONNECTIVITY_MISSING",
+                    "Schematic net \(net.name) is missing emitted KiCad connectivity or hidden original-name evidence."
+                ))
+            }
         }
 
         return ElectronicsSchemaValidationResult(issues: issues)
+    }
+
+    private func visibleNetName(for name: String, index: Int) -> String {
+        if name.count <= 24 {
+            return name
+        }
+        return "N\(index + 1)"
     }
 
     private func pinNumbers(from symbol: KiCadSchematicDocument.Symbol) -> Set<String> {

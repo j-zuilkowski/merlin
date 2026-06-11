@@ -1,7 +1,7 @@
 {
     "$schema": "https://schemas.kicad.org/drc.v1.json",
     "coordinate_units": "mm",
-    "date": "2026-06-11T15:22:34",
+    "date": "2026-06-11T16:20:57",
     "ignored_checks": [
         {
             "description": "Footprint has no courtyard defined",
@@ -36,10 +36,10 @@
                 {
                     "description": "Footprint BR1",
                     "pos": {
-                        "x": 93.29,
-                        "y": 30.3
+                        "x": 49.29,
+                        "y": 24.3
                     },
-                    "uuid": "4bf62885-0ace-43bf-82c9-53dddf0068a6"
+                    "uuid": "67500be9-32c0-4c85-acb8-ba272a41a0d8"
                 }
             ],
             "severity": "warning",
@@ -51,10 +51,10 @@
                 {
                     "description": "Pad 1 [AC_SEC1] of BR1 on F.Cu",
                     "pos": {
-                        "x": 90.69,
-                        "y": 26.45
+                        "x": 46.69,
+                        "y": 20.45
                     },
-                    "uuid": "959b8513-82a6-4506-85da-545fe3315d28"
+                    "uuid": "82275cbd-968f-4213-8a31-f8d4af38b280"
                 }
             ],
             "severity": "warning",
@@ -66,10 +66,10 @@
                 {
                     "description": "Pad 3 [VRAW] of BR1 on F.Cu",
                     "pos": {
-                        "x": 95.89,
-                        "y": 34.15
+                        "x": 51.89,
+                        "y": 28.15
                     },
-                    "uuid": "6c216449-b9bb-417a-ac93-3e721c53b17f"
+                    "uuid": "99acb522-5a0b-4416-b874-abec1f801add"
                 }
             ],
             "severity": "warning",
@@ -81,10 +81,10 @@
                 {
                     "description": "Pad 4 [GND] of BR1 on F.Cu",
                     "pos": {
-                        "x": 95.89,
-                        "y": 26.45
+                        "x": 51.89,
+                        "y": 20.45
                     },
-                    "uuid": "f8e29d2b-e25d-4300-9721-afe90a4524f4"
+                    "uuid": "46bad740-2a78-4aac-b4cf-40f595afda3f"
                 }
             ],
             "severity": "warning",
@@ -96,40 +96,40 @@
                 {
                     "description": "Footprint CBASS1",
                     "pos": {
-                        "x": 404.56,
-                        "y": 24.35
+                        "x": 170.56,
+                        "y": 18.35
                     },
-                    "uuid": "86b1af19-8686-406a-b141-4d2cd4b8f093"
+                    "uuid": "7dab618e-b014-4665-af00-dfd61e9b686a"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/TONE1_INTERNAL_RBASS1_CBASS1)",
+            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/N13)",
             "items": [
                 {
                     "description": "Pad 1 [TONE1_INTERNAL_RBASS1_CBASS1] of CBASS1 on F.Cu",
                     "pos": {
-                        "x": 404.24,
-                        "y": 24.35
+                        "x": 170.24,
+                        "y": 18.35
                     },
-                    "uuid": "0420eabd-1bfd-406f-a9a5-b4e34ca6f469"
+                    "uuid": "16d174e4-2f04-40dc-a4a5-88f351c8a19d"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/TONE1_INTERNAL_CBASS1_RMID1)",
+            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/N14)",
             "items": [
                 {
                     "description": "Pad 2 [TONE1_INTERNAL_CBASS1_RMID1] of CBASS1 on F.Cu",
                     "pos": {
-                        "x": 404.88,
-                        "y": 24.35
+                        "x": 170.88,
+                        "y": 18.35
                     },
-                    "uuid": "c6d0852b-b49e-47a2-800a-09478989dd88"
+                    "uuid": "569766fb-a721-4c09-976c-afdaa9d0f845"
                 }
             ],
             "severity": "warning",
@@ -141,40 +141,40 @@
                 {
                     "description": "Footprint CFILT1",
                     "pos": {
-                        "x": 756.49,
-                        "y": 24.35
+                        "x": 294.49,
+                        "y": 18.35
                     },
-                    "uuid": "26d61380-1680-45d2-9c74-12e2b727438b"
+                    "uuid": "7dd3e09c-7f4b-4220-96b3-303c0f46b4d0"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/FILTER1_INTERNAL_RFILT1_CFILT1)",
+            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/N11)",
             "items": [
                 {
                     "description": "Pad 1 [FILTER1_INTERNAL_RFILT1_CFILT1] of CFILT1 on F.Cu",
                     "pos": {
-                        "x": 756.17,
-                        "y": 24.35
+                        "x": 294.17,
+                        "y": 18.35
                     },
-                    "uuid": "ed2eaf93-b5d8-4a09-8b62-acefe56c61e0"
+                    "uuid": "1cf4563c-0d03-49d6-b96d-00af8cd39231"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/FILTER1_INTERNAL_CFILT1_RVFILT1)",
+            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/N12)",
             "items": [
                 {
                     "description": "Pad 2 [FILTER1_INTERNAL_CFILT1_RVFILT1] of CFILT1 on F.Cu",
                     "pos": {
-                        "x": 756.81,
-                        "y": 24.35
+                        "x": 294.81,
+                        "y": 18.35
                     },
-                    "uuid": "81fc82f4-cce1-470d-87b3-62ac898c8880"
+                    "uuid": "17e40668-4ee8-4f5f-a1b1-d76307578cf7"
                 }
             ],
             "severity": "warning",
@@ -186,40 +186,40 @@
                 {
                     "description": "Footprint CMID1",
                     "pos": {
-                        "x": 521.87,
-                        "y": 24.35
+                        "x": 211.87,
+                        "y": 18.35
                     },
-                    "uuid": "8c803d02-112d-42bc-bebd-ffb099325a27"
+                    "uuid": "5511f92b-69f5-4fc6-9e69-9a0266a89908"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/TONE1_INTERNAL_RMID1_CMID1)",
+            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/N15)",
             "items": [
                 {
                     "description": "Pad 1 [TONE1_INTERNAL_RMID1_CMID1] of CMID1 on F.Cu",
                     "pos": {
-                        "x": 521.55,
-                        "y": 24.35
+                        "x": 211.55,
+                        "y": 18.35
                     },
-                    "uuid": "89816e8c-8859-41f5-9284-45cbf2bb249f"
+                    "uuid": "4f000c78-17ec-4b86-8408-74c039ba0375"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/TONE1_INTERNAL_CMID1_RTREBLE1)",
+            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/N16)",
             "items": [
                 {
                     "description": "Pad 2 [TONE1_INTERNAL_CMID1_RTREBLE1] of CMID1 on F.Cu",
                     "pos": {
-                        "x": 522.19,
-                        "y": 24.35
+                        "x": 212.19,
+                        "y": 18.35
                     },
-                    "uuid": "be423c89-468a-4db0-9463-8f3e80d9f6ea"
+                    "uuid": "86997e4d-3788-46ac-9609-0ecfae1f8f57"
                 }
             ],
             "severity": "warning",
@@ -231,10 +231,10 @@
                 {
                     "description": "Footprint CRES1",
                     "pos": {
-                        "x": 154.29,
-                        "y": 24.35
+                        "x": 72.29,
+                        "y": 18.35
                     },
-                    "uuid": "2d2df7af-559f-4b04-8ce7-100ac472e1ac"
+                    "uuid": "1a07251d-3618-418c-9971-a1011742bb8c"
                 }
             ],
             "severity": "warning",
@@ -246,10 +246,10 @@
                 {
                     "description": "Pad 1 [VRAW] of CRES1 on F.Cu",
                     "pos": {
-                        "x": 153.97,
-                        "y": 24.35
+                        "x": 71.97,
+                        "y": 18.35
                     },
-                    "uuid": "42347ee6-cd2c-444b-b895-86a363632ab4"
+                    "uuid": "24226dc3-f01d-4624-a8a8-ba636796949f"
                 }
             ],
             "severity": "warning",
@@ -261,10 +261,10 @@
                 {
                     "description": "Pad 2 [GND] of CRES1 on F.Cu",
                     "pos": {
-                        "x": 154.61,
-                        "y": 24.35
+                        "x": 72.61,
+                        "y": 18.35
                     },
-                    "uuid": "814b15a9-5750-4412-8f8c-04f76298f13e"
+                    "uuid": "6284da9e-5b1e-438d-a7f2-0a79aa1385fe"
                 }
             ],
             "severity": "warning",
@@ -276,25 +276,25 @@
                 {
                     "description": "Footprint CTREBLE1",
                     "pos": {
-                        "x": 639.18,
-                        "y": 24.35
+                        "x": 253.18,
+                        "y": 18.35
                     },
-                    "uuid": "4ec095a8-4b6a-4fb8-ae9e-f3592e418735"
+                    "uuid": "98c1d334-a090-48aa-ab70-3f342ff4616a"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/TONE1_INTERNAL_RTREBLE1_CTREBLE1)",
+            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/N17)",
             "items": [
                 {
                     "description": "Pad 1 [TONE1_INTERNAL_RTREBLE1_CTREBLE1] of CTREBLE1 on F.Cu",
                     "pos": {
-                        "x": 638.86,
-                        "y": 24.35
+                        "x": 252.86,
+                        "y": 18.35
                     },
-                    "uuid": "bc4cffb2-8d55-455d-89a0-a820294e7f9c"
+                    "uuid": "5f439392-e43a-4479-8e4a-4323067f67ad"
                 }
             ],
             "severity": "warning",
@@ -306,10 +306,10 @@
                 {
                     "description": "Pad 2 [TONE_OUT] of CTREBLE1 on F.Cu",
                     "pos": {
-                        "x": 639.5,
-                        "y": 24.35
+                        "x": 253.5,
+                        "y": 18.35
                     },
-                    "uuid": "e38c0894-71d0-4cba-b360-6699ee6d8704"
+                    "uuid": "ae0c29a8-9f1e-4b71-9d43-ac1dd6856590"
                 }
             ],
             "severity": "warning",
@@ -321,10 +321,10 @@
                 {
                     "description": "Footprint JIN",
                     "pos": {
-                        "x": 218.74,
-                        "y": 26.28
+                        "x": 98.74,
+                        "y": 20.28
                     },
-                    "uuid": "fc4532f8-e88f-46f6-a2f9-a4fdf72846be"
+                    "uuid": "0eee11ab-6692-4172-b5d8-1cabaeb02db8"
                 }
             ],
             "severity": "warning",
@@ -336,10 +336,10 @@
                 {
                     "description": "PTH pad S [GUITAR_IN] of JIN",
                     "pos": {
-                        "x": 213.66,
-                        "y": 32.0
+                        "x": 93.66,
+                        "y": 26.0
                     },
-                    "uuid": "95fb58fb-da62-481c-a93b-3aeffcc2c7df"
+                    "uuid": "66815bd9-cf5f-44b6-a4c0-7a488023f6d0"
                 }
             ],
             "severity": "warning",
@@ -351,10 +351,10 @@
                 {
                     "description": "Footprint JIN",
                     "pos": {
-                        "x": 218.74,
-                        "y": 26.28
+                        "x": 98.74,
+                        "y": 20.28
                     },
-                    "uuid": "fc4532f8-e88f-46f6-a2f9-a4fdf72846be"
+                    "uuid": "0eee11ab-6692-4172-b5d8-1cabaeb02db8"
                 }
             ],
             "severity": "warning",
@@ -366,10 +366,10 @@
                 {
                     "description": "Footprint JSEC",
                     "pos": {
-                        "x": 26.6,
-                        "y": 27.9
+                        "x": 20.6,
+                        "y": 21.9
                     },
-                    "uuid": "51d86823-d6e0-4f70-9e09-967035a4bb8b"
+                    "uuid": "04673fa6-0806-4c03-b977-7d2b4ba27eee"
                 }
             ],
             "severity": "warning",
@@ -381,10 +381,10 @@
                 {
                     "description": "PTH pad 2 [AC_SEC1] of JSEC",
                     "pos": {
-                        "x": 30.1,
-                        "y": 27.9
+                        "x": 24.1,
+                        "y": 21.9
                     },
-                    "uuid": "fc2fed55-728b-4759-af53-b618abbacdef"
+                    "uuid": "6e904c01-8fe0-4f51-83e7-a515dcd27ba5"
                 }
             ],
             "severity": "warning",
@@ -396,10 +396,10 @@
                 {
                     "description": "Footprint JSPK",
                     "pos": {
-                        "x": 1019.75,
-                        "y": 34.32
+                        "x": 405.75,
+                        "y": 28.32
                     },
-                    "uuid": "f03335de-e990-4f9b-ae68-00355e1c6b70"
+                    "uuid": "bee11e08-b044-4748-8764-4edf774b6556"
                 }
             ],
             "severity": "warning",
@@ -411,10 +411,10 @@
                 {
                     "description": "PTH pad 1+ [SPK_OUT] of JSPK",
                     "pos": {
-                        "x": 1019.75,
-                        "y": 34.32
+                        "x": 405.75,
+                        "y": 28.32
                     },
-                    "uuid": "4202bcb5-8057-4346-9d6e-18a06b0171e1"
+                    "uuid": "76571f39-8fb1-4e62-8e43-fa28ce82304e"
                 }
             ],
             "severity": "warning",
@@ -426,10 +426,10 @@
                 {
                     "description": "Footprint JSPK",
                     "pos": {
-                        "x": 1019.75,
-                        "y": 34.32
+                        "x": 405.75,
+                        "y": 28.32
                     },
-                    "uuid": "f03335de-e990-4f9b-ae68-00355e1c6b70"
+                    "uuid": "bee11e08-b044-4748-8764-4edf774b6556"
                 }
             ],
             "severity": "warning",
@@ -441,10 +441,10 @@
                 {
                     "description": "Footprint QDRV1",
                     "pos": {
-                        "x": 882.82,
-                        "y": 39.25
+                        "x": 344.82,
+                        "y": 33.25
                     },
-                    "uuid": "f06e1b57-7710-4ec8-9220-b969d3c0aae7"
+                    "uuid": "5f463965-b030-4115-b76a-7f95c20a955c"
                 }
             ],
             "severity": "warning",
@@ -456,10 +456,10 @@
                 {
                     "description": "PTH pad 1 [FILTER_OUT] of QDRV1",
                     "pos": {
-                        "x": 882.82,
-                        "y": 39.25
+                        "x": 344.82,
+                        "y": 33.25
                     },
-                    "uuid": "5fcbe31e-0568-4489-b5ea-aabd8762ad2b"
+                    "uuid": "2475c92d-fdd0-486a-b325-deab30d07f0c"
                 }
             ],
             "severity": "warning",
@@ -471,10 +471,10 @@
                 {
                     "description": "PTH pad 3 [DRV_OUT] of QDRV1",
                     "pos": {
-                        "x": 887.38,
-                        "y": 39.25
+                        "x": 349.38,
+                        "y": 33.25
                     },
-                    "uuid": "1b83207b-c3c7-4120-8943-090b41e36274"
+                    "uuid": "a1d2df05-765a-4345-a49b-4b640d4217dd"
                 }
             ],
             "severity": "warning",
@@ -486,10 +486,10 @@
                 {
                     "description": "Footprint QOUT1",
                     "pos": {
-                        "x": 948.1,
-                        "y": 50.28
+                        "x": 372.1,
+                        "y": 44.28
                     },
-                    "uuid": "5b8b80f4-7b80-4a82-837e-ef5bd24e6cc6"
+                    "uuid": "b8eef360-3fad-4923-ae45-6da90ec67f1c"
                 }
             ],
             "severity": "warning",
@@ -501,10 +501,10 @@
                 {
                     "description": "PTH pad 1 [DRV_OUT] of QOUT1",
                     "pos": {
-                        "x": 948.1,
-                        "y": 50.28
+                        "x": 372.1,
+                        "y": 44.28
                     },
-                    "uuid": "dde8c858-fa34-4c7b-b17a-8a9d44430f0c"
+                    "uuid": "9f840ac0-c8e4-4cf3-9fc0-efa2620177c3"
                 }
             ],
             "severity": "warning",
@@ -516,10 +516,10 @@
                 {
                     "description": "PTH pad 3 [SPK_OUT] of QOUT1",
                     "pos": {
-                        "x": 959.0,
-                        "y": 50.28
+                        "x": 383.0,
+                        "y": 44.28
                     },
-                    "uuid": "0dff94da-d35d-463c-b7a1-42844ae0424f"
+                    "uuid": "d7d07484-656e-4f47-89d7-87ca7ac99806"
                 }
             ],
             "severity": "warning",
@@ -531,10 +531,10 @@
                 {
                     "description": "Footprint QPRE1",
                     "pos": {
-                        "x": 283.95,
-                        "y": 26.73
+                        "x": 125.95,
+                        "y": 20.73
                     },
-                    "uuid": "f39513d4-a990-4a48-a375-d7a155a86db0"
+                    "uuid": "0a2603ed-1a69-4653-9df0-3d694d4173c5"
                 }
             ],
             "severity": "warning",
@@ -546,10 +546,10 @@
                 {
                     "description": "PTH pad 1 [GUITAR_IN] of QPRE1",
                     "pos": {
-                        "x": 283.95,
-                        "y": 26.73
+                        "x": 125.95,
+                        "y": 20.73
                     },
-                    "uuid": "f56c68f8-8731-44b1-a253-8a3e82b5f163"
+                    "uuid": "9d41e070-bc4d-4161-a200-5e3493bca043"
                 }
             ],
             "severity": "warning",
@@ -561,10 +561,10 @@
                 {
                     "description": "PTH pad 3 [PRE_OUT] of QPRE1",
                     "pos": {
-                        "x": 286.49,
-                        "y": 26.73
+                        "x": 128.49,
+                        "y": 20.73
                     },
-                    "uuid": "edc64fb7-28b5-4e7e-8520-555c350d0b52"
+                    "uuid": "417a6bb9-63f1-454c-9394-d40c2c88fff4"
                 }
             ],
             "severity": "warning",
@@ -576,10 +576,10 @@
                 {
                     "description": "Footprint RBASS1",
                     "pos": {
-                        "x": 345.0,
-                        "y": 25.05
+                        "x": 149.0,
+                        "y": 19.05
                     },
-                    "uuid": "353064ef-0ecb-47c6-9f74-fd7689410386"
+                    "uuid": "906b1aff-145e-45e2-9e6e-8c27e8d289b1"
                 }
             ],
             "severity": "warning",
@@ -591,25 +591,25 @@
                 {
                     "description": "PTH pad 1 [PRE_OUT] of RBASS1",
                     "pos": {
-                        "x": 345.0,
-                        "y": 25.05
+                        "x": 149.0,
+                        "y": 19.05
                     },
-                    "uuid": "e2472dfe-4d95-468f-96ff-1c7fe29eb048"
+                    "uuid": "94f008a5-b5d9-452d-b967-6bda5a24ed7e"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/TONE1_INTERNAL_RBASS1_CBASS1)",
+            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/N13)",
             "items": [
                 {
                     "description": "PTH pad 2 [TONE1_INTERNAL_RBASS1_CBASS1] of RBASS1",
                     "pos": {
-                        "x": 346.9,
-                        "y": 25.05
+                        "x": 150.9,
+                        "y": 19.05
                     },
-                    "uuid": "7f4981c1-4da0-4e46-8077-5768ec15be5f"
+                    "uuid": "335dffa4-bf77-4404-bc54-e52f39237668"
                 }
             ],
             "severity": "warning",
@@ -621,25 +621,25 @@
                 {
                     "description": "Footprint RBIAS1A",
                     "pos": {
-                        "x": 1228.83,
-                        "y": 25.05
+                        "x": 500.83,
+                        "y": 19.05
                     },
-                    "uuid": "a4ec065e-12ea-41a1-a49a-8bdf68fe18b5"
+                    "uuid": "7262ed74-4db4-47c5-ae9e-f3fa2729ba35"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/RBIAS1_INTERNAL_RBIAS1A_RBIAS1B)",
+            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/N18)",
             "items": [
                 {
                     "description": "PTH pad 2 [RBIAS1_INTERNAL_RBIAS1A_RBIAS1B] of RBIAS1A",
                     "pos": {
-                        "x": 1230.73,
-                        "y": 25.05
+                        "x": 502.73,
+                        "y": 19.05
                     },
-                    "uuid": "496417d5-7fd3-4a79-abc7-925b09a3e7e9"
+                    "uuid": "d24c7c27-d74c-4e2c-b5c9-cc107b6c6ccd"
                 }
             ],
             "severity": "warning",
@@ -651,25 +651,25 @@
                 {
                     "description": "Footprint RBIAS1B",
                     "pos": {
-                        "x": 1288.74,
-                        "y": 25.05
+                        "x": 522.74,
+                        "y": 19.05
                     },
-                    "uuid": "7b8ab9ba-8a54-495d-b79a-2c7d929de540"
+                    "uuid": "ce253413-93ce-4afd-9a4b-e5383c1fc588"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/RBIAS1_INTERNAL_RBIAS1A_RBIAS1B)",
+            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/N18)",
             "items": [
                 {
                     "description": "PTH pad 1 [RBIAS1_INTERNAL_RBIAS1A_RBIAS1B] of RBIAS1B",
                     "pos": {
-                        "x": 1288.74,
-                        "y": 25.05
+                        "x": 522.74,
+                        "y": 19.05
                     },
-                    "uuid": "01935a2b-2d84-483d-bcd3-dd81e0a2261a"
+                    "uuid": "60cbc5c4-36c2-425c-90f4-09e2019be9e0"
                 }
             ],
             "severity": "warning",
@@ -681,10 +681,10 @@
                 {
                     "description": "Footprint RFILT1",
                     "pos": {
-                        "x": 696.93,
-                        "y": 25.05
+                        "x": 272.93,
+                        "y": 19.05
                     },
-                    "uuid": "88166c0e-aa43-49fe-80d5-9ccb93eac6d5"
+                    "uuid": "a119d094-b33e-40ea-8129-e6e3a3c0fa57"
                 }
             ],
             "severity": "warning",
@@ -696,25 +696,25 @@
                 {
                     "description": "PTH pad 1 [TONE_OUT] of RFILT1",
                     "pos": {
-                        "x": 696.93,
-                        "y": 25.05
+                        "x": 272.93,
+                        "y": 19.05
                     },
-                    "uuid": "8b889af3-122e-4bce-b56c-3176e9bf663d"
+                    "uuid": "6b62b4ec-1f0b-4c60-879c-2a7ca72ef8b9"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/FILTER1_INTERNAL_RFILT1_CFILT1)",
+            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/N11)",
             "items": [
                 {
                     "description": "PTH pad 2 [FILTER1_INTERNAL_RFILT1_CFILT1] of RFILT1",
                     "pos": {
-                        "x": 698.83,
-                        "y": 25.05
+                        "x": 274.83,
+                        "y": 19.05
                     },
-                    "uuid": "67d05861-6085-4b4a-a5db-9dad6fc15219"
+                    "uuid": "c8374227-ad51-4d31-a46a-c31e37f998c1"
                 }
             ],
             "severity": "warning",
@@ -726,40 +726,40 @@
                 {
                     "description": "Footprint RMID1",
                     "pos": {
-                        "x": 462.31,
-                        "y": 25.05
+                        "x": 190.31,
+                        "y": 19.05
                     },
-                    "uuid": "8f9a8220-7b9f-488d-b2bd-77efefe5c194"
+                    "uuid": "564aa357-1390-4e93-967e-8b07b7f47e35"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/TONE1_INTERNAL_CBASS1_RMID1)",
+            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/N14)",
             "items": [
                 {
                     "description": "PTH pad 1 [TONE1_INTERNAL_CBASS1_RMID1] of RMID1",
                     "pos": {
-                        "x": 462.31,
-                        "y": 25.05
+                        "x": 190.31,
+                        "y": 19.05
                     },
-                    "uuid": "5069b65c-c6d1-4751-831b-77bdb45fda22"
+                    "uuid": "3ba071be-cbce-434d-beea-ccb63c91c046"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/TONE1_INTERNAL_RMID1_CMID1)",
+            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/N15)",
             "items": [
                 {
                     "description": "PTH pad 2 [TONE1_INTERNAL_RMID1_CMID1] of RMID1",
                     "pos": {
-                        "x": 464.21,
-                        "y": 25.05
+                        "x": 192.21,
+                        "y": 19.05
                     },
-                    "uuid": "af32d393-691c-453d-9139-310b3a3b38fc"
+                    "uuid": "3a644dcd-3c89-43c9-b8fd-4c95c7ae8205"
                 }
             ],
             "severity": "warning",
@@ -771,25 +771,25 @@
                 {
                     "description": "Footprint RPRE1A",
                     "pos": {
-                        "x": 1109.01,
-                        "y": 25.05
+                        "x": 457.01,
+                        "y": 19.05
                     },
-                    "uuid": "c0aae411-847d-42fd-a4a3-ef5efe707179"
+                    "uuid": "d6a86a51-7c45-42c3-a5e0-4b8cc2f8634d"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/RPRE1_INTERNAL_RPRE1A_RPRE1B)",
+            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/N10)",
             "items": [
                 {
                     "description": "PTH pad 2 [RPRE1_INTERNAL_RPRE1A_RPRE1B] of RPRE1A",
                     "pos": {
-                        "x": 1110.91,
-                        "y": 25.05
+                        "x": 458.91,
+                        "y": 19.05
                     },
-                    "uuid": "88aff82d-498f-495e-9f3c-60c5559a6aa6"
+                    "uuid": "912d16c2-241a-4a88-98ae-34b945a774e6"
                 }
             ],
             "severity": "warning",
@@ -801,25 +801,25 @@
                 {
                     "description": "Footprint RPRE1B",
                     "pos": {
-                        "x": 1168.92,
-                        "y": 25.05
+                        "x": 478.92,
+                        "y": 19.05
                     },
-                    "uuid": "a0eedb59-3741-42dd-a6d0-590110d1fd2e"
+                    "uuid": "8fd6d237-b313-44ba-b4b0-d915dbc7e778"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/RPRE1_INTERNAL_RPRE1A_RPRE1B)",
+            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/N10)",
             "items": [
                 {
                     "description": "PTH pad 1 [RPRE1_INTERNAL_RPRE1A_RPRE1B] of RPRE1B",
                     "pos": {
-                        "x": 1168.92,
-                        "y": 25.05
+                        "x": 478.92,
+                        "y": 19.05
                     },
-                    "uuid": "b01d6a5c-9fdd-43af-94f5-1525aa430b5b"
+                    "uuid": "3130f4e4-38f4-4cd2-bc43-85c45400af6b"
                 }
             ],
             "severity": "warning",
@@ -831,40 +831,40 @@
                 {
                     "description": "Footprint RTREBLE1",
                     "pos": {
-                        "x": 579.62,
-                        "y": 25.05
+                        "x": 231.62,
+                        "y": 19.05
                     },
-                    "uuid": "9177b938-3b38-4f0e-919c-74da97c54148"
+                    "uuid": "5cbdbc4f-493a-4ef2-aab9-8f074dd612c9"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/TONE1_INTERNAL_CMID1_RTREBLE1)",
+            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/N16)",
             "items": [
                 {
                     "description": "PTH pad 1 [TONE1_INTERNAL_CMID1_RTREBLE1] of RTREBLE1",
                     "pos": {
-                        "x": 579.62,
-                        "y": 25.05
+                        "x": 231.62,
+                        "y": 19.05
                     },
-                    "uuid": "b569e11b-54b7-4fad-a946-88b31675ee6e"
+                    "uuid": "bec5ce28-df38-47a9-ab01-44beb5761aec"
                 }
             ],
             "severity": "warning",
             "type": "net_conflict"
         },
         {
-            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/TONE1_INTERNAL_RTREBLE1_CTREBLE1)",
+            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/N17)",
             "items": [
                 {
                     "description": "PTH pad 2 [TONE1_INTERNAL_RTREBLE1_CTREBLE1] of RTREBLE1",
                     "pos": {
-                        "x": 581.52,
-                        "y": 25.05
+                        "x": 233.52,
+                        "y": 19.05
                     },
-                    "uuid": "550b46a5-78d6-45ad-87c4-f6dc282ad8de"
+                    "uuid": "05dc6d1f-77e4-4899-9e3a-156fe2767ad4"
                 }
             ],
             "severity": "warning",
@@ -876,25 +876,25 @@
                 {
                     "description": "Footprint RVFILT1",
                     "pos": {
-                        "x": 819.02,
-                        "y": 27.5
+                        "x": 319.02,
+                        "y": 21.5
                     },
-                    "uuid": "d83e8534-a64b-4736-8c9f-d032d61895f0"
+                    "uuid": "8733f538-6721-4581-bdb3-091a2c4f432f"
                 }
             ],
             "severity": "warning",
             "type": "footprint_symbol_field_mismatch"
         },
         {
-            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/FILTER1_INTERNAL_CFILT1_RVFILT1)",
+            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/N12)",
             "items": [
                 {
                     "description": "Pad 1 [FILTER1_INTERNAL_CFILT1_RVFILT1] of RVFILT1 on F.Cu",
                     "pos": {
-                        "x": 814.695,
-                        "y": 29.65
+                        "x": 314.695,
+                        "y": 23.65
                     },
-                    "uuid": "fb63207e-2579-4780-b6d1-285c8298cb8d"
+                    "uuid": "7cd1f8fe-61e0-4a69-b397-4e2c3a3cc92b"
                 }
             ],
             "severity": "warning",
@@ -906,10 +906,10 @@
                 {
                     "description": "Pad 3 [FILTER_OUT] of RVFILT1 on F.Cu",
                     "pos": {
-                        "x": 814.695,
-                        "y": 25.35
+                        "x": 314.695,
+                        "y": 19.35
                     },
-                    "uuid": "d66d52ca-3c0a-441a-b9ad-92a1fe039a3c"
+                    "uuid": "bc945130-21b8-47da-9924-ca9dc874de51"
                 }
             ],
             "severity": "warning",

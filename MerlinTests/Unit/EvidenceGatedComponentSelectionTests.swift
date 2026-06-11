@@ -3471,6 +3471,100 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
         )
     }
 
+    func testBoardEvidenceCheckerAcceptsGeneratedLocalRoutesAsUsable() throws {
+        let root = try temporaryDirectory()
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let circuitIR = linearThreeResistorCircuitIR()
+        let materialized = try CircuitIRKiCadBoardMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputURL
+        )
+        let boardText = try String(contentsOf: materialized.boardURL, encoding: .utf8)
+
+        let warnings = KiCadBoardEvidenceChecker().warnings(
+            circuitIR: circuitIR,
+            boardText: boardText,
+            boardPath: materialized.boardURL.path
+        )
+
+        XCTAssertFalse(
+            warnings.contains { $0.code == "PCB_ROUTE_LOCALITY_REQUIRED" },
+            "Generated routes must stay local to connected footprints instead of dropping every pad to a far global bus lane: \(warnings)"
+        )
+    }
+
+    func testBoardEvidenceCheckerRejectsOverlongBusRouteEvidence() throws {
+        let circuitIR = twoConnectorRouteCircuitIR()
+        let boardText = """
+        (kicad_pcb
+          (version 20250114)
+          (layers
+            (0 "F.Cu" signal)
+            (31 "B.Cu" signal)
+            (44 "Edge.Cuts" user)
+          )
+          (net 0 "")
+          (net 1 "SIG")
+          (gr_rect (start 0 0) (end 140 220) (stroke (width 0.1) (type default)) (fill no) (layer "Edge.Cuts"))
+          (footprint "Connector_Generic:Conn_01x01"
+            (layer "F.Cu")
+            (at 20 20 0)
+            (property "Reference" "J1")
+            (pad "1" thru_hole circle (at 0 0) (size 1.5 1.5) (drill 0.8) (layers "*.Cu" "*.Mask") (net 1 "SIG"))
+          )
+          (footprint "Connector_Generic:Conn_01x01"
+            (layer "F.Cu")
+            (at 110 20 0)
+            (property "Reference" "J2")
+            (pad "1" thru_hole circle (at 0 0) (size 1.5 1.5) (drill 0.8) (layers "*.Cu" "*.Mask") (net 1 "SIG"))
+          )
+          (segment (start 20 20) (end 20 200) (width 0.25) (layer "F.Cu") (net 1))
+          (via (at 20 200) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+          (segment (start 20 200) (end 110 200) (width 0.25) (layer "B.Cu") (net 1))
+          (via (at 110 200) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+          (segment (start 110 200) (end 110 20) (width 0.25) (layer "F.Cu") (net 1))
+        )
+        """
+
+        let warnings = KiCadBoardEvidenceChecker().warnings(
+            circuitIR: circuitIR,
+            boardText: boardText,
+            boardPath: "/tmp/overlong-bus.kicad_pcb"
+        )
+
+        XCTAssertTrue(
+            warnings.contains { $0.code == "PCB_ROUTE_LOCALITY_REQUIRED" },
+            "Evidence checker must reject route-count-only boards that connect nearby pads through a far bus lane: \(warnings)"
+        )
+    }
+
+    func testBoardMaterializerAvoidsGiantSparseCanvasForRoutedBoard() throws {
+        let root = try temporaryDirectory()
+        let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
+        let circuitIR = largeRoutedBoardCircuitIR()
+        let materialized = try CircuitIRKiCadBoardMaterializer().materialize(
+            circuitIR: circuitIR,
+            outputDirectory: outputURL
+        )
+        let boardText = try String(contentsOf: materialized.boardURL, encoding: .utf8)
+        let outline = try XCTUnwrap(boardOutline(in: boardText))
+
+        XCTAssertLessThanOrEqual(outline.width, 680.0)
+        XCTAssertLessThanOrEqual(
+            outline.height,
+            120.0,
+            "Generated PCB must not add a huge empty route-corridor canvas below a routed board."
+        )
+
+        let occupied = footprintOccupiedArea(in: boardText)
+        XCTAssertGreaterThan(
+            occupied.width,
+            outline.width * 0.70,
+            "Footprint placement should occupy the routed board width instead of leaving most of the board empty."
+        )
+        XCTAssertGreaterThan(boardText.components(separatedBy: #"(segment "#).count - 1, 0)
+    }
+
     func testBoardMaterializerRejectsEndpointAssignedToMultipleNets() throws {
         let root = try temporaryDirectory()
         let outputURL = root.appendingPathComponent("compiled", isDirectory: true)
@@ -3509,6 +3603,176 @@ final class EvidenceGatedComponentSelectionTests: XCTestCase {
             }
             XCTAssertTrue(issues.contains { $0.code == "PCB_ENDPOINT_NET_CONFLICT" })
         }
+    }
+
+    private func linearThreeResistorCircuitIR() -> CircuitIR {
+        let components = (1...3).map { index in
+            CircuitComponent(
+                refdes: "R\(index)",
+                role: "signal resistor \(index)",
+                selectedSymbol: "Device:R",
+                selectedFootprint: "Resistor_SMD:R_0603_1608Metric",
+                manufacturerPartNumber: "RC0603FR-0710KL",
+                sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                pins: [
+                    CircuitPin(componentRefdes: "R\(index)", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    CircuitPin(componentRefdes: "R\(index)", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                ],
+                constraints: [:]
+            )
+        }
+        return CircuitIR(
+            designId: "route-locality",
+            boardId: "route-locality",
+            components: components,
+            nets: [
+                CircuitNet(
+                    name: "IN",
+                    role: "input",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "R1", pinNumber: "2"),
+                        CircuitNetEndpoint(componentRefdes: "R2", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+                CircuitNet(
+                    name: "OUT",
+                    role: "output",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "R2", pinNumber: "2"),
+                        CircuitNetEndpoint(componentRefdes: "R3", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+    }
+
+    private func twoConnectorRouteCircuitIR() -> CircuitIR {
+        CircuitIR(
+            designId: "route-locality-fixture",
+            boardId: "route-locality-fixture",
+            components: [
+                CircuitComponent(
+                    refdes: "J1",
+                    role: "input connector",
+                    selectedSymbol: "Connector_Generic:Conn_01x01",
+                    selectedFootprint: "Connector_Generic:Conn_01x01",
+                    manufacturerPartNumber: "fixture-j1",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "J1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    ],
+                    constraints: [:]
+                ),
+                CircuitComponent(
+                    refdes: "J2",
+                    role: "output connector",
+                    selectedSymbol: "Connector_Generic:Conn_01x01",
+                    selectedFootprint: "Connector_Generic:Conn_01x01",
+                    manufacturerPartNumber: "fixture-j2",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "fixture")],
+                    pins: [
+                        CircuitPin(componentRefdes: "J2", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    ],
+                    constraints: [:]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "SIG",
+                    role: "signal",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "J1", pinNumber: "1"),
+                        CircuitNetEndpoint(componentRefdes: "J2", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "low_voltage"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+    }
+
+    private func largeRoutedBoardCircuitIR() -> CircuitIR {
+        let components = (1...21).map { index in
+            CircuitComponent(
+                refdes: index == 21 ? "JSPK" : "R\(index)",
+                role: index == 21 ? "speaker output connector" : "signal resistor \(index)",
+                selectedSymbol: index == 21 ? "Connector_Generic:Conn_01x02" : "Device:R",
+                selectedFootprint: index == 21
+                    ? "Connector_Generic:Conn_01x02"
+                    : "Resistor_SMD:R_0603_1608Metric",
+                manufacturerPartNumber: "fixture-\(index)",
+                sourceEvidence: [SourceEvidence(kind: "test", reference: "layout")],
+                pins: [
+                    CircuitPin(componentRefdes: index == 21 ? "JSPK" : "R\(index)", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    CircuitPin(componentRefdes: index == 21 ? "JSPK" : "R\(index)", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                ],
+                constraints: [:]
+            )
+        }
+        let nets = (1..<21).map { index in
+            CircuitNet(
+                name: "N\(index)",
+                role: "routed chain net \(index)",
+                endpoints: [
+                    CircuitNetEndpoint(componentRefdes: index == 20 ? "R20" : "R\(index)", pinNumber: "2"),
+                    CircuitNetEndpoint(componentRefdes: index == 20 ? "JSPK" : "R\(index + 1)", pinNumber: "1"),
+                ],
+                netClass: "signal",
+                safetyDomain: "isolated_secondary"
+            )
+        }
+        return CircuitIR(
+            designId: "compact-large-board",
+            boardId: "compact-large-board",
+            components: components,
+            nets: nets,
+            constraints: [],
+            verificationScenarios: []
+        )
+    }
+
+    private func boardOutline(in boardText: String) -> (width: Double, height: Double)? {
+        guard let regex = try? NSRegularExpression(pattern: #"\(gr_rect\s+\(start\s+0\s+0\)\s+\(end\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\)"#),
+              let match = regex.firstMatch(in: boardText, range: NSRange(boardText.startIndex..<boardText.endIndex, in: boardText)),
+              match.numberOfRanges == 3,
+              let widthRange = Range(match.range(at: 1), in: boardText),
+              let heightRange = Range(match.range(at: 2), in: boardText),
+              let width = Double(boardText[widthRange]),
+              let height = Double(boardText[heightRange]) else {
+            return nil
+        }
+        return (width, height)
+    }
+
+    private func footprintOccupiedArea(in boardText: String) -> (width: Double, height: Double) {
+        guard let regex = try? NSRegularExpression(pattern: #"\(footprint\s+"[^"]+".*?\(at\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+0\)"#, options: [.dotMatchesLineSeparators]) else {
+            return (0, 0)
+        }
+        let points = regex.matches(in: boardText, range: NSRange(boardText.startIndex..<boardText.endIndex, in: boardText)).compactMap { match -> (x: Double, y: Double)? in
+            guard match.numberOfRanges == 3,
+                  let xRange = Range(match.range(at: 1), in: boardText),
+                  let yRange = Range(match.range(at: 2), in: boardText),
+                  let x = Double(boardText[xRange]),
+                  let y = Double(boardText[yRange]) else {
+                return nil
+            }
+            return (x, y)
+        }
+        guard let minX = points.map(\.x).min(),
+              let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(),
+              let maxY = points.map(\.y).max() else {
+            return (0, 0)
+        }
+        return (maxX - minX, maxY - minY)
     }
 
     func testRuntimeCatalogSelectionWithoutFootprintEvidenceStillBlocksAssignment() async throws {

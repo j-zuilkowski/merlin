@@ -241,6 +241,76 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(boardText.contains(#"(property "SafetyDomain" "isolated_secondary""#), boardText)
     }
 
+    func testSchematicWriterHidesEvidenceFieldsThatObscureUsableSymbols() throws {
+        let circuitIR = boardScopedCircuitIR()
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: circuitIR)
+        let serialized = try KiCadSchematicWriter().write(schematic)
+
+        let hiddenFields = [
+            ("BoardID", "low_voltage_control"),
+            ("Footprint", "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"),
+            ("ManufacturerPartNumber", "example-resistor"),
+            ("SafetyDomain", "isolated_secondary"),
+        ]
+        for (field, value) in hiddenFields {
+            let property = try XCTUnwrap(
+                propertyNode(named: field, value: value, in: serialized),
+                "Missing \(field) property in schematic output."
+            )
+            XCTAssertTrue(
+                property.contains(" hide)"),
+                "\(field) must remain machine-readable but hidden so visual schematic evidence keeps symbols and connectors readable.\n\(serialized)"
+            )
+        }
+    }
+
+    func testSchematicWriterKeepsHumanLabelsNearTheirSymbol() throws {
+        let circuitIR = boardScopedCircuitIR()
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: circuitIR)
+        let serialized = try KiCadSchematicWriter().write(schematic)
+
+        let symbol = try XCTUnwrap(schematic.symbols.first)
+        let symbolPoint = try XCTUnwrap(symbol.at)
+        for (field, value) in [("Reference", "RPU"), ("Value", "10kOhm")] {
+            let property = try XCTUnwrap(propertyNode(named: field, value: value, in: serialized))
+            let propertyPoint = try XCTUnwrap(point(inPropertyNode: property))
+            XCTAssertLessThanOrEqual(
+                abs(propertyPoint.y - symbolPoint.y),
+                6.0,
+                "\(field) text should stay near the symbol body instead of being pushed away by hidden evidence fields."
+            )
+        }
+    }
+
+    func testSchematicMaterializerKeepsLargeDiscreteCircuitInsideVisibleSheetArea() throws {
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: largeConnectorCircuitIR())
+        let points = schematic.symbols.compactMap(\.at)
+
+        XCTAssertEqual(points.count, 21)
+        XCTAssertLessThanOrEqual(
+            points.map(\.y).max() ?? 0,
+            152.4,
+            "Large generated schematics must keep connector symbols within the visible sheet instead of clipping them below the title block."
+        )
+        XCTAssertLessThanOrEqual(points.map(\.x).max() ?? 0, 279.4)
+    }
+
+    func testSchematicMaterializerShortensGeneratedInternalNetLabelsForReadability() throws {
+        let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: longInternalNetCircuitIR())
+        let serialized = try KiCadSchematicWriter().write(schematic)
+        let parsed = try KiCadSchematicParser().parse(serialized)
+
+        XCTAssertFalse(
+            parsed.labels.filter(\.emitsKiCadConnectivity).contains { $0.text.count > 24 },
+            "Generated visual net labels must not overlap symbols with long implementation-derived names: \(parsed.labels.map(\.text))"
+        )
+        XCTAssertFalse(serialized.contains(#"(label "FILTER1_INTERNAL_CFILT1_RVFILT1""#))
+        XCTAssertTrue(
+            serialized.contains("NodeMap:FILTER1_INTERNAL_CFILT1_RVFILT1"),
+            "The original CircuitIR net name must remain machine-readable as hidden metadata."
+        )
+    }
+
     private func validCircuitIR() -> CircuitIR {
         CircuitIR(
             designId: "generic-audio-board",
@@ -362,6 +432,80 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         return ir
     }
 
+    private func largeConnectorCircuitIR() -> CircuitIR {
+        let components = (1...21).map { index in
+            CircuitComponent(
+                refdes: index == 21 ? "JSPK" : "R\(index)",
+                role: index == 21 ? "speaker output connector" : "signal resistor \(index)",
+                selectedSymbol: index == 21 ? "Connector_Generic:Conn_01x02" : "Device:R",
+                selectedFootprint: index == 21
+                    ? "Connector_Audio:Jack_speakON_Neutrik_NL2MDXX-H-3_Horizontal"
+                    : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+                manufacturerPartNumber: "fixture-\(index)",
+                sourceEvidence: [SourceEvidence(kind: "test", reference: "layout")],
+                pins: [
+                    CircuitPin(componentRefdes: index == 21 ? "JSPK" : "R\(index)", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                    CircuitPin(componentRefdes: index == 21 ? "JSPK" : "R\(index)", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                ]
+            )
+        }
+        return CircuitIR(
+            designId: "large-layout",
+            boardId: "large-layout",
+            components: components,
+            nets: [],
+            constraints: [],
+            verificationScenarios: []
+        )
+    }
+
+    private func longInternalNetCircuitIR() -> CircuitIR {
+        CircuitIR(
+            designId: "long-net-labels",
+            boardId: "long-net-labels",
+            components: [
+                CircuitComponent(
+                    refdes: "CFILT1",
+                    role: "filter capacitor",
+                    selectedSymbol: "Device:C",
+                    selectedFootprint: "Capacitor_THT:C_Disc_D3.0mm_W1.6mm_P2.50mm",
+                    manufacturerPartNumber: "fixture-cap",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "readability")],
+                    pins: [
+                        CircuitPin(componentRefdes: "CFILT1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "CFILT1", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ]
+                ),
+                CircuitComponent(
+                    refdes: "RVFILT1",
+                    role: "filter potentiometer",
+                    selectedSymbol: "Device:R_Potentiometer",
+                    selectedFootprint: "Potentiometer_THT:Potentiometer_Bourns_3296W_Vertical",
+                    manufacturerPartNumber: "fixture-pot",
+                    sourceEvidence: [SourceEvidence(kind: "test", reference: "readability")],
+                    pins: [
+                        CircuitPin(componentRefdes: "RVFILT1", pinNumber: "1", canonicalName: "1", electricalType: "passive", symbolPin: "1", footprintPad: "1"),
+                        CircuitPin(componentRefdes: "RVFILT1", pinNumber: "2", canonicalName: "2", electricalType: "passive", symbolPin: "2", footprintPad: "2"),
+                    ]
+                ),
+            ],
+            nets: [
+                CircuitNet(
+                    name: "FILTER1_INTERNAL_CFILT1_RVFILT1",
+                    role: "implementation-derived internal filter node",
+                    endpoints: [
+                        CircuitNetEndpoint(componentRefdes: "CFILT1", pinNumber: "2"),
+                        CircuitNetEndpoint(componentRefdes: "RVFILT1", pinNumber: "1"),
+                    ],
+                    netClass: "signal",
+                    safetyDomain: "isolated_secondary"
+                ),
+            ],
+            constraints: [],
+            verificationScenarios: []
+        )
+    }
+
     private func temporaryDirectory(_ name: String) -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("MerlinTests")
@@ -378,5 +522,51 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         return try String(contentsOf: root.appendingPathComponent(relativePath), encoding: .utf8)
+    }
+
+    private func propertyNode(named name: String, value: String, in text: String) -> String? {
+        guard let start = text.range(of: #"(property "\#(name)" "\#(value)""#)?.lowerBound else {
+            return nil
+        }
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var index = start
+        while index < text.endIndex {
+            let character = text[index]
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if character == "\\" {
+                    escaped = true
+                } else if character == "\"" {
+                    inString = false
+                }
+            } else if character == "\"" {
+                inString = true
+            } else if character == "(" {
+                depth += 1
+            } else if character == ")" {
+                depth -= 1
+                if depth == 0 {
+                    return String(text[start...index])
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
+    }
+
+    private func point(inPropertyNode node: String) -> KiCadSchematicDocument.Point? {
+        guard let regex = try? NSRegularExpression(pattern: #"\(at\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+0\)"#),
+              let match = regex.firstMatch(in: node, range: NSRange(node.startIndex..<node.endIndex, in: node)),
+              match.numberOfRanges == 3,
+              let xRange = Range(match.range(at: 1), in: node),
+              let yRange = Range(match.range(at: 2), in: node),
+              let x = Double(node[xRange]),
+              let y = Double(node[yRange]) else {
+            return nil
+        }
+        return KiCadSchematicDocument.Point(x: x, y: y)
     }
 }

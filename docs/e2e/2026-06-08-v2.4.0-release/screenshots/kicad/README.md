@@ -1,62 +1,52 @@
-# Gate 10 KiCad Screenshot Evidence
+# KiCad Screenshot Evidence - Task 512
 
-Generated on 2026-06-11 from the refreshed gate #9 `isolated_secondary`
-KiCad project.
+This bundle supersedes the Task 511 KiCad screenshots. Task 512 regenerated the
+source artifacts from the final green AmpDemo PCB slice, reopened those copied
+files in KiCad 10.0.3, and captured fresh editor screenshots after user review
+found the prior evidence unusable.
 
 ## Source
 
-The source files copied into this evidence bundle are under `source/`:
+- `source/isolated_secondary.kicad_pro`
+- `source/isolated_secondary.kicad_sch`
+- `source/isolated_secondary.kicad_pcb`
+- `source/8FDFC0B1-C9C8-4CED-9E02-9374462932BA-component_matrix.json`
+- `source/94B2FA49-5634-45BD-AB71-95C35C9E8A75-footprint_assignment.json`
+- `source/drc.json`
+- `source/drc-rerun.json`
 
-- `isolated_secondary.kicad_pro`
-- `isolated_secondary.kicad_sch`
-- `isolated_secondary.kicad_pcb`
-- `5D02D9BD-D039-436D-BD5E-E67B48485833-component_matrix.json`
-- `634012A8-2371-4450-98B4-95AE6DE4D539-footprint_assignment.json`
-- `drc.json`
-- `drc-rerun.json`
+## Screenshots And Exports
 
-Old `amp_low_voltage_audio` screenshots and source files were removed before
-this bundle was regenerated.
+- `schematic-editor-screenshot.png` - copied schematic opened in KiCad
+  Schematic Editor; visible connectors include `JSEC`, `JIN`, and `JSPK`.
+- `pcb-editor-screenshot.png` - copied board opened in KiCad PCB Editor with
+  visible routed copper; the KiCad status bar shows 62 pads, 36 vias, 72 track
+  segments, 18 nets, and 0 unrouted items.
+- `board-3d-viewer-screenshot.png` - copied board opened in KiCad GUI 3D
+  Viewer.
+- `schematic.pdf` - KiCad CLI schematic PDF export.
+- `schematic-svg/isolated_secondary.svg` and
+  `schematic-svg/isolated_secondary.png` - KiCad CLI schematic export and PNG
+  preview.
+- `layers/front-copper.svg` and `layers/front-copper.png` - front copper/layer
+  export.
+- `layers/back-copper.svg` and `layers/back-copper.png` - back copper/layer
+  export.
+- `layers/routed-composite.svg` and `layers/routed-composite.png` - combined
+  routed/layer export.
+- `board-3d-render.png` - deterministic KiCad CLI 3D render.
 
-## GUI Captures
+## Verification
 
-These screenshots were captured from live KiCad 10.0.3 editor windows:
+`source/drc.json` is the runtime DRC report from the final green generated
+board. It records:
 
-- `schematic-editor-screenshot.png`
-- `pcb-editor-screenshot.png`
-- `board-3d-viewer-screenshot.png`
+- 0 DRC violations
+- 0 unconnected items
+- 0 schematic parity issues
+- KiCad 10.0.3
 
-The PCB editor screenshot shows footprints, pads, routed segments, and vias.
-The 3D viewer screenshot is nonblank, but the generated footprint set does not
-provide rich package bodies, so the view is mostly a flat board with small
-visible pad/model markers.
-
-## Deterministic Exports
-
-KiCad CLI exports were generated from the same copied source:
-
-- `schematic.pdf`
-- `schematic-svg/isolated_secondary.svg`
-- `schematic-svg/isolated_secondary.png`
-- `layers/front-copper.svg`
-- `layers/front-copper.png`
-- `layers/back-copper.svg`
-- `layers/back-copper.png`
-- `layers/routed-composite.svg`
-- `layers/routed-composite.png`
-- `board-3d-render.png`
-- `board-3d-render-populated.png`
-
-## DRC Boundary
-
-The gate #9 source DRC report copied as `source/drc.json` reports 0 violations
-and 0 unconnected items.
-
-The local KiCad CLI rerun in `source/drc-rerun.json` also reports 0 DRC
-violations and 0 unconnected items, but reports 59 schematic parity warnings
-against the copied screenshot project. The parity warnings are mostly symbol
-field differences and schematic net-name prefix differences such as `VRAW`
-versus `/VRAW`.
-
-This gate is visual release evidence that the generated files open and render
-in KiCad. It is not a `FAB_READY` fabrication claim.
+`source/drc-rerun.json` is the copied-project KiCad CLI rerun. It records 0 DRC
+violations and 0 unconnected items, with 59 schematic parity warnings. That
+copied-bundle parity limitation is preserved as evidence and this screenshot
+bundle is not a `FAB_READY` claim.

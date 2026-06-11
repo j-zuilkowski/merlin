@@ -31,7 +31,7 @@ written. Tagging, pushing, and publishing remain pending.
 | 7. xcalibre RAG | PASS | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`; health, OpenAPI, authenticated sentinel insert/search/delete, and cleanup passed |
 | 8. Capability scenarios S1/S2 | PASS | `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`; S1 passed in 676.582s, S2 passed in 244.910s; cleanup in `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log` |
 | 9. Electronics/KiCad deterministic checks | PASS | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`; 343 focused electronics/KiCad tests passed, 5 skipped, 0 failures; AmpDemo PCB slice generated a populated board and clean DRC report |
-| 10. KiCad release screenshots | PASS | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`; stale screenshots were removed; refreshed `isolated_secondary` schematic and PCB opened in KiCad GUI editors; routed/layer and 3D evidence captured |
+| 10. KiCad release screenshots | PASS | Task 512 supersedes Task 511; `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`; stale screenshots were removed; refreshed `isolated_secondary` schematic and PCB opened in KiCad GUI editors; PCB evidence shows 72 track segments, 36 vias, and 0 unrouted items; routed/layer and 3D evidence captured |
 | 11. README/GitHub screenshots | PASS | `docs/assets/screenshots/v2.4.0/`; full-size evidence captures in `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`; capture log `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log` |
 | 12. Release evidence report | PASS | This `REPORT.md`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log` |
 
@@ -48,8 +48,11 @@ README/GitHub release assets are committed under
 - `kicad-3d-viewer.png`
 - `kicad-routed-composite.png`
 
-The KiCad assets were refreshed from the gate #10 `isolated_secondary`
-screenshot bundle after stale `amp_low_voltage_audio` screenshots were removed.
+The KiCad assets were refreshed again by Task 512 from the gate #10
+`isolated_secondary` screenshot bundle after user review found the prior
+evidence unusable. The public KiCad PCB asset now comes from a real PCB Editor
+window that shows routed traces and vias, and the public schematic asset shows
+visible connector symbols.
 
 Evidence-only full-size Merlin GUI captures are retained under
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`.
@@ -64,10 +67,11 @@ not as a fabrication-ready board release. The current full GUI workflow proof
 honestly stops at `COMPONENT_SELECTION_REVISION_BLOCKED` when concrete component
 evidence is missing. The refreshed gate #10 generated `isolated_secondary`
 KiCad board opens and renders in KiCad. Its copied gate #9 `source/drc.json`
-reports 0 DRC violations and 0 unconnected items; the copied-project KiCad CLI
-rerun in `source/drc-rerun.json` also reports 0 DRC violations and 0
-unconnected items, with 59 schematic parity warnings. That evidence is visual
-release proof, not a fabrication-ready claim.
+reports 0 DRC violations, 0 unconnected items, and 0 schematic parity issues;
+the copied-project KiCad CLI rerun in `source/drc-rerun.json` also reports 0
+DRC violations and 0 unconnected items, with 59 schematic parity warnings. The
+copied PCB contains 21 footprints, 62 pads, 72 track segments, and 36 vias.
+That evidence is visual release proof, not a fabrication-ready claim.
 
 ## Cleanup State
 

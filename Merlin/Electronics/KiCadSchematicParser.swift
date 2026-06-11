@@ -515,12 +515,12 @@ struct KiCadSchematicWriter {
             if let uuid = symbol.uuid {
                 symbolNodes.append(.list([.atom("uuid"), .string(uuid)]))
             }
-            for (propertyIndex, key) in symbol.properties.keys.sorted().enumerated() {
+            for key in orderedPropertyKeys(for: symbol) {
                 if let value = symbol.properties[key] {
                     symbolNodes.append(propertyNode(
                         key: key,
                         value: value,
-                        at: KiCadSchematicDocument.Point(x: at.x, y: at.y + Double(propertyIndex + 1) * 1.27),
+                        at: propertyPoint(key: key, symbolAt: at),
                         hidden: hiddenPropertyNames.contains(key) || key.hasPrefix("Constraint:")
                     ))
                 }
@@ -637,7 +637,39 @@ struct KiCadSchematicWriter {
     }
 
     private var hiddenPropertyNames: Set<String> {
-        ["Symbol", "Source", "SourceEvidence", "Pins", "Role"]
+        [
+            "BoardID",
+            "Footprint",
+            "ManufacturerPartNumber",
+            "Pins",
+            "Role",
+            "SafetyDomain",
+            "Source",
+            "SourceEvidence",
+            "Symbol",
+        ]
+    }
+
+    private func orderedPropertyKeys(for symbol: KiCadSchematicDocument.Symbol) -> [String] {
+        let primary = ["Reference", "Value"]
+        let remaining = symbol.properties.keys
+            .filter { !primary.contains($0) }
+            .sorted()
+        return primary.filter { symbol.properties[$0] != nil } + remaining
+    }
+
+    private func propertyPoint(
+        key: String,
+        symbolAt at: KiCadSchematicDocument.Point
+    ) -> KiCadSchematicDocument.Point {
+        switch key {
+        case "Reference":
+            return KiCadSchematicDocument.Point(x: at.x, y: at.y - 5.08)
+        case "Value":
+            return KiCadSchematicDocument.Point(x: at.x, y: at.y + 5.08)
+        default:
+            return KiCadSchematicDocument.Point(x: at.x, y: at.y)
+        }
     }
 
     private func propertyNode(
@@ -666,8 +698,8 @@ struct KiCadSchematicWriter {
     }
 
     private func symbolPlacement(index: Int) -> KiCadSchematicDocument.Point {
-        let column = index % 4
-        let row = index / 4
+        let column = index % 6
+        let row = index / 6
         return KiCadSchematicDocument.Point(
             x: 25.4 + Double(column) * 50.8,
             y: 25.4 + Double(row) * 38.1

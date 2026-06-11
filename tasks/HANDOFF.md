@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 511.
+Latest completed task is Task 512.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 512 — repair KiCad usability evidence
 - Task 511 — rerun release KiCad screenshots
 - Task 510 — repair release electronics/KiCad gate board output
 - Task 509 — record invalid KiCad release evidence
@@ -267,33 +268,52 @@ PCB files in KiCad and capture release screenshots under
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
 
 Task 511 reran release gate #10 after Task 510 repaired the gate #9 board
-output. Old `amp_low_voltage_audio` screenshots and source files were removed.
+output, but Task 512 supersedes that evidence after user review found the board
+screenshots still looked placement-only and the schematic did not provide usable
+connector evidence.
+
+Task 512 repaired KiCad usability evidence rather than only screenshot status.
+The board evidence checker now rejects route-count-only outputs with no copper
+segments or overlong far bus-lane routing, and the generated PCB router now
+creates local F.Cu escapes, vias, and B.Cu local lanes between neighboring
+footprints. The schematic writer hides machine evidence fields that obscure
+symbols, keeps reference/value text near the symbol body, places larger
+generated schematics in six columns so connectors stay on the visible A4 sheet,
+and shortens long generated internal net labels while preserving hidden
+`NodeMap` metadata.
+
 The refreshed generated `isolated_secondary` KiCad project was copied to
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/`.
 KiCad 10.0.3 opened the copied schematic in a real Schematic Editor window and
 produced `schematic-editor-screenshot.png`; opened the copied board in a real
 PCB Editor window and produced `pcb-editor-screenshot.png`; and opened the PCB
-editor's GUI 3D Viewer to produce `board-3d-viewer-screenshot.png`. KiCad CLI
-exports also produced `schematic.pdf`,
+editor's GUI 3D Viewer to produce `board-3d-viewer-screenshot.png`. The PCB
+Editor status bar shows 62 pads, 36 vias, 72 track segments, 18 nets, and 0
+unrouted items. KiCad CLI exports also produced `schematic.pdf`,
 `schematic-svg/isolated_secondary.svg`,
 `schematic-svg/isolated_secondary.png`, front/back/routed layer SVGs plus PNG
-previews, `board-3d-render.png`, and `board-3d-render-populated.png`.
+previews, and `board-3d-render.png`.
 The public README/GitHub KiCad assets under
-`docs/assets/screenshots/v2.4.0/` were refreshed from those same gate #10
-captures.
+`docs/assets/screenshots/v2.4.0/` were refreshed from the Task 512 captures.
 Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`,
-`tasks/task-511-rerun-release-kicad-screenshots.md`,
+`tasks/task-512-repair-kicad-usability-evidence.md`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.fail-first.log`,
 and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.focused-green.log`.
-The copied gate #9 `source/drc.json` reports 0 DRC violations and 0
-unconnected items. The copied-project KiCad CLI rerun in `source/drc-rerun.json`
-also reports 0 DRC violations and 0 unconnected items, with 59 schematic parity
-warnings. This is visual generated-file release evidence and not a `FAB_READY`
-claim. Gates #1-#13 remain recorded as passed; gate #14 remains the next
-release action after any required revalidation decision.
+Focused tests:
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-11-37--0400.xcresult`,
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-16-56--0400.xcresult`,
+and
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-17-13--0400.xcresult`.
+The copied gate #9 `source/drc.json` reports 0 DRC violations, 0 unconnected
+items, and 0 schematic parity issues. The copied-project KiCad CLI rerun in
+`source/drc-rerun.json` also reports 0 DRC violations and 0 unconnected items,
+with 59 schematic parity warnings. This is visual generated-file release
+evidence and not a `FAB_READY` claim. Gates #1-#13 remain recorded as passed;
+gate #14 remains the next release action after any required revalidation
+decision.
 
 Task 506 passed release gate #11 by capturing durable README/GitHub feature
 screenshots and linking the public assets from the README. Public assets live
