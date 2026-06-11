@@ -1,6 +1,0 @@
-{
-  "board_id" : "amp_low_voltage_audio",
-  "design_id" : "amp_low_voltage_audio",
-  "generator" : "merlin-electronics",
-  "schematic_file" : "amp_low_voltage_audio.kicad_sch"
-}

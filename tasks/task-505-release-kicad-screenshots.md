@@ -23,18 +23,24 @@ capturing durable schematic, PCB, routed/layer, and 3D visual evidence.
   `board-3d-viewer-screenshot.png`
 - Deterministic exports:
   `schematic.pdf`,
-  `schematic-svg/amp_low_voltage_audio.svg`,
+  `schematic-svg/isolated_secondary.svg`,
   `layers/routed-composite.svg`,
   `layers/front-copper.svg`,
   `layers/back-copper.svg`,
-  PNG layer previews, and `board-3d-render.png`
+  PNG layer previews, `board-3d-render.png`, and
+  `board-3d-render-populated.png`
 
 ## Result
 
-Gate #10 is passed. The copied generated schematic and PCB opened in KiCad GUI
-editors, routed/layer exports rendered through KiCad CLI, and KiCad's GUI 3D
-Viewer plus CLI renderer produced board-view evidence.
+Gate #10 was superseded by Task 511 after the earlier screenshot bundle was
+found to point at stale `amp_low_voltage_audio` evidence. Task 511 cleaned the
+old screenshots and regenerated the bundle from the refreshed
+`isolated_secondary` gate #9 source.
 
-The selected rich generated board reports 26 DRC violations in `source/drc.json`.
-That keeps the evidence honest: this task proves generated KiCad files open and
-render for release screenshots; it does not claim `FAB_READY`.
+The current bundle proves the copied generated schematic and PCB open in KiCad
+GUI editors, routed/layer exports render through KiCad CLI, and KiCad's GUI 3D
+Viewer plus CLI renderer produce board-view evidence. `source/drc.json` reports
+0 DRC violations and 0 unconnected items. `source/drc-rerun.json` also reports
+0 DRC violations and 0 unconnected items, with 59 schematic parity warnings on
+the copied screenshot project. This remains visual release evidence and not a
+`FAB_READY` claim.

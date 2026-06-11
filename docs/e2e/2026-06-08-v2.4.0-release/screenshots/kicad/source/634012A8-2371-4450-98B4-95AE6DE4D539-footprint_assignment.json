@@ -1,0 +1,283 @@
+{
+  "assignments" : [
+    {
+      "footprint" : "TerminalBlock_4Ucon:TerminalBlock_4Ucon_1x02_P3.50mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: terminal_block",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "JSEC",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/TerminalBlock_4Ucon.pretty\/TerminalBlock_4Ucon_1x02_P3.50mm_Horizontal.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Diode_SMD:Diode_Bridge_Bourns_CD-DF4xxS",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: bridge_rectifier",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "4" : "4",
+        "AC1" : "1",
+        "AC2" : "2",
+        "MINUS" : "4",
+        "PLUS" : "3"
+      },
+      "refdes" : "BR1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Diode_SMD.pretty\/Diode_Bridge_Bourns_CD-DF4xxS.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_SMD:C_0201_0603Metric",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: aluminum_electrolytic_capacitor",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "CRES1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Capacitor_SMD.pretty\/C_0201_0603Metric.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Connector_Audio:Jack_6.35mm_Neutrik_NJ2FD-V_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: phone_audio_jack",
+      "pin_pad_map" : {
+        "1" : "T",
+        "2" : "S",
+        "S" : "S",
+        "T" : "T"
+      },
+      "refdes" : "JIN",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Connector_Audio.pretty\/Jack_6.35mm_Neutrik_NJ2FD-V_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-92",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: TO-92",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "B" : "1",
+        "C" : "2",
+        "E" : "3"
+      },
+      "refdes" : "QPRE1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Package_TO_SOT_THT.pretty\/TO-92.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RPRE1A",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RPRE1B",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RBASS1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_SMD:C_0201_0603Metric",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: film_or_c0g_capacitor",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "CBASS1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Capacitor_SMD.pretty\/C_0201_0603Metric.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RMID1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_SMD:C_0201_0603Metric",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: film_or_c0g_capacitor",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "CMID1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Capacitor_SMD.pretty\/C_0201_0603Metric.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RTREBLE1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_SMD:C_0201_0603Metric",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: film_or_c0g_capacitor",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "CTREBLE1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Capacitor_SMD.pretty\/C_0201_0603Metric.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RFILT1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_SMD:C_0201_0603Metric",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: film_or_c0g_capacitor",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "CFILT1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Capacitor_SMD.pretty\/C_0201_0603Metric.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Potentiometer_SMD:Potentiometer_ACP_CA6-VSMD_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: potentiometer",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "A" : "1",
+        "B" : "3",
+        "W" : "2"
+      },
+      "refdes" : "RVFILT1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Potentiometer_SMD.pretty\/Potentiometer_ACP_CA6-VSMD_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-126-3_Horizontal_TabDown",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: TO-126_or_TO-220",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "B" : "1",
+        "C" : "2",
+        "E" : "3"
+      },
+      "refdes" : "QDRV1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Package_TO_SOT_THT.pretty\/TO-126-3_Horizontal_TabDown.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-247-3_Horizontal_TabDown",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: TO-3_or_TO-247",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "B" : "1",
+        "C" : "2",
+        "E" : "3"
+      },
+      "refdes" : "QOUT1",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Package_TO_SOT_THT.pretty\/TO-247-3_Horizontal_TabDown.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RBIAS1A",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: through_hole_axial",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2"
+      },
+      "refdes" : "RBIAS1B",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Resistor_THT.pretty\/R_Axial_DIN0204_L3.6mm_D1.6mm_P1.90mm_Vertical.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Connector_Audio:Jack_speakON_Neutrik_NL2MDXX-H-3_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint matched package\/search constraints: speaker_connector",
+      "pin_pad_map" : {
+        "1" : "1+",
+        "1+" : "1+",
+        "1-" : "1-",
+        "2" : "1-"
+      },
+      "refdes" : "JSPK",
+      "source" : "exact_mpn",
+      "source_path" : "\/Applications\/KiCad\/KiCad.app\/Contents\/SharedSupport\/footprints\/Connector_Audio.pretty\/Jack_speakON_Neutrik_NL2MDXX-H-3_Horizontal.kicad_mod",
+      "source_provider_id" : "kicad_local"
+    }
+  ],
+  "unknownFootprints" : 0
+}

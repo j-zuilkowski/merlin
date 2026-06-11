@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 510.
+Latest completed task is Task 511.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 511 — rerun release KiCad screenshots
 - Task 510 — repair release electronics/KiCad gate board output
 - Task 509 — record invalid KiCad release evidence
 - Task 508 — pass final release safety check
@@ -265,25 +266,34 @@ green again. The next release action is gate #10: open generated schematic and
 PCB files in KiCad and capture release screenshots under
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
 
-Task 505 passed release gate #10 by opening generated KiCad files and capturing
-durable screenshots. The generated `amp_low_voltage_audio` KiCad project was
-copied to
+Task 511 reran release gate #10 after Task 510 repaired the gate #9 board
+output. Old `amp_low_voltage_audio` screenshots and source files were removed.
+The refreshed generated `isolated_secondary` KiCad project was copied to
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/`.
-`Schematic Editor.app` opened the copied `.kicad_sch` and produced
-`schematic-editor-screenshot.png`; `PCB Editor.app` opened the copied
-`.kicad_pcb` and produced `pcb-editor-screenshot.png`; the PCB editor's GUI
-3D Viewer produced `board-3d-viewer-screenshot.png`. KiCad CLI exports also
-produced `schematic.pdf`, `schematic-svg/amp_low_voltage_audio.svg`,
-front/back/routed layer SVGs plus PNG previews, and `board-3d-render.png`.
+KiCad 10.0.3 opened the copied schematic in a real Schematic Editor window and
+produced `schematic-editor-screenshot.png`; opened the copied board in a real
+PCB Editor window and produced `pcb-editor-screenshot.png`; and opened the PCB
+editor's GUI 3D Viewer to produce `board-3d-viewer-screenshot.png`. KiCad CLI
+exports also produced `schematic.pdf`,
+`schematic-svg/isolated_secondary.svg`,
+`schematic-svg/isolated_secondary.png`, front/back/routed layer SVGs plus PNG
+previews, `board-3d-render.png`, and `board-3d-render-populated.png`.
+The public README/GitHub KiCad assets under
+`docs/assets/screenshots/v2.4.0/` were refreshed from those same gate #10
+captures.
 Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`,
+`tasks/task-511-rerun-release-kicad-screenshots.md`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.fail-first.log`,
 and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.focused-green.log`.
-The selected rich generated board reports 26 DRC violations, so this is visual
-generated-file release evidence and not a `FAB_READY` claim. Gates #1-#10 are
-green; gate #11 is next.
+The copied gate #9 `source/drc.json` reports 0 DRC violations and 0
+unconnected items. The copied-project KiCad CLI rerun in `source/drc-rerun.json`
+also reports 0 DRC violations and 0 unconnected items, with 59 schematic parity
+warnings. This is visual generated-file release evidence and not a `FAB_READY`
+claim. Gates #1-#13 remain recorded as passed; gate #14 remains the next
+release action after any required revalidation decision.
 
 Task 506 passed release gate #11 by capturing durable README/GitHub feature
 screenshots and linking the public assets from the README. Public assets live
