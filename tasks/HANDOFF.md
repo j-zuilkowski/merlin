@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 502.
+Latest completed task is Task 503.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 503 — pass release capability gate with deterministic stops
 - Task 502 — repair S1 verification continuation loop
 - Task 501 — repair release capability model preflight path
 - Task 492 — add resumable v2.4.0 release run ledger
@@ -177,8 +178,8 @@ Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-health.json`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-server.log`,
 `merlin-eval/results/S1-harness-2026-06-11T13-04-11Z.md`, and
-`merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`. The next release
-blocker is targeted S1/S2 convergence repair, not runner or checklist work.
+`merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`. This Task 500
+blocker status is superseded by Task 503, which passes gate #8.
 
 Task 501 repaired the code-level local model preflight failures found while
 working gate #8. `AgenticEngine` now preflights local model manager operations
@@ -193,13 +194,13 @@ named failing tests from verbose Xcode output. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.neighbor-green.log`,
 and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.modelid-green.log`.
-The latest deterministic live evidence is still red:
+At the time of Task 501, the latest deterministic live evidence was still red:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log` records S1
 timing out and S2 failing before this repair with
 `reloadFailed("llama.cpp router endpoint rejected models/load for llamacpp")`;
 `merlin-eval/results/S2-harness-2026-06-11T14-13-11Z.md` records S2 leaving
-`add_rejects_non_numeric_amount` red. Gate #8 must remain failed until a fresh
-`scripts/release/run-capability-gate.sh` run proves S1 and S2 green together.
+`add_rejects_non_numeric_amount` red. This red gate status is superseded by
+Task 503, which proves S1 and S2 green together.
 
 Task 502 repaired the S1 TaskBoard loop-continuation failure. When software
 verification returns repairable failing-test output and the agent loop hits its
@@ -211,10 +212,31 @@ inject instead of the generic `run git status` restart prompt. This keeps
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.focused-green.log`,
 and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.neighbor-green.log`.
-Task #1 from the release blocker list is repaired at focused-test level. The
-next action is step #2: rerun gate #8 only through
-`scripts/release/run-capability-gate.sh` and require S1 plus S2 green evidence
-before moving to gate #9.
+Task #1 from the release blocker list was repaired at focused-test level by
+Tasks 501 and 502. Task 503 completes step #2 by proving S1 plus S2 green
+through the deterministic gate runner.
+
+Task 503 passed release gate #8 with deterministic S1/S2 convergence. The E2E
+harness now stops S1/S2 on green verification tool evidence, and S1 also stops
+after successful Swift source repair writes so the test's deterministic
+verification command proves the fixture instead of letting the agent wander back
+into setup. `ShellTool` now builds a GUI-safe developer PATH including
+Homebrew/local tool locations, which lets GUI-launched Merlin find `xcodegen`.
+`scripts/release/run-capability-gate.sh` now kills the watchdog process tree
+after xcodebuild exits, fixing the observed orphaned `sleep 2400` that held the
+runner `tee` pipe open after green test output. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-verification-stop.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-shell-path.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-task503.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.bash-n.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log`,
+`merlin-eval/results/S1-harness-2026-06-11T17-12-35Z.md`, and
+`merlin-eval/results/S2-harness-2026-06-11T17-16-40Z.md`. Gate #8 is passed.
+The next release action is gate #9:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate

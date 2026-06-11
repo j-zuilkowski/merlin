@@ -38,6 +38,33 @@ enum ShellTool {
         try await execute(command: command, cwd: cwd, timeoutSeconds: timeoutSeconds) { _ in }
     }
 
+    static func defaultEnvironment(
+        processEnvironment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> [String: String] {
+        var env = processEnvironment
+        let defaultPath = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "/usr/bin",
+            "/bin",
+            "/usr/sbin",
+            "/sbin"
+        ]
+        let existing = (env["PATH"] ?? "")
+            .split(separator: ":")
+            .map(String.init)
+        let path = (defaultPath + existing).reduce(into: [String]()) { paths, candidate in
+            if paths.contains(candidate) == false {
+                paths.append(candidate)
+            }
+        }
+        env["PATH"] = path.joined(separator: ":")
+        env["MPLBACKEND"] = "Agg"
+        return env
+    }
+
     private static func execute(command: String,
                                 cwd: String?,
                                 timeoutSeconds: Int,
@@ -54,9 +81,7 @@ enum ShellTool {
         // triggers a system crash report whenever a library (e.g. matplotlib) tries
         // to initialise a GUI backend.  Forcing the non-interactive Agg backend
         // keeps all subprocess output headless.
-        var env = ProcessInfo.processInfo.environment
-        env["MPLBACKEND"] = "Agg"
-        process.environment = env
+        process.environment = defaultEnvironment()
         if let cwd {
             process.currentDirectoryURL = URL(fileURLWithPath: cwd)
         }

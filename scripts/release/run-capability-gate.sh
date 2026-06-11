@@ -359,7 +359,7 @@ run_with_timeout() {
   wait "$child"
   status="$?"
   set -e
-  kill "$watchdog" 2>/dev/null || true
+  kill_tree "$watchdog"
   wait "$watchdog" 2>/dev/null || true
   return "$status"
 }

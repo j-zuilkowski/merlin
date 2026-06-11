@@ -47,6 +47,13 @@ final class ReleaseCapabilityGateRunnerScriptTests: XCTestCase {
         XCTAssertTrue(script.contains("restore_user_config"))
     }
 
+    func testTimeoutWatchdogCleanupKillsChildSleepTree() throws {
+        let script = try String(contentsOf: scriptURL, encoding: .utf8)
+
+        XCTAssertTrue(script.contains("kill_tree \"$watchdog\""))
+        XCTAssertFalse(script.contains("kill \"$watchdog\" 2>/dev/null || true"))
+    }
+
     private func runScript(_ arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")

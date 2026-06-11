@@ -25,7 +25,7 @@ runs, fails, is repaired, or passes.
 | 5 | Local-provider pairs smoke/load/shutdown | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log`; fail-first wrapper evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`; LM Studio text/streaming/tool and explicit vision smokes passed; Jan text/streaming/tool smoke passed; Jan separate vision lifecycle smoke passed; ports 1234 and 1337 closed after cleanup. | none |
 | 6 | llama.cpp router explicit model ID smoke | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`; router catalog exposed `default` first but smoke selected explicit `qwen3-coder-local` and `qwen3-vl-local`; completion, streaming, tool-call, and vision checks passed; port 8081 closed after cleanup. | none |
 | 7 | xcalibre RAG health/search/cleanup | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`; fail-first config evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`; server log `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`; real sibling backend built and started on 8083; health/openapi passed; authenticated memory sentinel insert/search/delete passed; port 8083 closed after cleanup. | none |
-| 8 | Capability scenarios S1/S2 convergence | failed | Deterministic runner: `scripts/release/run-capability-gate.sh`; fail-first runner tests `docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.fail-first.log`; green runner tests `docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.focused.log`; local repair evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.fail-first.log`, `08-s1-repair.focused-green.log`, `08-s1-repair.neighbor-green.log`, `08-s1-repair.modelid-green.log`, `08-s1-taskboard-continuation.fail-first.log`, `08-s1-taskboard-continuation.focused-green.log`, `08-s1-taskboard-continuation.neighbor-green.log`; live runner log `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`; service logs `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-llamacpp-router.log`, `08-capability-runner-llamacpp-models.json`, `08-capability-runner-xcalibre-build.log`, `08-capability-runner-xcalibre-health.json`, `08-capability-runner-xcalibre-server.log`; scenario artifacts `merlin-eval/results/S1-harness-2026-06-11T13-04-11Z.md`, `merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`, `merlin-eval/results/S2-harness-2026-06-11T14-13-11Z.md`; prior red artifacts from Task 499 remain preserved. | Task 501 fixed the code-level `llamacpp` base-provider model preflight path and critic failure summaries under focused tests. Task 502 fixed loop-ceiling continuations so S1 carries failing `TaskStoreTests` evidence forward instead of restarting setup. Gate #8 still needs a fresh deterministic runner pass proving S1 and S2 converge together, so do not advance to gate #9 yet. |
+| 8 | Capability scenarios S1/S2 convergence | passed | Deterministic runner: `scripts/release/run-capability-gate.sh`; live runner log `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log` records `testS1SwiftGUIDebugCycle` passing in 676.582s, `testS2RustDebugCycle` passing in 244.910s, and `** TEST SUCCEEDED **`; scenario artifacts `merlin-eval/results/S1-harness-2026-06-11T17-12-35Z.md` and `merlin-eval/results/S2-harness-2026-06-11T17-16-40Z.md`; cleanup evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log` records restored config/provider files, no release runner/services, and no 8081/8083 listeners; runner watchdog repair evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.fail-first.log`, `08-runner-watchdog.focused-green.log`, `08-runner-watchdog.bash-n.log`; Task 503 focused green `docs/e2e/2026-06-08-v2.4.0-release/logs/08-task503.focused-green.log`; prior Task 500-502 fail-first and repair artifacts remain preserved. | none |
 | 9 | Electronics/KiCad deterministic checks | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log` | none yet |
 
 ## Post-Green Release Screenshots
@@ -46,10 +46,11 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-The immediate blocker is gate #8. Task 501 repaired the local `llamacpp`
-model-ID preflight path and critic failure summaries under focused tests. Task
-502 repaired S1 loop-ceiling continuations so failing verification evidence is
-carried into the next turn instead of restarting setup. The next action is a
-fresh `scripts/release/run-capability-gate.sh` pass proving S1 and S2 together.
-Gate #10, the KiCad release screenshot step, is not valid until gates #1-#9 are
-green.
+Gate #8 is passed with S1 and S2 green under
+`scripts/release/run-capability-gate.sh`. Task 503 also repaired the runner
+watchdog cleanup leak found after the green xcodebuild output, and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log`
+proves the user config/provider files were restored and ports 8081 and 8083 are
+closed. The immediate blocker is gate #9: electronics/KiCad deterministic
+checks. Gate #10, the KiCad release screenshot step, is not valid until gates
+#1-#9 are green.
