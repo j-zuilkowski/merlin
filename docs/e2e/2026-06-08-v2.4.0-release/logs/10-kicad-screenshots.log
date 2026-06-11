@@ -1,0 +1,168 @@
+Gate #10 KiCad screenshot evidence
+Date: 2026-06-11T17:49:05Z
+KiCad CLI: 10.0.3
+Selected generated source: /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/merlin-evidence-selection-EC8C9D14-EB07-47FC-942F-4F665C94BC09/compiled
+  102918 docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/amp_low_voltage_audio.kicad_sch
+   77558 docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/amp_low_voltage_audio.kicad_pcb
+  180476 total
+1
+243
+
+Deterministic KiCad exports
+sch export svg
+Plotted to '/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic-svg/amp_low_voltage_audio.svg'.
+Done.
+sch export pdf
+Plotted to 'docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic.pdf'.
+Done.
+pcb export svg composite copper/edge
+Plotted to 'docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/routed-composite.svg'.
+Done.
+pcb export svg front copper
+Plotted to 'docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/front-copper.svg'.
+Done.
+pcb export svg back copper
+Plotted to 'docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/back-copper.svg'.
+Done.
+pcb render 3d
+Loading…
+Build board outline
+
+Create layers
+Create tracks and vias
+Create zones
+Build Tech layers
+Build Tech layer 11
+Build Tech layer 9
+Build Tech layer 15
+Build Tech layer 13
+Build Tech layer 7
+Build Tech layer 5
+Build Tech layer 3
+Build Tech layer 1
+Build Tech layer 17
+Build Tech layer 19
+Build Tech layer 21
+Build Tech layer 23
+Build Tech layer 39
+Build Tech layer 41
+Build Tech layer 43
+Build Tech layer 45
+Build Tech layer 47
+Build Tech layer 49
+Build Tech layer 51
+Build Tech layer 53
+Build Tech layer 55
+Build Tech layer 57
+Build Tech layer 59
+Build Tech layer 61
+Build Tech layer 63
+Build Tech layer 65
+Build Tech layer 67
+Build Tech layer 69
+Build Tech layer 71
+Build Tech layer 73
+Build Tech layer 75
+Build Tech layer 77
+Build Tech layer 79
+Build Tech layer 81
+Build Tech layer 83
+Build Tech layer 85
+Build Tech layer 87
+Build Tech layer 89
+Build Tech layer 91
+Build Tech layer 93
+Build Tech layer 95
+Build Tech layer 97
+Build Tech layer 99
+Build Tech layer 101
+Build Tech layer 103
+Build Tech layer 105
+Build Tech layer 107
+Build Tech layer 109
+Build Tech layer 111
+Build Tech layer 113
+Build Tech layer 115
+Build Tech layer 117
+Build Tech layer 119
+Build Tech layer 121
+Build Tech layer 123
+Build Tech layer 125
+Build Tech layer 127
+Simplifying copper layer polygons
+Calculating plated copper
+Simplify holes contours
+Build BVH for holes and vias
+Load Raytracing: board
+Load Raytracing: layers
+Loading 3D models...
+Reload time 0.027 s
+Rendering: 25 %
+Rendering: 48 %
+Rendering: 76 %
+Rendering: 100 %
+Rendering: Post processing shader
+Rendering time 1.643 s
+Successfully created 3D render image
+pcb drc json
+Found 26 violations
+Found 0 unconnected items
+Saved DRC Report to docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/drc.json
+exported files
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/board-3d-render.png
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/back-copper.svg
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/front-copper.svg
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/routed-composite.svg
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic-svg/amp_low_voltage_audio.svg
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic.pdf
+docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/drc.json
+
+GUI schematic screenshot captured: /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic-editor-screenshot.png
+
+GUI PCB screenshot captured: /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/pcb-editor-screenshot.png
+
+Layer PNG previews
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/back-copper.png
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/back-copper.svg
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/front-copper.png
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/front-copper.svg
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/routed-composite.png
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/routed-composite.svg
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/back-copper.png
+  pixelWidth: 1800
+  pixelHeight: 1800
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/front-copper.png
+  pixelWidth: 1800
+  pixelHeight: 1800
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/layers/routed-composite.png
+  pixelWidth: 1800
+  pixelHeight: 1800
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/board-3d-render.png
+  pixelWidth: 1568
+  pixelHeight: 984
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/schematic-editor-screenshot.png
+  pixelWidth: 3840
+  pixelHeight: 2160
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/pcb-editor-screenshot.png
+  pixelWidth: 3840
+  pixelHeight: 2160
+
+GUI 3D viewer attempt
+menu item 3D Viewer of menu View of menu bar item View of menu bar 1 of application process pcbnew
+/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/board-3d-viewer-screenshot.png
+  pixelWidth: 3840
+  pixelHeight: 2160
+41822 /Applications/Ki /Applications/KiCad/KiCad.app/Contents/Applications/eeschema.app/Contents/MacOS/eeschema
+42684 /Applications/Ki /Applications/KiCad/KiCad.app/Contents/Applications/pcbnew.app/Contents/MacOS/pcbnew
+44268 /bin/zsh         /bin/zsh -c set -euo pipefail\012OUT="/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad"\012{\012  echo\012  echo "GUI 3D viewer attempt"\012  osascript <<'OSA'\012tell application "PCB Editor" to activate\012delay 1\012tell application "System Events"\012  tell process "pcbnew"\012    set frontmost to true\012    click menu item "3D Viewer" of menu "View" of menu bar 1\012  end tell\012end tell\012OSA\012  sleep 6\012  screencapture -x "$OUT/board-3d-viewer-screenshot.png"\012  /usr/bin/sips -g pixelWidth -g pixelHeight "$OUT/board-3d-viewer-screenshot.png"\012  ps -axo pid,comm,args | rg '3d|pcbnew|KiCad' || true\012  echo "GUI 3D viewer screenshot captured: $OUT/board-3d-viewer-screenshot.png"\012} 2>&1 | tee -a /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log
+44269 /bin/zsh         /bin/zsh -c set -euo pipefail\012OUT="/Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad"\012{\012  echo\012  echo "GUI 3D viewer attempt"\012  osascript <<'OSA'\012tell application "PCB Editor" to activate\012delay 1\012tell application "System Events"\012  tell process "pcbnew"\012    set frontmost to true\012    click menu item "3D Viewer" of menu "View" of menu bar 1\012  end tell\012end tell\012OSA\012  sleep 6\012  screencapture -x "$OUT/board-3d-viewer-screenshot.png"\012  /usr/bin/sips -g pixelWidth -g pixelHeight "$OUT/board-3d-viewer-screenshot.png"\012  ps -axo pid,comm,args | rg '3d|pcbnew|KiCad' || true\012  echo "GUI 3D viewer screenshot captured: $OUT/board-3d-viewer-screenshot.png"\012} 2>&1 | tee -a /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log
+44304 rg               rg 3d|pcbnew|KiCad
+GUI 3D viewer screenshot captured: /Users/jonzuilkowski/Documents/localProject/merlin/docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/board-3d-viewer-screenshot.png
+
+Post-capture cleanup check
+49148 /bin/zsh         /bin/zsh -c {\012  echo\012  echo "Post-capture cleanup check"\012  ps -axo pid,comm,args | rg 'eeschema|pcbnew|kicad-cli' || echo "No KiCad editor or kicad-cli processes remain."\012} 2>&1 | tee -a docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log\012tail -20 docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log
+49149 /bin/zsh         /bin/zsh -c {\012  echo\012  echo "Post-capture cleanup check"\012  ps -axo pid,comm,args | rg 'eeschema|pcbnew|kicad-cli' || echo "No KiCad editor or kicad-cli processes remain."\012} 2>&1 | tee -a docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log\012tail -20 docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log
+49152 rg               rg eeschema|pcbnew|kicad-cli
+
+Exact post-capture KiCad process check
+No KiCad editor or kicad-cli processes remain.

@@ -1,0 +1,387 @@
+{
+  "assignments" : [
+    {
+      "footprint" : "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "AC1" : "1",
+        "AC2" : "2",
+        "Pin_1" : "1",
+        "Pin_2" : "2"
+      },
+      "refdes" : "JSEC",
+      "source" : "exact_mpn",
+      "source_path" : "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Diode_THT:Diode_Bridge_Round_D9.0mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "+" : "1",
+        "-" : "2",
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "4" : "4",
+        "AC1" : "3",
+        "AC2" : "4",
+        "MINUS" : "2",
+        "PLUS" : "1"
+      },
+      "refdes" : "BR1",
+      "source" : "exact_mpn",
+      "source_path" : "Diode_THT:Diode_Bridge_Round_D9.0mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:CP_Radial_D18.0mm_P7.50mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "MINUS" : "2",
+        "PLUS" : "1"
+      },
+      "refdes" : "CRES1",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:CP_Radial_D18.0mm_P7.50mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "S" : "S",
+        "SLEEVE" : "S",
+        "T" : "T",
+        "TIP" : "T"
+      },
+      "refdes" : "JIN",
+      "source" : "exact_mpn",
+      "source_path" : "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HFD2_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RIN",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CIN",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-92_Inline",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "D" : "1",
+        "G" : "3",
+        "S" : "2"
+      },
+      "refdes" : "QPRE1",
+      "source" : "exact_mpn",
+      "source_path" : "Package_TO_SOT_THT:TO-92_Inline",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RPRE_D",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RPRE_S",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CPRE_BYP",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CTONE_IN",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RBASS",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CBASS",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RMID",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CMID",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RTREBLE",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CTREBLE",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RFILT1",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "CFILT1",
+      "source" : "exact_mpn",
+      "source_path" : "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Potentiometer_THT:Potentiometer_Alpha_RD901F-40-00D_Single_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "CCW" : "1",
+        "CW" : "3",
+        "WIPER" : "2"
+      },
+      "refdes" : "RVBOOST",
+      "source" : "exact_mpn",
+      "source_path" : "Potentiometer_THT:Potentiometer_Alpha_RD901F-40-00D_Single_Vertical",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-126-3_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "B" : "1",
+        "C" : "2",
+        "E" : "3"
+      },
+      "refdes" : "QDRV1",
+      "source" : "exact_mpn",
+      "source_path" : "Package_TO_SOT_THT:TO-126-3_Vertical",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RDRV_C",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "RDRV_E",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Package_TO_SOT_THT:TO-3P-3_Vertical",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "3" : "3",
+        "B" : "1",
+        "C" : "2",
+        "E" : "3"
+      },
+      "refdes" : "QOUT1",
+      "source" : "exact_mpn",
+      "source_path" : "Package_TO_SOT_THT:TO-3P-3_Vertical",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "Resistor_THT:R_Axial_Power_L20.0mm_W6.4mm_P25.40mm",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "A" : "1",
+        "B" : "2"
+      },
+      "refdes" : "REMIT",
+      "source" : "exact_mpn",
+      "source_path" : "Resistor_THT:R_Axial_Power_L20.0mm_W6.4mm_P25.40mm",
+      "source_provider_id" : "kicad_local"
+    },
+    {
+      "footprint" : "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-3-2-5.08_1x02_P5.08mm_Horizontal",
+      "package_compatibility_evidence" : "local KiCad footprint requested by constraint",
+      "pin_pad_map" : {
+        "1" : "1",
+        "2" : "2",
+        "Pin_1" : "1",
+        "Pin_2" : "2",
+        "SPK_PLUS" : "1",
+        "SPK_RETURN" : "2"
+      },
+      "refdes" : "JSPK",
+      "source" : "exact_mpn",
+      "source_path" : "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-3-2-5.08_1x02_P5.08mm_Horizontal",
+      "source_provider_id" : "kicad_local"
+    }
+  ],
+  "unknownFootprints" : 0
+}

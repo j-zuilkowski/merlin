@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 504.
+Latest completed task is Task 505.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 505 — capture release KiCad screenshots
 - Task 504 — pass release electronics/KiCad deterministic gate
 - Task 503 — pass release capability gate with deterministic stops
 - Task 502 — repair S1 verification continuation loop
@@ -252,6 +253,26 @@ release action is gate #10: open generated schematic and PCB files in KiCad and
 capture release screenshots under
 `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
 
+Task 505 passed release gate #10 by opening generated KiCad files and capturing
+durable screenshots. The generated `amp_low_voltage_audio` KiCad project was
+copied to
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/`.
+`Schematic Editor.app` opened the copied `.kicad_sch` and produced
+`schematic-editor-screenshot.png`; `PCB Editor.app` opened the copied
+`.kicad_pcb` and produced `pcb-editor-screenshot.png`; the PCB editor's GUI
+3D Viewer produced `board-3d-viewer-screenshot.png`. KiCad CLI exports also
+produced `schematic.pdf`, `schematic-svg/amp_low_voltage_audio.svg`,
+front/back/routed layer SVGs plus PNG previews, and `board-3d-render.png`.
+Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.focused-green.log`.
+The selected rich generated board reports 26 DRC violations, so this is visual
+generated-file release evidence and not a `FAB_READY` claim. Gates #1-#10 are
+green; gate #11 is next.
+
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
 release-runner failures: the first S1/S2 attempt had no gate-owned llama.cpp
@@ -357,7 +378,7 @@ Task 492 added
 `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
 release state ledger. Use that file as the only source of truth for the release
 push. This Task 492 blocker summary is superseded by Tasks 503 and 504; gates
-#1-#9 are green and gate #10 is now pending.
+#1-#10 are green and gate #11 is now pending.
 
 Task 478 added a generic component-selection revision path. The electronics
 plugin now exposes `kicad_revise_component_selection`, which accepts a blocked

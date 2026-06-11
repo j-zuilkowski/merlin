@@ -93,12 +93,14 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 503"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 505"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
         XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
         XCTAssertTrue(handoff.contains("Task 492 added"), handoff)
         XCTAssertTrue(handoff.contains("Task 503 passed release gate #8"), handoff)
+        XCTAssertTrue(handoff.contains("Task 504 passed release gate #9"), handoff)
+        XCTAssertTrue(handoff.contains("Task 505 passed release gate #10"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

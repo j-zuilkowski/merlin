@@ -36,8 +36,8 @@ Release screenshots are created only after the full battery is green.
 
 | # | Gate | State | Evidence | Next repair |
 |---|---|---|---|---|
-| 10 | KiCad release screenshots: open generated schematic and generated PCB in KiCad; capture schematic editor, PCB editor, routed/layer, and 3D board screenshots when available | pending | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/` | none yet |
-| 11 | GitHub and README feature screenshots | blocked | `docs/assets/screenshots/v2.4.0/` and `docs/e2e/2026-06-08-v2.4.0-release/screenshots/` | wait for #1-#10 green |
+| 10 | KiCad release screenshots: open generated schematic and generated PCB in KiCad; capture schematic editor, PCB editor, routed/layer, and 3D board screenshots when available | passed | `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`; generated KiCad source copied under `screenshots/kicad/source/`; GUI screenshots `schematic-editor-screenshot.png`, `pcb-editor-screenshot.png`, and `board-3d-viewer-screenshot.png`; deterministic exports `schematic.pdf`, `schematic-svg/amp_low_voltage_audio.svg`, `layers/routed-composite.svg`, `layers/front-copper.svg`, `layers/back-copper.svg`, PNG layer previews, and `board-3d-render.png`; command log `docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`; focused doc sweep drift evidence `10-doc-sweep-post-task504.fail-first.log` and `10-doc-sweep-post-task504.focused-green.log`. The selected rich generated board reports 26 DRC violations, so this is visual/generated-file evidence only, not a FAB_READY claim. | none |
+| 11 | GitHub and README feature screenshots | pending | `docs/assets/screenshots/v2.4.0/` and `docs/e2e/2026-06-08-v2.4.0-release/screenshots/` | none yet |
 | 12 | Release evidence report | blocked | `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md` | wait for #1-#11 green |
 | 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | blocked | `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log` | wait for #1-#12 green |
 | 14 | Tag `v2.4.0` | blocked | `git tag v2.4.0` | wait for #13 green |
@@ -46,8 +46,12 @@ Release screenshots are created only after the full battery is green.
 
 ## Current Blocker
 
-Gates #1-#9 are passed. Gate #9's deterministic electronics/KiCad slice passed
-340 focused tests with 6 skips and 0 failures after updating the stale final
-documentation sweep assertion. The immediate blocker is gate #10: open generated
-schematic and PCB files in KiCad and capture release screenshots under
-`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
+Gates #1-#10 are passed. Gate #10 opened the copied generated
+`amp_low_voltage_audio` KiCad schematic and PCB in KiCad GUI editors, captured
+schematic, PCB, routed/layer, and 3D screenshots, and preserved the generated
+project source under
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`. The selected rich
+generated board has 26 DRC violations, so the screenshots are visual release
+evidence for generated KiCad files and not a fabrication-ready claim. The
+immediate blocker is gate #11: GitHub and README feature screenshots under
+`docs/assets/screenshots/v2.4.0/` and release evidence screenshots.
