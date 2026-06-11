@@ -60,12 +60,13 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 498.
+Latest completed task is Task 499.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
 - Task 492 — add resumable v2.4.0 release run ledger
 - Task 498 — pass release xcalibre RAG gate
+- Task 499 — close failed release capability gate attempts
 - Task 497 — pass release llama.cpp router gate
 - Task 496 — pass release local provider gate
 - Task 495 — pass release live DeepSeek gate
@@ -150,6 +151,27 @@ and configured search paths still work. The no-footprint regression now proves
 selection leaves footprint candidates empty and assignment blocks with
 `FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
 
+Task 499 closed release gate #8 as failed evidence instead of leaving the
+ledger in a false `running` state. The preserved artifacts prove three separate
+release-runner failures: the first S1/S2 attempt had no gate-owned llama.cpp
+router on `127.0.0.1:8081`; the second owned the router but used user config
+slots pointing at `llamacpp:qwen3-coder-next-local`, which the release preset
+does not expose; the third used an isolated release config and router but did
+not own xcalibre on `127.0.0.1:8083`, while the app still probed that service
+during live startup. The generated S1/S2 harness artifacts also show
+non-convergence in completed attempts: no tool calls were captured and fixture
+verification stayed red. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.model-mismatch.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.log`, and
+`merlin-eval/results/S1-harness-2026-06-08T19-31-05Z.md`,
+`merlin-eval/results/S2-harness-2026-06-08T19-31-10Z.md`,
+`merlin-eval/results/S1-harness-2026-06-08T19-32-30Z.md`,
+`merlin-eval/results/S2-harness-2026-06-08T19-32-32Z.md`. Gate #8 must not be
+retried by hand. Task 500 must add a deterministic release gate runner that
+owns config, providers, local services, timeouts, evidence, and cleanup before
+another live S1/S2 attempt.
+
 Task 498 passed release gate #7, the xcalibre RAG health/search/cleanup proof.
 The fail-first attempt is preserved because the isolated xcalibre config used a
 non-base64 `jwt_secret`, which the current backend rejects before health. The
@@ -162,9 +184,9 @@ it was absent after deletion, and closed port 8083. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`,
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`, and
 `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`.
-The next release blocker is gate #8, the capability scenarios S1/S2 convergence
-proof. Gate #10, KiCad release screenshots, remains blocked until gates #1-#9
-are green.
+The next release blocker is Task 500, the deterministic release capability gate
+runner for gate #8. Gate #10, KiCad release screenshots, remains blocked until
+gates #1-#9 are green.
 
 Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
 The gate started Homebrew `llama-server` 9290 on `127.0.0.1:8081` with

@@ -25,7 +25,7 @@ runs, fails, is repaired, or passes.
 | 5 | Local-provider pairs smoke/load/shutdown | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log`; fail-first wrapper evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`; LM Studio text/streaming/tool and explicit vision smokes passed; Jan text/streaming/tool smoke passed; Jan separate vision lifecycle smoke passed; ports 1234 and 1337 closed after cleanup. | none |
 | 6 | llama.cpp router explicit model ID smoke | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`; router catalog exposed `default` first but smoke selected explicit `qwen3-coder-local` and `qwen3-vl-local`; completion, streaming, tool-call, and vision checks passed; port 8081 closed after cleanup. | none |
 | 7 | xcalibre RAG health/search/cleanup | passed | `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`; fail-first config evidence `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`; server log `docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`; real sibling backend built and started on 8083; health/openapi passed; authenticated memory sentinel insert/search/delete passed; port 8083 closed after cleanup. | none |
-| 8 | Capability scenarios S1/S2 convergence | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.log` | none yet |
+| 8 | Capability scenarios S1/S2 convergence | failed | `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.fail-first.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.model-mismatch.log`; `docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.log`; `merlin-eval/results/S1-harness-2026-06-08T19-31-05Z.md`; `merlin-eval/results/S2-harness-2026-06-08T19-31-10Z.md`; `merlin-eval/results/S1-harness-2026-06-08T19-32-30Z.md`; `merlin-eval/results/S2-harness-2026-06-08T19-32-32Z.md` | Task 500 must replace ad hoc retries with a deterministic gate runner that owns llama.cpp 8081, xcalibre 8083, release config/provider registry, strict timeouts, log capture, and cleanup before another S1/S2 attempt |
 | 9 | Electronics/KiCad deterministic checks | pending | `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log` | none yet |
 
 ## Post-Green Release Screenshots
@@ -47,5 +47,8 @@ Release screenshots are created only after the full battery is green.
 ## Current Blocker
 
 The immediate blocker is gate #8, the capability scenarios S1/S2 convergence
-proof. Gate #10, the KiCad release screenshot step, is not valid until gates
-#1-#9 are green.
+proof. Task 499 closed the previous ad hoc attempts as failed evidence instead
+of leaving the ledger in a false `running` state. Gate #8 must not be retried by
+hand; Task 500 adds the deterministic runner that owns config, services,
+timeouts, evidence, and cleanup. Gate #10, the KiCad release screenshot step, is
+not valid until gates #1-#9 are green.
