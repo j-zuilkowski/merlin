@@ -6,8 +6,8 @@ Overall status: **passed through gate #12**.
 
 Gates #1-#12 are passed. This report summarizes the fixed v2.4.0 release
 ledger evidence through the post-green screenshot and release-report stages.
-Gate #13, the final safety check, remains pending and must pass before tagging,
-pushing, or publishing the GitHub release.
+Gate #13, the final safety check, was completed after this report was first
+written. Tagging, pushing, and publishing remain pending.
 
 ## Environment
 
@@ -72,9 +72,12 @@ perform the final repository-wide safety check again before tagging.
 
 ## Remaining Release Gates
 
-- Gate #13: final safety check for clean status, version `2.4.0`, evidence
-  presence, and no orphan services/helpers.
 - Gate #14: create tag `v2.4.0`.
 - Gate #15: push branch and tag.
 - Gate #16: publish GitHub Release `v2.4.0` with required screenshots and
   evidence assets.
+
+## Post-Report Safety Update
+
+Gate #13 passed after this report was written. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log`.

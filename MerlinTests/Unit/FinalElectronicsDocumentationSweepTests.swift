@@ -97,6 +97,20 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(ledger.contains("docs/e2e/2026-06-08-v2.4.0-release/REPORT.md"), ledger)
     }
 
+    func testFinalSafetyGateRecordsCleanVersionEvidenceAndProcessState() throws {
+        let safety = try repoText("docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log")
+        let ledger = try repoText("docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md")
+
+        XCTAssertTrue(safety.contains("Initial git status: clean"), safety)
+        XCTAssertTrue(safety.contains("MARKETING_VERSION: \"2.4.0\""), safety)
+        XCTAssertTrue(safety.contains("CURRENT_PROJECT_VERSION: 26"), safety)
+        XCTAssertTrue(safety.contains("Release evidence present: yes"), safety)
+        XCTAssertTrue(safety.contains("README screenshot assets present: 7"), safety)
+        XCTAssertTrue(safety.contains("No Merlin app processes remain"), safety)
+        XCTAssertTrue(safety.contains("No release helper services remain on 8081 or 8083"), safety)
+        XCTAssertTrue(ledger.contains("| 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | passed |"), ledger)
+    }
+
     func testCurrentDocsNameActiveElectronicsRuntimePlugin() throws {
         let activeDocPaths = [
             "README.md",
@@ -127,7 +141,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 507"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 508"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
         XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
@@ -137,6 +151,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(handoff.contains("Task 505 passed release gate #10"), handoff)
         XCTAssertTrue(handoff.contains("Task 506 passed release gate #11"), handoff)
         XCTAssertTrue(handoff.contains("Task 507 passed release gate #12"), handoff)
+        XCTAssertTrue(handoff.contains("Task 508 passed release gate #13"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

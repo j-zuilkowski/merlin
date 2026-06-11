@@ -1,0 +1,24 @@
+Task 508 / Gate #13 final safety check
+UTC 2026-06-11T18:11:33Z
+
+Initial git status: clean
+Initial clean commit: 88417ba866880d147ca602af082a7ef141f7191d
+Note: this log was generated after adding the fail-first safety guard, so the live status below includes Task 508 doc/test/log edits in progress. A no-write git status check must be rerun after the Task 508 commit and before tagging.
+
+Version metadata:
+16:    MARKETING_VERSION: "2.4.0"
+17:    CURRENT_PROJECT_VERSION: 26
+MARKETING_VERSION: "2.4.0"
+CURRENT_PROJECT_VERSION: 26
+
+Release evidence present: yes
+README screenshot assets present: 7
+
+Current gate-in-progress git status:
+ M MerlinTests/Unit/FinalElectronicsDocumentationSweepTests.swift
+?? docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.fail-first.log
+?? docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log
+
+Process checks:
+No Merlin app processes remain
+No release helper services remain on 8081 or 8083
