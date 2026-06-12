@@ -148,6 +148,85 @@ class ToolRouter {
         }
     }
 
+    func registerMCPPluginMetadata(
+        settingsSchema: WorkspaceSettingsSchema?,
+        capabilities: [WorkspaceCapability]
+    ) async -> MCPPluginMetadataRegistration {
+        var settingsNamespaces: Set<String> = []
+        if let settingsSchema {
+            await workspaceRuntime.bus.registerSettingsSchema(settingsSchema)
+            settingsNamespaces.insert(settingsSchema.namespace)
+        }
+        var capabilityAddresses: Set<WorkspaceMessageAddress> = []
+        for capability in capabilities {
+            await workspaceRuntime.bus.registerCapability(capability)
+            capabilityAddresses.insert(capability.address)
+        }
+        return MCPPluginMetadataRegistration(
+            settingsNamespaces: settingsNamespaces,
+            capabilityAddresses: capabilityAddresses
+        )
+    }
+
+    func unregisterMCPPluginMetadata(_ registration: MCPPluginMetadataRegistration) async {
+        for namespace in registration.settingsNamespaces {
+            await workspaceRuntime.bus.unregisterSettingsSchema(namespace: namespace)
+        }
+        for address in registration.capabilityAddresses {
+            await workspaceRuntime.bus.unregisterCapability(address: address)
+        }
+    }
+
+    func registerMCPPluginToolRoute(
+        rawDefinition: ToolDefinition,
+        stableAlias: String?,
+        address: WorkspaceMessageAddress,
+        requiredScope: WorkspacePermissionScope,
+        scopedToDomainID domainID: String? = nil,
+        handler: @MainActor @escaping ([String: Any]) async -> String
+    ) -> [ToolDefinition] {
+        let rawName = rawDefinition.function.name
+        upsertMCPDefinition(rawDefinition, scopedToDomainID: domainID)
+        routes[rawName] = ToolRoute(
+            toolName: rawName,
+            address: address,
+            timeout: .seconds(120),
+            requiredPermissionScope: requiredScope
+        )
+        let registrationTask = Task {
+            await workspaceRuntime.bus.register(
+                ClosureWorkspaceMessageHandler(requiredScope: requiredScope) { arguments in
+                    await handler(Self.dictionary(from: arguments))
+                },
+                for: address
+            )
+        }
+        registrationTasks[rawName] = registrationTask
+
+        var registeredDefinitions = [rawDefinition]
+        if let stableAlias,
+           stableAlias != rawName,
+           routes[stableAlias] == nil,
+           workspaceDefinitions.contains(where: { $0.function.name == stableAlias }) == false,
+           mcpDefinitions.contains(where: { $0.function.name == stableAlias }) == false {
+            let aliasDefinition = ToolDefinition(function: .init(
+                name: stableAlias,
+                description: rawDefinition.function.description,
+                parameters: rawDefinition.function.parameters
+            ))
+            upsertMCPDefinition(aliasDefinition, scopedToDomainID: domainID)
+            routes[stableAlias] = ToolRoute(
+                toolName: stableAlias,
+                address: address,
+                timeout: .seconds(120),
+                requiredPermissionScope: requiredScope
+            )
+            registrationTasks[stableAlias] = registrationTask
+            registeredDefinitions.append(aliasDefinition)
+        }
+        return registeredDefinitions
+    }
+
     func registerWorkspaceCapabilityTools(_ capabilities: [WorkspaceCapability]) {
         for capability in capabilities where capability.kind == .tool || capability.kind == .workflow {
             let name = capability.address.capability
@@ -322,6 +401,16 @@ class ToolRouter {
             description: capability.displayName,
             parameters: JSONSchema(type: "object")
         ))
+    }
+
+    private func upsertMCPDefinition(_ definition: ToolDefinition, scopedToDomainID domainID: String?) {
+        let name = definition.function.name
+        if let existing = mcpDefinitions.firstIndex(where: { $0.function.name == name }) {
+            mcpDefinitions[existing] = definition
+        } else {
+            mcpDefinitions.append(definition)
+        }
+        mcpDomainScopes[name] = domainID
     }
 
     private static func domainScope(for namespace: String) -> String? {

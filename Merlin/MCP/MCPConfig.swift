@@ -43,6 +43,21 @@ struct MCPServerConfig: Codable, Sendable {
             }
         }
     }
+
+    func resolvingProjectRoot(_ projectPath: String) -> MCPServerConfig {
+        let replacement = URL(fileURLWithPath: projectPath).standardizedFileURL.path
+        return MCPServerConfig(
+            command: Self.replaceProjectRootPlaceholder(in: command, with: replacement),
+            args: args.map { Self.replaceProjectRootPlaceholder(in: $0, with: replacement) },
+            env: env.mapValues { Self.replaceProjectRootPlaceholder(in: $0, with: replacement) },
+            transportKind: transportKind,
+            transportURL: transportURL.map { Self.replaceProjectRootPlaceholder(in: $0, with: replacement) }
+        )
+    }
+
+    private static func replaceProjectRootPlaceholder(in value: String, with projectPath: String) -> String {
+        value.replacingOccurrences(of: "${MERLIN_PROJECT_ROOT}", with: projectPath)
+    }
 }
 
 struct MCPConfig: Codable, Sendable {
@@ -66,6 +81,6 @@ struct MCPConfig: Codable, Sendable {
         for (name, config) in project.mcpServers {
             merged[name] = config
         }
-        return MCPConfig(mcpServers: merged)
+        return MCPConfig(mcpServers: merged.mapValues { $0.resolvingProjectRoot(projectPath) })
     }
 }

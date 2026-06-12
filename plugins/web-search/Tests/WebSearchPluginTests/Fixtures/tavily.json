@@ -1,0 +1,10 @@
+{
+  "results": [
+    {
+      "title": "Merlin Tavily Result",
+      "url": "https://example.com/tavily",
+      "content": "Tavily search result for Merlin.",
+      "score": 0.84
+    }
+  ]
+}

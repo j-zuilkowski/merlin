@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "web-search": {
+      "command": "/usr/bin/swift",
+      "args": [
+        "run",
+        "--quiet",
+        "--package-path",
+        "${MERLIN_PROJECT_ROOT}/plugins/web-search",
+        "web-search-plugin"
+      ],
+      "transport": "stdio"
+    }
+  }
+}

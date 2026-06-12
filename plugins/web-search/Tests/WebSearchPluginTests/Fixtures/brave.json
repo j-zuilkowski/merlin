@@ -1,0 +1,11 @@
+{
+  "web": {
+    "results": [
+      {
+        "title": "Merlin Web Search",
+        "url": "https://example.com/brave",
+        "description": "Brave search result for Merlin."
+      }
+    ]
+  }
+}

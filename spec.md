@@ -1920,7 +1920,7 @@ A unified configuration surface accessible via Cmd+, (SwiftUI `Settings { }` sce
 | **MCP** | MCP server list — add/remove/edit, connection status |
 | **Skills** | Skill directory paths, per-skill enable/disable |
 | **Hooks** | View and edit hook definitions inline, grouped by event type |
-| **Search** | Brave API key, enable/disable |
+| **Search** | Dynamic Web Search Plugin settings when loaded; Brave is an optional plugin provider |
 | **Permissions** | Auth pattern memory — current allow/deny list, clear all |
 | **Advanced** | "Show config file in Finder", "Show memories folder in Finder", reset to defaults |
 
@@ -2224,7 +2224,7 @@ Full agentic loop with real models + SwiftUI UI. Drives `TestTargetApp` fixture.
 | ConnectorsView | Absorbed into Settings > Connectors; standalone view removed |
 | Hooks | Inline in config.toml; PreToolUse runs before AuthGate (fail-closed on crash) |
 | Memories | Opt-in; idle trigger (5 min); pending review queue in ~/.merlin/memories/pending/; fastest model in session's provider |
-| Web search | Brave Search API; absent when no key configured |
+| Web search | Tier-2 Web Search Plugin; default path does not require a paid API key, optional Brave adapter when configured |
 | Reasoning effort | Per-model capability flag; LM Studio uses name-pattern matching + user override in config.toml |
 
 ---
@@ -2336,7 +2336,7 @@ Current hard limit:
 | File system | `read_file`, `list_directory`, `search_files` |
 | Search | `grep`, `find_files` |
 | Shell | `bash` — read-only commands only (no writes, no sudo, no pipes to mutating commands) |
-| Web | `web_search` (if API key configured) |
+| Web | `web_search` when the Web Search Plugin is loaded |
 | Knowledge | `rag_search` |
 
 Write tools (`write_file`, `create_file`, `delete_file`, `move_file`, `apply_diff`) and all
@@ -2397,7 +2397,7 @@ max_subagent_depth = 2     # max spawn_agent nesting depth
 |---|---|
 | Dispatch | `spawn_agent` tool call — model-driven, same pattern as all other tools |
 | Result communication | Streaming `AsyncStream<SubagentEvent>` — no structured return intermediary |
-| Explorer tool set | read_file, list_directory, search_files, grep, bash (read-only), web_search, rag_search |
+| Explorer tool set | read_file, list_directory, search_files, grep, bash (read-only), web_search when the plugin is loaded, rag_search |
 | Hook inheritance | Children inherit parent HookEngine — hooks apply to all subagent tool calls |
 | Thread/depth limits | `max_subagent_threads` and `max_subagent_depth` in AppSettings / config.toml |
 | V4a UI | Inline collapsible blocks in parent chat stream |
@@ -2765,6 +2765,313 @@ Settings persistence is workspace-scoped by default:
 ```
 
 Global defaults may exist, but the workspace value wins. When a user changes a setting, Merlin persists the value and publishes a `.settingsChanged` event on the workspace bus. Plugins validate settings with a `settings.validate` capability and report warnings or required restarts through `.settingsValidation` events.
+
+### Web Search Plugin
+
+- Vision reference: vision.md#merlin-native-web-search-and-page-extraction
+- Spec scope: native current-web grounding, web result discovery, page extraction, provider diagnostics, dynamic plugin settings, and bus-backed tool dispatch
+
+The Brave-only `web_search` path is replaced by a **Tier-2 out-of-process Web
+Search Plugin**. It is developed and rebuilt independently from the Merlin app,
+launched as an MCP/JSON-RPC transport during development, and later may be
+distributed as a store plugin. It is not a Tier-1 `dlopen` bundle because the
+point of this surface is fast iteration, process isolation, and avoiding a main
+app rebuild while provider parsers and extraction heuristics change.
+
+The plugin is native to Merlin's architecture but external to Merlin's process:
+
+1. The plugin owns all search and extraction implementation code.
+2. Merlin core owns discovery, process/transport lifecycle, model-visible tool
+   registration, settings rendering, settings persistence, authorization, and bus
+   routing.
+3. All plugin behavior is invoked through `WorkspaceMessageBus`. No web-search
+   execution path may bypass the bus through direct `ToolRouter` closures.
+4. The plugin must not require a paid search API key for the default path.
+5. Optional managed providers remain adapters, not architectural dependencies.
+
+#### Development form
+
+The first implementation lives under `plugins/web-search/` as a standalone Swift
+package executable:
+
+```text
+plugins/web-search/
+  Package.swift
+  Sources/WebSearchPlugin/
+    main.swift
+    WebSearchMCPServer.swift
+    SearchProvider.swift
+    PageExtractionProvider.swift
+    SearchCoordinator.swift
+    providers/
+    extraction/
+    diagnostics/
+  Fixtures/
+  Tests/
+```
+
+During development the executable is registered through workspace or global MCP
+configuration. Rebuilding the plugin executable and restarting the MCP server is
+sufficient for parser/provider iteration; rebuilding Merlin is required only when
+the shared plugin/bus contract changes.
+
+#### Tier-2 plugin manifest
+
+Merlin must support an out-of-process plugin manifest for non-domain plugins. An
+MCP server may expose `merlin://plugin/manifest` with the same core metadata used
+by `RuntimePluginMetadata`:
+
+```json
+{
+  "id": "web-search",
+  "display_name": "Web Search",
+  "version": "1.0.0",
+  "trust_tier": "tier2",
+  "enabled": true,
+  "domain_ids": [],
+  "settings_schema": {
+    "namespace": "plugin.web_search",
+    "title": "Web Search",
+    "fields": []
+  },
+  "capabilities": []
+}
+```
+
+When `MCPBridge` sees this manifest, Merlin registers the declared settings schema
+with the workspace bus, registers declared capabilities, and maps MCP tools to
+plugin bus addresses. This is the Tier-2 equivalent of the electronics plugin's
+dynamic settings behavior. Settings must appear only while the plugin is loaded,
+and unloading the plugin removes or hides its settings section and tool
+capabilities from the active workspace.
+
+#### Committed decisions
+
+1. Discovery uses `merlin://plugin/manifest` for Tier-2 plugin metadata.
+2. Tool registration exposes stable Merlin aliases such as `web_search` and keeps
+   raw MCP names available when needed for conflict-free routing/debugging.
+3. The first complete provider slice ships all default free providers together:
+   DuckDuckGo lite/HTML, Wikipedia API, GitHub Search API, Stack Exchange API, and
+   Hacker News Algolia API.
+4. Extraction starts with `URLSession` plus deterministic HTML parsing/cleanup. A
+   WebKit-backed extractor is deferred until client-rendered pages prove it is
+   needed.
+5. Provider failures return partial success plus explicit diagnostics. The
+   coordinator must not silently skip degraded providers.
+6. Bot policy is respected by default. A user-configurable advisory override may
+   ignore advisory bot-policy signals, but must not bypass authentication,
+   paywalls, CAPTCHA/bot challenges, rate limits, IP blocks, or other technical
+   access controls.
+7. Ranking is score-first, with configured provider order used only as a
+   deterministic tie-breaker and fallback.
+8. Caching is workspace-scoped first, with global cache sharing deferred.
+9. All plugin-owned settings are declared dynamically by the plugin and rendered
+   by Merlin only while the plugin is loaded.
+10. Brave moves into the plugin as an optional managed provider adapter; the
+    static Brave-first app path is removed after plugin parity.
+
+#### Dynamic settings
+
+The plugin declares settings; Merlin renders them. The Web Search Plugin must not
+ship a SwiftUI settings view inside Merlin core.
+
+Required settings namespace:
+
+```text
+plugin.web_search
+```
+
+Initial settings fields:
+
+| Key | Kind | Default | Purpose |
+|---|---|---|---|
+| `duckduckgo_lite_enabled` | boolean | `true` | Enable DuckDuckGo lite/HTML search provider |
+| `wikipedia_enabled` | boolean | `true` | Enable Wikipedia API provider |
+| `github_search_enabled` | boolean | `true` | Enable GitHub Search API provider |
+| `stack_exchange_enabled` | boolean | `true` | Enable Stack Exchange API provider |
+| `hacker_news_enabled` | boolean | `true` | Enable Hacker News Algolia provider |
+| `brave_enabled` | boolean | `false` | Optional managed general-web fallback |
+| `brave_api_key` | secret | empty | Optional Brave API credential |
+| `tavily_enabled` | boolean | `false` | Optional managed search/extraction adapter |
+| `tavily_api_key` | secret | empty | Optional Tavily credential |
+| `firecrawl_enabled` | boolean | `false` | Optional managed extraction/crawler adapter |
+| `firecrawl_api_key` | secret | empty | Optional Firecrawl credential |
+| `provider_order` | string | `"duckduckgo_lite,wikipedia,github,stack_exchange,hacker_news,brave"` | Merge/ranking precedence after scoring |
+| `max_results_per_provider` | integer | `10` | Per-provider result cap |
+| `max_merged_results` | integer | `10` | Final result cap returned to the model |
+| `request_timeout_seconds` | integer | `15` | Network timeout per provider request |
+| `rate_limit_backoff_seconds` | integer | `60` | Backoff after provider throttle/block diagnostics |
+| `cache_ttl_seconds` | integer | `900` | Search-result cache TTL |
+| `extraction_max_bytes` | integer | `1048576` | Maximum fetched page bytes before extraction blocks |
+| `bot_policy_mode` | string | `"respect"` | Advisory bot-policy handling: `respect` or `ignore_advisory` |
+| `user_agent` | string | Merlin default | HTTP user agent for providers that allow configurable clients |
+
+Secret fields are stored through Merlin's existing credential storage policy, not
+in plaintext workspace settings files. Non-secret values are workspace-scoped by
+default and may have global defaults.
+
+The plugin exposes `settings.validate`; it must report:
+
+1. all enabled providers that are unusable because a required optional key is
+   missing;
+2. conflicting provider order entries;
+3. unsafe timeout, byte-limit, or rate-limit values;
+4. invalid bot-policy modes or an enabled advisory override;
+5. degraded providers that are currently blocked, rate-limited, CAPTCHA-gated,
+   returning unparseable markup, or producing empty normalized results.
+
+#### Tool capabilities
+
+Model-visible tools use stable names. Their production route is the workspace bus
+address declared by the plugin manifest:
+
+| Tool | Bus address | Scope | Purpose |
+|---|---|---|---|
+| `web_search` | `plugin.web_search/search` | externalSideEffect | Search enabled providers and return merged cited results plus diagnostics |
+| `web_extract_page` | `plugin.web_search/extract_page` | externalSideEffect | Fetch one URL and extract readable Markdown/text with source metadata |
+| `web_search_and_extract` | `plugin.web_search/search_and_extract` | externalSideEffect | Search, select top results, extract pages, and return grounded snippets |
+| `web_provider_status` | `plugin.web_search/provider_status` | readOnly | Report provider health, cache/backoff state, and last diagnostics |
+| `web_clear_cache` | `plugin.web_search/clear_cache` | workspaceWrite | Clear plugin search/extraction caches for the workspace |
+
+If a prefixed MCP name such as `mcp:web-search:web_search` is the raw transport
+name, Merlin may also register the stable alias `web_search` when no conflict
+exists. The alias and prefixed name must route to the same bus address and
+produce the same authorization and diagnostics behavior.
+
+#### Search contracts
+
+Search and extraction are separate interfaces:
+
+```swift
+protocol SearchProvider: Sendable {
+    var id: String { get }
+    func search(_ request: SearchRequest) async -> SearchProviderResult
+}
+
+protocol PageExtractionProvider: Sendable {
+    var id: String { get }
+    func extract(_ request: PageExtractionRequest) async -> PageExtractionResult
+}
+```
+
+`SearchRequest` includes query, locale, count, freshness hint when present,
+allowed domains, blocked domains, and provider-specific options. `SearchResult`
+records title, URL, canonical URL, snippet, provider ID, rank, score, retrieved
+timestamp, and diagnostics. The coordinator canonicalizes URLs, removes obvious
+duplicates, merges provider results, and returns a result set with cited provider
+metadata.
+
+Default free providers:
+
+1. DuckDuckGo lite/HTML for general web discovery.
+2. Wikipedia API for encyclopedic grounding.
+3. GitHub Search API for repository, issue, and code-discovery grounding where
+   unauthenticated limits suffice.
+4. Stack Exchange API for programming/Q&A grounding.
+5. Hacker News Algolia API for technical/community current-discussion grounding.
+
+The first plugin completion slice includes all five default free providers
+enabled by default. Internal implementation and tests may still land
+incrementally, but the first user-facing web-search plugin milestone is not
+complete until all five providers are implemented, normalized, diagnosable, and
+covered by fixtures.
+
+Optional managed providers:
+
+1. Brave Search for higher-quality general web results when the user supplies a
+   key.
+2. Tavily for managed search/extraction when configured.
+3. Firecrawl for managed crawling/extraction when configured.
+
+SearXNG remains only a conceptual reference for fanout, normalization, dedupe,
+and merged results. The plugin must not import, port, copy, or translate SearXNG
+engine adapters, parser code, ranking code, templates, or config.
+
+#### Extraction contracts
+
+`PageExtractionProvider` fetches selected URLs and returns readable Markdown or
+plain text with source metadata. It is not an unrestricted crawler. The initial
+native extractor may use `URLSession` and deterministic HTML parsing/cleanup; a
+future WebKit-backed extractor is allowed only if needed for pages whose useful
+content is client-rendered and if it remains bounded, cancellable, and isolated
+from Merlin's UI process.
+
+Extraction result metadata includes:
+
+1. requested URL and final URL;
+2. content type and byte count;
+3. title when available;
+4. extracted text or Markdown;
+5. extraction strategy;
+6. truncation status;
+7. blocked/degraded diagnostics;
+8. artifact references for cached raw/cleaned content when persisted.
+
+The plugin must block rather than fake success when a page requires login,
+returns a bot challenge/CAPTCHA, exceeds configured byte limits, declares an
+unsupported content type, or cannot be converted into useful text.
+
+`bot_policy_mode = "respect"` blocks extraction or search fanout when the plugin
+detects advisory bot-policy signals that it understands. `bot_policy_mode =
+"ignore_advisory"` may ignore advisory signals such as robots/noarchive/noai-like
+metadata when the user has deliberately configured that behavior. This override
+does not authorize bypassing login, paywalls, CAPTCHA/bot challenges, provider
+terms enforcement, rate limits, IP blocks, or any technical access control. When
+an advisory signal is ignored, the result diagnostics must record that fact.
+
+#### Diagnostics and cache behavior
+
+Provider diagnostics are first-class output, not log-only details. Search results
+must include a provider diagnostics block listing enabled providers as `ok`,
+`empty`, `blocked`, `bot_policy_blocked`, `rate_limited`, `captcha`,
+`parse_failed`, `timeout`, or `disabled`. Partial success is valid when at least
+one provider returns usable results and failed providers are reported honestly.
+
+The plugin may cache search responses and extracted page content in the workspace
+artifact/cache area. Cached entries must retain provider ID, request URL, final
+URL, retrieval timestamp, normalized query, content hash when content is stored,
+and expiration. Cache hits must be identified in diagnostics so the model can
+distinguish current network evidence from reused evidence.
+
+#### Bus events
+
+The plugin publishes bus events for:
+
+1. provider start/complete/failure;
+2. search merge/ranking complete;
+3. extraction start/complete/failure;
+4. cache hit/stale/evicted;
+5. provider health/backoff changes;
+6. settings validation results;
+7. artifacts produced for cached pages or extracted Markdown.
+
+All events use the `plugin.web_search` namespace. They must be visible to every
+session in the workspace, including explorer subagents, because web search is a
+read-only research capability.
+
+#### Later revision notes
+
+TODO: Define optional downstream consumer contracts for domain plugins that want
+to use web-search evidence. Electronics part discovery is a likely future
+consumer, but this revision must stay scoped to the Web Search Plugin itself and
+must not change electronics-domain behavior, gates, schemas, or selection rules.
+
+#### Migration from Brave-only search
+
+The old `BraveSearchClient` and `SearchSettingsView` become compatibility
+surfaces during migration only. Completion requires:
+
+1. `web_search` is registered without requiring a Brave key when the Web Search
+   Plugin is loaded.
+2. Brave settings move from the static Search settings view into the plugin's
+   dynamic settings schema.
+3. Existing tests that assert key-gated Brave registration are replaced with
+   plugin-loading, dynamic-settings, bus-route, provider-diagnostics, and
+   degraded-provider tests.
+4. The app no longer presents Brave as the primary web-search path. Brave is an
+   optional provider adapter.
+5. Direct web-search execution through static app code is removed or retained
+   only as utility code behind the plugin implementation.
 
 ### Electronics Plugin Implications
 

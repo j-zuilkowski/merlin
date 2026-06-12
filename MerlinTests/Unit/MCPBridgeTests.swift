@@ -143,6 +143,117 @@ final class MCPBridgeTests: XCTestCase {
         await DomainRegistry.shared.unregister(id: pluginID)
     }
 
+    @MainActor
+    func testTier2PluginManifestRegistersSettingsCapabilitiesAndAliasRoute() async throws {
+        let runtime = try makeRuntime()
+        let router = makeRouter(runtime: runtime)
+        router.permissionMode = .autoAccept
+        let bridge = MCPBridge(sessionFactory: { _, _ in
+            FakeMCPTransportSession(
+                tools: [Self.webSearchTool()],
+                resources: ["merlin://plugin/manifest": Self.webSearchManifest()]
+            )
+        })
+
+        try await bridge.start(config: fakeConfig(), toolRouter: router)
+
+        let schemas = await runtime.bus.registeredSettingsSchemas()
+        XCTAssertTrue(schemas.contains { $0.namespace == "plugin.web_search" })
+        let capabilities = await runtime.bus.registeredCapabilities()
+        XCTAssertTrue(capabilities.contains {
+            $0.address == WorkspaceMessageAddress(namespace: "plugin.web_search", capability: "search")
+        })
+        XCTAssertEqual(
+            router.route(for: "web_search")?.address,
+            WorkspaceMessageAddress(namespace: "plugin.web_search", capability: "search")
+        )
+        XCTAssertEqual(
+            router.route(for: "mcp:web-search:web_search")?.address,
+            WorkspaceMessageAddress(namespace: "plugin.web_search", capability: "search")
+        )
+
+        let result = await router.dispatch([ToolCall(
+            id: "call-1",
+            type: "function",
+            function: FunctionCall(name: "web_search", arguments: #"{"query":"merlin"}"#)
+        )]).first
+
+        XCTAssertEqual(result?.content, "called:web_search")
+        XCTAssertFalse(result?.isError ?? true)
+
+        await bridge.stop(toolRouter: router)
+    }
+
+    @MainActor
+    func testTier2ManifestAbsentKeepsExistingMCPToolBehavior() async throws {
+        let runtime = try makeRuntime()
+        let router = makeRouter(runtime: runtime)
+        let bridge = MCPBridge(sessionFactory: { _, _ in
+            FakeMCPTransportSession(tools: [Self.echoTool()], resources: [:])
+        })
+
+        try await bridge.start(config: fakeConfig(serverName: "plain"), toolRouter: router)
+
+        let schemas = await runtime.bus.registeredSettingsSchemas()
+        XCTAssertTrue(schemas.isEmpty)
+        XCTAssertNil(router.route(for: "echo"))
+        XCTAssertEqual(router.route(for: "mcp:plain:echo")?.address.namespace, "mcp.plain")
+
+        await bridge.stop(toolRouter: router)
+    }
+
+    @MainActor
+    func testTier2PluginManifestUnloadRemovesSettingsAndTools() async throws {
+        let runtime = try makeRuntime()
+        let router = makeRouter(runtime: runtime)
+        let bridge = MCPBridge(sessionFactory: { _, _ in
+            FakeMCPTransportSession(
+                tools: [Self.webSearchTool()],
+                resources: ["merlin://plugin/manifest": Self.webSearchManifest()]
+            )
+        })
+
+        try await bridge.start(config: fakeConfig(), toolRouter: router)
+        await bridge.stop(toolRouter: router)
+
+        let schemas = await runtime.bus.registeredSettingsSchemas()
+        let capabilities = await runtime.bus.registeredCapabilities()
+        XCTAssertFalse(schemas.contains { $0.namespace == "plugin.web_search" })
+        XCTAssertFalse(capabilities.contains {
+            $0.address == WorkspaceMessageAddress(namespace: "plugin.web_search", capability: "search")
+        })
+        XCTAssertNil(router.route(for: "web_search"))
+        XCTAssertNil(router.route(for: "mcp:web-search:web_search"))
+        XCTAssertFalse(ToolRegistry.shared.contains(named: "web_search"))
+        XCTAssertFalse(ToolRegistry.shared.contains(named: "mcp:web-search:web_search"))
+    }
+
+    @MainActor
+    func testTier2PluginManifestAliasConflictKeepsRawMCPNameOnly() async throws {
+        let runtime = try makeRuntime()
+        let router = makeRouter(runtime: runtime)
+        router.register(name: "web_search", namespace: "builtin.test", capability: "web_search", requiredScope: .readOnly) { _ in
+            "existing"
+        }
+        let bridge = MCPBridge(sessionFactory: { _, _ in
+            FakeMCPTransportSession(
+                tools: [Self.webSearchTool()],
+                resources: ["merlin://plugin/manifest": Self.webSearchManifest()]
+            )
+        })
+
+        try await bridge.start(config: fakeConfig(), toolRouter: router)
+
+        XCTAssertEqual(router.route(for: "web_search")?.address.namespace, "builtin.test")
+        XCTAssertEqual(
+            router.route(for: "mcp:web-search:web_search")?.address,
+            WorkspaceMessageAddress(namespace: "plugin.web_search", capability: "search")
+        )
+        XCTAssertFalse(router.mcpToolDefinitions().contains { $0.function.name == "web_search" })
+
+        await bridge.stop(toolRouter: router)
+    }
+
     private static var kicadRunScriptPath: String {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // Unit
@@ -150,5 +261,127 @@ final class MCPBridgeTests: XCTestCase {
             .deletingLastPathComponent() // repo root
             .appendingPathComponent("archive/legacy-merlin-kicad-mcp/run")
             .path
+    }
+
+    @MainActor
+    private func makeRuntime() throws -> WorkspaceRuntime {
+        try WorkspaceRuntime(
+            rootURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-tier2-plugin-root-\(UUID().uuidString)"),
+            merlinHomeURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-tier2-plugin-home-\(UUID().uuidString)")
+        )
+    }
+
+    @MainActor
+    private func makeRouter(runtime: WorkspaceRuntime) -> ToolRouter {
+        ToolRouter(
+            authGate: AuthGate(memory: AuthMemory(storePath: "/dev/null"), presenter: NullAuthPresenter()),
+            workspaceRuntime: runtime
+        )
+    }
+
+    private func fakeConfig(serverName: String = "web-search") -> MCPConfig {
+        MCPConfig(mcpServers: [
+            serverName: MCPServerConfig(command: "fake", transportKind: .stdio)
+        ])
+    }
+
+    private static func webSearchTool() -> MCPToolDefinition {
+        decodeTool("""
+        {
+          "name": "web_search",
+          "description": "Search the web",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "query": { "type": "string" }
+            },
+            "required": ["query"]
+          }
+        }
+        """)
+    }
+
+    private static func echoTool() -> MCPToolDefinition {
+        decodeTool(#"{"name":"echo","description":"Echo","inputSchema":{"type":"object"}}"#)
+    }
+
+    private static func decodeTool(_ json: String) -> MCPToolDefinition {
+        try! JSONDecoder().decode(MCPToolDefinition.self, from: Data(json.utf8))
+    }
+
+    private static func webSearchManifest() -> String {
+        """
+        {
+          "id": "web-search",
+          "display_name": "Web Search",
+          "version": "1.0.0",
+          "trust_tier": "tier2",
+          "enabled": true,
+          "domain_ids": [],
+          "settings_schema": {
+            "namespace": "plugin.web_search",
+            "title": "Web Search",
+            "fields": []
+          },
+          "capabilities": [
+            {
+              "id": "plugin.web_search.search",
+              "displayName": "Web Search",
+              "kind": "tool",
+              "address": {
+                "namespace": "plugin.web_search",
+                "capability": "search"
+              },
+              "requiredPermissionScope": "externalSideEffect"
+            }
+          ],
+          "tool_routes": [
+            {
+              "tool_name": "web_search",
+              "stable_alias": "web_search",
+              "address": {
+                "namespace": "plugin.web_search",
+                "capability": "search"
+              },
+              "required_permission_scope": "externalSideEffect"
+            }
+          ]
+        }
+        """
+    }
+}
+
+private final class FakeMCPTransportSession: MCPTransportSession, @unchecked Sendable {
+    private let tools: [MCPToolDefinition]
+    private let resources: [String: String]
+
+    init(tools: [MCPToolDefinition], resources: [String: String]) {
+        self.tools = tools
+        self.resources = resources
+    }
+
+    func launch() async throws {}
+
+    func terminate() async {}
+
+    func call(method: String, params: [String: Any]) async throws -> [String: Any] {
+        switch method {
+        case "tools/list":
+            let data = try JSONEncoder().encode(tools)
+            return [
+                "tools": try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+            ]
+        case "tools/call":
+            let name = params["name"] as? String ?? ""
+            return ["content": [["type": "text", "text": "called:\(name)"]]]
+        case "resources/read":
+            guard let uri = params["uri"] as? String,
+                  let text = resources[uri] else {
+                return ["contents": []]
+            }
+            return ["contents": [["uri": uri, "text": text]]]
+        default:
+            return [:]
+        }
     }
 }

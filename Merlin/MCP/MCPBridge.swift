@@ -11,13 +11,25 @@
 @preconcurrency import Foundation
 
 actor MCPBridge {
+    typealias SessionFactory = @Sendable (String, MCPServerConfig) throws -> any MCPTransportSession
+
+    private let sessionFactory: SessionFactory?
     private var sessions: [String: any MCPTransportSession] = [:]
     private var registeredToolNames: Set<String> = []
     private var registeredDomainIDs: Set<String> = []
+    private var registeredPluginMetadata: [String: MCPPluginMetadataRegistration] = [:]
 
     private struct RegisteredDomainScope: Sendable {
         var canonicalDomainID: String
         var scopedToolNames: Set<String>
+    }
+
+    private struct RegisteredPluginScope: Sendable {
+        var routedToolNames: Set<String>
+    }
+
+    init(sessionFactory: SessionFactory? = nil) {
+        self.sessionFactory = sessionFactory
     }
 
     static func resolvedTransportKind(for config: MCPServerConfig) -> MCPTransportKind {
@@ -41,7 +53,16 @@ actor MCPBridge {
                 serverName: serverName,
                 toolNames: tools.map(\.name)
             )
+            let pluginScope = await registerPluginManifestIfPresent(
+                from: session,
+                serverName: serverName,
+                tools: tools,
+                toolRouter: toolRouter
+            )
             for tool in tools {
+                if pluginScope?.routedToolNames.contains(tool.name) == true {
+                    continue
+                }
                 let definition = Self.toolDefinition(serverName: serverName, tool: tool)
                 registeredToolNames.insert(definition.function.name)
                 await ToolRegistry.shared.register(definition)
@@ -148,6 +169,13 @@ actor MCPBridge {
             await ToolRegistry.shared.unregister(named: name)
         }
         registeredToolNames.removeAll()
+        if let toolRouter {
+            let metadataRegistrations = registeredPluginMetadata.values
+            for registration in metadataRegistrations {
+                await toolRouter.unregisterMCPPluginMetadata(registration)
+            }
+        }
+        registeredPluginMetadata.removeAll()
         for id in registeredDomainIDs {
             await DomainRegistry.shared.unregister(id: id)
         }
@@ -161,6 +189,9 @@ actor MCPBridge {
     }
 
     private func makeSession(serverName: String, config: MCPServerConfig) throws -> MCPTransportSession {
+        if let sessionFactory {
+            return try sessionFactory(serverName, config)
+        }
         switch Self.resolvedTransportKind(for: config) {
         case .stdio:
             return MCPServerSession(name: serverName, config: config)
@@ -175,6 +206,55 @@ actor MCPBridge {
             }
             return MCPSSETransport(endpoint: endpoint)
         }
+    }
+
+    private func registerPluginManifestIfPresent(
+        from session: any MCPTransportSession,
+        serverName: String,
+        tools: [MCPToolDefinition],
+        toolRouter: ToolRouter
+    ) async -> RegisteredPluginScope? {
+        guard let manifest = try? await Self.readPluginManifest(from: session),
+              manifest.enabled,
+              manifest.trustTier == .tier2 else {
+            return nil
+        }
+        let metadataRegistration = await toolRouter.registerMCPPluginMetadata(
+            settingsSchema: manifest.settingsSchema,
+            capabilities: manifest.capabilities
+        )
+        registeredPluginMetadata[serverName] = metadataRegistration
+
+        let toolsByName = Dictionary(uniqueKeysWithValues: tools.map { ($0.name, $0) })
+        var routedToolNames: Set<String> = []
+        for route in manifest.toolRoutes {
+            guard let tool = toolsByName[route.toolName] else {
+                continue
+            }
+            let rawDefinition = Self.toolDefinition(serverName: serverName, tool: tool)
+            let registeredDefinitions = await toolRouter.registerMCPPluginToolRoute(
+                rawDefinition: rawDefinition,
+                stableAlias: route.stableAlias,
+                address: route.address,
+                requiredScope: route.requiredPermissionScope
+            ) { arguments in
+                do {
+                    return try await self.call(
+                        server: serverName,
+                        tool: tool.name,
+                        arguments: arguments
+                    )
+                } catch {
+                    return String(describing: error)
+                }
+            }
+            routedToolNames.insert(tool.name)
+            for definition in registeredDefinitions {
+                registeredToolNames.insert(definition.function.name)
+                await ToolRegistry.shared.register(definition)
+            }
+        }
+        return RegisteredPluginScope(routedToolNames: routedToolNames)
     }
 
     private func registerDomainManifestIfPresent(
@@ -212,6 +292,14 @@ actor MCPBridge {
             return nil
         }
         return try JSONDecoder().decode(DomainManifest.self, from: Data(body.utf8))
+    }
+
+    private static func readPluginManifest(from session: any MCPTransportSession) async throws -> Tier2PluginManifest? {
+        guard let body = try await session.readResourceText(uri: "merlin://plugin/manifest"),
+              !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+        return try WorkspaceJSON.decoder.decode(Tier2PluginManifest.self, from: Data(body.utf8))
     }
 
     private static func toolDefinition(serverName: String, tool: MCPToolDefinition) -> ToolDefinition {
