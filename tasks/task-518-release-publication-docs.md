@@ -65,3 +65,21 @@ The published GitHub Release `v2.4.0` was updated with inline screenshot
 Markdown and direct documentation links:
 
 `https://github.com/j-zuilkowski/merlin/releases/tag/v2.4.0`
+
+Post-push CI run `27421746927` failed in
+`FinalElectronicsDocumentationSweepTests.testElectronicsFinishChecklistMatchesFinalEvidenceContract`
+because the guard still expected `Latest completed task is Task 517`. The guard
+was updated to require Task 518 and the Task 518 handoff paragraph.
+
+Focused CI-failure repair check:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task518 -only-testing:MerlinTests/FinalElectronicsDocumentationSweepTests/testElectronicsFinishChecklistMatchesFinalEvidenceContract
+```
+
+Passed 1 test with result bundle:
+
+`/tmp/merlin-derived-task518/Logs/Test/Test-MerlinTests-2026.06.12_10-33-38--0400.xcresult`
+
+Neighbor focused release-note and SDD checks passed 6 tests in the same result
+bundle.
