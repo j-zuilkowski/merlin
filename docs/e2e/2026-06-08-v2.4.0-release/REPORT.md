@@ -82,7 +82,6 @@ perform the final repository-wide safety check again before tagging.
 
 ## Remaining Release Gates
 
-- Gate #14: create tag `v2.4.0`.
 - Gate #15: push branch and tag.
 - Gate #16: publish GitHub Release `v2.4.0` with required screenshots and
   evidence assets.
@@ -96,3 +95,8 @@ version `2.4.0` build `26`, release evidence present, 7 README screenshot
 assets, no Merlin/KiCad app processes, no 8081/8083 listeners, and absent
 local/remote `v2.4.0` tags. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log`.
+
+## Post-Safety Tag Update
+
+Gate #14 passed after Task 513. Task 514 created the local `v2.4.0` tag. Pushing
+the branch/tag and publishing the GitHub release remain pending.

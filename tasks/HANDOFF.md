@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 513.
+Latest completed task is Task 514.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 514 — create v2.4.0 tag
 - Task 513 — rerun final release safety check
 - Task 512 — repair KiCad usability evidence
 - Task 511 — rerun release KiCad screenshots
@@ -351,6 +352,10 @@ build `26`, release evidence present, 7 README screenshot assets, no Merlin app
 processes, no KiCad app processes, no 8081/8083 listeners, and local/remote
 `v2.4.0` tags absent. Gates #1-#13 are green; gate #14 is next: create tag
 `v2.4.0`.
+
+Task 514 completed release gate #14 by creating local tag `v2.4.0` after the
+Task 513 final safety rerun. The tag was absent locally and remotely before the
+task. Gate #15 is next: push branch and tag.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate
