@@ -50,6 +50,14 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
             XCTAssertTrue(readme.contains(screenshotPath), screenshotPath)
             XCTAssertTrue(FileManager.default.fileExists(atPath: repoURL(screenshotPath).path), screenshotPath)
         }
+
+        let electronicsSection = try XCTUnwrap(readme.range(of: "**Electronics / KiCad Domain**"))
+        let multiDomainSection = try XCTUnwrap(readme.range(of: "**Multi-Domain Sessions**"))
+        for screenshotPath in screenshotPaths.filter({ $0.contains("/kicad-") }) {
+            let pathRange = try XCTUnwrap(readme.range(of: screenshotPath), screenshotPath)
+            XCTAssertGreaterThanOrEqual(pathRange.lowerBound, electronicsSection.lowerBound, screenshotPath)
+            XCTAssertLessThan(pathRange.lowerBound, multiDomainSection.lowerBound, screenshotPath)
+        }
     }
 
     func testDocsDefineGitHubScreenshotDestinations() throws {
@@ -145,7 +153,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 515"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 516"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
         XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
@@ -160,6 +168,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(handoff.contains("Task 513 reran gate #13"), handoff)
         XCTAssertTrue(handoff.contains("Task 514 completed release gate #14"), handoff)
         XCTAssertTrue(handoff.contains("Task 515 performed a focused documentation sweep"), handoff)
+        XCTAssertTrue(handoff.contains("Task 516 moves the README KiCad screenshots"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

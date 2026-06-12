@@ -20,14 +20,6 @@ Current release gate: v2.4.0 is the full green E2E release gate. A release push 
 
 ![Provider slot routing with the electronics domain selected](docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png)
 
-![Generated KiCad schematic opened in KiCad Schematic Editor](docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png)
-
-![Generated KiCad PCB opened in KiCad PCB Editor](docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png)
-
-![Generated KiCad board opened in KiCad 3D Viewer](docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png)
-
-![Generated routed board layer composite](docs/assets/screenshots/v2.4.0/kicad-routed-composite.png)
-
 ## Capabilities
 
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
@@ -39,6 +31,14 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 **Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
 
 **Electronics / KiCad Domain** — a full electronics workflow built on the bus-backed `plugins/electronics` runtime plugin: raster/PDF schematic ingestion, design-intent approval, Circuit IR generation, concrete component evidence, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. Evidence-gated completion and high-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
+
+![Generated KiCad schematic opened in KiCad Schematic Editor](docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png)
+
+![Generated KiCad PCB opened in KiCad PCB Editor](docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png)
+
+![Generated KiCad board opened in KiCad 3D Viewer](docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png)
+
+![Generated routed board layer composite](docs/assets/screenshots/v2.4.0/kicad-routed-composite.png)
 
 **Multi-Domain Sessions** — each session carries its own active domain IDs. Switching from a software session to an electronics session is instant; the engine, critic, and task-type routing all follow without touching other open sessions.
 
