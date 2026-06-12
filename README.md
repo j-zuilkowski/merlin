@@ -20,6 +20,13 @@ Current release gate: v2.4.0 is the full green E2E release gate. A release push 
 
 ![Provider slot routing with the electronics domain selected](docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png)
 
+## Documentation
+
+- [User Guide](Merlin/Docs/UserGuide.md) — using Merlin, providers, sessions, workflows, electronics tools, and project discipline.
+- [Developer Manual](Merlin/Docs/DeveloperManual.md) — architecture, engine surfaces, tool registry, plugins, and developer workflows.
+- [Release Notes v2.4.0](RELEASE-v2.4.0.md) — current release highlights, evidence gates, and screenshots.
+- [Release Evidence Report](docs/e2e/2026-06-08-v2.4.0-release/REPORT.md) — gate-by-gate v2.4.0 validation artifacts.
+
 ## Capabilities
 
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
@@ -212,5 +219,6 @@ Requires [`create-dmg`](https://github.com/create-dmg/create-dmg) (`brew install
 - [`spec.md`](spec.md) — system design and implementation decisions
 - [`llm.md`](llm.md) — LLM provider and context design details
 - [`skill-standard.md`](skill-standard.md) — skill and plugin authoring guide
-- `Merlin/Docs/UserGuide.md` — in-app user guide (Help menu)
-- `Merlin/Docs/DeveloperManual.md` — in-app developer reference (Help menu)
+- [User Guide](Merlin/Docs/UserGuide.md) — in-app user guide (Help menu)
+- [Developer Manual](Merlin/Docs/DeveloperManual.md) — in-app developer reference (Help menu)
+- [Release Notes v2.4.0](RELEASE-v2.4.0.md) — current release notes
