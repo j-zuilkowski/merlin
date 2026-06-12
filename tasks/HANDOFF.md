@@ -60,10 +60,11 @@ Electronics domain status: finished as evidence-gated workflow infrastructure,
 with release battery revalidation still required after blocker repairs.
 The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
 an honest evidence gate and not a `FAB_READY` fabrication claim.
-Latest completed task is Task 516.
+Latest completed task is Task 517.
 
 Recent commits on `codex/stabilize-merlin-e2e`:
 
+- Task 517 — GitHub CI KiCad geometry repair
 - Task 516 — release push and publish
 - Task 515 — documentation sweep
 - Task 514 — create v2.4.0 tag
@@ -369,6 +370,11 @@ pushes the branch and tag.
 Task 516 moves the README KiCad screenshots into the Electronics / KiCad domain
 section, then completes gates #15 and #16 by pushing the branch/tag, publishing
 GitHub Release `v2.4.0`, and watching GitHub checks for build failures.
+
+Task 517 repairs the PR #3 GitHub CI failure by adding deterministic bundled
+KiCad pin geometry for common primitive symbols used by electronics tests when
+the runner has no installed KiCad libraries. Unknown symbols still fail with
+`PIN_GEOMETRY_UNRESOLVED`.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate

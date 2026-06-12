@@ -5,6 +5,15 @@
 Pass release gate #10 by opening generated electronics KiCad files in KiCad and
 capturing durable schematic, PCB, routed/layer, and 3D visual evidence.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release gate #10 captures KiCad screenshots THE system SHALL open generated schematic and PCB files in KiCad and preserve schematic, PCB, routed/layer, and 3D visual evidence.
+
 ## Evidence
 
 - Fail-first documentation drift:

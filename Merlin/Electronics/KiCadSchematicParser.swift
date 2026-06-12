@@ -913,13 +913,16 @@ struct KiCadSymbolGeometry: Sendable, Equatable {
 struct KiCadSymbolGeometryResolver: Sendable {
     private let roots: KiCadLibraryRoots?
     private let cache: KiCadSymbolGeometryCache
+    private let bundledGeometry: KiCadBundledSymbolGeometryCatalog
 
     init(
         roots: KiCadLibraryRoots? = KiCadLibraryRootDiscovery().discover(),
-        cache: KiCadSymbolGeometryCache = KiCadSymbolGeometryCache()
+        cache: KiCadSymbolGeometryCache = KiCadSymbolGeometryCache(),
+        bundledGeometry: KiCadBundledSymbolGeometryCatalog = KiCadBundledSymbolGeometryCatalog()
     ) {
         self.roots = roots
         self.cache = cache
+        self.bundledGeometry = bundledGeometry
     }
 
     func resolve(libraryID: String) -> KiCadSymbolGeometry? {
@@ -928,19 +931,25 @@ struct KiCadSymbolGeometryResolver: Sendable {
             return cached
         }
         let parts = canonicalID.split(separator: ":", maxSplits: 1).map(String.init)
-        guard parts.count == 2,
-              let roots else { return nil }
-        let file = roots.symbolRoot.appendingPathComponent("\(parts[0]).kicad_sym")
-        guard let text = try? String(contentsOf: file, encoding: .utf8),
-              let block = block(named: "symbol", quotedName: parts[1], in: text),
-              let expression = try? KiCadSchematicParser().parseFragment(block) else {
-            return nil
+        if parts.count == 2,
+           let roots {
+            let file = roots.symbolRoot.appendingPathComponent("\(parts[0]).kicad_sym")
+            if let text = try? String(contentsOf: file, encoding: .utf8),
+               let block = block(named: "symbol", quotedName: parts[1], in: text),
+               let expression = try? KiCadSchematicParser().parseFragment(block) {
+                let pins = pinNodes(in: expression).compactMap(parsePinGeometry)
+                if !pins.isEmpty {
+                    let geometry = KiCadSymbolGeometry(libraryID: canonicalID, pins: pins)
+                    cache.set(geometry, for: canonicalID)
+                    return geometry
+                }
+            }
         }
-        let pins = pinNodes(in: expression).compactMap(parsePinGeometry)
-        guard !pins.isEmpty else { return nil }
-        let geometry = KiCadSymbolGeometry(libraryID: canonicalID, pins: pins)
-        cache.set(geometry, for: canonicalID)
-        return geometry
+        if let bundled = bundledGeometry.geometry(for: canonicalID) {
+            cache.set(bundled, for: canonicalID)
+            return bundled
+        }
+        return nil
     }
 
     private func parsePinGeometry(_ expression: KiCadSExpression) -> KiCadSymbolPinGeometry? {
@@ -1051,6 +1060,100 @@ struct KiCadSymbolGeometryResolver: Sendable {
             index = text.index(after: index)
         }
         return nil
+    }
+}
+
+struct KiCadBundledSymbolGeometryCatalog: Sendable {
+    private let geometries: [String: KiCadSymbolGeometry]
+
+    init() {
+        geometries = Dictionary(
+            uniqueKeysWithValues: [
+                Self.twoPin("Device:R", electricalType: "passive"),
+                Self.twoPin("Device:C", electricalType: "passive"),
+                Self.twoPin("Device:C_Polarized", electricalType: "passive"),
+                Self.twoPin("Connector:Conn_01x02_Pin", electricalType: "passive"),
+                Self.twoPin("Connector_Generic:Conn_01x02", electricalType: "passive"),
+                Self.onePin("Connector_Generic:Conn_01x01", electricalType: "passive"),
+                Self.threePin("Device:R_Potentiometer", names: ["1", "2", "3"], electricalType: "passive"),
+                Self.threePin("Transistor_BJT:Q_NPN_BCE", names: ["B", "C", "E"], electricalType: "passive"),
+                Self.threePin("Transistor_FET:Q_NJFET_DSG", names: ["D", "S", "G"], electricalType: "passive"),
+                Self.threePin("Transistor_FET:Q_NMOS_GDS", names: ["G", "D", "S"], electricalType: "passive"),
+                Self.geometry(
+                    "Connector_Audio:AudioJack2",
+                    pins: [
+                        Self.pin(number: "T", name: "T", electricalType: "passive", x: -5.08, y: 2.54),
+                        Self.pin(number: "S", name: "S", electricalType: "passive", x: -5.08, y: -2.54),
+                    ]
+                ),
+                Self.geometry(
+                    "Device:D_Bridge_+-AA",
+                    pins: [
+                        Self.pin(number: "1", name: "+", electricalType: "power_out", x: 5.08, y: 5.08),
+                        Self.pin(number: "2", name: "-", electricalType: "power_out", x: 5.08, y: -5.08),
+                        Self.pin(number: "3", name: "3", electricalType: "passive", x: -5.08, y: 5.08),
+                        Self.pin(number: "4", name: "4", electricalType: "passive", x: -5.08, y: -5.08),
+                    ]
+                ),
+            ].map { ($0.libraryID, $0) }
+        )
+    }
+
+    func geometry(for libraryID: String) -> KiCadSymbolGeometry? {
+        geometries[libraryID]
+    }
+
+    private static func onePin(_ libraryID: String, electricalType: String) -> KiCadSymbolGeometry {
+        geometry(
+            libraryID,
+            pins: [
+                pin(number: "1", name: "1", electricalType: electricalType, x: -5.08, y: 0),
+            ]
+        )
+    }
+
+    private static func twoPin(_ libraryID: String, electricalType: String) -> KiCadSymbolGeometry {
+        geometry(
+            libraryID,
+            pins: [
+                pin(number: "1", name: "1", electricalType: electricalType, x: -5.08, y: 2.54),
+                pin(number: "2", name: "2", electricalType: electricalType, x: 5.08, y: -2.54),
+            ]
+        )
+    }
+
+    private static func threePin(
+        _ libraryID: String,
+        names: [String],
+        electricalType: String
+    ) -> KiCadSymbolGeometry {
+        geometry(
+            libraryID,
+            pins: [
+                pin(number: "1", name: names[0], electricalType: electricalType, x: -5.08, y: 5.08),
+                pin(number: "2", name: names[1], electricalType: electricalType, x: 2.54, y: 5.08),
+                pin(number: "3", name: names[2], electricalType: electricalType, x: -5.08, y: -5.08),
+            ]
+        )
+    }
+
+    private static func geometry(_ libraryID: String, pins: [KiCadSymbolPinGeometry]) -> KiCadSymbolGeometry {
+        KiCadSymbolGeometry(libraryID: libraryID, pins: pins)
+    }
+
+    private static func pin(
+        number: String,
+        name: String,
+        electricalType: String,
+        x: Double,
+        y: Double
+    ) -> KiCadSymbolPinGeometry {
+        KiCadSymbolPinGeometry(
+            number: number,
+            name: name,
+            electricalType: electricalType,
+            at: KiCadSchematicDocument.Point(x: x, y: y)
+        )
     }
 }
 

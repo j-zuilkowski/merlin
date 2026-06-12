@@ -6,6 +6,17 @@ Refresh release gate #13 after Task 512 changed the committed KiCad release
 evidence. This keeps the pre-tag safety evidence scoped to the current release
 commit rather than the older Task 508 state.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release evidence changes after a safety check THE system SHALL rerun gate
+#13 and record clean version, evidence, process, port, and tag state for the
+current commit.
+
 ## Evidence
 
 - Refreshed safety log:

@@ -6,6 +6,15 @@ Record the v2.4.0 release attempt as invalid at gate #10 and define the next
 repair boundary: gate #10 may not pass again until Merlin proves it creates a
 real populated KiCad board, not merely files that open in KiCad.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN KiCad release screenshots do not prove a usable populated board THE system SHALL mark gate #10 invalid and block downstream release claims until real board-creation evidence exists.
+
 ## Failure Found
 
 The release screenshots captured for Task 505 are not sufficient release

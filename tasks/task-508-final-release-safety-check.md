@@ -6,6 +6,15 @@ Pass release gate #13 by recording the final pre-tag safety check for clean
 status, version metadata, evidence presence, screenshot assets, and orphan
 process/service cleanup.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release gate #13 runs THE system SHALL record clean git status, version metadata, release evidence presence, screenshot assets, and orphan process/service cleanup.
+
 ## Evidence
 
 - Safety log:

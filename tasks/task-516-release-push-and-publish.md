@@ -9,6 +9,17 @@ Complete release gates #15 and #16:
 - publish GitHub Release `v2.4.0`
 - watch GitHub build/checks and repair any failures
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release gates #15 and #16 are executed THE system SHALL push the release
+branch and tag, publish `v2.4.0` with evidence assets, and watch GitHub checks
+for repairable build failures.
+
 ## README Screenshot Placement
 
 Before pushing, the README must place the KiCad screenshots with the

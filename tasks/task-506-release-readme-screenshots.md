@@ -6,6 +6,17 @@ Pass release gate #11 by capturing durable Merlin feature screenshots for the
 README/GitHub release path and linking the public README assets to the current
 v2.4.0 release evidence.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release gate #11 runs THE system SHALL capture durable README/GitHub
+screenshots and link the public assets from the current v2.4.0 release
+evidence path.
+
 ## Evidence
 
 - Fail-first documentation guard:

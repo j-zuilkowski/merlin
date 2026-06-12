@@ -2,6 +2,8 @@
 
 ## Traceability
 
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
 - Release ledger: `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md`
 - Gate: #9, electronics/KiCad deterministic checks
 - Evidence log: `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`

@@ -142,6 +142,27 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertTrue(geometry.pins.contains { $0.number == "2" && $0.at == KiCadSchematicDocument.Point(x: 0, y: -3.81) })
     }
 
+    func testBundledSymbolGeometrySupportsCIMaterializationWithoutInstalledLibraries() throws {
+        let resolver = KiCadSymbolGeometryResolver(roots: nil, cache: KiCadSymbolGeometryCache())
+
+        XCTAssertNotNil(resolver.resolve(libraryID: "Device:R")?.pin(number: "1", name: "1"))
+        XCTAssertEqual(resolver.resolve(libraryID: "Device:Q_NPN_BCE")?.libraryID, "Transistor_BJT:Q_NPN_BCE")
+        XCTAssertNotNil(resolver.resolve(libraryID: "Connector:AudioJack2")?.pin(number: "T", name: "T"))
+        XCTAssertNotNil(resolver.resolve(libraryID: "Device:D_Bridge_+-AA")?.pin(number: "1", name: "+"))
+        XCTAssertNotNil(resolver.resolve(libraryID: "Transistor_FET:Q_NMOS_GDS")?.pin(number: "1", name: "G"))
+        XCTAssertNil(resolver.resolve(libraryID: "Missing:NoSuchSymbol"))
+
+        let outputDirectory = temporaryDirectory("circuit-ir-ci-bundled-geometry")
+        let result = try CircuitIRKiCadSchematicMaterializer(pinGeometryResolver: resolver).materialize(
+            circuitIR: validCircuitIR(),
+            outputDirectory: outputDirectory
+        )
+
+        let parsed = try KiCadSchematicParser().parse(String(contentsOf: result.schematicURL, encoding: .utf8))
+        XCTAssertEqual(parsed.wires.count, 3)
+        XCTAssertTrue(parsed.labels.contains { $0.text == "DRV_OUT" && $0.emitsKiCadConnectivity })
+    }
+
     func testParityPassesWhenCircuitIRMatchesSchematic() throws {
         let ir = validCircuitIR()
         let schematic = CircuitIRKiCadSchematicMaterializer().buildDocument(circuitIR: ir)

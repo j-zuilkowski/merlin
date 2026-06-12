@@ -2,6 +2,8 @@
 
 ## Traceability
 
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
 - Release ledger: `docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md`
 - Prior repairs: `tasks/task-501-release-capability-model-preflight-repair.md`
 - Scenario: `MerlinE2ETests/CapabilityScenarioTests.testS1SwiftGUIDebugCycle`

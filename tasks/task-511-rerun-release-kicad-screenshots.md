@@ -6,6 +6,17 @@ Redo release gate #10 from the repaired gate #9 `isolated_secondary` board
 evidence, remove stale screenshots, and display/verify the resulting KiCad
 schematic, PCB, routed/layer, and 3D captures.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release gate #10 is rerun THE system SHALL replace stale KiCad screenshots
+with nonblank schematic, PCB, routed/layer, and 3D evidence from the repaired
+`isolated_secondary` board.
+
 ## Evidence
 
 - Screenshot manifest:

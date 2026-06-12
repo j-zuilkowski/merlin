@@ -1,5 +1,14 @@
 # Task 512 - Repair KiCad Usability Evidence
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN KiCad release evidence is visually unusable THE system SHALL repair generated schematic and PCB evidence until connector context, routed traces, layer exports, and 3D board evidence are all inspectable.
+
 ## Problem
 
 The Task 511 release screenshots were not sufficient evidence of a usable

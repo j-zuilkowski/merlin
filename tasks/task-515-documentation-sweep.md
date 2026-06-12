@@ -6,6 +6,15 @@ Run a focused documentation sweep after the local `v2.4.0` tag was created.
 Cross-check code comments, Developer Manual references, user-facing manual
 coverage, and release evidence status against `spec.md`.
 
+## Traceability
+
+- Vision reference: vision.md#spec-driven-development-alignment
+- Spec reference: spec.md#spec-driven-development-methodology
+
+## Behavior
+
+WHEN release documentation is swept THE system SHALL ensure code comments, Developer Manual, user manual, README, and release evidence describe the current source tree and gate state without stale cross references.
+
 ## Spec Rules Applied
 
 - User-facing surfaces must be covered by the user manual.
