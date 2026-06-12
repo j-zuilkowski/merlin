@@ -224,5 +224,5 @@ When a stop condition occurs, record the blocker and the narrowest next decision
 1. No broad scans after the plugin file layout is established.
 2. Read exact files only.
 3. Use focused test commands only until the vertical slice is green.
-4. Progress updates are limited to phase transitions: scaffolded, manifest/tools load, providers normalized, coordinator working, extraction working, focused tests passed, or blocker.
+4. Progress updates are limited to stage transitions: scaffolded, manifest/tools load, providers normalized, coordinator working, extraction working, focused tests passed, or blocker.
 5. Final answers summarize changed files, tests run, and the next stage in a few lines.
