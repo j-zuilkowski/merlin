@@ -89,5 +89,10 @@ perform the final repository-wide safety check again before tagging.
 
 ## Post-Report Safety Update
 
-Gate #13 passed after this report was written. Evidence:
+Gate #13 passed after this report was written, then Task 513 reran it after
+Task 512 repaired the KiCad release evidence. The refreshed safety log records
+clean starting status at commit `f959ddfb6b7372189c078cd4206b921bcb45ce69`,
+version `2.4.0` build `26`, release evidence present, 7 README screenshot
+assets, no Merlin/KiCad app processes, no 8081/8083 listeners, and absent
+local/remote `v2.4.0` tags. Evidence:
 `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log`.
