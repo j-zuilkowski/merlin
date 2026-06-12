@@ -26,6 +26,14 @@ struct WorkspaceView: View {
         ProcessInfo.processInfo.arguments.contains("--accessibility-audit-fixture")
     }
 
+    private var launchProjectRef: ProjectRef? {
+        Self.launchProjectRef(from: ProcessInfo.processInfo.arguments)
+    }
+
+    private var launchActiveDomainID: String? {
+        Self.launchActiveDomainID(from: ProcessInfo.processInfo.arguments)
+    }
+
     private var uiTestLayout: WorkspaceLayout {
         if isAccessibilityAuditFixtureLaunch {
             return WorkspaceLayout(
@@ -59,10 +67,16 @@ struct WorkspaceView: View {
                     : (try? layoutManager.load()) ?? WorkspaceLayoutManager.defaultLayout
                 didLoadLayout = true
 
-                // UI-test hook: open a throwaway project so a session is active and the
-                // chat/tool-log surfaces actually render (without a session WorkspaceView
-                // only shows placeholderContent). Used by MerlinUITests.
-                if isUITestFixtureLaunch, coordinator.activeSession == nil {
+                if let launchProjectRef, coordinator.activeSession == nil {
+                    let explicitDomainIDs = launchActiveDomainID.map { [$0] }
+                    _ = await coordinator.startSession(
+                        for: launchProjectRef,
+                        explicitDomainIDs: explicitDomainIDs
+                    )
+                } else if isUITestFixtureLaunch, coordinator.activeSession == nil {
+                    // UI-test hook: open a throwaway project so a session is active and the
+                    // chat/tool-log surfaces actually render (without a session WorkspaceView
+                    // only shows placeholderContent). Used by MerlinUITests.
                     let dir = NSTemporaryDirectory()
                         + "merlin-uitest-project-\(UUID().uuidString)"
                     try? FileManager.default.createDirectory(
@@ -80,6 +94,50 @@ struct WorkspaceView: View {
         .onDisappear {
             settingsSessionContext.clearIfMatching(coordinator.activeSession?.appState)
         }
+    }
+
+    static func launchProjectRef(from arguments: [String]) -> ProjectRef? {
+        let fileManager = FileManager.default
+
+        if let index = arguments.firstIndex(of: "--open-project"),
+           arguments.indices.contains(arguments.index(after: index)) {
+            let candidate = arguments[arguments.index(after: index)]
+            return projectRefIfDirectory(candidate, fileManager: fileManager)
+        }
+
+        for argument in arguments.dropFirst() where !argument.hasPrefix("-") {
+            if let ref = projectRefIfDirectory(argument, fileManager: fileManager) {
+                return ref
+            }
+        }
+
+        return nil
+    }
+
+    static func launchActiveDomainID(from arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: "--active-domain"),
+              arguments.indices.contains(arguments.index(after: index))
+        else {
+            return nil
+        }
+
+        let value = arguments[arguments.index(after: index)]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return value.isEmpty ? nil : value
+    }
+
+    private static func projectRefIfDirectory(
+        _ path: String,
+        fileManager: FileManager
+    ) -> ProjectRef? {
+        let expanded = (path as NSString).expandingTildeInPath
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: expanded, isDirectory: &isDirectory),
+              isDirectory.boolValue
+        else {
+            return nil
+        }
+        return ProjectRef.make(url: URL(fileURLWithPath: expanded))
     }
 
     private var workspacePresentationView: some View {

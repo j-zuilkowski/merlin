@@ -84,6 +84,32 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.hooks[1].command, "/usr/local/bin/cleanup")
     }
 
+    func test_load_parsesSlotsWhenLlamaCppSectionIsPresent() async throws {
+        let toml = """
+        [slots]
+        execute = "llamacpp:qwen3-coder-local"
+        reason = "deepseek"
+        orchestrate = "deepseek"
+        vision = "llamacpp:qwen3-vl-local"
+
+        [llamacpp]
+        server_path = "/opt/homebrew/bin/llama-server"
+        router_enabled = true
+        models_preset_path = "/tmp/ampdemo-llamacpp/llamacpp-router-models.ini"
+        ubatch_size = 512
+        """
+        try toml.write(to: tmpURL, atomically: true, encoding: .utf8)
+
+        try await settings.load(from: tmpURL)
+
+        XCTAssertEqual(settings.slotAssignments[.execute], "llamacpp:qwen3-coder-local")
+        XCTAssertEqual(settings.slotAssignments[.reason], "deepseek")
+        XCTAssertEqual(settings.slotAssignments[.orchestrate], "deepseek")
+        XCTAssertEqual(settings.slotAssignments[.vision], "llamacpp:qwen3-vl-local")
+        XCTAssertEqual(settings.llamaCppRuntime.serverPath, "/opt/homebrew/bin/llama-server")
+        XCTAssertEqual(settings.llamaCppRuntime.ubatchSize, 512)
+    }
+
     func test_load_missingFileUsesDefaults() async throws {
         let absent = URL(fileURLWithPath: "/tmp/no-such-file-\(UUID().uuidString).toml")
         try await settings.load(from: absent)

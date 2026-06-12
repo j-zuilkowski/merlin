@@ -10,6 +10,9 @@ final class WorkspaceRuntimePluginLaunchTests: XCTestCase {
         XCTAssertTrue(project.contains("outputFiles:"))
         XCTAssertTrue(project.contains("$(SRCROOT)/plugins/electronics/libMerlinElectronicsPlugin.dylib"))
         XCTAssertTrue(project.contains("codesign --force --sign -"))
+        XCTAssertTrue(project.contains("Bundle first-party electronics plugin manifest"))
+        XCTAssertTrue(project.contains("$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/plugins/electronics/plugin.json"))
+        XCTAssertTrue(project.contains("$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/plugins/electronics/libMerlinElectronicsPlugin.dylib"))
     }
 
     func testCopiedElectronicsPluginDylibCanBeDlopened() throws {

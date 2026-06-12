@@ -1,0 +1,188 @@
+
+== router preflight ==
+version: 9290 (bcfd1989e)
+built with AppleClang 21.0.0.21000099 for Darwin arm64
+
+== router startup ==
+{"data":[{"id":"default","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947128,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","default"],"preset":"[default]\njinja = 1\nmetrics = 1\n\n"},"architecture":{"input_modalities":["text"],"output_modalities":["text"]}},{"id":"qwen3-coder-local","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947128,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","qwen3-coder-local","--ctx-size","32768","--model","/Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf","--n-gpu-layers","999","--parallel","1"],"preset":"[qwen3-coder-local]\njinja = 1\nmetrics = 1\nctx-size = 32768\nmodel = /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf\nn-gpu-layers = 999\nparallel = 1\nload-on-startup = false\nstop-timeout = 10\n\n"},"architecture":{"input_modalities":["text"],"output_modalities":["text"]}},{"id":"qwen3-vl-local","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947128,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","qwen3-vl-local","--ctx-size","32768","--model","/Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf","--mmproj","/Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf","--n-gpu-layers","999","--parallel","1"],"preset":"[qwen3-vl-local]\njinja = 1\nmetrics = 1\nctx-size = 32768\nmodel = /Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf\nmmproj = /Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf\nn-gpu-layers = 999\nparallel = 1\nload-on-startup = false\nstop-timeout = 10\n\n"},"architecture":{"input_modalities":["text","image"],"output_modalities":["text"]}}],"object":"list"}
+== focused S1/S2 xcodebuild ==
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests-Live -destination platform=macOS -derivedDataPath /tmp/merlin-derived-v240-capability "-only-testing:MerlinE2ETests/CapabilityScenarioTests/testS1SwiftGUIDebugCycle" "-only-testing:MerlinE2ETests/CapabilityScenarioTests/testS2RustDebugCycle"
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (7 targets)
+    Target 'TestTargetApp' in project 'Merlin' (no dependencies)
+    Target 'MerlinUITests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinLiveTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinE2ETests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'MerlinElectronicsPlugin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+    Target 'MerlinElectronicsPlugin' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 573a5eb2e82018192fa6c53bcdf4448c
+Build description path: /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/XCBuildData/573a5eb2e82018192fa6c53bcdf4448c.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/merlin-derived-v240-capability/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/merlin-derived-v240-capability/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CopySwiftLibs /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --scan-executable /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Frameworks --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Extensions --scan-folder /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk/System/Library/Frameworks/AppIntents.framework --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.s3WVie/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+
+ProcessInfoPlistFile /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/Merlin/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PkgInfo -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/assetcatalog_generated_info.plist -o /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/Info.plist
+
+ProcessInfoPlistFile /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/empty-MerlinE2ETests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest (in target 'MerlinE2ETests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/MacOS/MerlinE2ETests --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.s3WVie/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinE2ETests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinE2ETests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+
+ProcessInfoPlistFile /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/empty-MerlinLiveTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -platform macosx -o /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest (in target 'MerlinLiveTests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/MacOS/MerlinLiveTests --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.s3WVie/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinLiveTests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinLiveTests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+
+CodeSign /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib
+/tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib: replacing existing signature
+
+CodeSign /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib
+/tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --entitlements /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/Merlin.app.xcent --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app
+/tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app: replacing existing signature
+
+Validate /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-validationUtility /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/merlin-derived-v240-capability/Build/Products/Debug/Merlin.app
+
+ProcessInfoPlistFile /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/empty-MerlinUITests.plist -producttype com.apple.product-type.bundle.ui-testing -expandbuildsettings -platform macosx -additionalcontentfile /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/ProductTypeInfoPlistAdditions.plist -o /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest (in target 'MerlinUITests' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/MacOS/MerlinUITests --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/PlugIns --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.s3WVie/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-derived-v240-capability/Build/Products/Debug/MerlinUITests-Runner.app/Contents/PlugIns/MerlinUITests.xctest/Contents/Frameworks --strip-bitcode --scan-executable /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/MerlinUITests.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+
+ProcessInfoPlistFile /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-infoPlistUtility /Users/jonzuilkowski/Documents/localProject/merlin/TestTargetApp/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/PkgInfo -expandbuildsettings -platform macosx -o /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Info.plist
+
+CopySwiftLibs /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app (in target 'TestTargetApp' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/MacOS/TestTargetApp.debug.dylib --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/PlugIns --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Library/SystemExtensions --scan-folder /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v17.6.42.0.s3WVie/Metal.xctoolchain --toolchain /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /tmp/merlin-derived-v240-capability/Build/Products/Debug/TestTargetApp.app/Contents/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /tmp/merlin-derived-v240-capability/Build/Intermediates.noindex/Merlin.build/Debug/TestTargetApp.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
+
+2026-06-08 15:32:13.001451-0400 Merlin[1246:2585627] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.002091-0400 Merlin[1246:2585627] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.002552-0400 Merlin[1246:2585636] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.002562-0400 Merlin[1246:2585636] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.003645-0400 Merlin[1246:2585628] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.003662-0400 Merlin[1246:2585628] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.004669-0400 Merlin[1246:2585628] [Connection] Will NOT re-try to establish the connection
+2026-06-08 15:32:13.004696-0400 Merlin[1246:2585627] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.004704-0400 Merlin[1246:2585627] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:32:13.050040-0400 Merlin[1246:2585609] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'Selected tests' started at 2026-06-08 15:32:13.458.
+Test Suite 'MerlinE2ETests.xctest' started at 2026-06-08 15:32:13.459.
+Test Suite 'CapabilityScenarioTests' started at 2026-06-08 15:32:13.459.
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle]' started.
+2026-06-08 15:32:14.028432-0400 Merlin[1246:2585707] [connection] nw_socket_handle_socket_event [C2.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:32:14.028477-0400 Merlin[1246:2585707] [connection] nw_endpoint_flow_failed_with_error [C2.1.1 ::1.8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:32:14.028663-0400 Merlin[1246:2585707] [connection] nw_socket_handle_socket_event [C2.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:32:14.028687-0400 Merlin[1246:2585707] [connection] nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:32:14.028715-0400 Merlin[1246:2585707] [connection] nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:8083 cancelled socket-flow ((null))] already failing, returning
+2026-06-08 15:32:14.028740-0400 Merlin[1246:2585707] [Default] Connection 2: received failure notification
+2026-06-08 15:32:14.028832-0400 Merlin[1246:2585707] [Default] Connection 2: failed to connect 1:61, reason -1
+2026-06-08 15:32:14.028835-0400 Merlin[1246:2585707] [Default] Connection 2: encountered error(1:61)
+2026-06-08 15:32:14.028897-0400 Merlin[1246:2585707] [Default] Task <9AB81B65-8366-45F1-A917-CB25CCA92242>.<1> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-06-08 15:32:14.029502-0400 Merlin[1246:2585703] [Default] Task <9AB81B65-8366-45F1-A917-CB25CCA92242>.<1> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc3f4449f0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <9AB81B65-8366-45F1-A917-CB25CCA92242>.<1>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <9AB81B65-8366-45F1-A917-CB25CCA92242>.<1>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:8083/health, NSErrorFailingURLKey=http://localhost:8083/health, _kCFStreamErrorDomainKey=1}
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:130: error: -[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle] : XCTAssertTrue failed - S1 engine errors: ["httpError(statusCode: 400, body: \"{\\\"error\\\":{\\\"code\\\":400,\\\"message\\\":\\\"model \\\'qwen3-coder-next-local\\\' not found\\\",\\\"type\\\":\\\"invalid_request_error\\\"}}\", providerID: \"llamacpp:qwen3-coder-next-local\")"]
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:154: error: -[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle] : XCTAssertEqual failed: ("repairableFailure("    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme TaskBoard test -destination platform=macOS CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO\n    Target \'TaskBoardTests\' in project \'TaskBoard\'\nWriteAuxiliaryFile /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.hmap (in target \'TaskBoardTests\' from project \'TaskBoard\')\n    write-file /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.hmap\nWriteAuxiliaryFile /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.DependencyStaticMetadataFileList (in target \'TaskBoardTests\' from project \'TaskBoard\')\n    write-file /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.DependencyStaticMetadataFileList")") is not equal to ("green") - S1: TaskBoardTests must pass after Merlin's fixes; status repairableFailure("    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -scheme TaskBoard test -destination platform=macOS CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO\n    Target \'TaskBoardTests\' in project \'TaskBoard\'\nWriteAuxiliaryFile /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.hmap (in target \'TaskBoardTests\' from project \'TaskBoard\')\n    write-file /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.hmap\nWriteAuxiliaryFile /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.DependencyStaticMetadataFileList (in target \'TaskBoardTests\' from project \'TaskBoard\')\n    write-file /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/TaskBoard-cwiqjhacjmpccefzfbuyygniktwz/Build/Intermediates.noindex/TaskBoard.build/Debug/TaskBoardTests.build/TaskBoardTests.DependencyStaticMetadataFileList")
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle]' failed (17.141 seconds).
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS2RustDebugCycle]' started.
+2026-06-08 15:32:31.433247-0400 Merlin[1246:2601705] [connection] nw_socket_handle_socket_event [C4.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:32:31.433321-0400 Merlin[1246:2601705] [connection] nw_endpoint_flow_failed_with_error [C4.1.1 ::1.8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:32:31.433497-0400 Merlin[1246:2601705] [connection] nw_socket_handle_socket_event [C4.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:32:31.433518-0400 Merlin[1246:2601705] [connection] nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:32:31.433543-0400 Merlin[1246:2601705] [connection] nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:8083 cancelled socket-flow ((null))] already failing, returning
+2026-06-08 15:32:31.433565-0400 Merlin[1246:2601705] [Default] Connection 4: received failure notification
+2026-06-08 15:32:31.433575-0400 Merlin[1246:2601705] [Default] Connection 4: failed to connect 1:61, reason -1
+2026-06-08 15:32:31.433577-0400 Merlin[1246:2601705] [Default] Connection 4: encountered error(1:61)
+2026-06-08 15:32:31.433633-0400 Merlin[1246:2601705] [Default] Task <0DE09279-3F8D-4BD1-A623-83BE74948862>.<6> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-06-08 15:32:31.433706-0400 Merlin[1246:2601705] [Default] Task <0DE09279-3F8D-4BD1-A623-83BE74948862>.<6> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0xc40204690 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <0DE09279-3F8D-4BD1-A623-83BE74948862>.<6>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <0DE09279-3F8D-4BD1-A623-83BE74948862>.<6>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:8083/health, NSErrorFailingURLKey=http://localhost:8083/health, _kCFStreamErrorDomainKey=1}
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:174: error: -[MerlinE2ETests.CapabilityScenarioTests testS2RustDebugCycle] : XCTAssertTrue failed - S2 engine errors: ["httpError(statusCode: 400, body: \"{\\\"error\\\":{\\\"code\\\":400,\\\"message\\\":\\\"model \\\'qwen3-coder-next-local\\\' not found\\\",\\\"type\\\":\\\"invalid_request_error\\\"}}\", providerID: \"llamacpp:qwen3-coder-next-local\")"]
+/Users/jonzuilkowski/Documents/localProject/merlin/MerlinE2ETests/CapabilityScenarioTests.swift:184: error: -[MerlinE2ETests.CapabilityScenarioTests testS2RustDebugCycle] : XCTAssertEqual failed: ("repairableFailure("    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s\n     Running unittests src/lib.rs (target/debug/deps/ledger-436b19ec3cc2c7b6)\nrunning 5 tests\ntest tests::parallel_total_always_equals_total ... FAILED\ntest tests::total_does_not_overflow_on_a_large_ledger ... FAILED\ntest tests::lookup_total_unknown_category_is_zero ... FAILED")") is not equal to ("green") - S2: cargo test must be green after Merlin's fixes; status repairableFailure("    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.32s\n     Running unittests src/lib.rs (target/debug/deps/ledger-436b19ec3cc2c7b6)\nrunning 5 tests\ntest tests::parallel_total_always_equals_total ... FAILED\ntest tests::total_does_not_overflow_on_a_large_ledger ... FAILED\ntest tests::lookup_total_unknown_category_is_zero ... FAILED")
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS2RustDebugCycle]' failed (1.649 seconds).
+Test Suite 'CapabilityScenarioTests' failed at 2026-06-08 15:32:32.252.
+	 Executed 2 tests, with 4 failures (0 unexpected) in 18.790 (18.793) seconds
+Test Suite 'MerlinE2ETests.xctest' failed at 2026-06-08 15:32:32.252.
+	 Executed 2 tests, with 4 failures (0 unexpected) in 18.790 (18.794) seconds
+Test Suite 'Selected tests' failed at 2026-06-08 15:32:32.252.
+	 Executed 2 tests, with 4 failures (0 unexpected) in 18.790 (18.794) seconds
+
+Test session results, code coverage, and logs:
+	/tmp/merlin-derived-v240-capability/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-32-09--0400.xcresult
+
+Testing started
+
+== cleanup port ==
+port 8081: closed

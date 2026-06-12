@@ -2,9 +2,13 @@ import SwiftUI
 
 struct ElectronicsJobPanelView: View {
     static let sectionLabels = [
-        "Backend Health",
-        "Jobs",
-        "Progress",
+        "Live Leaderboard",
+        "Running Now",
+        "Blocked Jobs",
+        "Fab Ready",
+        "Completed Jobs",
+        "Progress History",
+        "Evidence Gates",
         "Artifacts",
         "Diagnostics",
         "Approvals",
@@ -55,33 +59,104 @@ struct ElectronicsJobPanelView: View {
     }
 
     private var jobList: some View {
-        List(store.jobs) { job in
-            Section("Jobs") {
-                HStack {
-                    Text(job.id)
-                    Spacer()
-                    Text(job.status.rawValue)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(color(for: job.status))
+        List {
+            Section("Live Leaderboard") {
+                ForEach(store.leaderboardRows) { row in
+                    leaderboardRow(row)
                 }
             }
-            Section("Progress") {
-                rows(job.progress.map(\.message), empty: "No progress events")
+            Section("Running Now") {
+                if store.runningRows.isEmpty {
+                    Text("No running electronics jobs")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(store.runningRows) { row in
+                        leaderboardRow(row)
+                    }
+                }
+            }
+            Section("Blocked Jobs") {
+                displayRows(store.blockedRows, empty: "No blocked jobs")
+            }
+            Section("Fab Ready") {
+                displayRows(store.fabReadyRows, empty: "No fab-ready jobs")
+            }
+            Section("Completed Jobs") {
+                displayRows(store.completedRows, empty: "No completed jobs")
+            }
+            Section("Progress History") {
+                rows(
+                    store.jobs.flatMap { job in job.progress.map { "\($0.message) (\(job.id))" } },
+                    empty: "No progress events"
+                )
+            }
+            Section("Evidence Gates") {
+                rows(
+                    store.jobs.flatMap { job in
+                        job.missingEvidenceLabels.map { "\(job.workflowStatusLabel): missing \($0) (\(job.id))" }
+                            + job.requiredEvidenceCategories.map { "\(job.workflowStatusLabel): needs \($0) (\(job.id))" }
+                            + job.blockedQuestions.map { "Question: \($0) (\(job.id))" }
+                            + job.diagnosticEvidencePaths.map { "Evidence: \($0) (\(job.id))" }
+                    },
+                    empty: "No missing evidence"
+                )
             }
             Section("Artifacts") {
-                rows(job.artifacts.map { $0.displayName ?? $0.kind }, empty: "No artifacts")
+                rows(
+                    store.jobs.flatMap { job in job.artifacts.map { "\($0.displayName ?? $0.kind) (\(job.id))" } },
+                    empty: "No artifacts"
+                )
             }
             Section("Diagnostics") {
-                rows(job.diagnostics.map { "\($0.code): \($0.message)" }, empty: "No diagnostics")
+                rows(
+                    store.jobs.flatMap { job in job.diagnostics.map { "\($0.code): \($0.message) (\(job.id))" } },
+                    empty: "No diagnostics"
+                )
             }
             Section("Approvals") {
-                rows(job.approvalRequests.map { "\($0.kind.rawValue): \($0.summary)" }, empty: "No approvals")
+                rows(
+                    store.jobs.flatMap { job in job.approvalRequests.map { "\($0.kind.rawValue): \($0.summary) (\(job.id))" } },
+                    empty: "No approvals"
+                )
             }
             Section("Reports") {
-                rows(job.reports.map { "\($0.jobID): \($0.status.rawValue)" }, empty: "No reports")
+                rows(
+                    store.jobs.flatMap { job in job.reports.map { "\($0.jobID): \($0.status.rawValue)" } },
+                    empty: "No reports"
+                )
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private func leaderboardRow(_ row: ElectronicsJobDisplayState) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.jobID)
+                    .font(.callout.weight(.medium))
+                Text(row.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer(minLength: 8)
+            Text(row.statusLabel)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(color(for: row.bucket))
+        }
+    }
+
+    private func displayRows(_ values: [ElectronicsJobDisplayState], empty: String) -> some View {
+        Group {
+            if values.isEmpty {
+                Text(empty)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(values) { value in
+                    leaderboardRow(value)
+                }
+            }
+        }
     }
 
     private func rows(_ values: [String], empty: String) -> some View {
@@ -98,13 +173,15 @@ struct ElectronicsJobPanelView: View {
         }
     }
 
-    private func color(for status: KiCadStatus) -> Color {
-        switch status {
+    private func color(for bucket: ElectronicsJobDisplayBucket) -> Color {
+        switch bucket {
         case .complete:
             return .green
-        case .inProgress:
+        case .running:
             return .orange
-        default:
+        case .fabReady:
+            return .blue
+        case .blocked:
             return .red
         }
     }

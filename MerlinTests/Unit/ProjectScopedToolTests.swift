@@ -48,6 +48,23 @@ final class ProjectScopedToolTests: XCTestCase {
         XCTAssertTrue(result.content.contains("pub fn ok"), result.content)
     }
 
+    func testReadFileMissingAbsoluteSpecPathFallsBackToProjectSpec() async throws {
+        let project = try makeProject(files: ["spec.md": "Authoritative project requirements\n"])
+        let router = try makeRouter(projectRoot: project.path)
+        registerAllTools(router: router, defaultProjectPath: project.path)
+
+        let result = await dispatch(
+            router,
+            name: "read_file",
+            arguments: #"{"path":"/Users/merlin/Documents/spec.md"}"#
+        )
+
+        XCTAssertFalse(result.isError, result.content)
+        XCTAssertTrue(result.content.contains("Authoritative project requirements"), result.content)
+        XCTAssertTrue(result.content.contains("corrected to current project root"), result.content)
+        XCTAssertTrue(result.content.contains(project.path), result.content)
+    }
+
     func testOutsideProjectAbsolutePathReturnsDiagnostic() async throws {
         let project = try makeProject(files: ["Cargo.toml": "[workspace]\n"])
         let outside = FileManager.default.temporaryDirectory

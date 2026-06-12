@@ -8,6 +8,7 @@ actor WorkspaceMessageBus {
 
     let workspaceID: String
     let workspaceRoot: URL
+    let settingsRootURL: URL?
 
     private var handlers: [WorkspaceMessageAddress: any WorkspaceMessageHandler] = [:]
     private var capabilities: [WorkspaceCapability] = []
@@ -17,9 +18,10 @@ actor WorkspaceMessageBus {
     private var subscribers: [UUID: Subscriber] = [:]
     private var eventCapacity: Int
 
-    init(workspaceID: String, workspaceRoot: URL, eventCapacity: Int = 1_000) {
+    init(workspaceID: String, workspaceRoot: URL, settingsRootURL: URL? = nil, eventCapacity: Int = 1_000) {
         self.workspaceID = workspaceID
         self.workspaceRoot = workspaceRoot
+        self.settingsRootURL = settingsRootURL
         self.eventCapacity = WorkspaceRuntime.clampedEventCapacity(eventCapacity)
     }
 
@@ -82,7 +84,7 @@ actor WorkspaceMessageBus {
         let context = WorkspaceHandlerContext(
             bus: self,
             workspaceRoot: workspaceRoot,
-            settings: WorkspaceSettingsNamespace(namespace: request.address.namespace, values: [:])
+            settings: loadSettings(namespace: request.address.namespace)
         )
         let response = await run(handler: handler, request: request, context: context, timeout: timeout)
         if cancelledRequestIDs.contains(request.id), response.status == .ok {
@@ -134,26 +136,25 @@ actor WorkspaceMessageBus {
             return await handler.handle(request, context: context)
         }
 
-        return await withTaskGroup(of: WorkspaceMessageResponse.self) { group in
-            group.addTask {
-                await handler.handle(request, context: context)
+        return await withCheckedContinuation { continuation in
+            let latch = WorkspaceMessageResponseLatch(continuation)
+            let handlerTask = Task {
+                let response = await handler.handle(request, context: context)
+                _ = latch.resume(response)
             }
-            group.addTask {
+            Task {
                 do {
                     try await Task.sleep(for: timeout)
                 } catch {
-                    return .cancelled(requestID: request.id)
+                    if latch.resume(.cancelled(requestID: request.id)) {
+                        handlerTask.cancel()
+                    }
+                    return
                 }
-                return .timedOut(requestID: request.id)
+                if latch.resume(.timedOut(requestID: request.id)) {
+                    handlerTask.cancel()
+                }
             }
-
-            let first = await group.next() ?? .failed(
-                requestID: request.id,
-                code: "REQUEST_FAILED",
-                message: "Workspace message request produced no response."
-            )
-            group.cancelAll()
-            return first
         }
     }
 
@@ -161,9 +162,66 @@ actor WorkspaceMessageBus {
         subscribers.removeValue(forKey: id)
     }
 
+    private func loadSettings(namespace: String) -> WorkspaceSettingsNamespace {
+        guard let settingsRootURL else {
+            return WorkspaceSettingsNamespace(namespace: namespace, values: [:])
+        }
+        let url = settingsRootURL.appendingPathComponent("\(namespace).toml")
+        guard FileManager.default.fileExists(atPath: url.path),
+              let text = try? String(contentsOf: url, encoding: .utf8) else {
+            return WorkspaceSettingsNamespace(namespace: namespace, values: [:])
+        }
+        var values: [String: WorkspaceSettingsValue] = [:]
+        for rawLine in text.split(separator: "\n") {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            guard line.isEmpty == false,
+                  line.hasPrefix("#") == false,
+                  let separator = line.firstIndex(of: "=") else {
+                continue
+            }
+            let key = line[..<separator].trimmingCharacters(in: .whitespaces)
+            let value = line[line.index(after: separator)...].trimmingCharacters(in: .whitespaces)
+            values[String(key)] = parseSettingsValue(String(value))
+        }
+        return WorkspaceSettingsNamespace(namespace: namespace, values: values)
+    }
+
+    private func parseSettingsValue(_ value: String) -> WorkspaceSettingsValue {
+        if value == "true" { return .boolean(true) }
+        if value == "false" { return .boolean(false) }
+        if value.hasPrefix("\""), value.hasSuffix("\""), value.count >= 2 {
+            var text = value
+            text.removeFirst()
+            text.removeLast()
+            return .string(text.replacingOccurrences(of: "\\\"", with: "\"").replacingOccurrences(of: "\\\\", with: "\\"))
+        }
+        if let integer = Int(value) { return .integer(integer) }
+        if let double = Double(value) { return .double(double) }
+        return .string(value)
+    }
+
     private func trimEventBuffer() {
         guard eventBuffer.count > eventCapacity else { return }
         eventBuffer.removeFirst(eventBuffer.count - eventCapacity)
+    }
+}
+
+private final class WorkspaceMessageResponseLatch: @unchecked Sendable {
+    private let lock = NSLock()
+    private var didResume = false
+    private let continuation: CheckedContinuation<WorkspaceMessageResponse, Never>
+
+    init(_ continuation: CheckedContinuation<WorkspaceMessageResponse, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume(_ response: WorkspaceMessageResponse) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard didResume == false else { return false }
+        didResume = true
+        continuation.resume(returning: response)
+        return true
     }
 }
 

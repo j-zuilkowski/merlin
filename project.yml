@@ -13,8 +13,8 @@ settings:
     SWIFT_STRICT_CONCURRENCY: complete
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
-    MARKETING_VERSION: "2.3.0"
-    CURRENT_PROJECT_VERSION: 25
+    MARKETING_VERSION: "2.4.0"
+    CURRENT_PROJECT_VERSION: 26
 
 targets:
   Merlin:
@@ -42,6 +42,23 @@ targets:
         copy:
           destination: executables
       - sdk: AppIntents.framework
+    postBuildScripts:
+      - name: Bundle first-party electronics plugin manifest
+        inputFiles:
+          - $(SRCROOT)/plugins/electronics/plugin.json
+          - $(SRCROOT)/plugins/electronics/libMerlinElectronicsPlugin.dylib
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/plugins/electronics/plugin.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/plugins/electronics/libMerlinElectronicsPlugin.dylib
+        script: |
+          set -euo pipefail
+          plugin_src="$SRCROOT/plugins/electronics"
+          plugin_dst="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/plugins/electronics"
+          rm -rf "$plugin_dst"
+          mkdir -p "$plugin_dst"
+          /usr/bin/rsync -a \
+            --exclude Sources \
+            "$plugin_src/" "$plugin_dst/"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.merlin.app

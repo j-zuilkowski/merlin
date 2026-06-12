@@ -143,8 +143,15 @@ final class ProviderRegistry: ObservableObject {
     @Published private(set) var firstLaunchSetupCompleted: Bool = false
 
     private var liveProviders: [String: any LLMProvider] = [:]
+    private var modelCacheByProviderID: [String: ModelListCacheEntry] = [:]
     private let persistURL: URL
     private let session: URLSession
+    var modelListCacheTTL: TimeInterval = 10 * 60
+
+    private struct ModelListCacheEntry: Codable {
+        var models: [String]
+        var fetchedAt: Date
+    }
 
     nonisolated static var defaultPersistURL: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -163,10 +170,12 @@ final class ProviderRegistry: ObservableObject {
             providers = Self.mergingMissingDefaults(into: loaded.providers)
             activeProviderID = loaded.activeProviderID
             firstLaunchSetupCompleted = loaded.firstLaunchSetupCompleted ?? false
+            modelCacheByProviderID = loaded.modelCache ?? [:]
         } else {
             providers = Self.defaultProviders
             activeProviderID = "deepseek"
         }
+        restoreFreshModelCache()
         // Populate keyedProviderIDs — any non-local provider with a stored key.
         keyedProviderIDs = Set(providers.filter { !$0.isLocal }
             .compactMap { KeychainManager.readAPIKey(for: $0.id) != nil ? $0.id : nil })
@@ -624,10 +633,15 @@ final class ProviderRegistry: ObservableObject {
 
     // MARK: Dynamic model discovery / availability
 
-    func fetchModels(for config: ProviderConfig) async -> [String] {
+    func fetchModels(for config: ProviderConfig, forceRefresh: Bool = false) async -> [String] {
         guard config.isEnabled else { return [] }
+        if !forceRefresh, let cached = cachedModels(for: config.id) {
+            return cached
+        }
         if config.kind == .anthropic {
-            return await fetchAnthropicModels(config: config)
+            let models = await fetchAnthropicModels(config: config)
+            cache(models: models, for: config.id)
+            return models
         }
         guard let url = URL(string: config.baseURL)?.appendingPathComponent("models") else {
             return []
@@ -644,7 +658,9 @@ final class ProviderRegistry: ObservableObject {
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { return [] }
             struct Model: Decodable { let id: String }
             struct Response: Decodable { let data: [Model] }
-            return try JSONDecoder().decode(Response.self, from: data).data.map(\.id)
+            let models = try JSONDecoder().decode(Response.self, from: data).data.map(\.id)
+            cache(models: models, for: config.id)
+            return models
         } catch {
             return []
         }
@@ -670,12 +686,14 @@ final class ProviderRegistry: ObservableObject {
         }
     }
 
-    func fetchAllModels() async {
+    func fetchAllModels(includeRemote: Bool = true, providerIDs: Set<String>? = nil, forceRefresh: Bool = false) async {
         await withTaskGroup(of: (String, [String]).self) { group in
             for config in providers where config.isEnabled {
+                if includeRemote == false, config.isLocal == false { continue }
+                if let providerIDs, providerIDs.contains(config.id) == false { continue }
                 group.addTask { [weak self] in
                     guard let self else { return (config.id, []) }
-                    let models = await self.fetchModels(for: config)
+                    let models = await self.fetchModels(for: config, forceRefresh: forceRefresh)
                     return (config.id, models)
                 }
             }
@@ -687,9 +705,10 @@ final class ProviderRegistry: ObservableObject {
 
     /// Probes availability and fetches the model list for every enabled local provider.
     /// Sets both `availabilityByID` and `modelsByProviderID`.
-    func probeAndFetchModels() async {
+    func probeAndFetchModels(providerIDs: Set<String>? = nil, forceRefresh: Bool = false) async {
         await withTaskGroup(of: (String, Bool, [String]).self) { group in
             for config in providers where config.isLocal && config.isEnabled {
+                if let providerIDs, providerIDs.contains(config.id) == false { continue }
                 group.addTask { [weak self] in
                     guard let self else { return (config.id, false, []) }
                     let available: Bool
@@ -704,7 +723,7 @@ final class ProviderRegistry: ObservableObject {
                     } else {
                         available = false
                     }
-                    let models = available ? await self.fetchModels(for: config) : []
+                    let models = available ? await self.fetchModels(for: config, forceRefresh: forceRefresh) : []
                     return (config.id, available, models)
                 }
             }
@@ -717,12 +736,36 @@ final class ProviderRegistry: ObservableObject {
         }
     }
 
+    private func cachedModels(for id: String) -> [String]? {
+        guard let entry = modelCacheByProviderID[id],
+              Date().timeIntervalSince(entry.fetchedAt) < modelListCacheTTL
+        else { return nil }
+        return entry.models
+    }
+
+    private func cache(models: [String], for id: String) {
+        guard !models.isEmpty else { return }
+        modelCacheByProviderID[id] = ModelListCacheEntry(models: models, fetchedAt: Date())
+        modelsByProviderID[id] = models
+        persist()
+    }
+
+    private func restoreFreshModelCache() {
+        let fresh = modelCacheByProviderID.compactMapValues { entry -> [String]? in
+            Date().timeIntervalSince(entry.fetchedAt) < modelListCacheTTL ? entry.models : nil
+        }
+        if !fresh.isEmpty {
+            modelsByProviderID = fresh
+        }
+    }
+
     // MARK: Persistence
 
     private struct Snapshot: Codable {
         var providers: [ProviderConfig]
         var activeProviderID: String
         var firstLaunchSetupCompleted: Bool?
+        var modelCache: [String: ModelListCacheEntry]?
     }
 
     nonisolated private static func load(from url: URL) -> Snapshot? {
@@ -734,7 +777,8 @@ final class ProviderRegistry: ObservableObject {
         let snapshot = Snapshot(
             providers: providers,
             activeProviderID: activeProviderID,
-            firstLaunchSetupCompleted: firstLaunchSetupCompleted
+            firstLaunchSetupCompleted: firstLaunchSetupCompleted,
+            modelCache: modelCacheByProviderID.isEmpty ? nil : modelCacheByProviderID
         )
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         try? FileManager.default.createDirectory(

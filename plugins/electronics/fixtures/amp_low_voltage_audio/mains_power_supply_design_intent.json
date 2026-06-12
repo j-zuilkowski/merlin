@@ -1,0 +1,56 @@
+{
+  "design_id": "amp_mains_power_supply",
+  "title": "25W amplifier mains power supply board stub",
+  "origin": "user_authored",
+  "approval": {
+    "status": "draft"
+  },
+  "requirements": [
+    {
+      "id": "req-mains-001",
+      "text": "Represent a separate mains power supply schematic and PCB with mains inlet, fuse, switch, protective earth bond, transformer primary, transformer secondary interface, and safety constraints.",
+      "priority": "must"
+    },
+    {
+      "id": "req-mains-002",
+      "text": "Do not certify, approve, or declare mains design safety from model output.",
+      "priority": "must"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "assume-mains-001",
+      "text": "This fixture is a high-stakes stub for a later milestone.",
+      "rationale": "The current milestone verifies only the isolated low-voltage audio board."
+    }
+  ],
+  "components": [],
+  "nets": [],
+  "unresolved_decisions": [
+    {
+      "id": "ud-mains-001",
+      "question": "Qualified safety review must select certified inlet, fuse, switch, transformer, enclosure bonding, creepage, clearance, and protective earth implementation.",
+      "blocking": true
+    }
+  ],
+  "boards": [
+    {
+      "id": "amp_mains_power_supply",
+      "title": "Mains Power Supply Board",
+      "safety_domain": "hazardous_mains"
+    }
+  ],
+  "safety_profile": {
+    "isolation_required": true,
+    "creepage_mm": 8.0,
+    "notes": [
+      "Hazardous mains board.",
+      "Requires qualified safety review before any build or use decision."
+    ]
+  },
+  "verification_plan": {
+    "erc_required": true,
+    "drc_required": true,
+    "spice_required": false
+  }
+}

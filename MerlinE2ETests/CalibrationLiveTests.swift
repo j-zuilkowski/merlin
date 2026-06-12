@@ -80,6 +80,10 @@ final class CalibrationLiveTests: XCTestCase {
                 // The harness already loads the execute model at 32768 in a single
                 // slot; record the advisory without shrinking the running model.
                 break
+            case .llamaCppRuntimeUntuned:
+                // This live calibration path only targets the LM Studio execute slot;
+                // llama.cpp runtime reloads are exercised through AppState.
+                break
             }
         }
 

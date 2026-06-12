@@ -66,6 +66,7 @@ struct ChatView: View {
     @State private var showBtwOverlay: Bool = false
     @State private var btwPrefill: String = ""
     @State private var pendingDomainActivation: PendingDomainActivation?
+    @State private var pendingInjectMessage: String?
 
     private let accessibilityScope: ChatAccessibilityScope
 
@@ -120,8 +121,18 @@ struct ChatView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .merlinInjectMessage)) { note in
             guard let msg = note.userInfo?["message"] as? String, !msg.isEmpty else { return }
+            guard model.isSending == false else {
+                pendingInjectMessage = msg
+                return
+            }
             model.draft = msg
             // Route through sendMessage so slash commands like /calibrate are handled.
+            sendMessage()
+        }
+        .onChange(of: model.isSending) { _, isSending in
+            guard isSending == false, let pending = pendingInjectMessage else { return }
+            pendingInjectMessage = nil
+            model.draft = pending
             sendMessage()
         }
         .overlay {
@@ -361,6 +372,7 @@ struct ChatView: View {
             },
             shouldResumeScroll: $shouldResumeScroll
         )
+        .id(model.revision)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay(alignment: .bottom) {
             if scrollLockVisible {
@@ -639,6 +651,9 @@ final class ChatViewModel: ObservableObject {
     private var assistantIndex: Int?
     private(set) var lastRAGSources: [RAGChunk] = []
     private(set) var lastGroundingReport: GroundingReport?
+    private var pendingStreamingRevision: Bool = false
+    private var streamingRevisionTask: Task<Void, Never>?
+    private static let streamingRevisionThrottleNanoseconds: UInt64 = 75_000_000
 
     func submit(appState: AppState) async {
         let message = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -655,10 +670,11 @@ final class ChatViewModel: ObservableObject {
         appState.thinkingModeActive = appState.engine.shouldUseThinking(for: message)
 
         let resolved = ContextInjector.resolveAtMentions(in: message, projectPath: appState.projectPath)
-        let workingSlot = appState.engine.selectSlot(for: resolved)
         var turnFailed = false
-        appState.slotRuntimeStates[workingSlot] = .busy
         appendUser(resolved)
+        persistTranscript(appState: appState)
+
+        await appState.awaitRuntimePluginsReady()
 
         for await event in appState.engine.send(userMessage: resolved) {
             switch event {
@@ -668,6 +684,8 @@ final class ChatViewModel: ObservableObject {
             case .thinking(let text):
                 appendThinking(text)
                 appState.toolActivityState = .streaming
+            case .slotRuntimeState(let slot, let state):
+                await appState.publishSlotRuntimeState(state, for: slot)
             case .toolCallStarted:
                 appState.toolActivityState = .toolExecuting
                 applyEngineEvent(event)
@@ -697,7 +715,12 @@ final class ChatViewModel: ObservableObject {
         isSending = false
         appState.thinkingModeActive = false
         appState.toolActivityState = .idle
-        appState.slotRuntimeStates[workingSlot] = turnFailed ? .error : .ready
+        flushPendingStreamingRevision()
+        let finalSlotState: SlotRuntimeState = turnFailed ? .error : .ready
+        for (slot, state) in appState.slotRuntimeStates where state == .busy {
+            await appState.publishSlotRuntimeState(finalSlotState, for: slot)
+        }
+        persistTranscript(appState: appState)
     }
 
     func clear() {
@@ -735,7 +758,9 @@ final class ChatViewModel: ObservableObject {
         for message in messages {
             switch message.role {
             case .system:
-                break
+                let text = message.content.plainText
+                guard !text.isEmpty else { continue }
+                items.append(ChatEntry(role: .system, text: text))
 
             case .user:
                 // Flush any orphaned tool calls before the next user turn
@@ -779,6 +804,81 @@ final class ChatViewModel: ObservableObject {
         bumpRevision()
     }
 
+    private func persistTranscript(appState: AppState) {
+        guard let store = appState.sessionStore,
+              let sessionID = appState.engine.sessionID ?? store.activeSessionID
+        else { return }
+
+        let existing = store.sessions.first(where: { $0.id == sessionID })
+        var updated = existing ?? Session(
+            id: sessionID,
+            title: "New Session",
+            messages: [],
+            activeDomainIDs: appState.engine.activeDomainIDs
+        )
+        let messages = messagesForPersistence()
+        updated.messages = messages
+        updated.title = Session.generateTitle(from: messages)
+        updated.updatedAt = Date()
+        updated.activeDomainIDs = appState.engine.activeDomainIDs
+        try? store.save(updated)
+    }
+
+    private func messagesForPersistence() -> [Message] {
+        var messages: [Message] = []
+        for item in items {
+            switch item.role {
+            case .user:
+                messages.append(Message(
+                    role: .user,
+                    content: .text(item.text),
+                    timestamp: Date()
+                ))
+            case .assistant:
+                let toolCalls = item.toolCalls.map { toolCall in
+                    ToolCall(
+                        id: toolCall.id,
+                        type: "function",
+                        function: FunctionCall(name: toolCall.name, arguments: toolCall.arguments)
+                    )
+                }
+                if !item.text.isEmpty || !item.thinkingText.isEmpty || !toolCalls.isEmpty {
+                    messages.append(Message(
+                        role: .assistant,
+                        content: .text(item.text),
+                        toolCalls: toolCalls.isEmpty ? nil : toolCalls,
+                        thinkingContent: item.thinkingText.isEmpty ? nil : item.thinkingText,
+                        timestamp: Date()
+                    ))
+                }
+                for toolCall in item.toolCalls {
+                    guard let result = toolCall.result else { continue }
+                    messages.append(Message(
+                        role: .tool,
+                        content: .text(result),
+                        toolCallId: toolCall.id,
+                        timestamp: Date()
+                    ))
+                }
+            case .system:
+                guard !item.text.isEmpty else { continue }
+                messages.append(Message(
+                    role: .system,
+                    content: .text(item.text),
+                    timestamp: Date()
+                ))
+            case .error:
+                guard !item.text.isEmpty else { continue }
+                messages.append(Message(
+                    role: .system,
+                    content: .text("[error] \(item.text)"),
+                    timestamp: Date()
+                ))
+            }
+        }
+        return messages
+    }
+
     func toggleThinkingExpansion(at index: Int) {
         guard items.indices.contains(index) else { return }
         items[index].thinkingExpanded.toggle()
@@ -797,6 +897,8 @@ final class ChatViewModel: ObservableObject {
 
     func applyEngineEvent(_ event: AgentEvent) {
         switch event {
+        case .slotRuntimeState:
+            break
         case .toolCallStarted(let call):
             appendToolCall(call)
         case .toolCallResult(let result):
@@ -877,7 +979,7 @@ final class ChatViewModel: ObservableObject {
             items.append(entry)
             assistantIndex = items.count - 1
         }
-        bumpRevision()
+        scheduleStreamingRevision()
     }
 
     private func appendThinking(_ text: String) {
@@ -896,7 +998,7 @@ final class ChatViewModel: ObservableObject {
             items.append(entry)
             assistantIndex = items.count - 1
         }
-        bumpRevision()
+        scheduleStreamingRevision()
     }
 
     private func appendToolCall(_ call: ToolCall) {
@@ -997,6 +1099,32 @@ final class ChatViewModel: ObservableObject {
     }
 
     private func bumpRevision() {
+        pendingStreamingRevision = false
+        streamingRevisionTask?.cancel()
+        streamingRevisionTask = nil
+        revision &+= 1
+    }
+
+    private func scheduleStreamingRevision() {
+        pendingStreamingRevision = true
+        guard streamingRevisionTask == nil else { return }
+        streamingRevisionTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.streamingRevisionThrottleNanoseconds)
+            await MainActor.run {
+                self?.flushPendingStreamingRevision()
+            }
+        }
+    }
+
+    private func flushPendingStreamingRevision() {
+        guard pendingStreamingRevision else {
+            streamingRevisionTask?.cancel()
+            streamingRevisionTask = nil
+            return
+        }
+        pendingStreamingRevision = false
+        streamingRevisionTask?.cancel()
+        streamingRevisionTask = nil
         revision &+= 1
     }
 }

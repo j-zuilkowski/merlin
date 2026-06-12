@@ -30,6 +30,7 @@ extension SlotStatusRowModel.State {
 
 struct SlotStatusResolver {
     let displayNameForProviderID: (String) -> String
+    var isProviderReadyForUse: (String) -> Bool = { _ in true }
 
     func rows(
         slotAssignments: [AgentSlot: String],
@@ -37,11 +38,15 @@ struct SlotStatusResolver {
     ) -> [SlotStatusRowModel] {
         AgentSlot.allCases.map { slot in
             if let assignedID = slotAssignments[slot], assignedID.isEmpty == false {
+                let runtimeState = slotRuntimeStates[slot]
+                let state = isProviderReadyForUse(assignedID)
+                    ? SlotStatusRowModel.State(runtimeState: runtimeState)
+                    : .error
                 return SlotStatusRowModel(
                     id: slot,
                     title: title(for: slot),
                     value: displayNameForProviderID(assignedID),
-                    state: SlotStatusRowModel.State(runtimeState: slotRuntimeStates[slot]),
+                    state: state,
                     accessibilityID: AccessibilityID.slotStatusRowPrefix + slot.rawValue
                 )
             }
@@ -75,9 +80,13 @@ struct SlotStatusPanel: View {
     init(
         slotAssignments: [AgentSlot: String],
         slotRuntimeStates: [AgentSlot: SlotRuntimeState] = [:],
-        displayNameForProviderID: @escaping (String) -> String
+        displayNameForProviderID: @escaping (String) -> String,
+        isProviderReadyForUse: @escaping (String) -> Bool = { _ in true }
     ) {
-        rows = SlotStatusResolver(displayNameForProviderID: displayNameForProviderID)
+        rows = SlotStatusResolver(
+            displayNameForProviderID: displayNameForProviderID,
+            isProviderReadyForUse: isProviderReadyForUse
+        )
             .rows(slotAssignments: slotAssignments, slotRuntimeStates: slotRuntimeStates)
     }
 

@@ -55,7 +55,1248 @@ Merlin.xcodeproj
 - **V4** — Subagent system: AgentDefinition, AgentRegistry, SubagentEngine, WorktreeManager, WorkerSubagentEngine, subagent sidebar UI ( tasks 54–59); plus V3 settings panels, workspace layout, skill compaction, vision attachments, memory generation/injection ( tasks 60–98)
 
 ## Current Status
-Task 98 complete. V4 fully shipped. V5 (Supervisor-Worker Multi-LLM + Domain Plugin System) in design — architecture complete in `../spec.md`, no task files written yet. Task files to be written starting at task 99.
+Current active line: v2.4.0 release battery rerun from fixed ledger.
+Electronics domain status: finished as evidence-gated workflow infrastructure,
+with release battery revalidation still required after blocker repairs.
+The current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`; this is
+an honest evidence gate and not a `FAB_READY` fabrication claim.
+Latest completed task is Task 517.
+
+Recent commits on `codex/stabilize-merlin-e2e`:
+
+- Task 517 — GitHub CI KiCad geometry repair
+- Task 516 — release push and publish
+- Task 515 — documentation sweep
+- Task 514 — create v2.4.0 tag
+- Task 513 — rerun final release safety check
+- Task 512 — repair KiCad usability evidence
+- Task 511 — rerun release KiCad screenshots
+- Task 510 — repair release electronics/KiCad gate board output
+- Task 509 — record invalid KiCad release evidence
+- Task 508 — pass final release safety check
+- Task 507 — write release evidence report
+- Task 506 — capture README and GitHub feature screenshots
+- Task 505 — capture release KiCad screenshots
+- Task 504 — pass release electronics/KiCad deterministic gate
+- Task 503 — pass release capability gate with deterministic stops
+- Task 502 — repair S1 verification continuation loop
+- Task 501 — repair release capability model preflight path
+- Task 492 — add resumable v2.4.0 release run ledger
+- Task 500 — add deterministic release capability gate runner
+- Task 498 — pass release xcalibre RAG gate
+- Task 499 — close failed release capability gate attempts
+- Task 497 — pass release llama.cpp router gate
+- Task 496 — pass release local provider gate
+- Task 495 — pass release live DeepSeek gate
+- Task 494 — pass release UI and visual gates
+- Task 493 — repair release battery continuation and window traceability
+- Task 491 — make KiCad gates deterministic and evidence-scoped
+- Task 490 — repair release blocker workflow gates
+- Task 489 — synchronize Developer Manual with current source tree
+- Task 488 — finalize electronics completion contract status
+- Task 487 — recover F4 GUI spec evidence path
+- Task 486 — cap generated electronics artifact reads in workflow context
+- Task 485 — record fresh GUI workflow context blocker
+- Task 484 — prove generic realism and artifact chain gates
+- Task 483 — add GUI resolver answer entry
+- Task 482 — define electronics domain finish checklist
+- Task 481 — carry component revision answer handoff state
+- Task 480 — recover component revision from structured resolver answers
+- Task 479 — surface component revision questions in workflow and GUI state
+- Task 478 — generic component-selection revision workflow
+- Task 477 — record AmpDemo GUI component-selection gate
+- Task 476 — mutate DRC routing repairs with native segment/via edits
+- Task 475 — synchronize electronics GUI job state projections
+- Task 474 — gate fabrication output evidence
+- Task 473 — gate vendor BOM evidence
+- Task 472 — mutate PCB DRC repair plans
+- Task 471 — gate DRC layout rerun evidence
+- Task 470 — require explicit ERC rerun evidence
+- Task 469 — generic topology and materialization realism
+- Task 468 — generic multi-board decomposition gates
+- Task 467 — gate schematic realism before workflow verification
+- Task 466 — wire full workflow SPICE evidence gates
+- `97491b9` — Task 465: gate SPICE models and repair bounds
+- `594fe86` — Task 464: require explicit SPICE scenarios
+- `094a06c` — Task 463: gate SPICE measurements by envelope
+- `69b7c42` — Task 462: record AmpDemo PCB DRC slice
+- `6731b7a` — Task 461: gate ERC schematic warnings
+- `3b10c7b` — Tasks 439-444: mark repair actions complete
+- `cfdd1ec` — Task 460: harden live catalog cache gating
+- `1189367` — Task 459b: datasheet cache settings
+- `dc6e1f4` — Task 458b: AmpDemo PCB layout evidence gates
+
+Task 476 replaced the DRC routing repair marker with native KiCad route object
+mutation. Routing repair application now parses the target net and pad anchors
+from the board, inserts `(segment ...)` and `(via ...)` objects when at least two
+pad anchors exist, records `routing_segment` and `routing_via` changed objects,
+and blocks unchanged with `regenerate_drc_repair_plan` when pad-level routing
+geometry is missing.
+
+Task 477 ran a fresh app-only AmpDemo GUI workflow attempt through
+`/Applications/Merlin.app` opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`. The run used Merlin's live-session `~/.merlin/inject.txt` path to
+submit the user prompt through the active GUI session, after direct keyboard
+focus and exploratory XCUITest automation were not reliable in this desktop
+environment. Merlin generated DesignIntent, approved DesignIntent, Circuit IR,
+and component matrix artifacts, then stopped truthfully at
+`COMPONENT_SELECTION_BLOCKED` / `BLOCKED_INPUT_QUALITY`. The component matrix
+contains 21 components and all 21 remain `requires_vendor_resolution`; no
+footprint, schematic, PCB, ERC, DRC, SPICE, BOM, or fabrication step advanced
+from unresolved component decisions.
+
+Task 477 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/01_clean_session_app_only.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/04_component_selection_blocked_app_only.png`
+- Approved DesignIntent:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/53FEDAD1-FEDF-4A53-9F2A-D721428B9614-design_intent.json`
+- Circuit IR:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/19397343-C00B-46CD-90C0-C93DA986AC6D-circuit_ir.json`
+- Blocked component matrix:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/03ECE826-D739-446D-A057-FEDDA41B16FB-component_matrix.json`
+
+Task 491 repaired the first v2.4.0 release-battery failure. Full
+`MerlinTests` had failed because `kicad_select_components` and
+`kicad_assign_footprints` could silently use machine-local KiCad library
+discovery when no workflow payload/config supplied footprint evidence. Runtime
+KiCad root discovery now requires explicit `kicad_library_root_search_paths`
+from the request or provider config; explicit catalog paths, explicit roots,
+and configured search paths still work. The no-footprint regression now proves
+selection leaves footprint candidates empty and assignment blocks with
+`FOOTPRINT_CANDIDATE_REQUIRED` when no footprint evidence is in scope.
+
+Task 500 added `scripts/release/run-capability-gate.sh`, the only valid runner
+for release gate #8 retries. The runner owns the temporary Merlin config,
+temporary provider registry, `llama.cpp` on `127.0.0.1:8081`, xcalibre on
+`127.0.0.1:8083`, focused S1/S2 xcodebuild execution, strict timeout, logs, and
+cleanup. Focused tests cover dry-run model IDs/endpoints, self-test invariants,
+config restore trap, timeout classification, port cleanup, and TaskBoard helper
+cleanup. The first deterministic live run failed only on S1: S2 passed in
+317.970s, while S1 recorded `reloadFailed("llama.cpp router endpoint rejected
+models/load for llamacpp")` and left TaskBoard verification red for
+`TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
+`TaskStoreTests.testSummaryCountsDoneOnly`. Cleanup verification after patching
+showed no listeners on `8081` or `8083`, no runner, no `llama-server`, no
+xcalibre backend, no TaskBoard helper process, and the user's config restored.
+Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-deterministic-runner.focused.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-llamacpp-router.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-llamacpp-models.json`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-build.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-health.json`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-xcalibre-server.log`,
+`merlin-eval/results/S1-harness-2026-06-11T13-04-11Z.md`, and
+`merlin-eval/results/S2-harness-2026-06-11T13-09-29Z.md`. This Task 500
+blocker status is superseded by Task 503, which passes gate #8.
+
+Task 501 repaired the code-level local model preflight failures found while
+working gate #8. `AgenticEngine` now preflights local model manager operations
+with the already resolved request model so a base local provider ID such as
+`llamacpp` uses `ProviderConfig.model` (`qwen3-coder-local`) instead of the
+backend ID (`llamacpp`). `LlamaCppModelManager.ensureModelLoaded(modelID:)` now
+accepts a router-catalog model when `/models/load` rejects mutation but
+`/v1/models` proves the model is already exposed. `CriticEngine` now preserves
+named failing tests from verbose Xcode output. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.neighbor-green.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-repair.modelid-green.log`.
+At the time of Task 501, the latest deterministic live evidence was still red:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log` records S1
+timing out and S2 failing before this repair with
+`reloadFailed("llama.cpp router endpoint rejected models/load for llamacpp")`;
+`merlin-eval/results/S2-harness-2026-06-11T14-13-11Z.md` records S2 leaving
+`add_rejects_non_numeric_amount` red. This red gate status is superseded by
+Task 503, which proves S1 and S2 green together.
+
+Task 502 repaired the S1 TaskBoard loop-continuation failure. When software
+verification returns repairable failing-test output and the agent loop hits its
+ceiling, `AgenticEngine` now writes that failure summary into the continuation
+inject instead of the generic `run git status` restart prompt. This keeps
+`TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
+`TaskStoreTests.testSummaryCountsDoneOnly` visible to the next turn. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.focused-green.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-taskboard-continuation.neighbor-green.log`.
+Task #1 from the release blocker list was repaired at focused-test level by
+Tasks 501 and 502. Task 503 completes step #2 by proving S1 plus S2 green
+through the deterministic gate runner.
+
+Task 503 passed release gate #8 with deterministic S1/S2 convergence. The E2E
+harness now stops S1/S2 on green verification tool evidence, and S1 also stops
+after successful Swift source repair writes so the test's deterministic
+verification command proves the fixture instead of letting the agent wander back
+into setup. `ShellTool` now builds a GUI-safe developer PATH including
+Homebrew/local tool locations, which lets GUI-launched Merlin find `xcodegen`.
+`scripts/release/run-capability-gate.sh` now kills the watchdog process tree
+after xcodebuild exits, fixing the observed orphaned `sleep 2400` that held the
+runner `tee` pipe open after green test output. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-verification-stop.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-s1-shell-path.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-task503.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.focused-green.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-runner-watchdog.bash-n.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner-cleanup.log`,
+`merlin-eval/results/S1-harness-2026-06-11T17-12-35Z.md`, and
+`merlin-eval/results/S2-harness-2026-06-11T17-16-40Z.md`. Gate #8 is passed.
+
+Task 504 passed release gate #9, the deterministic electronics/KiCad checks.
+The initial gate run failed only because
+`FinalElectronicsDocumentationSweepTests.testElectronicsFinishChecklistMatchesFinalEvidenceContract`
+still expected the handoff to say `Latest completed task is Task 492`; the test
+now asserts Task 504-era handoff state and Task 503 gate #8 completion. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.fail-first-summary.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-doc-sweep.focused-green.log`,
+and `docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log`.
+Task 510 repaired the gate #9 evidence after the old run skipped the real
+AmpDemo PCB slice. The refreshed gate #9 run now passes 343 focused
+electronics/KiCad tests with 5 skips and 0 failures, including
+`EvidenceGatedComponentSelectionTests.testAmpDemoEvidenceBackedPCBCompilePlacesAllFootprintsAndRunsDRC`.
+That test generated
+`/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/pcb-slice/54F5F058-4CE3-4A2E-853E-74980AA944E8/isolated_secondary.kicad_pcb`
+with 21 footprints, 21 3D model references, 62 pads, 90 routed segments, and
+36 vias. Its KiCad DRC report
+`/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/7FB63521-6C6F-44D4-8EE3-83E02F54C269-drc-report.json`
+has 0 violations and 0 unconnected items. Gates #1-#9 in the release ledger are
+green again. The next release action is gate #10: open generated schematic and
+PCB files in KiCad and capture release screenshots under
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/`.
+
+Task 511 reran release gate #10 after Task 510 repaired the gate #9 board
+output, but Task 512 supersedes that evidence after user review found the board
+screenshots still looked placement-only and the schematic did not provide usable
+connector evidence.
+
+Task 512 repaired KiCad usability evidence rather than only screenshot status.
+The board evidence checker now rejects route-count-only outputs with no copper
+segments or overlong far bus-lane routing, and the generated PCB router now
+creates local F.Cu escapes, vias, and B.Cu local lanes between neighboring
+footprints. The schematic writer hides machine evidence fields that obscure
+symbols, keeps reference/value text near the symbol body, places larger
+generated schematics in six columns so connectors stay on the visible A4 sheet,
+and shortens long generated internal net labels while preserving hidden
+`NodeMap` metadata.
+
+The refreshed generated `isolated_secondary` KiCad project was copied to
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/source/`.
+KiCad 10.0.3 opened the copied schematic in a real Schematic Editor window and
+produced `schematic-editor-screenshot.png`; opened the copied board in a real
+PCB Editor window and produced `pcb-editor-screenshot.png`; and opened the PCB
+editor's GUI 3D Viewer to produce `board-3d-viewer-screenshot.png`. The PCB
+Editor status bar shows 62 pads, 36 vias, 72 track segments, 18 nets, and 0
+unrouted items. KiCad CLI exports also produced `schematic.pdf`,
+`schematic-svg/isolated_secondary.svg`,
+`schematic-svg/isolated_secondary.png`, front/back/routed layer SVGs plus PNG
+previews, and `board-3d-render.png`.
+The public README/GitHub KiCad assets under
+`docs/assets/screenshots/v2.4.0/` were refreshed from the Task 512 captures.
+Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`,
+`tasks/task-512-repair-kicad-usability-evidence.md`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-kicad-screenshots.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/10-doc-sweep-post-task504.focused-green.log`.
+Focused tests:
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-11-37--0400.xcresult`,
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-16-56--0400.xcresult`,
+and
+`/tmp/merlin-derived-task512/Logs/Test/Test-MerlinTests-2026.06.11_16-17-13--0400.xcresult`.
+The copied gate #9 `source/drc.json` reports 0 DRC violations, 0 unconnected
+items, and 0 schematic parity issues. The copied-project KiCad CLI rerun in
+`source/drc-rerun.json` also reports 0 DRC violations and 0 unconnected items,
+with 59 schematic parity warnings. This is visual generated-file release
+evidence and not a `FAB_READY` claim. Gates #1-#13 remain recorded as passed;
+gate #14 remains the next release action after any required revalidation
+decision.
+
+Task 506 passed release gate #11 by capturing durable README/GitHub feature
+screenshots and linking the public assets from the README. Public assets live
+under `docs/assets/screenshots/v2.4.0/`, full-size Merlin GUI captures live
+under `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`, and the KiCad
+README assets reuse the gate #10 KiCad GUI evidence. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.focused-green.log`.
+Gates #1-#11 are green; gate #12 is next: write the release evidence report at
+`docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`.
+
+Task 507 passed release gate #12 by writing the v2.4.0 release evidence report
+and adding a focused doc guard for the report, ledger, cleanup statements, and
+electronics/KiCad boundaries. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log`.
+Gates #1-#12 are green; gate #13 is next: final safety check.
+
+Task 508 passed release gate #13 by recording the final safety check for clean
+starting status, version `2.4.0`, evidence presence, screenshot asset count,
+and no orphan Merlin app or 8081/8083 helper processes. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.fail-first.log`,
+and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.focused-green.log`.
+Task 513 reran gate #13 after Task 512 changed the committed KiCad screenshot
+and evidence bundle. The refreshed `13-final-safety.log` records clean starting
+status at commit `f959ddfb6b7372189c078cd4206b921bcb45ce69`, version `2.4.0`
+build `26`, release evidence present, 7 README screenshot assets, no Merlin app
+processes, no KiCad app processes, no 8081/8083 listeners, and local/remote
+`v2.4.0` tags absent. Gates #1-#13 are green; gate #14 is next: create tag
+`v2.4.0`.
+
+Task 514 completed release gate #14 by creating local tag `v2.4.0` after the
+Task 513 final safety rerun. The tag was absent locally and remotely before the
+task. Gate #15 is next: push branch and tag.
+
+Task 515 performed a focused documentation sweep against `spec.md` documentation
+rules. It repaired Developer Manual source-comment cross references, updated the
+User Guide table of contents for current user-facing sections, and refreshed the
+release report status through gate #14. Because this task lands after the
+initial local tag, `v2.4.0` must point at the Task 515 commit before gate #15
+pushes the branch and tag.
+
+Task 516 moves the README KiCad screenshots into the Electronics / KiCad domain
+section, then completes gates #15 and #16 by pushing the branch/tag, publishing
+GitHub Release `v2.4.0`, and watching GitHub checks for build failures.
+
+Task 517 repairs the PR #3 GitHub CI failure by adding deterministic bundled
+KiCad pin geometry for common primitive symbols used by electronics tests when
+the runner has no installed KiCad libraries. It also repairs the follow-up CI
+failure where no-library runners emitted an empty `(lib_symbols)` block by
+embedding bundled schematic symbol definitions for those same primitive symbols.
+Unknown symbols still fail with `PIN_GEOMETRY_UNRESOLVED`.
+
+Task 499 closed release gate #8 as failed evidence instead of leaving the
+ledger in a false `running` state. The preserved artifacts prove three separate
+release-runner failures: the first S1/S2 attempt had no gate-owned llama.cpp
+router on `127.0.0.1:8081`; the second owned the router but used user config
+slots pointing at `llamacpp:qwen3-coder-next-local`, which the release preset
+does not expose; the third used an isolated release config and router but did
+not own xcalibre on `127.0.0.1:8083`, while the app still probed that service
+during live startup. The generated S1/S2 harness artifacts also show
+non-convergence in completed attempts: no tool calls were captured and fixture
+verification stayed red. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.fail-first.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.model-mismatch.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-scenarios.log`, and
+`merlin-eval/results/S1-harness-2026-06-08T19-31-05Z.md`,
+`merlin-eval/results/S2-harness-2026-06-08T19-31-10Z.md`,
+`merlin-eval/results/S1-harness-2026-06-08T19-32-30Z.md`,
+`merlin-eval/results/S2-harness-2026-06-08T19-32-32Z.md`. Gate #8 must not be
+retried by hand. Task 500 must add a deterministic release gate runner that
+owns config, providers, local services, timeouts, evidence, and cleanup before
+another live S1/S2 attempt.
+
+Task 498 passed release gate #7, the xcalibre RAG health/search/cleanup proof.
+The fail-first attempt is preserved because the isolated xcalibre config used a
+non-base64 `jwt_secret`, which the current backend rejects before health. The
+green rerun built the real sibling backend from
+`/Users/jonzuilkowski/Documents/localProject/xcalibre-server`, started it on
+`127.0.0.1:8083`, passed `/health` and OpenAPI readiness, registered/logged in
+without logging the JWT, inserted a sentinel Merlin memory chunk, retrieved
+`TANGERINE-498` through `/api/v1/search/chunks`, deleted the sentinel, verified
+it was absent after deletion, and closed port 8083. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.log`,
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-rag.fail-first.log`, and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/07-xcalibre-server.log`.
+This Task 498 blocker status is superseded by Tasks 503 and 504; gates #1-#9
+are green and gate #10 is now pending.
+
+Task 497 passed release gate #6, the llama.cpp router explicit model ID smoke.
+The gate started Homebrew `llama-server` 9290 on `127.0.0.1:8081` with
+`docs/e2e/2026-05-26-merlin-full-gui/llamacpp-router-models.ini`. The router
+catalog exposed `default` first, but the smoke selected explicit
+`qwen3-coder-local` and `qwen3-vl-local` IDs. Completion, streaming, tool-call,
+and vision checks passed, and cleanup closed port 8081. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router.log` and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/06-llamacpp-router-server.log`.
+Gate #7 is now green under Task 498.
+
+Task 496 passed release gate #5, the local-provider pair smoke/load/shutdown
+proof. The fail-first shell wrapper attempt is preserved because it incorrectly
+treated an empty `lsof` result as an occupied Jan port. The green rerun started
+and loaded LM Studio with the text and vision models, passed text completion,
+streaming, tool-call, and explicit vision checks, then unloaded and stopped LM
+Studio with port 1234 closed. It then started Jan's text lifecycle, passed text
+completion, streaming, and tool-call checks, stopped Jan with port 1337 closed,
+started Jan's separate vision lifecycle, passed the image request smoke, and
+again closed port 1337. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.log` and
+`docs/e2e/2026-06-08-v2.4.0-release/logs/05-local-providers.fail-first.log`.
+Gate #6 is now green under Task 497.
+
+Task 495 repaired and passed release gate #4. The fail-first live run could
+not compile `MerlinTests-Live` because `CalibrationLiveTests` did not handle
+the `.llamaCppRuntimeUntuned` advisory case. The test harness now handles that
+case explicitly for the LM Studio calibration path. Gate #4 now passes:
+`xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests-Live
+-destination 'platform=macOS' -derivedDataPath
+/tmp/merlin-derived-v240-live-deepseek
+-only-testing:MerlinLiveTests/DeepSeekProviderLiveTests
+-only-testing:MerlinE2ETests/AgenticLoopE2ETests` passed
+`DeepSeekProviderLiveTests` with 3 tests and `AgenticLoopE2ETests` with 1 test,
+0 failures. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.log`,
+fail-first log
+`docs/e2e/2026-06-08-v2.4.0-release/logs/04-MerlinTests-Live.fail-first.log`,
+and
+`/tmp/merlin-derived-v240-live-deepseek/Logs/Test/Test-MerlinTests-Live-2026.06.08_15-13-52--0400.xcresult`.
+Gate #5 is now green under Task 496.
+
+Task 494 advanced the v2.4.0 release ledger through UI gates #2 and #3.
+Full `MerlinUITests` passed with 12 tests and 0 failures:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/02-MerlinUITests.log`,
+`/tmp/merlin-derived-v240-ui/Logs/Test/Test-MerlinUITests-2026.06.08_15-06-46--0400.xcresult`.
+The focused visual rerun also passed with 6 tests and 0 failures:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/03-VisualLayoutTests.log`,
+`/tmp/merlin-derived-v240-visual/Logs/Test/Test-MerlinUITests-2026.06.08_15-09-16--0400.xcresult`.
+Gate #4 is now green under Task 495.
+
+Task 493 repaired the v2.4.0 release gate #1 blocker and made the release
+battery continuation deterministic. Full `MerlinTests` had failed first on
+continuation traceability, stale SDD task references, and AppKit window teardown
+crashes reported under `WorkspaceCoordinatorTests`. The fix scopes SDD
+traceability to current task files, prevents downstream schematic/PCB handoffs
+from being satisfied by stale DesignIntent artifacts once downstream evidence
+exists, makes floating testing windows close without retained content/delegate
+references, and replaces visible AppKit windows in the workspace recovery unit
+test with non-AppKit candidate fixtures. Gate #1 now passes: `xcodegen generate
+&& xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination
+'platform=macOS' -derivedDataPath /tmp/merlin-derived-v240-full-core` ran 2,571
+tests, 55 skipped, 0 failures. Evidence:
+`docs/e2e/2026-06-08-v2.4.0-release/logs/01-MerlinTests.log` and
+`/tmp/merlin-derived-v240-full-core/Logs/Test/Test-MerlinTests-2026.06.08_15-03-02--0400.xcresult`.
+
+Task 492 added
+`docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md` as the fixed resumable
+release state ledger. Use that file as the only source of truth for the release
+push. This Task 492 blocker summary is superseded by Tasks 503 and 504; gates
+#1-#10 are green and gate #11 is now pending.
+
+Task 478 added a generic component-selection revision path. The electronics
+plugin now exposes `kicad_revise_component_selection`, which accepts a blocked
+component matrix plus design intent, optional Circuit IR, and catalog evidence.
+It reruns the evidence-backed selection machinery for unresolved components,
+completes only when the revised matrix has concrete manufacturer parts, and
+otherwise emits `COMPONENT_SELECTION_REVISION_BLOCKED` with targeted missing
+evidence questions. The focused GUI continuation path now treats
+`revise_component_selection` from a blocked component-selection result as a
+handoff to `kicad_revise_component_selection`, not as permission to assign
+footprints or repeat narrative initial selection.
+
+Task 478 focused test evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task478 && xcodebuild build-for-testing -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task478
+```
+
+Result: `TEST BUILD SUCCEEDED`.
+
+Before the direct XCTest run, the rebuilt `Merlin.debug.dylib` and
+`MerlinElectronicsPlugin.dylib` were copied into the test bundle's
+`Contents/Frameworks` directory because the Xcode test launcher had previously
+stalled before launching the test host in this environment.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionResolvesBlockedMatrixWithCatalogEvidence,MerlinTests.EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBlocksWithSpecificQuestionsWhenEvidenceIsStillMissing,MerlinTests.LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints' /tmp/merlin-derived-task478/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: selected tests passed, 3 tests, 0 failures.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.ElectronicsRealRegistrationTests/testAllRequiredElectronicsCapabilitiesUsePluginNamespace' /tmp/merlin-derived-task478/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: 1 test, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 479 surfaced blocked component-selection revision questions through the
+full focused workflow and electronics GUI/job state. `kicad_revise_component_selection`
+blocked results now stop with an explicit recovery summary containing
+`COMPONENT_SELECTION_REVISION_BLOCKED`, resolver question IDs/prompts, the
+original blocked matrix path, and the revised matrix path. Electronics job
+diagnostics/display rows now carry `blockedQuestions`, `evidencePaths`, and
+`requiredEvidenceCategories`; the Electronics Jobs panel includes those entries
+in Evidence Gates so resolver blockers are visible instead of being hidden in a
+generic diagnostic.
+
+Task 479 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task479 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task479 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedComponentSelectionRevisionQuestionsProjectIntoDisplayState \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence
+```
+
+Red result: `TEST FAILED` at compile time because
+`ElectronicsJobDisplayState` had no `blockedQuestions`, `evidencePaths`, or
+`requiredEvidenceCategories`.
+
+Task 479 green evidence:
+
+```bash
+xcodebuild build-for-testing -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task479
+```
+
+Result: `TEST BUILD SUCCEEDED`.
+
+```bash
+xcrun xctest -XCTest 'MerlinTests.ElectronicsJobStoreTests,MerlinTests.LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints,MerlinTests.LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence' /tmp/merlin-derived-task479/Build/Products/Debug/Merlin.app/Contents/PlugIns/MerlinTests.xctest
+```
+
+Result: selected tests passed, 9 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 480 wired structured resolver answers into the generic component-selection
+revision path. `kicad_revise_component_selection` now accepts
+`component_resolution_answers`, `component_resolution_answers_json`, and
+`component_resolution_answers_path`. Those answers are converted into ordinary
+catalog `ComponentCandidate` evidence with `target_refdes` provenance,
+manufacturer/MPN/package/ratings/datasheet/source evidence, and optional
+footprint pin-map candidates. The existing catalog validator/ranker remains the
+authority: complete answers can advance the matrix to selected parts, while
+partial answers keep unanswered components blocked and do not offer footprint
+continuation.
+
+Task 480 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task480 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Red result: `TEST FAILED`, 2 tests, 4 failures. Structured resolver answers
+were ignored, leaving QOUT1 unresolved and the complete-answer revision blocked.
+
+Task 480 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task480 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task480 \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionResolvesBlockedMatrixWithCatalogEvidence \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBlocksWithSpecificQuestionsWhenEvidenceIsStillMissing \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+Task 481 wired the focused workflow answer-turn handoff for blocked
+component-selection revision. When `kicad_revise_component_selection` blocks
+with resolver questions, the engine now preserves DesignIntent path, Circuit IR
+path, original blocked component matrix path, revised component matrix path, and
+resolver question IDs. A next user/provider answer turn that calls
+`kicad_revise_component_selection` with `component_resolution_answers` is
+normalized with those paths and IDs. A completed revision matrix satisfies the
+generic component-selection workflow requirement and can advance only to the
+next legitimate handoff; partial answers remain blocked with the remaining
+questions and no footprint continuation.
+
+Task 481 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task481 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions
+```
+
+Red result: `TEST FAILED`, 2 tests, 12 failures. The answer evidence reached the
+provider call, but the workflow dropped handoff paths and question IDs, then
+scheduled fresh `kicad_select_components` after a complete answer instead of
+advancing from the completed revision matrix.
+
+Task 481 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task481 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task481 \
+  -only-testing:MerlinTests/LoopContinuationTests/testBlockedComponentMatrixSchedulesRevisionInsteadOfAssigningFootprints \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionBlockedQuestionsStopWithRecoverableEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionAnswerTurnCarriesHandoffPathsAndAnswerEvidence \
+  -only-testing:MerlinTests/LoopContinuationTests/testComponentSelectionRevisionPartialAnswerTurnRemainsBlockedWithUnansweredQuestions \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionBuildsCandidateEvidenceFromStructuredAnswers \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testComponentSelectionRevisionWithPartialStructuredAnswersStillBlocksBeforeFootprints
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 483 added the GUI resolver answer entry path. Blocked
+component-selection revision diagnostics now project actionable
+`resolverAnswerRequirements` into electronics job display state. The job store
+can write a structured continuation message with `component_resolution_answers`,
+question IDs, DesignIntent/Circuit IR/component-matrix handoff paths, and live
+catalog settings for `kicad_revise_component_selection`. The focused
+continuation path treats those GUI resolver-answer messages as verified
+electronics evidence, clears stale blocked state for answer turns, and permits
+advancement only to the completed component matrix handoff before scheduling
+`kicad_assign_footprints`.
+
+Task 483 fail-first evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task483 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff
+```
+
+Red result: `TEST FAILED`. The new answer types/display projection were absent
+at first; after partial wiring, the resolver-answer continuation was not treated
+as artifact-backed GUI evidence and stale blocked continuation state prevented
+revision handoff advancement.
+
+Task 483 green evidence:
+
+```bash
+rm -rf /tmp/merlin-derived-task483 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+Task 484 closed generic finish criteria F2 and F3. PCB materialization now emits
+manufacturer part number, source evidence, pin-pad map, and footprint pin
+compatibility in generated board footprints. Focused tests cover two materially
+different non-AmpDemo fixtures and assert real KiCad schematic symbols,
+connectivity, PCB edge/routing artifacts, board/safety-domain propagation, and
+no AmpDemo-specific emitter shortcuts. `ElectronicsArtifactChainGate` now
+requires artifact-backed records for each major electronics workflow gate and
+requires repair mutation plus rerun evidence for repair/rerun stages; the
+end-to-end harness enforces those records when supplied.
+
+Task 484 fail-first evidence:
+
+```bash
+xcodegen generate
+rm -rf /tmp/merlin-derived-task484-red && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task484-red -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Red result: `TEST FAILED`, build failed because
+`ElectronicsArtifactChainRecord` was not implemented.
+
+Task 484 green evidence:
+
+```bash
+xcodegen generate
+rm -rf /tmp/merlin-derived-task484 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task484 -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
+
+```bash
+rm -rf /tmp/merlin-derived-task483-484 && xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -derivedDataPath /tmp/merlin-derived-task483-484 \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testBlockedResolverQuestionsProjectActionableAnswerRequirements \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testResolverAnswerSubmissionWritesStructuredContinuationMessage \
+  -only-testing:MerlinTests/LoopContinuationTests/testGUIResolverAnswerContinuationAdvancesThroughRevisionHandoff \
+  -only-testing:MerlinTests/ElectronicsFinishCriteriaTests
+```
+
+Result: `TEST SUCCEEDED`, 7 tests, 0 failures.
+
+`git diff --check` passed. The full AmpDemo GUI demo was not run.
+
+Task 485 ran the fresh full GUI workflow evidence pass required by F4. The run
+used `/Applications/Merlin.app` opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`, with `~/.merlin/inject.txt` as the GUI live-session input path.
+The app generated draft and approved DesignIntent artifacts and correctly
+decomposed the high-voltage/low-voltage request into `mains_power` and
+`isolated_secondary` boards. It did not generate Circuit IR, component matrix,
+footprints, schematic, PCB, ERC, DRC, SPICE, BOM/vendor, fabrication/CAM,
+`FAB_READY`, or completion artifacts.
+
+Task 485 proved an internal GUI/workflow continuation blocker before Circuit
+IR. After `kicad_build_intent_model` and `kicad_approve_design_intent`
+completed, the continuation path repeatedly reread the 22,726-byte approved
+DesignIntent/spec evidence, scheduled the same continuation, exceeded
+`qwen3-coder-next-local`'s 16,384-token context, forced compaction, and repeated
+without advancing. This is not an acceptable F4 external blocker, so F4 remains
+open until generic GUI continuation context handling is fixed and rerun.
+
+Task 486 fixed the generic context-handling side of that blocker. The engine now
+keeps full generated electronics artifact `read_file` results available to tool
+events/evidence, but stores only a compact context entry for large reads of
+`.merlin/electronics-artifacts/*-design_intent.json`, `*-circuit_ir.json`,
+`*-component_matrix.json`, and `*-footprint_assignment.json` while the
+electronics workflow lock is active. Focused tests also prove that the
+post-approval continuation schedules an exact `kicad_generate_circuit_ir`
+handoff rather than a broad reread continuation.
+
+Task 487 fixed the remaining fresh-GUI evidence path blockers found during the
+F4 rerun. Registered project-scoped requirements reads now recover narrowly
+when the model requests a missing absolute `spec.md`, `requirements.md`, or
+`requirements.txt` outside the active project but the same artifact exists at
+the project root. `kicad_build_intent_model` resolves relative input artifact
+paths against the electronics workspace root. Requirements inspection
+verification now requires non-empty `read_file` or `search_files` evidence
+naming the spec/requirements artifact; `list_directory` output alone no longer
+satisfies the first workflow gate.
+
+Task 487 then reran the full GUI workflow through `/Applications/Merlin.app`
+opened with `--open-project
+/Users/jonzuilkowski/Documents/localProject/AmpDemo --active-domain
+electronics`. The live session rejected directory listing as requirements
+evidence, read `./spec.md`, generated and approved DesignIntent, generated
+Circuit IR, ran component selection, attempted component-selection revision,
+and stopped truthfully at `COMPONENT_SELECTION_REVISION_BLOCKED`. It did not
+advance to footprint assignment, schematic, PCB, ERC, DRC, SPICE, BOM/vendor,
+fabrication/CAM, or `FAB_READY` from unresolved component decisions.
+
+Task 487 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/07_clean_session_task487_after_evidence_fixes.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/09_component_revision_blocked_task487.png`
+- Session log:
+  `/Users/jonzuilkowski/Library/Application Support/Merlin/sessions/_Users_jonzuilkowski_Documents_localProject_AmpDemo/8F316606-315D-41F0-B2F4-719BF1CC1C1D.json`
+- DesignIntent artifacts:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/7FAAE25B-810E-4B31-85E0-72797531FEDC-design_intent.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/709D779E-114D-4909-80CD-CA772F62CFC5-design_intent.json`
+- Circuit IR:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/CB790BD0-9366-47AE-9980-1F950467894C-circuit_ir.json`
+- Blocked and revised component matrices:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/F9548B74-EB64-4144-A971-D414C3B0FD45-component_matrix.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/C16986CC-CD3C-4DC8-ABB2-AB82FF877E50-component_matrix.json`
+
+Task 488 completed F5, the final status/documentation cleanup. The plugin spec
+no longer describes full PCB/fabrication workflow as outside the first
+milestone or describes AmpDemo as a schematic-only milestone. It now records the
+current completion contract: F1-F4 are complete, the electronics domain is
+finished as evidence-gated workflow infrastructure, and the current GUI proof
+stops at `COMPONENT_SELECTION_REVISION_BLOCKED` until concrete component,
+catalog, datasheet, and footprint/pin evidence is supplied. This is not a claim
+that AmpDemo reached `FAB_READY`.
+
+Task 489 synchronized `Merlin/Docs/DeveloperManual.md` with the current source
+tree and updated stale source comments. The manual now documents the
+slot/provider-registry `AgenticEngine` model, current run-loop responsibilities,
+current `Merlin/Discipline`, `Merlin/Runtime`, `Merlin/Electronics`,
+`Merlin/Plugins`, and `Merlin/CAG` layout entries, current built-in tool names,
+and the current electronics `KiCadToolDefinitions` / evidence-gated completion
+contract. Code-map cross references were updated for discipline, runtime, and
+electronics source files.
+
+Task 489 fail-first evidence:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests/testDeveloperManualMatchesCurrentEngineToolAndElectronicsSurfaces -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result before implementation: selected documentation sweep failed with 47
+failures for missing current surfaces and stale manual surfaces.
+
+Task 489 focused verification:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests/testDeveloperManualMatchesCurrentEngineToolAndElectronicsSurfaces -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result after implementation: selected test passed, 1 test, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' -only-testing:MerlinTests/DocumentationSweepTests -only-testing:MerlinTests/FinalElectronicsDocumentationSweepTests -derivedDataPath /tmp/merlin-derived-task489-docs
+```
+
+Result after implementation: selected documentation sweeps passed, 16 tests, 0
+failures.
+
+Task 485 evidence paths:
+
+- Screenshots:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/01_clean_session_task485.png`
+  through
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/screenshots/06_context_loop_blocker_task485.png`
+- Approved DesignIntent:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/5FACF97B-8360-4B6B-940A-A0F759F4AAF7-design_intent.json`
+- Telemetry summary:
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/reports/task485-summary.json`
+  and
+  `/Users/jonzuilkowski/Documents/localProject/AmpDemo/reports/task485-telemetry-interesting.jsonl`
+
+## Current Electronics Plugin State
+
+The electronics plugin is no longer allowed to advance major workflow gates from
+plain narrative claims or placeholder artifacts. Recent hardening includes:
+
+- Read-only file inspection remains allowed in electronics/KiCad sessions while
+  shell/write/subagent/UI escape paths stay gated.
+- Text-encoded local-model tool calls are parsed and executed only when the tool
+  was actually offered.
+- Reason-slot execution has been tightened: reason is advisory and should not
+  directly execute turns.
+- Provider discovery is reduced/cached; startup probes active and configured
+  slot providers instead of repeatedly discovering every provider.
+- Tool discovery is cached and rerun only when a listed tool location is missing
+  or not found.
+- Electronics plugin settings/providers are plugin-scoped. Digi-Key, Mouser,
+  onsemi, TrustedParts scrape/feed, datasheet cache location, and related
+  settings must not appear when the electronics plugin is absent.
+- Datasheet PDFs are cached locally and should be checked before download.
+  Existing cached PDFs should only be replaced when the upstream file changes.
+- Component selection requires structured electrical intent and provider/catalog
+  evidence, not symbol names alone.
+- Blocked component-selection matrices now have a generic revision route:
+  `kicad_revise_component_selection` reuses catalog evidence to resolve
+  concrete parts or emits structured missing-evidence questions. Full workflow
+  continuation must route `revise_component_selection` through that tool before
+  footprints, schematic, PCB, SPICE, BOM, or fabrication can advance.
+- Blocked component-selection revision questions are now surfaced in focused
+  workflow stops and electronics GUI/job state. Resolver blockers must preserve
+  question prompts, required evidence categories, original blocked matrix path,
+  and revised matrix path so the next turn can recover from structured evidence
+  instead of manual sample-project decisions.
+- Component-selection revision now ingests structured resolver answers as
+  generic catalog candidates. Answers must carry manufacturer, MPN, package,
+  ratings, datasheet, and provenance evidence to satisfy the existing catalog
+  validator; partial answers keep unanswered components blocked and cannot
+  advance to footprints.
+- Focused workflow answer turns now preserve blocked component-selection
+  revision handoff state. `component_resolution_answers` are carried into the
+  next `kicad_revise_component_selection` call together with DesignIntent,
+  Circuit IR, original/revised matrix paths, and resolver question IDs; a
+  completed revision matrix can advance only to the next generic workflow gate,
+  while partial answers stay blocked.
+- Footprint assignment, schematic synthesis, PCB placement, ERC, DRC, SPICE,
+  BOM/vendor, and fabrication paths have focused evidence gates.
+- Schematic verification now requires current KiCad schematic format,
+  `merlin-electronics` generator provenance, emitted KiCad symbols for Circuit
+  IR components, matching selected symbols/footprints/source/pins, emitted
+  connectivity labels, and no metadata-only/composite block caricatures.
+- DesignIntent board evidence now carries per-board verification plans and
+  inter-board connector records. Mixed hazardous mains/primary plus isolated
+  low-voltage requests must decompose into separate board domains before
+  schematic, PCB, SPICE, BOM, or fabrication workflow advancement.
+- Circuit IR `board_id` must reference a declared DesignIntent board before
+  KiCad mutation can proceed.
+- Circuit IR generation can now target a declared DesignIntent board and scopes
+  components/nets to that board when component intent evidence includes
+  `board_id`. Schematic symbols and generated PCB footprints carry explicit
+  `BoardID` and `SafetyDomain` properties.
+- ERC warnings and DRC violations block progress until parsed repair evidence
+  is generated and rerun. ERC repair loops now require an explicit ERC report
+  or rerun report; applying an ERC repair patch records an unverified
+  `patch_applied_requires_rerun` artifact and requires `kicad_run_erc` before
+  schematic verification can advance.
+- DRC repair loops now require an explicit DRC report or rerun report. DRC
+  repair patch application maps supported generic repair classes to concrete
+  PCB/layout mutations: footprint placement offsets, clearance and trace-width
+  rule changes, and KiCad-native routing segment/via insertion when the board
+  carries target-net pad anchors. Routing-only repair plans without pad-level
+  route geometry now block without mutating the board instead of adding a
+  narrative marker. Successful mutation writes the board, emits
+  `layout_mutation_evidence` with before/after SHA-256 hashes, patch IDs, and
+  changed objects, records `patch_applied_requires_drc_rerun`, and requires
+  `kicad_run_drc` before PCB verification can advance. PCB verification still
+  blocks repaired DRC paths when required layout mutation evidence is missing.
+- Vendor/BOM workflow now requires explicit normalized BOM, vendor availability,
+  cached datasheet evidence, and vendor order package paths before fabrication
+  can reach `FAB_READY`. Vendor availability records must include stock and
+  positive unit price evidence. `kicad_prepare_vendor_order` validates BOM,
+  stock/price, and cached datasheet evidence before emitting a
+  `vendor_order_package` artifact; a BOM path alone is blocked.
+- Fabrication output workflow now requires real output artifacts, not declared
+  paths alone. The generic `jlcPCBTwoLayer` profile requires Gerber, Excellon
+  drill, pick-and-place, assembly drawing, and fabrication/CAM report evidence.
+  `FabricationEvidenceValidator` checks that output files/directories exist and
+  are non-empty and that CAM report JSON declares `pass` or `ok`. `kicad_export_fab`
+  now exports Gerbers, drills, position/PnP data, and assembly drawings, blocks
+  if those outputs are missing, and emits `cam_report`, `fabrication_evidence`,
+  and consolidated `verification_report` artifacts.
+- Electronics GUI job state now uses one `ElectronicsJobDisplayState`
+  projection for live leaderboard rows and running/blocked/fab-ready/complete
+  job groups. Blocked, fab-ready, and complete jobs no longer collapse into a
+  generic non-running/completed bucket. The separate provider `SlotStatusPanel`
+  was not changed.
+- SPICE now requires:
+  - explicit `SPICESimulationScenario` JSON;
+  - a real circuit deck path;
+  - declared analyses;
+  - declared required model references;
+  - declared pass/fail measurement envelopes;
+  - local SPICE model-record evidence for every required model;
+  - artifact-backed full workflow evidence carrying model-record and circuit
+    deck provenance;
+  - a scenario deck with declared analyses and `.meas` entries for required
+    measurement envelopes, not a generic smoke deck;
+  - measurement-envelope pass before completion;
+  - bounded repair parameters before repair patches are proposed.
+
+Task 476 focused test commands passed:
+
+Fail-first command before implementation:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationBlocksRoutingWithoutPadGeometry
+```
+
+Result before implementation: `TEST FAILED`, 2 tests, 12 assertion failures.
+The board still contained `Merlin reroute required`, no `(segment ...)` or
+`(via ...)` objects were emitted, changed objects contained `routing_marker`, and
+the no-geometry routing-only plan incorrectly returned `ok`.
+
+Green command:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationBlocksRoutingWithoutPadGeometry
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+Broader focused command:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests
+```
+
+Result: `TEST SUCCEEDED`, 11 tests, 0 failures.
+
+Note: the full AmpDemo GUI demo was not run.
+
+Task 475 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testGUIProjectionsUseSingleDisplayStateForFabReadyJobs \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests/testGUIProjectionsSeparateRunningBlockedFabReadyAndCompleteStates
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsJobStoreTests \
+  -only-testing:MerlinTests/ElectronicsJobPanelLiveWorkflowTests
+```
+
+Result: `TEST SUCCEEDED`, 7 tests, 0 failures.
+
+Note: the full AmpDemo GUI demo was not run. Task 475 covered model/projection
+consistency for the electronics GUI, not app screenshot execution.
+
+Task 474 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabricationEvidenceRequiresGerberDrillPlacementAndReport \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabricationEvidenceRequiresExistingOutputsAndPassingCAMReport \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingFabricationDrawingAndVerificationReportBlockFabReady \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testKiCadHandlersInvokeExecutableAndProduceEvidenceArtifacts
+```
+
+Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testCleanVerifierArtifactsReachFabReadyWithoutReleaseApproval \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingFabricationDrawingAndVerificationReportBlockFabReady \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testFailedDRCRunKeepsReportArtifactForHarnessRepairEvidence \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testKiCadHandlersInvokeExecutableAndProduceEvidenceArtifacts
+```
+
+Result: `TEST SUCCEEDED`, 12 tests, 0 failures.
+
+Note: the full AmpDemo GUI demo was not run. A broader artifact-path runtime
+test with the stale mixed-domain fixture still blocks upstream on design-intent
+and schematic verification gates; Task 474 did not weaken those gates.
+
+Task 473 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests/testFabReadyRequiresArtifactBackedBOMVendorDatasheetAndOrderEvidence \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingDatasheetCacheEvidenceBlocksBOMVendorFabrication \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresArtifactBackedBOMVendorEvidenceBeforeFabReady \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationRequiresRealBOMStockPriceAndDatasheetEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationEmitsPackageFromValidatedBOMStockPriceAndCachedDatasheets
+```
+
+Result: `TEST SUCCEEDED`, 5 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/FabBOMReleaseTests \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testCleanVerifierArtifactsReachFabReadyWithoutReleaseApproval \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testInvalidBOMVendorEvidenceBlocksFabrication \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testMissingDatasheetCacheEvidenceBlocksBOMVendorFabrication \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresArtifactBackedBOMVendorEvidenceBeforeFabReady \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationRequiresRealBOMStockPriceAndDatasheetEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testVendorOrderPreparationEmitsPackageFromValidatedBOMStockPriceAndCachedDatasheets
+```
+
+Result: `TEST SUCCEEDED`, 14 tests, 0 failures.
+
+Task 472 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowAcceptsCleanDRCRerunAfterConcreteLayoutMutationEvidence
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
+  -only-testing:MerlinTests/PCBDRCFollowOnTests/testPCBVerificationBlocksRepairPlanWithoutLayoutMutationEvidence \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowAcceptsCleanDRCRerunAfterConcreteLayoutMutationEvidence
+```
+
+Result: `TEST SUCCEEDED`, 6 tests, 0 failures.
+
+Task 471 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/PCBDRCFollowOnTests/testDRCRepairLoopRequiresExplicitRerunReport \
+  -only-testing:MerlinTests/PCBDRCFollowOnTests/testPCBVerificationBlocksRepairPlanWithoutLayoutMutationEvidence \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence
+```
+
+Result: `TEST SUCCEEDED`, 4 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/PCBDRCFollowOnTests \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairActionPlansSupportedDiagnosticsAndBlocksApprovalRequiredDiagnostics \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testRepairPatchApplicationRequiresGateRerunBeforeAdvancement \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testDRCRepairPatchApplicationMutatesBoardAndEmitsEvidence \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresLayoutMutationEvidenceBeforeDRCRerunCanVerifyPCB \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests/testBlockingDRCViolationBlocksPCBAndHarness
+```
+
+Result: `TEST SUCCEEDED`, 16 tests, 0 failures.
+
+Task 470 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ERCRepairLoopTests/testRepairLoopRequiresExplicitERCRerunReport \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowRequiresExplicitERCRerunReportBeforeSchematicVerified \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testERCRepairPatchApplicationRecordsUnverifiedRerunRequirement
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ERCRepairLoopTests \
+  -only-testing:MerlinTests/SchematicVerifiedStatusTests \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testERCRepairActionPlansSupportedDiagnosticsAndPreservesPatchArtifact
+```
+
+Result: `TEST SUCCEEDED`, 16 tests, 0 failures.
+
+Task 469 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testCircuitIRGenerationHonorsGenericBoardScopeAndSafetyDomains \
+  -only-testing:MerlinTests/CircuitIRToKiCadSchematicTests/testMaterializersCarryGenericBoardAndSafetyDomainProvenance
+```
+
+Result: `TEST SUCCEEDED`, 2 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testApprovedClassATopologyGeneratesDiscreteCircuitIR \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testConstraintOnlyPayloadSynthesizesReusableClassATopologyEvidence \
+  -only-testing:MerlinTests/CircuitIRToKiCadSchematicTests/testMaterializedCircuitIREmitsRealKiCadSymbolsAndConnectivity \
+  -only-testing:MerlinTests/CircuitIRToKiCadSchematicTests/testSchematicRealismValidatorPassesMaterializedDiscreteCircuitIR \
+  -only-testing:MerlinTests/CircuitIRToKiCadSchematicTests/testSchematicMaterializerContainsNoProductSpecificEmitterShortcuts
+```
+
+Result: `TEST SUCCEEDED`, 5 tests, 0 failures.
+
+Task 468 focused test commands passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionBlocksMergedMainsAndLowVoltageDomains \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testGenericMultiboardDecompositionPassesSeparatedDomainEvidence \
+  -only-testing:MerlinTests/ElectronicsPluginSchemaTests/testCircuitIRBoardIDMustReferenceDesignIntentBoard \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowBlocksMergedHighStakesDomainsBeforeSchematicPCBOrFabAdvance \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests/testWorkflowCarriesSeparatedBoardDomainEvidenceThroughHandoff
+```
+
+Result: `TEST SUCCEEDED`, 5 tests, 0 failures.
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testAmpDemoSpecFileBuildsMeaningfulDesignIntent \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testStructuredConstraintsPopulateDesignIntentInsteadOfEmptyDraft \
+  -only-testing:MerlinTests/DesignIntentApprovalFlowTests/testConstraintOnlyPayloadSynthesizesReusableClassATopologyEvidence
+```
+
+Result: `TEST SUCCEEDED`, 3 tests, 0 failures.
+
+Task 467 focused test command passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/CircuitIRToKiCadSchematicTests \
+  -only-testing:MerlinTests/KiCadSchematicParserTests \
+  -only-testing:MerlinTests/AmpLowVoltageFixtureTests \
+  -only-testing:MerlinTests/ElectronicsEndToEndHarnessTests
+```
+
+Result: `TEST SUCCEEDED`, 31 tests, 0 failures.
+
+Task 466 focused test command passed:
+
+```bash
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/ElectronicsRuntimeHarnessIntegrationTests \
+  -only-testing:MerlinTests/ElectronicsEvidenceArtifactAdapterTests \
+  -only-testing:MerlinTests/SPICEOptimizationTests \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationRejectsProjectOnlyGenericDeckRequest \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationBlocksMissingEnvelopesAndModelRefs \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationBlocksMissingOrUnusableModelEvidence \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationProducesExplicitRunnableDeckArtifact \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEGateBlocksOutOfEnvelopeMeasurementsAndKeepsLog
+```
+
+Result: `TEST SUCCEEDED`, 22 tests, 0 failures.
+
+Task 465 focused test command passed:
+
+```bash
+touch /Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-spice-slice
+xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination 'platform=macOS' \
+  -only-testing:MerlinTests/SPICEOptimizationTests/testSPICEScenarioRequiresCircuitPathAnalysesAndMeasurementEnvelopes \
+  -only-testing:MerlinTests/SPICEOptimizationTests/testNgspiceMeasurementParserReadsScalarMeasurements \
+  -only-testing:MerlinTests/SPICEOptimizationTests/testModelResolverBlocksRequiredUnapprovedGenericSubstitute \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationRejectsProjectOnlyGenericDeckRequest \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationBlocksMissingEnvelopesAndModelRefs \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationBlocksMissingOrUnusableModelEvidence \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEScenarioGenerationProducesExplicitRunnableDeckArtifact \
+  -only-testing:MerlinTests/FullGreenRuntimeElectronicsTests/testSPICEGateBlocksOutOfEnvelopeMeasurementsAndKeepsLog \
+  -only-testing:MerlinTests/ElectronicsToolFailureEvidenceTests/testSPICERepairActionPlansMeasurementRepairAndBlocksUnsupportedLog \
+  -only-testing:MerlinTests/EvidenceGatedComponentSelectionTests/testAmpDemoSPICESliceRunsExplicit25WOutputStageScenario
+rm -f /Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/run-spice-slice
+```
+
+Result: `TEST SUCCEEDED`, 10 tests, 0 failures.
+
+Latest focused AmpDemo SPICE evidence:
+
+- Source deck: `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/spice-slice/BD078EDD-477A-40D4-8867-9AA5B10F8DD6/amp_low_voltage_audio_output_stage.cir`
+- Generated deck: `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/spice-slice/BD078EDD-477A-40D4-8867-9AA5B10F8DD6/amp_low_voltage_audio-amp-output-power-scenario.cir`
+- Scenario JSON: `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/spice-slice/BD078EDD-477A-40D4-8867-9AA5B10F8DD6/amp_low_voltage_audio_spice_scenario.json`
+- Model records: `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/spice-slice/BD078EDD-477A-40D4-8867-9AA5B10F8DD6/amp_low_voltage_audio_spice_models.json`
+- ngspice log: `/Users/jonzuilkowski/Documents/localProject/AmpDemo/.merlin/electronics-artifacts/6ACE10FE-AEB4-4576-9877-ACC0D6D1857B-spice.log`
+- `output_power_w = 26.9563` against required envelope `24.0...28.0 W`
+
+Important limitation: this SPICE evidence is a representative low-voltage
+Class-A output-stage gate only. It does not prove the full amplifier, mains
+board, thermal design, complete schematic, PCB, BOM, ERC, DRC, CAM, or release
+package is complete.
+
+## Electronics Domain Finish Criteria
+
+This is the fixed finish line. Do not replace it with a rolling "next group"
+section. Future electronics tasks must close one unchecked criterion below. New
+finish criteria may be added only when a focused test, full-workflow artifact,
+or GUI run proves a real blocker that is not covered here; document that blocker
+in a numbered task file before adding it.
+
+Do not manually hand-design AmpDemo. Merlin must learn generic workflow behavior
+that applies to arbitrary electronics requests, then AmpDemo can be rerun as an
+evidence check.
+
+- [x] **F1: GUI resolver answer entry.** Electronics GUI/job state presents
+  blocked resolver questions as actionable answer requirements, accepts
+  submitted resolver answer evidence, and carries question IDs/evidence paths
+  into focused continuation as structured `component_resolution_answers` for
+  `kicad_revise_component_selection`. Complete GUI-originated answers may
+  advance only to the completed component matrix handoff; incomplete answers
+  remain blocked with unanswered questions and no footprint/library
+  continuation.
+- [x] **F2: Generic schematic and PCB realism proof.** Focused tests and
+  artifacts prove generic, non-AmpDemo-specific schematic and PCB generation for
+  at least two materially different request fixtures. Proof must include real
+  KiCad schematic symbols/connectivity, selected footprint/source/pin
+  provenance, board/safety-domain propagation, plausible PCB placement/routing
+  artifacts, ERC/DRC gate behavior, and no product-specific emitter shortcuts or
+  metadata-only/composite-block caricatures.
+- [x] **F3: Full generic artifact-chain proof.** A focused runtime/harness path
+  proves the full electronics workflow cannot skip or narrate any major gate:
+  requirements inspection, DesignIntent approval, board decomposition, Circuit
+  IR, component selection/revision, footprint assignment, schematic, PCB, ERC,
+  DRC, SPICE scenario/run, BOM/vendor package, and fabrication/CAM output. Each
+  gate must require artifact-backed evidence, and repair loops must require
+  concrete mutation plus explicit rerun evidence before advancement.
+- [x] **F4: Fresh full GUI workflow completion evidence.** After F1-F3 are
+  green, run a fresh full GUI workflow from a clean project request. AmpDemo may
+  be used only as an evidence check, not as hand-designed input. The run must
+  reach honest workflow completion/FAB_READY through Merlin-generated artifacts
+  or stop at a documented external blocker with actionable missing evidence; it
+  must not advance from unresolved components, schematic/PCB placeholders,
+  missing SPICE models/envelopes, placeholder BOM/vendor data, or declared-only
+  fabrication paths. Task 487 completed this evidence pass: the rebuilt GUI
+  workflow read the project spec, generated DesignIntent and Circuit IR,
+  attempted component selection and revision, then stopped at
+  `COMPONENT_SELECTION_REVISION_BLOCKED` with actionable resolver questions and
+  without advancing to downstream placeholder artifacts.
+- [x] **F5: Completion contract and status cleanup.** Update task files,
+  `HANDOFF.md`, and any electronics status docs to mark the electronics domain
+  complete only after F1-F4 have commands, artifacts, screenshots/logs where
+  applicable, and commits. Remove stale "representative slice only" caveats only
+  when the corresponding full-workflow evidence exists. Task 488 updated the
+  plugin spec, README, handoff status, and final documentation sweep test so the
+  finished status is bounded to evidence-gated workflow infrastructure and the
+  current GUI proof's component-evidence blocker.
 
 ## Key Architecture Decisions (V3+)
 - **AppSettings**: `@MainActor ObservableObject` singleton. Single source of truth for all persisted config. Backing stores: `~/.merlin/config.toml` (feature flags, hooks, memories, toolbar, reasoning), Keychain (API keys), UserDefaults (UI-only). Features never read backing stores directly — they read `AppSettings`.

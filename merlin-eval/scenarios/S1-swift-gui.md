@@ -48,11 +48,15 @@ Five logic + three visual = eight defects. L4 is intentionally subtle (concurren
 ## Scenario prompt (given to Merlin)
 
 > The macOS app at `merlin-eval/fixtures/swift-gui-buggy/` is a SwiftUI task list called
-> TaskBoard. Build it, launch it, and use it the way a user would: add a few tasks, mark
-> some done, delete one, open the Stats window, and click every toolbar button. It has
-> several defects — both logic bugs and visual/layout bugs. Find every defect by actually
-> exercising the running app, fix each one in the source, rebuild, and re-verify by
-> running the app again. Report each defect you found, the fix, and how you confirmed it.
+> TaskBoard. This is a bounded GUI-debug repair task, not a tool-installation task.
+> `xcodegen` is already available on PATH; do not use Homebrew, curl, or downloaded tool
+> archives. Run `xcodegen generate`, then run `xcodebuild -scheme TaskBoard test
+> -destination 'platform=macOS' CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO
+> CODE_SIGNING_ALLOWED=NO`. Fix the app source defects named by failing TaskBoardTests,
+> especially `TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and
+> `TaskStoreTests.testSummaryCountsDoneOnly`. Re-run the same verification until
+> TaskBoardTests pass. Do not report done while any TaskBoardTests failure remains.
+> Report each defect, the source fix, and the green verification command.
 
 ---
 

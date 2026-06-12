@@ -14,12 +14,63 @@ struct RuntimePluginMetadata: Codable, Sendable, Equatable {
     var enabled: Bool
     var domainIDs: [String]
     var capabilities: [WorkspaceCapability]
+    var roles: [PluginRoleDefinition]
     var settingsSchema: WorkspaceSettingsSchema?
     var builtInFactory: String?
     var dynamicLibraryPath: String?
     var bootstrapSymbol: String?
     var handlerSymbol: String?
     var manifestDirectory: URL? = nil
+
+    init(
+        id: String,
+        displayName: String,
+        version: String,
+        trustTier: RuntimePluginTrustTier,
+        enabled: Bool,
+        domainIDs: [String],
+        capabilities: [WorkspaceCapability],
+        roles: [PluginRoleDefinition] = [],
+        settingsSchema: WorkspaceSettingsSchema? = nil,
+        builtInFactory: String? = nil,
+        dynamicLibraryPath: String? = nil,
+        bootstrapSymbol: String? = nil,
+        handlerSymbol: String? = nil,
+        manifestDirectory: URL? = nil
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.version = version
+        self.trustTier = trustTier
+        self.enabled = enabled
+        self.domainIDs = domainIDs
+        self.capabilities = capabilities
+        self.roles = roles
+        self.settingsSchema = settingsSchema
+        self.builtInFactory = builtInFactory
+        self.dynamicLibraryPath = dynamicLibraryPath
+        self.bootstrapSymbol = bootstrapSymbol
+        self.handlerSymbol = handlerSymbol
+        self.manifestDirectory = manifestDirectory
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        version = try container.decode(String.self, forKey: .version)
+        trustTier = try container.decode(RuntimePluginTrustTier.self, forKey: .trustTier)
+        enabled = try container.decode(Bool.self, forKey: .enabled)
+        domainIDs = try container.decode([String].self, forKey: .domainIDs)
+        capabilities = try container.decode([WorkspaceCapability].self, forKey: .capabilities)
+        roles = try container.decodeIfPresent([PluginRoleDefinition].self, forKey: .roles) ?? []
+        settingsSchema = try container.decodeIfPresent(WorkspaceSettingsSchema.self, forKey: .settingsSchema)
+        builtInFactory = try container.decodeIfPresent(String.self, forKey: .builtInFactory)
+        dynamicLibraryPath = try container.decodeIfPresent(String.self, forKey: .dynamicLibraryPath)
+        bootstrapSymbol = try container.decodeIfPresent(String.self, forKey: .bootstrapSymbol)
+        handlerSymbol = try container.decodeIfPresent(String.self, forKey: .handlerSymbol)
+        manifestDirectory = nil
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +80,7 @@ struct RuntimePluginMetadata: Codable, Sendable, Equatable {
         case enabled
         case domainIDs = "domainIds"
         case capabilities
+        case roles
         case settingsSchema
         case builtInFactory
         case dynamicLibraryPath

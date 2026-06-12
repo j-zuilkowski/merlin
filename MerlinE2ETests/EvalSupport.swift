@@ -479,14 +479,16 @@ enum EvalLog {
 /// The exact scenario prompts (kept identical to the scenario files).
 enum EvalPrompts {
     static let s1 = """
-    The macOS app at this project path is a SwiftUI task list called TaskBoard. Build \
-    it, launch it, and use it the way a user would: add tasks, mark some done, delete \
-    one, open the Stats window, click every toolbar button. It has logic and visual \
-    defects. Find every defect by exercising the running app, fix each in the source, \
-    rebuild, and re-verify with `xcodegen generate` and `xcodebuild -scheme TaskBoard \
-    test -destination 'platform=macOS' CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGNING_ALLOWED=NO` until TaskBoardTests pass. Do not report done while any \
-    TaskBoardTests failure remains. Report each defect, the fix, and how you confirmed it.
+    The macOS app at this project path is a SwiftUI task list called TaskBoard. This \
+    is a bounded GUI-debug repair task, not a tool-installation task. `xcodegen` is \
+    already available on PATH; do not use Homebrew, curl, or downloaded tool archives. \
+    Run `xcodegen generate`, then run `xcodebuild -scheme TaskBoard test -destination \
+    'platform=macOS' CODE_SIGN_IDENTITY= CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`. \
+    Fix the app source defects named by failing TaskBoardTests, especially \
+    `TaskStoreTests.testDeleteRemovesTheTaskAtThatIndex` and \
+    `TaskStoreTests.testSummaryCountsDoneOnly`. Re-run the same verification until \
+    TaskBoardTests pass. Do not report done while any TaskBoardTests failure remains. \
+    Report each defect, the source fix, and the green verification command.
     """
     static let s2 = """
     The Rust project at this project path is an expense-ledger library and CLI. Build \

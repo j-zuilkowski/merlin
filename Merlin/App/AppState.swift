@@ -19,6 +19,10 @@ struct AuthRequest {
     var resolve: (AuthDecision) -> Void
 }
 
+struct ReasonOverrideApprovalRequest {
+    var request: ReasonExecutionOverrideRequest
+}
+
 struct ToolLogLine: Identifiable {
     enum Source {
         case stdout
@@ -38,10 +42,15 @@ enum ToolActivityState: String, Sendable {
     case toolExecuting
 }
 
-enum SlotRuntimeState: String, Sendable {
+enum SlotRuntimeState: String, Codable, Sendable {
     case ready
     case busy
     case error
+}
+
+private struct SlotRuntimeStateEnvelope: Codable, Sendable {
+    var slot: AgentSlot
+    var state: SlotRuntimeState
 }
 
 private let showAuthPopupForTestingFlag = "--show-auth-popup-for-testing"
@@ -69,6 +78,8 @@ final class AppState: ObservableObject {
 
     @Published var showAuthPopup: Bool = false
     @Published var pendingAuthRequest: AuthRequest? = nil
+    @Published var showReasonOverridePopup: Bool = false
+    @Published var pendingReasonOverrideRequest: ReasonOverrideApprovalRequest? = nil
 
     @Published var toolLogLines: [ToolLogLine] = []
 
@@ -90,6 +101,28 @@ final class AppState: ObservableObject {
     @Published var thinkingModeActive: Bool = false
     @Published var toolActivityState: ToolActivityState = .idle
     @Published var slotRuntimeStates: [AgentSlot: SlotRuntimeState] = [:]
+
+    private func setSlotRuntimeState(_ state: SlotRuntimeState, for slot: AgentSlot) {
+        var updated = slotRuntimeStates
+        updated[slot] = state
+        slotRuntimeStates = updated
+    }
+
+    func publishSlotRuntimeState(_ state: SlotRuntimeState, for slot: AgentSlot) async {
+        let payload = try? WorkspaceMessagePayload.encodeJSON(SlotRuntimeStateEnvelope(slot: slot, state: state))
+        await workspaceRuntime.bus.publish(WorkspaceMessageEvent(
+            id: UUID(),
+            requestID: nil,
+            address: WorkspaceMessageAddress(namespace: "agent.slot", capability: "runtime_state"),
+            origin: WorkspaceMessageOrigin.parentSession(
+                workspaceID: workspaceRuntime.workspaceID,
+                sessionID: engine?.sessionID,
+                activeDomainIDs: activeDomainIDs
+            ),
+            kind: .progress,
+            payload: payload
+        ))
+    }
 
     let xcalibreClient: XcalibreClient
     /// Registry of all MemoryBackendPlugin implementations.
@@ -115,24 +148,31 @@ final class AppState: ObservableObject {
     private var githubTokenObserver: NSObjectProtocol?
     private var providerKeyObserver: NSObjectProtocol?
     private var selectProviderObserver: NSObjectProtocol?
+    private let enableStartupProjectScans: Bool
     private var pendingAuthContinuation: CheckedContinuation<AuthDecision, Never>?
+    private var pendingReasonOverrideContinuation: CheckedContinuation<Bool, Never>?
     private var cancellables: Set<AnyCancellable> = []
     private var disciplineEventPollTask: Task<Void, Never>?
     private var calibrationCoordinatorCancellable: AnyCancellable?
     private var runtimePluginStartupTask: Task<Void, Never>?
+    private var slotRuntimeEventTask: Task<Void, Never>?
 
     init(
         projectPath: String = "",
         activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
-        workspaceRuntime: WorkspaceRuntime? = nil
+        workspaceRuntime: WorkspaceRuntime? = nil,
+        inferProjectDomains: Bool = true,
+        enableStartupProjectScans: Bool = true
     ) {
         self.projectPath = projectPath
+        self.enableStartupProjectScans = enableStartupProjectScans
         self.workspaceRuntime = workspaceRuntime ?? (try! WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: projectPath.isEmpty ? NSTemporaryDirectory() : projectPath)
         ))
         let resolvedActiveDomainIDs = Self.inferredActiveDomainIDs(
             requested: activeDomainIDs,
-            projectPath: projectPath
+            projectPath: projectPath,
+            inferProjectDomains: inferProjectDomains
         )
         self.initialActiveDomainIDs = resolvedActiveDomainIDs
         self.activeDomainIDs = self.initialActiveDomainIDs
@@ -320,25 +360,31 @@ final class AppState: ObservableObject {
                 self.toolActivityState = .idle
             }
             .store(in: &cancellables)
-        // After every turn, run a discipline scan and refresh the pending-attention
-        // chip. No-op for projects without a tasks/ or .merlin/ tree.
-        engine.$isRunning
-            .filter { !$0 }
-            .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                guard let self, !self.projectPath.isEmpty else { return }
-                let path = self.projectPath
-                Task { [weak self] in
-                    guard let self else { return }
-                    _ = await self.disciplineEngine.scan(projectPath: path)
-                    await self.disciplineEngine.runWeeklyOverrideReview()
-                    await self.pendingAttention.refresh(projectPath: path)
+        if enableStartupProjectScans {
+            // After every turn, run a discipline scan and refresh the pending-attention
+            // chip. No-op for projects without a tasks/ or .merlin/ tree.
+            engine.$isRunning
+                .filter { !$0 }
+                .receive(on: RunLoop.main)
+                .sink { [weak self] _ in
+                    guard let self, !self.projectPath.isEmpty else { return }
+                    let path = self.projectPath
+                    Task { [weak self] in
+                        guard let self else { return }
+                        _ = await self.disciplineEngine.scan(projectPath: path)
+                        await self.disciplineEngine.runWeeklyOverrideReview()
+                        await self.pendingAttention.refresh(projectPath: path)
+                    }
                 }
-            }
-            .store(in: &cancellables)
+                .store(in: &cancellables)
+        }
         // Prefer the open project's path; fall back to the global config.toml setting.
         let resolvedPath = projectPath.isEmpty ? AppSettings.shared.projectPath : projectPath
-        engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
+        if enableStartupProjectScans {
+            engine.currentProjectPath = resolvedPath.isEmpty ? nil : resolvedPath
+        } else {
+            engine.currentProjectPath = nil
+        }
         engine.ragRerank = AppSettings.shared.ragRerank
         engine.ragChunkLimit = AppSettings.shared.ragChunkLimit
         // contextWindowSize stays at the declaration default (200_000); AppSettings.maxTokens
@@ -358,6 +404,10 @@ final class AppState: ObservableObject {
         engine.onAdvisory = { [weak self] advisory in
             guard let self else { return }
             await self.handleAdvisory(advisory)
+        }
+        engine.onReasonOverrideRequest = { [weak self] request in
+            guard let self else { return false }
+            return await self.requestReasonOverride(request)
         }
         refreshLoRAProvider(
             enabled: AppSettings.shared.loraEnabled,
@@ -386,8 +436,7 @@ final class AppState: ObservableObject {
         }
         Task { await xcalibreClient.probe() }
         Task {
-            await registry.probeAndFetchModels()
-            await registry.fetchAllModels()
+            await registry.probeAndFetchModels(providerIDs: startupProviderIDs())
         }
         let key = ConnectorCredentials.retrieve(service: "brave-search") ?? ""
         if !key.isEmpty {
@@ -541,6 +590,7 @@ final class AppState: ObservableObject {
                 self?.engine.toolRouter.registerWorkspaceCapabilityTools(capabilities)
             }
         }
+        startSlotRuntimeEventSubscription()
         MerlinAppIntentsSupport.install(appState: self)
     }
 
@@ -591,6 +641,24 @@ final class AppState: ObservableObject {
         }
     }
 
+    private func startSlotRuntimeEventSubscription() {
+        slotRuntimeEventTask?.cancel()
+        slotRuntimeEventTask = Task { [weak self, bus = workspaceRuntime.bus] in
+            let stream = await bus.subscribe(WorkspaceMessageEventFilter(namespacePrefix: "agent.slot"))
+            for await event in stream {
+                guard !Task.isCancelled,
+                      event.address.capability == "runtime_state",
+                      let data = event.payload?.data,
+                      let envelope = try? WorkspaceJSON.decoder.decode(SlotRuntimeStateEnvelope.self, from: data) else {
+                    continue
+                }
+                await MainActor.run {
+                    self?.setSlotRuntimeState(envelope.state, for: envelope.slot)
+                }
+            }
+        }
+    }
+
     private func disciplineToolProjectPath(from args: String) -> String {
         let decoded = try? JSONDecoder().decode(DisciplineToolArgs.self, from: Data(args.utf8))
         if let requested = decoded?.projectPath, !requested.isEmpty {
@@ -617,6 +685,7 @@ final class AppState: ObservableObject {
 
     deinit {
         disciplineEventPollTask?.cancel()
+        slotRuntimeEventTask?.cancel()
         if let githubTokenObserver {
             NotificationCenter.default.removeObserver(githubTokenObserver)
         }
@@ -628,6 +697,8 @@ final class AppState: ObservableObject {
         }
         pendingAuthContinuation?.resume(returning: .deny)
         pendingAuthContinuation = nil
+        pendingReasonOverrideContinuation?.resume(returning: false)
+        pendingReasonOverrideContinuation = nil
     }
 
     func resolveAuth(_ decision: AuthDecision) {
@@ -638,8 +709,17 @@ final class AppState: ObservableObject {
         continuation?.resume(returning: decision)
     }
 
+    func resolveReasonOverride(_ approved: Bool) {
+        let continuation = pendingReasonOverrideContinuation
+        pendingReasonOverrideContinuation = nil
+        pendingReasonOverrideRequest = nil
+        showReasonOverridePopup = false
+        continuation?.resume(returning: approved)
+    }
+
     func newSession() {
         engine.cancel()
+        resolveReasonOverride(false)
         engine.contextManager.clear()
         // Reset the circuit breaker counter so a new session always starts clean.
         engine.consecutiveCriticFailures = 0
@@ -659,13 +739,22 @@ final class AppState: ObservableObject {
             return
         }
 
-        for await _ in engine.send(userMessage: trimmed) {}
+        await awaitRuntimePluginsReady()
+
+        for await event in engine.send(userMessage: trimmed) {
+            if case .slotRuntimeState(let slot, let state) = event {
+                await publishSlotRuntimeState(state, for: slot)
+            }
+        }
     }
 
     func stopEngine() {
         engine.cancel()
         toolActivityState = .idle
         thinkingModeActive = false
+        for (slot, state) in slotRuntimeStates where state == .busy {
+            setSlotRuntimeState(.ready, for: slot)
+        }
     }
 
     func updateContextUsage(_ tokens: Int) {
@@ -750,9 +839,11 @@ final class AppState: ObservableObject {
 
     private static func inferredActiveDomainIDs(
         requested ids: [String],
-        projectPath: String
+        projectPath: String,
+        inferProjectDomains: Bool
     ) -> [String] {
         var resolved = ids.isEmpty ? SoftwareDomain.defaultActiveDomainIDs : ids
+        guard inferProjectDomains else { return resolved }
         if ElectronicsDomain.projectLooksLikeElectronics(projectPath),
            !resolved.contains(ElectronicsDomain.defaultID) {
             resolved.append(ElectronicsDomain.defaultID)
@@ -770,6 +861,20 @@ final class AppState: ObservableObject {
         updated.activeDomainIDs = ids
         updated.updatedAt = Date()
         try? sessionStore.save(updated)
+    }
+
+    private func startupProviderIDs() -> Set<String> {
+        var ids = Set<String>()
+        ids.insert(baseProviderID(registry.activeProviderID))
+        for slotID in AppSettings.shared.slotAssignments.values {
+            ids.insert(baseProviderID(slotID))
+        }
+        ids.remove("")
+        return ids
+    }
+
+    private func baseProviderID(_ id: String) -> String {
+        id.contains(":") ? String(id.split(separator: ":", maxSplits: 1)[0]) : id
     }
 
     private func syncEngineProviders(activeDomainIDs: [String]? = nil) {
@@ -840,6 +945,7 @@ final class AppState: ObservableObject {
 
     /// Applies an advisory to either the active local model or AppSettings inference defaults.
     /// `.contextLengthTooSmall` reloads the local manager and may surface restart instructions.
+    /// `.llamaCppRuntimeUntuned` applies the calibrated llama.cpp restart profile.
     /// `.maxTokensTooLow` raises `AppSettings.inferenceMaxTokens`.
     /// `.temperatureUnstable` lowers `AppSettings.inferenceTemperature`.
     /// `.repetitiveOutput` raises `AppSettings.inferenceRepeatPenalty`.
@@ -861,6 +967,36 @@ final class AppState: ObservableObject {
                 let reloadedModelID = manager.reloadedModelID(afterApplying: config, to: advisory.modelID)
                 registry.updateModel(reloadedModelID, for: providerID)
                 await refreshParameterAdvisories(for: reloadedModelID)
+            } catch ModelManagerError.requiresRestart(let instructions) {
+                pendingRestartInstructions = instructions
+                throw ModelManagerError.requiresRestart(instructions)
+            }
+
+        case .llamaCppRuntimeUntuned:
+            var runtime = AppSettings.shared.llamaCppRuntime
+            if (runtime.ubatchSize ?? 0) < 512 {
+                runtime.ubatchSize = 512
+            }
+            AppSettings.shared.llamaCppRuntime = runtime
+            try? AppSettings.shared.save()
+            reloadProviders()
+
+            var config = LocalModelConfig()
+            config.flashAttention = true
+            config.batchSize = 1024
+            config.cacheTypeK = "q8_0"
+            config.cacheTypeV = "q8_0"
+
+            guard let providerID = activeLocalProviderID ?? registry.activeConfig?.id,
+                  providerID == "llamacpp",
+                  let manager = localModelManagers[providerID] else {
+                throw ModelManagerError.providerUnavailable
+            }
+
+            pendingRestartInstructions = nil
+            do {
+                try await manager.reload(modelID: advisory.modelID, config: config)
+                await refreshParameterAdvisories(for: advisory.modelID)
             } catch ModelManagerError.requiresRestart(let instructions) {
                 pendingRestartInstructions = instructions
                 throw ModelManagerError.requiresRestart(instructions)
@@ -970,7 +1106,7 @@ final class AppState: ObservableObject {
     }
 
     private func handleAdvisory(_ advisory: ParameterAdvisory) async {
-        engine.isReloadingModel = advisory.kind == .contextLengthTooSmall
+        engine.isReloadingModel = advisory.kind == .contextLengthTooSmall || advisory.kind == .llamaCppRuntimeUntuned
         defer { engine.isReloadingModel = false }
 
         do {
@@ -1049,6 +1185,23 @@ extension AppState: AuthPresenter {
         } onCancel: {
             Task { @MainActor [weak self] in
                 self?.resolveAuth(.deny)
+            }
+        }
+    }
+}
+
+extension AppState {
+    func requestReasonOverride(_ request: ReasonExecutionOverrideRequest) async -> Bool {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                pendingReasonOverrideContinuation?.resume(returning: false)
+                pendingReasonOverrideContinuation = continuation
+                pendingReasonOverrideRequest = ReasonOverrideApprovalRequest(request: request)
+                showReasonOverridePopup = true
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.resolveReasonOverride(false)
             }
         }
     }

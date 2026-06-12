@@ -60,13 +60,21 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $appState.showReasonOverridePopup) {
+            if let pending = appState.pendingReasonOverrideRequest {
+                ReasonOverridePopupView(
+                    request: pending.request,
+                    onDecision: { appState.resolveReasonOverride($0) }
+                )
+            }
+        }
         .sheet(isPresented: $appState.showFirstLaunchSetup) {
             FirstLaunchSetupView()
                 .environmentObject(appState)
         }
         .sheet(isPresented: Binding(
             get: { appState.calibrationCoordinator.sheet != nil },
-            set: { if !$0 { appState.calibrationCoordinator.sheet = nil } }
+            set: { if !$0 { appState.calibrationCoordinator.dismiss() } }
         )) {
             // Single persistent sheet — state switching happens inside so SwiftUI
             // never has to dismiss + re-present (which silently drops the new sheet).

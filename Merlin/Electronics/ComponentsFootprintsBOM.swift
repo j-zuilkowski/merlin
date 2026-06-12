@@ -13,6 +13,36 @@ struct FootprintAssignment: Codable, Sendable, Equatable {
     var refdes: String
     var footprint: String
     var source: FootprintAssignmentSource
+    var pinPadMap: [String: String]
+    var sourceProviderID: String
+    var sourcePath: String?
+    var packageCompatibilityEvidence: String
+
+    enum CodingKeys: String, CodingKey {
+        case refdes
+        case footprint
+        case source
+        case pinPadMap = "pin_pad_map"
+        case sourceProviderID = "source_provider_id"
+        case sourcePath = "source_path"
+        case packageCompatibilityEvidence = "package_compatibility_evidence"
+    }
+
+    init(refdes: String,
+         footprint: String,
+         source: FootprintAssignmentSource,
+         pinPadMap: [String: String] = [:],
+         sourceProviderID: String = "",
+         sourcePath: String? = nil,
+         packageCompatibilityEvidence: String = "") {
+        self.refdes = refdes
+        self.footprint = footprint
+        self.source = source
+        self.pinPadMap = pinPadMap
+        self.sourceProviderID = sourceProviderID
+        self.sourcePath = sourcePath
+        self.packageCompatibilityEvidence = packageCompatibilityEvidence
+    }
 }
 
 struct FootprintAssignmentReport: Codable, Sendable, Equatable {

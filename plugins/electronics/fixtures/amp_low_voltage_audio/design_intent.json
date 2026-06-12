@@ -1,0 +1,73 @@
+{
+  "design_id": "amp_low_voltage_audio",
+  "title": "25W pure Class A guitar amplifier low-voltage audio board",
+  "origin": "user_authored",
+  "approval": {
+    "status": "approved",
+    "approved_by": "fixture",
+    "approved_at": "2026-05-29T00:00:00Z"
+  },
+  "requirements": [
+    {
+      "id": "req-audio-001",
+      "text": "Represent the isolated secondary-side low-voltage audio board for a 25W pure Class A solid-state guitar amplifier.",
+      "priority": "must"
+    },
+    {
+      "id": "req-audio-002",
+      "text": "Include discrete input preamp, 3-band tone circuit, sweepable boost/cut filter, voltage driver, Class A output stage, speaker output, and low-voltage rail distribution.",
+      "priority": "must"
+    },
+    {
+      "id": "req-audio-003",
+      "text": "Record thermal constraints for the output stage and require external heatsink review before build approval.",
+      "priority": "must"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "assume-001",
+      "text": "Mains inlet, fuse, switch, protective earth bond, and transformer primary are not on this board.",
+      "rationale": "The hazardous mains power supply is a separate board and schematic."
+    },
+    {
+      "id": "assume-002",
+      "text": "The low-voltage rail enters this board from an isolated transformer secondary and rectifier interface.",
+      "rationale": "The first acceptance milestone verifies only the isolated secondary-side schematic."
+    }
+  ],
+  "components": [],
+  "nets": [],
+  "unresolved_decisions": [
+    {
+      "id": "ud-thermal-001",
+      "question": "Select final heatsink thermal resistance after enclosure and ambient-temperature targets are known.",
+      "blocking": false
+    },
+    {
+      "id": "ud-output-001",
+      "question": "Confirm final output transistor substitute policy against available manufacturer SPICE and safe operating area data.",
+      "blocking": false
+    }
+  ],
+  "boards": [
+    {
+      "id": "amp_low_voltage_audio",
+      "title": "Low Voltage Audio Board",
+      "safety_domain": "isolated_secondary"
+    }
+  ],
+  "safety_profile": {
+    "isolation_required": true,
+    "creepage_mm": 6.4,
+    "notes": [
+      "Low-voltage isolated secondary only.",
+      "Mains supply and protective-earth decisions are handled by amp_mains_power_supply."
+    ]
+  },
+  "verification_plan": {
+    "erc_required": true,
+    "drc_required": false,
+    "spice_required": true
+  }
+}

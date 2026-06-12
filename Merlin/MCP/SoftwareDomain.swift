@@ -62,12 +62,14 @@ struct ElectronicsDomain: DomainPlugin {
     ]
     let systemPromptAddendum: String? = """
     Active domain: Electronics. Use the verified KiCad/electronics MCP or workspace \
-    plugin tool path when it is available. For end-to-end requirements-to-PCB board \
-    design tasks, your first tool call must be `workflow.requirements_to_pcb` with \
-    the user's board requirements. After that workflow returns, inspect or verify \
-    the returned artifacts using `kicad_*` tools as needed. Do not create a \
-    requirements file yourself, and do not call `kicad_build_intent_model` with a \
-    path unless a previous electronics tool returned that exact artifact path. \
+    plugin tool path when it is available. Use `workflow.requirements_to_pcb` only \
+    for full end-to-end board completion requests that ask Merlin to proceed through \
+    the verified PCB workflow. For focused validation slices, DesignIntent drafting, \
+    approval handoff, or Circuit IR generation, call the explicit tools in order: \
+    read inspection tools as needed, `kicad_build_intent_model`, \
+    `kicad_approve_design_intent` when explicit approval is present, then \
+    `kicad_generate_circuit_ir`. Do not call `workflow.requirements_to_pcb` for a \
+    focused slice that tells you to stop before component selection or compile. \
     Treat netlists, schematics, PCB files, BOMs, and fabrication outputs as domain \
     artifacts that should be produced and verified through the electronics \
     toolchain rather than hand-written freeform text. Manufacturing, ordering, and \

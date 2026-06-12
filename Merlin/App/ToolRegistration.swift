@@ -112,8 +112,12 @@ func registerAllTools(
     }
 
     // MARK: Tool Discovery
-    router.register(name: "tool_discover") { _ in
-        let tools = await ToolDiscovery.scan(summarize: false)
+    router.register(name: "tool_discover") { args in
+        let request = try? decode(args, as: ToolDiscovery.Request.self)
+        let tools = await ToolDiscovery.cachedScan(
+            requestedTool: request?.requestedName,
+            summarize: false
+        )
         return tools.map { "\($0.name): \($0.path)" }.joined(separator: "\n")
     }
 
@@ -369,6 +373,14 @@ struct BuiltInToolScope {
         }
 
         let path = url.standardizedFileURL.path
+        if let projectRoot,
+           effectiveRaw.hasPrefix("/"),
+           let fallback = projectRequirementsFallback(
+               requestedPath: path,
+               projectRoot: projectRoot
+           ) {
+            return fallback
+        }
         return BuiltInToolScope(path: path, warning: outsideProjectWarning(path: path, projectRoot: projectRoot))
     }
 
@@ -394,6 +406,28 @@ struct BuiltInToolScope {
             return "Warning: requested path is outside current project root. Current project root: \(projectRoot). Requested path: \(path)."
         }
         return nil
+    }
+
+    private static func projectRequirementsFallback(
+        requestedPath: String,
+        projectRoot: String
+    ) -> BuiltInToolScope? {
+        let requestedURL = URL(fileURLWithPath: requestedPath)
+        let fileName = requestedURL.lastPathComponent.lowercased()
+        guard ["spec.md", "requirements.md", "requirements.txt"].contains(fileName),
+              requestedPath != projectRoot + "/" + requestedURL.lastPathComponent,
+              !FileManager.default.fileExists(atPath: requestedPath)
+        else { return nil }
+
+        let candidateURL = URL(fileURLWithPath: projectRoot, isDirectory: true)
+            .appendingPathComponent(requestedURL.lastPathComponent)
+            .standardizedFileURL
+        guard FileManager.default.fileExists(atPath: candidateURL.path) else { return nil }
+
+        return BuiltInToolScope(
+            path: candidateURL.path,
+            warning: "Warning: requested absolute requirements/spec path did not exist and was corrected to current project root. Current project root: \(projectRoot). Requested path: \(requestedPath). Corrected path: \(candidateURL.path)."
+        )
     }
 }
 

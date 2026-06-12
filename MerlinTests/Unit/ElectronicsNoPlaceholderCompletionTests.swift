@@ -29,5 +29,11 @@ final class ElectronicsNoPlaceholderCompletionTests: XCTestCase {
         let source = try repoText("Merlin/Plugins/ElectronicsRuntimePlugin.swift")
         XCTAssertFalse(source.contains(#""{\"status\":\"COMPLETE\"}""#))
         XCTAssertFalse(source.contains(#"{"status":"COMPLETE"}"#))
+        XCTAssertFalse(source.contains("U1 NE555"))
+        XCTAssertFalse(source.contains("R1=10k"))
+        XCTAssertFalse(source.contains("C1=10uF"))
+        XCTAssertFalse(source.contains("AmpDemo:"))
+        XCTAssertFalse(source.contains("ampDemo"))
+        XCTAssertFalse(source.contains("runAmpDemoRequirementsWorkflow"))
     }
 }

@@ -1,0 +1,8 @@
+RefDes,Value,Quantity
+U1,NE555,1
+R1,10k,1
+R2,47k,1
+C1,10uF,1
+C2,10nF,1
+R3,330,1
+D1,LED,1

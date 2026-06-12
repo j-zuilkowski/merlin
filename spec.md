@@ -36,7 +36,7 @@ code is written.
 **[v5]** Supervisor-worker multi-LLM: DomainRegistry, DomainPlugin, SoftwareDomain, AgentSlot routing (execute/reason/orchestrate/vision), ModelPerformanceTracker, CriticEngine, PlannerEngine; RAG memory extension: RAGSourcesView, MemoryBrowserView, memory write gated on critic verdict; V5 settings UI: RoleSlotSettingsView, PerformanceDashboardView; skill frontmatter role/complexity; OutcomeRecord persistence; StagingBuffer accept/reject counters wired into OutcomeSignals.
 **[v6]** LoRA self-training: LoRATrainer (exportJSONL + mlx_lm.lora), LoRACoordinator (threshold-gated auto-train, isTraining guard), LoRA provider routing (execute slot → mlx_lm.server when adapter loaded — LM Studio and vLLM-Metal are alternative MLX-native serving targets), LoRASettingsSection; OutcomeRecord prompt/response fields; exportTrainingData filters empty-text records; AppSettings [lora] TOML section.
 **[v7]** Inference parameter expansion + local model management: CompletionRequest extended with 8 sampling params (topP, topK, minP, repeatPenalty, frequencyPenalty, presencePenalty, seed, stop); AppSettings [inference] TOML section with applyInferenceDefaults(); ModelParameterAdvisor (finishReason truncation, score variance, trigram repetition, context overflow); LocalModelManagerProtocol with 6 shipped provider implementations + NullModelManager; ModelControlView (per-provider load param editor + RestartInstructionsSheet); accepted memories dual-path to xcalibre RAG.
-**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
+**[v8]** Cross-provider model calibration: `CalibrationSuite` (18-prompt battery across reasoning, coding, instruction-following, summarization), `CalibrationRunner` (sequential across prompts, concurrent local + reference dispatch within each prompt, critic scoring with explicit degraded-fallback reporting), `CalibrationAdvisor` (maps score gaps to ParameterAdvisory — context length, temperature, max tokens, repeat penalty; also owns the llama.cpp runtime profile advisory for flash attention, batch/micro-batch, and KV cache settings), `CalibrationCoordinator` + `/calibrate` skill (provider picker → live progress → report with per-category breakdown and one-tap apply-all via existing applyAdvisory() pipeline).
 **[v9]** Local memory store + behavioral reliability: `MemoryBackendPlugin` plugin system; `LocalVectorPlugin` (SQLite + `NLContextualEmbedding`); xcalibre retained for book content only; circuit breaker (task 140); grounding confidence signal (task 141).
 **[v10]** KAG — Knowledge-Augmented Generation: `KAGBackendPlugin` protocol; `LocalKAGPlugin` (SQLite graph store at `~/.merlin/kag/`); `XcalibreKAGPlugin` (preferred — fuses session working graph with xcalibre book knowledge graph via REST); `KAGEngine` post-turn triple extraction; `RAGTools.buildEnrichedMessage` extended with graph subgraph injection; `kagEnabled` + `kagHops` in AppSettings.
 **[v1.5]** Session history & archive: `Session.archived` field, `SessionStore` project-scoped per-project directory (`sessions/<project-id>/`), `archive`/`unarchive`/`activeSessions`/`archivedSessions`, `SessionManager.restore(session:)` with auto-compaction, `ContextManager.load(_:)`, `RelativeTimestampFormatter`, Prior Sessions sidebar section with timestamps and context menus, legacy session migration to `__legacy__/`. ( tasks 181–184)
@@ -53,8 +53,8 @@ code is written.
 **[v2.1.0]** Budget-Aware Execution: per-provider context-window enforcement at request-build time, replacing reactive 400-recovery loops; pre-flight token estimator; working-set caps for system prompt / RAG / recent turns / tool-call bursts; cross-provider routing to a larger-context model as a last resort before decomposition. See §V2.1 — Budget-Aware Execution. **Shipped v2.1.0.**
 
 **[v2.2.x]** Project Discipline Subsystem: `DisciplineEngine` enforcement layer + five `/project:*` creation skills (`init`, `task`, `revise`, `release`, `adopt`); git-hook integration scans for TDD pair drift, missing docstrings, doc-code sync, prose readability; pre-commit blocks; session-start "pending attention" surface. See §V2.2 — Project Discipline Subsystem. Patch releases (`v2.2.0` → `v2.2.5`) tightened the scanners and the `/project:adopt` flow. **Shipped through v2.2.5** (build 24, tag `v2.2.5`).
-**[v2.3.0]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; preferred local provider for Merlin's general+vision workflow; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only. **Shipped v2.3.0** (build 25, tag `v2.3.0`).
-**[v2.4]** Full green E2E release gate: the complete Merlin proving run is a blocking acceptance surface, not a screenshot exercise. Core tests, GUI runner bootstrapping, focused visual tests, live DeepSeek execution, local-provider pair smokes, xcalibre RAG readiness, S1/S2 capability convergence, and electronics/KiCad checks must all pass or produce explicit environment skips for missing provider keys only. GitHub feature screenshots are deferred until this battery is green.
+**[v2.3.0]** First-class llama.cpp local provider: `llamacpp` default provider on `localhost:8081/v1`; preferred local provider for Merlin's general+vision workflow; `LlamaCppModelManager`; router-mode capability for one-server general+vision pairs; runtime model load/unload through llama-server router endpoints; GGUF + `mmproj` model configuration; role-slot assignment through existing virtual provider IDs (`llamacpp:<model-id>`). Main workspace slot-status redesign: top provider HUD removed; left-sidebar collapsed slot panel shows execute/reason/orchestrate/vision routing from explicit slot assignments only. Integrated in build 25.
+**[v2.4.0]** Full green E2E release gate: the complete Merlin proving run is a blocking acceptance surface, not a screenshot exercise. Core tests, GUI runner bootstrapping, focused visual tests, live DeepSeek execution, local-provider pair smokes, xcalibre RAG readiness, S1/S2 capability convergence, and electronics/KiCad checks must all pass or produce explicit environment skips for missing provider keys only. GitHub feature screenshots are deferred until this battery is green. Current app version: build 26.
 
 **Target hardware:** M4 Mac Studio, 128GB unified memory
 **Language:** Swift (SwiftUI + Swift Concurrency)
@@ -269,6 +269,7 @@ ModelParameterAdvisor [v7]:
   ModelParameterAdvisor.checkRecord(_:) → immediate per-turn checks:
     finishReason == "length"   → ParameterAdvisory(.maxTokensTooLow)
     context overflow string    → ParameterAdvisory(.contextLengthTooSmall)
+    llama.cpp calibration      → ParameterAdvisory(.llamaCppRuntimeUntuned)
 
   ModelParameterAdvisor.analyze(records:modelID:) → batch checks:
     score std-dev > 0.25 (≥5 records)           → .temperatureUnstable
@@ -337,6 +338,8 @@ Local Model Management [v7]:
     activeLocalProviderID: String?
     applyAdvisory(_ advisory: ParameterAdvisory) async throws
       → load-time kinds (.contextLengthTooSmall) → manager.reload()
+      → llama.cpp runtime kind (.llamaCppRuntimeUntuned) → calibrated restart profile:
+           flashAttention=true, batchSize=1024, ubatchSize=512, cacheTypeK/V=q8_0
       → inference kinds (.maxTokensTooLow, .temperatureUnstable, .repetitiveOutput)
            → AppSettings inference defaults update
 
@@ -629,7 +632,7 @@ The May 26-27, 2026 shell runner and its harness-specific unit tests are retired
 6. llama.cpp router: the smoke path must use explicit model IDs for the text and vision requests and must not silently select the router's `default` catalog entry for completion, streaming, tool-call, or image requests.
 7. xcalibre RAG: the live server health, configured Merlin base URL, authenticated search endpoint, and cleanup path are verified.
 8. Capability scenarios: S1 Swift GUI debug and S2 Rust debug must converge by applying fixes until the target verification commands pass.
-9. Electronics/KiCad: the active `plugins/electronics` runtime plugin, KiCad CLI generation, ERC/DRC fixture, and current documentation sweep pass. Archived `merlin-kicad-mcp` material is historical evidence only.
+9. Electronics/KiCad: the active `plugins/electronics` runtime plugin, KiCad CLI generation, ERC/DRC fixture, and current documentation sweep pass. After the full battery is green, the release operator must open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available. Archived `merlin-kicad-mcp` material is historical evidence only.
 
 ### Failure Semantics
 
@@ -637,6 +640,8 @@ The May 26-27, 2026 shell runner and its harness-specific unit tests are retired
 - If the GUI test runner cannot bootstrap under a chosen DerivedData/signing configuration, the verification process must reject that configuration before treating the result as product evidence.
 - S1/S2 live runs must not stop at natural-language diagnosis while verification still fails. Repetition, no-progress loops, or false environment claims are failures unless a documented bounded recovery policy captures the remaining failing command output.
 - Evidence directories must not retain screenshots intended for GitHub before the full battery is green, provider secret material, temporary xcalibre databases, config backups, or orphaned service processes.
+- Release screenshots are created only after the full battery is green, and KiCad screenshots must come from files opened in KiCad rather than from generated static images alone.
+- Screenshot destinations are fixed: GitHub Release marketing and KiCad screenshots are uploaded to the `v2.4.0` GitHub Release as release assets; README-linked screenshots are committed under `docs/assets/screenshots/v2.4.0/`; evidence-only screenshots stay with the run report under `docs/e2e/<date>-v2.4.0-release/screenshots/`.
 - A passing report must list the exact command, provider, model ID, service port, and cleanup result for each surface above.
 
 ### Current Remediation Scope
@@ -689,6 +694,11 @@ CalibrationRunner.run(suite: .default)           ← prompts run sequentially; l
         ▼
 CalibrationAdvisor.analyze(responses:localModelID:localProviderID:)
   checks:
+    localProviderID == "llamacpp" and runtime profile missing
+                                 → .llamaCppRuntimeUntuned
+                                   (suggestedValue: flashAttention=true;
+                                    batchSize=1024; ubatchSize=512;
+                                    cacheTypeK=q8_0; cacheTypeV=q8_0)
     overallDelta < 0.15         → return []
     overallDelta ≥ 0.40          → .contextLengthTooSmall  (suggestedValue: "32768")
     local score σ ≥ 0.22         → .temperatureUnstable    (suggestedValue: "0.3")
@@ -5263,7 +5273,7 @@ self-polices.
 
 ### DisciplineEngine
 
-A new `Merlin/Engine/DisciplineEngine.swift` actor, peer to `AgenticEngine`, `MemoryEngine`,
+A new `Merlin/Discipline/DisciplineEngine.swift` actor, peer to `AgenticEngine`, `MemoryEngine`,
 `PlannerEngine`. Coordinates the scanners, owns the pending-attention queue, integrates with
 the hook engine.
 

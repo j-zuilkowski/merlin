@@ -77,6 +77,32 @@ final class SessionBugFixTests: XCTestCase {
         )
     }
 
+    func test_liveSession_fileInjectionSubmitsThroughOwnedChatViewModel() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Merlin/Sessions/LiveSession.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+
+        XCTAssertTrue(
+            source.contains("await self.submitInjectedMessage(text)"),
+            "LiveSession inject watcher must submit the consumed inject-file payload itself"
+        )
+        XCTAssertFalse(
+            source.contains("await self?.submitInjectedMessage(text)"),
+            "Inject-file delivery must not delete the prompt and then depend on an optional weak self"
+        )
+        XCTAssertTrue(
+            source.contains("await chatViewModel.submit(appState: appState)"),
+            "Injected prompts must flow through the session-owned ChatViewModel"
+        )
+        XCTAssertFalse(
+            source.contains("NotificationCenter.default.post(\n                        name: .merlinInjectMessage"),
+            "Inject-file delivery must not rely only on SwiftUI notification routing"
+        )
+    }
+
     // MARK: - Bug 4: Compact context actually removes messages
 
     /// When force-compacting a context that has no tool-exchange groups

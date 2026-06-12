@@ -126,7 +126,11 @@ final class CapabilityScenarioTests: XCTestCase {
                 .deletingLastPathComponent().deletingLastPathComponent().path) }
 
         let run = try await EvalHarness.runScenario(
-            fixturePath: fixture, prompt: EvalPrompts.s1, timeout: 1800)
+            fixturePath: fixture,
+            prompt: EvalPrompts.s1,
+            timeout: 1800,
+            stopOnGreenVerification: true,
+            stopAfterSourceEdit: true)
         XCTAssertTrue(run.errors.isEmpty, "S1 engine errors: \(run.errors)")
 
         _ = EvalShell.run("/usr/bin/xcodegen", ["generate"], cwd: fixture)
@@ -170,7 +174,10 @@ final class CapabilityScenarioTests: XCTestCase {
                 .deletingLastPathComponent().deletingLastPathComponent().path) }
 
         let run = try await EvalHarness.runScenario(
-            fixturePath: fixture, prompt: EvalPrompts.s2, timeout: 1800)
+            fixturePath: fixture,
+            prompt: EvalPrompts.s2,
+            timeout: 1800,
+            stopOnGreenVerification: true)
         XCTAssertTrue(run.errors.isEmpty, "S2 engine errors: \(run.errors)")
 
         // Run via `zsh -c` (sources the user's env) — `/usr/bin/env` execs with the

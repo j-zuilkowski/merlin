@@ -9,7 +9,11 @@ struct SessionSidebar: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(coordinator.projectManagers, id: \.projectRef.path) { mgr in
-                        ProjectSection(mgr: mgr, coordinator: coordinator)
+                        ProjectSection(
+                            mgr: mgr,
+                            sessionStore: mgr.sessionStore,
+                            coordinator: coordinator
+                        )
                         Divider()
                     }
                 }
@@ -18,13 +22,17 @@ struct SessionSidebar: View {
 
             Divider()
 
-            SlotStatusPanel(
-                slotAssignments: settings.slotAssignments,
-                slotRuntimeStates: coordinator.activeSession?.appState.slotRuntimeStates ?? [:],
-                displayNameForProviderID: { providerID in
-                    coordinator.activeSession?.appState.registry.displayName(for: providerID) ?? providerID
-                }
-            )
+            if let appState = coordinator.activeSession?.appState {
+                ActiveSessionSlotStatusPanel(
+                    appState: appState,
+                    slotAssignments: settings.slotAssignments
+                )
+            } else {
+                SlotStatusPanel(
+                    slotAssignments: [:],
+                    displayNameForProviderID: { $0 }
+                )
+            }
 
             Divider()
 
@@ -46,10 +54,29 @@ struct SessionSidebar: View {
     }
 }
 
+private struct ActiveSessionSlotStatusPanel: View {
+    @ObservedObject var appState: AppState
+    let slotAssignments: [AgentSlot: String]
+
+    var body: some View {
+        SlotStatusPanel(
+            slotAssignments: slotAssignments,
+            slotRuntimeStates: appState.slotRuntimeStates,
+            displayNameForProviderID: { providerID in
+                appState.registry.displayName(for: providerID)
+            },
+            isProviderReadyForUse: { providerID in
+                appState.registry.isReadyForUse(providerID)
+            }
+        )
+    }
+}
+
 // MARK: - Project section
 
 private struct ProjectSection: View {
     @ObservedObject var mgr: SessionManager
+    @ObservedObject var sessionStore: SessionStore
     let coordinator: WorkspaceCoordinator
 
     @State private var showHeaderPopover = false
@@ -105,7 +132,7 @@ private struct ProjectSection: View {
 
                 // Prior sessions (disk records not currently live)
                 let liveIDs = Set(mgr.liveSessions.map(\.id))
-                let prior = mgr.sessionStore.activeSessions.filter { !liveIDs.contains($0.id) }
+                let prior = sessionStore.activeSessions.filter { !liveIDs.contains($0.id) }
 
                 if !prior.isEmpty {
                     SectionLabel("Prior Sessions").padding(.top, 6)
@@ -139,17 +166,17 @@ private struct ProjectSection: View {
                                 }
                                 Divider()
                                 Button("Archive") {
-                                    try? mgr.sessionStore.archive(session.id)
+                                    try? sessionStore.archive(session.id)
                                 }
                                 Button("Delete", role: .destructive) {
-                                    try? mgr.sessionStore.delete(session.id)
+                                    try? sessionStore.delete(session.id)
                                 }
                             }
                     }
                 }
 
                 // Archived sessions (collapsible)
-                let archived = mgr.sessionStore.archivedSessions
+                let archived = sessionStore.archivedSessions
                 if !archived.isEmpty {
                     Button {
                         showArchived.toggle()
@@ -175,11 +202,11 @@ private struct ProjectSection: View {
                             PriorSessionRow(session: session, dimmed: true)
                                 .contextMenu {
                                     Button("Recall") {
-                                        try? mgr.sessionStore.unarchive(session.id)
+                                        try? sessionStore.unarchive(session.id)
                                     }
                                     Divider()
                                     Button("Delete", role: .destructive) {
-                                        try? mgr.sessionStore.delete(session.id)
+                                        try? sessionStore.delete(session.id)
                                     }
                                 }
                         }

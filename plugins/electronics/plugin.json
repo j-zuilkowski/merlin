@@ -8,6 +8,88 @@
   "bootstrap_symbol": "merlin_electronics_plugin_bootstrap_json",
   "handler_symbol": "merlin_electronics_plugin_handle_json",
   "domain_ids": ["electronics"],
+  "roles": [
+    {
+      "id": "electronics.analog_critic",
+      "display_name": "Analog Critic",
+      "plugin_id": "electronics",
+      "scope": "electronics",
+      "default_fallback": "reason",
+      "required_capabilities": ["structured_output", "long_context"],
+      "recommended_models": ["analog-specialist", "deepseek-r1-70b"],
+      "is_required": false
+    }
+  ],
+  "settings_schema": {
+    "namespace": "plugin.electronics",
+    "title": "Electronics",
+    "fields": [
+      {
+        "key": "kicad_cli_path",
+        "label": "KiCad CLI Path",
+        "kind": "path",
+        "default_value": null,
+        "is_secret": false,
+        "help": "Path to kicad-cli."
+      },
+      {
+        "key": "catalog_provider_mouser_enabled",
+        "label": "Mouser catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": true } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Mouser for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_digikey_enabled",
+        "label": "Digi-Key catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": true } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Digi-Key for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_nexar_enabled",
+        "label": "Nexar/Octopart catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query Nexar/Octopart for component catalog evidence."
+      },
+      {
+        "key": "catalog_provider_trustedparts_enabled",
+        "label": "TrustedParts catalog provider",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query TrustedParts for authorized distributor catalog evidence."
+      },
+      {
+        "key": "catalog_provider_onsemi_enabled",
+        "label": "onsemi manufacturer fallback",
+        "kind": "boolean",
+        "default_value": { "boolean": { "_0": false } },
+        "is_secret": false,
+        "help": "Allow the electronics plugin to query onsemi product pages as an exact-MPN fallback when sourcing providers do not resolve a part."
+      },
+      {
+        "key": "datasheet_cache_directory",
+        "label": "Datasheet cache directory",
+        "kind": "path",
+        "default_value": { "string": { "_0": "~/Library/Application Support/Merlin/plugins/electronics/datasheets" } },
+        "is_secret": false,
+        "help": "Directory where the electronics plugin saves datasheet PDFs and cache manifests before reusing them in future runs."
+      },
+      {
+        "key": "datasheet_cache_revalidate_after_seconds",
+        "label": "Datasheet cache revalidate interval",
+        "kind": "integer",
+        "default_value": { "integer": { "_0": 604800 } },
+        "is_secret": false,
+        "help": "Seconds before a saved datasheet PDF may be conditionally checked for updates. Set to 0 to only use the local copy once saved."
+      }
+    ]
+  },
   "capabilities": [
     {
       "id": "plugin.electronics.kicad_check_version",
@@ -38,10 +120,31 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_approve_design_intent",
+      "display_name": "kicad_approve_design_intent",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_approve_design_intent" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_generate_circuit_ir",
+      "display_name": "kicad_generate_circuit_ir",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_generate_circuit_ir" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_select_components",
       "display_name": "kicad_select_components",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_select_components" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_revise_component_selection",
+      "display_name": "kicad_revise_component_selection",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_revise_component_selection" },
       "required_permission_scope": "externalSideEffect"
     },
     {
@@ -108,10 +211,38 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_repair_erc_from_diagnostics",
+      "display_name": "kicad_repair_erc_from_diagnostics",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_repair_erc_from_diagnostics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_erc_repair_patch",
+      "display_name": "kicad_apply_erc_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_erc_repair_patch" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_run_drc",
       "display_name": "kicad_run_drc",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_run_drc" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_repair_drc_from_diagnostics",
+      "display_name": "kicad_repair_drc_from_diagnostics",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_repair_drc_from_diagnostics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_drc_repair_patch",
+      "display_name": "kicad_apply_drc_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_drc_repair_patch" },
       "required_permission_scope": "externalSideEffect"
     },
     {
@@ -122,10 +253,31 @@
       "required_permission_scope": "externalSideEffect"
     },
     {
+      "id": "plugin.electronics.kicad_generate_spice_scenario",
+      "display_name": "kicad_generate_spice_scenario",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_generate_spice_scenario" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
       "id": "plugin.electronics.kicad_run_spice",
       "display_name": "kicad_run_spice",
       "kind": "tool",
       "address": { "namespace": "plugin.electronics", "capability": "kicad_run_spice" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_repair_spice_from_diagnostics",
+      "display_name": "kicad_repair_spice_from_diagnostics",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_repair_spice_from_diagnostics" },
+      "required_permission_scope": "externalSideEffect"
+    },
+    {
+      "id": "plugin.electronics.kicad_apply_spice_repair_patch",
+      "display_name": "kicad_apply_spice_repair_patch",
+      "kind": "tool",
+      "address": { "namespace": "plugin.electronics", "capability": "kicad_apply_spice_repair_patch" },
       "required_permission_scope": "externalSideEffect"
     },
     {

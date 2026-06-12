@@ -60,6 +60,17 @@ final class SlotStatusResolverTests: XCTestCase {
         XCTAssertEqual(rows.first(where: { $0.id == .orchestrate })?.state, .notConfigured)
     }
 
+    func testAssignedRowsReflectUnreadyProviderAsError() {
+        let resolver = SlotStatusResolver(
+            displayNameForProviderID: { $0 },
+            isProviderReadyForUse: { $0 != "llamacpp:qwen3-coder" }
+        )
+
+        let rows = resolver.rows(slotAssignments: [.execute: "llamacpp:qwen3-coder"])
+
+        XCTAssertEqual(rows.first(where: { $0.id == .execute })?.state, .error)
+    }
+
     func testReasonAssignmentDoesNotPopulateOrchestrateFallbackDisplay() {
         let resolver = SlotStatusResolver { id in id == "anthropic" ? "Anthropic" : id }
         let rows = resolver.rows(slotAssignments: [.reason: "anthropic"])

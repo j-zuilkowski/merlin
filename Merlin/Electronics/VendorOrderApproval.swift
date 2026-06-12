@@ -117,6 +117,7 @@ enum ElectronicsApprovalKind: String, Codable, Sendable, CaseIterable {
     case profileChange = "profile_change"
     case substitution = "substitution"
     case orderSubmission = "order_submission"
+    case fabricationSubmission = "fabrication_submission"
     case libraryGeneration = "library_generation"
 }
 

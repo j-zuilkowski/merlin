@@ -1,0 +1,107 @@
+
+== preflight ==
+/Users/jonzuilkowski/.lmstudio/bin/lms
+preflight ok
+
+== lmstudio startup and load ==
+[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠧[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠇[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠏[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠋[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠙[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠹[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠸[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠼[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠴[?25lLoading qwen3-coder-30b-a3b-instruct-mlx ⠦[K[?25h[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[?25lLoading qwen/qwen3-vl-8b ⠧[?25lLoading qwen/qwen3-vl-8b ⠇[?25lLoading qwen/qwen3-vl-8b ⠏[?25lLoading qwen/qwen3-vl-8b ⠋[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[?25lLoading qwen/qwen3-vl-8b ⠧[?25lLoading qwen/qwen3-vl-8b ⠇[?25lLoading qwen/qwen3-vl-8b ⠏[?25lLoading qwen/qwen3-vl-8b ⠋[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[?25lLoading qwen/qwen3-vl-8b ⠧[?25lLoading qwen/qwen3-vl-8b ⠇[?25lLoading qwen/qwen3-vl-8b ⠏[?25lLoading qwen/qwen3-vl-8b ⠋[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[?25lLoading qwen/qwen3-vl-8b ⠧[?25lLoading qwen/qwen3-vl-8b ⠇[?25lLoading qwen/qwen3-vl-8b ⠏[?25lLoading qwen/qwen3-vl-8b ⠋[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[?25lLoading qwen/qwen3-vl-8b ⠧[?25lLoading qwen/qwen3-vl-8b ⠇[?25lLoading qwen/qwen3-vl-8b ⠏[?25lLoading qwen/qwen3-vl-8b ⠋[?25lLoading qwen/qwen3-vl-8b ⠙[?25lLoading qwen/qwen3-vl-8b ⠹[?25lLoading qwen/qwen3-vl-8b ⠸[?25lLoading qwen/qwen3-vl-8b ⠼[?25lLoading qwen/qwen3-vl-8b ⠴[?25lLoading qwen/qwen3-vl-8b ⠦[K[?25h{
+  "data": [
+    {
+      "id": "qwen3-coder-30b-a3b-instruct-mlx",
+      "object": "model",
+      "owned_by": "organization_owner"
+    },
+    {
+      "id": "qwen/qwen3-vl-8b",
+      "object": "model",
+      "owned_by": "organization_owner"
+    }
+  ],
+  "object": "list"
+}
+== lmstudio text streaming tool smoke ==
+== lmstudio == (http://localhost:1234/v1)
+  reachable      OK   (models: 2; first: qwen3-coder-30b-a3b-instruct-mlx)
+  text model:    qwen3-coder-30b-a3b-instruct-mlx
+  completion     OK   ("pong")
+  streaming      OK   (8 SSE chunks)
+  tool call      OK   (tool_calls present in response)
+
+== Summary ==
+  lmstudio     PASS
+PASS lmstudio text streaming tool smoke
+
+== lmstudio vision smoke ==
+{
+  "id": "chatcmpl-rj32r1mo7rpaasb8rr2si",
+  "object": "chat.completion",
+  "created": 1780946375,
+  "model": "qwen/qwen3-vl-8b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "vision",
+        "reasoning_content": "",
+        "tool_calls": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 18,
+    "completion_tokens": 2,
+    "total_tokens": 20,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "stats": {},
+  "system_fingerprint": "qwen/qwen3-vl-8b"
+}PASS lmstudio vision smoke (HTTP 200; model qwen/qwen3-vl-8b)
+
+== lmstudio shutdown ==
+PASS lmstudio shutdown: port 1234 closed
+
+== jan text startup ==
+{"models":[{"name":"Qwen3-Coder-30B-A3B-Instruct-Q8_0","model":"Qwen3-Coder-30B-A3B-Instruct-Q8_0","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"Qwen3-Coder-30B-A3B-Instruct-Q8_0","aliases":["Qwen3-Coder-30B-A3B-Instruct-Q8_0"],"tags":[],"object":"model","created":1780946391,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":32768,"n_ctx_train":262144,"n_embd":2048,"n_params":30532122624,"size":32477962240}}]}
+== jan text streaming tool smoke ==
+== jan == (http://localhost:1337/v1)
+  reachable      OK   (models: 1; first: Qwen3-Coder-30B-A3B-Instruct-Q8_0)
+  text model:    Qwen3-Coder-30B-A3B-Instruct-Q8_0
+  completion     OK   ("pong")
+  streaming      OK   (10 SSE chunks)
+  tool call      OK   (tool_calls present in response)
+  vision         SKIP (Jan text smoke uses a separate vision server lifecycle)
+
+== Summary ==
+  jan          PASS
+PASS jan text streaming tool smoke
+
+== jan text shutdown ==
+PASS jan text shutdown: port 1337 closed
+
+== jan vision startup ==
+{"models":[{"name":"Qwen_Qwen3-VL-8B-Instruct-Q8_0","model":"Qwen_Qwen3-VL-8B-Instruct-Q8_0","modified_at":"","size":"","digest":"","type":"model","description":"","tags":[""],"capabilities":["completion","multimodal"],"parameters":"","details":{"parent_model":"","format":"gguf","family":"","families":[""],"parameter_size":"","quantization_level":""}}],"object":"list","data":[{"id":"Qwen_Qwen3-VL-8B-Instruct-Q8_0","aliases":["Qwen_Qwen3-VL-8B-Instruct-Q8_0"],"tags":[],"object":"model","created":1780946400,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":32768,"n_ctx_train":262144,"n_embd":4096,"n_params":8190735360,"size":8703561728}}]}
+== jan vision smoke ==
+== jan == (http://localhost:1337/v1)
+  reachable      OK   (models: 1; first: Qwen_Qwen3-VL-8B-Instruct-Q8_0)
+  text model:    Qwen_Qwen3-VL-8B-Instruct-Q8_0
+  vision model:  Qwen_Qwen3-VL-8B-Instruct-Q8_0
+  vision         OK   (model Qwen_Qwen3-VL-8B-Instruct-Q8_0)
+
+== Summary ==
+  jan          PASS
+PASS jan vision smoke
+
+== jan vision shutdown ==
+PASS jan vision shutdown: port 1337 closed
+
+== summary ==
+GATE 5 PASS: local provider smokes and shutdown checks passed
+
+== cleanup ports ==
+port 1234: closed
+port 1337: closed

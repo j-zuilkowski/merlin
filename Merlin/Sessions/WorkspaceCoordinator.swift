@@ -47,16 +47,38 @@ final class WorkspaceCoordinator: ObservableObject {
     /// Adds a project to the workspace and creates its first live session.
     /// No-op if a manager for that path already exists.
     @discardableResult
-    func addProject(_ ref: ProjectRef) async -> SessionManager? {
+    func addProject(_ ref: ProjectRef, explicitDomainIDs: [String]? = nil) async -> SessionManager? {
         guard !projectManagers.contains(where: { $0.projectRef.path == ref.path }) else {
             return nil
         }
         let mgr = SessionManager(projectRef: ref)
         projectManagers.append(mgr)
-        let session = await mgr.newSession()
+        let session = await mgr.newSession(explicitDomainIDs: explicitDomainIDs)
         activeSession = session
         persistOpenProjects()
         return mgr
+    }
+
+    /// Ensures the project is present in the workspace and starts a live session.
+    /// This is used by launch/bootstrap paths where a restored project may already
+    /// have a manager but no active session yet.
+    @discardableResult
+    func startSession(for ref: ProjectRef, explicitDomainIDs: [String]? = nil) async -> LiveSession {
+        if let existing = projectManagers.first(where: { $0.projectRef.path == ref.path }) {
+            let session = await existing.newSession(explicitDomainIDs: explicitDomainIDs)
+            activeSession = session
+            showingProjectPicker = false
+            persistOpenProjects()
+            return session
+        }
+
+        let mgr = SessionManager(projectRef: ref)
+        projectManagers.append(mgr)
+        let session = await mgr.newSession(explicitDomainIDs: explicitDomainIDs)
+        activeSession = session
+        showingProjectPicker = false
+        persistOpenProjects()
+        return session
     }
 
     /// Removes a project and all its live sessions.

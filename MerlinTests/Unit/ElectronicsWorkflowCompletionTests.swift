@@ -27,7 +27,7 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.missingArtifact.rawValue)
     }
 
-    func testRequirementsWorkflowCanSynthesizeCompleteEvidenceFromPromptContract() async throws {
+    func testRequirementsWorkflowBlocksPromptOnlyCompletionInsteadOfSynthesizingArtifacts() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let output = temporaryDirectory("requirements-to-pcb")
@@ -35,16 +35,41 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         let payload = #"{"job_id":"s6","requirements":"555 astable LED blinker","output_directory":"\#(output.path)","high_stakes":false,"ngspice_path":"\#(ngspice.path)"}"#
 
         let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
-        XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.ok)
-        let report = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsFinalReport.self))
-        XCTAssertEqual(report.status, .complete)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: output.appendingPathComponent("merlin-board.kicad_pro").path))
-        XCTAssertTrue(report.artifacts.contains { $0.kind == .routingResult })
-        let spice = try XCTUnwrap(report.artifacts.first { $0.kind == .spiceMeasurements })
-        let spiceOutput = try String(contentsOfFile: spice.path, encoding: .utf8)
-        XCTAssertTrue(spiceOutput.contains("frequency"), spiceOutput)
-        XCTAssertEqual(report.gates.first { $0.gate == .simulation }?.status, .pass)
-        XCTAssertTrue(report.gates.allSatisfy { $0.status == .pass })
+        XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.blocked)
+        XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.missingArtifact.rawValue)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("merlin-board.kicad_pro").path))
+    }
+
+    func testRequirementsWorkflowBlocksAnyPromptWithoutGeneratingArtifacts() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let cases = [
+            ("amp-test", "Design a 25 watt pure Class A solid-state guitar amplifier for guitar with transformer-isolated North American mains."),
+            ("esp32-test", "Design an ESP32 IoT temperature sensor with USB-C power, Wi-Fi, MQTT, boot/reset buttons, and a sensor header."),
+            ("supply-test", "Design a 24V to 5V buck converter board with USB-C input and screw terminal output.")
+        ]
+
+        for (jobID, requirements) in cases {
+            let output = temporaryDirectory("\(jobID)-requirements-to-pcb")
+            let payload = """
+            {
+              "job_id": "\(jobID)",
+              "requirements": "\(requirements)",
+              "output_directory": "\(output.path)",
+              "high_stakes": false
+            }
+            """
+
+            let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
+
+            XCTAssertEqual(response.status, .blocked, jobID)
+            XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.missingArtifact.rawValue, jobID)
+            let result = try XCTUnwrap(response.payload?.decodeJSON(KiCadToolResult.self), jobID)
+            XCTAssertEqual(result.warnings.first?.code, "DESIGN_INTENT_REQUIRED", jobID)
+            XCTAssertTrue(result.nextActions.contains("create_or_attach_design_intent"), jobID)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("kicad").path), jobID)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: output.appendingPathComponent("bom").path), jobID)
+        }
     }
 
     func testRunSpiceRejectsSummaryLogsBeforeInvokingNgspice() async throws {
@@ -66,7 +91,7 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         XCTAssertEqual(response.diagnostics.first?.code, ElectronicsBlockedReason.invalidInputQuality.rawValue)
     }
 
-    func testSynthesizedRequirementsProjectSupportsKiCadERC() async throws {
+    func testRequirementsWorkflowDoesNotCreateKiCadProjectForPromptOnlyRequest() async throws {
         let runtime = try testRuntime()
         try await ElectronicsRuntimePlugin().register(into: runtime)
         let output = temporaryDirectory("requirements-to-pcb-erc")
@@ -75,15 +100,26 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         let payload = #"{"job_id":"s6-erc","requirements":"555 astable LED blinker","output_directory":"\#(output.path)","high_stakes":false,"ngspice_path":"\#(ngspice.path)"}"#
 
         let workflow = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
-        XCTAssertEqual(workflow.status, WorkspaceMessageResponseStatus.ok)
+        XCTAssertEqual(workflow.status, WorkspaceMessageResponseStatus.blocked)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: project))
+    }
 
-        let erc = await sendElectronics(
-            runtime,
-            capability: "kicad_run_erc",
-            payload: #"{"project_path":"\#(project)","kicad_cli_path":"\#(try writeFakeKiCadCLI().path)"}"#
-        )
-        XCTAssertEqual(erc.status, WorkspaceMessageResponseStatus.ok, erc.diagnostics.map(\.message).joined(separator: "\n"))
-        XCTAssertFalse(erc.artifacts.isEmpty)
+    func testWorkflowBlocksMismatched555ArtifactsForAmplifierRequest() async throws {
+        let runtime = try testRuntime()
+        try await ElectronicsRuntimePlugin().register(into: runtime)
+        let evidence = try fake555Evidence()
+        let request = ElectronicsWorkflowRequest(jobID: "amp-mismatch", evidence: evidence)
+        var object = try JSONSerialization.jsonObject(with: WorkspaceJSON.encoder.encode(request)) as? [String: Any] ?? [:]
+        object["requirements"] = "Design a 25 watt class-A guitar amplifier with a 3-band tone stack."
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        let payload = String(data: data, encoding: .utf8) ?? "{}"
+
+        let response = await sendElectronics(runtime, capability: "workflow.requirements_to_pcb", payload: payload)
+        XCTAssertEqual(response.status, WorkspaceMessageResponseStatus.blocked)
+        XCTAssertTrue(response.diagnostics.contains { $0.message.contains("555/LED blinker") })
+        let report = try XCTUnwrap(response.payload?.decodeJSON(ElectronicsFinalReport.self))
+        XCTAssertEqual(report.status, .blocked)
+        XCTAssertEqual(report.gates.first { $0.gate == .parity }?.status, .fail)
     }
 
     func testHighStakesWorkflowBlocksWithoutSignoff() async throws {
@@ -130,26 +166,35 @@ final class ElectronicsWorkflowCompletionTests: XCTestCase {
         return executable
     }
 
-    private func writeFakeKiCadCLI() throws -> URL {
-        let directory = temporaryDirectory("fake-kicad")
-        let executable = directory.appendingPathComponent("kicad-cli")
-        let script = """
-        #!/bin/sh
-        case "$*" in
-          *"--version"*) echo "KiCad Version: 10.0.0"; exit 0 ;;
-        esac
-        while [ "$#" -gt 0 ]; do
-          if [ "$1" = "--output" ]; then
-            shift
-            mkdir -p "$(dirname "$1")"
-            printf '{"status":"pass"}\\n' > "$1"
-          fi
-          shift
-        done
-        exit 0
-        """
-        try script.write(to: executable, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: executable.path)
-        return executable
+    private func fake555Evidence() throws -> ElectronicsCompletionEvidence {
+        let directory = temporaryDirectory("fake-555-evidence")
+        let files: [(ElectronicsArtifactKind, String, String)] = [
+            (.kicadProject, "merlin-board.kicad_pro", #"{"meta":{"version":1}}"#),
+            (.schematic, "merlin-board.kicad_sch", "555 astable LED blinker using NE555\n"),
+            (.board, "merlin-board.kicad_pcb", "(kicad_pcb (version 20250114))\n"),
+            (.routingInterchange, "merlin-board.dsn", "dsn\n"),
+            (.routingResult, "merlin-board.ses", "ses\n"),
+            (.bom, "bom.csv", "RefDes,Value,MPN,DigiKey,Mouser,Quantity\nU1,NE555,NE555P,296-NE555P-ND,595-NE555P,1\n"),
+            (.pickAndPlace, "centroid.csv", "Designator,Mid X,Mid Y,Layer,Rotation\nU1,1,1,F.Cu,0\n"),
+            (.spiceMeasurements, "spice-run.log", "555 astable transient frequency = 1.4\n"),
+            (.verificationReport, "verification.json", #"{"status":"COMPLETE"}"#),
+            (.approvalRecord, "approvals.json", #"{"approved":true}"#),
+        ]
+        var artifacts: [ElectronicsCompletionArtifact] = []
+        for (kind, name, body) in files {
+            let url = directory.appendingPathComponent(name)
+            try body.write(to: url, atomically: true, encoding: .utf8)
+            artifacts.append(ElectronicsCompletionArtifact(kind: kind, path: url.path))
+        }
+        let fabURL = directory.appendingPathComponent("fab.zip")
+        try Data([0x50, 0x4B, 0x03, 0x04, 0x14, 0x00]).write(to: fabURL)
+        artifacts.append(ElectronicsCompletionArtifact(kind: .fabricationPackage, path: fabURL.path))
+
+        return ElectronicsCompletionEvidence(
+            artifacts: artifacts,
+            gates: ElectronicsGateResult.allPassingRequired,
+            approvals: [],
+            highStakes: false
+        )
     }
 }

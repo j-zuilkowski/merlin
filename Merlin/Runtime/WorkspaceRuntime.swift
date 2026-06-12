@@ -19,16 +19,18 @@ final class WorkspaceRuntime: ObservableObject {
         let canonicalRoot = rootURL.standardizedFileURL.resolvingSymlinksInPath()
         let resolvedCapacity = Self.clampedEventCapacity(eventCapacity)
         let workspaceID = try Self.resolveWorkspaceID(rootURL: canonicalRoot, merlinHomeURL: merlinHomeURL)
+        let stateRootURL = merlinHomeURL
+            .appendingPathComponent("workspaces", isDirectory: true)
+            .appendingPathComponent(workspaceID, isDirectory: true)
         self.workspaceID = workspaceID
         self.rootURL = canonicalRoot
         self.merlinHomeURL = merlinHomeURL
-        self.stateRootURL = merlinHomeURL
-            .appendingPathComponent("workspaces", isDirectory: true)
-            .appendingPathComponent(workspaceID, isDirectory: true)
+        self.stateRootURL = stateRootURL
         self.eventCapacity = resolvedCapacity
         self.bus = WorkspaceMessageBus(
             workspaceID: workspaceID,
             workspaceRoot: canonicalRoot,
+            settingsRootURL: stateRootURL.appendingPathComponent("settings", isDirectory: true),
             eventCapacity: resolvedCapacity
         )
 

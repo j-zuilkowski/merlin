@@ -1,0 +1,922 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-06-11T16:20:57",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint BR1",
+                    "pos": {
+                        "x": 49.29,
+                        "y": 24.3
+                    },
+                    "uuid": "67500be9-32c0-4c85-acb8-ba272a41a0d8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (AC_SEC1) doesn't match net given by schematic (/AC_SEC1)",
+            "items": [
+                {
+                    "description": "Pad 1 [AC_SEC1] of BR1 on F.Cu",
+                    "pos": {
+                        "x": 46.69,
+                        "y": 20.45
+                    },
+                    "uuid": "82275cbd-968f-4213-8a31-f8d4af38b280"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (VRAW) doesn't match net given by schematic (/VRAW)",
+            "items": [
+                {
+                    "description": "Pad 3 [VRAW] of BR1 on F.Cu",
+                    "pos": {
+                        "x": 51.89,
+                        "y": 28.15
+                    },
+                    "uuid": "99acb522-5a0b-4416-b874-abec1f801add"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (GND) doesn't match net given by schematic (/GND)",
+            "items": [
+                {
+                    "description": "Pad 4 [GND] of BR1 on F.Cu",
+                    "pos": {
+                        "x": 51.89,
+                        "y": 20.45
+                    },
+                    "uuid": "46bad740-2a78-4aac-b4cf-40f595afda3f"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint CBASS1",
+                    "pos": {
+                        "x": 170.56,
+                        "y": 18.35
+                    },
+                    "uuid": "7dab618e-b014-4665-af00-dfd61e9b686a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/N13)",
+            "items": [
+                {
+                    "description": "Pad 1 [TONE1_INTERNAL_RBASS1_CBASS1] of CBASS1 on F.Cu",
+                    "pos": {
+                        "x": 170.24,
+                        "y": 18.35
+                    },
+                    "uuid": "16d174e4-2f04-40dc-a4a5-88f351c8a19d"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/N14)",
+            "items": [
+                {
+                    "description": "Pad 2 [TONE1_INTERNAL_CBASS1_RMID1] of CBASS1 on F.Cu",
+                    "pos": {
+                        "x": 170.88,
+                        "y": 18.35
+                    },
+                    "uuid": "569766fb-a721-4c09-976c-afdaa9d0f845"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint CFILT1",
+                    "pos": {
+                        "x": 294.49,
+                        "y": 18.35
+                    },
+                    "uuid": "7dd3e09c-7f4b-4220-96b3-303c0f46b4d0"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/N11)",
+            "items": [
+                {
+                    "description": "Pad 1 [FILTER1_INTERNAL_RFILT1_CFILT1] of CFILT1 on F.Cu",
+                    "pos": {
+                        "x": 294.17,
+                        "y": 18.35
+                    },
+                    "uuid": "1cf4563c-0d03-49d6-b96d-00af8cd39231"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/N12)",
+            "items": [
+                {
+                    "description": "Pad 2 [FILTER1_INTERNAL_CFILT1_RVFILT1] of CFILT1 on F.Cu",
+                    "pos": {
+                        "x": 294.81,
+                        "y": 18.35
+                    },
+                    "uuid": "17e40668-4ee8-4f5f-a1b1-d76307578cf7"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint CMID1",
+                    "pos": {
+                        "x": 211.87,
+                        "y": 18.35
+                    },
+                    "uuid": "5511f92b-69f5-4fc6-9e69-9a0266a89908"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/N15)",
+            "items": [
+                {
+                    "description": "Pad 1 [TONE1_INTERNAL_RMID1_CMID1] of CMID1 on F.Cu",
+                    "pos": {
+                        "x": 211.55,
+                        "y": 18.35
+                    },
+                    "uuid": "4f000c78-17ec-4b86-8408-74c039ba0375"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/N16)",
+            "items": [
+                {
+                    "description": "Pad 2 [TONE1_INTERNAL_CMID1_RTREBLE1] of CMID1 on F.Cu",
+                    "pos": {
+                        "x": 212.19,
+                        "y": 18.35
+                    },
+                    "uuid": "86997e4d-3788-46ac-9609-0ecfae1f8f57"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint CRES1",
+                    "pos": {
+                        "x": 72.29,
+                        "y": 18.35
+                    },
+                    "uuid": "1a07251d-3618-418c-9971-a1011742bb8c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (VRAW) doesn't match net given by schematic (/VRAW)",
+            "items": [
+                {
+                    "description": "Pad 1 [VRAW] of CRES1 on F.Cu",
+                    "pos": {
+                        "x": 71.97,
+                        "y": 18.35
+                    },
+                    "uuid": "24226dc3-f01d-4624-a8a8-ba636796949f"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (GND) doesn't match net given by schematic (/GND)",
+            "items": [
+                {
+                    "description": "Pad 2 [GND] of CRES1 on F.Cu",
+                    "pos": {
+                        "x": 72.61,
+                        "y": 18.35
+                    },
+                    "uuid": "6284da9e-5b1e-438d-a7f2-0a79aa1385fe"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint CTREBLE1",
+                    "pos": {
+                        "x": 253.18,
+                        "y": 18.35
+                    },
+                    "uuid": "98c1d334-a090-48aa-ab70-3f342ff4616a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/N17)",
+            "items": [
+                {
+                    "description": "Pad 1 [TONE1_INTERNAL_RTREBLE1_CTREBLE1] of CTREBLE1 on F.Cu",
+                    "pos": {
+                        "x": 252.86,
+                        "y": 18.35
+                    },
+                    "uuid": "5f439392-e43a-4479-8e4a-4323067f67ad"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE_OUT) doesn't match net given by schematic (/TONE_OUT)",
+            "items": [
+                {
+                    "description": "Pad 2 [TONE_OUT] of CTREBLE1 on F.Cu",
+                    "pos": {
+                        "x": 253.5,
+                        "y": 18.35
+                    },
+                    "uuid": "ae0c29a8-9f1e-4b71-9d43-ac1dd6856590"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint JIN",
+                    "pos": {
+                        "x": 98.74,
+                        "y": 20.28
+                    },
+                    "uuid": "0eee11ab-6692-4172-b5d8-1cabaeb02db8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "No corresponding pin found in schematic",
+            "items": [
+                {
+                    "description": "PTH pad S [GUITAR_IN] of JIN",
+                    "pos": {
+                        "x": 93.66,
+                        "y": 26.0
+                    },
+                    "uuid": "66815bd9-cf5f-44b6-a4c0-7a488023f6d0"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 2 (/GUITAR_IN) in schematic",
+            "items": [
+                {
+                    "description": "Footprint JIN",
+                    "pos": {
+                        "x": 98.74,
+                        "y": 20.28
+                    },
+                    "uuid": "0eee11ab-6692-4172-b5d8-1cabaeb02db8"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint JSEC",
+                    "pos": {
+                        "x": 20.6,
+                        "y": 21.9
+                    },
+                    "uuid": "04673fa6-0806-4c03-b977-7d2b4ba27eee"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (AC_SEC1) doesn't match net given by schematic (/AC_SEC1)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [AC_SEC1] of JSEC",
+                    "pos": {
+                        "x": 24.1,
+                        "y": 21.9
+                    },
+                    "uuid": "6e904c01-8fe0-4f51-83e7-a515dcd27ba5"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint JSPK",
+                    "pos": {
+                        "x": 405.75,
+                        "y": 28.32
+                    },
+                    "uuid": "bee11e08-b044-4748-8764-4edf774b6556"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "No corresponding pin found in schematic",
+            "items": [
+                {
+                    "description": "PTH pad 1+ [SPK_OUT] of JSPK",
+                    "pos": {
+                        "x": 405.75,
+                        "y": 28.32
+                    },
+                    "uuid": "76571f39-8fb1-4e62-8e43-fa28ce82304e"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "No pad found for pin 1 (/SPK_OUT) in schematic",
+            "items": [
+                {
+                    "description": "Footprint JSPK",
+                    "pos": {
+                        "x": 405.75,
+                        "y": 28.32
+                    },
+                    "uuid": "bee11e08-b044-4748-8764-4edf774b6556"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint QDRV1",
+                    "pos": {
+                        "x": 344.82,
+                        "y": 33.25
+                    },
+                    "uuid": "5f463965-b030-4115-b76a-7f95c20a955c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (FILTER_OUT) doesn't match net given by schematic (/FILTER_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [FILTER_OUT] of QDRV1",
+                    "pos": {
+                        "x": 344.82,
+                        "y": 33.25
+                    },
+                    "uuid": "2475c92d-fdd0-486a-b325-deab30d07f0c"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (DRV_OUT) doesn't match net given by schematic (/DRV_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 3 [DRV_OUT] of QDRV1",
+                    "pos": {
+                        "x": 349.38,
+                        "y": 33.25
+                    },
+                    "uuid": "a1d2df05-765a-4345-a49b-4b640d4217dd"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint QOUT1",
+                    "pos": {
+                        "x": 372.1,
+                        "y": 44.28
+                    },
+                    "uuid": "b8eef360-3fad-4923-ae45-6da90ec67f1c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (DRV_OUT) doesn't match net given by schematic (/DRV_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [DRV_OUT] of QOUT1",
+                    "pos": {
+                        "x": 372.1,
+                        "y": 44.28
+                    },
+                    "uuid": "9f840ac0-c8e4-4cf3-9fc0-efa2620177c3"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (SPK_OUT) doesn't match net given by schematic (/SPK_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 3 [SPK_OUT] of QOUT1",
+                    "pos": {
+                        "x": 383.0,
+                        "y": 44.28
+                    },
+                    "uuid": "d7d07484-656e-4f47-89d7-87ca7ac99806"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint QPRE1",
+                    "pos": {
+                        "x": 125.95,
+                        "y": 20.73
+                    },
+                    "uuid": "0a2603ed-1a69-4653-9df0-3d694d4173c5"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (GUITAR_IN) doesn't match net given by schematic (/GUITAR_IN)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [GUITAR_IN] of QPRE1",
+                    "pos": {
+                        "x": 125.95,
+                        "y": 20.73
+                    },
+                    "uuid": "9d41e070-bc4d-4161-a200-5e3493bca043"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (PRE_OUT) doesn't match net given by schematic (/PRE_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 3 [PRE_OUT] of QPRE1",
+                    "pos": {
+                        "x": 128.49,
+                        "y": 20.73
+                    },
+                    "uuid": "417a6bb9-63f1-454c-9394-d40c2c88fff4"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RBASS1",
+                    "pos": {
+                        "x": 149.0,
+                        "y": 19.05
+                    },
+                    "uuid": "906b1aff-145e-45e2-9e6e-8c27e8d289b1"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (PRE_OUT) doesn't match net given by schematic (/PRE_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [PRE_OUT] of RBASS1",
+                    "pos": {
+                        "x": 149.0,
+                        "y": 19.05
+                    },
+                    "uuid": "94f008a5-b5d9-452d-b967-6bda5a24ed7e"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RBASS1_CBASS1) doesn't match net given by schematic (/N13)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [TONE1_INTERNAL_RBASS1_CBASS1] of RBASS1",
+                    "pos": {
+                        "x": 150.9,
+                        "y": 19.05
+                    },
+                    "uuid": "335dffa4-bf77-4404-bc54-e52f39237668"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RBIAS1A",
+                    "pos": {
+                        "x": 500.83,
+                        "y": 19.05
+                    },
+                    "uuid": "7262ed74-4db4-47c5-ae9e-f3fa2729ba35"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/N18)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [RBIAS1_INTERNAL_RBIAS1A_RBIAS1B] of RBIAS1A",
+                    "pos": {
+                        "x": 502.73,
+                        "y": 19.05
+                    },
+                    "uuid": "d24c7c27-d74c-4e2c-b5c9-cc107b6c6ccd"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RBIAS1B",
+                    "pos": {
+                        "x": 522.74,
+                        "y": 19.05
+                    },
+                    "uuid": "ce253413-93ce-4afd-9a4b-e5383c1fc588"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (RBIAS1_INTERNAL_RBIAS1A_RBIAS1B) doesn't match net given by schematic (/N18)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [RBIAS1_INTERNAL_RBIAS1A_RBIAS1B] of RBIAS1B",
+                    "pos": {
+                        "x": 522.74,
+                        "y": 19.05
+                    },
+                    "uuid": "60cbc5c4-36c2-425c-90f4-09e2019be9e0"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RFILT1",
+                    "pos": {
+                        "x": 272.93,
+                        "y": 19.05
+                    },
+                    "uuid": "a119d094-b33e-40ea-8129-e6e3a3c0fa57"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE_OUT) doesn't match net given by schematic (/TONE_OUT)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [TONE_OUT] of RFILT1",
+                    "pos": {
+                        "x": 272.93,
+                        "y": 19.05
+                    },
+                    "uuid": "6b62b4ec-1f0b-4c60-879c-2a7ca72ef8b9"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (FILTER1_INTERNAL_RFILT1_CFILT1) doesn't match net given by schematic (/N11)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [FILTER1_INTERNAL_RFILT1_CFILT1] of RFILT1",
+                    "pos": {
+                        "x": 274.83,
+                        "y": 19.05
+                    },
+                    "uuid": "c8374227-ad51-4d31-a46a-c31e37f998c1"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RMID1",
+                    "pos": {
+                        "x": 190.31,
+                        "y": 19.05
+                    },
+                    "uuid": "564aa357-1390-4e93-967e-8b07b7f47e35"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_CBASS1_RMID1) doesn't match net given by schematic (/N14)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [TONE1_INTERNAL_CBASS1_RMID1] of RMID1",
+                    "pos": {
+                        "x": 190.31,
+                        "y": 19.05
+                    },
+                    "uuid": "3ba071be-cbce-434d-beea-ccb63c91c046"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RMID1_CMID1) doesn't match net given by schematic (/N15)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [TONE1_INTERNAL_RMID1_CMID1] of RMID1",
+                    "pos": {
+                        "x": 192.21,
+                        "y": 19.05
+                    },
+                    "uuid": "3a644dcd-3c89-43c9-b8fd-4c95c7ae8205"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RPRE1A",
+                    "pos": {
+                        "x": 457.01,
+                        "y": 19.05
+                    },
+                    "uuid": "d6a86a51-7c45-42c3-a5e0-4b8cc2f8634d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/N10)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [RPRE1_INTERNAL_RPRE1A_RPRE1B] of RPRE1A",
+                    "pos": {
+                        "x": 458.91,
+                        "y": 19.05
+                    },
+                    "uuid": "912d16c2-241a-4a88-98ae-34b945a774e6"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RPRE1B",
+                    "pos": {
+                        "x": 478.92,
+                        "y": 19.05
+                    },
+                    "uuid": "8fd6d237-b313-44ba-b4b0-d915dbc7e778"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (RPRE1_INTERNAL_RPRE1A_RPRE1B) doesn't match net given by schematic (/N10)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [RPRE1_INTERNAL_RPRE1A_RPRE1B] of RPRE1B",
+                    "pos": {
+                        "x": 478.92,
+                        "y": 19.05
+                    },
+                    "uuid": "3130f4e4-38f4-4cd2-bc43-85c45400af6b"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RTREBLE1",
+                    "pos": {
+                        "x": 231.62,
+                        "y": 19.05
+                    },
+                    "uuid": "5cbdbc4f-493a-4ef2-aab9-8f074dd612c9"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_CMID1_RTREBLE1) doesn't match net given by schematic (/N16)",
+            "items": [
+                {
+                    "description": "PTH pad 1 [TONE1_INTERNAL_CMID1_RTREBLE1] of RTREBLE1",
+                    "pos": {
+                        "x": 231.62,
+                        "y": 19.05
+                    },
+                    "uuid": "bec5ce28-df38-47a9-ab01-44beb5761aec"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (TONE1_INTERNAL_RTREBLE1_CTREBLE1) doesn't match net given by schematic (/N17)",
+            "items": [
+                {
+                    "description": "PTH pad 2 [TONE1_INTERNAL_RTREBLE1_CTREBLE1] of RTREBLE1",
+                    "pos": {
+                        "x": 233.52,
+                        "y": 19.05
+                    },
+                    "uuid": "05dc6d1f-77e4-4899-9e3a-156fe2767ad4"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Missing symbol field 'BoardID' in footprint",
+            "items": [
+                {
+                    "description": "Footprint RVFILT1",
+                    "pos": {
+                        "x": 319.02,
+                        "y": 21.5
+                    },
+                    "uuid": "8733f538-6721-4581-bdb3-091a2c4f432f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Pad net (FILTER1_INTERNAL_CFILT1_RVFILT1) doesn't match net given by schematic (/N12)",
+            "items": [
+                {
+                    "description": "Pad 1 [FILTER1_INTERNAL_CFILT1_RVFILT1] of RVFILT1 on F.Cu",
+                    "pos": {
+                        "x": 314.695,
+                        "y": 23.65
+                    },
+                    "uuid": "7cd1f8fe-61e0-4a69-b397-4e2c3a3cc92b"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        },
+        {
+            "description": "Pad net (FILTER_OUT) doesn't match net given by schematic (/FILTER_OUT)",
+            "items": [
+                {
+                    "description": "Pad 3 [FILTER_OUT] of RVFILT1 on F.Cu",
+                    "pos": {
+                        "x": 314.695,
+                        "y": 19.35
+                    },
+                    "uuid": "bc945130-21b8-47da-9924-ca9dc874de51"
+                }
+            ],
+            "severity": "warning",
+            "type": "net_conflict"
+        }
+    ],
+    "source": "isolated_secondary.kicad_pcb",
+    "unconnected_items": [],
+    "violations": []
+}

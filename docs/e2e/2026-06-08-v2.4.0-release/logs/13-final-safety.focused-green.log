@@ -1,0 +1,100 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination platform=macOS "-only-testing:MerlinTests/FinalElectronicsDocumentationSweepTests/testFinalSafetyGateRecordsCleanVersionEvidenceAndProcessState" "-only-testing:MerlinTests/FinalElectronicsDocumentationSweepTests/testElectronicsFinishChecklistMatchesFinalEvidenceContract"
+
+--- xcodebuild: WARNING: Using the first of multiple matching destinations:
+{ platform:macOS, arch:arm64, id:00006041-00140140268A801C, name:My Mac }
+{ platform:macOS, arch:x86_64, id:00006041-00140140268A801C, name:My Mac }
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (4 targets)
+    Target 'MerlinTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'MerlinElectronicsPlugin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+    Target 'MerlinElectronicsPlugin' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CodeSign /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib
+/Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib: replacing existing signature
+
+CodeSign /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib
+/Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    
+    Signing Identity:     "Merlin Dev Signing"
+    
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --entitlements /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/Merlin.app.xcent --timestamp\=none --generate-entitlement-der /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app
+/Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app: replacing existing signature
+
+Validate /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-validationUtility /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Build/Products/Debug/Merlin.app
+
+2026-06-11 14:12:21.679307-0400 Merlin[71385:8674486] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.678244-0400 Merlin[71385:8674495] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.680326-0400 Merlin[71385:8674497] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.680386-0400 Merlin[71385:8674495] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.680386-0400 Merlin[71385:8674486] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.680390-0400 Merlin[71385:8674497] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.681310-0400 Merlin[71385:8674497] [Connection] Will NOT re-try to establish the connection
+2026-06-11 14:12:21.681333-0400 Merlin[71385:8674498] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.681342-0400 Merlin[71385:8674498] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 14:12:21.734069-0400 Merlin[71385:8674456] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'Selected tests' started at 2026-06-11 14:12:22.232.
+Test Suite 'MerlinTests.xctest' started at 2026-06-11 14:12:22.232.
+Test Suite 'FinalElectronicsDocumentationSweepTests' started at 2026-06-11 14:12:22.232.
+Test Case '-[MerlinTests.FinalElectronicsDocumentationSweepTests testElectronicsFinishChecklistMatchesFinalEvidenceContract]' started.
+Test Case '-[MerlinTests.FinalElectronicsDocumentationSweepTests testElectronicsFinishChecklistMatchesFinalEvidenceContract]' passed (0.007 seconds).
+Test Case '-[MerlinTests.FinalElectronicsDocumentationSweepTests testFinalSafetyGateRecordsCleanVersionEvidenceAndProcessState]' started.
+Test Case '-[MerlinTests.FinalElectronicsDocumentationSweepTests testFinalSafetyGateRecordsCleanVersionEvidenceAndProcessState]' passed (0.005 seconds).
+Test Suite 'FinalElectronicsDocumentationSweepTests' passed at 2026-06-11 14:12:22.245.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'MerlinTests.xctest' passed at 2026-06-11 14:12:22.245.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.012 (0.013) seconds
+Test Suite 'Selected tests' passed at 2026-06-11 14:12:22.246.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.012 (0.014) seconds
+2026-06-11 14:12:22.511 xcodebuild[71142:8673913] [MT] IDETestOperationsObserverDebug: 1.928 elapsed -- Testing started completed.
+2026-06-11 14:12:22.511 xcodebuild[71142:8673913] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-06-11 14:12:22.511 xcodebuild[71142:8673913] [MT] IDETestOperationsObserverDebug: 1.928 sec, +1.928 sec -- end
+
+Test session results, code coverage, and logs:
+	/Users/jonzuilkowski/Library/Developer/Xcode/DerivedData/Merlin-ehaeyubkoothsygklrellvqjerch/Logs/Test/Test-MerlinTests-2026.06.11_14-12-19--0400.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

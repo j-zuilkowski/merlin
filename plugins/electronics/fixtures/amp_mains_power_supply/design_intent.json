@@ -1,0 +1,141 @@
+{
+  "design_id": "amp_mains_power_supply",
+  "title": "AmpDemo mains power-supply board",
+  "origin": "user_authored",
+  "approval": {
+    "status": "draft"
+  },
+  "requirements": [
+    {
+      "id": "REQ-MAINS-INLET",
+      "text": "Provide a North American mains inlet feeding fuse, switch, protective earth bond, and transformer primary wiring.",
+      "priority": "must"
+    },
+    {
+      "id": "REQ-SECONDARY-INTERFACE",
+      "text": "Expose only the isolated transformer secondary interface to the low-voltage amplifier board.",
+      "priority": "must"
+    },
+    {
+      "id": "REQ-CREEPAGE",
+      "text": "Represent creepage and clearance constraints for mains primary to isolated secondary separation.",
+      "priority": "must"
+    },
+    {
+      "id": "REQ-REVIEW",
+      "text": "Require qualified safety review before build, use, fabrication submission, or order submission.",
+      "priority": "must"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "ASM-ENCLOSURE",
+      "text": "Enclosure, strain relief, fusing value, transformer certification, and regulatory requirements require qualified review.",
+      "rationale": "Mains-powered products are high-stakes and cannot be certified by Merlin."
+    }
+  ],
+  "components": [
+    {
+      "refdes": "JAC1",
+      "role": "mains inlet",
+      "constraints": {
+        "rating": "120VAC minimum",
+        "safety": "qualified_review_required"
+      }
+    },
+    {
+      "refdes": "F1",
+      "role": "fuse",
+      "constraints": {
+        "rating": "review_required"
+      }
+    },
+    {
+      "refdes": "SW1",
+      "role": "mains switch",
+      "constraints": {
+        "rating": "mains_rated"
+      }
+    },
+    {
+      "refdes": "PE1",
+      "role": "protective earth bond",
+      "constraints": {
+        "bond": "chassis_review_required"
+      }
+    },
+    {
+      "refdes": "T1",
+      "role": "transformer primary and isolated secondary",
+      "constraints": {
+        "isolation": "certified_transformer_required"
+      }
+    },
+    {
+      "refdes": "JSEC1",
+      "role": "secondary interface",
+      "constraints": {
+        "domain": "isolated_secondary_only"
+      }
+    }
+  ],
+  "nets": [
+    {
+      "name": "MAINS_L_FUSED_SWITCHED",
+      "role": "hazardous_line",
+      "source": "JAC1",
+      "destination": "T1"
+    },
+    {
+      "name": "MAINS_N",
+      "role": "hazardous_neutral",
+      "source": "JAC1",
+      "destination": "T1"
+    },
+    {
+      "name": "PE",
+      "role": "protective_earth",
+      "source": "JAC1",
+      "destination": "PE1"
+    },
+    {
+      "name": "AC_SEC",
+      "role": "isolated_secondary",
+      "source": "T1",
+      "destination": "JSEC1"
+    }
+  ],
+  "unresolved_decisions": [
+    {
+      "id": "UD-MAINS-SAFETY-REVIEW",
+      "question": "Qualified engineer must select certified transformer, fuse value, inlet, switch, enclosure, grounding, wiring, creepage, clearance, and regulatory path.",
+      "blocking": true
+    }
+  ],
+  "boards": [
+    {
+      "id": "amp_mains_power_supply",
+      "title": "Mains Power Supply Board",
+      "safety_domain": "hazardous_mains_primary"
+    },
+    {
+      "id": "amp_low_voltage_audio",
+      "title": "Low Voltage Audio Board",
+      "safety_domain": "isolated_secondary"
+    }
+  ],
+  "safety_profile": {
+    "isolation_required": true,
+    "creepage_mm": 6.4,
+    "notes": [
+      "The power-supply board includes mains inlet, fuse, switch, protective earth, and transformer primary hazards.",
+      "Merlin may prepare CAD artifacts but does not certify the board safe to build or use.",
+      "Qualified safety review is required for grounding, thermal, enclosure, creepage, clearance, fusing, and regulatory compliance."
+    ]
+  },
+  "verification_plan": {
+    "erc_required": true,
+    "drc_required": true,
+    "spice_required": false
+  }
+}

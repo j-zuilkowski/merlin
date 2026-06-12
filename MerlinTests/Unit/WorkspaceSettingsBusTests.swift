@@ -37,10 +37,38 @@ final class WorkspaceSettingsBusTests: XCTestCase {
         XCTAssertTrue(events.contains { $0.kind == .settingsChanged })
     }
 
+    func testWorkspaceBusLoadsNamespaceSettingsIntoHandlerContext() async throws {
+        let runtime = try makeRuntime()
+        let address = WorkspaceMessageAddress(namespace: "plugin.demo", capability: "inspect")
+        await runtime.bus.register(SettingsEchoHandler(), for: address)
+        try await runtime.settingsStore.save(WorkspaceSettingsNamespace(namespace: "plugin.demo", values: [
+            "enabled": .boolean(false),
+        ]))
+
+        let response = await runtime.bus.send(WorkspaceMessageRequest(
+            id: UUID(),
+            address: address,
+            origin: .parentSession(workspaceID: runtime.workspaceID, sessionID: nil, activeDomainIDs: []),
+            payload: .empty,
+            cancellationGroup: nil
+        ))
+
+        XCTAssertEqual(response.status, .ok)
+        let settings = try XCTUnwrap(response.payload).decodeJSON(WorkspaceSettingsNamespace.self)
+        XCTAssertEqual(settings.namespace, "plugin.demo")
+        XCTAssertEqual(settings.values["enabled"], .boolean(false))
+    }
+
     private func makeRuntime() throws -> WorkspaceRuntime {
         try WorkspaceRuntime(
             rootURL: URL(fileURLWithPath: "/tmp"),
             merlinHomeURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-settings-tests-\(UUID().uuidString)")
         )
+    }
+}
+
+private struct SettingsEchoHandler: WorkspaceMessageHandler {
+    func handle(_ request: WorkspaceMessageRequest, context: WorkspaceHandlerContext) async -> WorkspaceMessageResponse {
+        .ok(requestID: request.id, payload: try? WorkspaceMessagePayload.encodeJSON(context.settings))
     }
 }

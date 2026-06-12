@@ -4,7 +4,10 @@ enum KiCadToolDefinitions {
         "kicad_ingest_schematic",
         "kicad_answer_clarification",
         "kicad_build_intent_model",
+        "kicad_approve_design_intent",
+        "kicad_generate_circuit_ir",
         "kicad_select_components",
+        "kicad_revise_component_selection",
         "kicad_prepare_libraries",
         "kicad_assign_footprints",
         "kicad_compile_project",
@@ -14,9 +17,16 @@ enum KiCadToolDefinitions {
         "kicad_route_pass",
         "kicad_check_connectivity",
         "kicad_run_erc",
+        "kicad_repair_erc_from_diagnostics",
+        "kicad_apply_erc_repair_patch",
         "kicad_run_drc",
+        "kicad_repair_drc_from_diagnostics",
+        "kicad_apply_drc_repair_patch",
         "kicad_check_parity",
+        "kicad_generate_spice_scenario",
         "kicad_run_spice",
+        "kicad_repair_spice_from_diagnostics",
+        "kicad_apply_spice_repair_patch",
         "kicad_evaluate_simulation",
         "kicad_visual_inspect",
         "kicad_export_fab",
@@ -28,12 +38,12 @@ enum KiCadToolDefinitions {
     static let all: [ToolDefinition] = [
         tool(
             name: "kicad_check_version",
-            description: "Validate KiCad CLI path/version and return capability map",
+            description: "Validate KiCad CLI version and return capability map. If kicad_cli_path is omitted, Merlin searches common KiCad install locations.",
             properties: [
-                "kicad_cli_path": .string("Absolute path to KiCad CLI executable"),
+                "kicad_cli_path": .string("Optional absolute path to KiCad CLI executable"),
                 "required_major": .integer("Required KiCad major version"),
             ],
-            required: ["kicad_cli_path", "required_major"]
+            required: []
         ),
         tool(
             name: "kicad_ingest_schematic",
@@ -65,13 +75,53 @@ enum KiCadToolDefinitions {
             required: ["input_artifact_path", "board_profile_id"]
         ),
         tool(
+            name: "kicad_approve_design_intent",
+            description: "Record explicit user approval for a reviewed DesignIntent and return an approved DesignIntent artifact",
+            properties: [
+                "design_intent_path": .string("Draft DesignIntent JSON path"),
+                "approved": .boolean("Must be true to approve the DesignIntent"),
+                "approved_by": .string("Approver name or identifier"),
+                "approved_at": .string("ISO-8601 approval timestamp"),
+            ],
+            required: ["design_intent_path", "approved"]
+        ),
+        tool(
+            name: "kicad_generate_circuit_ir",
+            description: "Generate evidence-backed Circuit IR from an approved DesignIntent without creating KiCad files",
+            properties: [
+                "design_intent_path": .string("DesignIntent JSON path"),
+            ],
+            required: ["design_intent_path"]
+        ),
+        tool(
             name: "kicad_select_components",
             description: "Select components/modules from source corpus and vendor metadata",
             properties: [
                 "design_intent_path": .string("DesignIntent JSON path"),
+                "circuit_ir_path": .string("Generated Circuit IR JSON path"),
+                "live_catalog_providers": .stringArray("Live catalog providers to query, for example mouser or digikey"),
+                "live_catalog_result_limit": .integer("Maximum live catalog candidates per component"),
                 "source_policy_json": .string("JSON encoded source policy"),
             ],
             required: ["design_intent_path"]
+        ),
+        tool(
+            name: "kicad_revise_component_selection",
+            description: "Revise a blocked ComponentMatrix using additional catalog/vendor evidence or emit targeted missing-evidence questions",
+            properties: [
+                "design_intent_path": .string("DesignIntent JSON path"),
+                "circuit_ir_path": .string("Generated Circuit IR JSON path"),
+                "component_matrix_path": .string("Blocked ComponentMatrix artifact path"),
+                "catalog_candidates_path": .string("Local JSON component candidates evidence path"),
+                "catalog_provider_fixture_paths": .object("Provider fixture paths keyed by provider id"),
+                "component_resolution_answers": .object("Structured resolver answers keyed by refdes or an answers array; each answer must include manufacturer, MPN, package, ratings, datasheet, and provenance evidence"),
+                "component_resolution_answers_json": .string("JSON encoded structured resolver answers"),
+                "component_resolution_answers_path": .string("Local JSON structured resolver answers artifact path"),
+                "live_catalog_providers": .stringArray("Live catalog providers to query, for example mouser or digikey"),
+                "live_catalog_result_limit": .integer("Maximum live catalog candidates per component"),
+                "source_policy_json": .string("JSON encoded source policy"),
+            ],
+            required: ["design_intent_path", "component_matrix_path"]
         ),
         tool(
             name: "kicad_prepare_libraries",
@@ -153,10 +203,46 @@ enum KiCadToolDefinitions {
             required: ["project_path"]
         ),
         tool(
+            name: "kicad_repair_erc_from_diagnostics",
+            description: "Plan ERC repairs from a KiCad ERC report and Circuit IR without claiming verification",
+            properties: [
+                "erc_report_path": .string("KiCad ERC JSON report path"),
+                "circuit_ir_path": .string("CircuitIR JSON path"),
+            ],
+            required: ["erc_report_path", "circuit_ir_path"]
+        ),
+        tool(
+            name: "kicad_apply_erc_repair_patch",
+            description: "Apply an ERC repair plan to a KiCad schematic and require ERC rerun",
+            properties: [
+                "erc_repair_plan_path": .string("ERC repair plan artifact path"),
+                "schematic_path": .string("KiCad schematic path"),
+                "project_path": .string("Optional KiCad project path used to derive schematic_path"),
+            ],
+            required: ["erc_repair_plan_path"]
+        ),
+        tool(
             name: "kicad_run_drc",
             description: "Run KiCad DRC and return structured violations",
             properties: ["project_path": .string("KiCad project path")],
             required: ["project_path"]
+        ),
+        tool(
+            name: "kicad_repair_drc_from_diagnostics",
+            description: "Plan PCB DRC repairs from a KiCad DRC report without claiming verification",
+            properties: [
+                "drc_report_path": .string("KiCad DRC JSON report path"),
+            ],
+            required: ["drc_report_path"]
+        ),
+        tool(
+            name: "kicad_apply_drc_repair_patch",
+            description: "Record a DRC repair plan application, require concrete PCB/layout mutation evidence, and require DRC rerun",
+            properties: [
+                "drc_repair_plan_path": .string("DRC repair plan artifact path"),
+                "project_path": .string("KiCad project path"),
+            ],
+            required: ["drc_repair_plan_path", "project_path"]
         ),
         tool(
             name: "kicad_check_parity",
@@ -165,13 +251,43 @@ enum KiCadToolDefinitions {
             required: ["project_path"]
         ),
         tool(
+            name: "kicad_generate_spice_scenario",
+            description: "Generate a runnable ngspice deck artifact from existing electronics project evidence",
+            properties: [
+                "project_path": .string("KiCad project path"),
+                "design_intent_path": .string("Optional DesignIntent JSON path"),
+                "circuit_ir_path": .string("Optional CircuitIR JSON path"),
+                "output_directory": .string("Optional directory for the generated .cir deck"),
+            ],
+            required: ["project_path"]
+        ),
+        tool(
             name: "kicad_run_spice",
             description: "Run KiCad/ngspice-compatible simulation scenarios",
             properties: [
                 "project_path": .string("KiCad project path"),
-                "scenario_path": .string("SimulationScenario JSON path"),
+                "scenario_path": .string("Runnable SPICE deck path (.cir or .sp)"),
             ],
             required: ["project_path", "scenario_path"]
+        ),
+        tool(
+            name: "kicad_repair_spice_from_diagnostics",
+            description: "Plan fixed-topology SPICE repairs from measurements and a SimulationScenario envelope",
+            properties: [
+                "spice_measurements_path": .string("ngspice measurement log path"),
+                "scenario_path": .string("SimulationScenario JSON path"),
+                "topology": .string("Optional topology id, defaults to single_ended_class_a"),
+            ],
+            required: ["spice_measurements_path", "scenario_path"]
+        ),
+        tool(
+            name: "kicad_apply_spice_repair_patch",
+            description: "Record a SPICE repair plan application and require SPICE rerun",
+            properties: [
+                "spice_repair_plan_path": .string("SPICE repair plan artifact path"),
+                "scenario_path": .string("SimulationScenario JSON path"),
+            ],
+            required: ["spice_repair_plan_path", "scenario_path"]
         ),
         tool(
             name: "kicad_evaluate_simulation",
@@ -251,5 +367,17 @@ private extension JSONSchema {
 
     static func integer(_ description: String) -> JSONSchema {
         JSONSchema(type: "integer", description: description)
+    }
+
+    static func boolean(_ description: String) -> JSONSchema {
+        JSONSchema(type: "boolean", description: description)
+    }
+
+    static func stringArray(_ description: String) -> JSONSchema {
+        JSONSchema(type: "array", items: JSONSchema(type: "string"), description: description)
+    }
+
+    static func object(_ description: String) -> JSONSchema {
+        JSONSchema(type: "object", description: description)
     }
 }

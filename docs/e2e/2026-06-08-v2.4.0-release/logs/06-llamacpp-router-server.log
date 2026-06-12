@@ -1,0 +1,222 @@
+0.00.072.070 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.072.082 I system_info: n_threads = 12 (n_threads_batch = 12) / 16 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | SME = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.00.072.083 I srv  llama_server: n_parallel is set to auto, using n_parallel = 4 and kv_unified = true
+0.00.072.089 I srv          init: running without SSL
+0.00.072.115 I srv          init: using 15 threads for HTTP server
+0.00.074.762 I srv   load_models: Loaded 0 cached model presets
+0.00.075.269 I srv   load_models: Loaded 3 custom model presets from docs/e2e/2026-05-26-merlin-full-gui/llamacpp-router-models.ini
+0.00.076.105 I srv    operator(): Available models (3) (*: custom preset)
+0.00.076.109 I srv    operator():   * default
+0.00.076.109 I srv    operator():   * qwen3-coder-local
+0.00.076.110 I srv    operator():   * qwen3-vl-local
+0.00.076.145 I srv  llama_server: starting router server, no model will be loaded in this process
+0.00.076.145 I srv         start: binding port with default address family
+0.00.077.449 I srv  llama_server: router server is listening on http://127.0.0.1:8081
+0.00.077.451 W srv  llama_server: NOTE: router mode is experimental
+0.00.077.451 W srv  llama_server:       it is not recommended to use this mode in untrusted environments
+0.01.211.920 I srv  ensure_model: model name=qwen3-coder-local is not loaded, loading...
+0.01.211.978 I srv          load: spawning server instance with name=qwen3-coder-local on port 49259
+0.01.211.987 I srv          load: spawning server instance with args:
+0.01.211.987 I srv          load:   /opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server
+0.01.211.987 I srv          load:   --host
+0.01.211.987 I srv          load:   127.0.0.1
+0.01.211.987 I srv          load:   --jinja
+0.01.211.987 I srv          load:   --metrics
+0.01.211.987 I srv          load:   --port
+0.01.211.988 I srv          load:   49259
+0.01.211.988 I srv          load:   --alias
+0.01.211.988 I srv          load:   qwen3-coder-local
+0.01.211.988 I srv          load:   --ctx-size
+0.01.211.988 I srv          load:   32768
+0.01.211.989 I srv          load:   --model
+0.01.211.989 I srv          load:   /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf
+0.01.211.989 I srv          load:   --n-gpu-layers
+0.01.211.989 I srv          load:   999
+0.01.211.989 I srv          load:   --parallel
+0.01.211.990 I srv          load:   1
+0.01.212.171 I srv  ensure_model: waiting until model name=qwen3-coder-local is fully loaded...
+[49259] 0.00.051.619 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+[49259] 0.00.051.620 I device_info:
+[49259] 0.00.051.621 I   - BLAS    : Accelerate (0 MiB, 0 MiB free)
+[49259] 0.00.051.627 I   - MTL0    : Apple M4 Max (110100 MiB, 110100 MiB free)
+[49259] 0.00.051.631 I   - CPU     : Apple M4 Max (131072 MiB, 131072 MiB free)
+[49259] 0.00.051.640 I system_info: n_threads = 12 (n_threads_batch = 12) / 16 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | SME = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | 
+[49259] 0.00.051.652 I srv          init: running without SSL
+[49259] 0.00.051.676 I srv          init: using 15 threads for HTTP server
+[49259] 0.00.051.718 I srv         start: binding port with default address family
+[49259] 0.00.053.034 I srv  llama_server: loading model
+[49259] 0.00.053.057 I srv    load_model: loading model '/Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf'
+[49259] 0.00.053.092 I common_init_result: fitting params to device memory ...
+[49259] 0.00.053.095 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+[49259] 0.00.244.090 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+[49259] 0.01.214.366 W llama_context: n_ctx_seq (32768) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+[49259] 0.01.368.114 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+[49259] 0.01.515.760 I srv    load_model: initializing slots, n_slots = 1
+[49259] 0.01.660.012 W common_speculative_init: no implementations specified for speculative decoding
+[49259] 0.01.660.015 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 32768
+[49259] 0.01.660.059 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+[49259] 0.01.660.061 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+[49259] 0.01.660.062 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+[49259] 0.01.660.077 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+[49259] 0.01.676.830 I init: chat template, example_format: '<|im_start|>system
+[49259] You are a helpful assistant<|im_end|>
+[49259] <|im_start|>user
+[49259] Hello<|im_end|>
+[49259] <|im_start|>assistant
+[49259] Hi there<|im_end|>
+[49259] <|im_start|>user
+[49259] How are you?<|im_end|>
+[49259] <|im_start|>assistant
+[49259] '
+[49259] 0.01.689.250 I srv          init: init: chat template, thinking = 0
+[49259] 0.01.689.259 I srv  llama_server: model loaded
+[49259] 0.01.689.261 I srv  llama_server: server is listening on http://127.0.0.1:49259
+[49259] cmd_child_to_router:ready
+[49259] cmd_child_to_router:info:{"id":"qwen3-coder-local","aliases":["qwen3-coder-local"],"tags":[],"object":"model","created":1780946521,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":32768,"n_ctx_train":262144,"n_embd":2048,"n_params":30532122624,"size":32477962240}}
+0.02.909.402 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 49259
+[49259] 0.01.689.341 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
+[49259] 0.01.689.345 I srv  update_slots: all slots are idle
+[49259] 0.01.701.437 I srv  params_from_: Chat format: peg-native
+[49259] 0.01.701.505 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+[49259] 0.01.701.506 I srv  get_availabl: updating prompt cache
+[49259] 0.01.701.509 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
+[49259] 0.01.701.510 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 32768 tokens, 8589934592 est)
+[49259] 0.01.701.510 I srv  get_availabl: prompt cache update took 0.00 ms
+[49259] 0.01.701.527 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+[49259] 0.01.790.773 I slot print_timing: id  0 | task 0 | prompt eval time =      76.26 ms /    15 tokens (    5.08 ms per token,   196.70 tokens per second)
+[49259] 0.01.790.776 I slot print_timing: id  0 | task 0 |        eval time =      12.98 ms /     2 tokens (    6.49 ms per token,   154.10 tokens per second)
+[49259] 0.01.790.776 I slot print_timing: id  0 | task 0 |       total time =      89.24 ms /    17 tokens
+[49259] 0.01.790.776 I slot print_timing: id  0 | task 0 |    graphs reused =          1
+[49259] 0.01.790.784 I slot      release: id  0 | task 0 | stop processing: n_tokens = 16, truncated = 0
+[49259] 0.01.790.786 I srv  update_slots: all slots are idle
+0.03.054.857 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 49259
+[49259] 0.01.844.223 I srv  params_from_: Chat format: peg-native
+[49259] 0.01.844.291 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.188 (> 0.100 thold), f_keep = 0.188
+[49259] 0.01.844.292 I srv  get_availabl: updating prompt cache
+[49259] 0.01.844.327 W srv   prompt_save:  - saving prompt with length 16, total state size = 1.501 MiB (draft: 0.000 MiB)
+[49259] 0.01.844.501 I srv          load:  - looking for better prompt, base f_keep = 0.188, sim = 0.188
+[49259] 0.01.844.503 I srv        update:  - cache state: 1 prompts, 1.501 MiB (limits: 8192.000 MiB, 32768 tokens, 87305 est)
+[49259] 0.01.844.504 I srv        update:    - prompt 0x93e9d8650:      16 tokens, checkpoints:  0,     1.501 MiB
+[49259] 0.01.844.504 I srv  get_availabl: prompt cache update took 0.21 ms
+[49259] 0.01.844.521 I slot launch_slot_: id  0 | task 3 | processing task, is_child = 0
+[49259] 0.01.996.234 I slot print_timing: id  0 | task 3 | prompt eval time =      70.18 ms /    13 tokens (    5.40 ms per token,   185.23 tokens per second)
+[49259] 0.01.996.236 I slot print_timing: id  0 | task 3 |        eval time =      81.52 ms /     8 tokens (   10.19 ms per token,    98.13 tokens per second)
+[49259] 0.01.996.237 I slot print_timing: id  0 | task 3 |       total time =     151.70 ms /    21 tokens
+[49259] 0.01.996.237 I slot print_timing: id  0 | task 3 |    graphs reused =          7
+[49259] 0.01.996.245 I slot      release: id  0 | task 3 | stop processing: n_tokens = 23, truncated = 0
+[49259] 0.01.996.248 I srv  update_slots: all slots are idle
+0.03.245.972 I srv  proxy_reques: proxying request to model qwen3-coder-local on port 49259
+[49259] 0.02.039.786 I srv  params_from_: Chat format: peg-native
+[49259] 0.02.039.909 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 76717412095
+[49259] 0.02.039.910 I srv  get_availabl: updating prompt cache
+[49259] 0.02.039.949 W srv   prompt_save:  - saving prompt with length 23, total state size = 2.158 MiB (draft: 0.000 MiB)
+[49259] 0.02.040.088 I srv          load:  - looking for better prompt, base f_keep = 0.043, sim = 0.003
+[49259] 0.02.040.090 I srv        update:  - cache state: 2 prompts, 3.659 MiB (limits: 8192.000 MiB, 32768 tokens, 87317 est)
+[49259] 0.02.040.091 I srv        update:    - prompt 0x93e9d8650:      16 tokens, checkpoints:  0,     1.501 MiB
+[49259] 0.02.040.091 I srv        update:    - prompt 0x93e9d86f0:      23 tokens, checkpoints:  0,     2.158 MiB
+[49259] 0.02.040.092 I srv  get_availabl: prompt cache update took 0.18 ms
+[49259] 0.02.040.142 I slot launch_slot_: id  0 | task 12 | processing task, is_child = 0
+[49259] 0.02.040.145 W slot update_slots: id  0 | task 12 | n_past = 1, slot.prompt.tokens.size() = 23, seq_id = 0, pos_min = 0, n_swa = 0
+[49259] 0.02.040.146 W slot update_slots: id  0 | task 12 | forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+[49259] 0.02.528.701 I slot print_timing: id  0 | task 12 | prompt eval time =     237.14 ms /   287 tokens (    0.83 ms per token,  1210.26 tokens per second)
+[49259] 0.02.528.704 I slot print_timing: id  0 | task 12 |        eval time =     251.41 ms /    23 tokens (   10.93 ms per token,    91.48 tokens per second)
+[49259] 0.02.528.704 I slot print_timing: id  0 | task 12 |       total time =     488.55 ms /   310 tokens
+[49259] 0.02.528.705 I slot print_timing: id  0 | task 12 |    graphs reused =         28
+[49259] 0.02.528.730 I slot      release: id  0 | task 12 | stop processing: n_tokens = 309, truncated = 0
+[49259] 0.02.528.734 I srv  update_slots: all slots are idle
+0.03.789.940 I srv  ensure_model: model name=qwen3-vl-local is not loaded, loading...
+0.03.789.996 I srv          load: spawning server instance with name=qwen3-vl-local on port 49275
+0.03.790.005 I srv          load: spawning server instance with args:
+0.03.790.005 I srv          load:   /opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server
+0.03.790.005 I srv          load:   --host
+0.03.790.005 I srv          load:   127.0.0.1
+0.03.790.005 I srv          load:   --jinja
+0.03.790.006 I srv          load:   --metrics
+0.03.790.006 I srv          load:   --port
+0.03.790.006 I srv          load:   49275
+0.03.790.006 I srv          load:   --alias
+0.03.790.006 I srv          load:   qwen3-vl-local
+0.03.790.006 I srv          load:   --ctx-size
+0.03.790.006 I srv          load:   32768
+0.03.790.006 I srv          load:   --model
+0.03.790.006 I srv          load:   /Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf
+0.03.790.007 I srv          load:   --mmproj
+0.03.790.007 I srv          load:   /Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf
+0.03.790.007 I srv          load:   --n-gpu-layers
+0.03.790.007 I srv          load:   999
+0.03.790.007 I srv          load:   --parallel
+0.03.790.007 I srv          load:   1
+0.03.790.170 I srv  ensure_model: waiting until model name=qwen3-vl-local is fully loaded...
+[49275] 0.00.053.917 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+[49275] 0.00.053.921 I device_info:
+[49275] 0.00.053.922 I   - BLAS    : Accelerate (0 MiB, 0 MiB free)
+[49275] 0.00.053.925 I   - MTL0    : Apple M4 Max (110100 MiB, 110100 MiB free)
+[49275] 0.00.053.929 I   - CPU     : Apple M4 Max (131072 MiB, 131072 MiB free)
+[49275] 0.00.053.938 I system_info: n_threads = 12 (n_threads_batch = 12) / 16 | MTL : EMBED_LIBRARY = 1 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | MATMUL_INT8 = 1 | DOTPROD = 1 | SME = 1 | ACCELERATE = 1 | OPENMP = 1 | REPACK = 1 | 
+[49275] 0.00.053.947 I srv          init: running without SSL
+[49275] 0.00.053.970 I srv          init: using 15 threads for HTTP server
+[49275] 0.00.054.011 I srv         start: binding port with default address family
+[49275] 0.00.055.333 I srv  llama_server: loading model
+[49275] 0.00.055.344 I srv    load_model: loading model '/Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf'
+[49275] 0.00.284.281 I srv    load_model: [mtmd] estimated memory usage of mmproj is 1517.31 MiB
+[49275] 0.00.284.290 I common_init_result: fitting params to device memory ...
+[49275] 0.00.284.290 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+[49275] 0.00.471.239 W load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+[49275] 0.00.689.826 W llama_context: n_ctx_seq (32768) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+[49275] 0.00.891.496 I common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable)
+[49275] 0.00.931.287 W load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+[49275] 0.00.931.289 W load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+[49275] 0.00.931.289 W load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+[49275] 
+[49275] 0.01.157.656 I srv    load_model: loaded multimodal model, '/Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf'
+[49275] 0.01.157.659 I srv    load_model: initializing slots, n_slots = 1
+[49275] 0.01.208.055 W common_speculative_init: no implementations specified for speculative decoding
+[49275] 0.01.208.062 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 32768
+[49275] 0.01.208.094 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+[49275] 0.01.208.095 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+[49275] 0.01.208.096 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+[49275] 0.01.208.109 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+[49275] 0.01.211.860 I init: chat template, example_format: '<|im_start|>system
+[49275] You are a helpful assistant<|im_end|>
+[49275] <|im_start|>user
+[49275] Hello<|im_end|>
+[49275] <|im_start|>assistant
+[49275] Hi there<|im_end|>
+[49275] <|im_start|>user
+[49275] How are you?<|im_end|>
+[49275] <|im_start|>assistant
+[49275] '
+[49275] 0.01.213.551 I srv          init: init: chat template, thinking = 0
+[49275] 0.01.213.557 I srv  llama_server: model loaded
+[49275] 0.01.213.559 I srv  llama_server: server is listening on http://127.0.0.1:49275
+[49275] cmd_child_to_router:ready
+[49275] cmd_child_to_router:info:{"id":"qwen3-vl-local","aliases":["qwen3-vl-local"],"tags":[],"object":"model","created":1780946523,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":151936,"n_ctx":32768,"n_ctx_train":262144,"n_embd":4096,"n_params":8190735360,"size":8703561728}}
+0.05.010.742 I srv  proxy_reques: proxying request to model qwen3-vl-local on port 49275
+[49275] 0.01.213.634 I srv  update_slots: all slots are idle
+[49275] 0.01.213.649 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
+[49275] 0.01.216.138 I srv  params_from_: Chat format: peg-native
+[49275] 0.01.216.175 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+[49275] 0.01.216.176 I srv  get_availabl: updating prompt cache
+[49275] 0.01.216.179 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
+[49275] 0.01.216.180 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 32768 tokens, 8589934592 est)
+[49275] 0.01.216.181 I srv  get_availabl: prompt cache update took 0.00 ms
+[49275] 0.01.216.195 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+[49275] 0.01.218.246 I srv  process_chun: processing image...
+[49275] 0.01.277.373 I srv  process_chun: image processed in 59 ms
+[49275] 0.01.393.684 I slot print_timing: id  0 | task 0 | prompt eval time =     158.40 ms /    26 tokens (    6.09 ms per token,   164.14 tokens per second)
+[49275] 0.01.393.687 I slot print_timing: id  0 | task 0 |        eval time =      19.09 ms /     2 tokens (    9.54 ms per token,   104.79 tokens per second)
+[49275] 0.01.393.687 I slot print_timing: id  0 | task 0 |       total time =     177.48 ms /    28 tokens
+[49275] 0.01.393.688 I slot print_timing: id  0 | task 0 |    graphs reused =          1
+[49275] 0.01.393.696 I slot      release: id  0 | task 0 | stop processing: n_tokens = 27, truncated = 0
+[49275] 0.01.393.699 I srv  update_slots: all slots are idle
+0.05.209.286 I srv    operator(): operator(): cleaning up before exit...
+0.05.209.289 I srv    unload_all: stopping model instance name=qwen3-coder-local
+0.05.209.293 I srv    unload_all: stopping model instance name=qwen3-vl-local
+0.05.209.301 I srv    operator(): stopping model instance name=qwen3-coder-local
+0.05.209.307 I srv    operator(): stopping model instance name=qwen3-vl-local
+[49259] 0.03.989.247 I srv    operator(): exit command received, exiting...
+[49275] 0.01.412.212 I srv    operator(): exit command received, exiting...
+[49259] 0.03.989.261 I srv    operator(): operator(): cleaning up before exit...
+[49275] 0.01.412.224 I srv    operator(): operator(): cleaning up before exit...
+0.05.397.135 I srv    operator(): instance name=qwen3-vl-local exited with status 0
+0.05.397.142 I srv    operator(): instance name=qwen3-coder-local exited with status 0

@@ -58,9 +58,10 @@ final class SkillFrontmatterV5Tests: XCTestCase {
 
     // MARK: - invokeSkill routing
 
-    func testInvokeSkillWithReasonRoleUsesReasonSlot() async {
-        let providerSpy = ProviderCallSpy()
-        let engine = makeEngine(reasonProvider: providerSpy)
+    func testInvokeSkillWithReasonRoleUsesExecuteSlotByDefault() async {
+        let executeSpy = ProviderCallSpy(id: "spy-execute")
+        let reasonSpy = ProviderCallSpy(id: "spy-reason")
+        let engine = makeEngine(executeProvider: executeSpy, reasonProvider: reasonSpy)
 
         var frontmatter = SkillFrontmatter(name: "test", description: "test")
         frontmatter.role = .reason
@@ -73,7 +74,8 @@ final class SkillFrontmatterV5Tests: XCTestCase {
         )
 
         _ = await collectEvents(engine.invokeSkill(skill))
-        XCTAssertTrue(providerSpy.wasCalled, "Skill with role: reason should use the reason slot provider")
+        XCTAssertTrue(executeSpy.wasCalled, "role: reason is advisory; executable skill turns must use execute")
+        XCTAssertFalse(reasonSpy.wasCalled, "role: reason must not execute directly without an explicit stuck override")
     }
 
     func testInvokeSkillWithHighStakesComplexityRunsCritic() async {
@@ -105,12 +107,15 @@ private func collectEvents(_ stream: AsyncStream<AgentEvent>) async -> [AgentEve
 }
 
 @MainActor
-    private func makeEngine(reasonProvider: (any LLMProvider)? = nil) -> AgenticEngine {
+    private func makeEngine(
+        executeProvider: (any LLMProvider)? = nil,
+        reasonProvider: (any LLMProvider)? = nil
+    ) -> AgenticEngine {
         let registry = ProviderRegistry()
-        let execute = ScriptedProvider(id: "execute", response: "done")
+        let execute = executeProvider ?? ScriptedProvider(id: "execute", response: "done")
         registry.add(execute)
 
-    var slots: [AgentSlot: String] = [.execute: "execute"]
+    var slots: [AgentSlot: String] = [.execute: execute.id]
     if let rp = reasonProvider {
             registry.add(rp)
             slots[.reason] = rp.id
@@ -146,9 +151,12 @@ private func collectEvents(_ stream: AsyncStream<AgentEvent>) async -> [AgentEve
 
     @MainActor
     private final class ProviderCallSpy: LLMProvider {
-        let id = "spy-reason"
+        let id: String
         let baseURL = URL(string: "http://localhost") ?? URL(fileURLWithPath: "/")
         var wasCalled = false
+        init(id: String = "spy-reason") {
+            self.id = id
+        }
         func complete(request: CompletionRequest) async throws -> AsyncThrowingStream<CompletionChunk, Error> {
             wasCalled = true
             return AsyncThrowingStream { c in

@@ -36,6 +36,61 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertTrue(finalText.contains("pong received"))
     }
 
+    func testTextEncodedFunctionToolCallExecutes() async throws {
+        let provider = MockProvider(responses: [
+            MockLLMResponse.text("""
+            I'll read the file now.
+            <function=echo_tool>
+            <parameter=value>
+            ping
+            </parameter>
+            </function>
+            </tool_call>
+            """),
+            MockLLMResponse.text("pong received"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.registerTool("echo_tool") { args in
+            let data = args.data(using: .utf8)!
+            let json = try JSONSerialization.jsonObject(with: data) as! [String: String]
+            return json["value"] ?? ""
+        }
+
+        var toolStarted = false
+        var finalText = ""
+        for await event in engine.send(userMessage: "call echo") {
+            switch event {
+            case .toolCallStarted(let call):
+                toolStarted = call.function.name == "echo_tool"
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertTrue(toolStarted)
+        XCTAssertTrue(finalText.contains("pong received"))
+    }
+
+    func testTextEncodedFunctionToolCallIgnoresUnofferedTools() async throws {
+        let provider = MockProvider(response: """
+        <function=unknown_tool>
+        <parameter=value>ping</parameter>
+        </function>
+        """)
+        let engine = makeEngine(provider: provider)
+
+        var sawTool = false
+        for await event in engine.send(userMessage: "call unknown") {
+            if case .toolCallStarted = event {
+                sawTool = true
+            }
+        }
+
+        XCTAssertFalse(sawTool)
+    }
+
     func testElectronicsWorkflowToolCallIsExclusiveWithinTurn() {
         let engine = makeEngine()
         engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
@@ -49,6 +104,275 @@ final class AgenticEngineTests: XCTestCase {
         XCTAssertEqual(selected, [ElectronicsWorkflowRoute.requirementsToPCB.rawValue])
     }
 
+    func testActiveElectronicsWorkflowLockHardStopsUnapprovedToolCalls() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(id: "drift", name: "app_focus", args: #"{"bundle_id":"com.apple.finder"}"#),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
+    func testActiveElectronicsWorkflowLockRejectsXcodeOpenFile() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "drift",
+                name: "xcode_open_file",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo/kicad/AmpDemo.kicad_pro","line":1}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Read the spec, then invoke the first KiCad electronics tool") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("xcode_open_file"), rejection)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
+    func testActiveElectronicsWorkflowLockRejectsXcodeToolWithoutRuntimeTools() async throws {
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "drift",
+                name: "xcode_spm_list",
+                args: #"{"path":"/Users/jonzuilkowski/Documents/localProject/AmpDemo"}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+
+        var cleanStopSummary = ""
+        var rejection = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Read the spec, then invoke the first KiCad electronics tool") {
+            switch event {
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .toolCallResult(let result) where result.isError:
+                rejection = result.content
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow drift"), cleanStopSummary)
+        XCTAssertTrue(rejection.contains("xcode_spm_list"), rejection)
+        XCTAssertTrue(rejection.contains("not approved while the electronics workflow lock is active"), rejection)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
+    func testActiveElectronicsReadOnlyNarrativeCannotSatisfyRequestedToolBoundary() async throws {
+        ToolRegistry.shared.registerBuiltins()
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "read",
+                name: "read_file",
+                args: #"{"path":"/tmp/AmpDemo/spec.md"}"#
+            ),
+            .text("""
+            I read the spec. The first actual electronics tool invocation would occur later after GUI setup.
+            Blocker: I cannot invoke electronics tools yet because the workflow requires GUI automation setup.
+            """),
+            .toolCall(
+                id: "intent",
+                name: "kicad_build_intent_model",
+                args: #"{"input_artifact_path":"/tmp/AmpDemo/spec.md","board_profile_id":"amp_low_voltage_audio"}"#
+            ),
+            .text("should not continue"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.registerTool("read_file") { _ in "AmpDemo 25W Class-A amplifier requirements" }
+        engine.registerTool("kicad_build_intent_model") { _ in
+            #"{"status":"draft","artifacts":[{"kind":"design_intent","path":"/tmp/AmpDemo/.merlin/electronics-artifacts/design_intent.json"}]}"#
+        }
+
+        var toolNames: [String] = []
+        var notes: [String] = []
+        var finalText = ""
+        for await event in engine.send(
+            userMessage: "Using the electronics domain, read /tmp/AmpDemo/spec.md, then stop after the first real electronics plugin/KiCad tool invocation is attempted or completed."
+        ) {
+            switch event {
+            case .toolCallStarted(let call):
+                toolNames.append(call.function.name)
+            case .systemNote(let note):
+                notes.append(note)
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(toolNames, ["read_file", "kicad_build_intent_model"])
+        XCTAssertTrue(
+            notes.contains { $0.contains("read-only/prose response cannot satisfy requested electronics tool boundary") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertTrue(
+            notes.contains { $0.contains("requested stop boundary satisfied") },
+            notes.joined(separator: "\n")
+        )
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
+    func testDesignProducingElectronicsBoundaryIgnoresKiCadHealthCheck() {
+        let engine = makeEngine()
+        let task = "Using the electronics domain, read /tmp/AmpDemo/spec.md, then stop after the first design-producing electronics/KiCad tool invocation is attempted or completed."
+
+        XCTAssertFalse(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_check_version"
+        ))
+        XCTAssertTrue(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_build_intent_model"
+        ))
+        XCTAssertTrue(engine.requestedStopBoundaryMatchesForTesting(
+            task: task,
+            toolName: "kicad_generate_circuit_ir"
+        ))
+    }
+
+    func testCompletedElectronicsWorkflowResultStopsWithoutNarrativeContinuation() async throws {
+        let originalCriticEnabled = AppSettings.shared.criticEnabled
+        AppSettings.shared.criticEnabled = false
+        defer { AppSettings.shared.criticEnabled = originalCriticEnabled }
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "workflow",
+                name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+                args: #"{"design_intent_path":"/tmp/amp-design-intent.json","circuit_ir_path":"/tmp/amp-circuit-ir.json","output_directory":"/tmp/amp-out"}"#
+            ),
+            .text("should not summarize after terminal workflow result"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.registerTool(ElectronicsWorkflowRoute.requirementsToPCB.rawValue) { _ in
+            """
+            {"jobId":"ampdemo","status":"COMPLETE","artifacts":[{"kind":"kicad_schematic","path":"/tmp/amp.kicad_sch"},{"kind":"spice_measurements","path":"/tmp/amp-spice.log"},{"kind":"fabrication_package","path":"/tmp/fab.zip"},{"kind":"bom","path":"/tmp/bom.csv"}],"gates":[{"gate":"erc","status":"PASS","details":"pass"},{"gate":"simulation","status":"PASS","details":"pass"},{"gate":"fabrication","status":"PASS","details":"pass"}],"approvals":[],"blockedReasons":[]}
+            """
+        }
+
+        var terminalNote = ""
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .systemNote(let note) where note.contains("electronics workflow complete"):
+                terminalNote = note
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertTrue(terminalNote.contains("verified workflow result"), terminalNote)
+        XCTAssertFalse(finalText.contains("should not summarize"))
+    }
+
+    func testBlockedElectronicsWorkflowResultStopsWithoutReadOnlyContinuation() async throws {
+        struct BlockedToolError: Error {}
+
+        let provider = MockProvider(responses: [
+            .toolCall(
+                id: "workflow",
+                name: ElectronicsWorkflowRoute.requirementsToPCB.rawValue,
+                args: #"{"design_intent_path":"/tmp/amp-design-intent.json","circuit_ir_path":"/tmp/amp-circuit-ir.json","output_directory":"/tmp/amp-out"}"#
+            ),
+            .toolCall(
+                id: "read-after-block",
+                name: "read_file",
+                args: #"{"path":"/tmp/AmpDemo/spec.md"}"#
+            ),
+            .text("should not continue after blocked workflow"),
+        ])
+        let engine = makeEngine(provider: provider)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID, ElectronicsDomain.defaultID]
+        engine.permissionMode = .autoAccept
+        engine.registerTool(ElectronicsWorkflowRoute.requirementsToPCB.rawValue) { _ in
+            throw BlockedToolError()
+        }
+        engine.registerTool("read_file") { _ in "spec contents" }
+
+        var cleanStopSummary = ""
+        var toolNames: [String] = []
+        var finalText = ""
+        for await event in engine.send(userMessage: "Run the AmpDemo electronics workflow") {
+            switch event {
+            case .toolCallStarted(let call):
+                toolNames.append(call.function.name)
+            case .cleanStop(let reason, let summary):
+                cleanStopSummary = "\(reason): \(summary)"
+            case .text(let text):
+                finalText += text
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(provider.callCount, 1)
+        XCTAssertEqual(toolNames, [ElectronicsWorkflowRoute.requirementsToPCB.rawValue])
+        XCTAssertTrue(cleanStopSummary.contains("electronics workflow blocked"), cleanStopSummary)
+        XCTAssertTrue(cleanStopSummary.contains(ElectronicsWorkflowRoute.requirementsToPCB.rawValue), cleanStopSummary)
+        XCTAssertFalse(finalText.contains("should not continue"))
+    }
+
     func testProviderSelectionFlash() async throws {
         let flash = MockProvider(chunks: [.init(delta: .init(content: "ok"), finishReason: "stop")])
         flash.id_ = "deepseek-v4-flash"
@@ -58,6 +382,196 @@ final class AgenticEngineTests: XCTestCase {
         for await _ in engine.send(userMessage: "read the file at /tmp/test.txt") {}
         XCTAssertTrue(flash.wasUsed)
         XCTAssertFalse(pro.wasUsed)
+    }
+
+    func testHighStakesTurnRunsFromExecuteNotReason() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .highStakes,
+                reason: "safety-critical electronics task"
+            )
+        )
+
+        var finalText = ""
+        var busySlots: [AgentSlot] = []
+        for await event in engine.send(userMessage: "Design a 25W Class A guitar amplifier") {
+            switch event {
+            case .text(let text):
+                finalText += text
+            case .slotRuntimeState(let slot, .busy):
+                busySlots.append(slot)
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(execute.callCount, 1)
+        XCTAssertTrue(
+            reason.requests.allSatisfy { ($0.tools ?? []).isEmpty },
+            "reason slot may advise/critique, but must not receive executable tools"
+        )
+        XCTAssertEqual(busySlots, [.execute])
+        XCTAssertTrue(finalText.contains("execute handled"), finalText)
+        XCTAssertFalse(finalText.contains("reason handled"), finalText)
+    }
+
+    func testReasonAnnotationRunsExecutableTurnFromExecuteProvider() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .standard,
+                reason: "explicit reason annotation"
+            )
+        )
+
+        var finalText = ""
+        var busySlots: [AgentSlot] = []
+        for await event in engine.send(userMessage: "@reason review this migration for correctness") {
+            switch event {
+            case .text(let text):
+                finalText += text
+            case .slotRuntimeState(let slot, .busy):
+                busySlots.append(slot)
+            default:
+                break
+            }
+        }
+
+        XCTAssertEqual(execute.callCount, 1)
+        XCTAssertTrue(
+            reason.requests.allSatisfy { ($0.tools ?? []).isEmpty },
+            "@reason may request advisory reasoning, but must not give reason executable tools"
+        )
+        XCTAssertEqual(busySlots, [.execute])
+        XCTAssertTrue(finalText.contains("execute handled"), finalText)
+        XCTAssertFalse(finalText.contains("reason handled"), finalText)
+    }
+
+    func testReasonOverrideDeniedLeavesEscalationAsCleanStop() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        let handler = EscalationHandler(
+            planner: PlannerEngine(orchestrateProvider: MockPlannerProvider(response: "[]")),
+            maxRefinementsPerTurn: 0
+        )
+        var overrideRequest: ReasonExecutionOverrideRequest?
+        engine.onReasonOverrideRequest = { request in
+            overrideRequest = request
+            return false
+        }
+
+        let (decision, events) = await engine.handleEscalationForTesting(
+            currentStep: stuckReasonOverrideStep(),
+            reason: .repetitionStall(repeats: 3, lastObservation: "same output"),
+            escalation: handler
+        )
+
+        guard case .stop = decision else {
+            return XCTFail("Denied reason override must preserve the clean stop, got \(decision)")
+        }
+        XCTAssertEqual(overrideRequest?.providerID, "reason-advisory")
+        XCTAssertTrue(events.contains {
+            if case .cleanStop = $0 { return true }
+            return false
+        })
+        XCTAssertFalse(reason.wasUsed, "Reason must not execute when the override is denied")
+    }
+
+    func testReasonOverrideApprovedRoutesStuckHandoffToReasonOnce() async throws {
+        let execute = MockProvider(responses: [.text("execute handled")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("reason handled")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        let handler = EscalationHandler(
+            planner: PlannerEngine(orchestrateProvider: MockPlannerProvider(response: "[]")),
+            maxRefinementsPerTurn: 0
+        )
+        var overrideRequest: ReasonExecutionOverrideRequest?
+        engine.onReasonOverrideRequest = { request in
+            overrideRequest = request
+            return true
+        }
+
+        let (decision, events) = await engine.handleEscalationForTesting(
+            currentStep: stuckReasonOverrideStep(),
+            reason: .repetitionStall(repeats: 3, lastObservation: "same output"),
+            escalation: handler
+        )
+
+        guard case .routeToProvider(let providerID, _) = decision else {
+            return XCTFail("Approved reason override must route the stuck handoff, got \(decision)")
+        }
+        XCTAssertEqual(providerID, "reason-advisory")
+        XCTAssertEqual(overrideRequest?.providerID, "reason-advisory")
+        XCTAssertEqual(engine.slotAssignments[.execute], "reason-advisory")
+        XCTAssertTrue(events.contains {
+            if case .systemNote(let note) = $0 {
+                return note.contains("Reason override approved")
+            }
+            return false
+        })
+    }
+
+    func testElectronicsIntentPromotesDomainBeforeOfferingTools() async throws {
+        let execute = MockProvider(responses: [.text("ready for kicad")])
+        execute.id_ = "execute-local"
+        let reason = MockProvider(responses: [.text("advisory only")])
+        reason.id_ = "reason-advisory"
+        let engine = makeEngine(proProvider: reason, flashProvider: execute)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+        engine.classifierOverride = FixedPlannerForAgenticEngineTests(
+            classification: ClassifierResult(
+                needsPlanning: false,
+                complexity: .highStakes,
+                reason: "electronics workflow"
+            )
+        )
+
+        for await _ in engine.send(userMessage: """
+        Using the electronics domain, read spec.md and generate the KiCad schematic, PCB, SPICE simulation, Gerbers, and BOM.
+        """) {}
+
+        XCTAssertEqual(engine.activeDomainIDs, [SoftwareDomain.defaultID, ElectronicsDomain.defaultID])
+        let offered = Set(try XCTUnwrap(execute.requests.first?.tools?.map(\.function.name)))
+        XCTAssertTrue(offered.contains("kicad_build_intent_model"), offered.description)
+        XCTAssertTrue(offered.contains("kicad_compile_project"), offered.description)
+        XCTAssertFalse(offered.contains("run_shell"), offered.description)
+        XCTAssertFalse(offered.contains("bash"), offered.description)
+        XCTAssertFalse(offered.contains("tool_discover"), offered.description)
+    }
+
+    func testForcedElectronicsLockSurvivesDomainOverwrite() async throws {
+        let engine = makeEngine(provider: MockProvider(responses: [.text("ready")]))
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+        engine.toolRouter.registerWorkspaceCapabilityTools(ElectronicsRuntimePlugin().metadata.capabilities)
+
+        await engine.promoteElectronicsDomainForTesting(message: """
+        Using the electronics domain, generate the KiCad schematic, PCB, SPICE simulation, Gerbers, and BOM.
+        """)
+        engine.activeDomainIDs = [SoftwareDomain.defaultID]
+
+        let offered = Set(engine.offeredToolNamesForTesting())
+        XCTAssertTrue(offered.contains("kicad_build_intent_model"), offered.description)
+        XCTAssertTrue(offered.contains("kicad_compile_project"), offered.description)
+        XCTAssertFalse(offered.contains("app_launch"), offered.description)
+        XCTAssertFalse(offered.contains("run_shell"), offered.description)
+        XCTAssertFalse(offered.contains("tool_discover"), offered.description)
     }
 
     func testContextCompactionNoteAppears() async throws {
@@ -88,4 +602,32 @@ final class AgenticEngineTests: XCTestCase {
             return false
         })
     }
+}
+
+private final class FixedPlannerForAgenticEngineTests: PlannerEngineProtocol, @unchecked Sendable {
+    let classification: ClassifierResult
+
+    init(classification: ClassifierResult) {
+        self.classification = classification
+    }
+
+    func classify(message: String, domain: any DomainPlugin) async -> ClassifierResult {
+        classification
+    }
+
+    func decompose(task: String, context: [Message]) async -> [PlanStep] {
+        []
+    }
+}
+
+private func stuckReasonOverrideStep() -> PlanStep {
+    PlanStep(
+        description: "Finish the stuck task",
+        successCriteria: [.prose("complete")],
+        complexity: .standard,
+        parallelSafe: false,
+        tokenBudget: 12_000,
+        requiresCritic: .optional,
+        minContextRequired: 12_000
+    )
 }

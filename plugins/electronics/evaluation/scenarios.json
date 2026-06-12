@@ -1,0 +1,34 @@
+{
+  "scenarios": [
+    {
+      "id": "sensor_board",
+      "title": "Battery sensor board",
+      "fixture_path": "plugins/electronics/fixtures/sensor_board",
+      "required_gates": ["design_intent", "circuit_ir", "schematic_verified", "pcb_verified"]
+    },
+    {
+      "id": "power_supply",
+      "title": "Low-voltage DC power supply",
+      "fixture_path": "plugins/electronics/fixtures/power_supply",
+      "required_gates": ["design_intent", "circuit_ir", "erc", "drc", "bom"]
+    },
+    {
+      "id": "analog_filter",
+      "title": "Parameterized analog filter",
+      "fixture_path": "plugins/electronics/fixtures/analog_filter",
+      "required_gates": ["design_intent", "circuit_ir", "spice", "schematic_verified"]
+    },
+    {
+      "id": "amp_low_voltage_audio",
+      "title": "AmpDemo low-voltage audio board",
+      "fixture_path": "plugins/electronics/fixtures/amp_low_voltage_audio",
+      "required_gates": ["design_intent", "circuit_ir", "schematic_verified", "spice", "pcb_verified", "fab_ready"]
+    },
+    {
+      "id": "amp_mains_power_supply",
+      "title": "AmpDemo mains power-supply board",
+      "fixture_path": "plugins/electronics/fixtures/amp_mains_power_supply",
+      "required_gates": ["design_intent", "circuit_ir", "schematic_verified", "pcb_verified", "high_stakes_review"]
+    }
+  ]
+}

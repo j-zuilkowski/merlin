@@ -49,6 +49,22 @@ final class WorkspaceMessageBusTests: XCTestCase {
         XCTAssertEqual(response.diagnostics.first?.code, "REQUEST_TIMED_OUT")
     }
 
+    func testTimeoutReturnsWithoutWaitingForBlockingHandlerToFinish() async {
+        let address = WorkspaceMessageAddress(namespace: "test", capability: "blocked")
+        let bus = WorkspaceMessageBus(workspaceID: "workspace", workspaceRoot: URL(fileURLWithPath: "/tmp"))
+        await bus.register(BlockingWorkspaceHandler(), for: address)
+
+        let start = Date()
+        let response = await bus.send(
+            request(address: address, scope: .readOnly),
+            timeout: .milliseconds(10)
+        )
+        let elapsed = Date().timeIntervalSince(start)
+
+        XCTAssertEqual(response.status, .timedOut)
+        XCTAssertLessThan(elapsed, 0.5)
+    }
+
     func testCancelPublishesCancellationEvent() async {
         let bus = WorkspaceMessageBus(workspaceID: "workspace", workspaceRoot: URL(fileURLWithPath: "/tmp"))
         let requestID = UUID()
@@ -142,6 +158,13 @@ private struct EchoWorkspaceHandler: WorkspaceMessageHandler {
 private struct SlowWorkspaceHandler: WorkspaceMessageHandler {
     func handle(_ request: WorkspaceMessageRequest, context: WorkspaceHandlerContext) async -> WorkspaceMessageResponse {
         try? await Task.sleep(for: .seconds(5))
+        return .ok(requestID: request.id, payload: .jsonString("{}"))
+    }
+}
+
+private struct BlockingWorkspaceHandler: WorkspaceMessageHandler {
+    func handle(_ request: WorkspaceMessageRequest, context: WorkspaceHandlerContext) async -> WorkspaceMessageResponse {
+        Thread.sleep(forTimeInterval: 2)
         return .ok(requestID: request.id, payload: .jsonString("{}"))
     }
 }

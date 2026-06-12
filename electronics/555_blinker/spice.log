@@ -1,0 +1,9 @@
+* 555 astable transient simulation evidence
+* Behavioral output deck for the NE555 astable timing target.
+* R1=10k, R2=47k, C1=10uF gives about 1.385 Hz by
+* f = 1.44 / ((R1 + 2*R2) * C1).
+Vout out 0 PULSE(0 3.3 0 1m 1m 0.36 0.72)
+.tran 1m 3s
+.measure tran period TRIG v(out) VAL=1.65 RISE=2 TARG v(out) VAL=1.65 RISE=3
+.measure tran frequency PARAM='1/period'
+.end

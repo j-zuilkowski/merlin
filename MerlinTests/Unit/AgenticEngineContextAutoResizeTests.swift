@@ -75,6 +75,43 @@ final class AgenticEngineContextAutoResizeTests: XCTestCase {
 
         XCTAssertEqual(manager.loadedModelIDs, ["qwen3-coder"])
     }
+
+    func testEngineRuntimeLoadUsesConfiguredModelForBaseLocalProviderID() async {
+        let config = ProviderConfig(
+            id: "llamacpp",
+            displayName: "llama.cpp",
+            baseURL: "http://localhost:8081/v1",
+            model: "qwen3-coder-local",
+            isEnabled: true,
+            isLocal: true,
+            supportsThinking: false,
+            supportsVision: true,
+            kind: .openAICompatible
+        )
+        let registry = ProviderRegistry(
+            persistURL: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json"),
+            initialProviders: [config]
+        )
+        let provider = ResizeCapturingProvider(id: "llamacpp")
+        registry.add(provider)
+        registry.activeProviderID = "llamacpp"
+
+        let memory = AuthMemory(storePath: "/tmp/auth-agenticengine-llamacpp-runtime-load-tests.json")
+        let gate = AuthGate(memory: memory, presenter: TestAuthPresenter())
+        let engine = AgenticEngine(
+            slotAssignments: [.execute: "llamacpp", .reason: "llamacpp", .vision: "llamacpp"],
+            registry: registry,
+            toolRouter: ToolRouter(authGate: gate),
+            contextManager: ContextManager()
+        )
+        let manager = RuntimeLoadingManager()
+        engine.localModelManagers["llamacpp"] = manager
+
+        for await _ in engine.send(userMessage: "hello") {}
+
+        XCTAssertEqual(manager.loadedModelIDs, ["qwen3-coder-local"])
+        XCTAssertEqual(provider.capturedModels.last, "qwen3-coder-local")
+    }
 }
 
 private final class ResizeReturningManager: @unchecked Sendable, LocalModelManagerProtocol {

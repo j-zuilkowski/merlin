@@ -4,11 +4,23 @@ A personal, non-sandboxed agentic development assistant for macOS. Merlin connec
 
 Built with Swift and SwiftUI for macOS 14+. Personal use only — not distributed; build from source via the steps in [`Requirements.md`](Requirements.md).
 
-**Version 2.3.0** (build 25, tag v2.3.0)
+**Version 2.4.0** (build 26)
+
+Current release gate: v2.4.0 is the full green E2E release gate. A release push requires the full GUI/test/provider/domain battery to pass, a release evidence report, and post-green screenshots. Electronics screenshots must be captured after the full battery is green by opening the generated KiCad files in KiCad, not from static generated images alone.
 
 ---
 
 ## What it does
+
+## Screenshots
+
+![Merlin multi-project workspace with the electronics domain active](docs/assets/screenshots/v2.4.0/merlin-workspace.png)
+
+![Provider configuration in Merlin Settings](docs/assets/screenshots/v2.4.0/merlin-settings-providers.png)
+
+![Provider slot routing with the electronics domain selected](docs/assets/screenshots/v2.4.0/merlin-settings-provider-slots.png)
+
+## Capabilities
 
 Merlin runs an agentic loop: you describe a task, the model calls tools (read files, run shell commands, build with Xcode, inspect UI, write code), reads the results, and continues until the task is complete. You review staged changes before they land on disk.
 
@@ -18,7 +30,15 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 
 **Multi-LLM Supervisor-Worker** — tasks are classified by complexity and routed to the right LLM slot (execute, reason, orchestrate, vision). A critic layer scores outputs; a planner layer decomposes high-stakes work. Model performance is tracked per-model per-task type and stored for training.
 
-**Electronics / KiCad Domain** (v2.0) — a full electronics workflow built on the bus-backed `plugins/electronics` runtime plugin: raster/PDF schematic ingestion, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. Evidence-gated completion and high-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
+**Electronics / KiCad Domain** — a full electronics workflow built on the bus-backed `plugins/electronics` runtime plugin: raster/PDF schematic ingestion, design-intent approval, Circuit IR generation, concrete component evidence, KiCad project and footprint generation, FreeRouting-backed autoroute, ERC/DRC/SPICE/fab verification gates, vendor-native BOM and order workflows. Evidence-gated completion and high-stakes signoff boundaries block irreversible manufacturing actions without explicit approval.
+
+![Generated KiCad schematic opened in KiCad Schematic Editor](docs/assets/screenshots/v2.4.0/kicad-schematic-editor.png)
+
+![Generated KiCad PCB opened in KiCad PCB Editor](docs/assets/screenshots/v2.4.0/kicad-pcb-editor.png)
+
+![Generated KiCad board opened in KiCad 3D Viewer](docs/assets/screenshots/v2.4.0/kicad-3d-viewer.png)
+
+![Generated routed board layer composite](docs/assets/screenshots/v2.4.0/kicad-routed-composite.png)
 
 **Multi-Domain Sessions** — each session carries its own active domain IDs. Switching from a software session to an electronics session is instant; the engine, critic, and task-type routing all follow without touching other open sessions.
 
@@ -31,6 +51,8 @@ Merlin runs an agentic loop: you describe a task, the model calls tools (read fi
 **LoRA Self-Training** — on an M4 Mac with 128GB unified memory, Merlin can fine-tune a local **MLX-format** model (via MLX-LM) on your own accepted sessions. Automatic training requires an MLX base; GGUF and HF-safetensors bases cannot be trained by `mlx_lm.lora`. The trained adapter is served by any MLX-native runtime — `mlx_lm.server` (the default), LM Studio, or vLLM-Metal after a one-shot `mlx_lm.fuse` for text-only experiments, though vLLM-Metal is non-working for the current Merlin general+vision pair workflow and should be avoided for the foreseeable future. For GGUF providers (Ollama / Jan.ai / LocalAI / llama.cpp), an additional GGUF-conversion step deploys the fine-tuned model; Mistral.rs cannot serve MoE models on Metal regardless.
 
 **Project Discipline** (v2.2) — Merlin can enforce construction discipline on any project: TDD task pairs, comprehensive user-manual coverage, WHY-comments where warranted, prose readability, and task-file/code sync. Five `/project:*` skills (`init`, `task`, `revise`, `release`, `adopt`) handle creation; a `DisciplineEngine` plus git hooks enforce the rules automatically. `/project:adopt` applies the discipline to an existing codebase.
+
+**Full Green E2E Release Gate** (v2.4) — release readiness is a blocking evidence surface. The current release path requires core tests, GUI bootstrapping, focused visual tests, live-provider coverage, local-provider pair smokes, xcalibre RAG verification, S1/S2 capability convergence, electronics/KiCad verification, service cleanup, and a passing evidence report before tagging or publishing.
 
 See [`FEATURES.md`](FEATURES.md) for a complete capability reference.  
 See [`spec.md`](spec.md) for implementation details and design decisions.
@@ -144,6 +166,20 @@ RUN_LIVE_TESTS=1 xcodebuild -scheme MerlinTests-Live test \
     -destination 'platform=macOS' \
     -derivedDataPath /tmp/merlin-derived
 ```
+
+---
+
+## Release Readiness
+
+Merlin v2.4.0 is not considered release-push-ready from version metadata alone. The release push requires the full green E2E battery described in [`spec.md`](spec.md): full `MerlinTests`, full `MerlinUITests`, focused visual tests, allowed live-provider skips only for missing keys, local-provider pair smokes with clean shutdown, xcalibre RAG verification, S1/S2 convergence, and electronics/KiCad verification.
+
+After the full battery is green, open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available. GitHub feature screenshots are captured at the same post-green stage.
+
+Screenshot destinations:
+
+- GitHub Release assets: upload release-marketing screenshots and KiCad screenshots to the `v2.4.0` GitHub Release as release assets.
+- README-linked screenshots: commit durable public images under `docs/assets/screenshots/v2.4.0/`.
+- Evidence-only screenshots: retain validation-only images under `docs/e2e/<date>-v2.4.0-release/screenshots/` with the E2E report.
 
 ---
 

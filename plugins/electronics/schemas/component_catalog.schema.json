@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "merlin://plugins/electronics/schemas/component_catalog.schema.json",
+  "title": "Component Catalog Contracts",
+  "type": "object",
+  "required": ["component_search_request", "component_candidate", "component_evidence", "datasheet_evidence", "footprint_candidate"],
+  "properties": {
+    "component_search_request": { "$ref": "#/$defs/component_search_request" },
+    "component_candidate": { "$ref": "#/$defs/component_candidate" },
+    "component_evidence": { "$ref": "#/$defs/component_evidence" },
+    "datasheet_evidence": { "$ref": "#/$defs/datasheet_evidence" },
+    "footprint_candidate": { "$ref": "#/$defs/footprint_candidate" }
+  },
+  "$defs": {
+    "component_search_request": {
+      "type": "object",
+      "required": ["refdes", "role", "constraints", "required_evidence_types"],
+      "properties": {
+        "refdes": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "constraints": { "type": "object", "additionalProperties": { "type": "string" } },
+        "required_evidence_types": { "type": "array", "items": { "type": "string" } },
+        "preferred_vendors": { "type": "array", "items": { "type": "string" } },
+        "excluded_manufacturers": { "type": "array", "items": { "type": "string" } },
+        "lifecycle_policy": { "type": "string" }
+      }
+    },
+    "component_candidate": {
+      "type": "object",
+      "required": ["mpn", "manufacturer", "normalized_category", "package", "ratings", "datasheets", "evidence"],
+      "properties": {
+        "mpn": { "type": "string" },
+        "manufacturer": { "type": "string" },
+        "normalized_category": { "type": "string" },
+        "value": { "type": ["string", "null"] },
+        "package": { "type": "string" },
+        "ratings": { "type": "object", "additionalProperties": { "type": "string" } },
+        "lifecycle_state": { "type": "string" },
+        "availability_summary": { "type": "string" },
+        "datasheets": { "type": "array", "items": { "$ref": "#/$defs/datasheet_evidence" } },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/component_evidence" } },
+        "footprint_candidates": { "type": "array", "items": { "$ref": "#/$defs/footprint_candidate" } }
+      }
+    },
+    "component_evidence": {
+      "type": "object",
+      "required": ["provider_id", "retrieved_at", "cache_policy", "extracted_parameters", "confidence"],
+      "properties": {
+        "provider_id": { "type": "string", "minLength": 1 },
+        "source_url": { "type": ["string", "null"] },
+        "local_path": { "type": ["string", "null"] },
+        "retrieved_at": { "type": "string" },
+        "cache_policy": { "type": "string" },
+        "sha256": { "type": ["string", "null"] },
+        "extracted_parameters": { "type": "object", "additionalProperties": { "type": "string" } },
+        "confidence": { "type": "number" },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "datasheet_evidence": {
+      "type": "object",
+      "required": ["manufacturer", "mpn", "url", "provider_id", "retrieved_at", "license"],
+      "properties": {
+        "manufacturer": { "type": "string" },
+        "mpn": { "type": "string" },
+        "url": { "type": "string" },
+        "local_path": { "type": ["string", "null"] },
+        "sha256": { "type": ["string", "null"] },
+        "provider_id": { "type": "string" },
+        "retrieved_at": { "type": "string" },
+        "license": { "type": "string" },
+        "citations": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "footprint_candidate": {
+      "type": "object",
+      "required": ["library", "name", "package_compatibility_evidence", "pin_pad_map", "source_provider_id"],
+      "properties": {
+        "library": { "type": "string" },
+        "name": { "type": "string" },
+        "package_compatibility_evidence": { "type": "string" },
+        "pin_pad_map": { "type": "object", "additionalProperties": { "type": "string" } },
+        "source_provider_id": { "type": "string" },
+        "source_path": { "type": ["string", "null"] },
+        "three_d_model": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

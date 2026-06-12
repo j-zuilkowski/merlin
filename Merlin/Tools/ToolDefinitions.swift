@@ -1,9 +1,7 @@
 enum ToolDefinitions {
-    // The KiCad domain is served by the `kicad` MCP server — its `mcp:kicad:*`
-    // tools are registered at runtime by MCPBridge. The bare `kicad_*`
-    // definitions in `KiCadToolDefinitions` are deliberately NOT built in:
-    // production registers no handler for them, and offering them next to the
-    // `mcp:kicad:*` versions duplicated the KiCad surface in every request.
+    // Built-in software tools only. Electronics tools are registered as
+    // workspace/domain capabilities through ToolRouter and KiCadToolDefinitions,
+    // then offered only when the electronics domain is active.
     static let all: [ToolDefinition] = [
         readFile, writeFile, createFile, deleteFile,
         listDirectory, moveFile, searchFiles,
@@ -184,8 +182,14 @@ enum ToolDefinitions {
     // Discovery
     static let toolDiscover = ToolDefinition(function: .init(
         name: "tool_discover",
-        description: "Discover CLI tools available on PATH",
-        parameters: JSONSchema(type: "object", properties: [:], required: [])
+        description: "Discover CLI tools available on PATH. Results are cached; pass name when checking one tool so discovery only reruns if that tool is missing or its cached path is gone.",
+        parameters: JSONSchema(
+            type: "object",
+            properties: [
+                "name": JSONSchema(type: "string", description: "Optional executable name to locate, for example git or kicad-cli")
+            ],
+            required: []
+        )
     ))
 
     // Discipline

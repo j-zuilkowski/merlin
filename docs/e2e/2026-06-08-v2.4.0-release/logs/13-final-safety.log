@@ -1,0 +1,29 @@
+Task 513 / Gate #13 final safety check rerun after Task 512
+UTC 2026-06-12T00:17:28Z
+
+Initial git status: clean
+Initial clean commit: f959ddfb6b7372189c078cd4206b921bcb45ce69
+Initial clean commit short: f959ddf
+Note: this log was generated after Task 512 refreshed KiCad usability evidence and before creating tag v2.4.0. The log write itself makes the worktree dirty until Task 513 is committed.
+
+Version metadata:
+16:    MARKETING_VERSION: "2.4.0"
+17:    CURRENT_PROJECT_VERSION: 26
+MARKETING_VERSION: "2.4.0"
+CURRENT_PROJECT_VERSION: 26
+
+Release evidence present: yes
+README screenshot assets present: 7
+KiCad evidence README present: yes
+Task 512 KiCad PCB screenshot present: yes
+Task 512 KiCad routed composite present: yes
+
+Pre-tag state:
+Local tag v2.4.0 absent
+Remote tag v2.4.0 absent
+
+Process checks:
+No Merlin app processes remain
+No KiCad app processes remain
+No release helper services remain on 8081 or 8083
+No 8081 or 8083 listeners

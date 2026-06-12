@@ -9,9 +9,13 @@ final class ElectronicsJobPanelTests: XCTestCase {
         _ = ElectronicsJobPanelView(store: store)
 
         XCTAssertEqual(ElectronicsJobPanelView.sectionLabels, [
-            "Backend Health",
-            "Jobs",
-            "Progress",
+            "Live Leaderboard",
+            "Running Now",
+            "Blocked Jobs",
+            "Fab Ready",
+            "Completed Jobs",
+            "Progress History",
+            "Evidence Gates",
             "Artifacts",
             "Diagnostics",
             "Approvals",

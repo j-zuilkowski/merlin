@@ -35,7 +35,9 @@ enum EvalHarness {
         fixturePath: String,
         prompt: String,
         timeout: TimeInterval = 1800,
-        activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs
+        activeDomainIDs: [String] = SoftwareDomain.defaultActiveDomainIDs,
+        stopOnGreenVerification: Bool = false,
+        stopAfterSourceEdit: Bool = false
     ) async throws -> EvalRun {
         // Standard pipeline: ensure LM Studio has the execute-slot model resident
         // before the scenario runs. Idempotent — a no-op when it is already loaded;
@@ -122,6 +124,22 @@ enum EvalHarness {
                         tools[result.toolCallId] = ToolCallRecord(
                             name: existing.name, arguments: existing.arguments,
                             result: result.content, isError: result.isError)
+                        if stopAfterSourceEdit,
+                           CapabilityVerificationStopPolicy().shouldStopAfterSourceEdit(
+                               toolName: existing.name,
+                               arguments: existing.arguments,
+                               isError: result.isError) {
+                            await session.close()
+                            break eventLoop
+                        }
+                        if stopOnGreenVerification,
+                           result.isError == false,
+                           CapabilityVerificationStopPolicy().shouldStop(
+                               toolName: existing.name,
+                               result: result.content) {
+                            await session.close()
+                            break eventLoop
+                        }
                         if activeDomainIDs.contains(ElectronicsDomain.defaultID),
                            existing.name == "workflow.requirements_to_pcb"
                             || existing.name == "workflow.schematic_to_pcb" {

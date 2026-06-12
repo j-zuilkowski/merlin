@@ -7,6 +7,28 @@ struct DiscoveredTool: Codable, Sendable {
 }
 
 enum ToolDiscovery {
+    struct Request: Decodable {
+        var name: String?
+        var tool: String?
+
+        var requestedName: String? {
+            let raw = name ?? tool
+            let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == false ? trimmed : nil
+        }
+    }
+
+    private struct Cache: Codable {
+        var pathSignature: String
+        var scannedAt: Date
+        var tools: [DiscoveredTool]
+    }
+
+    static var defaultCacheURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".merlin/tool-discovery-cache.json")
+    }
+
     /// When `summarize` is true (default, production behavior), each discovered
     /// executable is probed with `--help` (2 s timeout each) to populate
     /// `helpSummary`. On a developer machine this is fast enough; on CI's
@@ -16,7 +38,52 @@ enum ToolDiscovery {
     /// tests to skip the probe and return discovery-only results in
     /// milliseconds.
     static func scan(summarize: Bool = true) async -> [DiscoveredTool] {
-        let uniqueTools = discoverExecutablesOnPath()
+        await scan(summarize: summarize, cacheURL: nil)
+    }
+
+    static func cachedScan(
+        requestedTool: String? = nil,
+        summarize: Bool = true,
+        cacheURL: URL = defaultCacheURL,
+        forceRefresh: Bool = false,
+        pathOverride: String? = nil
+    ) async -> [DiscoveredTool] {
+        let pathSignature = discoveryPath(pathOverride: pathOverride)
+        if !forceRefresh,
+           let cache = loadCache(from: cacheURL),
+           cache.pathSignature == pathSignature {
+            if let requestedTool {
+                if let cached = cache.tools.first(where: { $0.name == requestedTool }),
+                   FileManager.default.isExecutableFile(atPath: cached.path) {
+                    return [cached]
+                }
+            } else {
+                let liveCachedTools = cache.tools.filter {
+                    FileManager.default.isExecutableFile(atPath: $0.path)
+                }
+                if liveCachedTools.count == cache.tools.count {
+                    return cache.tools
+                }
+            }
+        }
+        return await scan(
+            requestedTool: requestedTool,
+            summarize: summarize,
+            cacheURL: cacheURL,
+            pathOverride: pathOverride,
+            pathSignature: pathSignature
+        )
+    }
+
+    private static func scan(
+        requestedTool: String? = nil,
+        summarize: Bool,
+        cacheURL: URL?,
+        pathOverride: String? = nil,
+        pathSignature: String? = nil
+    ) async -> [DiscoveredTool] {
+        let signature = pathSignature ?? discoveryPath(pathOverride: pathOverride)
+        let uniqueTools = discoverExecutablesOnPath(pathOverride: pathOverride)
         var results: [DiscoveredTool] = []
         results.reserveCapacity(uniqueTools.count)
 
@@ -25,7 +92,11 @@ enum ToolDiscovery {
             results.append(DiscoveredTool(name: tool.name, path: tool.path, helpSummary: summary))
         }
 
-        return results
+        if let cacheURL {
+            saveCache(Cache(pathSignature: signature, scannedAt: Date(), tools: results), to: cacheURL)
+        }
+        guard let requestedTool else { return results }
+        return results.filter { $0.name == requestedTool }
     }
 
     private struct Candidate {
@@ -33,11 +104,8 @@ enum ToolDiscovery {
         var path: String
     }
 
-    private static func discoverExecutablesOnPath() -> [Candidate] {
-        let env = ProcessInfo.processInfo.environment
-        let envPath = env["TOOL_DISCOVERY_PATH_OVERRIDE"]
-            ?? env["PATH"]
-            ?? "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
+    private static func discoverExecutablesOnPath(pathOverride: String? = nil) -> [Candidate] {
+        let envPath = discoveryPath(pathOverride: pathOverride)
         let fm = FileManager.default
         var seen = Set<String>()
         var candidates: [Candidate] = []
@@ -58,6 +126,29 @@ enum ToolDiscovery {
         }
 
         return candidates
+    }
+
+    private static func discoveryPath(pathOverride: String? = nil) -> String {
+        let env = ProcessInfo.processInfo.environment
+        return pathOverride
+            ?? env["TOOL_DISCOVERY_PATH_OVERRIDE"]
+            ?? env["PATH"]
+            ?? "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin:/opt/homebrew/bin"
+    }
+
+    private static func loadCache(from url: URL) -> Cache? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(Cache.self, from: data)
+    }
+
+    private static func saveCache(_ cache: Cache, to url: URL) {
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        try? FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+        try? data.write(to: url, options: .atomic)
     }
 
     // Tools that open GUI windows or drop into interactive REPLs when invoked — never probe these.

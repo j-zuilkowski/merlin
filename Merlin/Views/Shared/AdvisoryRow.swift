@@ -50,6 +50,8 @@ struct AdvisoryRow: View {
             return "scissors"
         case .repetitiveOutput:
             return "arrow.clockwise"
+        case .llamaCppRuntimeUntuned:
+            return "speedometer"
         }
     }
 
@@ -59,6 +61,8 @@ struct AdvisoryRow: View {
             // Match the performance dashboard's severity styling so every
             // advisory surface reads the same at a glance.
             return .red
+        case .llamaCppRuntimeUntuned:
+            return .blue
         default:
             return .orange
         }

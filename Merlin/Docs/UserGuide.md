@@ -1,6 +1,6 @@
 # Merlin — User Guide
 
-**Version 2.2.5**
+**Version 2.4.0**
 
 Merlin is a macOS agentic AI assistant that connects to multiple LLM providers and can autonomously read, write, and execute code in your projects using a rich tool set.
 
@@ -27,13 +27,15 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 17. [Performance Dashboard](#performance-dashboard)
 18. [Memories](#memories)
 19. [RAG Memory Browser](#rag-memory-browser)
-20. [Project Discipline](#project-discipline)
-21. [Hooks](#hooks)
-22. [Connectors](#connectors)
-23. [Scheduled Automations](#scheduled-automations)
-24. [LoRA Self-Training](#lora-self-training)
-25. [Settings](#settings)
-26. [Keyboard Shortcuts](#keyboard-shortcuts)
+20. [Electronics / KiCad Domain](#electronics--kicad-domain-v20)
+21. [Behavioral Reliability](#behavioral-reliability-v9)
+22. [Project Discipline](#project-discipline)
+23. [Hooks](#hooks)
+24. [Connectors](#connectors)
+25. [Scheduled Automations](#scheduled-automations)
+26. [LoRA Self-Training](#lora-self-training)
+27. [Settings](#settings)
+28. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -116,12 +118,10 @@ The AI has access to a large set of built-in tools:
 | Category | Tools |
 |---|---|
 | **File system** | read_file, write_file, create_file, delete_file, list_directory, move_file, search_files |
-| **Shell** | run_shell |
-| **Xcode** | xcode_build, xcode_test, xcode_clean, xcode_open_simulator |
-| **App control** | launch_app, quit_app, focus_app, list_running_apps |
-| **Accessibility** | ax_inspect (reads UI element hierarchy) |
-| **Screen** | capture_screen, vision_query |
-| **Input** | cg_event (synthesises keyboard/mouse events) |
+| **Shell** | run_shell, bash |
+| **Xcode** | xcode_build, xcode_test, xcode_clean, xcode_derived_data_clean, xcode_open_file, xcode_xcresult_parse, xcode_simulator_list, xcode_simulator_boot, xcode_simulator_screenshot, xcode_simulator_install, xcode_spm_resolve, xcode_spm_list |
+| **App control** | app_launch, app_list_running, app_quit, app_focus |
+| **UI automation** | ui_inspect, ui_find_element, ui_get_element_value, ui_click, ui_double_click, ui_right_click, ui_drag, ui_type, ui_key, ui_scroll, ui_screenshot |
 | **Search** | web_search |
 | **RAG** | rag_search, rag_list_books |
 | **Subagents** | spawn_agent |
@@ -501,6 +501,8 @@ Local FreeRouting is the required completion backend for route passes. Hosted Fr
 Completion is evidence-gated. Merlin does not accept placeholder success for electronics workflows: required artifacts and gate results must be present before a workflow can return complete.
 
 Completion produces KiCad project files, DSN/SES route artifacts, Gerbers, Excellon drills, BOM, pick-and-place files, drawings, approvals, and a verification report. The electronics job panel shows backend health, progress, artifacts, diagnostics, approvals, and final reports for the active workspace.
+
+Release screenshots are captured only after the full battery is green. For electronics releases, open the generated KiCad schematic and open the generated KiCad PCB in KiCad, then capture release screenshots of the schematic editor, PCB editor, routed board/layer views, and 3D board view when available.
 
 ### High-Stakes Signoff
 

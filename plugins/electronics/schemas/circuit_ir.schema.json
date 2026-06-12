@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "merlin://plugins/electronics/schemas/circuit_ir.schema.json",
+  "title": "CircuitIR",
+  "type": "object",
+  "required": ["design_id", "board_id", "components", "nets", "constraints", "verification_scenarios"],
+  "properties": {
+    "design_id": { "type": "string", "minLength": 1 },
+    "board_id": { "type": "string", "minLength": 1 },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" }
+    },
+    "nets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/net" }
+    },
+    "constraints": { "type": "array" },
+    "verification_scenarios": { "type": "array" }
+  },
+  "$defs": {
+    "component": {
+      "type": "object",
+      "required": ["refdes", "role", "selected_symbol", "source_evidence", "pins"],
+      "properties": {
+        "refdes": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "selected_symbol": { "type": "string", "minLength": 1 },
+        "selected_footprint": { "type": "string" },
+        "manufacturer_part_number": { "type": "string" },
+        "source_evidence": { "type": "array", "minItems": 1 },
+        "pins": { "type": "array", "minItems": 1 }
+      }
+    },
+    "net": {
+      "type": "object",
+      "required": ["name", "role", "endpoints", "net_class", "safety_domain"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "endpoints": { "type": "array", "minItems": 1 },
+        "net_class": { "type": "string", "minLength": 1 },
+        "safety_domain": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

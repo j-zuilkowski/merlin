@@ -23,6 +23,22 @@ final class GroundingReportUITests: XCTestCase {
         XCTAssertEqual(model.items.last?.groundingReport, report)
     }
 
+    func testStreamingAssistantTextCoalescesRenderRevisions() async throws {
+        let model = ChatViewModel()
+        let initialRevision = model.revision
+
+        model.appendAssistantText("one ")
+        model.appendAssistantText("two ")
+        model.appendAssistantText("three")
+
+        XCTAssertEqual(model.items.last?.text, "one two three")
+        XCTAssertEqual(model.revision, initialRevision)
+
+        try await Task.sleep(nanoseconds: 120_000_000)
+
+        XCTAssertEqual(model.revision, initialRevision + 1)
+    }
+
     func testClearResetsStoredGroundingReport() {
         let model = ChatViewModel()
         let report = makeGroundingReport(totalChunks: 1, memoryChunks: 1, bookChunks: 0, averageScore: 0.95, oldestMemoryAgeDays: 1, hasStaleMemory: false, isWellGrounded: true)

@@ -1,0 +1,148 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests -destination platform=macOS -derivedDataPath /tmp/merlin-derived-task501-green "-only-testing:MerlinTests/LlamaCppModelManagerTests" "-only-testing:MerlinTests/CriticEngineTests" "-only-testing:MerlinTests/CapabilityConvergenceTests"
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (4 targets)
+    Target 'MerlinTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'MerlinElectronicsPlugin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+    Target 'MerlinElectronicsPlugin' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/merlin-derived-task501-green/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/merlin-derived-task501-green/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+CodeSign /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+
+    Signing Identity:     "Merlin Dev Signing"
+
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib
+/tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/Merlin.debug.dylib: replacing existing signature
+
+CodeSign /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+
+    Signing Identity:     "Merlin Dev Signing"
+
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib
+/tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app/Contents/MacOS/__preview.dylib: replacing existing signature
+
+CodeSign /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+
+    Signing Identity:     "Merlin Dev Signing"
+
+    /usr/bin/codesign --force --sign 252C10CC0B11D5E61D2BC060A7B39EDE6450D2B1 --entitlements /tmp/merlin-derived-task501-green/Build/Intermediates.noindex/Merlin.build/Debug/Merlin.build/Merlin.app.xcent --timestamp\=none --generate-entitlement-der /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app
+/tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app: replacing existing signature
+
+Validate /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    builtin-validationUtility /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app -no-validate-extension -infoplist-subpath Contents/Info.plist
+
+RegisterWithLaunchServices /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app (in target 'Merlin' from project 'Merlin')
+    cd /Users/jonzuilkowski/Documents/localProject/merlin
+    /System/Library/Frameworks/CoreServices.framework/Versions/Current/Frameworks/LaunchServices.framework/Versions/Current/Support/lsregister -f -R -trusted /tmp/merlin-derived-task501-green/Build/Products/Debug/Merlin.app
+
+2026-06-11 09:30:17.728347-0400 Merlin[90482:7805976] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.729236-0400 Merlin[90482:7805976] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.729601-0400 Merlin[90482:7805977] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.729616-0400 Merlin[90482:7805977] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.730732-0400 Merlin[90482:7805985] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.730743-0400 Merlin[90482:7805985] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.731739-0400 Merlin[90482:7805985] [Connection] Will NOT re-try to establish the connection
+2026-06-11 09:30:17.731762-0400 Merlin[90482:7805976] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.731774-0400 Merlin[90482:7805976] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-11 09:30:17.769302-0400 Merlin[90482:7805956] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'Selected tests' started at 2026-06-11 09:30:18.176.
+Test Suite 'MerlinTests.xctest' started at 2026-06-11 09:30:18.177.
+Test Suite 'CapabilityConvergenceTests' started at 2026-06-11 09:30:18.177.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testActualMissingCargoIsPrerequisiteFailure]' started.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testActualMissingCargoIsPrerequisiteFailure]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CapabilityConvergenceTests testEvalShellTimeoutIsRepairableVerificationFailure]' started.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testEvalShellTimeoutIsRepairableVerificationFailure]' passed (0.000 seconds).
+Test Case '-[MerlinTests.CapabilityConvergenceTests testRepeatedNoProgressEscalatesBeforeTimeout]' started.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testRepeatedNoProgressEscalatesBeforeTimeout]' passed (0.000 seconds).
+Test Case '-[MerlinTests.CapabilityConvergenceTests testS1FailingTaskStoreTestsRemainRepairable]' started.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testS1FailingTaskStoreTestsRemainRepairable]' passed (0.000 seconds).
+Test Case '-[MerlinTests.CapabilityConvergenceTests testS2OverflowBeatsFalseCargoMissingClaim]' started.
+Test Case '-[MerlinTests.CapabilityConvergenceTests testS2OverflowBeatsFalseCargoMissingClaim]' passed (0.000 seconds).
+Test Suite 'CapabilityConvergenceTests' passed at 2026-06-11 09:30:18.181.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.002 (0.004) seconds
+Test Suite 'CriticEngineTests' started at 2026-06-11 09:30:18.181.
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectEmptyWithoutProjectPath]' started.
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectEmptyWithoutProjectPath]' passed (0.002 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectsCargoProject]' started.
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectsCargoProject]' passed (0.002 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectSkipsNonCodeTaskType]' started.
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectSkipsNonCodeTaskType]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectsXcodeProject]' started.
+Test Case '-[MerlinTests.CriticEngineTests testAutoDetectsXcodeProject]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testFirstSchemeParsesXcodebuildListJSON]' started.
+Test Case '-[MerlinTests.CriticEngineTests testFirstSchemeParsesXcodebuildListJSON]' passed (0.000 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testHasAutoDetectableProjectDetectsBuildSystems]' started.
+Test Case '-[MerlinTests.CriticEngineTests testHasAutoDetectableProjectDetectsBuildSystems]' passed (0.003 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage1FailureReasonPreservesNamedFailingXcodeTestsAfterVerboseBuildOutput]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage1FailureReasonPreservesNamedFailingXcodeTestsAfterVerboseBuildOutput]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage1FailWhenCommandFails]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage1FailWhenCommandFails]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage1PassWhenCommandSucceeds]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage1PassWhenCommandSucceeds]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage1SkippedWhenNullBackend]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage1SkippedWhenNullBackend]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage2EvaluatesWhenReasonProviderAvailable]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage2EvaluatesWhenReasonProviderAvailable]' passed (0.002 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage2FailWhenReasonProviderIndicatesFailure]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage2FailWhenReasonProviderIndicatesFailure]' passed (0.001 seconds).
+Test Case '-[MerlinTests.CriticEngineTests testStage2SkippedWhenReasonProviderNil]' started.
+Test Case '-[MerlinTests.CriticEngineTests testStage2SkippedWhenReasonProviderNil]' passed (0.000 seconds).
+Test Suite 'CriticEngineTests' passed at 2026-06-11 09:30:18.201.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.015 (0.020) seconds
+Test Suite 'LlamaCppModelManagerTests' started at 2026-06-11 09:30:18.201.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testCapabilitiesAdvertiseRouterModeAndRuntimeLoadUnload]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testCapabilitiesAdvertiseRouterModeAndRuntimeLoadUnload]' passed (0.003 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedAcceptsRouterCatalogModelWhenLoadEndpointRejects]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedAcceptsRouterCatalogModelWhenLoadEndpointRejects]' passed (0.003 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedPostsModelsLoadWhenUnloaded]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedPostsModelsLoadWhenUnloaded]' passed (0.001 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedSkipsAlreadyLoadedModel]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testEnsureModelLoadedSkipsAlreadyLoadedModel]' passed (0.001 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testLoadedModelsReadsRouterCatalogFromModelsEndpoint]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testLoadedModelsReadsRouterCatalogFromModelsEndpoint]' passed (0.001 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testRestartInstructionsUseSingleRouterServer]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testRestartInstructionsUseSingleRouterServer]' passed (0.001 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testSingleModelServerFallsBackToRestartInstructions]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testSingleModelServerFallsBackToRestartInstructions]' passed (0.001 seconds).
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testUnloadModelPostsModelsUnload]' started.
+Test Case '-[MerlinTests.LlamaCppModelManagerTests testUnloadModelPostsModelsUnload]' passed (0.001 seconds).
+Test Suite 'LlamaCppModelManagerTests' passed at 2026-06-11 09:30:18.212.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.010 (0.011) seconds
+Test Suite 'MerlinTests.xctest' passed at 2026-06-11 09:30:18.212.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 0.027 (0.036) seconds
+Test Suite 'Selected tests' passed at 2026-06-11 09:30:18.212.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 0.027 (0.036) seconds
+
+Test session results, code coverage, and logs:
+	/tmp/merlin-derived-task501-green/Logs/Test/Test-MerlinTests-2026.06.11_09-30-14--0400.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

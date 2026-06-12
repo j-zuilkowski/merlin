@@ -76,6 +76,40 @@ final class LlamaCppModelManagerTests: XCTestCase {
         XCTAssertEqual(json["model"] as? String, "qwen3-vl")
     }
 
+    func testEnsureModelLoadedAcceptsRouterCatalogModelWhenLoadEndpointRejects() async throws {
+        let loadCounter = RequestCounter()
+        let session = Self.makeMockSession { request in
+            switch (request.httpMethod ?? "GET", request.url?.path ?? "") {
+            case ("GET", "/models"):
+                let body = #"{"data":[{"id":"qwen3-coder-local","status":{"value":"unloaded"}}]}"#
+                return Self.okResponse(for: request, data: Data(body.utf8))
+            case ("POST", "/models/load"):
+                loadCounter.increment()
+                return (
+                    HTTPURLResponse(
+                        url: request.url ?? URL(string: "http://localhost")!,
+                        statusCode: 400,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )!,
+                    Data(#"{"error":{"message":"unsupported router mutation"}}"#.utf8)
+                )
+            case ("GET", "/v1/models"):
+                let body = #"{"data":[{"id":"qwen3-coder-local","object":"model"}]}"#
+                return Self.okResponse(for: request, data: Data(body.utf8))
+            default:
+                return Self.okResponse(for: request)
+            }
+        }
+        let manager = LlamaCppModelManager(
+            baseURL: URL(string: "http://127.0.0.1:8081/v1")!,
+            session: session
+        )
+
+        try await manager.ensureModelLoaded(modelID: "qwen3-coder-local")
+        XCTAssertEqual(loadCounter.value, 1)
+    }
+
     func testUnloadModelPostsModelsUnload() async throws {
         let capturedBody = CapturedDataBox()
         let session = Self.makeMockSession { request in

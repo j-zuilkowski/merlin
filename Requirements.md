@@ -4,7 +4,7 @@ External dependencies needed to build, run, and fully use Merlin. Merlin itself 
 **no third-party Swift packages** — every dependency below is an external tool, service,
 model, or system framework.
 
-Current version: **2.2.5** (build 24). Target platform: **macOS 14+**, Apple Silicon.
+Current version: **2.4.0** (build 26). Target platform: **macOS 14+**, Apple Silicon.
 
 ---
 

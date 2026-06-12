@@ -21,6 +21,25 @@ final class RuntimePluginLoaderTests: XCTestCase {
         XCTAssertEqual(plugins.first?.capabilities.first?.address.namespace, "plugin.electronics")
     }
 
+    func testDiscoversPluginOwnedSettingsSchema() throws {
+        let root = try makePluginRoot()
+        try writePlugin(
+            root: root,
+            id: "electronics",
+            displayName: "Electronics",
+            tier: "tier1",
+            enabled: true,
+            includeSettingsSchema: true
+        )
+
+        let plugin = try XCTUnwrap(RuntimePluginLoader(pluginRoots: [root]).discover().first)
+
+        XCTAssertEqual(plugin.settingsSchema?.namespace, "plugin.electronics")
+        XCTAssertTrue(plugin.settingsSchema?.fields.contains {
+            $0.key == "catalog_provider_mouser_enabled" && $0.defaultValue == .boolean(true)
+        } ?? false)
+    }
+
     func testEnabledTierOnePluginWithoutEntrypointDoesNotRegisterPlaceholderRoutes() async throws {
         let root = try makePluginRoot()
         try writePlugin(root: root, id: "demo", displayName: "Demo", tier: "tier1", enabled: true)
@@ -58,6 +77,27 @@ final class RuntimePluginLoaderTests: XCTestCase {
         XCTAssertTrue(events.contains { $0.kind == .healthChanged })
     }
 
+    func testDisabledPluginDoesNotRegisterSettingsSchema() async throws {
+        let root = try makePluginRoot()
+        try writePlugin(
+            root: root,
+            id: "electronics",
+            displayName: "Electronics",
+            tier: "tier1",
+            enabled: false,
+            includeSettingsSchema: true
+        )
+        let runtime = try WorkspaceRuntime(
+            rootURL: URL(fileURLWithPath: "/tmp"),
+            merlinHomeURL: FileManager.default.temporaryDirectory.appendingPathComponent("merlin-plugin-tests-\(UUID().uuidString)")
+        )
+
+        try await RuntimePluginLoader(pluginRoots: [root]).load(into: runtime)
+
+        let schemas = await runtime.bus.registeredSettingsSchemas()
+        XCTAssertFalse(schemas.contains { $0.namespace == "plugin.electronics" })
+    }
+
     private func makePluginRoot() throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("merlin-plugin-root-\(UUID().uuidString)", isDirectory: true)
@@ -65,9 +105,32 @@ final class RuntimePluginLoaderTests: XCTestCase {
         return root
     }
 
-    private func writePlugin(root: URL, id: String, displayName: String, tier: String, enabled: Bool) throws {
+    private func writePlugin(
+        root: URL,
+        id: String,
+        displayName: String,
+        tier: String,
+        enabled: Bool,
+        includeSettingsSchema: Bool = false
+    ) throws {
         let directory = root.appendingPathComponent(id, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let settingsSchema = includeSettingsSchema ? """
+          "settings_schema": {
+            "namespace": "plugin.\(id)",
+            "title": "\(displayName)",
+            "fields": [
+              {
+                "key": "catalog_provider_mouser_enabled",
+                "label": "Mouser catalog provider",
+                "kind": "boolean",
+                "default_value": { "boolean": { "_0": true } },
+                "is_secret": false,
+                "help": "Allow provider use."
+              }
+            ]
+          },
+        """ : ""
         let json = """
         {
           "id": "\(id)",
@@ -76,6 +139,7 @@ final class RuntimePluginLoaderTests: XCTestCase {
           "trust_tier": "\(tier)",
           "enabled": \(enabled),
           "domain_ids": ["\(id)"],
+        \(settingsSchema)
           "capabilities": [
             {
               "id": "plugin.\(id).health",

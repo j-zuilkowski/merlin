@@ -11,6 +11,7 @@ final class ModelParameterAdvisorTests: XCTestCase {
         let _: ParameterAdvisoryKind = .temperatureUnstable
         let _: ParameterAdvisoryKind = .repetitiveOutput
         let _: ParameterAdvisoryKind = .contextLengthTooSmall
+        let _: ParameterAdvisoryKind = .llamaCppRuntimeUntuned
     }
 
     func testOutcomeSignalsFinishReasonFieldExists() {

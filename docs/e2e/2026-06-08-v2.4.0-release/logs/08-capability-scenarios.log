@@ -1,0 +1,85 @@
+
+== backup user config ==
+backup dir: /tmp/merlin-release-config-backup.3knkIJ
+
+== write release config ==
+4:provider_name = "llamacpp"
+5:model_id = "qwen3-coder-local"
+20:execute = "llamacpp:qwen3-coder-local"
+22:orchestrate = "deepseek"
+23:vision = "llamacpp:qwen3-vl-local"
+
+== router preflight ==
+version: 9290 (bcfd1989e)
+built with AppleClang 21.0.0.21000099 for Darwin arm64
+
+== router startup ==
+{"data":[{"id":"default","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947239,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","default"],"preset":"[default]\njinja = 1\nmetrics = 1\n\n"},"architecture":{"input_modalities":["text"],"output_modalities":["text"]}},{"id":"qwen3-coder-local","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947239,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","qwen3-coder-local","--ctx-size","32768","--model","/Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf","--n-gpu-layers","999","--parallel","1"],"preset":"[qwen3-coder-local]\njinja = 1\nmetrics = 1\nctx-size = 32768\nmodel = /Users/jonzuilkowski/Models/gguf/Qwen3-Coder-30B-A3B-Instruct-Q8_0.gguf\nn-gpu-layers = 999\nparallel = 1\nload-on-startup = false\nstop-timeout = 10\n\n"},"architecture":{"input_modalities":["text"],"output_modalities":["text"]}},{"id":"qwen3-vl-local","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1780947239,"status":{"value":"unloaded","args":["/opt/homebrew/Cellar/llama.cpp/9290/bin/llama-server","--host","127.0.0.1","--jinja","--metrics","--port","0","--alias","qwen3-vl-local","--ctx-size","32768","--model","/Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf","--mmproj","/Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf","--n-gpu-layers","999","--parallel","1"],"preset":"[qwen3-vl-local]\njinja = 1\nmetrics = 1\nctx-size = 32768\nmodel = /Users/jonzuilkowski/Models/gguf/Qwen_Qwen3-VL-8B-Instruct-Q8_0.gguf\nmmproj = /Users/jonzuilkowski/Models/gguf/mmproj-Qwen_Qwen3-VL-8B-Instruct-f16.gguf\nn-gpu-layers = 999\nparallel = 1\nload-on-startup = false\nstop-timeout = 10\n\n"},"architecture":{"input_modalities":["text","image"],"output_modalities":["text"]}}],"object":"list"}
+== focused S1/S2 xcodebuild ==
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Merlin.xcodeproj -scheme MerlinTests-Live -destination platform=macOS -derivedDataPath /tmp/merlin-derived-v240-capability "-only-testing:MerlinE2ETests/CapabilityScenarioTests/testS1SwiftGUIDebugCycle" "-only-testing:MerlinE2ETests/CapabilityScenarioTests/testS2RustDebugCycle"
+
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (7 targets)
+    Target 'TestTargetApp' in project 'Merlin' (no dependencies)
+    Target 'MerlinUITests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinLiveTests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'MerlinE2ETests' in project 'Merlin'
+        ➜ Explicit dependency on target 'Merlin' in project 'Merlin'
+    Target 'Merlin' in project 'Merlin'
+        ➜ Explicit dependency on target 'MerlinElectronicsPlugin' in project 'Merlin'
+        ➜ Explicit dependency on target 'merlin-discipline' in project 'Merlin'
+    Target 'merlin-discipline' in project 'Merlin' (no dependencies)
+    Target 'MerlinElectronicsPlugin' in project 'Merlin' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk /tmp/merlin-derived-v240-capability/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+    cd /Users/jonzuilkowski/Documents/localProject/merlin/Merlin.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk -o /tmp/merlin-derived-v240-capability/SDKStatCaches.noindex/macosx26.5-25F70-688ef53f1462e2c8f657fdc38a81448fe082c4a02f00227109f4ed75e425c832.sdkstatcache
+
+2026-06-08 15:34:01.955288-0400 Merlin[4324:2622451] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.955712-0400 Merlin[4324:2622451] [Application] Error registering app with intents framework: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.956410-0400 Merlin[4324:2622463] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.956426-0400 Merlin[4324:2622463] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.957482-0400 Merlin[4324:2622451] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.957495-0400 Merlin[4324:2622451] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.958481-0400 Merlin[4324:2622451] [Connection] Will NOT re-try to establish the connection
+2026-06-08 15:34:01.958508-0400 Merlin[4324:2622452] [Connection] Unable to get synchronousRemoteObjectProxy, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:01.958523-0400 Merlin[4324:2622452] [Connection] Unable to re-register with Process Instance Registry, error: Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.apple.linkd.autoShortcut" UserInfo={NSDebugDescription=connection to service named com.apple.linkd.autoShortcut}
+2026-06-08 15:34:02.022658-0400 Merlin[4324:2622434] ApplePersistenceIgnoreState: Existing state will not be touched. New state will be written to /var/folders/rh/p7pv2pnj1mn6l5y5q72wvztm0000gn/T/com.merlin.app.savedState
+Test Suite 'Selected tests' started at 2026-06-08 15:34:02.461.
+Test Suite 'MerlinE2ETests.xctest' started at 2026-06-08 15:34:02.461.
+Test Suite 'CapabilityScenarioTests' started at 2026-06-08 15:34:02.461.
+Test Case '-[MerlinE2ETests.CapabilityScenarioTests testS1SwiftGUIDebugCycle]' started.
+2026-06-08 15:34:03.041792-0400 Merlin[4324:2622463] [connection] nw_socket_handle_socket_event [C2.1.1:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:34:03.041878-0400 Merlin[4324:2622463] [connection] nw_endpoint_flow_failed_with_error [C2.1.1 ::1.8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:34:03.042044-0400 Merlin[4324:2622463] [connection] nw_socket_handle_socket_event [C2.1.2:2] Socket SO_ERROR [61: Connection refused]
+2026-06-08 15:34:03.042062-0400 Merlin[4324:2622463] [connection] nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:8083 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+2026-06-08 15:34:03.042090-0400 Merlin[4324:2622463] [connection] nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:8083 cancelled socket-flow ((null))] already failing, returning
+2026-06-08 15:34:03.042118-0400 Merlin[4324:2622463] [Default] Connection 2: received failure notification
+2026-06-08 15:34:03.042129-0400 Merlin[4324:2622463] [Default] Connection 2: failed to connect 1:61, reason -1
+2026-06-08 15:34:03.042132-0400 Merlin[4324:2622463] [Default] Connection 2: encountered error(1:61)
+2026-06-08 15:34:03.042441-0400 Merlin[4324:2622463] [Default] Task <C4144839-733C-4855-B700-4D195E64B959>.<2> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+2026-06-08 15:34:03.043007-0400 Merlin[4324:2622493] [Default] Task <C4144839-733C-4855-B700-4D195E64B959>.<2> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x8ff890960 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <C4144839-733C-4855-B700-4D195E64B959>.<2>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <C4144839-733C-4855-B700-4D195E64B959>.<2>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:8083/health, NSErrorFailingURLKey=http://localhost:8083/health, _kCFStreamErrorDomainKey=1}
+2026-06-08 15:35:58.456100-0400 Merlin[4324:2622543] [] nw_path_necp_check_for_updates Failed to copy updated result (22)
+2026-06-08 15:36:37.256411-0400 Merlin[4324:2625973] [] nw_path_necp_check_for_updates Failed to copy updated result (22)
+2026-06-08 15:36:42.918246-0400 Merlin[4324:2625973] [] nw_path_necp_check_for_updates Failed to copy updated result (22)
+2026-06-08 15:37:29.008790-0400 Merlin[4324:2628694] [] nw_path_necp_check_for_updates Failed to copy updated result (22)
