@@ -778,6 +778,10 @@ struct KiCadLibraryIDCanonicalizer {
             return "Device:C_Polarized"
         case "Device:R_POT":
             return "Device:R_Potentiometer"
+        case "Device:Q_NJFET_DSG":
+            return "Transistor_FET:Q_NJFET_DSG"
+        case "Device:Q_NMOS_GDS":
+            return "Transistor_FET:Q_NMOS_GDS"
         case "Connector:AudioJack2":
             return "Connector_Audio:AudioJack2"
         case "Connector:Conn_01x02_Pin":
@@ -789,6 +793,17 @@ struct KiCadLibraryIDCanonicalizer {
 }
 
 struct KiCadEmbeddedSymbolLibraryBuilder: Sendable {
+    private let roots: KiCadLibraryRoots?
+    private let bundledGeometry: KiCadBundledSymbolGeometryCatalog
+
+    init(
+        roots: KiCadLibraryRoots? = KiCadLibraryRootDiscovery().discover(),
+        bundledGeometry: KiCadBundledSymbolGeometryCatalog = KiCadBundledSymbolGeometryCatalog()
+    ) {
+        self.roots = roots
+        self.bundledGeometry = bundledGeometry
+    }
+
     func libSymbolsNode(for requestedSymbols: [String]) -> KiCadSExpression {
         let canonicalIDs = stableUnique(requestedSymbols.map(KiCadLibraryIDCanonicalizer.canonical))
         let symbols = canonicalIDs.compactMap { id -> KiCadSExpression? in
@@ -806,11 +821,13 @@ struct KiCadEmbeddedSymbolLibraryBuilder: Sendable {
         guard parts.count == 2 else { return nil }
         let libraryName = parts[0]
         let symbolName = parts[1]
-        guard let roots = KiCadLibraryRootDiscovery().discover() else { return nil }
+        guard let roots else {
+            return bundledSymbolBlock(for: libID)
+        }
         let file = roots.symbolRoot.appendingPathComponent("\(libraryName).kicad_sym")
         guard let text = try? String(contentsOf: file, encoding: .utf8),
               var block = block(named: "symbol", quotedName: symbolName, in: text) else {
-            return nil
+            return bundledSymbolBlock(for: libID)
         }
         block = block.replacingOccurrences(
             of: "(symbol \"\(symbolName)\"",
@@ -819,6 +836,29 @@ struct KiCadEmbeddedSymbolLibraryBuilder: Sendable {
             range: block.startIndex..<block.endIndex
         )
         return block
+    }
+
+    private func bundledSymbolBlock(for libID: String) -> String? {
+        guard let geometry = bundledGeometry.geometry(for: libID) else { return nil }
+        let pins = geometry.pins.map { pin in
+            #"    (pin \#(pin.electricalType) line (at \#(numberString(pin.at.x)) \#(numberString(pin.at.y)) 0) (length 2.54) (name "\#(escaped(pin.name))" (effects (font (size 1.27 1.27)))) (number "\#(escaped(pin.number))" (effects (font (size 1.27 1.27)))))"#
+        }.joined(separator: "\n")
+        return """
+        (symbol "\(escaped(libID))"
+        \(pins)
+        )
+        """
+    }
+
+    private func escaped(_ value: String) -> String {
+        value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
+    private func numberString(_ value: Double) -> String {
+        if value.rounded(.towardZero) == value {
+            return String(Int(value))
+        }
+        return String(value)
     }
 
     private func stableUnique(_ values: [String]) -> [String] {

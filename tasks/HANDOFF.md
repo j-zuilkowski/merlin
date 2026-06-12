@@ -373,8 +373,10 @@ GitHub Release `v2.4.0`, and watching GitHub checks for build failures.
 
 Task 517 repairs the PR #3 GitHub CI failure by adding deterministic bundled
 KiCad pin geometry for common primitive symbols used by electronics tests when
-the runner has no installed KiCad libraries. Unknown symbols still fail with
-`PIN_GEOMETRY_UNRESOLVED`.
+the runner has no installed KiCad libraries. It also repairs the follow-up CI
+failure where no-library runners emitted an empty `(lib_symbols)` block by
+embedding bundled schematic symbol definitions for those same primitive symbols.
+Unknown symbols still fail with `PIN_GEOMETRY_UNRESOLVED`.
 
 Task 499 closed release gate #8 as failed evidence instead of leaving the
 ledger in a false `running` state. The preserved artifacts prove three separate

@@ -149,8 +149,29 @@ final class CircuitIRToKiCadSchematicTests: XCTestCase {
         XCTAssertEqual(resolver.resolve(libraryID: "Device:Q_NPN_BCE")?.libraryID, "Transistor_BJT:Q_NPN_BCE")
         XCTAssertNotNil(resolver.resolve(libraryID: "Connector:AudioJack2")?.pin(number: "T", name: "T"))
         XCTAssertNotNil(resolver.resolve(libraryID: "Device:D_Bridge_+-AA")?.pin(number: "1", name: "+"))
+        XCTAssertEqual(resolver.resolve(libraryID: "Device:Q_NJFET_DSG")?.libraryID, "Transistor_FET:Q_NJFET_DSG")
         XCTAssertNotNil(resolver.resolve(libraryID: "Transistor_FET:Q_NMOS_GDS")?.pin(number: "1", name: "G"))
         XCTAssertNil(resolver.resolve(libraryID: "Missing:NoSuchSymbol"))
+
+        let embeddedSymbols = KiCadEmbeddedSymbolLibraryBuilder(roots: nil).libSymbolsNode(for: [
+            "Device:Q_NPN_BCE",
+            "Device:Q_NJFET_DSG",
+            "Missing:NoSuchSymbol",
+        ])
+        let embeddedText = try KiCadSchematicWriter().write(KiCadSchematicDocument(
+            version: 20230121,
+            generator: "merlin-tests",
+            uuid: UUID().uuidString,
+            symbols: [],
+            wires: [],
+            junctions: [],
+            labels: [],
+            sheets: [],
+            opaqueNodes: [embeddedSymbols]
+        ))
+        XCTAssertTrue(embeddedText.contains(#"(symbol "Transistor_BJT:Q_NPN_BCE""#), embeddedText)
+        XCTAssertTrue(embeddedText.contains(#"(symbol "Transistor_FET:Q_NJFET_DSG""#), embeddedText)
+        XCTAssertFalse(embeddedText.contains(#"(symbol "Missing:NoSuchSymbol""#), embeddedText)
 
         let outputDirectory = temporaryDirectory("circuit-ir-ci-bundled-geometry")
         let result = try CircuitIRKiCadSchematicMaterializer(pinGeometryResolver: resolver).materialize(
