@@ -40,11 +40,13 @@ Release screenshots are created only after the full battery is green.
 | 11 | GitHub and README feature screenshots | passed | Public README/GitHub assets under `docs/assets/screenshots/v2.4.0/`: `merlin-workspace.png`, `merlin-settings-providers.png`, `merlin-settings-provider-slots.png`, Task 512-refreshed gate #10 `kicad-schematic-editor.png`, `kicad-pcb-editor.png`, `kicad-3d-viewer.png`, and `kicad-routed-composite.png`; evidence-only full-size Merlin captures under `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`; command/process cleanup log `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.focused-green.log`. | none |
 | 12 | Release evidence report | passed | `docs/e2e/2026-06-08-v2.4.0-release/REPORT.md`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log`. | none |
 | 13 | Final safety check: clean status, version 2.4.0, evidence present, no orphan services/helpers | passed | Task 513 reran this gate after Task 512 changed KiCad release evidence. `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log` records clean starting status at commit `f959ddfb6b7372189c078cd4206b921bcb45ce69`, version `2.4.0` build `26`, release evidence present, 7 README screenshot assets, no Merlin/KiCad app processes, no 8081/8083 listeners, and local/remote `v2.4.0` tags absent. Earlier fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.focused-green.log`. | none |
-| 14 | Tag `v2.4.0` | passed | Task 514 created local tag `v2.4.0` after Task 513 refreshed final safety evidence. Pre-tag checks showed a clean worktree, no local `v2.4.0` tag, and no remote `refs/tags/v2.4.0`. | none |
+| 14 | Tag `v2.4.0` | passed | Task 514 created local tag `v2.4.0` after Task 513 refreshed final safety evidence. Pre-tag checks showed a clean worktree, no local `v2.4.0` tag, and no remote `refs/tags/v2.4.0`. Task 515 changes release documentation after the initial tag, so the local tag must point at the Task 515 commit before gate #15 pushes it. | none |
 | 15 | Push branch and tag | pending | remote branch and tag | none yet |
 | 16 | Publish GitHub Release `v2.4.0` with required release assets/screenshots | blocked | GitHub Release `v2.4.0` | wait for #15 green |
 
 ## Current Blocker
 
 Gates #1-#14 are passed. Gate #14 created local tag `v2.4.0` after the Task 513
-final safety rerun. The immediate blocker is gate #15: push branch and tag.
+final safety rerun. Task 515 is a post-tag documentation sweep, so before gate
+#15 pushes anything the local tag must point at the final Task 515 commit. The
+immediate blocker is gate #15: push branch and tag.

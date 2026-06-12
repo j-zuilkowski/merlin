@@ -6,7 +6,7 @@
 // After compaction, recently-invoked skill bodies are re-injected so the model
 // retains their instructions.
 //
-// See: Developer Manual § "Engine — ContextManager"
+// See: Developer Manual § "ContextManager"
 import Foundation
 
 @MainActor

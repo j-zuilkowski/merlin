@@ -82,8 +82,8 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         let report = try repoText("docs/e2e/2026-06-08-v2.4.0-release/REPORT.md")
         let ledger = try repoText("docs/e2e/2026-06-08-v2.4.0-release/RELEASE-RUN.md")
 
-        XCTAssertTrue(report.contains("Overall status: **passed through gate #12**"), report)
-        XCTAssertTrue(report.contains("Gates #1-#12 are passed"), report)
+        XCTAssertTrue(report.contains("Overall status: **passed through gate #14**"), report)
+        XCTAssertTrue(report.contains("Gates #1-#14 are passed"), report)
         XCTAssertTrue(report.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/01-MerlinTests.log"), report)
         XCTAssertTrue(report.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/08-capability-runner.log"), report)
         XCTAssertTrue(report.contains("docs/e2e/2026-06-08-v2.4.0-release/logs/09-electronics-kicad.log"), report)
@@ -145,7 +145,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
 
     func testElectronicsFinishChecklistMatchesFinalEvidenceContract() throws {
         let handoff = try repoText("tasks/HANDOFF.md")
-        XCTAssertTrue(handoff.contains("Latest completed task is Task 514"), handoff)
+        XCTAssertTrue(handoff.contains("Latest completed task is Task 515"), handoff)
         XCTAssertTrue(handoff.contains("[x] **F5: Completion contract and status cleanup."), handoff)
         XCTAssertTrue(handoff.contains("Electronics domain status: finished as evidence-gated workflow infrastructure"), handoff)
         XCTAssertTrue(handoff.contains("current GUI proof stops at `COMPONENT_SELECTION_REVISION_BLOCKED`"), handoff)
@@ -159,6 +159,7 @@ final class FinalElectronicsDocumentationSweepTests: XCTestCase {
         XCTAssertTrue(handoff.contains("Task 508 passed release gate #13"), handoff)
         XCTAssertTrue(handoff.contains("Task 513 reran gate #13"), handoff)
         XCTAssertTrue(handoff.contains("Task 514 completed release gate #14"), handoff)
+        XCTAssertTrue(handoff.contains("Task 515 performed a focused documentation sweep"), handoff)
 
         let pluginSpec = try repoText("plugins/electronics/spec.md")
         XCTAssertTrue(pluginSpec.contains("Current Completion Contract"), pluginSpec)

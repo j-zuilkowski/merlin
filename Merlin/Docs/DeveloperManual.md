@@ -926,6 +926,16 @@ Wraps an `AppState` with all the per-session subsystems that don't belong on `Ap
 
 **Domain scoping** — `activeDomainIDs: [String]` is carried per `LiveSession` and applied directly to `appState.engine.activeDomainIDs`. `DomainRegistry` is queried via stateless helpers; no global mutable state changes when switching sessions.
 
+### WorkspaceCoordinator
+
+**File:** `Merlin/Sessions/WorkspaceCoordinator.swift`
+
+`WorkspaceCoordinator` owns the multi-project workspace window state. It
+restores the persisted project list from `~/.merlin/workspace.json`, tracks the
+active `LiveSession`, creates new project managers, and controls the first-launch
+project picker. `MerlinCommands` reads it through focused values so menu actions
+operate on the active workspace instead of stale global state.
+
 ### SessionManager
 
 **File:** `Merlin/Sessions/SessionManager.swift`
@@ -1436,6 +1446,7 @@ Cross-reference between code comments and this manual:
 | `ElectronicsRuntimePlugin` | `Plugins/ElectronicsRuntimePlugin.swift` | [Electronics / KiCad Domain](#electronics--kicad-domain-v20) |
 | `AppState` | `App/AppState.swift` | [Session & State Management → AppState](#appstate) |
 | `LiveSession` | `Sessions/LiveSession.swift` | [Session & State Management → LiveSession](#livesession) |
+| `WorkspaceCoordinator` | `Sessions/WorkspaceCoordinator.swift` | [Session & State Management → WorkspaceCoordinator](#workspacecoordinator) |
 | `HookEngine` | `Hooks/HookEngine.swift` | [Hook System](#hook-system) |
 | `SkillsRegistry` | `Skills/SkillsRegistry.swift` | [Skill System → SkillsRegistry](#skillsregistry) |
 | `MemoryEngine` | `Memories/MemoryEngine.swift` | [Memory System](#memory-system) |
@@ -1448,6 +1459,7 @@ Cross-reference between code comments and this manual:
 | `WorkspaceView` | `Views/WorkspaceView.swift` | [UI Architecture → Scene Graph](#scene-graph) |
 | `ChatView` | `Views/ChatView.swift` | [UI Architecture → ChatView](#chatview) |
 | `AppFocusedValues` | `App/AppFocusedValues.swift` | [UI Architecture → FocusedValues](#focusedvalues) |
+| `MerlinCommands` | `App/MerlinCommands.swift` | [UI Architecture → FocusedValues](#focusedvalues) |
 
 ---
 

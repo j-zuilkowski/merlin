@@ -27,13 +27,15 @@ Merlin is a macOS agentic AI assistant that connects to multiple LLM providers a
 17. [Performance Dashboard](#performance-dashboard)
 18. [Memories](#memories)
 19. [RAG Memory Browser](#rag-memory-browser)
-20. [Project Discipline](#project-discipline)
-21. [Hooks](#hooks)
-22. [Connectors](#connectors)
-23. [Scheduled Automations](#scheduled-automations)
-24. [LoRA Self-Training](#lora-self-training)
-25. [Settings](#settings)
-26. [Keyboard Shortcuts](#keyboard-shortcuts)
+20. [Electronics / KiCad Domain](#electronics--kicad-domain-v20)
+21. [Behavioral Reliability](#behavioral-reliability-v9)
+22. [Project Discipline](#project-discipline)
+23. [Hooks](#hooks)
+24. [Connectors](#connectors)
+25. [Scheduled Automations](#scheduled-automations)
+26. [LoRA Self-Training](#lora-self-training)
+27. [Settings](#settings)
+28. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 

@@ -254,6 +254,67 @@ final class DocumentationSweepTests: XCTestCase {
         }
     }
 
+    func testDeveloperManualCodeMapCoversSourceCommentCrossReferences() throws {
+        let manual = try repoFile("Merlin/Docs/DeveloperManual.md")
+        let sourceRoot = repoRootURL().appendingPathComponent("Merlin")
+        let sourceFiles = try swiftFiles(in: sourceRoot)
+
+        let references = try sourceFiles.flatMap { url -> [(path: String, section: String)] in
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let path = url.path.replacingOccurrences(of: repoRootURL().path + "/Merlin/", with: "")
+            return text
+                .components(separatedBy: .newlines)
+                .compactMap { line -> (path: String, section: String)? in
+                    guard let section = developerManualSectionReference(in: line) else { return nil }
+                    return (path, section)
+                }
+        }
+
+        XCTAssertFalse(references.isEmpty, "Expected source comments to reference the Developer Manual")
+
+        for reference in references {
+            XCTAssertTrue(
+                manual.contains("`\(reference.path)`"),
+                "DeveloperManual.md Code Map missing source-commented file: \(reference.path)"
+            )
+
+            for heading in reference.section.components(separatedBy: "→").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+                XCTAssertTrue(
+                    manual.contains("## \(heading)") || manual.contains("### \(heading)") || manual.contains("#### \(heading)"),
+                    "DeveloperManual.md missing heading for source comment section: \(reference.section)"
+                )
+            }
+        }
+    }
+
+    func testUserGuideTableOfContentsCoversCurrentUserFacingSections() throws {
+        let guide = try repoFile("Merlin/Docs/UserGuide.md")
+        let tableOfContents = try XCTUnwrap(
+            guide.range(of: "## Table of Contents")
+                .flatMap { start in
+                    guide.range(of: "---", range: start.upperBound..<guide.endIndex)
+                        .map { separator in String(guide[start.upperBound..<separator.lowerBound]) }
+                }
+        )
+
+        for section in [
+            "Electronics / KiCad Domain",
+            "Behavioral Reliability",
+            "Project Discipline",
+            "Hooks",
+            "Connectors",
+            "Scheduled Automations",
+            "LoRA Self-Training",
+            "Settings",
+            "Keyboard Shortcuts",
+        ] {
+            XCTAssertTrue(
+                tableOfContents.contains(section),
+                "UserGuide.md table of contents missing user-facing section: \(section)"
+            )
+        }
+    }
+
     private func repoFile(_ path: String) throws -> String {
         let url = repoRootURL().appendingPathComponent(path)
         return try String(contentsOf: url, encoding: .utf8)
@@ -272,5 +333,38 @@ final class DocumentationSweepTests: XCTestCase {
             .deletingLastPathComponent() // Unit
             .deletingLastPathComponent() // MerlinTests
             .deletingLastPathComponent() // repo root
+    }
+
+    private func swiftFiles(in root: URL) throws -> [URL] {
+        let resourceKeys: Set<URLResourceKey> = [.isRegularFileKey]
+        let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: Array(resourceKeys),
+            options: [.skipsHiddenFiles]
+        )
+        var files: [URL] = []
+        guard let enumerator else { return files }
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: resourceKeys)
+            if values.isRegularFile == true && url.pathExtension == "swift" {
+                files.append(url)
+            }
+        }
+        return files.sorted { $0.path < $1.path }
+    }
+
+    private func developerManualSectionReference(in line: String) -> String? {
+        guard line.contains("Developer Manual §") else { return nil }
+        if let firstQuote = line.firstIndex(of: "\""),
+           let secondQuote = line[line.index(after: firstQuote)...].firstIndex(of: "\"") {
+            return String(line[line.index(after: firstQuote)..<secondQuote])
+        }
+
+        guard let marker = line.range(of: "Developer Manual §") else { return nil }
+        var section = line[marker.upperBound...].trimmingCharacters(in: .whitespaces)
+        if section.hasSuffix(".") {
+            section.removeLast()
+        }
+        return section.isEmpty ? nil : section
     }
 }

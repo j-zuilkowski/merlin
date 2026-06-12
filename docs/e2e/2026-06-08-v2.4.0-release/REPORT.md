@@ -2,12 +2,11 @@
 
 ## Summary
 
-Overall status: **passed through gate #12**.
+Overall status: **passed through gate #14**.
 
-Gates #1-#12 are passed. This report summarizes the fixed v2.4.0 release
-ledger evidence through the post-green screenshot and release-report stages.
-Gate #13, the final safety check, was completed after this report was first
-written. Tagging, pushing, and publishing remain pending.
+Gates #1-#14 are passed. This report summarizes the fixed v2.4.0 release
+ledger evidence through the post-green screenshot, release-report, final safety,
+and local-tag stages. Pushing and publishing remain pending.
 
 ## Environment
 
@@ -34,6 +33,8 @@ written. Tagging, pushing, and publishing remain pending.
 | 10. KiCad release screenshots | PASS | Task 512 supersedes Task 511; `docs/e2e/2026-06-08-v2.4.0-release/screenshots/kicad/README.md`; stale screenshots were removed; refreshed `isolated_secondary` schematic and PCB opened in KiCad GUI editors; PCB evidence shows 72 track segments, 36 vias, and 0 unrouted items; routed/layer and 3D evidence captured |
 | 11. README/GitHub screenshots | PASS | `docs/assets/screenshots/v2.4.0/`; full-size evidence captures in `docs/e2e/2026-06-08-v2.4.0-release/screenshots/readme/`; capture log `docs/e2e/2026-06-08-v2.4.0-release/logs/11-readme-screenshots.log` |
 | 12. Release evidence report | PASS | This `REPORT.md`; fail-first guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.fail-first.log`; focused green guard `docs/e2e/2026-06-08-v2.4.0-release/logs/12-release-report.focused-green.log` |
+| 13. Final safety check | PASS | `docs/e2e/2026-06-08-v2.4.0-release/logs/13-final-safety.log`; clean starting status at `f959ddfb6b7372189c078cd4206b921bcb45ce69`, version `2.4.0` build `26`, release evidence present, 7 README screenshot assets, no Merlin/KiCad app processes, no 8081/8083 listeners, and absent local/remote `v2.4.0` tags before tagging |
+| 14. Local tag | PASS | Task 514 created local tag `v2.4.0` after final safety passed; any committed documentation sweep before push must keep that local tag on the final release commit |
 
 ## Screenshot Assets
 
@@ -77,8 +78,9 @@ That evidence is visual release proof, not a fabrication-ready claim.
 
 Gate-owned cleanup logs record service and app cleanup at the relevant stages.
 The gate #11 screenshot log records: No Merlin app processes remain. Earlier
-release gate cleanup logs record local-provider and RAG shutdown. No 8081 or 8083 listeners remained after their gate-owned services stopped. Gate #13 must
-perform the final repository-wide safety check again before tagging.
+release gate cleanup logs record local-provider and RAG shutdown. No 8081 or 8083 listeners remained after their gate-owned services stopped. No 8081 or 8083 listeners were present in the final safety log. Gate #13
+performed the final repository-wide safety check before Task 514 created the
+local release tag.
 
 ## Remaining Release Gates
 
