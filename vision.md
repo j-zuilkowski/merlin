@@ -54,6 +54,16 @@ protocols, result schema, ranking/dedupe rules, Settings configuration, message-
 tool dispatch, diagnostics, caching/rate limits, and TDD coverage for degraded
 providers.
 
+**Status: promoted to `spec.md` as the Web Search Plugin.** The committed design is
+a Tier-2 out-of-process plugin, not a built-in Brave client and not a Tier-1
+`dlopen` bundle. The plugin owns the native search/extraction harness and
+communicates through the workspace bus. Merlin core discovers its capabilities and
+settings schema dynamically when the plugin is loaded, renders the settings
+surface in the host Settings window, and routes model-visible search tools through
+bus-backed plugin/MCP transports. This keeps development iteration outside the
+main app rebuild while preserving the same settings and bus model used by the
+electronics plugin.
+
 ### Spec-Driven Development alignment
 
 Merlin's discipline subsystem now uses Spec-Driven Development (SDD) terms directly:

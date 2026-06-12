@@ -47,6 +47,10 @@ actor WorkspaceMessageBus {
         capabilities.append(capability)
     }
 
+    func unregisterCapability(address: WorkspaceMessageAddress) {
+        capabilities.removeAll { $0.address == address }
+    }
+
     func registeredCapabilities() -> [WorkspaceCapability] {
         capabilities.sorted { $0.id < $1.id }
     }
@@ -54,6 +58,10 @@ actor WorkspaceMessageBus {
     func registerSettingsSchema(_ schema: WorkspaceSettingsSchema) {
         settingsSchemas.removeAll { $0.namespace == schema.namespace }
         settingsSchemas.append(schema)
+    }
+
+    func unregisterSettingsSchema(namespace: String) {
+        settingsSchemas.removeAll { $0.namespace == namespace }
     }
 
     func registeredSettingsSchemas() -> [WorkspaceSettingsSchema] {

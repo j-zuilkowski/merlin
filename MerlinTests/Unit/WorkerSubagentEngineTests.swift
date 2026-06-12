@@ -35,8 +35,22 @@ final class WorkerSubagentEngineTests: XCTestCase {
             worktreeManager: worktreeManager,
             repoURL: repoURL
         )
+        let stream = engine.events
         Task { await engine.start() }
-        try await Task.sleep(for: .milliseconds(300))
+
+        for await event in stream {
+            switch event {
+            case .workerReady:
+                break
+            case .failed(let error):
+                XCTFail("Unexpected failure: \(error)")
+                return
+            case .completed, .toolCallStarted, .toolCallCompleted, .messageChunk:
+                continue
+            }
+            break
+        }
+
         let path = await engine.worktreePath
         XCTAssertNotNil(path)
         if let path {

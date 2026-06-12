@@ -61,6 +61,32 @@ final class OperatorConfigTests: XCTestCase {
                        "an unresolved `${VAR}` is left as-is, not blanked")
     }
 
+    func testMCPMergedConfigResolvesProjectRootPlaceholders() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("operator-project-\(UUID())", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try """
+        {
+          "mcpServers": {
+            "web-search": {
+              "command": "/usr/bin/swift",
+              "args": ["run", "--package-path", "${MERLIN_PROJECT_ROOT}/plugins/web-search", "web-search-plugin"],
+              "env": {
+                "PLUGIN_ROOT": "${MERLIN_PROJECT_ROOT}/plugins/web-search"
+              }
+            }
+          }
+        }
+        """.write(to: root.appendingPathComponent(".mcp.json"), atomically: true, encoding: .utf8)
+
+        let config = MCPConfig.merged(projectPath: root.path)
+        let server = try XCTUnwrap(config.mcpServers["web-search"])
+        XCTAssertEqual(server.args[2], root.appendingPathComponent("plugins/web-search").path)
+        XCTAssertEqual(server.env["PLUGIN_ROOT"], root.appendingPathComponent("plugins/web-search").path)
+    }
+
     // MARK: - Hook events (S12 L)
 
     func testHookEventsAreExactlyTheFiveDocumented() {

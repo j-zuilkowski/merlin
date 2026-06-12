@@ -1,0 +1,10 @@
+{
+  "items": [
+    {
+      "full_name": "owner/project",
+      "html_url": "https://github.com/owner/project",
+      "description": "A useful project",
+      "stargazers_count": 1200
+    }
+  ]
+}

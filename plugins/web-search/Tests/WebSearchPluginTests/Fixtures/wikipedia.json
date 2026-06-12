@@ -1,0 +1,11 @@
+{
+  "query": {
+    "search": [
+      {
+        "title": "Merlin",
+        "snippet": "<span>Merlin</span> is a legendary figure.",
+        "pageid": 123
+      }
+    ]
+  }
+}
